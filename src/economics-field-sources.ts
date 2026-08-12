@@ -177,6 +177,21 @@ export const ECONOMICS_FIELD_SOURCES = {
   // instant tao_in_pool_tao and alpha_in_pool were read at is the instant this is
   // true of, by construction.
   spot_price_tao: { kind: "reconstructed", storage: null },
+  // The serve-time USD twins (#10381), declared here because #9078's gate asks
+  // every PUBLISHED field for its provenance and these became published when
+  // the row schema learned them (ALPHA_USD_ROW_OVERLAY). `reconstructed`, and
+  // matching `ALPHA_USD_FIELD_SOURCE` in src/alpha-usd.ts, which
+  // withAlphaUsdEconomics stamps at serve time for the three `_usd` fields:
+  // no storage item holds a USD figure -- each is a TAO field multiplied by
+  // the blob's own tao_usd reading, which is why the reading rides at the
+  // blob level rather than per row.
+  alpha_price_usd: { kind: "reconstructed", storage: null },
+  alpha_market_cap_usd: { kind: "reconstructed", storage: null },
+  alpha_fdv_usd: { kind: "reconstructed", storage: null },
+  // Not a measurement at all: a constant naming WHAT alpha_market_cap_tao
+  // multiplies, so a consumer can reconcile the number. Reconstructed for the
+  // same reason `slug` is -- we mint it, no instant applies.
+  alpha_market_cap_basis: { kind: "reconstructed", storage: null },
   alpha_price_change_1h: { kind: "reconstructed", storage: null },
   alpha_price_change_1d: { kind: "reconstructed", storage: null },
   alpha_price_change_7d: { kind: "reconstructed", storage: null },
@@ -294,6 +309,21 @@ export const ECONOMICS_FIELD_SOURCES_LIVE_KV = {
   // instant tao_in_pool_tao and alpha_in_pool were read at is the instant this is
   // true of, by construction.
   spot_price_tao: { kind: "reconstructed", storage: null },
+  // The serve-time USD twins (#10381), declared here because #9078's gate asks
+  // every PUBLISHED field for its provenance and these became published when
+  // the row schema learned them (ALPHA_USD_ROW_OVERLAY). `reconstructed`, and
+  // matching `ALPHA_USD_FIELD_SOURCE` in src/alpha-usd.ts, which
+  // withAlphaUsdEconomics stamps at serve time for the three `_usd` fields:
+  // no storage item holds a USD figure -- each is a TAO field multiplied by
+  // the blob's own tao_usd reading, which is why the reading rides at the
+  // blob level rather than per row.
+  alpha_price_usd: { kind: "reconstructed", storage: null },
+  alpha_market_cap_usd: { kind: "reconstructed", storage: null },
+  alpha_fdv_usd: { kind: "reconstructed", storage: null },
+  // Not a measurement at all: a constant naming WHAT alpha_market_cap_tao
+  // multiplies, so a consumer can reconcile the number. Reconstructed for the
+  // same reason `slug` is -- we mint it, no instant applies.
+  alpha_market_cap_basis: { kind: "reconstructed", storage: null },
   alpha_price_change_1h: { kind: "reconstructed", storage: null },
   alpha_price_change_1d: { kind: "reconstructed", storage: null },
   alpha_price_change_7d: { kind: "reconstructed", storage: null },
