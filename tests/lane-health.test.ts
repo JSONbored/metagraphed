@@ -155,7 +155,9 @@ describe("loadLatestLaneHealth", () => {
         checked_at: NOW,
       },
       {
-        lane: "neurons",
+        // `neon:neurons`, not the bare spelling: that one is retired (#10851
+        // froze it) and the serving read drops retired lanes by design.
+        lane: "neon:neurons",
         verdict: "ok",
         age_ms: 10,
         detail: null,
@@ -163,9 +165,12 @@ describe("loadLatestLaneHealth", () => {
       },
     ]);
     const latest = await loadLatestLaneHealth(db);
-    assert.deepEqual(Object.keys(latest).sort(), ["chain-detail", "neurons"]);
+    assert.deepEqual(Object.keys(latest).sort(), [
+      "chain-detail",
+      "neon:neurons",
+    ]);
     assert.equal(latest["chain-detail"].verdict, "stale");
-    assert.equal(latest.neurons.detail, null);
+    assert.equal(latest["neon:neurons"].detail, null);
     // The newest-per-lane reduction happens in SQL, not in the Worker: the table
     // grows by a row per lane per tick forever, so a full scan would get slower
     // every day this runs.

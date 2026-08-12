@@ -5859,7 +5859,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         match: /FROM lane_health/i,
         rows: [
           {
-            lane: "neurons",
+            // `neon:neurons`, not the bare spelling: that one is RETIRED
+            // (#10851's key change froze it, see RETIRED_LANES), so the
+            // serving read drops it -- and the prefixed key is what
+            // production actually carries.
+            lane: "neon:neurons",
             verdict: "ok",
             age_ms: 30_000,
             detail: null,
@@ -5881,7 +5885,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // Stale first: the row an operator acts on leads.
     assert.deepEqual(
       body.data.lanes.map((l: { lane: string }) => l.lane),
-      ["chain-detail", "neurons"],
+      ["chain-detail", "neon:neurons"],
     );
     assert.equal(body.data.stale_lane_count, 1);
   });
