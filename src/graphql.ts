@@ -143,8 +143,11 @@ import { loadSurfacesList } from "./surfaces-mcp.ts";
 // collection), matching endpoint_pools / rpc_pools / provider_endpoints.
 import { loadRpcEndpointsList } from "./rpc-endpoints-mcp.ts";
 // #7888: GraphQL parity for GET /api/v1/providers list filters (id/kind/
-// authority/sort/order/fields + limit/cursor), reusing loadProvidersList that
-// MCP list_providers already calls -- not a reimplementation.
+// authority/sort/order + limit/cursor), reusing loadProvidersList that
+// MCP list_providers already calls -- not a reimplementation. The loader's
+// `fields` projection stays MCP-only: the tool declares it (#9701 narrowing),
+// GraphQL stopped publishing it when the selection set became the projection
+// (#10214), and the route never had it.
 import { loadProvidersList } from "./providers-mcp.ts";
 // #7167: GraphQL parity for the /api/v1/review/* contributor-review family,
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
@@ -4452,18 +4455,17 @@ const rootValue = {
     let rows: Row[] = [];
     try {
       // Omit GraphQL limit/cursor so the loader returns the full filtered set.
-      // When a fields projection is supplied, keep/force `id` so the opaque
-      // string keyset cursor still resolves.
-      const loadArgs: Row = { ...filters };
-      if (typeof loadArgs.fields === "string" && loadArgs.fields.trim()) {
-        const trimmed = loadArgs.fields.trim();
-        loadArgs.fields = /(^|,)\s*id\s*(,|$)/i.test(trimmed)
-          ? trimmed
-          : `id,${trimmed}`;
-      }
-      const data = await loadProvidersList(mcpCtx(context), loadArgs, {
-        readArtifact,
-      });
+      // An id-prefixing branch for a `fields` projection lived here until
+      // #10214 removed the argument (the selection set is the projection on a
+      // typed return); the spread into `Row` had kept the dead read compiling,
+      // which is exactly what #10864 was filed about.
+      const data = await loadProvidersList(
+        mcpCtx(context),
+        { ...filters },
+        {
+          readArtifact,
+        },
+      );
       rows = data.providers as Row[];
     } catch (rawErr) {
       const err = rowOf(rawErr);
