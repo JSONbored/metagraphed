@@ -311,7 +311,7 @@ test("the UNFILTERED form is left alone -- it has its type context", () => {
 
 // --- account-balances now declares a pass table (#10124) --------------------
 test("account-balances writes its tally, like the other three lanes", async () => {
-  // It did not, and nothing failed: writeAccountBalancesToD1 takes the pass and
+  // It did not, and nothing failed: writeAccountBalancesToStore takes the pass and
   // writes D1's tally itself, while mirrorLedgerToNeon skips any lane absent
   // from PASS_TABLES -- silently, because a lane with no pass table is a
   // legitimate state. Neon's account_balances_passes sat at ZERO rows while

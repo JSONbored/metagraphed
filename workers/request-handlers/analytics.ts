@@ -3,15 +3,15 @@
 // D1 fully eliminated (2026-07-17, reconfirmed live 2026-07-25 -- zero D1
 // databases remain on the account): every handler in this file now goes
 // straight to a schema-stable empty payload on a Postgres-tier miss, never a
-// live D1 read -- the D1 read path (`d1All`) and its fallback-row bookkeeping
+// live D1 read -- the D1 read path (`storeAll`) and its fallback-row bookkeeping
 // (`markD1FallbackRows`/`hasD1FallbackRows`/the `d1FallbackGeneration`
 // counter) were deleted once they had zero remaining callers.
 //
-// What's left is `markPostgresTierFallbackResponse` + the
-// `POSTGRES_TIER_FALLBACK_RESPONSES` WeakSet (renamed 2026-07-25 -- it means
+// What's left is `markDataApiTierFallbackResponse` + the
+// `DATA_API_TIER_FALLBACK_RESPONSES` WeakSet (renamed 2026-07-25 -- it means
 // "this response used the degraded/empty-fallback path, not a real tier
 // hit") and `withEdgeCache`, which reads that WeakSet to decide whether a
-// 200 may be persisted into the edge cache: `markPostgresTierFallbackResponse`
+// 200 may be persisted into the edge cache: `markDataApiTierFallbackResponse`
 // must tag an *awaited* Response, and `withEdgeCache` must inspect that same
 // object, or a degraded payload could poison the edge cache (the #1760 bug
 // class).
@@ -57,7 +57,7 @@ import {
   envelopeResponse,
   publishedAt,
 } from "../responses.ts";
-import { currentPostgresTierFallbackGeneration } from "../postgres-tier.ts";
+import { currentDataApiTierFallbackGeneration } from "../data-api-tier.ts";
 import { currentR2SqlFailureGeneration } from "../../src/r2-sql.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
 import {} from "../../src/route-limits.ts";
@@ -69,7 +69,7 @@ import {
   type QueryError,
 } from "../list-query.ts";
 import {
-  currentD1ReadFailureGeneration,
+  currentStoreReadFailureGeneration,
   loadGlobalIncidentRows,
   loadSubnetHealthTrends,
   loadSubnetIncidents,
@@ -238,7 +238,7 @@ function analyticsQueryError(error: QueryError): Response {
   });
 }
 
-const POSTGRES_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
+const DATA_API_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
 
 /**
  * The header a degraded response carries (#9110).
@@ -266,7 +266,7 @@ export const DEGRADED_TIER_UNAVAILABLE = "tier_unavailable";
  * An UNMEASURED answer is not the same thing as a DEGRADED one, and #10189
  * turns on keeping them apart.
  *
- * #9110 gave withEdgeCache one signal for both: tryPostgresTier's counter set
+ * #9110 gave withEdgeCache one signal for both: tryDataApiTier's counter set
  * the `x-metagraph-degraded` header AND suppressed caching, which was right
  * while the two always coincided -- a tier that just failed will probably
  * succeed next minute, so caching the failure prolongs it.
@@ -279,7 +279,7 @@ export const DEGRADED_TIER_UNAVAILABLE = "tier_unavailable";
  * suite already asserts in a dozen places ("chain-signers ... is
  * edge-cacheable", "a healthy CSV response is edge-cached").
  *
- * So this counter labels without suppressing, and tryPostgresTier's keeps
+ * So this counter labels without suppressing, and tryDataApiTier's keeps
  * doing both. Wrapping the final `?? build…()` operand is what makes it exact:
  * `??` short-circuits, so it runs on precisely the requests that get an empty
  * body and never on one carrying data.
@@ -335,9 +335,9 @@ function withDegradedHeader(response: Response): Response {
  * request, so persisting the failure would prolong it. An UNMEASURED answer
  * takes the header alone -- see `unmeasured`.
  */
-function markPostgresTierFallbackResponse(response: Response): Response {
+function markDataApiTierFallbackResponse(response: Response): Response {
   const marked = withDegradedHeader(response);
-  POSTGRES_TIER_FALLBACK_RESPONSES.add(marked);
+  DATA_API_TIER_FALLBACK_RESPONSES.add(marked);
   return marked;
 }
 
@@ -365,7 +365,7 @@ export interface DegradedSnapshot {
 
 export function degradedSnapshot(): DegradedSnapshot {
   return {
-    postgresTier: currentPostgresTierFallbackGeneration(),
+    postgresTier: currentDataApiTierFallbackGeneration(),
     r2Sql: currentR2SqlFailureGeneration(),
     unmeasured: unmeasuredGeneration,
   };
@@ -585,7 +585,7 @@ export async function withEdgeCache(
   // no way for a caller to tell it from a measured zero.
   //
   // Labelling here rather than in each handler is deliberate. Only 5 of the 21
-  // remembered to call markPostgresTierFallbackResponse; a per-handler flag is
+  // remembered to call markDataApiTierFallbackResponse; a per-handler flag is
   // exactly the thing the 22nd handler will forget. Every one of them already
   // goes through this function.
   //
@@ -601,7 +601,7 @@ export async function withEdgeCache(
   // for the full TTL outlives the condition that produced it.
   const moved = degradedSince(before);
   const degraded =
-    POSTGRES_TIER_FALLBACK_RESPONSES.has(built) || moved.transient;
+    DATA_API_TIER_FALLBACK_RESPONSES.has(built) || moved.transient;
   // #10189: an unmeasured answer is labelled but NOT made uncacheable. See
   // `unmeasured` above for why the two signals have to be separate -- a
   // projection decline is stable for the whole TTL, where a tier failure is
@@ -609,7 +609,7 @@ export async function withEdgeCache(
   const labelled = built.status === 200 && !built.headers.has(DEGRADED_HEADER);
   let response = built;
   if (labelled && degraded) {
-    response = markPostgresTierFallbackResponse(built);
+    response = markDataApiTierFallbackResponse(built);
   } else if (labelled && moved.unmeasured) {
     response = withDegradedHeader(built);
   }
@@ -619,7 +619,7 @@ export async function withEdgeCache(
     cache &&
     cacheKey &&
     response.status === 200 &&
-    !POSTGRES_TIER_FALLBACK_RESPONSES.has(response) &&
+    !DATA_API_TIER_FALLBACK_RESPONSES.has(response) &&
     !moved.transient
   ) {
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
@@ -665,11 +665,11 @@ export async function handleBulkHealthTrends(
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
       // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE was left unset in
-      // wrangler.jsonc for a long stretch after this tier's tryPostgresTier
+      // wrangler.jsonc for a long stretch after this tier's tryDataApiTier
       // wiring landed -- surface_checks/surface_uptime_daily only started
       // accumulating from the dual-write landing (#4881/#4885), with no
       // historical backfill, and an empty/short Postgres window is still a
-      // valid 200 response that tryPostgresTier's error-only fallback can't
+      // valid 200 response that tryDataApiTier's error-only fallback can't
       // tell apart from "technically fine but missing D1's history". FLIPPED
       // to "postgres" (D1 retirement, 2026-07-16) once Postgres accumulated a
       // real window: direct `psql` confirmed surface_checks holds 111,088 rows
@@ -677,7 +677,7 @@ export async function handleBulkHealthTrends(
       // 2026-07-16, a full rolling window. See wrangler.jsonc's own comment on
       // this flag for the complete verification writeup.
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
-      // absent from DATA_API_FORWARD_FLAGS, so the tier read that used to
+      // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
       // initialise `data` resolved to null on every request -- which made the
       // branch below the only path, not the fallback.
       // D1-served payloads are cacheable; only a genuinely empty one is not.
@@ -685,7 +685,7 @@ export async function handleBulkHealthTrends(
       // the schema-stable empty", not merely "the Postgres tier missed" --
       // since 2026-08-03 a tier miss is the NORMAL path and D1 answers it
       // with real rows. Mirrors handleSubnetUptime in analytics-routes.ts.
-      const d1Generation = currentD1ReadFailureGeneration();
+      const storeGeneration = currentStoreReadFailureGeneration();
       const result = await loadBulkHealthTrends({
         observedAt: meta?.last_run_at || null,
         db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
@@ -696,7 +696,7 @@ export async function handleBulkHealthTrends(
       const data = result.data;
       const isFallback =
         !env.HYPERDRIVE?.connectionString ||
-        currentD1ReadFailureGeneration() !== d1Generation;
+        currentStoreReadFailureGeneration() !== storeGeneration;
       const response = await envelopeResponse(
         cacheRequest,
         {
@@ -712,7 +712,7 @@ export async function handleBulkHealthTrends(
         },
         "short",
       );
-      return isFallback ? markPostgresTierFallbackResponse(response) : response;
+      return isFallback ? markDataApiTierFallbackResponse(response) : response;
     },
   );
 }
@@ -736,10 +736,10 @@ export async function handleHealthTrends(
   return withEdgeCache(request, ctx, env, "trends", async (cacheRequest) => {
     // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
     // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
-    // absent from DATA_API_FORWARD_FLAGS, so the tier read that used to
+    // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
     // initialise `data` resolved to null on every request -- which made the
     // branch below the only path, not the fallback.
-    // Read through the shared d1All (rather than handing the loader the bare
+    // Read through the shared storeAll (rather than handing the loader the bare
     // db) so a failure is still logged + marked as a D1 fallback (the
     // dark-serve log contract) — a Postgres-tier miss now falls straight
     // through to the pure formatter with no rows (never a live D1 query),
@@ -750,7 +750,7 @@ export async function handleHealthTrends(
     // the same contract the Postgres tier uses). A D1-served response
     // carries real rows and caches like any tier hit (the pre-elimination
     // behavior this route always had).
-    const d1Generation = currentD1ReadFailureGeneration();
+    const storeGeneration = currentStoreReadFailureGeneration();
     const meta = await readHealthMetaKv(env);
     const data = await loadSubnetHealthTrends(netuid, {
       observedAt: meta?.last_run_at || null,
@@ -758,7 +758,7 @@ export async function handleHealthTrends(
     } as unknown as Parameters<typeof loadSubnetHealthTrends>[1]);
     const usedFallback =
       !env.HYPERDRIVE?.connectionString ||
-      currentD1ReadFailureGeneration() !== d1Generation;
+      currentStoreReadFailureGeneration() !== storeGeneration;
     const response = await envelopeResponse(
       cacheRequest,
       {
@@ -774,7 +774,7 @@ export async function handleHealthTrends(
       },
       "short",
     );
-    return usedFallback ? markPostgresTierFallbackResponse(response) : response;
+    return usedFallback ? markDataApiTierFallbackResponse(response) : response;
   });
 }
 
@@ -798,14 +798,14 @@ export async function handleHealthPercentiles(
     async (cacheRequest) => {
       // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
-      // absent from DATA_API_FORWARD_FLAGS, so the tier read that used to
+      // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
       // initialise `data` resolved to null on every request -- which made the
       // branch below the only path, not the fallback.
       // A Postgres-tier miss now falls straight through to the pure
       // formatter with no rows (never a live D1 query), so it's always
       // marked a fallback (mirrors handleHealthTrends).
       // Cacheable when D1-served — see handleHealthTrends' comment.
-      const d1Generation = currentD1ReadFailureGeneration();
+      const storeGeneration = currentStoreReadFailureGeneration();
       const meta = await readHealthMetaKv(env);
       const data = await loadSubnetPercentiles(netuid, {
         window: label,
@@ -814,7 +814,7 @@ export async function handleHealthPercentiles(
       } as unknown as Parameters<typeof loadSubnetPercentiles>[1]);
       const usedFallback =
         !env.HYPERDRIVE?.connectionString ||
-        currentD1ReadFailureGeneration() !== d1Generation;
+        currentStoreReadFailureGeneration() !== storeGeneration;
       const response = await envelopeResponse(
         cacheRequest,
         {
@@ -828,7 +828,7 @@ export async function handleHealthPercentiles(
         "short",
       );
       return usedFallback
-        ? markPostgresTierFallbackResponse(response)
+        ? markDataApiTierFallbackResponse(response)
         : response;
     },
     canonicalHealthWindowCachePath(url),
@@ -852,14 +852,14 @@ export async function handleHealthIncidents(
     async (cacheRequest) => {
       // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
-      // absent from DATA_API_FORWARD_FLAGS, so the tier read that used to
+      // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
       // initialise `data` resolved to null on every request -- which made the
       // branch below the only path, not the fallback.
       // A Postgres-tier miss now falls straight through to the pure
       // formatter with no rows (never a live D1 query), so it's always
       // marked a fallback (mirrors handleHealthTrends / handleHealthPercentiles).
       // Cacheable when D1-served — see handleHealthTrends' comment.
-      const d1Generation = currentD1ReadFailureGeneration();
+      const storeGeneration = currentStoreReadFailureGeneration();
       const meta = await readHealthMetaKv(env);
       const data = await loadSubnetIncidents(netuid, {
         window: label,
@@ -868,7 +868,7 @@ export async function handleHealthIncidents(
       } as unknown as Parameters<typeof loadSubnetIncidents>[1]);
       const usedFallback =
         !env.HYPERDRIVE?.connectionString ||
-        currentD1ReadFailureGeneration() !== d1Generation;
+        currentStoreReadFailureGeneration() !== storeGeneration;
       const response = await envelopeResponse(
         cacheRequest,
         {
@@ -882,7 +882,7 @@ export async function handleHealthIncidents(
         "short",
       );
       return usedFallback
-        ? markPostgresTierFallbackResponse(response)
+        ? markDataApiTierFallbackResponse(response)
         : response;
     },
     canonicalHealthWindowCachePath(url),
@@ -937,7 +937,7 @@ export async function loadGlobalIncidentsLedger(
  * tier, so the feed reported "no incidents" while /status, reading through the
  * route below, showed dozens ongoing from the same underlying data (#8242).
  *
- * `request` matters here, not just as plumbing: `tryPostgresTier` forwards it
+ * `request` matters here, not just as plumbing: `tryDataApiTier` forwards it
  * VERBATIM to the DATA_API service binding, so the caller must already be
  * handling the same path DATA_API should answer (as handleGlobalIncidents
  * below does for its own /api/v1/incidents request). #8242 fixed every OTHER
@@ -951,9 +951,9 @@ export async function resolveGlobalIncidents(
   { label = "7d", days = 7 }: { label?: string; days?: number } = {},
 ): Promise<{ data: Record<string, unknown>; isFallback: boolean }> {
   // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc
-  // and is absent from DATA_API_FORWARD_FLAGS, so the tier read that guarded an
+  // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read that guarded an
   // early return here resolved to null before it could touch DATA_API.
-  const d1Generation = currentD1ReadFailureGeneration();
+  const storeGeneration = currentStoreReadFailureGeneration();
   const result = await loadGlobalIncidentsLedger(env, { label, days });
   return {
     data: result.data as unknown as Record<string, unknown>,
@@ -962,7 +962,7 @@ export async function resolveGlobalIncidents(
     // real rows.
     isFallback:
       !env.HYPERDRIVE?.connectionString ||
-      currentD1ReadFailureGeneration() !== d1Generation,
+      currentStoreReadFailureGeneration() !== storeGeneration,
   };
 }
 
@@ -970,12 +970,12 @@ export async function resolveGlobalIncidents(
  * The one correct way for /api/v1/feeds/incidents to reach the same data
  * /status shows (metagraphed#8353).
  *
- * resolveGlobalIncidents's `request` argument isn't incidental — tryPostgresTier
+ * resolveGlobalIncidents's `request` argument isn't incidental — tryDataApiTier
  * forwards it, unmodified, to the DATA_API service binding, so whatever path
  * that request carries is the path DATA_API tries to route. The feed handler's
  * OWN incoming request is for /api/v1/feeds/incidents(.json|.rss|.atom), a path
  * DATA_API has no route for at all; forwarding it verbatim (what #8242's fix
- * did) makes DATA_API 404, which tryPostgresTier reads as a tier miss and
+ * did) makes DATA_API 404, which tryDataApiTier reads as a tier miss and
  * silently degrades to the empty stub — the exact "feed says zero incidents,
  * /status says dozens" symptom #8242 believed it had fixed.
  *
@@ -1047,7 +1047,7 @@ export async function handleGlobalIncidents(
     "short",
     link ? { link } : {},
   );
-  return isFallback ? markPostgresTierFallbackResponse(response) : response;
+  return isFallback ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // Explicit CSV column order for the chain-analytics ?format=csv exports (#2532).
@@ -1268,7 +1268,7 @@ export async function handleChainActivity(
       // actually asked for so day_count can't contradict the window label.
       const data = trimChainActivityToWindow(
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): a cron recomputes this window's
         // daily series from the lakehouse; the reader feeds the same
@@ -1345,7 +1345,7 @@ export async function handleChainCalls(
       let usedFallback = false;
       const meta = await readHealthMetaKv(env);
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so the tier
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the tier
       // read that used to initialise `data` resolved to null on every request --
       // the projection below has been the first rung that can answer.
       //
@@ -1380,7 +1380,7 @@ export async function handleChainCalls(
             ? CHAIN_CALLS_FUNCTION_CSV_COLUMNS
             : CHAIN_CALLS_CSV_COLUMNS,
         );
-        return usedFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
+        return usedFallback ? markDataApiTierFallbackResponse(csvRes) : csvRes;
       }
       const response = await envelopeResponse(
         cacheRequest,
@@ -1395,7 +1395,7 @@ export async function handleChainCalls(
         "short",
       );
       return usedFallback
-        ? markPostgresTierFallbackResponse(response)
+        ? markDataApiTierFallbackResponse(response)
         : response;
     },
     `${canonicalAnalyticsCacheRoute(url, {
@@ -1436,7 +1436,7 @@ export async function handleChainSigners(
       // miss (#6013). Postgres → schema-stable empty stub, never a live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): a cron recomputes this window's
         // leaderboard (both sorts) from the lakehouse; the reader slices to
@@ -1526,7 +1526,7 @@ export async function handleChainTransfers(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): a cron recomputes this window's
         // scorecard from the lakehouse; the artifact reader slices to the
@@ -1620,7 +1620,7 @@ export async function handleChainTransferPairs(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): a cron recomputes this window's
         // corridor leaderboard (both sorts) from the lakehouse; the reader
@@ -1711,7 +1711,7 @@ export async function handleChainStakeFlow(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): a cron recomputes this window's
         // per-(netuid, event_kind) aggregate from the lakehouse; the shared
@@ -1814,7 +1814,7 @@ export async function handleChainAlphaVolume(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): a cron recomputes the fixed 24h
         // per-(netuid, event_kind) aggregate from the lakehouse; the shared
@@ -1904,7 +1904,7 @@ export async function handleChainWeights(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // Same shared loader MCP and GraphQL call, so all three surfaces
         // answer from one implementation. Declines (null) rather than
@@ -1982,7 +1982,7 @@ export async function handleChainWeightSetters(
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The same WeightsSet stream /chain/weights already reads, grouped one
         // level finer (#9249). Through the shared loader so MCP and GraphQL get
@@ -2054,7 +2054,7 @@ export async function handleChainServing(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The box's Postgres is gone, so the tier above always misses. The
         // shared loader is the one MCP and GraphQL call too, so all three
@@ -2133,7 +2133,7 @@ export async function handleChainPrometheus(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The rung this route never had (#10248). Its axon twin has read the
         // lakehouse rollup here since #9216; prometheus fell straight from a
@@ -2210,7 +2210,7 @@ export async function handleChainAxonRemovals(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         buildChainAxonRemovals([], {
           window: label,
@@ -2280,7 +2280,7 @@ export async function handleChainRegistrations(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9146: served from the chain-registrations PROJECTION lane rather
         // than a request-time read. The request-time form cannot answer the
@@ -2441,7 +2441,7 @@ export async function handleChainDeregistrations(
       // live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9307: NeuronDeregistered has never been emitted, so the filter this
         // route was built on matched nothing and it published a permanent 0.
@@ -2536,7 +2536,7 @@ export async function handleChainStakeMoves(
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): a cron recomputes this window's
         // network DISTINCT row + per-subnet aggregate from the lakehouse;
@@ -2620,7 +2620,7 @@ export async function handleChainStakeTransfers(
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): a cron recomputes this window's
         // network DISTINCT row + per-subnet aggregate from the lakehouse;
@@ -2703,14 +2703,14 @@ export async function handleChainFees(
       // pre-check, and the var has read "retired" since #9193 -- so the whole
       // block, its rate-limiter call included, had stopped executing. Three
       // independent facts make it unrevivable rather than merely parked: the
-      // flag is not in postgres-tier.ts's DATA_API_FORWARD_FLAGS, so a "d1" value
+      // flag is not in data-api-tier.ts's FORWARDABLE_TIER_FLAGS, so a "d1" value
       // would not forward either; DATA_API serves no chain-fees route to
       // forward TO; and no deployed flag anywhere holds "postgres" now.
       // Deleting it is what the route already does at runtime.
       //
       // Note this route was the only extrinsics reader with such a pre-check;
       // its siblings (handleChainActivity, -Calls, -Signers) call
-      // tryPostgresTier bare and let it own the gate. Those calls are equally
+      // tryDataApiTier bare and let it own the gate. Those calls are equally
       // inert today, but they are invisible to tsc and are left alone here --
       // retiring them is a separate sweep (#10190), not a types change.
       //
@@ -2773,5 +2773,5 @@ export {
   analyticsMeta,
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
-  markPostgresTierFallbackResponse,
+  markDataApiTierFallbackResponse,
 };

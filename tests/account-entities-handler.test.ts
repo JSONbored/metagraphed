@@ -105,7 +105,7 @@ describe("handleAccountEntities", () => {
 
   // REMOVED (#10190): "a successful DATA_API response wins over the schema-stable
   // cold fallback". METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired and absent from
-  // DATA_API_FORWARD_FLAGS, so there was never a response to win -- the ties came
+  // FORWARDABLE_TIER_FLAGS, so there was never a response to win -- the ties came
   // from this test's own stub. Ownership-tie shaping is proven against the
   // composer's live leg in tests/account-entities-answer.test.ts, and the label
   // join this also checked is covered by the test immediately above.

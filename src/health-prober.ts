@@ -566,7 +566,7 @@ export async function runHealthProber(
   // stale, unlike the serving fallback which deliberately filters to fresh
   // rows only.
   //
-  // #9522: this went through tryPostgresTier until the route it asks for was
+  // #9522: this went through tryDataApiTier until the route it asks for was
   // actually implemented AND the flag gate stopped swallowing it. Both halves
   // were broken — see src/health-status-live.ts for why the fix is a direct
   // service-binding call rather than a wider flag. While it resolved to null,
@@ -680,7 +680,7 @@ export async function runHealthProber(
       // production even mid-outage. Not written to D1: surface_checks and
       // surface_status have no error column, and KV is the live serving path
       // for the RPC pool, so carrying it here and through the pool row is the
-      // whole fix. persistProbesToD1 binds explicit columns, so the extra
+      // whole fix. persistProbesToStore binds explicit columns, so the extra
       // field on this object is inert for that writer.
       error: base.error ?? null,
     };
@@ -893,21 +893,17 @@ function utcDayBounds(ms: number): {
 // Durable daily uptime rollup (PR3). Aggregates the raw 15-minute surface_checks
 // for a UTC day into ONE row per (surface, day) in surface_uptime_daily —
 // retained indefinitely for long-term uptime analytics. MUST run before
-// pruneHealthHistory: pruneHealthHistory's caller (workers/api.ts) skips the
-// whole prune tick when `rolled` is false, so D1's raw surface_checks (the
-// only remaining recovery source if Postgres's rollup were ever silently
-// broken for a stretch) is never pruned out from under a day that hasn't
-// durably rolled up yet.
+// pruneHealthHistory: the raw surface_checks window is the only recovery
+// source if a rollup were ever silently broken for a stretch, so it is never
+// pruned out from under a day that hasn't durably rolled up yet --
+// pruneHealthHistory's caller (workers/api.ts) gates the raw prune on
+// `checks_rolled` from THIS tick.
 //
-// D1 write retired (2026-07-16, item 3 of the D1->Postgres cleanup): this
-// function's own `INSERT INTO surface_uptime_daily` is gone --
-// rollupUptimeDailyToD1 is the sole writer now (#9193 retired the mirror).
-// METAGRAPH_HEALTH_SOURCE flipped to "postgres" in wrangler.jsonc confirms
-// Postgres's surface_uptime_daily already holds a full rolling window (see
-// that flag's own header comment). `rolled` now reflects whether the
-// Postgres sync itself succeeded -- rolls up today + yesterday each hour
-// (the post-midnight fire finalizes the prior day; Postgres's own upsert,
-// data-api.ts's handleHealthUptimeRollupSync, keeps this idempotent).
+// rollupUptimeDailyToStore is the sole writer (#9193 retired the D1 mirror,
+// 2026-07-16). `rolled` reflects whether the store sync itself succeeded --
+// rolls up today + yesterday each hour (the post-midnight fire finalizes the
+// prior day; the store's own upsert, data-api.ts's
+// handleHealthUptimeRollupSync, keeps this idempotent).
 export async function rollupDailyUptime(
   env: Env,
   overrides: { now?: () => number; ctx?: ExecutionContext } = {},
@@ -968,12 +964,11 @@ export async function pruneHealthHistory(
   overrides: {
     now?: () => number;
     retentionMs?: number;
-    // Dual-write (box decommission): the D1 raw-checks prune is gated on
-    // D1'S OWN rollup having succeeded this tick -- the caller passes
-    // rollupDailyUptime's d1_rolled through. The combined `rolled` flag is
-    // not enough: Postgres having rolled says nothing about D1's daily rows,
-    // and deleting D1's raw window without D1's aggregate would silently
-    // orphan the one store that survives the box.
+    // The raw-checks prune is gated on the surface_checks rollup having
+    // succeeded THIS tick -- the caller passes rollupDailyUptime's
+    // `checks_rolled` through. The combined `rolled` flag is not enough: it
+    // can be true off the daily-uptime aggregate alone, and deleting the raw
+    // window without its own aggregate landed would orphan the day.
     pruneRawChecks?: boolean;
     ctx?: ExecutionContext;
   } = {},

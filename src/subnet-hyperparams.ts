@@ -46,7 +46,7 @@ export const SUBNET_HYPERPARAMS_INSERT_COLUMNS = [
   "block_number",
   "captured_at",
   // `as const` so the list is also the row TYPE for every read that selects
-  // it -- see SUBNET_HYPERPARAMS_D1_READ_COLUMNS in workers/data-api.ts.
+  // it -- see SUBNET_HYPERPARAMS_READ_COLUMNS in workers/data-api.ts.
 ] as const;
 
 // Same D1-cell coercion helpers as src/metagraph-neurons.ts (each domain file

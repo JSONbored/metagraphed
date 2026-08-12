@@ -46,7 +46,7 @@ import { readStore } from "./read-store.ts";
 
 /** The D1 surface this module needs -- structural, so tests can hand it a
  * plain object (the same pattern as src/blocks-cold-tier.ts). */
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       all?(): Promise<{ results?: unknown[] } | null>;
@@ -57,7 +57,7 @@ interface D1Like {
 /**
  * The registration read, character-for-character the one DATA_API's D1 leg
  * runs for `/api/v1/accounts/{ss58}/subnets` (workers/data-api.ts's
- * matchNeuronsD1Route). Same columns, same predicate, same order -- so the
+ * matchNeuronsStoreRoute). Same columns, same predicate, same order -- so the
  * summary's `registrations` and the /subnets route's `subnets` are the same
  * rows through the same formatRegistration, and cannot come to disagree about
  * where one hotkey is registered.
@@ -74,11 +74,12 @@ export const ACCOUNT_REGISTRATIONS_SQL =
  * missing, so an empty list is the honest answer there, while a database that
  * is present and erroring is a fault the card must not paper over.
  */
-export async function loadAccountRegistrationsD1(
+export async function loadAccountRegistrationsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<Record<string, unknown>[] | null> {
-  const db = readStore(env, ["neurons"]) as unknown as D1Like | undefined;
+  const db = readStore(env, ["neurons"]) as unknown as
+    StatementClientLike | undefined;
   if (!db?.prepare) return [];
   try {
     const res = await db.prepare(ACCOUNT_REGISTRATIONS_SQL).bind(ss58).all?.();
@@ -144,7 +145,7 @@ export async function answerAccountSummary(
 ): Promise<AccountSummaryAnswer> {
   const [cold, registrations] = await Promise.all([
     loadAccountSummaryColdTier(env, ss58),
-    loadAccountRegistrationsD1(env, ss58),
+    loadAccountRegistrationsFromStore(env, ss58),
   ]);
   if (!cold.declined && registrations) {
     return {

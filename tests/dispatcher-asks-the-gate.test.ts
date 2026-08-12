@@ -9,7 +9,7 @@
 // NEON_READ_ROUTE_TABLES entries for /subnets/{netuid}/hyperparameters, its
 // /history, /accounts/{ss58}/identity and its -history, and put all four
 // tables in NEON_READ_LANES. None of those routes is matched by
-// matchNeuronsD1Route -- they belong to the hyperparams/identity block -- so
+// matchNeuronsStoreRoute -- they belong to the hyperparams/identity block -- so
 // the declarations were read by nothing and the routes kept answering from
 // D1. Every part of the cutover was in place except the line that asks.
 //

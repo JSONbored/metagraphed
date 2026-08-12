@@ -45,7 +45,7 @@ function installMapCache() {
 }
 
 // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
-// absent from DATA_API_FORWARD_FLAGS, so the tier this used to double was never
+// absent from FORWARDABLE_TIER_FLAGS, so the tier this used to double was never
 // asked. handleChainActivity reads the #9146 projection lane, so that is what is
 // doubled -- at the same transport (the archive bucket), with the envelope the
 // lane writes. A wrong envelope must fail: the reader declines on one, and in
@@ -351,7 +351,7 @@ test("buildChainCalls drops empty call_module and call_function buckets", () => 
 // to data-sourcing and is exercised on the same env.
 test("GET /api/v1/chain/calls groups by call_module with honest share via the Postgres tier + 400 on junk param", async () => {
   // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
-  // absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never
+  // absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was never
   // asked. The #9146 call-mix projection answers, and `share` is DERIVED from
   // its own ungrouped total -- the retired tier handed the share over ready-made,
   // so the division under test never ran.
@@ -397,7 +397,7 @@ test("GET /api/v1/chain/calls groups by call_module with honest share via the Po
 // separate D1 queries now happens server-side in Postgres (workers/data-api.ts's
 // own dedicated coverage, not re-tested here) -- the handler's own contract is
 // just to forward call_module + group_by on the request it hands to
-// tryPostgresTier, and to pass the Postgres-tier body through untouched.
+// tryDataApiTier, and to pass the Postgres-tier body through untouched.
 test("GET /api/v1/chain/calls declines a call_module scope rather than answering unscoped (#10190)", async () => {
   // The retired tier took `call_module` as a query param and filtered upstream.
   // The #9146 projection carries only the unscoped mix, so its reader DECLINES a
@@ -907,20 +907,20 @@ test("GET /api/v1/chain/transfers rejects an unsupported format value with 400",
 });
 
 // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
-// table this handler already reads, no new flag) -- tryPostgresTier's own
-// fallback contract is unit-tested in workers/postgres-tier.ts's own tests,
+// table this handler already reads, no new flag) -- tryDataApiTier's own
+// fallback contract is unit-tested in workers/data-api-tier.ts's own tests,
 // so these two just prove the wiring: a Postgres hit is served as-is with D1
 // never queried, and a Postgres failure falls back to D1.
 test("GET /api/v1/chain/transfers: the retired tier flag is not consulted (#10190)", async () => {
   // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is
-  // absent from DATA_API_FORWARD_FLAGS, so this route reads no tier. Bind a
+  // absent from FORWARDABLE_TIER_FLAGS, so this route reads no tier. Bind a
   // DATA_API that WOULD answer and prove nothing asks it.
   const tier = forbiddenDataApi();
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=7d"),
     {
       ...createLocalArtifactEnv(),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env,
     {},
@@ -973,7 +973,7 @@ test("GET /api/v1/chain/transfers: CSV export maps Postgres-tier senders/receive
 test("GET /api/v1/chain/transfers: flag=postgres falls back to D1 when DATA_API fails", async () => {
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
     DATA_API: {
       fetch: async () => {
         throw new Error("boom");
@@ -1220,8 +1220,8 @@ test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", a
 });
 
 // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
-// table this handler already reads, no new flag) -- tryPostgresTier's own
-// fallback contract is unit-tested in workers/postgres-tier.ts's own tests,
+// table this handler already reads, no new flag) -- tryDataApiTier's own
+// fallback contract is unit-tested in workers/data-api-tier.ts's own tests,
 // so these two just prove the wiring: a Postgres hit is served as-is with D1
 // never queried, and a Postgres failure falls back to D1.
 test("GET /api/v1/chain/transfer-pairs: the retired tier flag is not consulted (#10190)", async () => {
@@ -1232,7 +1232,7 @@ test("GET /api/v1/chain/transfer-pairs: the retired tier flag is not consulted (
     ),
     {
       ...createLocalArtifactEnv(),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env,
     {},
@@ -1244,7 +1244,7 @@ test("GET /api/v1/chain/transfer-pairs: the retired tier flag is not consulted (
 test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to D1 when DATA_API fails", async () => {
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
     DATA_API: {
       fetch: async () => {
         throw new Error("boom");

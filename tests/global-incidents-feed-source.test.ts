@@ -52,7 +52,7 @@ test("the incidents feed resolves through the Postgres tier, not the empty ledge
  * resolver) and still broken in production, because `resolveGlobalIncidents`
  * forwards its `request` argument VERBATIM to the DATA_API service binding --
  * and #8242 passed the feed's own request, for /api/v1/feeds/incidents.json,
- * a path DATA_API has no route for. DATA_API 404'd, tryPostgresTier read that
+ * a path DATA_API has no route for. DATA_API 404'd, tryDataApiTier read that
  * as a tier miss, and the resolver silently returned the empty stub -- the
  * exact "feed says zero, /status says dozens" symptom #8242 believed it had
  * fixed. A source-pattern test (matching "resolveGlobalIncidents(" appearing
@@ -63,7 +63,7 @@ test("the incidents feed resolves through the Postgres tier, not the empty ledge
  */
 test("resolveGlobalIncidentsForFeed reaches real data even though DATA_API has no /api/v1/feeds/* route", async () => {
   // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
-  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered -- and the
+  // FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered -- and the
   // point of this test survives it intact. DATA_API genuinely has no
   // /api/v1/feeds/* route, so a feed resolver that reached for one would get a
   // 404 and serve the stub; it reads `surface_checks` through readStore instead,
@@ -89,9 +89,9 @@ test("resolveGlobalIncidentsForFeed reaches real data even though DATA_API has n
 });
 
 test("every global-incident caller reaches the ledger, none stops at the stub", () => {
-  // WAS a source regex for `tryPostgresTier(METAGRAPH_HEALTH_SOURCE)` ahead of
+  // WAS a source regex for `tryDataApiTier(METAGRAPH_HEALTH_SOURCE)` ahead of
   // the ledger. That call is deleted (#10190) -- the flag reads "d1" and is
-  // absent from DATA_API_FORWARD_FLAGS, so it resolved to null on every request
+  // absent from FORWARDABLE_TIER_FLAGS, so it resolved to null on every request
   // and the ledger was always the answer. Asserting it still appears would pin
   // the dead read back in place.
   //
@@ -130,6 +130,6 @@ test("every global-incident caller reaches the ledger, none stops at the stub", 
   // And nobody reaches for the retired tier again.
   assert.doesNotMatch(
     analytics,
-    /tryPostgresTier\([\s\S]{0,300}?METAGRAPH_HEALTH_SOURCE/,
+    /tryDataApiTier\([\s\S]{0,300}?METAGRAPH_HEALTH_SOURCE/,
   );
 });

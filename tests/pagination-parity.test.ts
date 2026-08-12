@@ -50,9 +50,9 @@ function url(path: string) {
 // production. account_events_daily (the source behind /accounts/{ss58}/history)
 // has since (2026-07-17) had its D1 copy fully eliminated too -- the route now
 // reads the METAGRAPH_ACCOUNT_EVENTS_SOURCE Postgres tier only, via
-// tryPostgresTier, and D1 is never queried at all. clampLimit/clampOffset still
+// tryDataApiTier, and D1 is never queried at all. clampLimit/clampOffset still
 // run BEFORE the tier check though (parsePagination happens ahead of
-// tryPostgresTier in handleAccountHistory), and the clamped values thread
+// tryDataApiTier in handleAccountHistory), and the clamped values thread
 // straight through to the schema-stable payload on a tier miss
 // (buildAccountHistory([], ss58, { limit, offset, ... })) -- so reading
 // data.limit/data.offset off the plain JSON response (no env flag, no D1/

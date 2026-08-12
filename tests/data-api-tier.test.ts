@@ -1,20 +1,20 @@
-// Direct unit tests for workers/postgres-tier.ts's tryPostgresTier -- every
+// Direct unit tests for workers/data-api-tier.ts's tryDataApiTier -- every
 // caller across workers/request-handlers/*.mjs shares this one function, so
 // its fallback branches (each of which now also bumps
-// currentPostgresTierFallbackGeneration() to invalidate an in-flight
+// currentDataApiTierFallbackGeneration() to invalidate an in-flight
 // withEdgeCache write, #5090) are tested directly here rather than only
 // incidentally through individual handler tests.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
-  POSTGRES_TIER_RETRY_ATTEMPTS,
-  currentPostgresTierFallbackGeneration,
-  tryPostgresTier,
-} from "../workers/postgres-tier.ts";
+  DATA_API_TIER_RETRY_ATTEMPTS,
+  currentDataApiTierFallbackGeneration,
+  tryDataApiTier,
+} from "../workers/data-api-tier.ts";
 import { mockEnv, type AnyFn } from "./row-type.ts";
 
 // The flag these branch tests pass is a stand-in -- only its membership in
-// DATA_API_FORWARD_FLAGS matters, not which family it names. METAGRAPH_HEALTH_SOURCE
+// membership is the TYPE now (#10190), not a runtime set. METAGRAPH_HEALTH_SOURCE
 // is the durable choice: #10660 pins "HEALTH is never a forward flag" as a CI
 // invariant (src/health-status-live.ts documents why), so it cannot drift into the
 // set and silently invert the "returns null" branch below.
@@ -27,41 +27,51 @@ function req() {
   return new Request("https://api.metagraph.sh/api/v1/health");
 }
 
-test("tryPostgresTier: flag not set to 'postgres' returns null without touching DATA_API or bumping the fallback generation", async () => {
-  const before = currentPostgresTierFallbackGeneration();
+test("an unforwardable flag no longer COMPILES -- membership moved into the type (#10190)", () => {
+  // The 222 dead call sites this parameter's width allowed were swept blind
+  // by #10804; the type is what stops the class returning. If this stops
+  // erroring, the union widened and the sweep can silently regrow.
+  const call = () =>
+    // @ts-expect-error METAGRAPH_HEALTH_SOURCE cannot forward and cannot be asked to
+    tryDataApiTier(mockEnv({}), req(), "METAGRAPH_HEALTH_SOURCE");
+  assert.equal(typeof call, "function");
+});
+
+test("tryDataApiTier: a retired VALUE returns null without touching DATA_API or bumping the fallback generation", async () => {
+  const before = currentDataApiTierFallbackGeneration();
   let called = false;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "d1",
+    METAGRAPH_NEURONS_SOURCE: "retired",
     DATA_API: dataApi(async () => {
       called = true;
       return Response.json({});
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(result, null);
   assert.equal(called, false);
-  assert.equal(currentPostgresTierFallbackGeneration(), before);
+  assert.equal(currentDataApiTierFallbackGeneration(), before);
 });
 
-test("tryPostgresTier: a DATA_API-D1 flag set to 'd1' FORWARDS to DATA_API", async () => {
+test("tryDataApiTier: a DATA_API-D1 flag set to 'd1' FORWARDS to DATA_API", async () => {
   // The neurons dispatcher lives in DATA_API ahead of its Hyperdrive gate, so
   // "d1" on this flag must still forward -- short-circuiting here would make
   // the fully-seeded D1 tables unreachable and serve empties.
   let called = false;
   const env = mockEnv({
-    METAGRAPH_NEURONS_SOURCE: "d1",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => {
       called = true;
       return Response.json({ data: { neurons: [1] } });
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(called, true);
   assert.deepEqual(result, { data: { neurons: [1] } });
 });
 
-test("tryPostgresTier: the hyperparams and account-identity flags set to 'd1' FORWARD to DATA_API", async () => {
-  // Their dispatchers (matchHyperparamsIdentityD1Route) live in DATA_API
+test("tryDataApiTier: the hyperparams and account-identity flags set to 'd1' FORWARD to DATA_API", async () => {
+  // Their dispatchers (matchHyperparamsIdentityStoreRoute) live in DATA_API
   // ahead of its Hyperdrive gate, same as the neurons one -- and the
   // cold-tier fallback depends on the forward too: DATA_API 503s while its
   // table is empty, which is what sends the serving handler on to the
@@ -72,24 +82,24 @@ test("tryPostgresTier: the hyperparams and account-identity flags set to 'd1' FO
   ] as const) {
     let called = false;
     const env = mockEnv({
-      [flagName]: "d1",
+      [flagName]: "data-api",
       DATA_API: dataApi(async () => {
         called = true;
         return Response.json({ data: { ok: true } });
       }),
     });
-    const result = await tryPostgresTier(env, req(), flagName);
-    assert.equal(called, true, `${flagName} must forward on "d1"`);
+    const result = await tryDataApiTier(env, req(), flagName);
+    assert.equal(called, true, `${flagName} must forward on "data-api"`);
     assert.deepEqual(result, { data: { ok: true } });
   }
 });
 
-test("tryPostgresTier: a non-2xx from a forwarded 'd1' flag degrades to null (the cold-tier handoff)", async () => {
+test("tryDataApiTier: a non-2xx from a forwarded 'd1' flag degrades to null (the cold-tier handoff)", async () => {
   // The D1 dispatcher answers 503 while its table is pre-first-sync empty;
   // the null return is what lets the serving handler fall through to the
   // lakehouse cold-tier snapshot.
   const env = mockEnv({
-    METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "d1",
+    METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
     DATA_API: dataApi(
       async () =>
         new Response(JSON.stringify({ error: "d1 tier cold" }), {
@@ -97,7 +107,7 @@ test("tryPostgresTier: a non-2xx from a forwarded 'd1' flag degrades to null (th
         }),
     ),
   });
-  const result = await tryPostgresTier(
+  const result = await tryDataApiTier(
     env,
     req(),
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
@@ -105,24 +115,24 @@ test("tryPostgresTier: a non-2xx from a forwarded 'd1' flag degrades to null (th
   assert.equal(result, null);
 });
 
-test("tryPostgresTier: 'd1' on a NON-DATA-API-D1 flag still short-circuits", async () => {
+test("tryDataApiTier: a retired value short-circuits even with DATA_API bound", async () => {
   // Health and subnet-snapshot D1 loaders live in THIS worker; forwarding
   // their "d1" to DATA_API would hit Postgres-only legs there. The allowlist
   // is per-flag on purpose.
   let called = false;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "d1",
+    METAGRAPH_NEURONS_SOURCE: "retired",
     DATA_API: dataApi(async () => {
       called = true;
       return Response.json({});
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(result, null);
   assert.equal(called, false);
 });
 
-test("tryPostgresTier: 'retired' on the neurons flag short-circuits too", async () => {
+test("tryDataApiTier: 'retired' on the neurons flag short-circuits too", async () => {
   let called = false;
   const env = mockEnv({
     METAGRAPH_NEURONS_SOURCE: "retired",
@@ -132,48 +142,48 @@ test("tryPostgresTier: 'retired' on the neurons flag short-circuits too", async 
     }),
   });
   assert.equal(
-    await tryPostgresTier(env, req(), "METAGRAPH_NEURONS_SOURCE"),
+    await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE"),
     null,
   );
   assert.equal(called, false);
 });
 
-test("tryPostgresTier: no DATA_API binding falls back and bumps the fallback generation", async () => {
-  const before = currentPostgresTierFallbackGeneration();
-  const env = mockEnv({ METAGRAPH_HEALTH_SOURCE: "postgres" });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+test("tryDataApiTier: no DATA_API binding falls back and bumps the fallback generation", async () => {
+  const before = currentDataApiTierFallbackGeneration();
+  const env = mockEnv({ METAGRAPH_NEURONS_SOURCE: "data-api" });
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(result, null);
-  assert.equal(currentPostgresTierFallbackGeneration(), before + 1);
+  assert.equal(currentDataApiTierFallbackGeneration(), before + 1);
 });
 
-test("tryPostgresTier: DATA_API.fetch throwing falls back and bumps the fallback generation", async () => {
-  const before = currentPostgresTierFallbackGeneration();
+test("tryDataApiTier: DATA_API.fetch throwing falls back and bumps the fallback generation", async () => {
+  const before = currentDataApiTierFallbackGeneration();
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => {
       throw new Error("network down");
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(result, null);
-  assert.equal(currentPostgresTierFallbackGeneration(), before + 1);
+  assert.equal(currentDataApiTierFallbackGeneration(), before + 1);
 });
 
-test("tryPostgresTier: a non-2xx DATA_API response falls back and bumps the fallback generation", async () => {
-  const before = currentPostgresTierFallbackGeneration();
+test("tryDataApiTier: a non-2xx DATA_API response falls back and bumps the fallback generation", async () => {
+  const before = currentDataApiTierFallbackGeneration();
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => new Response(null, { status: 502 })),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(result, null);
-  assert.equal(currentPostgresTierFallbackGeneration(), before + 1);
+  assert.equal(currentDataApiTierFallbackGeneration(), before + 1);
 });
 
-test("tryPostgresTier: an unparseable response body falls back and bumps the fallback generation", async () => {
-  const before = currentPostgresTierFallbackGeneration();
+test("tryDataApiTier: an unparseable response body falls back and bumps the fallback generation", async () => {
+  const before = currentDataApiTierFallbackGeneration();
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(
       async () =>
         new Response("not json", {
@@ -182,48 +192,48 @@ test("tryPostgresTier: an unparseable response body falls back and bumps the fal
         }),
     ),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(result, null);
-  assert.equal(currentPostgresTierFallbackGeneration(), before + 1);
+  assert.equal(currentDataApiTierFallbackGeneration(), before + 1);
 });
 
-test("tryPostgresTier: a JSON body that isn't an object (a bare string) falls back and bumps the fallback generation", async () => {
-  const before = currentPostgresTierFallbackGeneration();
+test("tryDataApiTier: a JSON body that isn't an object (a bare string) falls back and bumps the fallback generation", async () => {
+  const before = currentDataApiTierFallbackGeneration();
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => Response.json("unexpected")),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(result, null);
-  assert.equal(currentPostgresTierFallbackGeneration(), before + 1);
+  assert.equal(currentDataApiTierFallbackGeneration(), before + 1);
 });
 
-test("tryPostgresTier: a successful JSON object response is returned as-is without bumping the fallback generation", async () => {
-  const before = currentPostgresTierFallbackGeneration();
+test("tryDataApiTier: a successful JSON object response is returned as-is without bumping the fallback generation", async () => {
+  const before = currentDataApiTierFallbackGeneration();
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () =>
       Response.json({ schema_version: 1, block_count: 5 }),
     ),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.deepEqual(result, { schema_version: 1, block_count: 5 });
-  assert.equal(currentPostgresTierFallbackGeneration(), before);
+  assert.equal(currentDataApiTierFallbackGeneration(), before);
 });
 
-test("tryPostgresTier: rewrites a HEAD request to GET before forwarding to DATA_API", async () => {
+test("tryDataApiTier: rewrites a HEAD request to GET before forwarding to DATA_API", async () => {
   let receivedMethod: string | undefined;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async (request: Request) => {
       receivedMethod = request.method;
       return Response.json({ ok: true });
     }),
   });
-  await tryPostgresTier(
+  await tryDataApiTier(
     env,
     new Request("https://api.metagraph.sh/api/v1/health", { method: "HEAD" }),
-    "METAGRAPH_HEALTH_SOURCE",
+    "METAGRAPH_NEURONS_SOURCE",
   );
   assert.equal(receivedMethod, "GET");
 });
@@ -237,11 +247,11 @@ test("tryPostgresTier: rewrites a HEAD request to GET before forwarding to DATA_
 // confidently wrong answer served to a caller. One retry is the difference
 // between a slow correct answer and a fast wrong one.
 
-test("tryPostgresTier: a 5xx is asked a second time, and a recovered retry ANSWERS", async () => {
-  const before = currentPostgresTierFallbackGeneration();
+test("tryDataApiTier: a 5xx is asked a second time, and a recovered retry ANSWERS", async () => {
+  const before = currentDataApiTierFallbackGeneration();
   let calls = 0;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => {
       calls += 1;
       return calls === 1
@@ -249,94 +259,94 @@ test("tryPostgresTier: a 5xx is asked a second time, and a recovered retry ANSWE
         : Response.json({ schema_version: 1, recovered: true });
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(calls, 2, "the first 5xx must not be the final answer");
   assert.deepEqual(result, { schema_version: 1, recovered: true });
   assert.equal(
-    currentPostgresTierFallbackGeneration(),
+    currentDataApiTierFallbackGeneration(),
     before,
     "a recovered retry is not a fallback and must not invalidate an edge write",
   );
 });
 
-test("tryPostgresTier: a transport THROW is retried too, and a recovered retry answers", async () => {
+test("tryDataApiTier: a transport THROW is retried too, and a recovered retry answers", async () => {
   // A thrown subrequest and a 5xx are the same fault from two sides: the
   // binding could not reach a Worker able to answer.
   let calls = 0;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => {
       calls += 1;
       if (calls === 1) throw new Error("Network connection lost.");
       return Response.json({ schema_version: 1 });
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(calls, 2);
   assert.deepEqual(result, { schema_version: 1 });
 });
 
-test("tryPostgresTier: a 4xx is NOT retried -- it will be exactly as wrong twice", async () => {
+test("tryDataApiTier: a 4xx is NOT retried -- it will be exactly as wrong twice", async () => {
   let calls = 0;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => {
       calls += 1;
       return new Response(null, { status: 400 });
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(calls, 1, "retrying a bad request only doubles the load");
   assert.equal(result, null);
 });
 
-test("tryPostgresTier: a 2xx is not retried", async () => {
+test("tryDataApiTier: a 2xx is not retried", async () => {
   let calls = 0;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => {
       calls += 1;
       return Response.json({ ok: true });
     }),
   });
-  await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
   assert.equal(calls, 1);
 });
 
-test("tryPostgresTier: the retry is capped at one extra ask", async () => {
+test("tryDataApiTier: the retry is capped at one extra ask", async () => {
   // A DATA_API that is genuinely down must degrade quickly rather than hold
   // every request open behind an unbounded retry loop.
   let calls = 0;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => {
       calls += 1;
       return new Response(null, { status: 502 });
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
-  assert.equal(calls, POSTGRES_TIER_RETRY_ATTEMPTS);
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
+  assert.equal(calls, DATA_API_TIER_RETRY_ATTEMPTS);
   assert.equal(calls, 2, "the cap is one retry, stated as a number here too");
   assert.equal(result, null);
 });
 
-test("tryPostgresTier: a persistent transport throw still degrades after the cap", async () => {
-  const before = currentPostgresTierFallbackGeneration();
+test("tryDataApiTier: a persistent transport throw still degrades after the cap", async () => {
+  const before = currentDataApiTierFallbackGeneration();
   let calls = 0;
   const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: dataApi(async () => {
       calls += 1;
       throw new Error("Network connection lost.");
     }),
   });
-  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
-  assert.equal(calls, POSTGRES_TIER_RETRY_ATTEMPTS);
+  const result = await tryDataApiTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
+  assert.equal(calls, DATA_API_TIER_RETRY_ATTEMPTS);
   assert.equal(result, null);
-  assert.equal(currentPostgresTierFallbackGeneration(), before + 1);
+  assert.equal(currentDataApiTierFallbackGeneration(), before + 1);
 });
 
-test("tryPostgresTier: the failing request PATH is in the message, masked", async () => {
+test("tryDataApiTier: the failing request PATH is in the message, masked", async () => {
   // #10665 was unanswerable for sixteen days because the capture named the
   // FLAG and never the request: "DATA_API returned 502" with no way to tell
   // which of the twenty-nine neurons-gated routes produced it. The path is
@@ -347,10 +357,10 @@ test("tryPostgresTier: the failing request PATH is in the message, masked", asyn
   console.error = (...args: unknown[]) => void seen.push(args.join(" "));
   try {
     const env = mockEnv({
-      METAGRAPH_NEURONS_SOURCE: "d1",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(async () => new Response(null, { status: 503 })),
     });
-    await tryPostgresTier(
+    await tryDataApiTier(
       env,
       new Request("https://api.metagraph.sh/api/v1/subnets/64/metagraph"),
       "METAGRAPH_NEURONS_SOURCE",

@@ -440,7 +440,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
   // RE-POINTED AT THE LIVE TIER (#10190). This drove the CSV export through
   // `METAGRAPH_TOP_HOLDERS_SOURCE: "postgres"` and a DATA_API stub -- a
   // configuration no deployment has: the flag reads "retired" everywhere and is
-  // absent from DATA_API_FORWARD_FLAGS, so the arm it exercised declined on every
+  // absent from FORWARDABLE_TIER_FLAGS, so the arm it exercised declined on every
   // real request. The CSV formatter and its formula-injection guard are worth
   // proving, so the setup moves to the flow tier that actually answers
   // (src/top-holders-flow-tier.ts, an R2 projection) rather than the test being

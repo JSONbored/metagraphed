@@ -36,7 +36,7 @@
 // Rather than answer such a filter with rows that ignore it, the D1 leg is
 // skipped entirely for those queries and only the lakehouse range is served --
 // an incomplete answer is recoverable, a wrong one is not. See
-// `d1CanServe` for the exact predicate.
+// `storeCanServe` for the exact predicate.
 
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import {
@@ -96,7 +96,7 @@ export const DEFAULT_BLOCKS_SEAM = 8_759_336;
 // column of that name means below the seam: verified on block 8,771,000, where
 // the lakehouse reports 268 and /chain-events counts 268. That is
 // `chain_event_count`, NOT `account_event_count` (the curated subset).
-const D1_SELECT =
+const STORE_SELECT =
   "b.block_number, b.block_hash, b.parent_hash, b.extrinsic_count, " +
   "b.observed_at, b.author, c.spec_version AS spec_version, " +
   // COALESCE, indexer first (#9417): chain_detail_blocks' count comes from a
@@ -107,11 +107,11 @@ const D1_SELECT =
   // between a block being seen and being decoded -- the window that used to
   // publish null and render "Events 0".
   "COALESCE(c.chain_event_count, b.event_count) AS event_count";
-const D1_FROM =
+const STORE_FROM =
   "blocks_head b LEFT JOIN chain_detail_blocks c " +
   "ON c.block_number = b.block_number";
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       all?(): Promise<{ results?: unknown[] } | null>;
@@ -126,7 +126,7 @@ interface ColdTierBindings {
   ICEBERG_BLOCKS_MAX?: unknown;
 }
 
-/** Both tables D1_FROM joins. Neon owns them together or the read stays where
+/** Both tables STORE_FROM joins. Neon owns them together or the read stays where
  *  it is: a LEFT JOIN with one side in the other store returns rows with every
  *  `c.` column null, which reads exactly like a block the hot lane never
  *  wrote -- a wrong answer with a valid shape. */
@@ -227,7 +227,7 @@ export async function lakehouseHeadBlock(
  * blocks it cannot cover are the ~10-20 minutes above the seam, and an
  * incomplete answer is recoverable where a wrong one is not.
  */
-export function d1CanServe(query: BlockFeedQuery): boolean {
+export function storeCanServe(query: BlockFeedQuery): boolean {
   return (
     query.author == null && query.specVersion == null && query.minEvents == null
   );
@@ -235,7 +235,7 @@ export function d1CanServe(query: BlockFeedQuery): boolean {
 
 /** Rows above the seam, newest first. Bound parameters throughout — D1 has
  * them, so unlike the R2 SQL leg there is no literal-building here. */
-async function d1HeadRows(
+async function storeHeadRows(
   env: Env | null | undefined,
   query: BlockFeedQuery,
   cursor: number[] | null,
@@ -243,7 +243,7 @@ async function d1HeadRows(
   want: number,
 ): Promise<Record<string, unknown>[] | null> {
   const db = readStore(env, BLOCKS_SEAM_TABLES) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare || want <= 0) return null;
 
   // Every predicate is qualified to `b`: block_number, observed_at and
@@ -276,7 +276,7 @@ async function d1HeadRows(
   try {
     const res = await db
       .prepare(
-        `SELECT ${D1_SELECT} FROM ${D1_FROM} WHERE ${where.join(" AND ")}
+        `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${where.join(" AND ")}
          ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
       )
       .bind(...params, want)
@@ -335,8 +335,8 @@ export async function loadBlockFeedColdTier(
   // chain's feed -- indistinguishable from real ones, since both are just
   // heights and hashes.
   const head =
-    network === DEFAULT_CHAIN_NETWORK && d1CanServe(query)
-      ? ((await d1HeadRows(env, query, cursor, seam, want)) ?? [])
+    network === DEFAULT_CHAIN_NETWORK && storeCanServe(query)
+      ? ((await storeHeadRows(env, query, cursor, seam, want)) ?? [])
       : [];
 
   let rows = head;
@@ -407,7 +407,8 @@ export async function loadBlockColdTier(
   // Mainnet-only, for the same reason the feed's head leg is.
   const db =
     network === DEFAULT_CHAIN_NETWORK
-      ? (readStore(env, BLOCKS_SEAM_TABLES) as unknown as D1Like | undefined)
+      ? (readStore(env, BLOCKS_SEAM_TABLES) as unknown as
+          StatementClientLike | undefined)
       : undefined;
   // "Above the seam" means "too new for the lakehouse, so D1 is the only
   // source" — a statement that is only true on mainnet, because only mainnet
@@ -429,7 +430,7 @@ export async function loadBlockColdTier(
       const value = asNumber !== null ? asNumber : asHash!;
       const res = await db
         .prepare(
-          `SELECT ${D1_SELECT} FROM ${D1_FROM} WHERE ${predicate} LIMIT 1`,
+          `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
         )
         .bind(value)
         .all?.();

@@ -12,7 +12,7 @@ import { computeConcentration } from "./concentration.ts";
 import { percentile } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 // The neurons-tier columns the performance handler reads — the D1 read contract
 // for buildSubnetPerformance (mirrors CONCENTRATION_READ_COLUMNS). Kept next to
@@ -186,7 +186,7 @@ export function buildSubnetPerformance(
 // Shared D1 loader (mirrors handleSubnetPerformance) — read one subnet's neurons
 // and shape them into the performance artifact. Exported for the MCP tool.
 export async function loadSubnetPerformance(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: unknown,
 ): Promise<Row> {
   const rows = await d1(

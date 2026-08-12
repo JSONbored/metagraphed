@@ -329,7 +329,7 @@ export const LANE_MAX_GAP_SQL =
  * verdict alone when it gets none.
  */
 export async function loadLaneMaxGap(
-  db: D1Like | null | undefined,
+  db: StatementClientLike | null | undefined,
   sinceMs: number,
 ): Promise<Record<string, number | null>> {
   if (!db?.prepare) return {};
@@ -634,7 +634,7 @@ export function laneAlarmRecoveryComment(
   );
 }
 
-interface D1Like extends LaneHealthDb {
+interface StatementClientLike extends LaneHealthDb {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       run(): Promise<unknown>;
@@ -653,19 +653,19 @@ function toInt(value: unknown): number {
 /** Current stale runs, keyed by lane. `{}` on any failure -- a reader that
  * throws is a reader that stops reading. */
 export async function loadLaneUnknownRuns(
-  db: D1Like | null | undefined,
+  db: StatementClientLike | null | undefined,
 ): Promise<LaneVerdictRuns> {
   return loadLaneRuns(db, LANE_UNKNOWN_RUN_SQL);
 }
 
 export async function loadLaneStaleRuns(
-  db: D1Like | null | undefined,
+  db: StatementClientLike | null | undefined,
 ): Promise<LaneVerdictRuns> {
   return loadLaneRuns(db, LANE_STALE_RUN_SQL);
 }
 
 async function loadLaneRuns(
-  db: D1Like | null | undefined,
+  db: StatementClientLike | null | undefined,
   sql: string,
 ): Promise<LaneVerdictRuns> {
   if (!db?.prepare) return {};
@@ -784,7 +784,7 @@ export async function runLaneAlarm(
   // GitHub issues from lane_health verdicts, so pointing it at a store nothing
   // writes any more would replay stale verdicts forever -- filing issues for
   // lanes that recovered, and none for lanes that broke.
-  const db = laneHealthStore(env) as unknown as D1Like | undefined;
+  const db = laneHealthStore(env) as unknown as StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "no lane_health store bound" };
 
   const token = typeof env?.GITHUB_TOKEN === "string" ? env.GITHUB_TOKEN : "";

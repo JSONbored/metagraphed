@@ -234,9 +234,9 @@ import { searchMatchingRows } from "../workers/list-query.ts";
 import { applyMcpQueryFilters } from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
-  currentPostgresTierFallbackGeneration,
-  tryPostgresTier,
-} from "../workers/postgres-tier.ts";
+  currentDataApiTierFallbackGeneration,
+  tryDataApiTier,
+} from "../workers/data-api-tier.ts";
 import {
   loadBlockColdTier,
   loadBlockFeedColdTier,
@@ -260,7 +260,7 @@ import {
   loadValidatorNominatorsColdTier,
 } from "./account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
-import { loadAccountPositionsD1 } from "./nominator-positions-hot-tier.ts";
+import { loadAccountPositionsFromStore } from "./nominator-positions-hot-tier.ts";
 import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
@@ -3118,13 +3118,13 @@ function mcpContractVersion(ctx: McpCtx) {
 // TWO REQUEST BUILDERS REMOVED HERE (#10190). They synthesised the
 // identity-history GETs forwarded to DATA_API under
 // METAGRAPH_SUBNET_IDENTITY_SOURCE -- a flag that reads "retired" in every
-// deployed config and is absent from DATA_API_FORWARD_FLAGS, so the requests they
+// deployed config and is absent from FORWARDABLE_TIER_FLAGS, so the requests they
 // built were constructed and then never sent. Both tools now go straight to the
 // composer (src/identity-history-answer.ts), which is what has been answering all
 // along.
 
 // Synthetic GET /api/v1/accounts/{ss58}/identity request, forwarded UNCHANGED
-// to DATA_API via tryPostgresTier -- mirrors REST's handleAccountIdentity,
+// to DATA_API via tryDataApiTier -- mirrors REST's handleAccountIdentity,
 // same METAGRAPH_ACCOUNT_IDENTITY_SOURCE flag, no query params.
 function mcpAccountIdentityRequest(ss58: string) {
   return new Request(
@@ -3136,7 +3136,7 @@ function mcpAccountIdentityRequest(ss58: string) {
 // family (concentration, performance, yield, turnover, movers + their
 // history variants) -- every one of these routes is gated on the SAME
 // METAGRAPH_NEURONS_SOURCE flag (entities.ts's handleSubnetConcentration
-// et al. all call tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")),
+// et al. all call tryDataApiTier(env, request, "METAGRAPH_NEURONS_SOURCE")),
 // so one shared pathname+params builder covers all of them.
 function mcpNeuronsTierRequest(pathname: string, params: Row = {}) {
   const qs = new URLSearchParams();
@@ -3304,13 +3304,13 @@ async function loadSubnetEconomics(
 // Implemented in src/data-api-mcp.ts (shared with GraphQL Query.chain_events).
 
 // Mirrors loadChainEventsFeed's own DATA_API-direct call (#6637): the
-// all-events tier has no per-table tryPostgresTier flag (unlike
+// all-events tier has no per-table tryDataApiTier flag (unlike
 // account_events-backed routes such as get_subnet_ohlc), so this reaches
 // DATA_API unconditionally, same as list_chain_events above.
 // #9146: the degraded answer for a DATA_API-backed MCP read.
 //
 // These three loaders reach DATA_API directly (the all-events tier has no
-// per-table tryPostgresTier flag), and each threw on binding-absent, on a
+// per-table tryDataApiTier flag), and each threw on binding-absent, on a
 // rejected binding, and on any non-ok status. Once the Postgres box was
 // decommissioned that meant every call answered
 // `tier_unavailable (status 502)` -- verified live against production.
@@ -3659,7 +3659,7 @@ async function loadSubnetHistory(
   { label, days }: Row,
 ) {
   const hot =
-    (await tryPostgresTier(
+    (await tryDataApiTier(
       ctx.env,
       mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/history`, {
         window: label,
@@ -3679,7 +3679,7 @@ async function loadSubnetHistory(
 
 // Mirrors REST's handleSubnetIdentityHistory: try Postgres first, fall back
 // to the schema-stable empty payload on any miss (D1 fully eliminated,
-// 2026-07-17) -- same tryPostgresTier contract, same
+// 2026-07-17) -- same tryDataApiTier contract, same
 // METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST route (#4832), so this
 // tool and GET /api/v1/subnets/{netuid}/identity-history never diverge on
 // which tier answered.
@@ -3713,7 +3713,7 @@ async function loadNeuronHistory(
   { label, days }: Row,
 ) {
   const hot =
-    (await tryPostgresTier(
+    (await tryDataApiTier(
       ctx.env,
       mcpNeuronsTierRequest(
         `/api/v1/subnets/${netuid}/neurons/${uid}/history`,
@@ -5730,28 +5730,28 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       const [hyperparams, concentration, performance, validators, events] =
         await Promise.all([
-          tryPostgresTier(
+          tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
             "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
           ).then((data) => data ?? buildSubnetHyperparams(null, netuid)),
-          tryPostgresTier(
+          tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/concentration`),
             "METAGRAPH_NEURONS_SOURCE",
           ).then((data) => data ?? buildConcentration([], netuid)),
-          tryPostgresTier(
+          tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/performance`),
             "METAGRAPH_NEURONS_SOURCE",
           ).then((data) => data ?? buildSubnetPerformance([], netuid)),
-          tryPostgresTier(
+          tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/validators`),
             "METAGRAPH_NEURONS_SOURCE",
           ).then((data) => data ?? buildSubnetValidators([], netuid)),
           // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
-          // in wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so the
+          // in wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the
           // promise this composer awaited resolved to null on every call -- the
           // composer's own cold rung has been the answer.
           //
@@ -5898,7 +5898,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       return (
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadSubnetHealthTrends(netuid, {
           observedAt: await mcpObservedAt(ctx),
@@ -5944,7 +5944,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(row.offset as number))
         : 0;
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc
-      // and is absent from DATA_API_FORWARD_FLAGS, so the tier this narrowing was
+      // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this narrowing was
       // also encoded into a query string for never answered. The loader below
       // takes the same three parameters directly, so nothing is dropped.
       const { data } = await loadBulkHealthTrends({
@@ -5980,7 +5980,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { label } = parsed!;
       return (
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadSubnetPercentiles(netuid, {
           window: label,
@@ -6015,7 +6015,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { label } = parsed!;
       return (
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadSubnetIncidents(netuid, {
           window: label,
@@ -6388,7 +6388,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       // NO TIER READ (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
-      // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on
+      // absent from FORWARDABLE_TIER_FLAGS, so that arm resolved to null on
       // every call.
       const data = await loadSubnetTrajectory(netuid, {
         db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
@@ -6435,7 +6435,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label, days } = parsed!;
       // NO TIER READ (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
-      // absent from DATA_API_FORWARD_FLAGS, so the early return this replaces
+      // absent from FORWARDABLE_TIER_FLAGS, so the early return this replaces
       // could never be taken.
       const { data } = await loadEconomicsTrends({
         windowLabel: label,
@@ -6600,7 +6600,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/concentration`),
           "METAGRAPH_NEURONS_SOURCE",
@@ -6627,7 +6627,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/performance`),
           "METAGRAPH_NEURONS_SOURCE",
@@ -6652,7 +6652,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/idle-stake`),
           "METAGRAPH_NEURONS_SOURCE",
@@ -6674,7 +6674,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetChainConcentrationInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/chain/concentration"),
           "METAGRAPH_NEURONS_SOURCE",
@@ -6731,7 +6731,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const query = params.toString();
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(
             `/api/v1/chain/concentration/subnets${query ? `?${query}` : ""}`,
@@ -6760,7 +6760,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetChainPerformanceInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/chain/performance"),
           "METAGRAPH_NEURONS_SOURCE",
@@ -6780,7 +6780,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetChainIdleStakeInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/chain/idle-stake"),
           "METAGRAPH_NEURONS_SOURCE",
@@ -6807,7 +6807,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       // Mirror REST handleChainIdentityHistory / parseLimitParam: reject an
-      // out-of-range limit before tryPostgresTier. Without this, a Worker 400
+      // out-of-range limit before tryDataApiTier. Without this, a Worker 400
       // is swallowed into a success-shaped empty feed (postgres-tier degrade).
       const rawLimit = (args as Row)?.limit;
       if (rawLimit !== undefined && rawLimit !== null) {
@@ -6823,14 +6823,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           );
         }
       }
-      // Mirrors REST's handleChainIdentityHistory: same tryPostgresTier
+      // Mirrors REST's handleChainIdentityHistory: same tryDataApiTier
       // contract, same METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST
       // route (#4832), THEN the same lakehouse cold tier. That last leg is what
       // makes "never diverge" true: #9153 added it to entities.ts only, and with
       // the flag retired the tier above always declines, so this tool answered
       // count 0 while REST served the network-wide SubnetIdentitiesV3 feed.
       // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
-      // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+      // config and is absent from FORWARDABLE_TIER_FLAGS, so this resolved to
       // null on every request.
       return answerChainIdentityHistory(ctx.env, null, {
         limit: args?.limit,
@@ -6853,7 +6853,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetChainYieldInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/chain/yield"),
           "METAGRAPH_NEURONS_SOURCE",
@@ -6893,7 +6893,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_TURNOVER_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/chain/turnover", { window, limit }),
           "METAGRAPH_NEURONS_SOURCE",
@@ -6940,7 +6940,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
@@ -6979,7 +6979,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
@@ -7026,7 +7026,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // Same shared loader REST and GraphQL use (#9229's parity lesson).
         (await loadChainWeightsColdTier(
@@ -7076,7 +7076,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadChainWeightSettersColdTier(
           ctx.env as unknown as Parameters<
@@ -7124,7 +7124,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
@@ -7171,7 +7171,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
@@ -7220,7 +7220,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         buildChainAxonRemovals([], { window, limit })
       );
@@ -7264,7 +7264,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // Same shared loader the REST route and GraphQL use, so all three
         // surfaces answer from one implementation. Without this the tool kept
@@ -7315,7 +7315,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The lakehouse rung, same as REST and GraphQL (#10248).
         (await loadChainPrometheusColdTier(
@@ -7343,7 +7343,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // retired (#4772) and the table is dropped in production.
       return (
         // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-        // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+        // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
         // on every request.
         // #9146: same blocks-summary projection REST reads, so the tool and
         // the route cannot report different block-production numbers.
@@ -7371,7 +7371,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         throw toolError("invalid_params", parsed.error.message);
       }
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(
             `/api/v1/subnets/${netuid}/concentration/history`,
@@ -7407,7 +7407,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { label } = requireHistoryWindow(args);
       const changes = optionalBoolean(args, "changes");
       const turnoverOptions = { window: label, startDate: null, endDate: null };
-      const postgres = await tryPostgresTier(
+      const postgres = await tryDataApiTier(
         ctx.env,
         mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/turnover`, {
           window: label,
@@ -7445,7 +7445,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/yield`),
           "METAGRAPH_NEURONS_SOURCE",
@@ -7475,7 +7475,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label } = parsed as { label: string };
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/yield/history`, {
             window: label,
@@ -7524,7 +7524,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9146: same chain-stake-flow projection slice REST reads, so the
         // MCP tool and the route cannot disagree about one subnet's flow.
@@ -7572,7 +7572,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9303: the lakehouse carries the same stream, so an agent gets the
         // real per-kind rollup instead of a zeroed card.
@@ -7613,7 +7613,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetWeightsColdTier(
           ctx.env as unknown as Parameters<typeof loadSubnetWeightsColdTier>[0],
@@ -7653,7 +7653,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetWeightSettersColdTier(
           ctx.env as unknown as Parameters<
@@ -7695,7 +7695,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
@@ -7738,7 +7738,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
@@ -7782,7 +7782,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
@@ -7826,7 +7826,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         buildSubnetAxonRemovals(null, netuid, { window })
       );
@@ -7860,7 +7860,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
@@ -7905,7 +7905,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #10322: same cold-tier rung as its REST and GraphQL twins.
         (await loadSubnetEventCardColdTier(
@@ -7960,7 +7960,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9307: the UID-reuse derivation REST reads, then the same MARKED
         // empty when nothing derived it.
@@ -7994,7 +7994,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label } = parsed as { label: string };
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(
             `/api/v1/subnets/${netuid}/performance/history`,
@@ -8044,7 +8044,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         MOVERS_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/subnets/movers", {
             window,
@@ -8086,7 +8086,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const minSamples = optionalNonNegativeInt(args, "min_samples");
       return (
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         //
         // `min_samples` reached the loader only through that dead tier request,
@@ -8228,10 +8228,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // dimension synthesizes its own /api/v1/internal/compare-health
       // request (structure/economics never touch D1/Postgres, they're
       // registry+economics-tier reads) -- mirror that exactly rather than
-      // wrapping the whole tool in tryPostgresTier's usual passthrough.
+      // wrapping the whole tool in tryDataApiTier's usual passthrough.
       // NO TIER READ (#10190): the health dimension used to try
       // METAGRAPH_HEALTH_SOURCE first. That flag reads "d1" in wrangler.jsonc and
-      // is absent from DATA_API_FORWARD_FLAGS, so the read resolved to null and
+      // is absent from FORWARDABLE_TIER_FLAGS, so the read resolved to null and
       // the composer below has answered every dimension all along.
       return loadCompareSubnets({
         profiles,
@@ -8263,7 +8263,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { label, days } = parsed!;
       const data =
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadGlobalIncidents({
           windowLabel: label,
@@ -8333,7 +8333,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // columns being filtered on.
       return projectNeuronPayload(
         selectNeuronRows(
-          (await tryPostgresTier(
+          (await tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
               validator_permit: validatorPermit ? "true" : undefined,
@@ -8373,7 +8373,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // against whichever source (Postgres or the dead-empty fallback)
       // produced `data`, same as before this tier was wired.
       const data =
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/validators`),
           "METAGRAPH_NEURONS_SOURCE",
@@ -8428,7 +8428,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         GLOBAL_VALIDATOR_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/validators", { sort, limit }),
           "METAGRAPH_NEURONS_SOURCE",
@@ -8458,7 +8458,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const hotkey = requireHotkey(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(
             `/api/v1/validators/${encodeURIComponent(hotkey)}`,
@@ -8504,7 +8504,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const details = [];
       for (const hotkey of hotkeys) {
         details.push(
-          (await tryPostgresTier(
+          (await tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(
               `/api/v1/validators/${encodeURIComponent(hotkey)}`,
@@ -8724,7 +8724,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // level) the moment METAGRAPH_ACCOUNT_EVENTS_SOURCE flips to postgres.
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (
           await loadValidatorNominatorsColdTier(ctx.env, hotkey, {
@@ -8761,7 +8761,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // query param so both surfaces hit one query rather than two.
       const netuid = args.netuid ?? null;
       const hot =
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/validators/${hotkey}/history`, {
             window: label,
@@ -8828,7 +8828,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // tier ever grows a hotkey address, this is the only place that changes.
       if (hotkey !== null) {
         const snapshot =
-          (await tryPostgresTier(
+          (await tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`),
             "METAGRAPH_NEURONS_SOURCE",
@@ -8850,7 +8850,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return projectNeuronPayload(
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/neurons/${uid}`),
           "METAGRAPH_NEURONS_SOURCE",
@@ -8951,7 +8951,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         : 0;
       const tierResult =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         null;
       // Through the composer (src/subnet-events-answer.ts), which owns the tier
@@ -8984,7 +8984,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
           "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
@@ -9014,7 +9014,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // it since subnet_hyperparams's D1 write path is retired (#4772).
       const cursor = optionalString(args, "cursor");
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(
             `/api/v1/subnets/${netuid}/hyperparameters/history`,
@@ -9113,7 +9113,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           : null;
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (
           await loadSubnetAlphaVolumeFromArtifact(ctx.env, netuid, {
@@ -9171,7 +9171,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The SAME lakehouse reader REST's handleSubnetOhlc falls to, so the
         // two surfaces cannot disagree about a subnet's candles.
@@ -10171,7 +10171,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     async handler(args: z.infer<typeof GetAccountInputSchema>, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
       // guarded resolved to null before it could touch DATA_API.
       // #9263: the SAME composition REST and GraphQL run. A tier that exists
       // and could not answer DECLINES here rather than handing back a zeroed
@@ -10228,7 +10228,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const ss58 = requireSs58(args);
       // NO TIER READ (#10190) -- METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired
-      // and absent from DATA_API_FORWARD_FLAGS, so this resolved to null every
+      // and absent from FORWARDABLE_TIER_FLAGS, so this resolved to null every
       // call. Same change on the REST and GraphQL sides; the composer's own
       // lakehouse leg is what answers.
       const entitiesArtifact = await ctx.readArtifact!(
@@ -10453,7 +10453,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         : 0;
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadAccountEventsColdTier(ctx.env, ss58, {
           limit,
@@ -10488,7 +10488,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const ss58 = requireSs58(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/subnets`),
           "METAGRAPH_NEURONS_SOURCE",
@@ -10513,7 +10513,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const ss58 = requireSs58(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/portfolio`),
           "METAGRAPH_NEURONS_SOURCE",
@@ -10544,9 +10544,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const ss58 = requireSs58(args);
       // NO TIER ARM (#10808). The forward was real -- METAGRAPH_NEURONS_SOURCE
-      // reads "d1" and IS in DATA_API_FORWARD_FLAGS, so unlike #10190's
+      // reads "d1" and IS in FORWARDABLE_TIER_FLAGS, so unlike #10190's
       // deletions this request was genuinely sent. DATA_API just has no handler
-      // for it: matchNeuronsD1Route covers /portfolio, /subnets and
+      // for it: matchNeuronsStoreRoute covers /portfolio, /subnets and
       // /subnets/:netuid/history, and every unmatched GET falls through to the
       // gone-tier 503. Measured 36 times in 4 days, and doubled by #10767's
       // retry, which is right for a transient and wasted on a route that will
@@ -10555,7 +10555,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // Nothing was user-visible, which is the point: the ladder below caught
       // every one. A fallback ladder hiding a dead dependency is the exact shape
       // #10190 exists to remove -- and REST's account-positions handler and
-      // GraphQL's account_positions both start at loadAccountPositionsD1 with no
+      // GraphQL's account_positions both start at loadAccountPositionsFromStore with no
       // tier arm at all, so this only ever made MCP the odd surface out.
       //
       // shapeForwardedPositions stays: it normalised the payload the tier arm
@@ -10563,7 +10563,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // carries the full `degraded` block, so it is a no-op for them -- but it
       // is the one thing keeping this tool's shape identical to its REST twin's.
       return shapeForwardedPositions(
-        (await loadAccountPositionsD1(ctx.env, ss58)) ??
+        (await loadAccountPositionsFromStore(ctx.env, ss58)) ??
           (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
           unavailableAccountPositions(ss58),
       );
@@ -10620,7 +10620,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const [balance, portfolio, subnets, positions, events] =
         await Promise.all([
           loadAccountBalance(ctx.env, ss58),
-          tryPostgresTier(
+          tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/portfolio`),
             "METAGRAPH_NEURONS_SOURCE",
@@ -10631,7 +10631,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
                 priceByNetuid: NO_ALPHA_PRICES,
               }),
           ),
-          tryPostgresTier(
+          tryDataApiTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/subnets`),
             "METAGRAPH_NEURONS_SOURCE",
@@ -10645,12 +10645,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           // the compound card must not disagree with the tool it mirrors.
           (async () =>
             shapeForwardedPositions(
-              (await loadAccountPositionsD1(ctx.env, ss58)) ??
+              (await loadAccountPositionsFromStore(ctx.env, ss58)) ??
                 (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
                 unavailableAccountPositions(ss58),
             ))(),
           // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
-          // in wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this
+          // in wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this
           // promise resolved to null on every call.
           //
           // THE COLD RUNG, the same one `get_account_events` resolves through
@@ -10698,7 +10698,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const ss58 = requireSs58(args);
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpAccountIdentityRequest(ss58),
           "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
@@ -10723,7 +10723,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
       const cursor = optionalString(args, "cursor");
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpAccountIdentityHistoryRequest(ss58, { limit, offset, cursor }),
           "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
@@ -10753,7 +10753,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const { label, days } = requireHistoryWindow(args);
       const hot =
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(
             `/api/v1/accounts/${ss58}/subnets/${netuid}/history`,
@@ -10763,7 +10763,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         )) ?? buildAccountPositionHistory([], ss58, netuid, { window: label });
       return overlayAccountPositionHistoryColdTier(
         ctx.env,
-        // tryPostgresTier is typed as the generic tier row; the builder's own
+        // tryDataApiTier is typed as the generic tier row; the builder's own
         // fallback fixes the shape, and the overlay only reads `points`.
         hot as ReturnType<typeof buildAccountPositionHistory>,
         ss58,
@@ -10782,7 +10782,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   // SAME wrapped shape get_validator_nominators's own DATA_API route uses (see
   // that tool's handler, above) -- not the flat shape the neurons-tier routes
   // mcpNeuronsTierRequest's other callers hit. Wiring one of these with a bare
-  // `tryPostgresTier(...) ?? builder(...)` (no `.data` unwrap) would violate its
+  // `tryDataApiTier(...) ?? builder(...)` (no `.data` unwrap) would violate its
   // own outputSchema the moment the Postgres flag flips on, exactly as
   // get_validator_nominators's own wiring had to guard against.
   {
@@ -10822,7 +10822,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (
           await loadAccountStakeFlowColdTier(ctx.env, ss58, {
@@ -10861,7 +10861,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadAccountStakeMovesColdTier(ctx.env, ss58, { window }))
           ?.data ?? buildAccountStakeMoves([], ss58, { window })
@@ -10896,7 +10896,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         buildAccountAxonRemovals([], ss58, { window })
       );
@@ -10931,7 +10931,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #10322: the cold-tier rung REST and GraphQL gained; without it this
         // tool alone would answer a confident zero and the three surfaces
@@ -10969,7 +10969,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9146: same lakehouse read the REST handler uses, so the tool and
         // the route cannot report different footprints.
@@ -11005,7 +11005,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadAccountWeightSettersColdTier(ctx.env, ss58, { window }))
           ?.data ?? buildAccountWeightSetters([], ss58, { window })
@@ -11040,7 +11040,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9146: same lakehouse read the REST handler uses.
         (await loadAccountServingColdTier(ctx.env, ss58, { window }))?.data ??
@@ -11077,7 +11077,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9307: an account's deregistrations are the slots where it was the
         // PREVIOUS holder, derived from UID reuse.
@@ -11124,7 +11124,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       };
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadAccountHistory(ctx.env, ss58, historyOptions)
       );
@@ -11159,7 +11159,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         : 0;
       return (
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadAccountExtrinsicsColdTier(ctx.env, ss58, {
           limit,
@@ -11233,7 +11233,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         : 0;
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadAccountTransfersColdTier(ctx.env, ss58, {
           limit,
@@ -11296,7 +11296,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
         return (
           // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-          // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+          // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
           // resolved to null before it could touch DATA_API.
           (await loadCounterpartyRelationshipColdTier(
             ctx.env,
@@ -11318,7 +11318,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadAccountCounterpartiesColdTier(ctx.env, ss58, {
           limit: args?.limit,
@@ -11374,7 +11374,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // (#4772) and the table is dropped in production.
       return (
         // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-        // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+        // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
         // on every request.
         (await loadBlockFeedColdTier(ctx.env, {
           limit,
@@ -11413,7 +11413,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // retired (#4772) and the table is dropped in production.
       return (
         // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-        // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+        // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
         // on every request.
         (await loadBlockColdTier(ctx.env, ref)) ?? buildBlock(undefined, ref)
       );
@@ -11439,12 +11439,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       // Mirrors REST's handleBlockExtrinsics, which destructures `{ data }` from
-      // tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/extrinsics
+      // tryDataApiTier's result -- workers/data-api.ts's /blocks/:ref/extrinsics
       // route returns `json({ data: buildBlockExtrinsics(...) })`, not a flat
       // buildBlockExtrinsics(...) body like the sibling account-extrinsics route.
       const { data } =
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         {
           // Lazily built only when the Postgres tier missed, mirroring REST's
@@ -11488,12 +11488,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       // Mirrors REST's handleBlockEvents, which destructures `{ data }` from
-      // tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/events
+      // tryDataApiTier's result -- workers/data-api.ts's /blocks/:ref/events
       // route returns `json({ data: buildBlockEvents(...) })`, not a flat
       // buildBlockEvents(...) body like the sibling account-events routes.
       const { data } =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         {
           // Lazily built only when the Postgres tier missed, mirroring REST's
@@ -11577,11 +11577,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // Mirrors REST's handleExtrinsics: try Postgres first (#4694), fall back to
       // the schema-stable empty feed now that extrinsics' D1 write path is
       // retired (#4772) and the table is dropped in production -- same
-      // tryPostgresTier contract, same METAGRAPH_EXTRINSICS_SOURCE flag, so this
+      // tryDataApiTier contract, same METAGRAPH_EXTRINSICS_SOURCE flag, so this
       // tool and GET /api/v1/extrinsics never diverge on which tier answered.
       return (
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // call_hash matches inside call_args, which the lakehouse cannot
         // express -- its presence skips the tier entirely rather than
@@ -11632,7 +11632,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // the schema-stable empty detail now that extrinsics' D1 write path is
       // retired (#4772) and the table is dropped in production.
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
-      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
       // guarded resolved to null before it could touch DATA_API.
       // #9208: hot tier ahead of the lakehouse, and a DECLINE when a composite
       // `<block>-<index>` ref names a position neither tier can answer. A HASH
@@ -11658,7 +11658,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     async handler(args: z.infer<typeof GetSudoInputSchema>, ctx: McpCtx) {
       return (
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The category predicate is data-api's own pathname->module mapping
         // ("Sudo"), expressed against the lakehouse verbatim.
@@ -11770,7 +11770,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       return (
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The category predicate is data-api's own pathname->module mapping
         // ("AdminUtils"), expressed against the lakehouse verbatim.
@@ -11844,7 +11844,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
       // table is dropped in production, so a D1 query here would always miss.
       // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every
-      // deployed config and absent from DATA_API_FORWARD_FLAGS, so the history
+      // deployed config and absent from FORWARDABLE_TIER_FLAGS, so the history
       // leg of this Promise.all resolved to null on every call. The lakehouse is
       // what has been answering.
       //
@@ -11882,7 +11882,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ACCOUNTS_LIST_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
+        (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/accounts", { sort, limit }),
           "METAGRAPH_NEURONS_SOURCE",
@@ -11935,7 +11935,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       return (
         // NO TIER READ (#10190): METAGRAPH_TOP_HOLDERS_SOURCE is retired and
-        // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on
+        // absent from FORWARDABLE_TIER_FLAGS, so that arm resolved to null on
         // every call. Same tier order handleTopHoldersList uses: the live flow
         // lane, which ranks all six sorts since its holdings leg started
         // proving (#9469).
@@ -12101,7 +12101,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       return (
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse call
         // mix, sliced to this call's limit and fed through the same
@@ -12155,7 +12155,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
-      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
       // guarded resolved to null before it could touch DATA_API.
       // The projection tier (#9146): the cron-recomputed lakehouse
       // leaderboard, sliced to this call's limit and fed through the same
@@ -12206,7 +12206,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // the table is dropped in production, so a D1 query here would always
       // miss. Postgres → schema-stable empty stub, never a live D1 read.
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
-      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
       // guarded resolved to null before it could touch DATA_API.
       // #8421: mirror handleChainFees's #8242 fix -- trim the UTC-day buckets to
       // the requested window so a 7d request never reports 8 days.
@@ -12259,7 +12259,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9146: same chain-registrations projection REST and GraphQL read.
         (await loadChainRegistrationsFromArtifact(ctx.env, {
@@ -12306,7 +12306,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // #9307: NeuronDeregistered has never been emitted; the feed is
         // derived from UID reuse by the chain-deregistrations projection lane.
@@ -12350,7 +12350,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // scorecard, sliced to this call's limit and fed through the same
@@ -12402,7 +12402,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // corridor leaderboard, sliced to this call's limit and fed through
@@ -12446,7 +12446,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // would always miss. Postgres → schema-stable empty stub, never a live
       // D1 read.
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
-      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
       // guarded resolved to null before it could touch DATA_API.
       // #8421: mirror handleChainActivity's #8242 fix -- the UTC-day buckets
       // span one extra calendar day, so trim to the requested window before
@@ -13218,7 +13218,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label } = parsed!;
       // The tier cascade is src/rpc-usage-answer.ts's, not this tool's. It
-      // used to be `tryPostgresTier -> loadRpcUsage` here, which -- with the
+      // used to be `tryDataApiTier -> loadRpcUsage` here, which -- with the
       // Postgres box gone -- meant an MCP client was told the proxy served
       // zero requests in seven days while REST served the real number (#9269).
       return answerRpcUsage(ctx.env, {
@@ -16260,9 +16260,9 @@ export const MCP_DEGRADED_REASON = "tier_unavailable";
  * get_governance_config_changes listed four AdminUtils extrinsics.
  *
  * REST already says so with the `x-metagraph-degraded` header
- * (markPostgresTierFallbackResponse). MCP has no headers, and its
+ * (markDataApiTierFallbackResponse). MCP has no headers, and its
  * `markMcpTierDegraded` chokepoint cannot see this: it fires on a change to the
- * fallback GENERATION, and tryPostgresTier returns null at its `!forwards`
+ * fallback GENERATION, and tryDataApiTier returns null at its `!forwards`
  * guard without recording one. So the handler labels its own answer, which is
  * the case that chokepoint's own comment carves out -- a specific reason beats
  * the generic `tier_unavailable`, and MCP must not be the one surface that
@@ -16357,7 +16357,7 @@ export function markMcpTierDegraded(
   data: unknown,
   generationBefore: number,
 ): unknown {
-  if (currentPostgresTierFallbackGeneration() === generationBefore) return data;
+  if (currentDataApiTierFallbackGeneration() === generationBefore) return data;
   if (!data || typeof data !== "object" || Array.isArray(data)) return data;
   // A handler that already labelled its OWN answer knows more than this
   // chokepoint does (#9273): get_account_positions can say the position ledger
@@ -16431,10 +16431,10 @@ async function dispatchTool(
     // #9120: the data tier degrading mid-call is invisible on this surface.
     // MCP results carry no headers, so #9114's `x-metagraph-degraded` cannot
     // reach an agent, and MCP handlers bypass withEdgeCache where that label is
-    // applied -- they call tryPostgresTier directly, at 126 sites. Captured
+    // applied -- they call tryDataApiTier directly, at 126 sites. Captured
     // here so the marker lands once, at the dispatcher, rather than being
     // threaded through all of them and forgotten on the 127th.
-    const tierGenerationBefore = currentPostgresTierFallbackGeneration();
+    const tierGenerationBefore = currentDataApiTierFallbackGeneration();
     try {
       data = await tool.handler(args, ctx);
     } catch (err) {

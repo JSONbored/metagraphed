@@ -29,7 +29,7 @@
 // tail that crosses the ceiling could not be attributed to a specific query
 // until this module started labelling its captures.
 //
-// Failure posture matches workers/postgres-tier.ts: ANY failure (missing
+// Failure posture matches workers/data-api-tier.ts: ANY failure (missing
 // token, HTTP error, malformed body, timeout) returns null so the caller
 // degrades to the schema-stable empty it already has, never a 5xx. A tier
 // that turns a slow archive query into a broken page would be worse than the

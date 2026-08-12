@@ -16,7 +16,7 @@
 // request delete the rows another just wrote.
 //
 // So the cutoff is PER COLDKEY, against that coldkey's own max captured_at,
-// exactly as writeNominatorPositionsToD1 computes it. It rests on the same
+// exactly as writeNominatorPositionsToStore computes it. It rests on the same
 // poster contract the D1 side does: one coldkey's positions are never split
 // across two requests.
 //

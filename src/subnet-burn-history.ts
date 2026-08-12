@@ -87,7 +87,12 @@ export async function captureSubnetBurnHistory(
   reason?: string;
 }> {
   if (!db?.prepare || !db?.batch) {
-    return { ok: false, captured: 0, pruned: false, reason: "no_d1_binding" };
+    return {
+      ok: false,
+      captured: 0,
+      pruned: false,
+      reason: "no_store_binding",
+    };
   }
   let card: Row;
   try {

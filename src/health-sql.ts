@@ -97,7 +97,7 @@ export function latencyStatColumns({
     //
     // The second half errors, which is how this was found: every serving read
     // of surface_checks threw `operator does not exist: integer + boolean`,
-    // d1All degraded the failure to zero rows, and /uptime, /health/percentiles
+    // storeAll degraded the failure to zero rows, and /uptime, /health/percentiles
     // and the per-subnet /health/trends each published an empty card over a
     // table with rows in it (#10200).
     //

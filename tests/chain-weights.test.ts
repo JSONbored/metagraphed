@@ -295,22 +295,22 @@ describe("GET /api/v1/chain/weights", () => {
   });
 
   // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
-  // table this handler already reads, no new flag) -- tryPostgresTier's own
-  // fallback contract is unit-tested in workers/postgres-tier.ts's own
+  // table this handler already reads, no new flag) -- tryDataApiTier's own
+  // fallback contract is unit-tested in workers/data-api-tier.ts's own
   // tests, so these two just prove the wiring: a Postgres hit is served
   // as-is with D1 never queried, and a Postgres failure falls back to D1.
   test("the retired tier flag is not consulted even when set (#10190)", async () => {
     // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is absent from
-    // DATA_API_FORWARD_FLAGS, so this route reads no tier at all. Binding a
+    // FORWARDABLE_TIER_FLAGS, so this route reads no tier at all. Binding a
     // DATA_API that WOULD answer and proving nothing asks it is the assertion:
-    // a reintroduced tryPostgresTier call also resolves to null, so without
+    // a reintroduced tryDataApiTier call also resolves to null, so without
     // this it would be invisible -- which is how the call sat dead for months.
     const tier = forbiddenDataApi();
     const res = await handleRequest(
       req("?window=7d"),
       {
         ...weightsEnv(cold),
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
       {},
@@ -325,7 +325,7 @@ describe("GET /api/v1/chain/weights", () => {
   test("flag=postgres falls back to the empty stub (not D1) when DATA_API fails", async () => {
     const env = {
       ...weightsEnv(warm),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");

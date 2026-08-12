@@ -10,7 +10,7 @@
 //   stake-transfers     430 senders / 12,168 over 126     0
 //   registrations     6,317 registrants / 8,055 over 98   0
 //
-// Every one had the same two-tier fallback -- `tryPostgresTier(...)` then the zeroed
+// Every one had the same two-tier fallback -- `tryDataApiTier(...)` then the zeroed
 // card -- and `METAGRAPH_ACCOUNT_EVENTS_SOURCE` is `"retired"`, so the first tier
 // declines unconditionally and the card is all that is left. A 200, no degraded marker,
 // and a number that reads as "this subnet has no activity of this kind".

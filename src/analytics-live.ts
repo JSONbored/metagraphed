@@ -67,16 +67,16 @@ export interface ObservationsReadDb {
 // A failed D1 read degrades to zero rows, and the payload built from those
 // zero rows must never be edge-cached as fresh — the same contract the
 // Postgres tier enforces via its own fallback generation
-// (workers/postgres-tier.ts). Handlers snapshot this before a loader call
+// (workers/data-api-tier.ts). Handlers snapshot this before a loader call
 // and treat a changed generation as a fallback.
-let d1ReadFailureGeneration = 0;
+let storeReadFailureGeneration = 0;
 
 registerModuleStateReset("src/analytics-live.ts", () => {
-  d1ReadFailureGeneration = 0;
+  storeReadFailureGeneration = 0;
 });
 
-export function currentD1ReadFailureGeneration(): number {
-  return d1ReadFailureGeneration;
+export function currentStoreReadFailureGeneration(): number {
+  return storeReadFailureGeneration;
 }
 
 // Contained D1 read: any failure (no binding, bad SQL against a drifted
@@ -84,7 +84,7 @@ export function currentD1ReadFailureGeneration(): number {
 // the schema-stable empty payload has been their floor since 2026-07-17.
 // console.error keeps the failure diagnosable in the tail without making a
 // read failure a route failure.
-export async function d1All(
+export async function storeAll(
   db: ObservationsReadDb | null | undefined,
   sql: string,
   params: unknown[],
@@ -102,8 +102,8 @@ export async function d1All(
       : (outcome as { results?: unknown[] })?.results;
     return (Array.isArray(rows) ? rows : []) as Record<string, unknown>[];
   } catch (error) {
-    d1ReadFailureGeneration += 1;
-    console.error("[analytics-d1]", String((error as Error)?.message));
+    storeReadFailureGeneration += 1;
+    console.error("[analytics-store]", String((error as Error)?.message));
     return [];
   }
 }
@@ -328,7 +328,7 @@ export async function loadSubnetUptime(
   const cutoff = new Date(Date.now() - days * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const rows = await d1All(
+  const rows = await storeAll(
     db,
     `SELECT MAX(surface_id) AS surface_id,
             COALESCE(surface_key, surface_id) AS surface_key,
@@ -388,7 +388,7 @@ export async function loadSubnetHealthTrends(
   const windowRows = await Promise.all(
     Object.entries(HEALTH_TREND_WINDOWS).map(
       async ([label, days]): Promise<[string, unknown[]]> => {
-        const rows = await d1All(
+        const rows = await storeAll(
           db,
           `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
            SELECT MAX(surface_id) AS surface_id,
@@ -436,7 +436,7 @@ export async function loadSubnetPercentiles(
     ? window
     : "7d";
   const days = ANALYTICS_WINDOW_DAYS[windowParam] as number;
-  const rows = await d1All(
+  const rows = await storeAll(
     db,
     `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
        SELECT MAX(surface_id) AS surface_id,
@@ -483,7 +483,7 @@ export async function loadSubnetIncidents(
   const since =
     Date.now() - (ANALYTICS_WINDOW_DAYS[windowParam] as number) * DAY_MS;
   const [slaRows, incidentRows] = await Promise.all([
-    d1All(
+    storeAll(
       db,
       `SELECT MAX(surface_id) AS surface_id,
               COALESCE(surface_key, surface_id) AS surface_key,
@@ -497,7 +497,7 @@ export async function loadSubnetIncidents(
     // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
     // incident threshold) into one incident row, then cap per surface_key so one
     // flappy endpoint cannot starve sibling surfaces in the same subnet.
-    d1All(
+    storeAll(
       db,
       `WITH checks AS (
          SELECT COALESCE(surface_key, surface_id) AS surface_key,
@@ -593,7 +593,7 @@ export async function loadGlobalIncidentRows(
   windowDays = 7,
 ): Promise<Record<string, unknown>[]> {
   const since = Date.now() - windowDays * DAY_MS;
-  return d1All(
+  return storeAll(
     db,
     `WITH recent_checks AS (
        SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at, ok
@@ -649,7 +649,7 @@ export async function loadSubnetTrajectory(
   netuid: unknown,
   { db = null }: { db?: ObservationsReadDb | null } = {},
 ): Promise<Record<string, unknown>> {
-  const rows = await d1All(
+  const rows = await storeAll(
     db,
     `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
             validator_count, miner_count, total_stake_tao, alpha_price_tao,
@@ -677,7 +677,7 @@ export async function loadSubnetTrajectory(
  * Without a `db` binding every set is empty -- the schema-stable floor that
  * has held since 2026-07-17.
  */
-export async function loadLeaderboardD1Rows(
+export async function loadLeaderboardStoreRows(
   db: ObservationsReadDb | null | undefined,
 ): Promise<{
   healthRows: Record<string, unknown>[];
@@ -695,7 +695,7 @@ export async function loadLeaderboardD1Rows(
     .slice(0, 10);
   const [healthRows, rpcRows, growthSamples, reliabilityRows] =
     await Promise.all([
-      d1All(
+      storeAll(
         db,
         `SELECT netuid,
                 COUNT(*) AS total,
@@ -705,7 +705,7 @@ export async function loadLeaderboardD1Rows(
          GROUP BY netuid`,
         [],
       ),
-      d1All(
+      storeAll(
         db,
         `SELECT netuid, MIN(latency_ms) AS min_latency_ms
          FROM surface_status
@@ -714,7 +714,7 @@ export async function loadLeaderboardD1Rows(
          GROUP BY netuid`,
         [],
       ),
-      d1All(
+      storeAll(
         db,
         `SELECT netuid, snapshot_date, completeness_score
          FROM subnet_snapshots
@@ -722,7 +722,7 @@ export async function loadLeaderboardD1Rows(
          ORDER BY netuid, snapshot_date`,
         [sevenDaysAgo],
       ),
-      d1All(
+      storeAll(
         db,
         `SELECT netuid,
                 SUM(samples) AS samples,
@@ -765,7 +765,7 @@ export async function loadRegistryLeaderboards({
 } = {}): Promise<unknown> {
   const { subnetMeta, mostComplete } = profilesProjectionFromRows(profiles);
   const { healthRows, rpcRows, growthSamples, reliabilityRows } =
-    await loadLeaderboardD1Rows(db);
+    await loadLeaderboardStoreRows(db);
   return formatLeaderboards({
     board,
     limit,
@@ -810,7 +810,7 @@ export async function loadCompareSubnets({
   let healthRows: Record<string, unknown>[] | null = null;
   if (dimensions.includes("health")) {
     const wanted = new Set(netuids.map((netuid) => Number(netuid)));
-    const grouped = await d1All(
+    const grouped = await storeAll(
       db,
       `SELECT netuid,
               COUNT(*) AS surface_count,
@@ -836,7 +836,7 @@ export async function loadCompareSubnets({
 // #4909/#4772 D1 retirement: loadChainCalls, loadChainFees, and loadNetworkActivity (all read
 // the extrinsics/blocks D1 tables) were removed here — that D1 write path is
 // retired and the tables are dropped in production, so a live D1 query would
-// always miss. Serving now goes tryPostgresTier -> buildChainCalls([...]) /
+// always miss. Serving now goes tryDataApiTier -> buildChainCalls([...]) /
 // buildChainFees([...]) / buildChainActivity([...]) (all still exported from
 // ./chain-analytics.ts), never D1. See workers/request-handlers/analytics.ts's
 // handleChainCalls / handleChainFees / handleChainActivity and

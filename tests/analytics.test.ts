@@ -1663,13 +1663,13 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     // #10190: this drove METAGRAPH_HEALTH_SOURCE, whose tier reads are all
     // deleted -- there is no DATA_API call left on the health routes to fail, so
     // driving them proves nothing. The mechanism under test is
-    // capturePostgresTierFallback, and it is still live for the three flags in
-    // DATA_API_FORWARD_FLAGS. So this drives one of THOSE: a forwardable flag,
+    // captureDataApiTierFallback, and it is still live for the three flags in
+    // FORWARDABLE_TIER_FLAGS. So this drives one of THOSE: a forwardable flag,
     // a route that reads it, and a DATA_API that rejects.
     const posted: Row[] = [];
     const failingEnv = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       POSTHOG_PROJECT_TOKEN: "phc_test",
       DATA_API: {
         fetch: async () => {
@@ -1699,7 +1699,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     );
     assert.equal(
       exceptionPost.body.properties.route,
-      "postgres-tier:METAGRAPH_NEURONS_SOURCE",
+      "data-api-tier:METAGRAPH_NEURONS_SOURCE",
     );
   });
 
@@ -1832,13 +1832,13 @@ describe("analytics routes reject malformed params before any tier call", () => 
 describe("analytics routes tolerate a failing Postgres tier (D1 fully eliminated)", () => {
   // Same vacuous-mock bug as the "hung D1 query" test above: METAGRAPH_HEALTH_DB
   // is never read by any live code (D1 is gone), and METAGRAPH_HEALTH_SOURCE was
-  // never set to "postgres" here either, so tryPostgresTier short-circuited on
+  // never set to "postgres" here either, so tryDataApiTier short-circuited on
   // the tier-flag check before this mock could matter either way. leaderboards
-  // doesn't go through tryPostgresTier at all (composeLeaderboardsData's boards
+  // doesn't go through tryDataApiTier at all (composeLeaderboardsData's boards
   // are unconditionally empty now, D1 fully eliminated) -- unaffected either way.
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_SOURCE: "postgres",
+    METAGRAPH_HEALTH_SOURCE: "retired",
     DATA_API: {
       fetch: async () => {
         throw new Error("DATA_API unreachable");
@@ -1910,7 +1910,7 @@ describe("hourly cron writes a daily snapshot", () => {
   });
 });
 
-// d1All / hasD1FallbackRows / markD1FallbackRows / d1FallbackGeneration were
+// storeAll / hasD1FallbackRows / markD1FallbackRows / d1FallbackGeneration were
 // deleted (2026-07-17, D1 fully eliminated) -- every analytics route now
 // tries the Postgres tier first and a miss falls through to a pure
 // empty-shape builder directly, never a live D1 query, so the D1 read path

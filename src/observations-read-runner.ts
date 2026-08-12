@@ -3,7 +3,7 @@
 // ## Why an adapter rather than a second set of loaders
 //
 // Every observation read already funnels through ONE call shape --
-// `d1All(db, sql, params)` over the structural `ObservationsReadDb`
+// `storeAll(db, sql, params)` over the structural `ObservationsReadDb`
 // (`prepare(sql).bind(...).all()`). So the whole read path moves by handing
 // those loaders a different `db`, and not one query has to be written twice.
 //
@@ -26,7 +26,7 @@
 //
 // ## Reading is not writing
 //
-// A read against the wrong store returns stale or empty rows; `d1All` already
+// A read against the wrong store returns stale or empty rows; `storeAll` already
 // degrades any read failure to zero rows and bumps the fallback generation so
 // the payload is not edge-cached as fresh. So this selector is allowed to fall
 // back to D1 silently, which is NOT true of the write path in
@@ -67,7 +67,7 @@ export interface ReadRunnerSql {
  *   an array and takes its own failure branch on a read that SUCCEEDED --
  *   the guard src/top-holders-holdings.ts and src/chain-holders.ts both use.
  *
- * `d1All` accepts a bare array or `{ results }`, so the loaders that go through
+ * `storeAll` accepts a bare array or `{ results }`, so the loaders that go through
  * it never saw the difference; it is the readers that unwrap the result
  * themselves that it reaches. With D1 gone (#10181) there is no second store to
  * absorb the mismatch, so the two adapters agreeing is the whole safety margin.

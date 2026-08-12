@@ -8,7 +8,7 @@
 // envelope. Null-safe: a cold store or a subnet with no NeuronRegistered events yields the zeroed card.
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -90,7 +90,7 @@ export function buildSubnetRegistrations(
 // registering hotkey, so COUNT(DISTINCT hotkey) is exact here (unlike WeightsSet). The handler
 // resolves windowLabel/windowDays from the window param. Cold/absent store -> the zeroed card.
 export async function loadSubnetRegistrations(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: unknown,
   { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
 ): Promise<Row> {

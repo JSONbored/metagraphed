@@ -19,7 +19,7 @@
 // established, and the rule tests/subnet-ownership-surface-parity.test.ts
 // enforces: a surface may not import a tier reader directly.
 //
-// THE TIER PROBE STAYS WITH THE SURFACE -- tryPostgresTier needs a Request and
+// THE TIER PROBE STAYS WITH THE SURFACE -- tryDataApiTier needs a Request and
 // each surface builds its own. The surface probes and hands the RESULT here.
 //
 // A DECLINE IS NOT AN EMPTY: the schema-stable empty timeline applies only
@@ -40,7 +40,7 @@ import {
 } from "./chain-identity-history.ts";
 import { SUBNET_IDENTITY_HISTORY_TABLES } from "./read-store-tables.ts";
 import { readStore } from "./read-store.ts";
-import { d1All } from "./analytics-live.ts";
+import { storeAll } from "./analytics-live.ts";
 
 type Row = Record<string, unknown>;
 
@@ -71,12 +71,12 @@ type Row = Record<string, unknown>;
  * And a live-store MISS still falls through, so the frozen history stays
  * readable for the range that predates the writer.
  */
-async function liveStore(env: unknown): Promise<D1Runner | null> {
+async function liveStore(env: unknown): Promise<SqlRunner | null> {
   const db = readStore(env as never, SUBNET_IDENTITY_HISTORY_TABLES);
-  return db ? (sql, params) => d1All(db as never, sql, params) : null;
+  return db ? (sql, params) => storeAll(db as never, sql, params) : null;
 }
 
-type D1Runner = (
+type SqlRunner = (
   sql: string,
   params: unknown[],
 ) => Promise<Record<string, unknown>[]>;
@@ -107,12 +107,12 @@ function nonEmpty(result: Row | null, key: "entries" | "changes"): Row | null {
 export interface AnswerSubnetIdentityHistoryOptions {
   coldTier?: typeof loadSubnetIdentityHistoryColdTier;
   /** Injectable so a test can drive the live leg without a store. */
-  live?: (env: unknown) => Promise<D1Runner | null>;
+  live?: (env: unknown) => Promise<SqlRunner | null>;
 }
 
 export interface AnswerChainIdentityHistoryOptions {
   coldTier?: typeof loadChainIdentityHistoryColdTier;
-  live?: (env: unknown) => Promise<D1Runner | null>;
+  live?: (env: unknown) => Promise<SqlRunner | null>;
 }
 
 /** One subnet's identity timeline from whichever store can answer. */

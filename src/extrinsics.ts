@@ -18,7 +18,7 @@ import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.ts";
 import { summarizeCall } from "@jsonbored/chain-summaries";
 
-type D1Runner = (
+type SqlRunner = (
   sql: string,
   params: unknown[],
 ) => Promise<Array<Record<string, unknown>>>;
@@ -412,7 +412,7 @@ export interface LoadExtrinsicsOptions {
 // below). A cursor takes precedence over offset when present — uses a
 // (block_number, extrinsic_index) row-value seek.
 export async function loadExtrinsics(
-  d1: D1Runner,
+  d1: SqlRunner,
   {
     signer,
     callModule,

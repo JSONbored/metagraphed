@@ -44,7 +44,7 @@ function historyRow(overrides: Row = {}) {
 
 // D1 fully eliminated (2026-07-16, #4328): handleAccountIdentity /
 // handleAccountIdentityHistory now read METAGRAPH_ACCOUNT_IDENTITY_SOURCE's
-// Postgres tier only, via tryPostgresTier(env, request, ...) -> DATA_API. On a
+// Postgres tier only, via tryDataApiTier(env, request, ...) -> DATA_API. On a
 // hit, DATA_API's JSON body is used directly as `data` (no reshaping), so the
 // mock returns the already-built builder output, mirroring what
 // workers/data-api.ts actually serves for these two routes.
@@ -53,7 +53,7 @@ function postgresIdentityEnv({
   identityHistory,
 }: { identity?: Row | null; identityHistory?: Row[] } = {}) {
   return {
-    METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+    METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
     DATA_API: {
       async fetch(request: Request) {
         const url = new URL(request.url);

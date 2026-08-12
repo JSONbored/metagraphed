@@ -216,7 +216,7 @@ function countOrZero(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): { first(): Promise<unknown> };
   };
@@ -249,7 +249,7 @@ export async function runHotkeyAlphaStalenessWatchdog(
   const db = readStore(env, [
     "hotkey_alpha",
     "nominator_positions",
-  ]) as unknown as D1Like | undefined;
+  ]) as unknown as StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

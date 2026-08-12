@@ -2939,7 +2939,7 @@ describe("health trends store error handling", () => {
    *
    * BOTH HALVES MATTER. `health_db` is HYPERDRIVE's connection string now, and
    * observationsReadDb additionally needs a ctx with a real `waitUntil` to park
-   * the connection teardown on -- without one it answers `undefined`, `d1All`
+   * the connection teardown on -- without one it answers `undefined`, `storeAll`
    * reads that as zero rows, and the route returns the same empty payload for
    * a reason that has nothing to do with the failure under test. */
   function throwingStore() {
@@ -2973,13 +2973,13 @@ describe("health trends store error handling", () => {
     assert.equal(body.data.windows["7d"].uptime_ratio, null);
   });
 
-  // The "[d1All] dark-serve contract (#2076)" regression test that used to live
+  // The "[storeAll] dark-serve contract (#2076)" regression test that used to live
   // here drove a D1-throwing scenario through handleHealthTrends and asserted
-  // the swallowed error was logged via d1All's own "[d1All]" prefix. D1 is now
+  // the swallowed error was logged via storeAll's own "[storeAll]" prefix. D1 is now
   // fully eliminated from this route (workers/request-handlers/analytics.ts's
-  // handleHealthTrends goes tryPostgresTier -> loadSubnetHealthTrends with no
-  // rows on any miss, never a live D1 read), so d1All is never reached from
-  // this route anymore -- the assertion tested dead wiring. d1All itself
+  // handleHealthTrends goes tryDataApiTier -> loadSubnetHealthTrends with no
+  // rows on any miss, never a live D1 read), so storeAll is never reached from
+  // this route anymore -- the assertion tested dead wiring. storeAll itself
   // (still present, unchanged, and still exercised via other D1-mock tests in
   // this describe block) is not exported from workers/request-handlers/
   // analytics.ts, so there is no direct-unit-test alternative to keep; the

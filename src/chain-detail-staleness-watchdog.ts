@@ -91,7 +91,7 @@ export function evaluateChainDetailStaleness(input: {
   };
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): { first(): Promise<unknown> };
 }
 
@@ -107,7 +107,7 @@ export async function readChainDetailHead(
   env: Record<string, unknown> | null | undefined,
 ): Promise<{ latestObservedAtMs: number | null; headBlock: number | null }> {
   const db = readStore(env, ["chain_detail_blocks"]) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return { latestObservedAtMs: null, headBlock: null };
   const row = (await db
     .prepare(
@@ -152,7 +152,7 @@ export async function runChainDetailStalenessWatchdog(
   // a frozen D1 copy and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["chain_detail_blocks"]) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

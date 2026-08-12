@@ -4,7 +4,7 @@
 // `current_spec_version: null` beside a `current` block reporting spec 440
 // from a live chain read -- the same payload claiming, in one breath, that the
 // network runs runtime 440 and that it has never upgraded. All three surfaces
-// ran `tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) ?? buildRuntimeVersionHistory([])`
+// ran `tryDataApiTier(METAGRAPH_BLOCKS_SOURCE) ?? buildRuntimeVersionHistory([])`
 // and the Postgres tier is gone -- the dead call has since been removed
 // outright (#10190), leaving this reader as the only source.
 //

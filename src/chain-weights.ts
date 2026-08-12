@@ -242,6 +242,6 @@ export function buildChainWeights(
 // #4772 D1 retirement: loadChainWeights (the D1 loader that read the account_events
 // WeightsSet stream) was removed here -- that D1 write path is retired and the
 // `account_events` table is dropped in production, so a live D1 query would always
-// miss. Serving now goes tryPostgresTier -> buildChainWeights([...], { networkDistinct:
+// miss. Serving now goes tryDataApiTier -> buildChainWeights([...], { networkDistinct:
 // null }), never D1. See src/graphql.ts's chain_weights and src/mcp-server.ts's
 // get_chain_weights tool for the call sites.

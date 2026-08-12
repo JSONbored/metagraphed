@@ -32,8 +32,8 @@ describe("var literal parity", () => {
     expect(
       workerTypesParityErrors(
         worker,
-        { vars: { METAGRAPH_NEURONS_SOURCE: "d1" } },
-        '\tMETAGRAPH_NEURONS_SOURCE: "d1";\n',
+        { vars: { METAGRAPH_NEURONS_SOURCE: "data-api" } },
+        '\tMETAGRAPH_NEURONS_SOURCE: "data-api";\n',
       ),
     ).toEqual([]);
   });

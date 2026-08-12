@@ -1,7 +1,7 @@
 // Subnet tempo lookup (#2551) -- netuid -> tempo(blocks), sourced from
 // subnet_hyperparams, which lives on D1 (tests/fixtures/sqlite-schema/0009) and carries a tempo
 // for every subnet. Mirrors src/validator-nominator-summary.ts's role for
-// nominator_count; the read path is `loadSubnetTemposD1` in workers/data-api.ts,
+// nominator_count; the read path is `loadSubnetTemposFromStore` in workers/data-api.ts,
 // joined into buildGlobalValidators/buildValidatorDetail's apy_estimate by netuid.
 //
 // #9342: that read did not exist for two releases. Both validator handlers passed

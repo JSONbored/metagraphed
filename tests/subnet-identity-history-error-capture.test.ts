@@ -24,7 +24,7 @@ afterEach(() => {
 // THE BASELINE READER, INJECTED (#10190/#10700). This used to trigger the failure
 // by stubbing DATA_API behind METAGRAPH_SUBNET_IDENTITY_SOURCE="postgres" and
 // returning a truthy-but-non-iterable `hashes` payload. That flag is retired and
-// absent from DATA_API_FORWARD_FLAGS, so the read never happened in production and
+// absent from FORWARDABLE_TIER_FLAGS, so the read never happened in production and
 // the payload never existed to be malformed. What this file is about is unchanged:
 // a baseline read that FAILS must be reported, not swallowed.
 function envWith(extra: Row = {}): Env {

@@ -1,16 +1,16 @@
 // The probe-status continuity read: every surface_status row the prober needs
 // to carry last_ok and the failure streak across runs (#9522).
 //
-// WHY THIS IS A DIRECT SERVICE-BINDING CALL AND NOT tryPostgresTier.
+// WHY THIS IS A DIRECT SERVICE-BINDING CALL AND NOT tryDataApiTier.
 //
-// Both callers used to route this through tryPostgresTier(...,
+// Both callers used to route this through tryDataApiTier(...,
 // "METAGRAPH_HEALTH_SOURCE"), which resolved to null on every run: that flag
-// reads "d1" in production, and tryPostgresTier only forwards "d1" for the
-// three flags in DATA_API_FORWARD_FLAGS. Adding this one to that set would have
+// reads "d1" in production, and tryDataApiTier only forwards "d1" for the
+// three FORWARDABLE_TIER_FLAGS. Widening that union would have
 // fixed the read and broken something else -- the flag is shared with
 // /api/v1/health/trends, /api/v1/incidents and /api/v1/internal/compare-health,
 // none of which data-api implements, so each of those would start forwarding,
-// take a non-2xx, and emit a capturePostgresTierFallback exception on every
+// take a non-2xx, and emit a captureDataApiTierFallback exception on every
 // request. That is a per-flag switch being asked to do a per-route job.
 //
 // This route is internal and service-binding-only, so it does not need the
@@ -18,7 +18,7 @@
 // data-api's subnet-identity-sync handler already makes for calling
 // env.DATA_API.fetch() directly.
 //
-// THE FLAG STILL GATES THE READ, just not through DATA_API_FORWARD_FLAGS. A
+// THE FLAG STILL GATES THE READ, just not through the forwardable union. A
 // deployment that has not pointed METAGRAPH_HEALTH_SOURCE at a tier must not
 // have this reach for one -- both callers' suites pin that ("never reaches
 // Postgres when the flag is off"), and it is the right contract: an unset flag
@@ -37,10 +37,11 @@ interface ServiceBinding {
   fetch(request: Request): Promise<Response>;
 }
 
-/** Flag values that name a tier able to answer this route: the D1 dispatcher
- * (production since the box was retired) and the legacy Postgres one. Anything
- * else -- unset, "retired", a typo -- means there is nothing to ask. */
-const TIERS_THAT_ANSWER = new Set(["d1", "postgres"]);
+/** Flag values that name a tier able to answer this route. "data-api" is the
+ * dispatcher in DATA_API (the value stopped saying "d1" about a deleted
+ * database, #10223); the legacy "postgres" box value died with the box.
+ * Anything else -- unset, "retired", a typo -- means there is nothing to ask. */
+const TIERS_THAT_ANSWER = new Set(["data-api"]);
 
 /**
  * surface_status rows whose `last_checked` is at or after `sinceMs`.

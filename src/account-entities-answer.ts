@@ -4,7 +4,7 @@
 //
 // WHY A COMPOSER AND NOT THREE CASCADES. The lakehouse leg was wired into the
 // REST handler alone. METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired, so
-// tryPostgresTier declines unconditionally, and MCP and GraphQL fell straight
+// tryDataApiTier declines unconditionally, and MCP and GraphQL fell straight
 // to `buildAccountEntities(coldkey, { entities: [] })`: for a coldkey that HAS
 // won or lost a subnet they published `ownership_ties: []`, which
 // get_account_entities' own description reads as "this coldkey has never
@@ -18,7 +18,7 @@
 // established: a surface may not import a tier reader directly, because
 // "which store answers, and what an absence means" is one decision, not three.
 //
-// THE TIER PROBE STAYS WITH THE SURFACE, deliberately. tryPostgresTier needs a
+// THE TIER PROBE STAYS WITH THE SURFACE, deliberately. tryDataApiTier needs a
 // Request, and each surface has a different one -- REST forwards the caller's,
 // MCP and GraphQL synthesize theirs. So the surface performs its own probe and
 // hands the RESULT here; this module owns everything after it, which is the
@@ -52,7 +52,7 @@ export interface AnswerAccountEntitiesOptions {
  * One coldkey's entity payload, with the ownership ties resolved from whichever
  * store can answer.
  *
- * `tierResult` is the surface's own tryPostgresTier outcome: a payload when the
+ * `tierResult` is the surface's own tryDataApiTier outcome: a payload when the
  * tier answered, null when it declined or is retired.
  *
  * Never returns null -- the empty payload is the documented floor once every

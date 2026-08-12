@@ -10,7 +10,7 @@
 import { median, percentile } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 // 1 TAO = 1e9 rao; round every tao + ratio output to that precision to shed IEEE-754
 // noise below the rao floor while keeping small yields (emission/stake) meaningful.
@@ -227,7 +227,7 @@ export function buildSubnetYield(
 // One subnet's yield distribution — reads the current neurons snapshot (the same tier
 // the metagraph/validators routes serve) and shapes it. Cold/absent D1 -> empty card.
 export async function loadSubnetYield(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: number,
 ): Promise<Row> {
   const rows = await d1(

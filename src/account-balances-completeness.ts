@@ -28,7 +28,7 @@
 //
 // Neither is a producer bug. Both are why the reader needs its own answer.
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     first(): Promise<unknown>;
   };
@@ -67,7 +67,7 @@ const NONE: AccountBalancesCompleteness = {
  * leaderboard that cannot prove its inputs should fall back, not 500.
  */
 export async function latestCompleteAccountBalancesPass(
-  db: D1Like | null | undefined,
+  db: StatementClientLike | null | undefined,
 ): Promise<AccountBalancesCompleteness> {
   if (!db?.prepare) return { ...NONE, reason: "unavailable" };
   try {

@@ -47,7 +47,7 @@ const DAY = {
 };
 
 // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and
-// is absent from DATA_API_FORWARD_FLAGS, so the tier this used to double was
+// is absent from FORWARDABLE_TIER_FLAGS, so the tier this used to double was
 // never asked -- handleAccountHistory reads the lakehouse rollup
 // (loadAccountHistoryColdTier, #9315). Doubled at the same transport, and given
 // the SAME day rows: the reader feeds them through buildAccountHistory exactly

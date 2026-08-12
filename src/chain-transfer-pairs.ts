@@ -167,5 +167,5 @@ export function buildChainTransferPairs({
 // #4772 D1 retirement: loadChainTransferPairs (the D1 loader that read the
 // account_events Transfer stream) was removed here -- that D1 write path is
 // retired and the `account_events` table is dropped in production, so a live D1
-// query would always miss. Serving now goes tryPostgresTier -> buildChainTransferPairs({}),
+// query would always miss. Serving now goes tryDataApiTier -> buildChainTransferPairs({}),
 // never D1. See src/mcp-server.ts's get_chain_transfer_pairs tool for the call site.

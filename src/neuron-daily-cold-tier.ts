@@ -26,7 +26,7 @@
 // COLUMN COVERAGE IS UNIFORM HERE, unlike the blocks seam. Both stores carry
 // the same 22 (neuron_daily) and 15 (account_position_daily) columns -- the
 // producer copies Postgres rather than deriving a narrower projection -- so
-// there is no `d1CanServe` equivalent, no filter that has to be declined, and
+// there is no `storeCanServe` equivalent, no filter that has to be declined, and
 // no reduced-column arm to explain. That is a property of the producer, and it
 // is worth stating because it is what makes this seam simpler than the other.
 //

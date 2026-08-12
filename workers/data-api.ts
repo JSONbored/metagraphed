@@ -438,7 +438,11 @@ import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
 // one number pulled the MCP server, src/graphql.ts and workers/api.ts into
 // this bundle and pushed it over the Worker startup CPU limit.
 import { MCP_TIERED_RATE_LIMIT } from "../src/api-tiers.ts";
-import { createPgSql } from "../src/pg-sql.ts";
+// PgSql is the one tagged-template runner shape (#10261/#10228):
+// this file used to declare a structurally identical local pair (`D1Sql`)
+// so routes could move between stores unchanged; with one store left, the
+// duplicate is gone and the import is the contract.
+import { createPgSql, type PgSql } from "../src/pg-sql.ts";
 import { neonWriteRunner } from "../src/neon-write-buffer.ts";
 import type { ChainAlertTriggers } from "../generated/db/types.ts";
 import type { NeuronColumnsRow } from "../src/metagraph-neurons.ts";
@@ -3574,27 +3578,6 @@ function numberOrNull(v: unknown) {
 // via parseJsonColumn below.
 
 /**
- * Rows a statement returns, generic over the row (#10261).
- *
- * Defaults to the untyped shape every existing caller already has, so this is
- * a widening and no call site changes meaning. A caller that knows what it
- * selected names it -- `sql<ChainAlertTriggers>\`SELECT * FROM
- * chain_alert_triggers ...\`` -- and gets `generated/db/types.ts`, which is
- * introspected from Neon rather than assumed.
- */
-type D1SqlRows<Row> = Row[];
-interface D1Sql {
-  <Row>(
-    strings: TemplateStringsArray,
-    ...values: unknown[]
-  ): Promise<D1SqlRows<Row>>;
-  /** Positional-placeholder escape hatch, mirroring postgres.js's
-   * sql.unsafe<Row>(text, params) -- used only where the statement text is built
-   * dynamically (the matched-write-back's `IN (?, ?, ...)` expansion). */
-  unsafe<Row>(text: string, values?: unknown[]): Promise<D1SqlRows<Row>>;
-}
-
-/**
  * The WRITE half of parseJsonColumn: a value on its way into a TEXT column that
  * holds JSON.
  *
@@ -3635,7 +3618,7 @@ function parseJsonColumn(value: unknown): unknown {
 /** The schema's INTEGER-0/1 booleans, back to real booleans for the shared
  * view/validation helpers (src/alert-triggers.ts) whose checks -- `active !==
  * false`, `success === true` -- predate the port and expect JS booleans. */
-function d1Bool(value: unknown): boolean {
+function rowBool(value: unknown): boolean {
   return value === true || value === 1;
 }
 
@@ -3659,14 +3642,14 @@ function normalizeAlertTriggerRow(
     ...row,
     table_filter: parseJsonColumn(row.table_filter),
     condition: parseJsonColumn(row.condition),
-    active: d1Bool(row.active),
+    active: rowBool(row.active),
   };
 }
 
 /** One chain_alert_deliveries row: success is INTEGER 0/1 on D1, and
  * deliveryRecordView's `success === true` check needs the boolean. */
 function normalizeDeliveryRow(row: ChainAlertDeliveries): Row {
-  return { ...row, success: d1Bool(row.success) };
+  return { ...row, success: rowBool(row.success) };
 }
 
 /**
@@ -3796,7 +3779,7 @@ export const ACCOUNT_STATE_TABLES = [
  * The runner for a user-state group: Postgres once Neon solely owns every
  * table in it, D1 until then.
  *
- * `D1Sql` and `PgSql` are structurally identical -- a tagged template plus
+ * `PgSql` and `PgSql` are structurally identical -- a tagged template plus
  * `unsafe(text, values)`, both resolving to `Record<string, unknown>[]` -- so
  * this returns one type and the ~17 callbacks below are untouched by the move.
  * That is the whole reason the user-state tier can change stores without
@@ -3813,7 +3796,7 @@ export function userStateRunner(
   // Kept for call-site clarity about which tables ride the runner; the
   // per-table ownership question collapsed with the flag (#10051).
   _tables: readonly string[],
-): D1Sql | null {
+): PgSql | null {
   // the ownership term collapsed with the flag (#10051).
   if (env.HYPERDRIVE?.connectionString) {
     return createPgSql(env.HYPERDRIVE, ctx);
@@ -3824,7 +3807,7 @@ export function userStateRunner(
 async function withAlertTriggersSql(
   env: Env,
   ctx: ExecutionContext,
-  fn: (sql: D1Sql) => Promise<Response>,
+  fn: (sql: PgSql) => Promise<Response>,
 ) {
   const sql = userStateRunner(env, ctx, ALERT_TRIGGER_TABLES);
   if (!sql) {
@@ -4121,7 +4104,7 @@ function mergeAlertTriggerUpdateBody(existing: Row, body: Row): Row {
   };
 }
 
-async function runAlertTriggerUpdate(sql: D1Sql, id: string, merged: Row) {
+async function runAlertTriggerUpdate(sql: PgSql, id: string, merged: Row) {
   const validated = validateAlertTriggerInput(merged);
   if (!validated.ok) {
     return writeJson({ error: validated.error }, 400);
@@ -4961,7 +4944,7 @@ const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 async function withAccountsSql<T>(
   env: Env,
   ctx: ExecutionContext,
-  fn: (sql: D1Sql) => Promise<T>,
+  fn: (sql: PgSql) => Promise<T>,
 ): Promise<T | Response> {
   const sql = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
   if (!sql) {
@@ -5923,7 +5906,7 @@ const API_KEY_BLOCK_TOKEN_HEADER = "x-api-key-block-token";
  * Best-effort: a KV hiccup must not fail the block itself. The row is the
  * source of truth and the next refresh will pick it up.
  */
-async function refreshBlocklistSnapshot(env: Env, sql: D1Sql) {
+async function refreshBlocklistSnapshot(env: Env, sql: PgSql) {
   const rows = await sql<{
     account_id: ApiKeyBlocks["account_id"];
     reason_code: ApiKeyBlocks["reason_code"];
@@ -6356,7 +6339,7 @@ async function handleAccountKeysRoute(
 //
 // The D1 twins of every neurons/neuron_daily/account_position_daily read the
 // deleted Postgres dispatcher served, matched whenever METAGRAPH_NEURONS_SOURCE
-// is off "postgres" (see neuronsServedFromD1's own header).
+// is off "postgres" (see neuronsServedFromStore's own header).
 //
 // THIS IS NO LONGER A TRANSLATION TABLE, and reading it as one is what broke
 // the cutover twice. It was written when these queries had exactly one store to
@@ -6418,7 +6401,7 @@ async function handleAccountKeysRoute(
 // scan as a confirmed zero. The serving Worker's lakehouse overlay that covered
 // the gap in the meantime (#9146) is gone with #9337: it could only ever fire
 // on a null count, and there are none left to fill.
-type NeuronsD1RouteHandler = (sql: D1Sql, env: Env) => Promise<Response>;
+type NeuronsStoreRouteHandler = (sql: PgSql, env: Env) => Promise<Response>;
 
 // The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
 // alpha_price_tao. Group-wise-MAX join instead of DISTINCT ON, same
@@ -6444,7 +6427,7 @@ type NeuronsD1RouteHandler = (sql: D1Sql, env: Env) => Promise<Response>;
 //   SubtensorModule::Tempo(64) = 360     (ours: 360)
 //
 // It is kept because every sibling enrichment in this same builder already treats
-// a root membership as real: loadAlphaPricesByNetuidD1 gives netuid 0 a price of
+// a root membership as real: loadStoreAlphaPricesByNetuid gives netuid 0 a price of
 // 1, and the leaderboard counts a root-only validator. Dropping root would make
 // apy_estimate silently ignore the root position of exactly the large validators
 // whose stake is mostly there.
@@ -6453,8 +6436,8 @@ type NeuronsD1RouteHandler = (sql: D1Sql, env: Env) => Promise<Response>;
 // which counts root among "subnets" when root is not one. That name predates this
 // fix and renaming a published field is a contract change, not a bug fix -- so it
 // is left alone and called out rather than quietly redefined here.
-async function loadSubnetTemposD1(
-  sql: D1Sql,
+async function loadSubnetTemposFromStore(
+  sql: PgSql,
   env: Env,
 ): Promise<Map<number, number>> {
   try {
@@ -6470,8 +6453,8 @@ async function loadSubnetTemposD1(
   }
 }
 
-async function loadAlphaPricesByNetuidD1(
-  sql: D1Sql,
+async function loadStoreAlphaPricesByNetuid(
+  sql: PgSql,
   env: Env,
 ): Promise<Map<number, number | null>> {
   try {
@@ -6535,7 +6518,7 @@ async function loadAlphaPricesByNetuidD1(
 // ZERO bound parameters and one query, and keeps the filter exactly in step
 // with the leaderboard's own `validator_permit = TRUE AND hotkey IS NOT NULL`.
 //
-// Same degrade-to-empty-map contract as loadAlphaPricesByNetuidD1 above: on
+// Same degrade-to-empty-map contract as loadStoreAlphaPricesByNetuid above: on
 // any failure every nominator_count stays null, which is precisely the state
 // this tier served before the table existed -- so a broken read is a lost
 // enrichment, never a wrong number.
@@ -6556,8 +6539,8 @@ async function loadAlphaPricesByNetuidD1(
 // one. So the zero-fill is conditioned on the scan being within the SAME
 // threshold the staleness watchdog alarms on, imported rather than restated so
 // the two can never disagree about what "fresh" means.
-async function loadNominatorCountsD1(
-  sql: D1Sql,
+async function loadNominatorCountsFromStore(
+  sql: PgSql,
   env: Env,
 ): Promise<Map<string, number>> {
   try {
@@ -6593,8 +6576,8 @@ async function loadNominatorCountsD1(
 // The single-hotkey twin of the above, for /api/v1/validators/{hotkey}. Same
 // rule: a real row wins, absence from a FRESH scan is a confirmed zero, and
 // absence from a stale one stays null.
-async function loadNominatorCountD1(
-  sql: D1Sql,
+async function loadNominatorCountFromStore(
+  sql: PgSql,
   hotkey: string,
   env: Env,
 ): Promise<number | null> {
@@ -6633,8 +6616,8 @@ async function loadNominatorCountD1(
 // snapshot_date DESC` (newest qualifying day per hotkey) becomes a
 // ROW_NUMBER() window over the same daily CTE. Same failure contract: any
 // error degrades every realized_return_* to null via an empty map.
-async function loadRealizedStakeBaselinesD1(
-  sql: D1Sql,
+async function loadRealizedStakeBaselinesFromStore(
+  sql: PgSql,
   { hotkey = null }: { hotkey?: string | null },
   env: Env,
 ) {
@@ -6765,7 +6748,7 @@ async function loadRealizedStakeBaselinesD1(
  * all. The callers keep the 503 for that, which is why this returns undefined
  * rather than throwing (#10162 -- a runner over an absent binding was worse).
  */
-function routeRunner(env: Env, ctx: ExecutionContext): D1Sql | undefined {
+function routeRunner(env: Env, ctx: ExecutionContext): PgSql | undefined {
   return env.HYPERDRIVE ? createPgSql(env.HYPERDRIVE, ctx) : undefined;
 }
 
@@ -6809,7 +6792,7 @@ function routeRunner(env: Env, ctx: ExecutionContext): D1Sql | undefined {
  * the same thing more quietly.
  */
 export async function neuronDailyWindowBounds(
-  sql: D1Sql,
+  sql: PgSql,
   days: number | null,
   netuid: number | null = null,
 ): Promise<{ startDate: string | null; endDate: string | null }> {
@@ -6849,7 +6832,7 @@ export async function neuronDailyWindowBounds(
   };
 }
 
-function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
+function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // GET /api/v1/subnets/:netuid/metagraph -- twin of the Postgres route of
   // the same name below. immunity_period comes from subnet_hyperparams,
   // which has no D1 home: null is loadSubnetImmunityPeriod's own degraded
@@ -7119,12 +7102,12 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-        loadRealizedStakeBaselinesD1(sql, {}, env),
-        loadAlphaPricesByNetuidD1(sql, env),
-        loadNominatorCountsD1(sql, env),
-        loadSubnetTemposD1(sql, env),
+        loadRealizedStakeBaselinesFromStore(sql, {}, env),
+        loadStoreAlphaPricesByNetuid(sql, env),
+        loadNominatorCountsFromStore(sql, env),
+        loadSubnetTemposFromStore(sql, env),
         loadIdentityByColdkeyMap((s, p) =>
-          sql.unsafe<AccountIdentityD1Row>(s, p),
+          sql.unsafe<AccountIdentityStoreRow>(s, p),
         ),
       ]);
       return json(
@@ -7161,12 +7144,12 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
           [hotkey],
         ),
-        loadRealizedStakeBaselinesD1(sql, { hotkey }, env),
-        loadAlphaPricesByNetuidD1(sql, env),
-        loadNominatorCountD1(sql, hotkey, env),
-        loadSubnetTemposD1(sql, env),
+        loadRealizedStakeBaselinesFromStore(sql, { hotkey }, env),
+        loadStoreAlphaPricesByNetuid(sql, env),
+        loadNominatorCountFromStore(sql, hotkey, env),
+        loadSubnetTemposFromStore(sql, env),
         loadIdentityByColdkeyMap((s, p) =>
-          sql.unsafe<AccountIdentityD1Row>(s, p),
+          sql.unsafe<AccountIdentityStoreRow>(s, p),
         ),
       ]);
       return json(
@@ -7484,7 +7467,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       }>`
         SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
         FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
-      const priceByNetuid = await loadAlphaPricesByNetuidD1(sql, env);
+      const priceByNetuid = await loadStoreAlphaPricesByNetuid(sql, env);
       return json(buildAccountPortfolio(rows, ss58, { priceByNetuid }));
     };
   }
@@ -7598,7 +7581,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
           FROM neurons WHERE hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-        loadAlphaPricesByNetuidD1(sql, env),
+        loadStoreAlphaPricesByNetuid(sql, env),
       ]);
       return json(
         buildAccountsList(rows, {
@@ -7788,15 +7771,15 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
 // tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql) ------------------------------
 //
 // The D1 twins of the four family reads the deleted Postgres dispatcher
-// served -- the same contract as matchNeuronsD1Route above, switched
+// served -- the same contract as matchNeuronsStoreRoute above, switched
 // per-family on
 // METAGRAPH_SUBNET_HYPERPARAMS_SOURCE / METAGRAPH_ACCOUNT_IDENTITY_SOURCE
-// (the flags the main Worker's tryPostgresTier callers gate on; unset here
-// means D1, exactly like neuronsServedFromD1).
+// (the flags the main Worker's tryDataApiTier callers gate on; unset here
+// means D1, exactly like neuronsServedFromStore).
 //
 // With ONE deliberate addition over the neurons twins: a COLD tier -- the
 // route's D1 table has NO rows at all because no sync has landed since the
-// migration -- answers 503 instead of a schema-stable empty. tryPostgresTier
+// migration -- answers 503 instead of a schema-stable empty. tryDataApiTier
 // treats any non-2xx as "degrade to null", which sends the serving handler to
 // its next fallback: the lakehouse cold-tier reader
 // (src/subnet-hyperparams-cold-tier.ts / src/account-identity-cold-tier.ts),
@@ -7810,7 +7793,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
 // plus consecutive_failures, which only the prober reads. Kept as one list
 // because both consumers of this route want the whole surface_status row --
 // the serving overlay to render it, the prober to carry it forward.
-const HEALTH_STATUS_LIVE_D1_READ_COLUMNS =
+const HEALTH_STATUS_LIVE_READ_COLUMNS =
   "surface_id, surface_key, netuid, kind, provider, url, status, " +
   "classification, latency_ms, status_code, last_checked, last_ok, " +
   "consecutive_failures";
@@ -7820,7 +7803,7 @@ const HEALTH_STATUS_LIVE_D1_READ_COLUMNS =
 // The route two callers in the main Worker have always requested and nothing
 // ever answered (#9522): src/health-prober.ts asks with since=0 for the LAST
 // known row per surface, and src/health-serving.ts asks with a freshness
-// cutoff for its KV-cold serving fallback. Without it, tryPostgresTier
+// cutoff for its KV-cold serving fallback. Without it, tryDataApiTier
 // returned null on every call, so the prober's prior map was empty and it
 // rewrote last_ok to null and reset consecutive_failures on every run --
 // which in turn made the pool's sustained-down breaker (threshold 2)
@@ -7829,13 +7812,15 @@ const HEALTH_STATUS_LIVE_D1_READ_COLUMNS =
 // `since` filters on last_checked, the column that records when the row was
 // written; since=0 (or absent/unparseable) returns everything, which is what
 // "the last known row, however stale" means for the prober's continuity read.
-function matchHealthStatusD1Route(url: URL): NeuronsD1RouteHandler | null {
+function matchHealthStatusStoreRoute(
+  url: URL,
+): NeuronsStoreRouteHandler | null {
   if (url.pathname !== "/api/v1/internal/health-status-live") return null;
   return async (sql) => {
     const since = Number(url.searchParams.get("since"));
     const cutoff = Number.isFinite(since) && since > 0 ? since : 0;
-    const rows = await sql.unsafe<HealthStatusLiveD1Row>(
-      `SELECT ${HEALTH_STATUS_LIVE_D1_READ_COLUMNS}
+    const rows = await sql.unsafe<HealthStatusLiveStoreRow>(
+      `SELECT ${HEALTH_STATUS_LIVE_READ_COLUMNS}
        FROM surface_status
        WHERE last_checked >= ?
        ORDER BY surface_id ASC`,
@@ -7845,12 +7830,12 @@ function matchHealthStatusD1Route(url: URL): NeuronsD1RouteHandler | null {
   };
 }
 
-function d1TierCold() {
+function storeTierCold() {
   return json({ error: "d1 tier cold: no sync has landed yet" }, 503);
 }
 
-async function d1TableHasRows(
-  sql: D1Sql,
+async function storeTableHasRows(
+  sql: PgSql,
   table:
     | "subnet_hyperparams"
     | "subnet_hyperparams_history"
@@ -7865,31 +7850,31 @@ async function d1TableHasRows(
 
 // Every INSERT column except netuid (already known from the WHERE clause) --
 // the same list the Postgres route below selects.
-const SUBNET_HYPERPARAMS_D1_READ_COLUMNS =
+const SUBNET_HYPERPARAMS_READ_COLUMNS =
   SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1).join(", ");
-const SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS = `id, block_number, observed_at, ${SUBNET_HYPERPARAMS_HISTORY_FIELDS.join(", ")}, hyperparams_hash`;
-const ACCOUNT_IDENTITY_D1_READ_COLUMNS =
+const SUBNET_HYPERPARAMS_HISTORY_READ_COLUMNS = `id, block_number, observed_at, ${SUBNET_HYPERPARAMS_HISTORY_FIELDS.join(", ")}, hyperparams_hash`;
+const ACCOUNT_IDENTITY_READ_COLUMNS =
   ACCOUNT_IDENTITY_INSERT_COLUMNS.join(", ");
-const ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS = `id, observed_at, ${IDENTITY_FIELDS.join(", ")}, identity_hash`;
+const ACCOUNT_IDENTITY_HISTORY_READ_COLUMNS = `id, observed_at, ${IDENTITY_FIELDS.join(", ")}, identity_hash`;
 
 /**
  * The rows those three column lists select, each derived from the very array
  * that builds its SQL text -- so a column added to the list is a column added
  * to the type, with nothing to keep in step by hand.
  */
-type AccountIdentityD1Row = Pick<
+type AccountIdentityStoreRow = Pick<
   AccountIdentity,
   (typeof ACCOUNT_IDENTITY_INSERT_COLUMNS)[number]
 >;
-type AccountIdentityHistoryD1Row = Pick<
+type AccountIdentityHistoryStoreRow = Pick<
   AccountIdentityHistory,
   "id" | "observed_at" | "identity_hash" | (typeof IDENTITY_FIELDS)[number]
 >;
-type SubnetHyperparamsD1Row = Pick<
+type SubnetHyperparamsStoreRow = Pick<
   SubnetHyperparams,
   (typeof SUBNET_HYPERPARAMS_INSERT_COLUMNS)[number]
 >;
-type SubnetHyperparamsHistoryD1Row = Pick<
+type SubnetHyperparamsHistoryStoreRow = Pick<
   SubnetHyperparamsHistory,
   | "id"
   | "block_number"
@@ -7898,8 +7883,8 @@ type SubnetHyperparamsHistoryD1Row = Pick<
   | ((typeof SUBNET_HYPERPARAMS_HISTORY_FIELDS)[number] &
       keyof SubnetHyperparamsHistory)
 >;
-/** The live surface-status row, as HEALTH_STATUS_LIVE_D1_READ_COLUMNS selects it. */
-type HealthStatusLiveD1Row = Pick<
+/** The live surface-status row, as HEALTH_STATUS_LIVE_READ_COLUMNS selects it. */
+type HealthStatusLiveStoreRow = Pick<
   SurfaceStatus,
   | "surface_id"
   | "surface_key"
@@ -7928,9 +7913,9 @@ type PerformanceHistoryRow = Pick<
   | "validator_permit"
 >;
 
-function matchHyperparamsIdentityD1Route(
+function matchHyperparamsIdentityStoreRoute(
   url: URL,
-): NeuronsD1RouteHandler | null {
+): NeuronsStoreRouteHandler | null {
   // GET /api/v1/subnets/:netuid/hyperparameters -- twin of the Postgres
   // route of the same name below, latest-only single-row lookup.
   const subnetHyperparams = url.pathname.match(
@@ -7939,12 +7924,12 @@ function matchHyperparamsIdentityD1Route(
   if (subnetHyperparams) {
     return async (sql) => {
       const netuid = Number(subnetHyperparams[1]);
-      const rows = await sql.unsafe<SubnetHyperparamsD1Row>(
-        `SELECT ${SUBNET_HYPERPARAMS_D1_READ_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
+      const rows = await sql.unsafe<SubnetHyperparamsStoreRow>(
+        `SELECT ${SUBNET_HYPERPARAMS_READ_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
         [netuid],
       );
-      if (!rows.length && !(await d1TableHasRows(sql, "subnet_hyperparams")))
-        return d1TierCold();
+      if (!rows.length && !(await storeTableHasRows(sql, "subnet_hyperparams")))
+        return storeTierCold();
       return json(buildSubnetHyperparams(rows[0] ?? null, netuid));
     };
   }
@@ -7966,15 +7951,15 @@ function matchHyperparamsIdentityD1Route(
       const offset = clampRequestOffset(url.searchParams.get("offset"));
       const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
       const rows = cursor
-        ? await sql.unsafe<SubnetHyperparamsHistoryD1Row>(
-            `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
+        ? await sql.unsafe<SubnetHyperparamsHistoryStoreRow>(
+            `SELECT ${SUBNET_HYPERPARAMS_HISTORY_READ_COLUMNS}
              FROM subnet_hyperparams_history
              WHERE netuid = ? AND (observed_at, id) < (?, ?)
              ORDER BY observed_at DESC, id DESC LIMIT ?`,
             [netuid, cursor[0], cursor[1], limit],
           )
-        : await sql.unsafe<SubnetHyperparamsHistoryD1Row>(
-            `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
+        : await sql.unsafe<SubnetHyperparamsHistoryStoreRow>(
+            `SELECT ${SUBNET_HYPERPARAMS_HISTORY_READ_COLUMNS}
              FROM subnet_hyperparams_history
              WHERE netuid = ?
              ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
@@ -7982,9 +7967,9 @@ function matchHyperparamsIdentityD1Route(
           );
       if (
         !rows.length &&
-        !(await d1TableHasRows(sql, "subnet_hyperparams_history"))
+        !(await storeTableHasRows(sql, "subnet_hyperparams_history"))
       )
-        return d1TierCold();
+        return storeTierCold();
       const last = rows.length === limit ? rows[rows.length - 1] : null;
       const nextCursor = last
         ? encodeCursor([numberOrNull(last.observed_at), numberOrNull(last.id)])
@@ -8008,12 +7993,12 @@ function matchHyperparamsIdentityD1Route(
   if (acctIdentity) {
     return async (sql) => {
       const ss58 = decodeURIComponent(acctIdentity[1]);
-      const rows = await sql.unsafe<AccountIdentityD1Row>(
-        `SELECT ${ACCOUNT_IDENTITY_D1_READ_COLUMNS} FROM account_identity WHERE account = ?`,
+      const rows = await sql.unsafe<AccountIdentityStoreRow>(
+        `SELECT ${ACCOUNT_IDENTITY_READ_COLUMNS} FROM account_identity WHERE account = ?`,
         [ss58],
       );
-      if (!rows.length && !(await d1TableHasRows(sql, "account_identity")))
-        return d1TierCold();
+      if (!rows.length && !(await storeTableHasRows(sql, "account_identity")))
+        return storeTierCold();
       return json(buildAccountIdentity(rows[0] ?? null, ss58));
     };
   }
@@ -8032,15 +8017,15 @@ function matchHyperparamsIdentityD1Route(
       const offset = clampRequestOffset(url.searchParams.get("offset"));
       const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
       const rows = cursor
-        ? await sql.unsafe<AccountIdentityHistoryD1Row>(
-            `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
+        ? await sql.unsafe<AccountIdentityHistoryStoreRow>(
+            `SELECT ${ACCOUNT_IDENTITY_HISTORY_READ_COLUMNS}
              FROM account_identity_history
              WHERE account = ? AND (observed_at, id) < (?, ?)
              ORDER BY observed_at DESC, id DESC LIMIT ?`,
             [ss58, cursor[0], cursor[1], limit],
           )
-        : await sql.unsafe<AccountIdentityHistoryD1Row>(
-            `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
+        : await sql.unsafe<AccountIdentityHistoryStoreRow>(
+            `SELECT ${ACCOUNT_IDENTITY_HISTORY_READ_COLUMNS}
              FROM account_identity_history
              WHERE account = ?
              ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
@@ -8048,9 +8033,9 @@ function matchHyperparamsIdentityD1Route(
           );
       if (
         !rows.length &&
-        !(await d1TableHasRows(sql, "account_identity_history"))
+        !(await storeTableHasRows(sql, "account_identity_history"))
       )
-        return d1TierCold();
+        return storeTierCold();
       const last = rows.length === limit ? rows[rows.length - 1] : null;
       const nextCursor = last
         ? encodeCursor([numberOrNull(last.observed_at), numberOrNull(last.id)])
@@ -8339,14 +8324,14 @@ async function dispatchDataApiRequest(
     // Postgres tier at all, which is the whole point of the port. Every other
     // route falls through to the gone-tier 503 below. Log + masked-route
     // capture + an opaque 502 that never leaks DB detail.
-    const neuronsD1Handler = matchNeuronsD1Route(url);
-    if (neuronsD1Handler) {
+    const neuronsStoreHandler = matchNeuronsStoreRoute(url);
+    if (neuronsStoreHandler) {
       const store = routeRunner(env, ctx);
       if (!store) {
         return json({ error: "no store bound for this route" }, 503);
       }
       try {
-        return await neuronsD1Handler(store, env);
+        return await neuronsStoreHandler(store, env);
       } catch (err) {
         console.error("data-api neurons query failed:", err);
         await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -8358,14 +8343,14 @@ async function dispatchDataApiRequest(
     // and the health-serving fallback have both always called. Same envelope
     // as the neurons block above.
     {
-      const healthStatusD1Handler = matchHealthStatusD1Route(url);
-      if (healthStatusD1Handler) {
+      const healthStatusStoreHandler = matchHealthStatusStoreRoute(url);
+      if (healthStatusStoreHandler) {
         const store = routeRunner(env, ctx);
         if (!store) {
           return json({ error: "no store bound for this route" }, 503);
         }
         try {
-          return await healthStatusD1Handler(store, env);
+          return await healthStatusStoreHandler(store, env);
         } catch (err) {
           console.error("data-api health-status D1 query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -8380,14 +8365,15 @@ async function dispatchDataApiRequest(
     // independently). Same catch envelope: log + masked-route capture + an
     // opaque 502 that never leaks DB detail.
     {
-      const hyperparamsIdentityD1Handler = matchHyperparamsIdentityD1Route(url);
-      if (hyperparamsIdentityD1Handler) {
+      const hyperparamsIdentityStoreHandler =
+        matchHyperparamsIdentityStoreRoute(url);
+      if (hyperparamsIdentityStoreHandler) {
         const store = routeRunner(env, ctx);
         if (!store) {
           return json({ error: "no store bound for this route" }, 503);
         }
         try {
-          return await hyperparamsIdentityD1Handler(store, env);
+          return await hyperparamsIdentityStoreHandler(store, env);
         } catch (err) {
           console.error("data-api hyperparams/identity D1 query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -8400,7 +8386,7 @@ async function dispatchDataApiRequest(
     // box (#9186) and no wrangler config declares it any more, so every read
     // route that used to live below this point was already unreachable -- this
     // gate answered all of them. The status and body are deliberately
-    // UNCHANGED, because the forward gate depends on them: tryPostgresTier's
+    // UNCHANGED, because the forward gate depends on them: tryDataApiTier's
     // callers in the main Worker read a non-2xx here as "this tier declines"
     // and fall through to the lakehouse/D1 tiers exactly as they do today.
     return json({ error: "hyperdrive binding unavailable" }, 503);
@@ -8942,7 +8928,7 @@ export default {
         // The ONLY writer for this lane -- the HTTP route enqueues and
         // never writes inline, so there is no second path to keep in step.
         const result = { statements: 0 };
-        // THE PASS WAS NEVER PASSED. writeAccountBalancesToD1 took it and the
+        // THE PASS WAS NEVER PASSED. writeAccountBalancesToStore took it and the
         // mirror did not, so D1 got a completeness tally and Neon got none --
         // account_balances_passes was empty there, and this lane was about to
         // become the only writer of it.

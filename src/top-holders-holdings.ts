@@ -91,7 +91,7 @@ export interface HoldingsLeg {
   sorts: string[];
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       all?(): Promise<{ results?: unknown[] } | null>;
@@ -255,11 +255,11 @@ export async function topHoldersHoldings(
   // artifact entirely, which reads as "these sorts are unavailable" rather than
   // as a broken read.
   const db = readStore(env, TOP_HOLDERS_HOLDINGS_TABLES) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return null;
 
   // The two readers describe the same binding with different minimal shapes --
-  // this module's D1Like names bind()/all(), the completeness readers name
+  // this module's StatementClientLike names bind()/all(), the completeness readers name
   // first() -- so the casts go through unknown rather than widening either
   // interface to satisfy the other.
   const asFirst = db as unknown as Parameters<

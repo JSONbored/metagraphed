@@ -18,7 +18,7 @@ import {
   FEED_PAGINATION,
 } from "../workers/request-params.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
-import { d1All } from "./analytics-live.ts";
+import { storeAll } from "./analytics-live.ts";
 import { readStore } from "./read-store.ts";
 
 /** The one table latestBlockNumber reads. Declared so readStore can refuse when
@@ -26,7 +26,7 @@ import { readStore } from "./read-store.ts";
 const BLOCKS_HEAD_TABLES = ["blocks_head"] as const;
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 /** The identity columns both timelines select. Exported so the network
  * feed in chain-identity-history.ts selects the SAME list rather than a second
@@ -192,9 +192,9 @@ function rowNetuid(value: unknown): number | null {
 /**
  * THERE IS NO BASELINE, and saying so is the point (#10700).
  *
- * This read `tryPostgresTier(..., "METAGRAPH_SUBNET_IDENTITY_SOURCE")` and
+ * This read `tryDataApiTier(..., "METAGRAPH_SUBNET_IDENTITY_SOURCE")` and
  * derived the map from `pg?.hashes`. That flag reads "retired" in every deployed
- * config and is absent from DATA_API_FORWARD_FLAGS, so the tier resolved to null
+ * config and is absent from FORWARDABLE_TIER_FLAGS, so the tier resolved to null
  * on every call, `pg?.hashes` was always undefined, and the `|| []` absorbed it
  * without a throw, a log or a degraded marker. The map has been empty in
  * production ever since the flag was retired.
@@ -208,7 +208,7 @@ function rowNetuid(value: unknown): number | null {
  *
  * A real baseline wants a direct read of the latest hash per netuid from
  * `subnet_identity_history` (a Neon table), the move src/health-status-live.ts
- * already made when it stopped going through tryPostgresTier for the same reason.
+ * already made when it stopped going through tryDataApiTier for the same reason.
  */
 async function latestIdentityHashes(): Promise<Map<number, unknown>> {
   return new Map<number, unknown>();
@@ -220,7 +220,7 @@ async function latestIdentityHashes(): Promise<Map<number, unknown>> {
  * WAS A DEAD TIER READ. This forwarded an internal
  * /api/v1/internal/latest-block-number request under METAGRAPH_BLOCKS_SOURCE --
  * a flag that reads "retired" in every deployed config and is absent from
- * DATA_API_FORWARD_FLAGS -- so it resolved to null on every call, and every
+ * FORWARDABLE_TIER_FLAGS -- so it resolved to null on every call, and every
  * identity-change record has carried `block_number: null` since the flag was
  * retired. The tests said so out loud ("no METAGRAPH_BLOCKS_SOURCE tier
  * configured on this env, so block_number degrades to null") without anyone
@@ -237,7 +237,7 @@ async function latestIdentityHashes(): Promise<Map<number, unknown>> {
  * which is the state that existed before.
  */
 async function latestBlockNumber(env: Env): Promise<number | null> {
-  const rows = await d1All(
+  const rows = await storeAll(
     readStore(env, BLOCKS_HEAD_TABLES) as never,
     "SELECT MAX(block_number) AS block_number FROM blocks_head",
     [],
@@ -302,7 +302,7 @@ export async function recordSubnetIdentityChanges(
   } catch (error) {
     // #4832 gap-closure follow-up: a swallowed read error here dark-served
     // the identity-history diff for an unknown stretch before anyone
-    // noticed -- same failure class d1All was originally hardened against.
+    // noticed -- same failure class storeAll was originally hardened against.
     // metagraphed#8081: capture it instead of only logging, matching
     // src/graphql.ts's handleGraphQLRequest -- no ExecutionContext reaches
     // this cron-tick call path (writeSubnetSnapshot -> here), so this is
@@ -339,7 +339,7 @@ export async function recordSubnetIdentityChanges(
 }
 
 export async function loadSubnetIdentityHistory(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: unknown,
   {
     limit,
@@ -381,7 +381,7 @@ export async function loadSubnetIdentityHistory(
 }
 
 export async function loadPreviouslyKnownAs(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: unknown,
   currentName: unknown,
 ): Promise<string[]> {
@@ -433,7 +433,7 @@ export function deriveNetuidGroupedAliases(
 }
 
 export async function loadPreviouslyKnownAsForNetuids(
-  d1: D1Runner,
+  d1: SqlRunner,
   entries: Row[] | null | undefined,
 ): Promise<Map<number, string[]>> {
   const items = entries || [];

@@ -1,18 +1,19 @@
-// The Postgres twin of workers/data-api.ts's `createD1Sql` (infra#336).
+// The tagged-template SQL runner (infra#336) -- born as the Postgres twin of
+// data-api.ts's `createD1Sql`, which #10051 deleted with the store it served.
 //
 // WHY A SHIM AND NOT A REWRITE. The route handlers in data-api.ts are written
 // against a tagged template -- `` sql`SELECT ... WHERE account = ${ss58}` `` --
-// a shape inherited from the postgres.js era and kept when those routes were
-// ported to D1 behind `createD1Sql`. Giving Postgres the SAME interface means a
-// route moves between stores by changing which `sql` it is handed, and nothing
-// else. The two `account_position_daily` reads are unchanged by this file's
-// existence; they simply receive a different runner.
+// a shape inherited from the postgres.js era and kept through the D1 era.
+// Handing every store the SAME interface is what let a route move between
+// stores by changing which `sql` it was handed, and nothing else; with one
+// store left, that interface is simply the contract.
 //
-// THE ONE REAL DIFFERENCE IS THE PLACEHOLDER. D1 (SQLite) takes `?` positionally
-// and `createD1Sql` builds its statement with `strings.join("?")`. Postgres takes
-// `$1, $2, ...`, and the numbering is 1-based and must match the value order
-// exactly -- an off-by-one here does not throw, it binds the wrong column, which
-// is the failure mode the column-order tests in this repo keep guarding against.
+// THE PLACEHOLDER IS THE PART THAT BITES. D1 (SQLite) took `?` positionally
+// and its runner could build statements with `strings.join("?")`. Postgres
+// takes `$1, $2, ...`, and the numbering is 1-based and must match the value
+// order exactly -- an off-by-one here does not throw, it binds the wrong
+// column, which is the failure mode the column-order tests in this repo keep
+// guarding against.
 //
 // NATIVE `pg`, NOT `@neondatabase/serverless`. Hyperdrive already performs the
 // connection pooling and routing the serverless driver exists to work around, so
@@ -93,8 +94,8 @@ export interface PgSql {
     strings: TemplateStringsArray,
     ...values: unknown[]
   ): Promise<PgSqlRows<Row>>;
-  /** For the rare statement whose TEXT is built dynamically. Mirrors
-   * D1Sql.unsafe so a caller can move between stores unchanged. */
+  /** For the rare statement whose TEXT is built dynamically -- the escape
+   * hatch every runner shape here has carried since the D1 era. */
   unsafe<Row>(text: string, values?: unknown[]): Promise<PgSqlRows<Row>>;
 }
 
@@ -113,11 +114,11 @@ export interface WaitUntilLike {
 /**
  * `$1, $2, ...` interleaved between the literal chunks.
  *
- * Exported because the numbering IS the contract: `createD1Sql` can get away
- * with `strings.join("?")` because SQLite's placeholders carry no index, and a
- * silent off-by-one here would bind values to the wrong columns rather than
- * failing. Asserting the built text directly is cheaper than discovering that
- * from a wrong answer in production.
+ * Exported because the numbering IS the contract: SQLite's placeholders
+ * carried no index (D1's runner could `strings.join("?")`), and a silent
+ * off-by-one here would bind values to the wrong columns rather than failing.
+ * Asserting the built text directly is cheaper than discovering that from a
+ * wrong answer in production.
  */
 export function pgStatementText(strings: readonly string[]): string {
   return strings.reduce(
@@ -127,8 +128,7 @@ export function pgStatementText(strings: readonly string[]): string {
 }
 
 /**
- * A tagged-template runner over Hyperdrive, interface-compatible with
- * `createD1Sql`.
+ * A tagged-template runner over Hyperdrive.
  *
  * `clientFactory` is injectable so tests can exercise the statement text and
  * the connection lifecycle without a database.
@@ -181,9 +181,9 @@ export function createPgSql(
 }
 
 /**
- * A `D1Runner`-shaped adapter over Postgres.
+ * A `SqlRunner`-shaped adapter over Postgres.
  *
- * `D1Runner` is `(sql, params) => Promise<Row[]>`, and four analytics modules
+ * `SqlRunner` is `(sql, params) => Promise<Row[]>`, and four analytics modules
  * (`movers`, `turnover`, `chain-turnover`, `concentration`) already take one as
  * a parameter rather than reaching for a binding. That injection is what makes
  * moving them a matter of handing over a different runner instead of editing
@@ -220,7 +220,7 @@ export function toPositionalPlaceholders(sql: string): string {
   return out;
 }
 
-/** Build a D1Runner backed by Hyperdrive. Callers pass this where they would
+/** Build a SqlRunner backed by Hyperdrive. Callers pass this where they would
  * otherwise pass the D1-backed runner; the modules themselves are untouched. */
 export function createPgQuestionMarkRunner(
   hyperdrive: HyperdriveLike,

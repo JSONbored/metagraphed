@@ -10,7 +10,7 @@ import {
 } from "../workers/request-params.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 
-type D1Runner = (
+type SqlRunner = (
   sql: string,
   params: unknown[],
 ) => Promise<Array<Record<string, unknown>>>;
@@ -186,7 +186,7 @@ export interface LoadBlocksOptions {
 // min_extrinsics/min_events floors. Inverted indexed ranges short-circuit to an
 // empty feed without querying D1.
 export async function loadBlocks(
-  d1: D1Runner,
+  d1: SqlRunner,
   {
     limit,
     offset,
@@ -282,7 +282,7 @@ function strictBlockNumber(ref: unknown): number | null {
 // (#1853). Returns block:null when the ref is unknown or the store is cold —
 // never throws (schema-stable zero, mirrors the REST route).
 export async function loadBlock(
-  d1: D1Runner,
+  d1: SqlRunner,
   ref: unknown,
 ): Promise<BlockDetail> {
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(String(ref));

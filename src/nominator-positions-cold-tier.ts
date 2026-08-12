@@ -14,7 +14,7 @@
 // The stake side comes from `neurons`, which lives on D1 and is current, so
 // this read is lakehouse-for-the-ledger + D1-for-the-stake -- exactly the
 // split the retired Postgres route already ran once `neurons` moved to D1
-// (it called loadNeuronStakeByHotkeysD1 from inside the Postgres dispatcher).
+// (it called loadNeuronStakeByHotkeysFromStore from inside the Postgres dispatcher).
 // The lakehouse copy of `neurons` is deliberately NOT used: it is a frozen
 // export, and pricing a live position off it would quietly age every
 // stake_tao in the payload.
@@ -78,17 +78,18 @@ const POSITION_COLUMNS = "hotkey, netuid, share_fraction, captured_at";
 export const POSITION_SCAN_CAP = 2_000;
 
 /**
- * D1's hard limit on bound parameters in one prepared statement.
+ * Hotkey IN-lists are chunked at this many bound parameters per statement.
  *
- * The platform's number, not a tuning knob: `wrangler d1 execute` permits far
- * more from the CLI, which is why this ceiling is easy to miss locally and
- * still rejects the identical statement through a binding.
+ * The number is inherited from D1, whose platform cap this was; Postgres
+ * takes 65,535 binds so it no longer REJECTS anything. It stays because the
+ * chunked shape is what the tests pin and a bounded statement is the safer
+ * default -- a tuning knob now, not a ceiling (#10228).
  */
-export const D1_BIND_PARAM_CAP = 100;
+export const BIND_PARAM_CHUNK = 100;
 
 /** The D1 surface this module needs from `neurons` -- structural, so tests can
  * hand a plain object (same pattern as src/account-feeds-cold-tier.ts). */
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       all?(): Promise<{ results?: unknown[] } | null>;
@@ -110,11 +111,12 @@ export async function neuronStakeByHotkeys(
   hotkeys: string[],
 ): Promise<Map<string, number> | null> {
   if (hotkeys.length === 0) return new Map();
-  const db = readStore(env, ["neurons"]) as unknown as D1Like | undefined;
+  const db = readStore(env, ["neurons"]) as unknown as
+    StatementClientLike | undefined;
   if (!db?.prepare) return null;
   const chunks: string[][] = [];
-  for (let i = 0; i < hotkeys.length; i += D1_BIND_PARAM_CAP) {
-    chunks.push(hotkeys.slice(i, i + D1_BIND_PARAM_CAP));
+  for (let i = 0; i < hotkeys.length; i += BIND_PARAM_CHUNK) {
+    chunks.push(hotkeys.slice(i, i + BIND_PARAM_CHUNK));
   }
   let results: unknown[][];
   try {

@@ -12,7 +12,7 @@ import {
   observationsReadDb,
   pgObservationsReadDb,
 } from "../src/observations-read-runner.ts";
-import { d1All } from "../src/analytics-live.ts";
+import { storeAll } from "../src/analytics-live.ts";
 
 const HYPERDRIVE = { connectionString: "postgresql://example/db" };
 const ctx = { waitUntil() {} };
@@ -28,7 +28,7 @@ describe("pgObservationsReadDb", () => {
         return [{ n: 1 }];
       },
     });
-    const rows = await d1All(db, "SELECT ? AS n FROM surface_checks", [7]);
+    const rows = await storeAll(db, "SELECT ? AS n FROM surface_checks", [7]);
     assert.deepEqual(seen, [
       { text: "SELECT ? AS n FROM surface_checks", values: [7] },
     ]);
@@ -39,7 +39,7 @@ describe("pgObservationsReadDb", () => {
     const db = pgObservationsReadDb({
       unsafe: async () => [{ a: 1 }, { a: 2 }],
     });
-    assert.equal((await d1All(db, "SELECT 1", [])).length, 2);
+    assert.equal((await storeAll(db, "SELECT 1", [])).length, 2);
   });
 
   test("prepare().all() works WITHOUT a bind, the shape D1 also offers", async () => {
@@ -99,14 +99,14 @@ describe("pgObservationsReadDb", () => {
   });
 
   test("a rejected read degrades to zero rows rather than throwing", async () => {
-    // d1All's contract, which the adapter must not break: these are serving
+    // storeAll's contract, which the adapter must not break: these are serving
     // paths and a failed read is a schema-stable empty payload, not a 500.
     const db = pgObservationsReadDb({
       unsafe: async () => {
         throw new Error("relation missing");
       },
     });
-    assert.deepEqual(await d1All(db, "SELECT 1", []), []);
+    assert.deepEqual(await storeAll(db, "SELECT 1", []), []);
   });
 });
 

@@ -1,7 +1,7 @@
 // Schema-stable empties for the six DATA_API-proxied routes (#9146).
 //
 // THE GAP THIS CLOSES. Every route with a `METAGRAPH_*_SOURCE` flag degrades
-// to a schema-stable empty when its tier misses -- `tryPostgresTier` returns
+// to a schema-stable empty when its tier misses -- `tryDataApiTier` returns
 // null and the handler builds its payload from zero rows, so a dead tier costs
 // a caller freshness, never a request. These six have NO flag: they are
 // forwarded straight to the DATA_API service binding, and its own comment says
@@ -13,7 +13,7 @@
 // WHY EMPTY-AND-MARKED RATHER THAN 502. A 502 tells a caller nothing except
 // "retry", and retrying a decommissioned database does not help. The empty is
 // paired with the same degraded marker every other tier uses
-// (markPostgresTierFallbackResponse), so the response is barred from the edge
+// (markDataApiTierFallbackResponse), so the response is barred from the edge
 // cache and a caller reading headers can tell "no events" from "we could not
 // look". Silence with a marker is honest; a 502 on a route whose data still
 // exists in the lakehouse is just broken.

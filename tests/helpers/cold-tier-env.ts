@@ -7,7 +7,7 @@
 // reader returned" by doubling ONE transport: the DATA_API service binding, with
 // `{ METAGRAPH_X_SOURCE: "postgres", DATA_API: { fetch } }`. Those flags read
 // "retired"/"d1" in every deployed config and are absent from
-// DATA_API_FORWARD_FLAGS, so the binding was never asked and the assertion held
+// FORWARDABLE_TIER_FLAGS, so the binding was never asked and the assertion held
 // over a payload production could not produce.
 //
 // The readers that DO answer reach three different transports, so there is no
@@ -125,7 +125,7 @@ export function lakehouse(
  *
  * The counterpart to deleting a tier read: bind it, set the flag to the value
  * that WOULD forward, and assert `paths` stayed empty. Without this a
- * reintroduced `tryPostgresTier` call is invisible -- it returns null and the
+ * reintroduced `tryDataApiTier` call is invisible -- it returns null and the
  * surface answers from its fallback exactly as before.
  */
 export function forbiddenDataApi() {

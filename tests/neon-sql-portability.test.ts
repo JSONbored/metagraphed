@@ -36,7 +36,7 @@
 // The route that broke worst did not hold its own SQL. /validators is served
 // by loadGlobalValidators in src/metagraph-neurons.ts, reached through an
 // injected runner that createPgQuestionMarkRunner can swap for a Postgres one. Scanning
-// only matchNeuronsD1Route would have declared #9802 impossible while it was
+// only matchNeuronsStoreRoute would have declared #9802 impossible while it was
 // live. Anything a movable route can reach is in scope.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -223,10 +223,10 @@ const REACHABLE_LOADERS = [
  * exactly when their SQL starts having to be portable.
  */
 const DATA_API_SIDE_LOADERS = [
-  "loadAlphaPricesByNetuidD1",
-  "loadSubnetTemposD1",
-  "loadNominatorCountsD1",
-  "loadRealizedStakeBaselinesD1",
+  "loadStoreAlphaPricesByNetuid",
+  "loadSubnetTemposFromStore",
+  "loadNominatorCountsFromStore",
+  "loadRealizedStakeBaselinesFromStore",
 ];
 
 /** A named function's body from workers/data-api.ts, by brace matching. */
@@ -264,24 +264,24 @@ function stripComments(source: string): string {
 
 /** The matcher body, which is where the inline route SQL lives. */
 /**
- * Every D1 route matcher in workers/data-api.ts, concatenated.
+ * Every store route matcher in workers/data-api.ts, concatenated.
  *
- * NOT just matchNeuronsD1Route. Scanning one function was sufficient only
+ * NOT just matchNeuronsStoreRoute. Scanning one function was sufficient only
  * while every movable route lived in it, and the moment
  * `/subnets/{n}/hyperparameters/history` and `/accounts/{ss58}/identity-history`
- * moved, their SQL sat in matchHyperparamsIdentityD1Route where no scan
+ * moved, their SQL sat in matchHyperparamsIdentityStoreRoute where no scan
  * reached it (#9947). Discovering the matchers by NAME rather than listing
  * them means the next one cannot silently fall outside the scan -- which is
  * the failure this whole family of checks exists to prevent.
  */
 function matcherSource(): string {
   const src = readFileSync("workers/data-api.ts", "utf8");
-  const names = [...src.matchAll(/^function (match\w*D1Route)\b/gm)].map(
+  const names = [...src.matchAll(/^function (match\w*StoreRoute)\b/gm)].map(
     (m) => m[1]!,
   );
   assert.ok(
     names.length >= 3,
-    `only ${names.length} D1 route matchers found -- the discovery regex stopped working`,
+    `only ${names.length} store route matchers found -- the discovery regex stopped working`,
   );
   return names
     .map((name) => {
@@ -317,7 +317,7 @@ describe("Neon-movable SQL is portable", () => {
     const blocks = routeBlocks();
     assert.ok(
       blocks.length >= 6,
-      `only ${blocks.length} literal routes found in matchNeuronsD1Route; the ` +
+      `only ${blocks.length} literal routes found in matchNeuronsStoreRoute; the ` +
         `split broke and this suite is testing nothing`,
     );
   });
@@ -432,7 +432,7 @@ describe("Neon-movable SQL is portable", () => {
     // a scanning check starts passing on nothing.
     //
     // The hazard it guarded is still live and does not need the map to state:
-    // matcherSource() finds matchers by NAME (`match*D1Route`), so a route
+    // matcherSource() finds matchers by NAME (`match*StoreRoute`), so a route
     // dispatched from a function named anything else is invisible to every
     // scan in this file while looking perfectly normal at the call site.
     // Asserting from the dispatcher's own call sites closes that without
@@ -447,7 +447,7 @@ describe("Neon-movable SQL is portable", () => {
         `stopped working, so this test is passing on nothing`,
     );
     const scanned = new Set(
-      [...src.matchAll(/^function (match\w*D1Route)\b/gm)].map((m) => m[1]!),
+      [...src.matchAll(/^function (match\w*StoreRoute)\b/gm)].map((m) => m[1]!),
     );
     assert.deepEqual(
       dispatched.filter((name) => !scanned.has(name)),
@@ -470,7 +470,7 @@ describe("Neon-movable SQL is portable", () => {
         },
       ),
       // `if (url.pathname !== "...") return null;` -- the early-return form a
-      // matcher serving exactly ONE route uses. matchHealthStatusD1Route
+      // matcher serving exactly ONE route uses. matchHealthStatusStoreRoute
       // spells its dispatch this way, and reading only the two forms above
       // reported it as unscanned when it is scanned: the extraction, not the
       // coverage, was what had the hole (#10179 put that route on the map).

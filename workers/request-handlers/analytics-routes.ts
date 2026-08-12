@@ -11,7 +11,7 @@
 // injected once at module-init so this file never imports api.ts back.
 
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
-import { tryPostgresTier } from "../postgres-tier.ts";
+import { tryDataApiTier } from "../data-api-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import { errorResponse } from "../http.ts";
 import { readArtifact } from "../storage.ts";
@@ -19,7 +19,7 @@ import { contractVersion, envelopeResponse } from "../responses.ts";
 import {
   analyticsMeta,
   analyticsQueryError,
-  markPostgresTierFallbackResponse,
+  markDataApiTierFallbackResponse,
 } from "./analytics.ts";
 import {
   historyWindow,
@@ -50,8 +50,8 @@ import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
-  currentD1ReadFailureGeneration,
-  loadLeaderboardD1Rows,
+  currentStoreReadFailureGeneration,
+  loadLeaderboardStoreRows,
   growthRowsFromSamples,
   loadSubnetTrajectory,
   loadSubnetUptime,
@@ -78,7 +78,7 @@ import {
 } from "../../src/domain-summary.ts";
 import { readStore } from "../../src/read-store.ts";
 import { COMPARE_SUBNETS_TABLES } from "../../src/read-store-tables.ts";
-import { d1All } from "../../src/analytics-live.ts";
+import { storeAll } from "../../src/analytics-live.ts";
 import { surfaceStatusAvgLatencySql } from "../../src/health-sql.ts";
 import {
   LEADERBOARD_TABLES,
@@ -276,20 +276,20 @@ export async function handleTrajectory(
   // eliminated (2026-07-17): a tier miss now always falls through to the
   // schema-stable empty payload (never a live D1 query).
   // NO TIER READ (#10190). METAGRAPH_SUBNET_SNAPSHOTS_SOURCE reads "retired" in
-  // every deployed config and is absent from DATA_API_FORWARD_FLAGS, so the tier
+  // every deployed config and is absent from FORWARDABLE_TIER_FLAGS, so the tier
   // resolved to null on every request and this branch was the only path.
   // Flattened rather than left as a permanently-true guard.
   //
   // Cacheability is unchanged: only an empty payload (no binding, or a read
   // failure mid-load) is barred from the edge cache -- see handleHealthTrends in
   // analytics.ts.
-  const readFailureGeneration = currentD1ReadFailureGeneration();
+  const readFailureGeneration = currentStoreReadFailureGeneration();
   const data = (await loadSubnetTrajectory(netuid, {
     db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
   })) as ReturnType<typeof formatTrajectory>;
   const isFallback =
     !env.HYPERDRIVE?.connectionString ||
-    currentD1ReadFailureGeneration() !== readFailureGeneration;
+    currentStoreReadFailureGeneration() !== readFailureGeneration;
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
       data.points as unknown[],
@@ -298,7 +298,7 @@ export async function handleTrajectory(
       request,
       TRAJECTORY_CSV_COLUMNS,
     );
-    return isFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
+    return isFallback ? markDataApiTierFallbackResponse(csvRes) : csvRes;
   }
   const response = await envelopeResponse(
     request,
@@ -312,7 +312,7 @@ export async function handleTrajectory(
     },
     "short",
   );
-  return isFallback ? markPostgresTierFallbackResponse(response) : response;
+  return isFallback ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // Network-wide economics time series (#1307): aggregate the per-subnet daily
@@ -331,8 +331,8 @@ export async function handleEconomicsTrends(
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
   // and same flip as handleTrajectory above. D1 reads resurrected 2026-08-02.
   // NO TIER READ (#10190), same as handleTrajectory above: the flag is retired
-  // and absent from DATA_API_FORWARD_FLAGS, so this branch was the only path.
-  const readFailureGeneration = currentD1ReadFailureGeneration();
+  // and absent from FORWARDABLE_TIER_FLAGS, so this branch was the only path.
+  const readFailureGeneration = currentStoreReadFailureGeneration();
   const loaded = await loadEconomicsTrends({
     windowLabel: label,
     windowDays: days,
@@ -342,7 +342,7 @@ export async function handleEconomicsTrends(
   let data = loaded.data;
   const isFallback =
     !env.HYPERDRIVE?.connectionString ||
-    currentD1ReadFailureGeneration() !== readFailureGeneration;
+    currentStoreReadFailureGeneration() !== readFailureGeneration;
   // USD per day (#10382), overlaid BEFORE the CSV branch so both formats carry
   // the same answer. Each day is priced by a reading from inside that UTC day;
   // a day older than the index carries null rather than today's rate applied
@@ -374,7 +374,7 @@ export async function handleEconomicsTrends(
       request,
       ECONOMICS_TRENDS_CSV_COLUMNS,
     );
-    return isFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
+    return isFallback ? markDataApiTierFallbackResponse(csvRes) : csvRes;
   }
   const response = await envelopeResponse(
     request,
@@ -384,7 +384,7 @@ export async function handleEconomicsTrends(
     },
     "short",
   );
-  return isFallback ? markPostgresTierFallbackResponse(response) : response;
+  return isFallback ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // Long-term daily uptime history for one subnet's operational surfaces.
@@ -408,13 +408,13 @@ export async function handleUptime(
   // through loadSubnetUptime; with no binding that loader degrades to the
   // same schema-stable empty payload this served since 2026-07-17.
   // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
-  // absent from DATA_API_FORWARD_FLAGS, so the tier read that used to
+  // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
   // initialise `data` resolved to null on every request -- which made the
   // branch below the only path, not the fallback.
   // Cacheable when D1-served — only an empty payload (no binding, or a D1
   // read failure mid-load) is barred from the edge cache (see
   // handleHealthTrends in analytics.ts).
-  const d1Generation = currentD1ReadFailureGeneration();
+  const storeGeneration = currentStoreReadFailureGeneration();
   const healthMeta = await readHealthMetaKv(env);
   const data = (await loadSubnetUptime(netuid, {
     window: windowParam,
@@ -426,7 +426,7 @@ export async function handleUptime(
   >;
   const isFallback =
     !env.HYPERDRIVE?.connectionString ||
-    currentD1ReadFailureGeneration() !== d1Generation;
+    currentStoreReadFailureGeneration() !== storeGeneration;
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
       uptimeCsvRows(data.surfaces),
@@ -435,7 +435,7 @@ export async function handleUptime(
       request,
       UPTIME_CSV_COLUMNS,
     );
-    return isFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
+    return isFallback ? markDataApiTierFallbackResponse(csvRes) : csvRes;
   }
   const response = await envelopeResponse(
     request,
@@ -449,7 +449,7 @@ export async function handleUptime(
     },
     "short",
   );
-  return isFallback ? markPostgresTierFallbackResponse(response) : response;
+  return isFallback ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // Normalises the uptime URL so that a bare ?-free request and an explicit
@@ -583,7 +583,7 @@ async function resolveEconomicsRows(env: Env): Promise<unknown[]> {
  * come from surface_status / subnet_snapshots / surface_uptime_daily, all of
  * which are written to D1 and populated there. Those four row sets used to be
  * inlined as `[]`, so four of the six operational boards were permanently
- * empty. They now come from loadLeaderboardD1Rows -- the SAME reads
+ * empty. They now come from loadLeaderboardStoreRows -- the SAME reads
  * loadRegistryLeaderboards uses for the MCP tool, so the three surfaces cannot
  * compose different boards.
  *
@@ -604,12 +604,12 @@ export async function composeLeaderboardsData(
   const economicsRows = await resolveEconomicsRows(env);
 
   const meta = await readHealthMetaKv(env);
-  const d1Generation = currentD1ReadFailureGeneration();
+  const storeGeneration = currentStoreReadFailureGeneration();
   const { healthRows, rpcRows, growthSamples, reliabilityRows } =
     // The only read in this file that was not already asking observationsReadDb
     // (#10158). It issues four statements across surface_status,
     // subnet_snapshots and surface_uptime_daily -- all three Neon's.
-    await loadLeaderboardD1Rows(readStore(env, LEADERBOARD_TABLES) as never);
+    await loadLeaderboardStoreRows(readStore(env, LEADERBOARD_TABLES) as never);
   const data = formatLeaderboards({
     board,
     limit,
@@ -634,7 +634,7 @@ export async function composeLeaderboardsData(
     // cache it.
     isFallback:
       !env.HYPERDRIVE?.connectionString ||
-      currentD1ReadFailureGeneration() !== d1Generation,
+      currentStoreReadFailureGeneration() !== storeGeneration,
   };
 }
 
@@ -666,7 +666,7 @@ export async function handleLeaderboards(
   // Cacheable when D1-served: only a payload whose operational boards are
   // genuinely empty (no binding, or a D1 read failure mid-compose) is barred
   // from the edge cache.
-  return isFallback ? markPostgresTierFallbackResponse(response) : response;
+  return isFallback ? markDataApiTierFallbackResponse(response) : response;
 }
 
 export function canonicalCompareCachePath(url: URL): string | null {
@@ -846,12 +846,12 @@ export async function handleCompare(
   // (#4832 gap-closure). handleCompare has no clean 1:1 D1 route to forward,
   // so it synthesizes its own internal request the same way a
   // syncXToPostgres write helper builds one, rather than forwarding the
-  // caller's netuids=/dimensions= request unchanged (tryPostgresTier's usual
+  // caller's netuids=/dimensions= request unchanged (tryDataApiTier's usual
   // contract). D1 fully eliminated (2026-07-17): a tier miss now always
   // falls through to an empty row set (never a live D1 query).
   // NO TIER READ (#10190), AND IT HAD NO RUNG. This synthesized an internal
   // /api/v1/internal/compare-health request for METAGRAPH_HEALTH_SOURCE, a flag
-  // that reads "d1" and is absent from DATA_API_FORWARD_FLAGS -- so the read
+  // that reads "d1" and is absent from FORWARDABLE_TIER_FLAGS -- so the read
   // resolved to null and this leg returned `[]` on every request. The health
   // dimension has been publishing `health: null` for every subnet while the
   // get_compare_subnets MCP tool served real numbers for the same netuids, off
@@ -866,7 +866,7 @@ export async function handleCompare(
         const wanted = new Set(
           requestedNetuids.map((netuid) => Number(netuid)),
         );
-        const grouped = await d1All(
+        const grouped = await storeAll(
           readStore(env, COMPARE_SUBNETS_TABLES) as never,
           `SELECT netuid,
                   COUNT(*) AS surface_count,
@@ -914,7 +914,7 @@ export async function handleCompare(
     "standard",
   );
   return healthIsFallback
-    ? markPostgresTierFallbackResponse(response)
+    ? markDataApiTierFallbackResponse(response)
     : response;
 }
 
@@ -1042,7 +1042,7 @@ export async function handleDomainSummary(
 // A per-hotkey internal request pointed at /api/v1/validators/{hotkey},
 // synthesized from the incoming /api/v1/compare/validators request the same
 // way handleCompare's own health branch above builds its internal request --
-// tryPostgresTier just forwards whatever Request it's given.
+// tryDataApiTier just forwards whatever Request it's given.
 function validatorDetailRequest(request: Request, hotkey: string): Request {
   const pgUrl = new URL(request.url);
   pgUrl.pathname = `/api/v1/validators/${encodeURIComponent(hotkey)}`;
@@ -1055,7 +1055,7 @@ function validatorDetailRequest(request: Request, hotkey: string): Request {
 // compare_validators MCP tool one-for-one -- same hotkey-list contract
 // (parseCompareHotkeys/COMPARE_VALIDATORS_MAX, shared with the MCP tool's own
 // parseCompareHotkeyList in src/analytics-live.ts), same per-hotkey
-// tryPostgresTier(METAGRAPH_NEURONS_SOURCE) ?? buildValidatorDetail([], hotkey)
+// tryDataApiTier(METAGRAPH_NEURONS_SOURCE) ?? buildValidatorDetail([], hotkey)
 // fallback contract handleValidatorDetail uses, and the identical
 // composeValidatorComparison projection so REST and MCP never drift. netuid is
 // optional subnet context, same as the MCP tool's own netuid arg.
@@ -1084,7 +1084,7 @@ export async function handleCompareValidators(
   let latestCapturedAt: unknown = null;
   for (const hotkey of hotkeys) {
     const detail =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         env,
         validatorDetailRequest(request, hotkey),
         "METAGRAPH_NEURONS_SOURCE",

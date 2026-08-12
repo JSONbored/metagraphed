@@ -33,7 +33,7 @@ function url(path: string) {
 
 function postgresEnv(flag: string, body: Row) {
   return {
-    [flag]: "postgres",
+    [flag]: "data-api",
     DATA_API: { fetch: async () => Response.json(body) },
   };
 }

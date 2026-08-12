@@ -11,7 +11,7 @@
 // rather than only here: the jsonb `overlay` columns are TEXT, so anything
 // reading inside them must use json_extract(); `now()` becomes an epoch-ms
 // integer; and D1 has no interactive transactions, which reshapes the write
-// path into a read phase and one atomic batch (see applyRegistrySyncToD1).
+// path into a read phase and one atomic batch (see applyRegistrySyncToStore).
 //
 // Kept SEPARATE from the main api.ts Worker for the same reason ADR 0013 split
 // data-api.ts out -- this is a write tier with its own auth gate, and the main
@@ -258,7 +258,7 @@ async function dispatchRegistrySyncRequest(
     }
 
     try {
-      // ONE atomic batch, via applyRegistrySyncToD1 -- see that function's
+      // ONE atomic batch, via applyRegistrySyncToStore -- see that function's
       // header for why the reads have to happen before it and what that costs.
       // The old `SET statement_timeout` has no D1 equivalent and is dropped:
       // D1 enforces its own query limits, and a bare SET was only ever needed

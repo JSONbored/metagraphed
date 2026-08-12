@@ -21,7 +21,7 @@ vi.mock("pg", () => pg.module);
 
 import {
   blocksSeamFloor,
-  d1CanServe,
+  storeCanServe,
   DEFAULT_BLOCKS_SEAM,
   loadBlockColdTier,
   loadBlockFeedColdTier,
@@ -217,19 +217,19 @@ describe("the resolved seam actually routes the request", () => {
   });
 });
 
-describe("d1CanServe", () => {
+describe("storeCanServe", () => {
   test("accepts filters blocks_head can express", () => {
-    assert.equal(d1CanServe({ limit: 5, offset: 0 }), true);
+    assert.equal(storeCanServe({ limit: 5, offset: 0 }), true);
     assert.equal(
-      d1CanServe({ limit: 5, offset: 0, minExtrinsics: 2, blockStart: 10 }),
+      storeCanServe({ limit: 5, offset: 0, minExtrinsics: 2, blockStart: 10 }),
       true,
     );
   });
 
   test("rejects filters over columns blocks_head does not have", () => {
-    assert.equal(d1CanServe({ limit: 5, offset: 0, author: "x" }), false);
-    assert.equal(d1CanServe({ limit: 5, offset: 0, specVersion: 1 }), false);
-    assert.equal(d1CanServe({ limit: 5, offset: 0, minEvents: 1 }), false);
+    assert.equal(storeCanServe({ limit: 5, offset: 0, author: "x" }), false);
+    assert.equal(storeCanServe({ limit: 5, offset: 0, specVersion: 1 }), false);
+    assert.equal(storeCanServe({ limit: 5, offset: 0, minEvents: 1 }), false);
   });
 });
 

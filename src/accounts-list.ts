@@ -27,7 +27,7 @@
 // src/account-position-history.ts already carry for this exact reason — not
 // a new gap this route introduces.
 
-import { loadD1AlphaPricesByNetuid } from "./metagraph-neurons.ts";
+import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
@@ -390,7 +390,7 @@ export async function loadAccountsList(
       [],
     ),
     // #9051: TAO-price the cross-subnet totals from the D1 snapshots mirror.
-    loadD1AlphaPricesByNetuid(d1),
+    loadStoreAlphaPricesByNetuid(d1),
   ]);
   return buildAccountsList(rows, { sort, limit, priceByNetuid });
 }

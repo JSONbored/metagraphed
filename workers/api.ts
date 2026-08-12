@@ -515,7 +515,7 @@ import {
 import {
   degradedSnapshot,
   labelDegradedResponse,
-  markPostgresTierFallbackResponse,
+  markDataApiTierFallbackResponse,
 } from "./request-handlers/analytics.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {
@@ -2936,9 +2936,10 @@ async function dispatchScheduled(
     const [pruned] = await Promise.all([
       // .catch-isolated — a transient D1 error must degrade to a no-op for this
       // tick, not abort the whole Promise.all and discard the snapshot write.
-      // The D1 raw-checks prune is gated on D1's OWN rollup having succeeded
-      // this tick (see pruneHealthHistory's pruneD1Checks comment) -- the
-      // combined `rolled` only proves SOME store aggregated the day.
+      // The raw-checks prune is gated on the surface_checks rollup having
+      // succeeded this tick (see pruneHealthHistory's pruneStoreChecks
+      // comment) -- the combined `rolled` only proves the day aggregated,
+      // not that the raw window's own rollup landed.
       pruneHealthHistory(env, {
         ctx,
         pruneRawChecks:
@@ -3767,7 +3768,7 @@ export async function handleChainEventsFamily(
       },
       "short",
     );
-    return markPostgresTierFallbackResponse(response);
+    return markDataApiTierFallbackResponse(response);
   }
 
   // CSV download of the page: the /api/v1/chain-events feed exposes `events`, so
@@ -5926,7 +5927,7 @@ async function dispatchRequest(
         () =>
           // ctx forwarded, not just handed to withEdgeCache: observationsReadDb
           // parks the pooled connection's teardown on waitUntil and answers
-          // `undefined` without one (#10086), which `d1All` reads as zero rows
+          // `undefined` without one (#10086), which `storeAll` reads as zero rows
           // -- a confident empty trajectory that nothing marks as a fallback.
           handleTrajectory(
             request,
@@ -8443,7 +8444,7 @@ async function lookupSubnetNetuid(
 //
 // They synthesised an internal /api/v1/internal/subnet-identity-aliases request
 // and forwarded it under METAGRAPH_SUBNET_IDENTITY_SOURCE. That flag reads
-// "retired" in every deployed config and is absent from DATA_API_FORWARD_FLAGS,
+// "retired" in every deployed config and is absent from FORWARDABLE_TIER_FLAGS,
 // so the request was built, the tier declined, and `?? []` supplied the answer --
 // every time. The URL construction goes with the read: building a request nobody
 // sends is the part that made this look like a live tier.

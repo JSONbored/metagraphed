@@ -516,7 +516,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
   test("?format=csv exports the leaderboard rows via the Postgres tier", async () => {
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({

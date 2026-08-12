@@ -41,7 +41,7 @@
 
 import type { StorageReadResult } from "../workers/storage.ts";
 import {
-  currentD1ReadFailureGeneration,
+  currentStoreReadFailureGeneration,
   loadSubnetUptime,
   type ObservationsReadDb,
 } from "./analytics-live.ts";
@@ -150,7 +150,7 @@ export async function readProberLastRunAt(env: Env): Promise<string | null> {
  *
  * WITHOUT the METAGRAPH_HEALTH_DB binding (or with the prober's KV meta cold)
  * this no-ops LOUDLY — console.error plus one recordExceptionEvent — and never
- * writes. This is the single most important guard in the lane: `d1All` degrades
+ * writes. This is the single most important guard in the lane: `storeAll` degrades
  * a failed read to ZERO ROWS, so an unbound or broken D1 would produce a
  * perfectly well-formed snapshot in which every surface has no evidence, and
  * flattenSurfaces would strip `machine-verified` from the entire registry on
@@ -231,11 +231,11 @@ export async function runSurfaceVerificationSync(
       return { ok: false, reason: "no_subnets" };
     }
 
-    // d1All contains a failed read as zero rows, so "no evidence" and "the
+    // storeAll contains a failed read as zero rows, so "no evidence" and "the
     // read broke" look identical from here. Snapshot its failure generation
     // and abort the whole run if ANY query failed — a partially-read sweep
     // demotes exactly the surfaces whose query happened to fail.
-    const d1Generation = currentD1ReadFailureGeneration();
+    const storeGeneration = currentStoreReadFailureGeneration();
     const loadUptime = deps.loadUptime ?? loadSubnetUptime;
     const records: Record<string, SurfaceProbeRecord> = {};
     for (const netuid of netuids) {
@@ -246,12 +246,12 @@ export async function runSurfaceVerificationSync(
       });
       collectSurfaceProbeRecords(data, records);
     }
-    if (currentD1ReadFailureGeneration() !== d1Generation) {
+    if (currentStoreReadFailureGeneration() !== storeGeneration) {
       return loud(
         "a D1 read failed mid-sweep; refusing to write a partial snapshot " +
           "that would demote exactly the surfaces whose query failed.",
-        "surface_verification_d1_read_failed",
-        "d1_read_failed",
+        "surface_verification_store_read_failed",
+        "store_read_failed",
       );
     }
 

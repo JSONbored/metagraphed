@@ -39,7 +39,7 @@ import { readStore } from "./read-store.ts";
 
 /** The D1 surface this module needs -- structural, so tests can hand a plain
  * object (same pattern as src/nominator-positions-cold-tier.ts). */
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       all?(): Promise<{ results?: unknown[] } | null>;
@@ -63,12 +63,12 @@ const POSITION_COLUMNS = "hotkey, netuid, share_fraction, captured_at";
  * set, so a truncated scan publishes a confident number that is quietly too
  * small.
  */
-export async function loadAccountPositionsD1(
+export async function loadAccountPositionsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
   const db = readStore(env, ["nominator_positions"]) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return null;
 
   let rows: Record<string, unknown>[];

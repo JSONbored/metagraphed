@@ -44,7 +44,7 @@ import {
   envelopeResponse,
   publishedAt,
 } from "../responses.ts";
-import { tryPostgresTier } from "../postgres-tier.ts";
+import { tryDataApiTier } from "../data-api-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import {
   ResponseSchemaDriftError,
@@ -52,7 +52,7 @@ import {
 } from "../../src/response-validation-tripwire.ts";
 import {
   analyticsQueryError,
-  markPostgresTierFallbackResponse,
+  markDataApiTierFallbackResponse,
 } from "./analytics.ts";
 import {
   overlayAccountPositionHistoryColdTier,
@@ -264,7 +264,7 @@ import {
   loadValidatorNominatorsColdTier,
 } from "../../src/account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "../../src/nominator-positions-cold-tier.ts";
-import { loadAccountPositionsD1 } from "../../src/nominator-positions-hot-tier.ts";
+import { loadAccountPositionsFromStore } from "../../src/nominator-positions-hot-tier.ts";
 import {
   loadSubnetHyperparamsColdTier,
   loadSubnetHyperparamsHistoryColdTier,
@@ -890,9 +890,9 @@ export async function handleSubnetMetagraph(
   // not a live D1 query) rather than querying a table that no longer exists.
   // validator_permit is validated by the router against the route's published
   // one-value enum (#10060) and forwarded to Postgres via the proxied request
-  // (tryPostgresTier passes the request through unchanged).
+  // (tryDataApiTier passes the request through unchanged).
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -939,7 +939,7 @@ export async function handleSubnetYield(
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -982,7 +982,7 @@ export async function handleNeuron(
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1023,7 +1023,7 @@ export async function handleSubnetHyperparams(
   netuid: number,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
@@ -1082,7 +1082,7 @@ export async function handleSubnetHyperparamsHistory(
   const page = resolvePage(url);
   const { limit, offset } = page;
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
@@ -1192,7 +1192,7 @@ export async function handleSubnetValidators(
   // `sort` param at all -- its ranking is always the stake-DESC default -- so
   // the overlay always applies here (see overlayFeaturedValidators).
   const data = overlayFeaturedValidators(
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1274,7 +1274,7 @@ export async function handleGlobalValidators(
   // view; an explicit non-default ?sort= keeps the caller's exact order while
   // `featured` stays present on every row either way.
   const data = overlayFeaturedValidators(
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1351,7 +1351,7 @@ export async function handleAccountsList(request: Request, env: Env, url: URL) {
   const parsed = parseAccountsListQuery(url);
   if ("error" in parsed) return analyticsQueryError(parsed.error);
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1428,7 +1428,7 @@ export async function handleTopHoldersList(
   const parsed = parseTopHoldersQuery(url);
   if ("error" in parsed) return analyticsQueryError(parsed.error);
   // NO TIER READ (#10190): METAGRAPH_TOP_HOLDERS_SOURCE is retired and absent
-  // from DATA_API_FORWARD_FLAGS, so this arm resolved to null on every request.
+  // from FORWARDABLE_TIER_FLAGS, so this arm resolved to null on every request.
   const data =
     // The LIVE leg (#9469): net_flow_7d/30d/90d, recomputed daily from
     // chain.account_events. Answers only those three sorts and declines the
@@ -1478,7 +1478,7 @@ export async function handleValidatorDetail(
   hotkey: string,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1574,8 +1574,8 @@ export async function handleValidatorNominators(
   const {
     data,
     generatedAt,
-  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
+    // and is absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // before it could touch DATA_API.
 
     (await loadValidatorNominatorsColdTier(env, hotkey, {
@@ -1638,7 +1638,7 @@ export async function handleValidatorHistory(
   // -- never a silently unscoped series that looks like an answer.
   const { netuid: requestedNetuid = null } = routeQuery(url);
   const hot =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1688,7 +1688,7 @@ export async function handleNeuronHistory(
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const hot =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1731,7 +1731,7 @@ export async function handleSubnetHistory(
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const hot =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1772,7 +1772,7 @@ export async function handleSubnetIdentityHistory(
   const page = resolvePage(url);
   const { limit, offset } = page;
   // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
-  // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+  // config and is absent from FORWARDABLE_TIER_FLAGS, so this resolved to
   // null on every request.
   // Through the composer (src/identity-history-answer.ts): same formatter and
   // data-api's exact cursor token, so a page started on one tier finishes
@@ -1822,7 +1822,7 @@ export async function handleSubnetConcentration(
   netuid: number,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1855,7 +1855,7 @@ export async function handleSubnetPerformance(
   netuid: number,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1882,7 +1882,7 @@ export async function handleSubnetPerformance(
 // "metagraph-snapshot"), no params. Cold/absent store → schema-stable empties.
 export async function handleChainConcentration(request: Request, env: Env) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1923,7 +1923,7 @@ export async function handleChainConcentrationSubnets(
   if ("error" in query) return analyticsQueryError(query.error);
 
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1955,7 +1955,7 @@ export async function handleChainConcentrationSubnets(
 // /chain/concentration. No params; a cold/absent store → 200 with null blocks.
 export async function handleChainPerformance(request: Request, env: Env) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -1988,7 +1988,7 @@ export async function handleSubnetIdleStake(
   netuid: number,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -2014,7 +2014,7 @@ export async function handleSubnetIdleStake(
 // cold/absent store -> 200 with an empty ranking.
 export async function handleChainIdleStake(request: Request, env: Env) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -2051,7 +2051,7 @@ export async function handleChainIdentityHistory(
   // Postgres miss/outage degrades to a schema-stable empty feed, never a
   // live D1 read.
   // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
-  // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+  // config and is absent from FORWARDABLE_TIER_FLAGS, so this resolved to
   // null on every request.
   // Through the composer (src/identity-history-answer.ts): the frozen verified
   // history through the SAME formatter as the Postgres tier, for all three
@@ -2096,7 +2096,7 @@ export async function handleSelfHealth(
   ctx?: { waitUntil?(promise: Promise<unknown>): void },
 ) {
   // NO TIER READ (#10190): METAGRAPH_SELF_HEALTH_SOURCE is retired and absent
-  // from DATA_API_FORWARD_FLAGS, so this arm resolved to null on every request.
+  // from FORWARDABLE_TIER_FLAGS, so this arm resolved to null on every request.
   // Neon is the first tier that can actually answer, which is what the comment
   // below already describes.
   const data =
@@ -2161,7 +2161,7 @@ export async function handleSelfHealth(
 // 200 with null blocks.
 export async function handleChainYield(request: Request, env: Env) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -2337,7 +2337,7 @@ export async function handleChainTurnover(
   );
   const limit = pageLimit(url);
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -2436,7 +2436,7 @@ export async function handleSubnetConcentrationHistory(
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -2497,7 +2497,7 @@ export async function handleSubnetPerformanceHistory(
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -2558,7 +2558,7 @@ export async function handleSubnetYieldHistory(
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -2619,7 +2619,7 @@ export async function handleSubnetTurnover(
   // the table is dropped in production, so a D1 query here would always miss.
   const turnoverOptions = { window: label, startDate: null, endDate: null };
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await tryDataApiTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
     (changes === "true"
       ? {
           ...buildTurnover([], netuid, turnoverOptions),
@@ -2667,7 +2667,7 @@ export async function handleSubnetWeights(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // The cold tier its own /weights/setters sibling has had since #9267. Without
     // it this card answered a confident 0 for every subnet once the Postgres box
@@ -2722,7 +2722,7 @@ export async function handleSubnetWeightSetters(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // #9267: the same WeightsSet stream the chain-wide leaderboard reads
     // (#9251), narrowed to this subnet.
@@ -2776,7 +2776,7 @@ export async function handleSubnetServing(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // #9369: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
     // is "retired", so the tier above declines unconditionally and this was the
@@ -2833,7 +2833,7 @@ export async function handleSubnetPrometheus(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // #10322: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
     // reads "retired", so the tier above declines unconditionally and the zeroed
@@ -2895,7 +2895,7 @@ export async function handleSubnetStakeMoves(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // #9369: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
     // is "retired", so the tier above declines unconditionally and this was the
@@ -2952,7 +2952,7 @@ export async function handleSubnetStakeTransfers(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // #9369: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
     // is "retired", so the tier above declines unconditionally and this was the
@@ -3008,7 +3008,7 @@ export async function handleSubnetRegistrations(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // #9369: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
     // is "retired", so the tier above declines unconditionally and this was the
@@ -3064,7 +3064,7 @@ export async function handleSubnetAxonRemovals(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     buildSubnetAxonRemovals(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
@@ -3108,7 +3108,7 @@ export async function handleSubnetDeregistrations(
   );
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // #9307: derived from UID reuse in the NeuronRegistered stream, out of the
     // same projection rows the chain leaderboard ranks — NeuronDeregistered
@@ -3159,7 +3159,7 @@ export async function handleSubnetStakeFlow(
   // the table is dropped in production, so a D1 query here would always miss
   // (#6016/#6017). Postgres → schema-stable empty stub.
   // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-  // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so the tier arm
+  // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the tier arm
   // below resolved to null on every request.
   //
   // #9146: slice this subnet out of the chain-stake-flow
@@ -3190,7 +3190,7 @@ export async function handleSubnetStakeFlow(
     },
     "short",
   );
-  return projected ? response : markPostgresTierFallbackResponse(response);
+  return projected ? response : markDataApiTierFallbackResponse(response);
 }
 
 // One subnet's alpha_market_cap_tao (#4342/8.3), preferring the live economics
@@ -4065,8 +4065,8 @@ export async function handleSubnetAlphaVolume(
   const {
     data,
     generatedAt,
-  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
+    // and is absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // before it could touch DATA_API.
 
     // #9371: the projection tier its chain-wide sibling has had since #9146. The
@@ -4127,8 +4127,8 @@ export async function handleSubnetOhlc(
   const {
     data,
     generatedAt,
-  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
+    // and is absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // before it could touch DATA_API.
 
     // Lakehouse cold tier (src/subnet-ohlc-cold-tier.ts): the SAME
@@ -4206,7 +4206,7 @@ export async function handleSubnetMovers(request: Request, env: Env, url: URL) {
   const sortParam = routeValue<string>(url, "sort");
   const limit = pageLimit(url);
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -4300,8 +4300,8 @@ export async function handleAccountStakeFlow(
   const {
     data,
     generatedAt,
-  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
+    // and is absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // before it could touch DATA_API.
 
     (await loadAccountStakeFlowColdTier(env, ss58, {
@@ -4367,8 +4367,8 @@ function makeAccountEventHandler({
   ) {
     const { label: windowParam } = resolveWindow(url, windows, defaultWindow);
     const { data, generatedAt } =
-      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-      // and is absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
+      // and is absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
       // before it could touch DATA_API.
 
       (coldTier ? await coldTier(env, ss58, windowParam) : null) ??
@@ -4500,8 +4500,8 @@ export const handleAccountDeregistrations = makeAccountEventHandler({
 // zero (never 404); a tier that exists and could not answer → 503, never a
 // zeroed card (#9263 — see src/account-summary-card.ts).
 export async function handleAccount(request: Request, env: Env, ss58: string) {
-  // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-  // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+  // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
+  // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
   // guarded resolved to null before it could touch DATA_API.
   // #9254/#9263: both non-Postgres legs of the card, assembled in ONE place
   // shared with MCP and GraphQL. Without it a single tier miss zeroed every
@@ -4567,7 +4567,7 @@ export async function handleAccountEntities(
   coldkey: string,
 ) {
   // NO TIER READ (#10190). METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired in every
-  // deployed config and absent from DATA_API_FORWARD_FLAGS, so this resolved to
+  // deployed config and absent from FORWARDABLE_TIER_FLAGS, so this resolved to
   // null on every request. Note the `as keyof Env` the call needed: that cast was
   // the only thing letting a flag the helper can no longer accept be passed at
   // all, which is exactly the blindness #10190's type narrowing removes.
@@ -4629,7 +4629,7 @@ export async function handleAccountEvents(
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     (await loadAccountEventsColdTier(
       env,
@@ -4768,7 +4768,7 @@ export async function handleAccountHistory(
   // the first page), preserving the never-throw contract.
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // The same account_events stream /events already reads, rolled up per UTC
     // day (#9315). Through the shared reader so MCP and GraphQL get it too.
@@ -4826,7 +4826,7 @@ export async function handleAccountExtrinsics(
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
     // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     (await loadAccountExtrinsicsColdTier(env, ss58, {
       limit: parsedLimit,
@@ -4903,7 +4903,7 @@ export async function handleAccountTransfers(
   // Postgres → lakehouse cold tier → schema-stable empty stub.
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     (await loadAccountTransfersColdTier(env, ss58, {
       limit,
@@ -4995,7 +4995,7 @@ export async function handleAccountCounterparties(
     );
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadCounterpartyRelationshipColdTier(env, ss58, counterparty, {
         limit,
@@ -5025,7 +5025,7 @@ export async function handleAccountCounterparties(
   }
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     (await loadAccountCounterpartiesColdTier(env, ss58, { limit })) ??
     buildCounterparties([], ss58, { limit });
@@ -5060,7 +5060,7 @@ export async function handleAccountSubnets(
   ss58: string,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -5090,7 +5090,7 @@ export async function handleAccountPortfolio(
   ss58: string,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -5131,12 +5131,12 @@ export async function handleAccountPositions(
   ss58: string,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildAccountPositions> | null) ??
-    (await loadAccountPositionsD1(env, ss58)) ??
+    (await loadAccountPositionsFromStore(env, ss58)) ??
     (await loadAccountPositionsColdTier(env, ss58)) ??
     unavailableAccountPositions(ss58);
   return accountEnvelopeResponse(
@@ -5176,7 +5176,7 @@ export async function handleAccountPositionHistory(
 ) {
   const { label, days } = historyWindow(url);
   const hot =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
@@ -5226,7 +5226,7 @@ export async function handleAccountIdentity(
   ss58: string,
 ) {
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
@@ -5266,7 +5266,7 @@ export async function handleAccountIdentityHistory(
   const page = resolvePage(url);
   const { limit, offset } = page;
   const data =
-    ((await tryPostgresTier(
+    ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
@@ -5351,7 +5351,7 @@ export async function handleSubnetEvents(
   // tier can answer.
   const tierResult =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     null;
   // Through the composer (src/subnet-events-answer.ts). This cascade used to
@@ -5407,7 +5407,7 @@ export async function handleSubnetEventSummary(
     routeQuery(url);
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // The same account_events stream /subnets/{netuid}/events already reads,
     // rolled up by kind (#9303). Through the shared reader so MCP and GraphQL
@@ -6320,7 +6320,7 @@ export async function handleBlocks(
   // buildBlockFeed formatter, so the payload is identical whichever answered.
   const data =
     // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-    // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+    // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // on every request.
     (await loadBlockFeedColdTier(
       env,
@@ -6389,7 +6389,7 @@ export async function handleBlocksSummary(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ) {
   // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-  // config and absent from DATA_API_FORWARD_FLAGS, so `pgData` was always null
+  // config and absent from FORWARDABLE_TIER_FLAGS, so `pgData` was always null
   // and the projection below always the answer.
   //
   // #9146: serve the precomputed card from the blocks-summary projection rather
@@ -6409,7 +6409,7 @@ export async function handleBlocksSummary(
     },
     "short",
   );
-  return projected ? response : markPostgresTierFallbackResponse(response);
+  return projected ? response : markDataApiTierFallbackResponse(response);
 }
 
 // GET /api/v1/blocks/{ref}: per-block detail (#1345). ref is a numeric
@@ -6429,7 +6429,7 @@ export async function handleBlock(
   // a block served from R2 is byte-identical to one served from Postgres.
   const data =
     // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-    // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+    // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // on every request.
     (await loadBlockColdTier(env, ref, network)) ?? buildBlock(undefined, ref);
   // Finalized block detail is immutable once resolved; a cold/unknown ref stays
@@ -6502,7 +6502,7 @@ export async function handleBlockExtrinsics(
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
-  // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+  // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
   // guarded resolved to null before it could touch DATA_API.
   // #9208: hot tier above the decode seam, lakehouse at or below it, and a
   // DECLINE for a block neither can answer -- an empty extrinsics array is
@@ -6570,8 +6570,8 @@ export async function handleBlockEvents(
   const { limit, offset } = page;
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-  // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+  // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
+  // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
   // guarded resolved to null before it could touch DATA_API.
   // #9208, same hot/cold/decline routing as handleBlockExtrinsics above and for
   // the same reason -- and it matters more here, because a block CAN legitimately
@@ -6657,7 +6657,7 @@ export async function handleExtrinsics(
   // table is dropped in production, so a D1 query here would always miss.
   const data =
     // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // call_hash has no column in the lakehouse table, so that filter cannot be
     // expressed there. Skipping the tier entirely when it is present is the
@@ -6731,7 +6731,7 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
   // table is dropped in production, so a D1 query here would always miss.
   const data =
     // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // The category predicate is data-api's own pathname->module mapping
     // ("Sudo"), expressed against the lakehouse verbatim -- same feed, same
@@ -6796,7 +6796,7 @@ export async function handleGovernanceConfigChanges(
   // table is dropped in production, so a D1 query here would always miss.
   const data =
     // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     // The category predicate is data-api's own pathname->module mapping
     // ("AdminUtils"), expressed against the lakehouse verbatim -- same feed, same
@@ -6865,7 +6865,7 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
   // table is dropped in production, so a D1 query here would always miss.
   const history =
     // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-    // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+    // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
     // on every request.
     // The same spec_version column, from the tier that actually has it
     // (#9265). Through the shared reader so MCP and GraphQL get the timeline
@@ -7045,7 +7045,7 @@ export async function handleExtrinsic(
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
-  // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+  // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
   // guarded resolved to null before it could touch DATA_API.
   // #9208: the composite `<block>-<index>` form is a POSITION and follows the
   // seam, declining in the gap; the hash form asks hot-then-cold and keeps its

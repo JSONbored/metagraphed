@@ -1,6 +1,6 @@
 // The shared chain-prometheus loader — the rung this route never had (#10248).
 //
-// /chain/prometheus resolved `tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)`
+// /chain/prometheus resolved `tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)`
 // and, on the miss that flag guarantees ("retired", one of the eight #10190
 // counts), fell straight to the empty stub. Its axon twin has read the
 // lakehouse rollup at that same point since #9216. So the card published a
