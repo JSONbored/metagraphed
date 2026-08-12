@@ -61,6 +61,7 @@
     "validate:api": "node scripts/validate-api.ts",
     "validate:committed-seed": "node scripts/validate-committed-seed.ts",
     "validate:mcp": "node scripts/validate-mcp.ts",
+    "validate:startup-budget": "node scripts/validate-startup-budget.ts",
     "validate:mcp-route-map": "node scripts/validate-mcp-route-map.ts",
     "validate:operations": "node scripts/validate-operations.ts",
     "validate:type-duplicates": "node scripts/validate-type-duplicates.ts",

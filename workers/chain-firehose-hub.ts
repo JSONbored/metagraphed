@@ -30,6 +30,7 @@
 
 import {
   GraphQLError,
+  type GraphQLSchema,
   execute,
   getOperationAST,
   parse,
@@ -58,6 +59,14 @@ import {
   CHAIN_FIREHOSE_PUBLISHED_TABLES,
   CHAIN_FIREHOSE_TABLES,
 } from "../src/chain-firehose-topics.ts";
+// graphql-limits, NOT graphql.ts (#10900). This module holds a Durable Object
+// class the entry must export statically, so everything it imports at module
+// scope is Worker STARTUP cost — and src/graphql.ts evaluates the whole
+// executable schema (312KB SDL + every resolver) on import. That one static
+// edge held the largest block of startup CPU on the critical path while
+// startup sat at the 400ms platform limit, failing deploys with code 10021.
+// The limits and rules are pure AST helpers and come from the light module;
+// the schema itself is imported lazily below, on the first subscribe.
 import {
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_QUERY_BYTES,
@@ -65,8 +74,21 @@ import {
   GRAPHQL_SUBSCRIPTION_CONTEXT_KEY,
   maxComplexityRule,
   maxDepthRule,
-  schema as chainEventsGraphqlSchema,
-} from "../src/graphql.ts";
+} from "../src/graphql-limits.ts";
+
+/**
+ * The executable chain-events schema, evaluated on FIRST SUBSCRIBE rather
+ * than at isolate startup. Memoized as the import promise itself so a burst
+ * of concurrent first-subscribers still evaluates the module once. The same
+ * lazy-import pattern workers/api.ts already applies to this exact module at
+ * its /api/v1/graphql route (and to src/mcp-server.ts, #10424).
+ */
+let chainEventsGraphqlSchemaMemo: Promise<GraphQLSchema> | null = null;
+function chainEventsGraphqlSchema(): Promise<GraphQLSchema> {
+  return (chainEventsGraphqlSchemaMemo ??= import("../src/graphql.ts").then(
+    (module) => module.schema,
+  ));
+}
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
@@ -649,6 +671,11 @@ function safeGetWebSockets(
 // non-empty GraphQLError[] describing why it was rejected.
 export function validateChainEventsSubscribePayload(
   payload: unknown,
+  // The schema arrives as a PARAMETER (#10900): importing it statically here
+  // is what put the whole graphql module on the Worker startup path. The
+  // function stays pure and directly unit-testable — the caller owns when the
+  // schema gets evaluated.
+  schema: GraphQLSchema,
 ): readonly GraphQLError[] | null {
   const query = (payload as { query?: unknown } | null | undefined)?.query;
   if (typeof query !== "string" || !query.trim()) {
@@ -674,7 +701,7 @@ export function validateChainEventsSubscribePayload(
       ),
     ];
   }
-  const validationErrors = validate(chainEventsGraphqlSchema, document, [
+  const validationErrors = validate(schema, document, [
     ...specifiedRules,
     maxDepthRule(GRAPHQL_MAX_DEPTH),
     maxComplexityRule(GRAPHQL_MAX_COMPLEXITY),
@@ -915,7 +942,10 @@ export class ChainFirehoseHub implements DurableObject {
       ConnectionInitMessage["payload"],
       ChainEventsGraphqlWsExtra
     >({
-      schema: chainEventsGraphqlSchema,
+      // A FUNCTION, so the schema module is evaluated on the first subscribe
+      // rather than in this Durable Object's constructor (#10900) — graphql-ws
+      // resolves a promise-returning schema option per operation.
+      schema: () => chainEventsGraphqlSchema(),
       execute,
       subscribe,
       // graphql-ws only invokes these once a real connection_init/subscribe
@@ -924,8 +954,11 @@ export class ChainFirehoseHub implements DurableObject {
       // validateChainEventsSubscribePayload (the actual decision logic
       // onSubscribe delegates to) is unit-tested directly.
       /* v8 ignore start */
-      onSubscribe: (_ctx, _id, payload) =>
-        validateChainEventsSubscribePayload(payload) || undefined,
+      onSubscribe: async (_ctx, _id, payload) =>
+        validateChainEventsSubscribePayload(
+          payload,
+          await chainEventsGraphqlSchema(),
+        ) || undefined,
       // #5004 item 2: ctx.extra is whatever this.graphqlWsServer.opened() was
       // called with as its second argument (graphql-ws's own Context.extra
       // field -- confirmed against its type definitions, not guessed) --
