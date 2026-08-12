@@ -161,6 +161,18 @@ export interface ChainStreamSessionDeps {
   setStatus: (s: SseStatus) => void;
   /** Called on every accepted frame (feeds `lastEventAt`). */
   markActivity: () => void;
+  /**
+   * Deliver each accepted frame SYNCHRONOUSLY and uncoalesced, instead of
+   * through `debounceMs` + `getOnEvent`.
+   *
+   * For the shared pool (`acquireSharedChainStream`), where one socket has
+   * many subscribers and each does its own debouncing. Coalescing at the
+   * socket would be wrong for all of them: `pending = payload` OVERWRITES, so
+   * a burst inside one debounce window would silently drop every frame but
+   * the last -- correct when a single consumer asked for exactly that, data
+   * loss when it is imposed on consumers that did not.
+   */
+  deliverRaw?: (payload: unknown) => void;
 }
 
 /**
@@ -233,6 +245,10 @@ export function createChainStreamSession(deps: ChainStreamSessionDeps): {
       const match = deps.getMatches();
       if (match && !match(payload)) return;
       deps.markActivity();
+      if (deps.deliverRaw) {
+        deps.deliverRaw(payload);
+        return;
+      }
       pending = payload;
       flush();
     };
@@ -273,6 +289,133 @@ export function createChainStreamSession(deps: ChainStreamSessionDeps): {
   };
 
   return { connect, dispose };
+}
+
+/**
+ * ONE CONNECTION PER TOPIC SET PER TAB, shared by every consumer of it.
+ *
+ * ## THE BUG THIS FIXES
+ *
+ * `useChainStream` opened its own `EventSource` per CALL SITE, and there are
+ * six: two in home-watched-module, plus registry-ticker (which lives in the
+ * header, so it is on every page), chain-events-feed, live-block-rail and the
+ * subnet detail route. Three of them ask for `account_events` and two for
+ * `blocks` -- identical URLs, separate sockets.
+ *
+ * The server caps ONE IP at CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP = 20
+ * concurrent SSE connections, so a handful of open tabs reaches the cap on its
+ * own. Measured 2026-08-12: /api/v1/chain/stream ran at ~95% 5xx for days, and
+ * once the cap attribution shipped every refusal came back
+ * `chain_firehose_cap_sse_per_ip` -- NOT `:unattributed` and NOT the global
+ * cap. The app was refusing itself, and the browser's own reconnect made it
+ * look like sustained load.
+ *
+ * ## WHY SHARING IS SAFE HERE
+ *
+ * The connection is shared; the PROCESSING is not. The shared session applies
+ * no `matches` and no debounce -- each subscriber still runs its own filter,
+ * its own debounce and its own `markActivity`, so a consumer sees exactly the
+ * frames and the coalescing it would have seen on a private socket. Only the
+ * socket is pooled.
+ *
+ * Keyed on the topic list AND the debounce, because debounce is a property of
+ * the delivery a caller asked for; two callers wanting different coalescing
+ * still share nothing they should not. In practice every current call site
+ * takes the default, so the six collapse to three.
+ */
+interface ChainStreamSubscriber {
+  getMatches: () => ((payload: unknown) => boolean) | undefined;
+  setStatus: (s: SseStatus) => void;
+  markActivity: () => void;
+  /** This subscriber's OWN debounced hand-off to its `onEvent`. */
+  deliver: (payload: unknown) => void;
+  /** Cancels a pending `deliver`, so a frame cannot land after release. */
+  cancel: () => void;
+}
+
+interface SharedChainStream {
+  session: { connect: () => void; dispose: () => void };
+  subscribers: Set<ChainStreamSubscriber>;
+  /** Last status the socket reported, replayed to a late subscriber so it
+   * does not sit at "connecting" for a connection that is already open. */
+  status: SseStatus;
+  offNetwork: () => void;
+  offApiBase: () => void;
+}
+
+const SHARED_CHAIN_STREAMS = new Map<string, SharedChainStream>();
+
+/** Exported for tests: no connection may outlive its last subscriber. */
+export function activeSharedChainStreamCount(): number {
+  return SHARED_CHAIN_STREAMS.size;
+}
+
+/**
+ * Join (or open) the shared connection for `topicList`. Returns the release
+ * function; the socket closes when the last subscriber releases it.
+ */
+export function acquireSharedChainStream(
+  key: string,
+  /**
+   * Opens the socket. INJECTED, like `createChainStreamSession`'s own
+   * `openSource` and for the same reason: this suite runs in plain node with
+   * no `EventSource`, and a pool that could only be exercised in a browser is
+   * a pool whose ref-counting nobody checks.
+   */
+  openSource: () => ChainStreamSource,
+  subscriber: ChainStreamSubscriber,
+): () => void {
+  let shared = SHARED_CHAIN_STREAMS.get(key);
+  if (!shared) {
+    const subscribers = new Set<ChainStreamSubscriber>();
+    const entry = {
+      subscribers,
+      status: "connecting" as SseStatus,
+    } as SharedChainStream;
+    const session = createChainStreamSession({
+      openSource,
+      // Every subscriber filters for itself below, so the socket accepts
+      // everything the server already topic-filtered.
+      getMatches: () => undefined,
+      // Unused: `deliverRaw` below takes the frame path instead, so nothing
+      // coalesces at the socket.
+      debounceMs: 0,
+      getOnEvent: () => undefined,
+      deliverRaw: (payload: unknown) => {
+        for (const sub of subscribers) {
+          const match = sub.getMatches();
+          if (match && !match(payload)) continue;
+          sub.markActivity();
+          sub.deliver(payload);
+        }
+      },
+      setStatus: (s) => {
+        entry.status = s;
+        for (const sub of subscribers) sub.setStatus(s);
+      },
+      markActivity: () => {},
+    });
+    entry.session = session;
+    entry.offNetwork = onNetworkChange(session.connect);
+    entry.offApiBase = onApiBaseChange(session.connect);
+    SHARED_CHAIN_STREAMS.set(key, entry);
+    shared = entry;
+    session.connect();
+  }
+  shared.subscribers.add(subscriber);
+  // Replay the socket's current status, so a consumer joining an already-open
+  // connection shows LIVE immediately rather than waiting for the next event.
+  subscriber.setStatus(shared.status);
+  return () => {
+    const entry = SHARED_CHAIN_STREAMS.get(key);
+    if (!entry) return;
+    entry.subscribers.delete(subscriber);
+    if (entry.subscribers.size > 0) return;
+    entry.offNetwork();
+    entry.offApiBase();
+    entry.session.dispose();
+    SHARED_CHAIN_STREAMS.delete(key);
+  };
 }
 
 export interface UseChainStreamOptions {
@@ -376,22 +519,38 @@ export function useChainStream(options: UseChainStreamOptions = {}): {
       ? topicsKey.split(",").filter(Boolean)
       : (["chain_events"] as string[]);
 
-    const session = createChainStreamSession({
-      openSource: () => new EventSource(buildChainStreamUrl(topicList)),
-      getOnEvent: () => onEventRef.current,
-      getMatches: () => matchesRef.current,
-      debounceMs,
-      setStatus,
-      markActivity: () => setLastEventAt(new Date().toISOString()),
-    });
+    // This subscriber's OWN debounce, so pooling the socket does not pool the
+    // coalescing: a consumer sees exactly the delivery it asked for.
+    let pending: unknown = null;
+    const flush = createDebouncedHandler(() => {
+      if (pending === null) return;
+      const payload = pending;
+      pending = null;
+      onEventRef.current?.(payload);
+    }, debounceMs);
 
-    session.connect();
-    const offNetwork = onNetworkChange(session.connect);
-    const offApiBase = onApiBaseChange(session.connect);
+    const release = acquireSharedChainStream(
+      `${topicsKey || "chain_events"}|${debounceMs}`,
+      () => new EventSource(buildChainStreamUrl(topicList)),
+      {
+        getMatches: () => matchesRef.current,
+        setStatus,
+        markActivity: () => setLastEventAt(new Date().toISOString()),
+        deliver: (payload) => {
+          pending = payload;
+          flush();
+        },
+        cancel: flush.cancel,
+      },
+    );
+
     return () => {
-      offNetwork();
-      offApiBase();
-      session.dispose();
+      // Cancel BEFORE releasing: a frame already scheduled by this
+      // subscriber's debounce would otherwise fire into an unmounted
+      // consumer, which is the same stale-delivery hazard #8179 fixed for
+      // the reconnect path.
+      flush.cancel();
+      release();
       if (typeof document !== "undefined" && document.hidden) {
         wasHiddenRef.current = true;
       }

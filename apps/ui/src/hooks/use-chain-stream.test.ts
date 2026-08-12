@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ChainStreamSource, ChainStreamSessionDeps, SseStatus } from "./use-chain-stream";
 import {
@@ -10,6 +10,8 @@ import {
   CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES,
   CHAIN_STREAM_DOWNGRADE_RETRY_MS,
   createChainStreamSession,
+  acquireSharedChainStream,
+  activeSharedChainStreamCount,
   createDebouncedHandler,
   parseChainStreamPayload,
 } from "./use-chain-stream";
@@ -366,5 +368,184 @@ describe("createChainStreamSession", () => {
 
     sources[0]!.emitError();
     expect(statuses).toEqual(["connecting", "open", "error"]);
+  });
+});
+
+/**
+ * `expect(a).toEqual(b)` with a message, so a pooling failure says WHICH
+ * invariant broke rather than printing two object dumps.
+ */
+function expectEq(actual: unknown, expected: unknown, message?: string): void {
+  expect(actual, message).toEqual(expected);
+}
+
+// ── One socket per topic set, not one per call site (#10606) ───────────────
+//
+// THE BUG. `useChainStream` opened its own EventSource per CALL SITE, and
+// there are six: two in home-watched-module, plus registry-ticker (in the
+// header, so on every page), chain-events-feed, live-block-rail and the subnet
+// detail route. Three ask for `account_events` and two for `blocks` --
+// identical URLs, separate sockets.
+//
+// The server caps ONE IP at 20 concurrent SSE connections, so a handful of
+// tabs reaches it unaided. /api/v1/chain/stream ran at ~95% 5xx for days, and
+// once cap attribution shipped every refusal came back
+// `chain_firehose_cap_sse_per_ip` -- not the global cap, and not
+// `:unattributed`. The app was refusing itself.
+describe("acquireSharedChainStream", () => {
+  function fakeSource() {
+    const listeners = new Map<string, (ev: Event) => void>();
+    return {
+      closed: 0,
+      listeners,
+      addEventListener(type: string, listener: (ev: Event) => void) {
+        listeners.set(type, listener);
+      },
+      close() {
+        this.closed += 1;
+      },
+      onmessage: null as ((ev: MessageEvent) => void) | null,
+      emit(payload: unknown) {
+        listeners.get("chain")?.({
+          data: JSON.stringify(payload),
+        } as unknown as Event);
+      },
+      open() {
+        listeners.get("open")?.(new Event("open"));
+      },
+    };
+  }
+
+  function subscriber(overrides: Partial<Record<string, unknown>> = {}) {
+    const seen: unknown[] = [];
+    const statuses: string[] = [];
+    let activity = 0;
+    return {
+      seen,
+      statuses,
+      get activity() {
+        return activity;
+      },
+      sub: {
+        getMatches: () => undefined,
+        setStatus: (s: string) => statuses.push(s),
+        markActivity: () => {
+          activity += 1;
+        },
+        deliver: (p: unknown) => seen.push(p),
+        cancel: () => {},
+        ...overrides,
+      } as never,
+    };
+  }
+
+  afterEach(() => {
+    expectEq(activeSharedChainStreamCount(), 0, "a shared connection outlived its last subscriber");
+  });
+
+  it("two consumers of the same topics share ONE socket", () => {
+    let opened = 0;
+    const src = fakeSource();
+    const open = () => {
+      opened += 1;
+      return src as never;
+    };
+    const a = subscriber();
+    const b = subscriber();
+    const releaseA = acquireSharedChainStream("account_events|400", open, a.sub);
+    const releaseB = acquireSharedChainStream("account_events|400", open, b.sub);
+    expectEq(opened, 1, "the second consumer opened a second socket");
+    releaseA();
+    releaseB();
+  });
+
+  it("different topics still get their own socket", () => {
+    // Sharing must be keyed, not global: a consumer of `blocks` must not be
+    // silently subscribed to `account_events`.
+    let opened = 0;
+    const open = () => {
+      opened += 1;
+      return fakeSource() as never;
+    };
+    const a = subscriber();
+    const b = subscriber();
+    const releaseA = acquireSharedChainStream("account_events|400", open, a.sub);
+    const releaseB = acquireSharedChainStream("blocks|400", open, b.sub);
+    expectEq(opened, 2);
+    releaseA();
+    releaseB();
+  });
+
+  it("the socket survives one consumer leaving and closes with the last", () => {
+    const src = fakeSource();
+    const a = subscriber();
+    const b = subscriber();
+    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
+    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
+    releaseA();
+    expectEq(src.closed, 0, "unmounting one consumer closed the shared socket");
+    releaseB();
+    expectEq(src.closed, 1, "the last consumer left and the socket stayed open");
+  });
+
+  it("every subscriber receives each frame", () => {
+    const src = fakeSource();
+    const a = subscriber();
+    const b = subscriber();
+    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
+    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
+    src.emit({ block: 1 });
+    expectEq(a.seen, [{ block: 1 }]);
+    expectEq(b.seen, [{ block: 1 }]);
+    releaseA();
+    releaseB();
+  });
+
+  it("each subscriber applies its OWN matches", () => {
+    // Pooling the socket must not pool the filtering, or a consumer starts
+    // seeing frames it explicitly excluded.
+    const src = fakeSource();
+    const a = subscriber({
+      getMatches: () => (p: unknown) => (p as { block: number }).block > 5,
+    });
+    const b = subscriber();
+    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
+    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
+    src.emit({ block: 1 });
+    src.emit({ block: 9 });
+    expectEq(a.seen, [{ block: 9 }], "a's own filter was not applied");
+    expectEq(b.seen, [{ block: 1 }, { block: 9 }]);
+    // markActivity follows the subscriber's own filter, not the socket's.
+    expectEq(a.activity, 1);
+    expectEq(b.activity, 2);
+    releaseA();
+    releaseB();
+  });
+
+  it("a late subscriber is told the connection is already open", () => {
+    // Without the replay it would sit at whatever it initialised to while
+    // attached to a live socket, and the LIVE chip would lie by omission.
+    const src = fakeSource();
+    const a = subscriber();
+    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
+    src.open();
+    const b = subscriber();
+    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
+    expectEq(b.statuses.at(-1), "open");
+    releaseA();
+    releaseB();
+  });
+
+  it("a released subscriber stops receiving frames", () => {
+    const src = fakeSource();
+    const a = subscriber();
+    const b = subscriber();
+    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
+    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
+    releaseA();
+    src.emit({ block: 2 });
+    expectEq(a.seen, [], "an unmounted consumer still received a frame");
+    expectEq(b.seen, [{ block: 2 }]);
+    releaseB();
   });
 });
