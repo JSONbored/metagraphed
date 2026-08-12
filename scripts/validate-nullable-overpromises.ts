@@ -19,13 +19,14 @@
 // TypeScript checker's view of what each resolver writes. Both sides are
 // derived; there is no list here to keep up to date.
 //
-// WHAT IT DOES NOT FAIL ON, deliberately: a property the walk cannot decide --
-// a spread of an untyped bag, or an expression the checker types as `any`.
-// Those are unvalidated at the serving boundary, which is a real defect with
-// its own issue (#10789) and a different fix. Counting them here would make
-// this gate fail for a reason it cannot tell you how to resolve. They are
-// REPORTED on every run so the blind spot stays visible rather than becoming
-// the quiet zero this gate exists to prevent.
+// UNDECIDED reached zero too (#10867), so it is also a rule now: a spread the
+// walk cannot type must carry a `DECLARED_PASSTHROUGHS` entry naming where
+// its guarantee actually lives (the artifact builder tsc-checks against the
+// same Zod component; the executor enforces the published nullability per
+// request) -- and an entry with no matching spread fails as stale, so the
+// list can only describe what exists. An `any`-typed write or a field the
+// schema does not build still reports without failing: each has a different
+// fix, and the count of both is zero on the tree this shipped against.
 
 import { pathToFileURL } from "node:url";
 import {
@@ -54,11 +55,35 @@ function main(): void {
     );
     process.exit(1);
   }
+  const undeclaredSpreads = report.undecided.filter(
+    (entry) => entry.reason === "spread",
+  );
+  if (undeclaredSpreads.length) {
+    console.error(
+      `nullable-overpromises: ${undeclaredSpreads.length} spread(s) the walk ` +
+        `cannot type and no DECLARED_PASSTHROUGHS entry covers. Type the ` +
+        `source, or declare the passthrough with the evidence for where its ` +
+        `non-null guarantee lives (#10867):\n` +
+        undeclaredSpreads
+          .map((entry) => `  ${entry.file}:${entry.line} ${entry.path}`)
+          .join("\n"),
+    );
+    process.exit(1);
+  }
+  if (report.stalePassthroughs.length) {
+    console.error(
+      `nullable-overpromises: ${report.stalePassthroughs.length} declared ` +
+        `passthrough(s) with no matching spread -- the excuse outlived what ` +
+        `it excused; delete the entr(ies): ` +
+        report.stalePassthroughs.join(", "),
+    );
+    process.exit(1);
+  }
   console.log(
     `nullable-overpromises: 0 over-promise(s) across ${report.examined} ` +
       `property write(s) in ${report.fields} root field(s), against the field ` +
-      `each one's component declares; ${report.undecided.length} property ` +
-      `write(s) undecided (unvalidated at the boundary, #10789).`,
+      `each one's component declares; ${report.passthroughs.length} declared ` +
+      `passthrough(s), ${report.undecided.length} undecided.`,
   );
 }
 
