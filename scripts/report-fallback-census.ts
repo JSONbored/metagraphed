@@ -27,6 +27,37 @@
 //                                    `""` take the fallback too, which is a
 //                                    bug class of its own when the field is
 //                                    numeric or a string
+//
+// ## TRIAGE OUTCOME (#10868) -- the first census, 846 sites, decided
+//
+// The classes above were walked against the tree they were measured on, and
+// the number is a MEASURE, not a ratchet -- here is what each class turned
+// out to BE, so the next reader triages deltas rather than re-deciding:
+//
+// `||` (44):  43 are `|| []` on array fields, 1 is `|| {zeroed}` on an
+//             object. No numeric or string `||` exists, so the
+//             legitimate-zero trap is EMPTY -- and on an UNTYPED read `||`
+//             is the safer spelling: garbage truthy-false input (a `0` where
+//             rows belong) coerces to the empty shape instead of erroring
+//             the executor. Not converted to `??`, deliberately.
+//
+// `?? []` (65) and the zeroed values (258 x 0, 90 x 1, 12 x "0.000000000",
+// the zeroed sub-objects, `?? "24h"`/`?? "idle"`): the DEGRADED-CARD arms.
+// These are not defaults a caller should assume -- `.default()` here would
+// tell a client to assume zero, which is the confident-zeros doctrine
+// violated in the schema itself. The real degraded shape is defined ONCE per
+// family in the `build*` zeroed-card builders (`buildStakeFlow([], ...)` et
+// al); the site-level coalesces guard the UNTYPED READ of a card that came
+// from either the tier or the builder, and the honesty markers ride beside
+// them (`observed_at: null`, `concentration_complete`) per the marked-
+// partial convention. They become deletable exactly when the loader boundary
+// types -- the #10867-recorded dead-end, same conclusion -- and not before.
+//
+// `?? null` on nullable (317): the marker convention itself. Correct as is.
+//
+// INPUT defaults never appear here at all: they publish machine-readably via
+// `.meta({default})` and apply at the dispatch parse (`resolveRouteArgs`),
+// the settled #10274 decision `limitSchema`'s own comment records.
 import { pathToFileURL } from "node:url";
 import {
   findOverPromises,
