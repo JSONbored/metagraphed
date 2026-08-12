@@ -696,6 +696,7 @@ import {
   outputJsonSchema,
   stripSentinelIntegerBounds,
 } from "./mcp-input-schema.ts";
+import { validateMcpResponseTripwire } from "./mcp-response-tripwire.ts";
 import {
   buildSubnetValidatorEconomicsPayload,
   resolveEconomicsBlob,
@@ -16362,6 +16363,19 @@ async function dispatchTool(
       markMcpTierDegraded(data, tierGenerationBefore),
       outputSchema,
     );
+    // THE OUTBOUND TRIPWIRE (#10789), the MCP half of what REST has done since
+    // #7860 and GraphQL gets from graphql-js. AFTER the degraded block is
+    // stamped and completed, because that block is part of what we serve --
+    // parsing before it would validate a payload no caller receives.
+    //
+    // Not under `waitUntil`: it throws, and the throw has to reach the caller
+    // below as a tool error rather than an unhandled rejection.
+    if (
+      (ctx?.env as unknown as Row | undefined)?.METAGRAPH_VALIDATE_RESPONSES ===
+      "true"
+    ) {
+      validateMcpResponseTripwire(tool.name, outputSchema, payload);
+    }
     return {
       content: toolResultContent(payload, outputSchema, ctx?.protocolVersion),
       structuredContent: payload as Row,
@@ -16377,9 +16391,10 @@ async function dispatchTool(
       // aiUnavailableToolError.
       if (error.captureAsFault) {
         scheduleExceptionEvent(ctx, {
-          // `cause` unconditionally, with no `?? error` fallback: the ONLY
-          // thing that sets captureAsFault is aiUnavailableToolError, and it
-          // always sets cause on the same object. A fallback here would be an
+          // `cause` unconditionally, with no `?? error` fallback: BOTH things
+          // that set captureAsFault set cause on the same object --
+          // aiUnavailableToolError, and the outbound response tripwire's
+          // McpResponseSchemaDriftError (#10789). A fallback here would be an
           // unreachable branch pretending to be caution.
           error: error.cause as Error,
           mcpTool: name,
