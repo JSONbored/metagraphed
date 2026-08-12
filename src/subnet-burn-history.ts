@@ -16,13 +16,14 @@ import type { ChainNetworkId } from "./chain-network.ts";
 
 type Row = Record<string, unknown>;
 
-/** The minimal D1 surface used here, so tests can inject a plain object. */
+/** The minimal producer-store surface used here (src/producer-store.ts),
+ * structural so tests can inject a plain object. */
 export interface BurnHistoryDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): unknown;
-    all?(): Promise<{ results?: unknown[] } | null>;
-  };
-  batch?(statements: unknown[]): Promise<unknown>;
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  run?(text: string, values?: unknown[]): Promise<{ changes: number }>;
+  transaction?(
+    statements: readonly { text: string; values?: unknown[] }[],
+  ): Promise<{ changes: number }[]>;
 }
 
 export const SUBNET_BURN_HISTORY_TABLE = "subnet_burn_history";
@@ -86,7 +87,7 @@ export async function captureSubnetBurnHistory(
   pruned: boolean;
   reason?: string;
 }> {
-  if (!db?.prepare || !db?.batch) {
+  if (!db?.transaction || !db?.run) {
     return {
       ok: false,
       captured: 0,
@@ -144,32 +145,25 @@ export async function captureSubnetBurnHistory(
     // the return, and this lane had no lane_health verdict. `ON CONFLICT ...
     // DO UPDATE` is understood by BOTH engines (SQLite has supported it since
     // 3.24), so one statement serves whichever store owns the table.
-    const insert = db.prepare(
+    const insertSql =
       `INSERT INTO ${SUBNET_BURN_HISTORY_TABLE}` +
-        ` (netuid, observed_at, burn_tao) VALUES (?, ?, ?)` +
-        ` ON CONFLICT (netuid, observed_at) DO UPDATE SET burn_tao = EXCLUDED.burn_tao`,
+      ` (netuid, observed_at, burn_tao) VALUES (?, ?, ?)` +
+      ` ON CONFLICT (netuid, observed_at) DO UPDATE SET burn_tao = EXCLUDED.burn_tao`;
+    // Each statement is plain data, built fresh per row -- the #10304 class
+    // (a shared bound statement collapsing the batch into one row) cannot be
+    // written in this shape.
+    const batched = await db.transaction(
+      rows.map((r) => ({
+        text: insertSql,
+        values: [r.netuid, observedAt, r.burn_tao],
+      })),
     );
-    const batched = (await db.batch(
-      rows.map((r) => insert.bind(r.netuid, observedAt, r.burn_tao)),
-    )) as { meta?: { changes?: number } }[] | undefined;
     // COUNT WHAT LANDED, NOT WHAT WE READ. `rows.length` is the intent, and
     // reporting it is how this lane spent 34 hours announcing `captured 129`
-    // on ticks that wrote exactly one row (#10304): every statement in the
-    // batch carried the same bound values, ON CONFLICT DO UPDATE folded them
-    // into one row, and nothing downstream could tell.
-    //
-    // Falls back to the intended count when the runner reports no per-statement
-    // `meta.changes` AT ALL. That distinction is the whole guard: an empty or
-    // meta-less result means "this store cannot count its own writes", which
-    // must not read as zero captured -- that would invert the bug into a
-    // permanent false alarm on a lane that is working. Only a runner that
-    // actually reports counts gets believed.
-    const reported = (Array.isArray(batched) ? batched : [])
-      .map((r) => r?.meta?.changes)
-      .filter((n): n is number => typeof n === "number");
-    written = reported.length
-      ? reported.reduce((sum, n) => sum + n, 0)
-      : rows.length;
+    // on ticks that wrote exactly one row (#10304). The store reports
+    // `changes` per statement; a store that cannot count its own writes does
+    // not get this lane.
+    written = batched.reduce((sum, r) => sum + r.changes, 0);
   } catch (error) {
     return {
       ok: false,
@@ -183,12 +177,10 @@ export async function captureSubnetBurnHistory(
   // not report the capture as failed. The next tick retries it.
   let pruned = false;
   try {
-    const sweep = db
-      .prepare(`DELETE FROM ${SUBNET_BURN_HISTORY_TABLE} WHERE observed_at < ?`)
-      .bind(observedAt - BURN_HISTORY_RETENTION_MS) as {
-      run?: () => Promise<unknown>;
-    };
-    await sweep.run?.();
+    await db.run(
+      `DELETE FROM ${SUBNET_BURN_HISTORY_TABLE} WHERE observed_at < ?`,
+      [observedAt - BURN_HISTORY_RETENTION_MS],
+    );
     pruned = true;
   } catch {
     // Retention is housekeeping; the series is what matters.
@@ -249,21 +241,15 @@ export async function loadSubnetBurnHistory(
   netuid: number,
   { windowDays, now = Date.now }: { windowDays: number; now?: () => number },
 ): Promise<Row[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
     const cutoff = now() - windowDays * 24 * 60 * 60 * 1000;
-    const res = await (
-      db
-        .prepare(
-          `SELECT observed_at, burn_tao FROM ${SUBNET_BURN_HISTORY_TABLE}` +
-            ` WHERE netuid = ? AND observed_at >= ?` +
-            ` ORDER BY observed_at DESC LIMIT ${BURN_HISTORY_MAX_POINTS}`,
-        )
-        .bind(netuid, cutoff) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    return (res?.results ?? []) as Row[];
+    return await db.query<Row>(
+      `SELECT observed_at, burn_tao FROM ${SUBNET_BURN_HISTORY_TABLE}` +
+        ` WHERE netuid = ? AND observed_at >= ?` +
+        ` ORDER BY observed_at DESC LIMIT ${BURN_HISTORY_MAX_POINTS}`,
+      [netuid, cutoff],
+    );
   } catch {
     return null;
   }

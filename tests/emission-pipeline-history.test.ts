@@ -68,17 +68,10 @@ function db(
     );
   }
   return {
-    prepare(sql: string) {
-      const stmt = sqlite.prepare(sql);
-      return {
-        bind(...values: unknown[]) {
-          return {
-            all: async () => ({
-              results: stmt.all(...(values as Array<string | number | null>)),
-            }),
-          };
-        },
-      };
+    async query<T>(sql: string, values: unknown[] = []) {
+      return sqlite
+        .prepare(sql)
+        .all(...(values as Array<string | number | null>)) as T[];
     },
   };
 }
@@ -158,23 +151,18 @@ describe("loadPipelineHistory", () => {
     expect(await loadPipelineHistory(undefined, 74)).toBeNull();
     expect(await loadPipelineHistory({} as never, 74)).toBeNull();
     const throwing = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => {
-            throw new Error("D1_ERROR");
-          },
-        }),
-      }),
+      query: async () => {
+        throw new Error("store read failed");
+      },
     };
     expect(await loadPipelineHistory(throwing, 74)).toBeNull();
   });
 
-  it("returns an empty list when all() is absent or answers nothing", async () => {
-    const noAll = { prepare: () => ({ bind: () => ({}) }) };
-    expect(await loadPipelineHistory(noAll as never, 74)).toEqual([]);
-    const empty = {
-      prepare: () => ({ bind: () => ({ all: async () => null }) }),
-    };
+  it("returns an empty list on zero rows", async () => {
+    // The "all() absent / null result" arms retired with the D1 envelope
+    // (#10309): the owned query() answers rows or throws (null, above), so
+    // zero rows is the one nothing-shape left to pin.
+    const empty = { query: async <T>() => [] as T[] };
     expect(await loadPipelineHistory(empty, 74)).toEqual([]);
   });
 });

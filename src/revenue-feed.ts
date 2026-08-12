@@ -337,12 +337,7 @@ export function revenueFeedItems(input: RevenueFeedInput): FeedItem[] {
  * the loader is testable without a Worker binding, matching every other loader
  * in this repo. */
 export interface RevenueFeedDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-    all?(): Promise<{ results?: unknown[] } | null>;
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 // Deliberately loose for the SHAPING helpers below, which read rows from two
@@ -363,20 +358,17 @@ const DENOMINATOR_WINDOW_HOURS = 24 * 30;
 
 // GENERIC over the row the SELECT returns, so the caller names the generated
 // table type once instead of casting the result. The assertion below is the
-// D1 trust boundary -- `all()` answers `unknown` and only the SQL knows the
-// shape -- and it is now in one place rather than at every call site (#10782).
+// store trust boundary -- the store answers untyped rows and only the SQL
+// knows the shape -- and it is in one place rather than at every call site
+// (#10782).
 async function queryRows<T = Row>(
   db: RevenueFeedDb | null | undefined,
   sql: string,
   binds: unknown[],
 ): Promise<T[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
-    const statement = db.prepare(sql);
-    const res = await (
-      binds.length ? statement.bind(...binds) : statement
-    ).all?.();
-    return (res?.results ?? []) as T[];
+    return await db.query<T>(sql, binds);
   } catch {
     // Null, not []: a failed read and an empty table are different facts, and
     // an empty feed derived from a broken store would read as "nothing moved".

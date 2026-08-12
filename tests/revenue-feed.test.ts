@@ -260,11 +260,9 @@ function storeDouble(
     return { results: value ?? [] };
   };
   return {
-    prepare(sql: string) {
-      return {
-        bind: () => ({ all: async () => resolve(sql) }),
-        all: async () => resolve(sql),
-      };
+    async query<T>(sql: string) {
+      const out = resolve(sql);
+      return (out.results ?? []) as T[];
     },
   };
 }
@@ -748,14 +746,11 @@ describe("rows the store can really produce", () => {
     assert.equal(out.filter((i) => i.tags.includes("coverage-move")).length, 0);
   });
 
-  test("a driver returning no results key is an empty read, not a crash", async () => {
+  test("zero rows on every leg is an empty read, not a crash", async () => {
+    // The "no results key" premise retired with the D1 envelope (#10309):
+    // query() answers rows directly, so the nothing-shape is the empty array.
     const out = await loadRevenueFeedItems(
-      {
-        prepare: () => ({
-          bind: () => ({ all: async () => ({}) }),
-          all: async () => ({}),
-        }),
-      },
+      { query: async <T>() => [] as T[] },
       { now: NOW },
     );
     assert.deepEqual(out, []);

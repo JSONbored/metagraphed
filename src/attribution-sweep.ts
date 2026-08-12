@@ -184,14 +184,11 @@ export async function sweepSubnet(
 
 // ── the store ───────────────────────────────────────────────────────────────
 
+/** The minimal producer-store surface used here (src/producer-store.ts),
+ * structural so tests can inject a plain object. */
 export interface SweepStoreDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      run?(): Promise<unknown>;
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-    all?(): Promise<{ results?: unknown[] } | null>;
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  run?(text: string, values?: unknown[]): Promise<{ changes: number }>;
 }
 
 /**
@@ -209,46 +206,42 @@ export async function persistSweep(
   db: SweepStoreDb | null | undefined,
   result: SweepResult,
 ): Promise<{ ok: boolean; reason?: string }> {
-  if (!db?.prepare) return { ok: false, reason: "no_store_binding" };
+  if (!db?.run) return { ok: false, reason: "no_store_binding" };
   try {
-    await db
-      .prepare(
-        `INSERT INTO attribution_sweeps` +
-          ` (netuid, swept_at, sources_checked, sources_read, candidates, verdict)` +
-          ` VALUES (?, ?, ?, ?, ?, ?)` +
-          ` ON CONFLICT (netuid) DO UPDATE SET` +
-          ` swept_at = EXCLUDED.swept_at,` +
-          ` sources_checked = EXCLUDED.sources_checked,` +
-          ` sources_read = EXCLUDED.sources_read,` +
-          ` candidates = EXCLUDED.candidates,` +
-          ` verdict = EXCLUDED.verdict`,
-      )
-      .bind(
+    await db.run(
+      `INSERT INTO attribution_sweeps` +
+        ` (netuid, swept_at, sources_checked, sources_read, candidates, verdict)` +
+        ` VALUES (?, ?, ?, ?, ?, ?)` +
+        ` ON CONFLICT (netuid) DO UPDATE SET` +
+        ` swept_at = EXCLUDED.swept_at,` +
+        ` sources_checked = EXCLUDED.sources_checked,` +
+        ` sources_read = EXCLUDED.sources_read,` +
+        ` candidates = EXCLUDED.candidates,` +
+        ` verdict = EXCLUDED.verdict`,
+      [
         result.netuid,
         result.swept_at,
         result.sources_checked,
         result.sources_read,
         result.candidates.length,
         result.verdict,
-      )
-      .run?.();
+      ],
+    );
     for (const candidate of result.candidates) {
-      await db
-        .prepare(
-          `INSERT INTO attribution_candidates` +
-            ` (netuid, ss58, source_url, first_seen, last_seen)` +
-            ` VALUES (?, ?, ?, ?, ?)` +
-            ` ON CONFLICT (netuid, ss58, source_url) DO UPDATE SET` +
-            ` last_seen = EXCLUDED.last_seen`,
-        )
-        .bind(
+      await db.run(
+        `INSERT INTO attribution_candidates` +
+          ` (netuid, ss58, source_url, first_seen, last_seen)` +
+          ` VALUES (?, ?, ?, ?, ?)` +
+          ` ON CONFLICT (netuid, ss58, source_url) DO UPDATE SET` +
+          ` last_seen = EXCLUDED.last_seen`,
+        [
           result.netuid,
           candidate.ss58,
           candidate.source_url,
           result.swept_at,
           result.swept_at,
-        )
-        .run?.();
+        ],
+      );
     }
     return { ok: true };
   } catch (error) {
@@ -278,16 +271,14 @@ export async function loadSweepRecord(
   db: SweepStoreDb | null | undefined,
   netuid: number,
 ): Promise<SweepRecord | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
-    const res = await db
-      .prepare(
-        `SELECT swept_at, sources_checked, sources_read, candidates, verdict` +
-          ` FROM attribution_sweeps WHERE netuid = ?`,
-      )
-      .bind(netuid)
-      .all?.();
-    const row = (res?.results ?? [])[0] as AttributionSweeps | undefined;
+    const rows = await db.query<AttributionSweeps>(
+      `SELECT swept_at, sources_checked, sources_read, candidates, verdict` +
+        ` FROM attribution_sweeps WHERE netuid = ?`,
+      [netuid],
+    );
+    const row = rows[0];
     if (!row) return null;
     const sweptAt = Number(row.swept_at);
     return {
