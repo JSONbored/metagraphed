@@ -518,6 +518,7 @@ import {
 } from "./request-handlers/analytics.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {
+  CHAIN_FIREHOSE_CAP_HEADER,
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   ChainFirehoseHub,
 } from "./chain-firehose-hub.ts";
@@ -1557,6 +1558,23 @@ const requestAuthTier = new WeakMap<Request, string>();
 const requestAccountId = new WeakMap<Request, string>();
 
 /**
+ * An error code resolved somewhere the RESPONSE cannot carry it.
+ *
+ * `withUsageTelemetry` reads `error_code` off the response header, which works
+ * for every route that answers through `errorResponse`. It cannot work for a
+ * refusal whose whole design is that the response says nothing distinguishing
+ * -- the chain-firehose caps (#10606), where telling the caller which limit it
+ * hit tells a scraper whether to rotate addresses. Same WeakMap-on-the-Request
+ * shape as the tier above, and the same collectability argument.
+ */
+const requestErrorCode = new WeakMap<Request, string>();
+
+/** Record an error code the response is deliberately not allowed to carry. */
+export function markRequestErrorCode(request: Request, code: unknown): void {
+  if (typeof code === "string" && code) requestErrorCode.set(request, code);
+}
+
+/**
  * Record the tier a request authenticated on, for its usage event.
  *
  * Called from the tiered-rate-limit gates, which are the only places that
@@ -1727,7 +1745,13 @@ export async function withUsageTelemetry(
     // the successes (a route correctly rejecting a bad request is not a
     // failure), which makes "are callers sending us garbage" unanswerable.
     statusClass = statusClassOf(response.status);
-    errorCode = response.headers.get("x-metagraph-error-code") ?? undefined;
+    errorCode =
+      response.headers.get("x-metagraph-error-code") ??
+      // #10606: a refusal whose response is deliberately uniform records its
+      // code out of band. Second, never first -- a real header is the response
+      // this request actually served, and must win.
+      requestErrorCode.get(request) ??
+      undefined;
     // metagraphed#7734: GraphQL execution errors are a spec-mandated 200
     // with a populated `errors` array (src/graphql.ts) -- status alone
     // can't distinguish that from a real success, so this one code (set
@@ -5080,7 +5104,30 @@ async function handleChainFirehoseStream(request: Request, env: Env, url: URL) {
   );
   const forwardUrl = new URL("https://chain-firehose-hub.internal/subscribe");
   forwardUrl.search = url.search;
-  return stub.fetch(new Request(forwardUrl, request));
+  const response = await stub.fetch(new Request(forwardUrl, request));
+  // #10606: the DO names which cap refused, this records it, and the header is
+  // DELETED before the response continues. Both halves matter: the Worker
+  // needs the kind (a global cap and a per-IP cap are operationally opposite,
+  // and for days nothing but a live tail could tell them apart), and the
+  // caller must not have it (#10744 keeps every cap's response identical so a
+  // scraper cannot learn whether rotating addresses would help).
+  //
+  // The single forwarding point for BOTH transports, which is why it is here:
+  // withUsageTelemetry returns early on a WebSocket upgrade, so stripping
+  // there would leave the header on every refused WS handshake.
+  const cap = response.headers.get(CHAIN_FIREHOSE_CAP_HEADER);
+  if (!cap) return response;
+  markRequestErrorCode(
+    request,
+    `chain_firehose_cap_${cap.replace(/[:-]/g, "_")}`,
+  );
+  const headers = new Headers(response.headers);
+  headers.delete(CHAIN_FIREHOSE_CAP_HEADER);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 // POST /api/v1/internal/chain-firehose-ingest -- the write path the #4981
