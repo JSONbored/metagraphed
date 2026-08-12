@@ -24,6 +24,9 @@ import {
 } from "../src/lane-health.ts";
 import { neonLaneKey } from "../src/neon-write.ts";
 import { RAW_CAPTURE_STATE_NEON_LANE } from "../src/capture-state-neon-write.ts";
+import { NEURONS_NEON_LANE } from "../src/neurons-neon-write.ts";
+// The lane constant lives with its cron in the data-api Worker.
+import { TAO_USD_INDEX_NEON_LANE } from "../workers/data-api.ts";
 
 /** Each retired lane, and the producer whose deletion justifies retiring it.
  * `null` marks the one entry whose producer was a KEY SPELLING rather than a
@@ -35,6 +38,10 @@ const PRODUCERS: Record<string, string | null> = {
   "neon-mirror-lag": "src/neon-mirror-lag.ts",
   "neon:backfill:": "src/neon-backfill.ts",
   "raw-capture-state": null,
+  // Same #10851 key change, two more spellings -- justified by the code
+  // assertion below rather than by a deleted file.
+  neurons: null,
+  "tao-usd-index": null,
 };
 
 function fakeDb(rows: Record<string, unknown>[]) {
@@ -71,6 +78,34 @@ describe("retired lanes (#10222)", () => {
         `${producer} is gone -- ${name} may only be retired because nothing writes it`,
       );
     }
+  });
+
+  test("the bare #10851 spellings cannot be written by the live writer", () => {
+    // Every one of these lanes still runs -- what changed in #10851 is the KEY
+    // its verdicts land under. Retiring the bare spelling silences a row
+    // frozen at that deploy; the prefixed lane stays watched, and was `ok` on
+    // the same production read that showed these three stuck.
+    for (const lane of [
+      RAW_CAPTURE_STATE_NEON_LANE,
+      NEURONS_NEON_LANE,
+      TAO_USD_INDEX_NEON_LANE,
+    ]) {
+      assert.equal(isRetiredLane(lane), true, `${lane} (bare) is retired`);
+      assert.equal(
+        isRetiredLane(neonLaneKey(lane)),
+        false,
+        `${neonLaneKey(lane)} stays watched`,
+      );
+    }
+  });
+
+  test("the POLLER's own bare lanes are NOT retired", () => {
+    // The distinction this list turns on. `account-balances` and
+    // `validator-nominators` carry the poller's own scan outcome under their
+    // bare names ("558009 scanned, 366107 written"), so those spellings have a
+    // live writer and retiring them would be suppression, not cleanup.
+    assert.equal(isRetiredLane("account-balances"), false);
+    assert.equal(isRetiredLane("validator-nominators"), false);
   });
 
   test("raw-capture-state (bare) cannot be written by the live writer", () => {
