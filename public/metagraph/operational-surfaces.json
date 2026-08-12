@@ -8258,6 +8258,7 @@
         "grain": "cumulative",
         "provenance": "chain-verified",
         "role": "external-revenue",
+        "rows": "items",
         "shape": "flat-array",
         "source_url": "https://api.chutes.ai/openapi.json"
       },

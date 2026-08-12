@@ -37455,6 +37455,10 @@
                           ],
                           "type": "string"
                         },
+                        "rows": {
+                          "description": "The envelope key holding the payload `shape` describes, for a source that wraps its rows (a pagination envelope's `items`). Absent means the payload IS the rows.",
+                          "type": "string"
+                        },
                         "searched_at": {
                           "description": "When absence was established. Required for provenance 'none': an undated absence is not evidence.",
                           "type": "string"
@@ -55987,6 +55991,10 @@
                   "miner-payout",
                   "not-revenue"
                 ],
+                "type": "string"
+              },
+              "rows": {
+                "description": "The envelope key holding the payload `shape` describes, for a source that wraps its rows (a pagination envelope's `items`). Absent means the payload IS the rows.",
                 "type": "string"
               },
               "searched_at": {

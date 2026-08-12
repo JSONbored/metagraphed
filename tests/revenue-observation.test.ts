@@ -212,3 +212,67 @@ describe("the declaration itself", () => {
     assert.equal(obs[0].currency, "TAO");
   });
 });
+
+// #10855: `shape` says how rows are arranged; `rows` says WHERE they live.
+// Without it, api.chutes.ai/payments -- whose rows genuinely are a flat array,
+// under `items` in a pagination envelope -- failed "expected an array payload"
+// deterministically, every hour, forever.
+describe("rows: the envelope key (#10855)", () => {
+  // The real shape, observed 2026-08-12 in #10855.
+  const PAYMENTS = {
+    shape: "flat-array" as const,
+    currency: "USD",
+    rows: "items",
+    fields: { date: "timestamp", amount: "usd_amount" },
+  };
+  const ENVELOPE = {
+    total: 18943,
+    page: 0,
+    limit: 25,
+    items: [
+      { payment_id: "p-1", usd_amount: 12.5, timestamp: "2026-08-11T01:00Z" },
+      { payment_id: "p-2", usd_amount: 7.25, timestamp: "2026-08-11T02:00Z" },
+    ],
+  };
+
+  test("unwraps the declared key and extracts the rows inside", () => {
+    const obs = ok(extractRevenue(PAYMENTS, ENVELOPE));
+    assert.equal(obs.length, 2);
+    assert.deepEqual(obs[0], {
+      period: "2026-08-11T01:00Z",
+      amount: 12.5,
+      currency: "USD",
+    });
+  });
+
+  test("a missing key and a non-object envelope refuse, each naming the key", () => {
+    // Two different upstream changes, two different reasons -- the
+    // dead-letter summary is where the distinction is read.
+    assert.match(
+      reason(extractRevenue(PAYMENTS, { total: 0, page: 0 })),
+      /rows "items": key missing/,
+    );
+    assert.match(
+      reason(extractRevenue(PAYMENTS, [1, 2, 3])),
+      /rows "items": payload is not an object/,
+    );
+  });
+
+  test("what the key holds is still validated by the shape", () => {
+    // Unwrapping must not loosen anything: an envelope whose `items` is not
+    // an array fails exactly as a bare non-array payload always has.
+    assert.match(
+      reason(extractRevenue(PAYMENTS, { items: "nope" })),
+      /expected an array payload/,
+    );
+  });
+
+  test("rows applies uniformly, not only to flat-array", () => {
+    // One meaning across shapes: a keyed-map wrapped in an envelope unwraps
+    // the same way, so the field never needs a per-shape rule.
+    const obs = ok(
+      extractRevenue({ ...LIUM, rows: "months" }, { months: { "2026-07": 5 } }),
+    );
+    assert.deepEqual(obs, [{ period: "2026-07", amount: 5, currency: "USD" }]);
+  });
+});

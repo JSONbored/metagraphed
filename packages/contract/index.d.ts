@@ -9169,6 +9169,8 @@ export interface components {
                      * @enum {string}
                      */
                     role: "external-revenue" | "usage-proxy" | "miner-payout" | "not-revenue";
+                    /** @description The envelope key holding the payload `shape` describes, for a source that wraps its rows (a pagination envelope's `items`). Absent means the payload IS the rows. */
+                    rows?: string;
                     /** @description When absence was established. Required for provenance 'none': an undated absence is not evidence. */
                     searched_at?: string;
                     /**
@@ -12419,6 +12421,8 @@ export interface components {
                  * @enum {string}
                  */
                 role: "external-revenue" | "usage-proxy" | "miner-payout" | "not-revenue";
+                /** @description The envelope key holding the payload `shape` describes, for a source that wraps its rows (a pagination envelope's `items`). Absent means the payload IS the rows. */
+                rows?: string;
                 /** @description When absence was established. Required for provenance 'none': an undated absence is not evidence. */
                 searched_at?: string;
                 /**

@@ -404,6 +404,10 @@
           "enum": ["flat-array", "keyed-map", "scalar"],
           "description": "How the payload is arranged, so an extractor does not have to guess. `flat-array`: a list of records, `fields.date`/`fields.amount` naming keys within one (SN64's daily_revenue_summary). `keyed-map`: nested {period: {subkey: amount}} where the period IS the key and there are no field names to point at (SN51's revenue-for-validators). `scalar`: one object carrying a single total, `fields.amount` naming it (SN64's payments/summary/tao)."
         },
+        "rows": {
+          "type": "string",
+          "description": "The envelope key holding the payload `shape` describes, for a source that wraps its rows — api.chutes.ai/payments returns {total, page, limit, items: [...]} and the flat array lives under `items`. Absent means the payload IS the rows, which is every other declaration."
+        },
         "fields": {
           "description": "Map of role -> field name in the upstream payload, e.g. {\"date\": \"date\", \"amount\": \"total_revenue\"}.",
           "type": "object",
