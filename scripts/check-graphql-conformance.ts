@@ -6,6 +6,16 @@
 // about it was static, the SDL compared to `openapi.json` offline, and nothing
 // had ever executed a query against production and looked at the answer.
 //
+// This is the ONE GraphQL production sweep since #10214. Its former siblings
+// -- `conformance:graphql-nullability` and `conformance:graphql-int-range` --
+// were evidence instruments for the cutover, and the executor now enforces
+// both properties on every request (graphql-js rejects a null in a non-null
+// and an over-range Int at execution), which is strictly stronger than a
+// daily probe. Do not re-add a probe for a property the runtime proves per
+// request; what THIS sweep checks -- does the deployed producer still answer,
+// and does its answer still match the route it mirrors -- is exactly what no
+// static gate or runtime parse can.
+//
 // WHAT A STATIC GATE CANNOT SEE. Both shapes are valid and the schema is
 // satisfied in every one of these:
 //

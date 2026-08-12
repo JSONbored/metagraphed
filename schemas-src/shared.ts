@@ -58,8 +58,9 @@ export const EpochMillisSchema = z
  * Both fail in the direction that matters most: an `Int` carrying an
  * over-range value raises at execution time and nulls its surrounding object,
  * so the surface reports NOTHING precisely when the thing it monitors has been
- * broken longest. `conformance:graphql-int-range` cannot catch either, because
- * it reads live values and neither is over-range right now.
+ * broken longest. The `conformance:graphql-int-range` sweep could not catch
+ * either -- it read live values, and neither was over-range at the time; it
+ * retired once the executor enforced the range on every request (#10214).
  *
  * `schemas-src/graphql/emit.ts` maps this component id to `Float`, the only
  * spelling GraphQL has for the value -- which is what the hand-written SDL
