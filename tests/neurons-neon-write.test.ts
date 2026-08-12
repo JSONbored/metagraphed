@@ -172,6 +172,51 @@ describe("NEURON_MIRROR_PLANS", () => {
     assert.ok(spy.rows.every((r) => r.verdict === "ok"));
   });
 
+  test("buffered: the prune and pass-tally verdicts record at enqueue too", async () => {
+    // The second half of the same sub-lane rule (#10890's own alert, part 2):
+    // the prune's and the tally's statements ride under the base lane's tag,
+    // so `neon:neurons-prune` and `neon:neurons-pass` can never appear in the
+    // flush's per-lane tally — both went silent for 32 hours the moment the
+    // buffer came on, while the prune and tally themselves ran fine.
+    const spy = laneSpy();
+    const ns = {
+      idFromName: (name: string) => name,
+      get: () => ({
+        async fetch() {
+          return new Response("{}", { status: 200 });
+        },
+      }),
+    };
+    const out = await mirrorNeuronSnapshotToNeon(
+      {
+        NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE,
+        NEON_WRITE_BUFFER_LANES: NEURONS_NEON_LANE,
+        NEON_WRITE_BUFFER: ns,
+        HYPERDRIVE: { connectionString: "postgresql://x" },
+      },
+      ctx,
+      {
+        ...input,
+        netuidMaxCapturedAt: new Map([[1, 1_000]]),
+        pass: {
+          capturedAt: 1786155508717,
+          expectedRows: 1,
+          receivedRows: 1,
+          nowMs: NOW,
+        },
+      },
+      { laneHealthDb: spy.db, now: () => NOW },
+    );
+    assert.equal(out.attempted, true);
+    const lanes = spy.rows.map((r) => r.lane);
+    assert.ok(lanes.includes("neon:neurons-prune"), `got: ${lanes.join(",")}`);
+    assert.ok(lanes.includes("neon:neurons-pass"), `got: ${lanes.join(",")}`);
+    assert.ok(
+      !lanes.includes("neon:neurons"),
+      "the base lane stays flush-owned",
+    );
+  });
+
   test("a failing table is reported and does not stop the others", async () => {
     // The mirror is best-effort per table. A missing `neuron_daily` must not
     // cost `account_position_daily` its refresh, and each gets its own verdict

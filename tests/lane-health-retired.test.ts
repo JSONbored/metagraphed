@@ -22,12 +22,19 @@ import {
   isRetiredLane,
   loadLatestLaneHealth,
 } from "../src/lane-health.ts";
+import { neonLaneKey } from "../src/neon-write.ts";
+import { RAW_CAPTURE_STATE_NEON_LANE } from "../src/capture-state-neon-write.ts";
 
-/** Each retired lane, and the producer whose deletion justifies retiring it. */
-const PRODUCERS: Record<string, string> = {
+/** Each retired lane, and the producer whose deletion justifies retiring it.
+ * `null` marks the one entry whose producer was a KEY SPELLING rather than a
+ * file — the pre-#10851 buffer flush wrote per-lane verdicts under the bare
+ * statement tag — justified below by a code assertion instead: the live
+ * writer provably files under the `neon:` prefix. */
+const PRODUCERS: Record<string, string | null> = {
   "neon-parity": "src/neon-parity.ts",
   "neon-mirror-lag": "src/neon-mirror-lag.ts",
   "neon:backfill:": "src/neon-backfill.ts",
+  "raw-capture-state": null,
 };
 
 function fakeDb(rows: Record<string, unknown>[]) {
@@ -52,14 +59,31 @@ describe("retired lanes (#10222)", () => {
     const names = [...RETIRED_LANES, ...RETIRED_LANE_PREFIXES];
     assert.ok(names.length > 0, "the list is not empty -- otherwise vacuous");
     for (const name of names) {
+      assert.ok(
+        name in PRODUCERS,
+        `${name} names the producer it retires (or null with a code assertion)`,
+      );
       const producer = PRODUCERS[name];
-      assert.ok(producer, `${name} names the producer it retires`);
+      if (producer === null) continue; // justified by its own test below
       assert.equal(
         existsSync(new URL(`../${producer}`, import.meta.url)),
         false,
         `${producer} is gone -- ${name} may only be retired because nothing writes it`,
       );
     }
+  });
+
+  test("raw-capture-state (bare) cannot be written by the live writer", () => {
+    // The bare spelling's producer was the pre-#10851 flush; since #10851
+    // both writers key through neonLaneKey, so every verdict for this lane
+    // lands under the prefix. Retiring the bare key silences a row frozen at
+    // that deploy — not a live signal. The prefixed lane stays watched.
+    assert.equal(
+      neonLaneKey(RAW_CAPTURE_STATE_NEON_LANE),
+      "neon:raw-capture-state",
+    );
+    assert.equal(isRetiredLane(RAW_CAPTURE_STATE_NEON_LANE), true);
+    assert.equal(isRetiredLane("neon:raw-capture-state"), false);
   });
 
   test("isRetiredLane matches the families and nothing else", () => {
