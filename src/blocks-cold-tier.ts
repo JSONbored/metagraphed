@@ -295,7 +295,6 @@ async function storeHeadRows(
   }
 
   try {
-    if (!db.query) return null;
     return (await db.query(
       `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${where.join(" AND ")}
        ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
@@ -446,12 +445,10 @@ export async function loadBlockColdTier(
       const predicate =
         asNumber !== null ? "b.block_number = ?" : "lower(b.block_hash) = ?";
       const value = asNumber !== null ? asNumber : asHash!;
-      const rows = db.query
-        ? await db.query<BlockSeamRow>(
-            `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
-            [value],
-          )
-        : [];
+      const rows = await db.query<BlockSeamRow>(
+        `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
+        [value],
+      );
       const row = rows[0];
       if (row) return buildBlock(row as never, ref);
     } catch {
