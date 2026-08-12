@@ -1,8 +1,11 @@
 // Assemble the published GraphQL schema from the declared sources (#10214).
 //
-// This is the thing the epic exists to produce: `src/graphql-sdl.ts` is 5,409
-// lines nothing generates, and every gate around it exists only because it is
-// hand-written. Everything it contains is now declared somewhere else --
+// This is the thing the epic exists to produce: `src/graphql-sdl.ts` was
+// 6,582 lines nothing generated, and every gate around it existed only
+// because it was hand-written. #10214 deleted it -- the served SDL is now a
+// print of the schema this module builds (`generated/graphql/schema.ts`,
+// emitted by scripts/generate-graphql-types.ts and drift-gated). Everything
+// it contained is declared somewhere else --
 //
 //   the object types          Zod, via `emitTypes()`
 //   their published names     PUBLISHED_TYPE_NAMES / ALIASED_TYPE_NAMES
@@ -53,6 +56,7 @@ import {
 } from "./published-names.ts";
 import {
   deriveQueryArguments,
+  fieldsArgumentApplies,
   type OpenApiParameters,
 } from "./query-arguments.ts";
 
@@ -424,18 +428,13 @@ export function buildGeneratedSchema(
                 "/api/v1/",
                 "/api/v1/{network}/",
               );
-              const returns = named(binding.returns.replace(/[![\]]/g, ""));
               for (const argument of deriveQueryArguments(
                 binding.field,
                 binding.route,
                 openapi,
                 {
                   hasNetworkTwin: Boolean(twin && openapi.paths?.[twin]),
-                  returnsProjectable:
-                    returns instanceof GraphQLObjectType &&
-                    !Object.values(returns.getFields()).some((field) =>
-                      String(field.type).includes("JSON"),
-                    ),
+                  returnsProjectable: !fieldsArgumentApplies(binding.returns),
                 },
               )) {
                 args[argument.name] = {

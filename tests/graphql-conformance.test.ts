@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildSchema, parse } from "graphql";
-import { SDL } from "../src/graphql-sdl.ts";
+import { SDL } from "../generated/graphql/schema.ts";
 import {
   mirroredRoute,
   numericDivergences,

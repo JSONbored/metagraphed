@@ -7393,8 +7393,8 @@ export interface components {
             gini?: number | null;
             hhi?: number | null;
             hhi_normalized?: number | null;
-            holders?: number;
-            nakamoto_coefficient?: number | null;
+            holders: number;
+            nakamoto_coefficient: number;
             top_10pct_share?: number | null;
             top_1pct_share?: number | null;
             top_20pct_share?: number | null;
@@ -8038,7 +8038,10 @@ export interface components {
             reason: string;
             /** @enum {string} */
             severity: "critical" | "warning" | "info";
-            /** @constant */
+            /**
+             * @description How the incident was derived. Always probe-derived: the health prober owns this surface and no hand-set incident exists. Served by /api/v1/endpoint-incidents on every row -- verified live -- and not selectable over GraphQL until the generator surfaced the omission (#10214).
+             * @constant
+             */
             source: "probe-derived";
             /** @enum {string} */
             state: "active" | "resolved";

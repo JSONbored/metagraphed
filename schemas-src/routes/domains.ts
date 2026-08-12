@@ -16,17 +16,14 @@ import { ConcentrationMetricsSchema } from "../shared.ts";
  *
  * Twelve measures, declared twice until #10790: `ConcentrationMetricsSchema`
  * (shared.ts, and a registered public component) and a field-for-field copy
- * here. Derived rather than re-listed, with the two ways this route is
+ * here. Derived rather than re-listed, with the one way this route is
  * genuinely stronger stated instead of restated -- its producer returns one
- * fixed shape or null, so every measure is present, and it always computes a
- * holder count and a Nakamoto coefficient.
+ * fixed shape or null, so every measure is present. (`holders` and
+ * `nakamoto_coefficient` were the other way until #10214 moved their
+ * non-null spelling into the shared schema itself, where every card gets it.)
  */
 export const ConcentrationScorecardSchema = ConcentrationMetricsSchema.unwrap()
   .required()
-  .extend({
-    holders: z.int(),
-    nakamoto_coefficient: z.int(),
-  })
   .describe(
     "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
   );

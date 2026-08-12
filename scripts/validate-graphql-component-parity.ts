@@ -54,8 +54,8 @@ import type {
   TypeNode,
 } from "graphql";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
-// Re-exported, not redeclared: `tests/graphql-component-parity.test.ts` and
-// `scripts/report-graphql-sdl-equivalence.ts` import the type from here.
+// Re-exported, not redeclared: `tests/graphql-component-parity.test.ts`
+// imports the type from here.
 import { dataComponent, type OpenApiDocument } from "./openapi-document.ts";
 export type { OpenApiDocument } from "./openapi-document.ts";
 import {
@@ -81,7 +81,7 @@ const RESHAPING_FIELDS = new Set(
   ),
 );
 
-const SDL_PATH = "src/graphql-sdl.ts";
+const SDL_PATH = "generated/graphql/schema.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
 
 /**
@@ -181,12 +181,22 @@ export interface ParityReport {
   droppedFields: number;
 }
 
-/** Pull the SDL out of the TypeScript template literal that holds it. */
+/**
+ * Pull the SDL out of the TypeScript template literal that holds it -- the
+ * COOKED value, exactly what `import { SDL }` yields at runtime.
+ *
+ * The generated module escapes `\``, `\${` and `\\` so the printed SDL
+ * survives a template literal (ten descriptions carry a backtick), which
+ * means the RAW source text between the backticks is not the SDL. Undoing
+ * those three escapes here keeps every gate comparing what the executor
+ * runs; on the pre-#10214 hand-written module the pass was a no-op, since
+ * that file contained no escapes.
+ */
 export function extractSdl(source: string): string | null {
   const match = /export const SDL = \/\* GraphQL \*\/ `([\s\S]*?)`;\s*$/m.exec(
     source,
   );
-  return match ? match[1] : null;
+  return match ? match[1].replace(/\\(`|\$\{|\\)/g, "$1") : null;
 }
 
 function sdlTypeName(node: TypeNode): string {

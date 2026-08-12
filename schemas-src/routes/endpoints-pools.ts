@@ -157,7 +157,11 @@ export const EndpointIncidentSchema = z
     last_checked: z.string().nullable(),
     pool_eligible: z.boolean(),
     user_reported: z.boolean(),
-    source: z.literal("probe-derived"),
+    source: z
+      .literal("probe-derived")
+      .describe(
+        "How the incident was derived. Always probe-derived: the health prober owns this surface and no hand-set incident exists. Served by /api/v1/endpoint-incidents on every row -- verified live -- and not selectable over GraphQL until the generator surfaced the omission (#10214).",
+      ),
   })
   .strict();
 export type EndpointIncident = z.infer<typeof EndpointIncidentSchema>;

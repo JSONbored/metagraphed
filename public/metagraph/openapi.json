@@ -27662,16 +27662,9 @@
                 "type": "integer"
               },
               "nakamoto_coefficient": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
               },
               "top_10pct_share": {
                 "anyOf": [
@@ -27724,6 +27717,10 @@
                 ]
               }
             },
+            "required": [
+              "holders",
+              "nakamoto_coefficient"
+            ],
             "type": "object"
           },
           {
@@ -29546,7 +29543,7 @@
                   },
                   "holders": {
                     "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
+                    "minimum": 0,
                     "type": "integer"
                   },
                   "nakamoto_coefficient": {
@@ -31090,6 +31087,7 @@
           },
           "source": {
             "const": "probe-derived",
+            "description": "How the incident was derived. Always probe-derived: the health prober owns this surface and no hand-set incident exists. Served by /api/v1/endpoint-incidents on every row -- verified live -- and not selectable over GraphQL until the generator surfaced the omission (#10214).",
             "type": "string"
           },
           "state": {

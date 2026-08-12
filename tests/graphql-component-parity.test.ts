@@ -14,7 +14,7 @@ import {
 const openapi = JSON.parse(
   readFileSync("public/metagraph/openapi.json", "utf8"),
 ) as OpenApiDocument;
-const sdl = extractSdl(readFileSync("src/graphql-sdl.ts", "utf8"))!;
+const sdl = extractSdl(readFileSync("generated/graphql/schema.ts", "utf8"))!;
 
 describe("Zod -> GraphQL type emitter (#10214)", () => {
   test("emits an object type for every registry component that has fields", () => {
@@ -131,7 +131,7 @@ describe("graphql component parity gate (#10214)", () => {
     // Delete SelfHealth.stale_lane_count -- one of the fields this gate was
     // written to catch. Without this the gate is only ever run against a
     // passing tree, which proves it runs, not that it can fail.
-    const broken = sdl.replace(/^ {4}stale_lane_count: Int\n/m, "");
+    const broken = sdl.replace(/^ {2}stale_lane_count: Int!\n/m, "");
     assert.notEqual(broken, sdl, "the fixture field must exist to be removed");
     const report = checkComponentParity(broken, openapi);
     assert.ok(
@@ -143,7 +143,7 @@ describe("graphql component parity gate (#10214)", () => {
   });
 
   test("a DECLARED omission is accepted, and a stale one fails", () => {
-    const broken = sdl.replace(/^ {4}stale_lane_count: Int\n/m, "");
+    const broken = sdl.replace(/^ {2}stale_lane_count: Int!\n/m, "");
     const key = "SelfHealth.stale_lane_count";
     const accepted = checkComponentParity(broken, openapi, {
       [key]: "under test",
@@ -185,9 +185,9 @@ function inType(
   find: RegExp,
   replace: string,
 ): string {
-  const start = source.search(new RegExp(`^ {2}type ${typeName} \\{$`, "m"));
+  const start = source.search(new RegExp(`^type ${typeName} \\{$`, "m"));
   assert.notEqual(start, -1, `no type ${typeName} in the SDL`);
-  const end = source.indexOf("\n  }\n", start) + "\n  }\n".length;
+  const end = source.indexOf("\n}\n", start) + "\n}\n".length;
   const block = source.slice(start, end);
   const rewritten = block.replace(find, replace);
   assert.notEqual(rewritten, block, `${find} did not match inside ${typeName}`);
@@ -219,7 +219,7 @@ describe("declared projections (#10214)", () => {
     const broken = inType(
       sdl,
       "Surface",
-      /^ {4}status: String$/m,
+      /^ {2}status: String$/m,
       "    status: String!",
     );
     const report = checkComponentParity(broken, openapi);
@@ -233,7 +233,7 @@ describe("declared projections (#10214)", () => {
     const broken = inType(
       sdl,
       "Surface",
-      /^ {2}type Surface \{$/m,
+      /^type Surface \{$/m,
       "  type Surface {\n    invented_field: String",
     );
     const report = checkComponentParity(broken, openapi);
@@ -273,7 +273,7 @@ describe("declared projections (#10214)", () => {
     const broken = inType(
       sdl,
       "OpportunityEntry",
-      /^ {4}validator_headroom: Int\n/m,
+      /^ {2}validator_headroom: Int\n/m,
       "",
     );
     const report = checkComponentParity(broken, openapi);
@@ -309,7 +309,7 @@ describe("scalar identity", () => {
     const broken = inType(
       sdl,
       "SubnetHyperparameters",
-      /^ {4}hyperparameters: Hyperparameters\n/m,
+      /^ {2}hyperparameters: Hyperparameters\n/m,
       "    hyperparameters: String\n",
     );
     const report = checkComponentParity(broken, openapi);
@@ -327,7 +327,7 @@ describe("scalar identity", () => {
     const broken = inType(
       sdl,
       "SubnetHyperparameters",
-      /^ {4}hyperparameters: Hyperparameters\n/m,
+      /^ {2}hyperparameters: Hyperparameters\n/m,
       "    hyperparameters: JSON\n",
     );
     const report = checkComponentParity(broken, openapi);
@@ -349,7 +349,7 @@ describe("scalar identity", () => {
       const undertyped = inType(
         sdl,
         "Adapter",
-        /^ {4}snapshot: AdapterArtifactSnapshot\n/m,
+        /^ {2}snapshot: AdapterArtifactSnapshot\n/m,
         "    snapshot: JSON\n",
       );
       const report = checkComponentParity(
@@ -538,7 +538,7 @@ describe("paginated views", () => {
     const broken = inType(
       sdl,
       "Subnet",
-      /^ {4}netuid: Int!\n/m,
+      /^ {2}netuid: Int!\n/m,
       "    netuid: String!\n",
     );
     const report = checkComponentParity(broken, openapi);
@@ -556,7 +556,7 @@ describe("paginated views", () => {
     const broken = inType(
       sdl,
       "Subnet",
-      /^ {4}netuid: Int!\n/m,
+      /^ {2}netuid: Int!\n/m,
       "    netuid: JSON\n",
     );
     const report = checkComponentParity(broken, openapi);

@@ -58,7 +58,7 @@ import { buildGeneratedSchema } from "../schemas-src/graphql/build-schema.ts";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
 import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.ts";
-import { SDL } from "../src/graphql-sdl.ts";
+import { SDL } from "../generated/graphql/schema.ts";
 import { dataComponent, limitFor } from "./openapi-document.ts";
 
 const BASE = process.env.CONFORMANCE_API_BASE || "https://api.metagraph.sh";

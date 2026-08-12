@@ -20,7 +20,9 @@ import {
   QUERY_BINDINGS,
 } from "../schemas-src/graphql/published-names.ts";
 
-const fullSdl = extractSdl(readFileSync("src/graphql-sdl.ts", "utf8"))!;
+const fullSdl = extractSdl(
+  readFileSync("generated/graphql/schema.ts", "utf8"),
+)!;
 
 const sdl: SdlBinding[] = [
   {

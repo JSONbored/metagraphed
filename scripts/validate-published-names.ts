@@ -38,7 +38,7 @@ import {
 import { extractSdl } from "./validate-graphql-component-parity.ts";
 import { dataComponent } from "./openapi-document.ts";
 
-const SDL_PATH = "src/graphql-sdl.ts";
+const SDL_PATH = "generated/graphql/schema.ts";
 
 /** One Query field as the SDL declares it. */
 export interface SdlBinding {

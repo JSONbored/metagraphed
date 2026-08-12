@@ -276,24 +276,14 @@ export const ARGUMENT_CODECS: Readonly<Record<string, ArgumentCodec>> = {
     reason: COMMA_JOINED_LIST,
   },
   "rpc_endpoints.fields": { graphql: "[String!]", reason: COMMA_JOINED_LIST },
-  "endpoints.fields": {
-    graphql: "[String!]",
-    reason:
-      COMMA_JOINED_LIST +
-      " Kept at all -- unlike the fields whose `fields` is dropped -- because " +
-      "this field's return type carries a JSON member a selection set cannot " +
-      "reach inside, so the caller has no projection without it.",
-    addedByGraphql: true,
-  },
-  "surfaces.fields": {
-    graphql: "String",
-    reason:
-      "same reason as `endpoints.fields`: the return type is not fully " +
-      "projectable, so REST's projection parameter still has work to do. " +
-      "Spelled String here rather than a list, which is the older of the two " +
-      "spellings on this surface and a difference worth collapsing separately.",
-    addedByGraphql: true,
-  },
+  // `endpoints.fields` and `surfaces.fields` lived here until #10214, each
+  // justifying itself by a JSON member its return type no longer carries --
+  // `EndpointList` DROPS `notes`, the member the entry named. The expired
+  // reason left a published capability that contradicts the schema: project
+  // out a column the selection set asks for and a non-null row field has
+  // nothing to answer with. `fieldsArgumentApplies` now states the rule once,
+  // for the generator and the gate both: `fields` earns an argument only on a
+  // return the selection set cannot project at all (the opaque JSON scalar).
 
   // ── a bound on a COUNT is an Int ──────────────────────────────────────────
   //
@@ -466,16 +456,10 @@ export const ARGUMENT_CODECS: Readonly<Record<string, ArgumentCodec>> = {
   "subnets.cursor": { graphql: "String", reason: OPAQUE_KEYSET },
   "providers.cursor": { graphql: "String", reason: OPAQUE_KEYSET },
 
-  // ── projection the selection set cannot replace ───────────────────────────
-  "providers.fields": {
-    graphql: "String",
-    addedByGraphql: true,
-    reason:
-      "same reason as `endpoints.fields` and `surfaces.fields`: `fields` is " +
-      "dropped wherever a selection set already projects the return type, and " +
-      "kept where it does not. Spelled String rather than a list, the older " +
-      "of the two spellings on this surface.",
-  },
+  // `providers.fields` sat here too, justified by reference to the
+  // `endpoints.fields`/`surfaces.fields` entries deleted above -- the same
+  // expired reason at one remove. `ProviderList` is a named object type, so
+  // the selection set is its projection; `fieldsArgumentApplies` owns the rule.
 
   // ── a RANGE over netuid, which the route has no parameter for ─────────────
   //

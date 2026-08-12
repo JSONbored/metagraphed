@@ -15,14 +15,14 @@ import { extractSdl } from "../scripts/validate-graphql-component-parity.ts";
 import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.ts";
 import { scalarFor } from "../schemas-src/graphql/query-arguments.ts";
 
-const sdl = extractSdl(readFileSync("src/graphql-sdl.ts", "utf8"))!;
+const sdl = extractSdl(readFileSync("generated/graphql/schema.ts", "utf8"))!;
 const openapi = JSON.parse(
   readFileSync("public/metagraph/openapi.json", "utf8"),
 ) as OpenApiParameters;
 
 /** Rewrite inside ONE Query field's argument list. */
 function inField(source: string, field: string, find: string, replace: string) {
-  const start = source.indexOf(`    ${field}(`);
+  const start = source.indexOf(`  ${field}(`);
   assert.notEqual(start, -1, `no Query.${field} in the SDL`);
   const end = source.indexOf("):", start);
   const block = source.slice(start, end);

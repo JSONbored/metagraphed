@@ -592,12 +592,19 @@ export type FieldSources = z.infer<typeof FieldSourcesSchema>;
 // this batch still reference it by name.
 export const ConcentrationMetricsSchema = z
   .object({
-    holders: z.int().min(0).optional(),
+    // Required and non-null (#10214): computeConcentration() writes both on
+    // every card it builds -- the empty-distribution case nulls the CARD (the
+    // `.nullable()` below), never a field inside one. The compiler walked
+    // every producer including the degraded arms and none can write null
+    // here; production answered both with values on the live surface. The
+    // old `.nullable().optional()` spelling predates the typed producers and
+    // described no writer.
+    holders: z.int().min(0),
     total: z.number().nullable().optional(),
     gini: z.number().nullable().optional(),
     hhi: z.number().nullable().optional(),
     hhi_normalized: z.number().nullable().optional(),
-    nakamoto_coefficient: z.int().nullable().optional(),
+    nakamoto_coefficient: z.int(),
     top_1pct_share: z.number().nullable().optional(),
     top_5pct_share: z.number().nullable().optional(),
     top_10pct_share: z.number().nullable().optional(),

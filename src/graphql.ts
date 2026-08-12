@@ -744,7 +744,7 @@ import {
   DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
 } from "./chain-transfer-pairs.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
-import { SDL } from "./graphql-sdl.ts";
+import { SDL } from "../generated/graphql/schema.ts";
 // Types only -- erased at build, so naming the Durable Object's contract here
 // costs the bundle nothing (#10782).
 import type { EconomicsArtifact } from "../schemas-src/routes/economics.ts";
@@ -992,9 +992,10 @@ export const GRAPHQL_MAX_COMPLEXITY = 50;
 export const GRAPHQL_MAX_BODY_BYTES = 64 * 1024;
 export const GRAPHQL_MAX_QUERY_BYTES = 16 * 1024;
 
-// SDL moved to src/graphql-sdl.ts (types-epic D, #7862) so @graphql-codegen
-// can import it without pulling in this file's full resolver map. Re-exported
-// so every existing `import { SDL } from "./graphql.ts"` keeps working.
+// The SDL is GENERATED (#10214): scripts/generate-graphql-types.ts prints it
+// from the Zod-built schema into generated/graphql/schema.ts, which is also
+// what @graphql-codegen reads. Re-exported so every existing
+// `import { SDL } from "./graphql.ts"` keeps working.
 export { SDL };
 
 // Exported so workers/chain-firehose-hub.ts's graphql-ws server (#4983) can
@@ -8157,7 +8158,7 @@ const rootValue = {
   // capture's chain_state is what makes every reconstructed share checkable at
   // all, so an absent one has no honest body — only an error.
   async emission_pipeline(
-    { netuid, fields, sort, order, limit }: QueryEmission_PipelineArgs,
+    { netuid, sort, order, limit }: QueryEmission_PipelineArgs,
     context: GqlContext,
   ) {
     const economics = await loadEconomics(context);
@@ -8173,12 +8174,12 @@ const rootValue = {
       });
     }
     // #10065: the same narrowing handleEmissionPipeline applies, through the
-    // same helper. `fields` is validated against the DECOMPOSED rows, so it
-    // has to run AFTER the projection -- the reason REST does two passes, and
-    // the reason this cannot fold into projectEmissionPipeline.
+    // same helper -- minus `fields`, which #10214 stopped publishing here: the
+    // return is a named object type, so the selection set is the projection
+    // (`fieldsArgumentApplies`), and REST keeps the parameter for the caller
+    // who has no selection set.
     const narrowingParams = new URLSearchParams();
     for (const [name, value] of [
-      ["fields", fields],
       ["sort", sort],
       ["order", order],
       ["limit", limit],

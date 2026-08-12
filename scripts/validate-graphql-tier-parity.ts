@@ -25,7 +25,7 @@ import type { ObjectTypeDefinitionNode } from "graphql";
 const API_PATH = "workers/api.ts";
 const HANDLER_DIR = "workers/request-handlers";
 const GRAPHQL_PATH = "src/graphql.ts";
-const SDL_PATH = "src/graphql-sdl.ts";
+const SDL_PATH = "generated/graphql/schema.ts";
 
 /**
  * Routes whose GraphQL field deliberately reads a shorter ladder, with the

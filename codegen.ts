@@ -1,12 +1,13 @@
 import type { CodegenConfig } from "@graphql-codegen/cli";
 
-// GraphQL codegen (types-epic D, #7862): schema points at src/graphql-sdl.ts
-// (the SDL string extracted from src/graphql.ts specifically so codegen's
-// module-import schema loader doesn't drag in that file's full resolver map
-// as a side effect of every codegen run — see graphql-sdl.ts's own header).
+// GraphQL codegen (types-epic D, #7862): schema points at the generated SDL
+// module (#10214) — a dependency-free file, so codegen's module-import schema
+// loader doesn't drag in src/graphql.ts's full resolver map as a side effect
+// of every codegen run. scripts/generate-graphql-types.ts emits that module
+// from the Zod-built schema BEFORE running this config against it.
 // `generated/graphql/types.ts` is the ONLY output; nothing else is written.
 const config: CodegenConfig = {
-  schema: "src/graphql-sdl.ts",
+  schema: "generated/graphql/schema.ts",
   generates: {
     "generated/graphql/types.ts": {
       plugins: ["typescript", "typescript-resolvers"],

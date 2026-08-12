@@ -64,7 +64,7 @@ const UNPUBLISHED_EXACT: { path: string; reason: string }[] = [
   {
     path: "/api/v1/graphql",
     reason:
-      "the GraphQL endpoint publishes its own contract as an SDL (src/graphql-sdl.ts); an OpenAPI operation would describe the transport, not the API",
+      "the GraphQL endpoint publishes its own contract as an SDL (generated/graphql/schema.ts); an OpenAPI operation would describe the transport, not the API",
   },
   {
     path: "/api/v1/events",

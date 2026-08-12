@@ -31,7 +31,7 @@
 import { buildSchema } from "graphql";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
 import { API_ROUTES, FEED_ROUTES } from "../src/contracts.ts";
-import { SDL } from "../src/graphql-sdl.ts";
+import { SDL } from "../generated/graphql/schema.ts";
 import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
 import { planAll, type FieldPlan } from "./check-graphql-conformance.ts";
 import { argumentsForRequired, concreteRoute } from "./conformance-subjects.ts";
