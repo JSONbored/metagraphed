@@ -305,6 +305,41 @@ describe("findOverPromises", () => {
     assert.deepEqual(report.stalePassthroughs, []);
   });
 
+  test("a literal fallback at a contract-field write is CENSUSED (#10868)", () => {
+    const report = findOverPromises(
+      programFor(`
+        const data: Record<string, unknown> = {};
+        const other: number | undefined = undefined;
+        const rootValue = {
+          card() {
+            return {
+              total: (data.total as number | undefined) ?? 0,
+              optional_total: (data.maybe as number | undefined) ?? other ?? null,
+              complete: (data.complete as boolean | undefined) || false,
+            };
+          },
+        };
+      `),
+      Query,
+    );
+    // `?? 0` and `|| false` state defaults the schema does not; `?? other`
+    // defers to another VALUE and states nothing, so only the trailing
+    // `?? null` of that chain is recorded.
+    assert.deepEqual(
+      report.fallbacks.map((site) => [
+        site.path,
+        site.operator,
+        site.fallback,
+        site.fieldNullable,
+      ]),
+      [
+        ["Card.total", "??", "0", false],
+        ["Card.optional_total", "??", "null", true],
+        ["Card.complete", "||", "false", false],
+      ],
+    );
+  });
+
   test("a declared passthrough with no matching spread is STALE (#10867)", () => {
     const report = findOverPromises(
       programFor(`

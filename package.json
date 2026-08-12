@@ -117,6 +117,7 @@
     "report:type-duplicates": "node scripts/report-type-duplicates.ts",
     "report:nullable-overpromises": "node scripts/report-nullable-overpromises.ts",
     "report:mcp-tripwire-preflight": "node scripts/report-mcp-tripwire-preflight.ts",
+    "report:fallback-census": "node scripts/report-fallback-census.ts",
     "report:shape-duplicates": "node scripts/report-shape-duplicate-drift.ts",
     "report:undeclared-fields": "node scripts/report-undeclared-fields.ts",
     "validate:published-names": "node scripts/validate-published-names.ts",
