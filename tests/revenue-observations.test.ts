@@ -107,6 +107,7 @@ describe("persistRevenueProbe", () => {
           netuid: 51,
           reason: "fetch failed: HTTP 503",
           observed_at: 1786320000000,
+          terminal: false,
         },
       ],
       skipped: [],
@@ -131,6 +132,7 @@ describe("persistRevenueProbe", () => {
           netuid: 1,
           reason: "fetch failed",
           observed_at: 1786320000000,
+          terminal: false,
         },
       ],
       skipped: [],
@@ -814,6 +816,49 @@ describe("the queue lane (#10715)", () => {
     const out = await handleRevenueProbeBatch([m], null, deps() as never);
     assert.equal(out.retried, 1);
     assert.equal(m.calls.retried, 1);
+  });
+
+  test("an EXTRACTION failure is ACKED, because the payload's shape will not change", async () => {
+    // #10855, measured on production: sn-64-chutes-payments-list declares
+    // `flat-array` and its endpoint returns a paginated envelope, so extraction
+    // failed identically on every tick for twelve hours and held
+    // `revenue-probes-dlq` at `stale` the whole time. The failure row is
+    // written before we get here; a retry buys a duplicate row and a second
+    // request against somebody else's API.
+    const m = message({ surface_id: surface.id });
+    const out = await handleRevenueProbeBatch(
+      [m],
+      store(),
+      deps({
+        fetchPayload: async () => ({
+          payload: { total: 18943, page: 0, limit: 25, items: [] },
+          raw: '{"total":18943,"page":0,"limit":25,"items":[]}',
+        }),
+      }) as never,
+    );
+    assert.equal(m.calls.retried, 0, "a deterministic failure must not retry");
+    assert.equal(m.calls.acked, 1);
+    assert.deepEqual(out, { done: 1, retried: 0, dropped: 0 });
+  });
+
+  test("a FETCH failure still RETRIES, because that one is transient", async () => {
+    // The other half of the same rule: a slow or briefly-5xx endpoint is worth
+    // asking again, and acking it would lose the observation entirely. If this
+    // ever passes for the same reason the test above does, the distinction has
+    // collapsed and every failure is being acked.
+    const m = message({ surface_id: surface.id });
+    const out = await handleRevenueProbeBatch(
+      [m],
+      store(),
+      deps({
+        fetchPayload: async () => {
+          throw new Error("HTTP 503");
+        },
+      }) as never,
+    );
+    assert.equal(m.calls.retried, 1, "a transient failure must retry");
+    assert.equal(m.calls.acked, 0);
+    assert.equal(out.retried, 1);
   });
 
   test("re-reads the eligible set at DELIVERY", async () => {
