@@ -84,7 +84,12 @@ export function pgReadStore(
     await client.connect();
     try {
       const result = await client.query(toPositionalPlaceholders(text), values);
-      return (result?.rows ?? []) as unknown[];
+      // ALWAYS an array. `rows` is the driver's, and a driver that answers
+      // something else (a mock, a future client) would otherwise put a
+      // `.length` TypeError inside every caller's decline path -- the guard
+      // each of them used to carry, now stated once (#10909).
+      const rows = result?.rows;
+      return (Array.isArray(rows) ? rows : []) as unknown[];
     } finally {
       // Awaited, unlike createPgSql's waitUntil -- see this module's header.
       await client.end().catch(() => undefined);

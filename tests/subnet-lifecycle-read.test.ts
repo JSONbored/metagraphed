@@ -25,18 +25,9 @@ import {
 function fakeStore(rows: unknown[]) {
   const calls: { sql: string; values: unknown[] }[] = [];
   const store = {
-    prepare(sql: string) {
-      const run = (values: unknown[]) => {
-        calls.push({ sql, values });
-        return { all: async () => ({ results: rows }) };
-      };
-      return {
-        bind: (...values: unknown[]) => run(values),
-        all: async () => {
-          calls.push({ sql, values: [] });
-          return { results: rows };
-        },
-      };
+    query(sql: string, values: unknown[] = []) {
+      calls.push({ sql, values });
+      return Promise.resolve(rows);
     },
   };
   return { store: store as never, calls };

@@ -550,20 +550,18 @@ describe("the watchdog's own reporting", () => {
       captures,
       deps: {
         laneHealthDb: {
-          prepare: (sql: string) => ({
-            bind: (...values: unknown[]) => ({
-              run: async () => {
-                if (sql.startsWith("INSERT")) {
-                  rows.push({
-                    lane: values[0],
-                    verdict: values[1],
-                    age_ms: values[2],
-                    detail: values[3],
-                  });
-                }
-              },
-            }),
-          }),
+          query: async () => [],
+          run: async (sql: string, values: unknown[] = []) => {
+            if (sql.startsWith("INSERT")) {
+              rows.push({
+                lane: values[0],
+                verdict: values[1],
+                age_ms: values[2],
+                detail: values[3],
+              });
+            }
+            return { changes: 1 };
+          },
         } as never,
         recordExceptionEvent: (async (_env: unknown, event: unknown) => {
           captures.push(event as Record<string, unknown>);
@@ -635,7 +633,10 @@ describe("the watchdog's own reporting", () => {
         query: measured(),
         now: () => NOW,
         laneHealthDb: {
-          prepare: () => {
+          query: () => {
+            throw new Error("no such table: lane_health");
+          },
+          run: () => {
             throw new Error("no such table: lane_health");
           },
         } as never,

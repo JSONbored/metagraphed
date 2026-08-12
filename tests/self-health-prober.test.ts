@@ -38,15 +38,11 @@ function laneSpy() {
   return {
     written,
     db: {
-      prepare: () => ({
-        bind: (...values: unknown[]) => ({
-          run: async () => {
-            written.push({ values });
-            return {};
-          },
-          all: async () => ({ results: [] }),
-        }),
-      }),
+      query: async () => [],
+      run: async (_sql: string, values: unknown[] = []) => {
+        written.push({ values });
+        return { changes: 1 };
+      },
     } as never,
   };
 }

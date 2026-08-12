@@ -68,27 +68,15 @@ function owned(tables: readonly string[] = PRUNE_TABLES) {
  * choice to run leave `readDb` out on purpose.
  */
 function boundsReader(floor: unknown, head: unknown) {
-  return {
-    prepare: () => ({
-      bind: () => ({ first: async () => ({ floor, head }) }),
-      first: async () => ({ floor, head }),
-    }),
-  } as never;
+  return { first: async () => ({ floor, head }) } as never;
 }
 
 /** A bounds reader whose MIN/MAX read fails, so the failure path is reachable. */
 function throwingReader(thrown: unknown) {
   return {
-    prepare: () => ({
-      bind: () => ({
-        first: async () => {
-          throw thrown;
-        },
-      }),
-      first: async () => {
-        throw thrown;
-      },
-    }),
+    first: async () => {
+      throw thrown;
+    },
   } as never;
 }
 

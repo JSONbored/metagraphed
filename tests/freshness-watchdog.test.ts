@@ -331,22 +331,20 @@ function laneHealthSpy() {
   return {
     rows,
     db: {
-      prepare: (sql: string) => ({
-        bind: (...values: unknown[]) => ({
-          run: async () => {
-            // Only the INSERT carries a verdict; recordLaneVerdict also issues
-            // a retention DELETE on the way through.
-            if (sql.startsWith("INSERT")) {
-              rows.push({
-                lane: values[0],
-                verdict: values[1],
-                age_ms: values[2],
-                detail: values[3],
-              });
-            }
-          },
-        }),
-      }),
+      query: async () => [],
+      run: async (sql: string, values: unknown[] = []) => {
+        // Only the INSERT carries a verdict; recordLaneVerdict also issues
+        // a retention DELETE on the way through.
+        if (sql.startsWith("INSERT")) {
+          rows.push({
+            lane: values[0],
+            verdict: values[1],
+            age_ms: values[2],
+            detail: values[3],
+          });
+        }
+        return { changes: 1 };
+      },
     },
   };
 }
@@ -440,7 +438,10 @@ test("a lane_health write that fails never breaks the tick", async () => {
   const res = (await runFreshnessWatchdog(envWith(undefined), undefined, {
     readArtifact: (async () => staleArtifact) as never,
     laneHealthDb: {
-      prepare: () => {
+      query: () => {
+        throw new Error("no such table: lane_health");
+      },
+      run: () => {
         throw new Error("no such table: lane_health");
       },
     } as never,

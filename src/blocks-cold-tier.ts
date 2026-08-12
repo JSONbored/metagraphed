@@ -45,6 +45,7 @@ import {
   type BlockFeedQuery,
 } from "./r2-sql-blocks.ts";
 import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
+import type { BlocksHead } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { readStore } from "./read-store.ts";
@@ -107,6 +108,19 @@ const STORE_SELECT =
   // between a block being seen and being decoded -- the window that used to
   // publish null and render "Events 0".
   "COALESCE(c.chain_event_count, b.event_count) AS event_count";
+/** What STORE_SELECT returns: blocks_head's own columns, plus the two joined
+ * from chain_detail_blocks. Named rather than left untyped so a column rename
+ * on either side of the join is a compile error (#10261). */
+type BlockSeamRow = Pick<
+  BlocksHead,
+  | "block_number"
+  | "block_hash"
+  | "parent_hash"
+  | "extrinsic_count"
+  | "observed_at"
+  | "author"
+> & { spec_version: number | null; event_count: number | null };
+
 const STORE_FROM =
   "blocks_head b LEFT JOIN chain_detail_blocks c " +
   "ON c.block_number = b.block_number";
@@ -422,7 +436,7 @@ export async function loadBlockColdTier(
         asNumber !== null ? "b.block_number = ?" : "lower(b.block_hash) = ?";
       const value = asNumber !== null ? asNumber : asHash!;
       const rows = db.query
-        ? await db.query<Record<string, unknown>>(
+        ? await db.query<BlockSeamRow>(
             `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
             [value],
           )
