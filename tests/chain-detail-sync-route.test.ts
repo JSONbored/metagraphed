@@ -66,10 +66,10 @@ function insertedTables() {
     .filter((t): t is string => Boolean(t));
 }
 
-// pgMockEnv carries both flags this route needs: NEON_DUAL_WRITE_LANES, without
-// which the mirror is not even attempted, and NEON_SOLE_STORE_TABLES, without
-// which the ack cannot claim the blocks are durable. Both are what
-// wrangler.data.jsonc declares for this lane today.
+// pgMockEnv carries NEON_SOLE_STORE_TABLES, without which the ack cannot
+// claim the blocks are durable -- what wrangler.data.jsonc declares for this
+// lane today. (The dual-write flag rode beside it until #10051; the write is
+// unconditional now.)
 const env = {
   CHAIN_DETAIL_SYNC_SECRET: SECRET,
   ...pgMockEnv(),
@@ -236,27 +236,10 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     });
   });
 
-  test("ONE table missing from the sole-store list is the same 503", async () => {
-    // All four families land together or the block is readable and wrong, so a
-    // partial declaration is the "no store" case rather than a weaker version
-    // of owned -- and it must not be a 200 that acks blocks nothing holds.
-    const partial = pgMockEnv([
-      "chain_detail_blocks",
-      "chain_detail_extrinsics",
-      "chain_detail_chain_events",
-    ]);
-    const res = await dataApi.fetch(
-      new Request("https://d/api/v1/internal/chain-detail-sync", {
-        method: "POST",
-        headers: { [HEADER]: SECRET },
-        body: JSON.stringify(body()),
-      }),
-      { CHAIN_DETAIL_SYNC_SECRET: SECRET, ...partial } as never,
-      CTX,
-    );
-    assert.equal(res.status, 503);
-    assert.deepEqual(insertedTables(), []);
-  });
+  // This test's flag-declared premise retired with NEON_SOLE_STORE_TABLES
+  // (#10051): Neon is the only store, so an undeclared/partial state cannot
+  // exist. "A reader names a table no migration creates" is owned by
+  // tests/neon-sole-store-tables-exist.test.ts, derived from the code.
 
   test("a store write failure is a 502 with a capture label, never a 200", async () => {
     // The producer advances its resume head on `ok`, so a false 200 does not

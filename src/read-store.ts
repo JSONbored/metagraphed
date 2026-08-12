@@ -35,7 +35,6 @@
 // answer, which is the failure mode this whole migration keeps having to
 // design against.
 import { Client } from "pg";
-import { neonOwnsTable } from "./neon-write.ts";
 import { toPositionalPlaceholders, type HyperdriveLike } from "./pg-sql.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
@@ -141,6 +140,6 @@ export function readStore(
   // Empty `tables` must never read as "Neon owns them all" -- that would send a
   // caller who forgot to declare its tables to Postgres unconditionally.
   if (tables.length === 0) return undefined;
-  if (!tables.every((table) => neonOwnsTable(bag, table))) return undefined;
+  // the ownership check collapsed with the flag (#10051): Neon is the only store, so the question answered itself.
   return pgReadStore(hyperdrive.connectionString, deps);
 }

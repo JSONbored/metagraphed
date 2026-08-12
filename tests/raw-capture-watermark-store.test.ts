@@ -21,7 +21,6 @@ const waitUntil = { waitUntil: () => undefined };
 
 const NEON_ENV = {
   HYPERDRIVE: { connectionString: "postgresql://example/db" },
-  NEON_SOLE_STORE_TABLES: "raw_capture_state",
 };
 
 describe("neonWatermark", () => {
@@ -40,12 +39,7 @@ describe("neonWatermark", () => {
   });
 
   test("without Hyperdrive bound there is no reader either", async () => {
-    const store = neonWatermark(
-      { NEON_SOLE_STORE_TABLES: "raw_capture_state" },
-      waitUntil,
-      "finney",
-      () => NOW,
-    );
+    const store = neonWatermark({}, waitUntil, "finney", () => NOW);
     assert.equal(await store.read(), null);
   });
 

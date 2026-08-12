@@ -16,8 +16,6 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "vitest";
 import {
   buildPgUpsert,
-  neonDualWriteEnabled,
-  neonDualWriteLanes,
   PG_PARAM_BUDGET,
   PG_PARAM_LIMIT,
   pgFlatValues,
@@ -414,43 +412,6 @@ describe("recordNeonWriteVerdict", () => {
       ),
       false,
     );
-  });
-});
-
-describe("neonDualWriteLanes", () => {
-  test("defaults to nothing, so the flag's own deploy changes nothing", () => {
-    // The pilot's failure was a store used before it was ready. A flag that
-    // defaulted on would repeat it on the deploy that introduced the flag.
-    assert.deepEqual([...neonDualWriteLanes(undefined)], []);
-    assert.deepEqual([...neonDualWriteLanes(null)], []);
-    assert.deepEqual([...neonDualWriteLanes({})], []);
-    assert.deepEqual(
-      [...neonDualWriteLanes({ NEON_DUAL_WRITE_LANES: "" })],
-      [],
-    );
-    assert.deepEqual(
-      [...neonDualWriteLanes({ NEON_DUAL_WRITE_LANES: "  " })],
-      [],
-    );
-    assert.deepEqual([...neonDualWriteLanes({ NEON_DUAL_WRITE_LANES: 7 })], []);
-  });
-
-  test("reads a comma list, tolerating spacing and empties", () => {
-    assert.deepEqual(
-      [
-        ...neonDualWriteLanes({
-          NEON_DUAL_WRITE_LANES: " neurons , ,neuron_daily ",
-        }),
-      ],
-      ["neurons", "neuron_daily"],
-    );
-  });
-
-  test("enables exactly the lanes named", () => {
-    const env = { NEON_DUAL_WRITE_LANES: "neurons" };
-    assert.equal(neonDualWriteEnabled(env, "neurons"), true);
-    assert.equal(neonDualWriteEnabled(env, "neuron_daily"), false);
-    assert.equal(neonDualWriteEnabled({}, "neurons"), false);
   });
 });
 

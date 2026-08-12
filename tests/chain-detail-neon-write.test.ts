@@ -11,12 +11,10 @@ import { describe, test } from "vitest";
 
 import {
   CHAIN_DETAIL_MIRROR_PLANS,
-  CHAIN_DETAIL_NEON_LANE,
   mirrorChainDetailToNeon,
 } from "../src/chain-detail-neon-write.ts";
 
 const env = {
-  NEON_DUAL_WRITE_LANES: CHAIN_DETAIL_NEON_LANE,
   HYPERDRIVE: { connectionString: "postgresql://x" },
 };
 const ctx = { waitUntil: () => undefined } as never;
@@ -138,27 +136,24 @@ describe("the nullable boolean", () => {
 });
 
 describe("gating", () => {
-  test("off unless the flag names the lane", async () => {
-    const { sql, calls } = recordingSql();
-    const out = await mirrorChainDetailToNeon(
-      { ...env, NEON_DUAL_WRITE_LANES: "neurons" },
-      ctx,
-      input,
-      { sql, laneHealthDb: null },
-    );
-    assert.equal(out.attempted, false);
-    assert.equal(calls.length, 0);
-  });
-
-  test("enabled but unbound is a verdict, not silence", async () => {
-    const out = await mirrorChainDetailToNeon(
-      { NEON_DUAL_WRITE_LANES: CHAIN_DETAIL_NEON_LANE },
-      ctx,
-      input,
-      { laneHealthDb: null },
-    );
+  // "off unless the flag names the lane" lived here until #10051: with D1
+  // deleted the write is unconditional, and the off-arm it pinned is gone.
+  test("unbound is a verdict, not silence", async () => {
+    const out = await mirrorChainDetailToNeon({}, ctx, input, {
+      laneHealthDb: null,
+    });
     assert.equal(out.attempted, true);
-    assert.deepEqual(out.results, {});
+    // The miss is IN-BAND since #10051: empty results let a sync route ack a
+    // write nothing held, so every table reports the unbound failure.
+    assert.ok(Object.keys(out.results).length > 0, "the miss must be in-band");
+    for (const r of Object.values(out.results)) {
+      assert.deepEqual(r, {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: "hyperdrive unbound",
+      });
+    }
   });
 
   test("never throws when the store does", async () => {

@@ -49,8 +49,6 @@ let db: PGlite;
 function env(overrides: Record<string, unknown> = {}) {
   return {
     HYPERDRIVE: { connectionString: "postgres://stub" },
-    NEON_DUAL_WRITE_LANES: "subnet-identity",
-    NEON_SOLE_STORE_TABLES: "subnet_identity,subnet_identity_history",
     SUBNET_IDENTITY_SYNC_SECRET: SECRET,
     ...overrides,
   } as unknown as Env;
@@ -286,16 +284,10 @@ test("an oversized body is a 413 before any parsing", async () => {
   assert.equal(res.status, 413);
 });
 
-test("a lane absent from NEON_DUAL_WRITE_LANES fails rather than silently no-ops", async () => {
-  // mirrorFamilyToNeon early-returns `{ attempted: false }` for a lane the flag
-  // does not name. Since Neon is this family's only store, "not attempted" is
-  // a write that did not happen -- reporting ok would be indistinguishable from
-  // a successful pass, which is exactly how this table lost its writer for
-  // weeks without anyone noticing.
-  const res = await call(req([row()]), env({ NEON_DUAL_WRITE_LANES: "" }));
-  assert.equal(res.status, 502);
-  assert.equal(await count("subnet_identity"), 0);
-});
+// "a lane absent from NEON_DUAL_WRITE_LANES fails rather than silently
+// no-ops" lived here until #10051: the flag is gone, the write is
+// unconditional, and the mirrors report an unbound store IN-BAND --
+// this route's other failure pins stand below.
 
 test("an over-long identity string is rejected", async () => {
   // These are owner-supplied strings from the chain and they land in TEXT

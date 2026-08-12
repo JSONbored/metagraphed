@@ -65,14 +65,17 @@ const OWNER: Record<string, string[]> = {
  *  parser reports `holder` and `ranked` as tables. Prose leaks in too. Known
  *  names have neither problem. */
 function knownTables(): string[] {
-  const config = readFileSync("wrangler.data.jsonc", "utf8");
-  const sole = /"NEON_SOLE_STORE_TABLES"\s*:\s*"([^"]*)"/.exec(config);
-  assert.ok(sole, "NEON_SOLE_STORE_TABLES not found -- was it renamed?");
-  const names = sole[1]!.split(",").filter(Boolean);
+  // The vocabulary comes from the LIVE schema snapshot now -- the flag this
+  // read (#10051) answered a question about a deleted database, and the
+  // snapshot is both wider and cannot lag a migration.
+  const schema = JSON.parse(
+    readFileSync("generated/db/schema.json", "utf8"),
+  ) as { name?: string; table?: string }[];
+  const names = schema
+    .map((t) => t.name ?? t.table)
+    .filter((n): n is string => Boolean(n));
   assert.ok(names.length > 20, `only ${names.length} tables found`);
-  // The four registry tables have Neon migrations but are not declared
-  // sole-store yet, so they are absent from that flag and still readable.
-  return [...names, "surface_history", "subnets", "surfaces", "providers"];
+  return names;
 }
 
 /** Known table names appearing in the module's SQL string literals. */

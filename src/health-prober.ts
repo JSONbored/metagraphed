@@ -41,7 +41,6 @@ import {
   type ObservationsSql,
 } from "./observations-neon.ts";
 import { observationsReadDb } from "./observations-read-runner.ts";
-import { neonOwnsTable } from "./neon-write.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -527,7 +526,7 @@ function observationsRunner(
 ): ObservationsSql | null {
   if (!ctx) return null;
   const bag = env as unknown as Record<string, unknown>;
-  if (!neonOwnsObservations(bag, neonOwnsTable)) return null;
+  if (!neonOwnsObservations(bag)) return null;
   return createPgSql(env.HYPERDRIVE as unknown as HyperdriveLike, ctx);
 }
 

@@ -448,19 +448,10 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
     assert.equal(result.reason, "no_queue_binding");
   });
 
-  test("the table is declared Neon sole-store in every config", async () => {
-    for (const config of [
-      "wrangler.jsonc",
-      "wrangler.data.jsonc",
-      "wrangler.registry.jsonc",
-    ]) {
-      const text = await fs.readFile(path.join(repoRoot, config), "utf8");
-      assert.ok(
-        text.includes("origin_reachability"),
-        `origin_reachability is not declared sole-store in ${config}`,
-      );
-    }
-  });
+  // This test's flag-declared premise retired with NEON_SOLE_STORE_TABLES
+  // (#10051): Neon is the only store, so an undeclared/partial state cannot
+  // exist. "A reader names a table no migration creates" is owned by
+  // tests/neon-sole-store-tables-exist.test.ts, derived from the code.
 
   test("the migration stores every verdict the code can emit", async () => {
     const sql = await fs.readFile(

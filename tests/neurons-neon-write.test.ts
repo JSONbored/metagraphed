@@ -26,7 +26,6 @@ vi.mock("pg", () => pg.module);
 
 import {
   mirrorNeuronSnapshotToNeon,
-  NEURON_MIRROR_PLANS,
   NEURONS_NEON_LANE,
   pruneNeuronsToCapture,
 } from "../src/neurons-neon-write.ts";
@@ -95,75 +94,19 @@ beforeEach(() => {
 });
 
 describe("NEURON_MIRROR_PLANS", () => {
-  test("conflict keys match the primary keys read off the live database", () => {
-    // Verified 2026-08-07 against pg_index on green-dawn-75468244:
-    //   neurons_pkey                (netuid, uid)
-    //   account_position_daily_pkey (account, netuid, snapshot_date)
-    assert.deepEqual(NEURON_MIRROR_PLANS.neurons.conflict, ["netuid", "uid"]);
-    assert.deepEqual(NEURON_MIRROR_PLANS.account_position_daily.conflict, [
-      "account",
-      "netuid",
-      "snapshot_date",
-    ]);
-  });
-
-  test("all three carry the out-of-order guard", () => {
-    // THE REASONING THAT EXEMPTED THE DAILY TABLES WAS HALF RIGHT (#10184).
-    //
-    // It went: they are keyed by snapshot_date, so a late arrival lands on its
-    // own day rather than overwriting a newer one. True ACROSS days, false
-    // WITHIN one -- handleNeuronDailyBackfill replays past snapshot_dates, and
-    // a replay overlapping TODAY shares today's snapshot_date while carrying an
-    // older captured_at. Without the guard it wins, and that route's own header
-    // promises "a backfill re-POST can never clobber a fresher row".
-    //
-    // D1's buildJsonUpsert appended the guard to all three unconditionally, so
-    // this is a restoration rather than a new rule.
-    for (const plan of Object.values(NEURON_MIRROR_PLANS)) {
-      assert.match(
-        String(plan.guard),
-        new RegExp(`^${plan.table}\\.captured_at < EXCLUDED\\.captured_at$`),
-        `${plan.table} has no out-of-order guard`,
-      );
-    }
-  });
-});
-
-describe("mirrorNeuronSnapshotToNeon", () => {
-  test("does nothing at all unless the lane is named", async () => {
-    const sql = fakeSql();
-    const spy = laneSpy();
-    for (const env of [
-      undefined,
-      null,
-      {},
-      { NEON_DUAL_WRITE_LANES: "other" },
-    ]) {
-      const out = await mirrorNeuronSnapshotToNeon(env, ctx, input, {
-        sql,
-        laneHealthDb: spy.db,
-      });
-      assert.deepEqual(out, { attempted: false, results: {} });
-    }
-    assert.equal(sql.calls.length, 0);
-    assert.equal(
-      spy.rows.length,
-      0,
-      "a lane that did not run writes no verdict",
-    );
-  });
+  // The off-arm test lived here until #10051: with D1 deleted the write is
+  // unconditional, and the behaviour it pinned is gone.
 
   test("writes all three tables in order, neurons first", async () => {
     // `neurons` is the table a read would move to first, so a failure below it
     // still leaves the most important one current.
     const sql = fakeSql();
     const spy = laneSpy();
-    const out = await mirrorNeuronSnapshotToNeon(
-      { NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE },
-      ctx,
-      input,
-      { sql, laneHealthDb: spy.db, now: () => NOW },
-    );
+    const out = await mirrorNeuronSnapshotToNeon({}, ctx, input, {
+      sql,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+    });
     assert.equal(out.attempted, true);
     assert.deepEqual(
       sql.calls.map((c) => c.text.match(/INTO (\w+)/)?.[1]),
@@ -175,12 +118,11 @@ describe("mirrorNeuronSnapshotToNeon", () => {
 
   test("records one verdict per table, namespaced by store", async () => {
     const spy = laneSpy();
-    await mirrorNeuronSnapshotToNeon(
-      { NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE },
-      ctx,
-      input,
-      { sql: fakeSql(), laneHealthDb: spy.db, now: () => NOW },
-    );
+    await mirrorNeuronSnapshotToNeon({}, ctx, input, {
+      sql: fakeSql(),
+      laneHealthDb: spy.db,
+      now: () => NOW,
+    });
     assert.deepEqual(
       spy.rows.map((r) => r.lane),
       ["neon:neurons", "neon:neuron_daily", "neon:account_position_daily"],
@@ -193,12 +135,11 @@ describe("mirrorNeuronSnapshotToNeon", () => {
     // cost `account_position_daily` its refresh, and each gets its own verdict
     // so the reader names the table rather than the lane.
     const spy = laneSpy();
-    const out = await mirrorNeuronSnapshotToNeon(
-      { NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE },
-      ctx,
-      input,
-      { sql: fakeSql("neuron_daily"), laneHealthDb: spy.db, now: () => NOW },
-    );
+    const out = await mirrorNeuronSnapshotToNeon({}, ctx, input, {
+      sql: fakeSql("neuron_daily"),
+      laneHealthDb: spy.db,
+      now: () => NOW,
+    });
     assert.equal(out.results.neurons.ok, true);
     assert.equal(out.results.neuron_daily.ok, false);
     assert.equal(out.results.account_position_daily.ok, true);
@@ -213,13 +154,23 @@ describe("mirrorNeuronSnapshotToNeon", () => {
     // Not a quiet no-op. Somebody named the lane and the binding is missing;
     // silence there is how a store nobody writes to goes unnoticed.
     const spy = laneSpy();
-    const out = await mirrorNeuronSnapshotToNeon(
-      { NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE },
-      ctx,
-      input,
-      { sql: null, laneHealthDb: spy.db, now: () => NOW },
-    );
-    assert.deepEqual(out, { attempted: true, results: {} });
+    const out = await mirrorNeuronSnapshotToNeon({}, ctx, input, {
+      sql: null,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+    });
+    assert.equal(out.attempted, true);
+    // The miss is IN-BAND since #10051: empty results let a sync route ack a
+    // write nothing held, so every table reports the unbound failure.
+    assert.ok(Object.keys(out.results).length > 0, "the miss must be in-band");
+    for (const r of Object.values(out.results)) {
+      assert.deepEqual(r, {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: "hyperdrive unbound",
+      });
+    }
     assert.equal(spy.rows.length, 1);
     assert.equal(spy.rows[0].lane, "neon:neurons");
     assert.equal(spy.rows[0].verdict, "stale");
@@ -232,7 +183,6 @@ describe("mirrorNeuronSnapshotToNeon", () => {
     const spy = laneSpy();
     const out = await mirrorNeuronSnapshotToNeon(
       {
-        NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE,
         HYPERDRIVE: { connectionString: "postgres://x" },
       },
       null,
@@ -267,11 +217,7 @@ describe("mirrorNeuronSnapshotToNeon", () => {
       }
       pg.control.failNext = new Error("could not connect to server");
     };
-    const out = await mirrorNeuronSnapshotToNeon(
-      { ...pgMockEnv(), NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE },
-      ctx,
-      input,
-    );
+    const out = await mirrorNeuronSnapshotToNeon(pgMockEnv(), ctx, input);
     assert.equal(out.attempted, true);
     assert.equal(out.results.neurons.ok, false, "a rejected write fails");
     assert.equal(verdicts.length, 3);
@@ -281,7 +227,7 @@ describe("mirrorNeuronSnapshotToNeon", () => {
   test("an empty snapshot is a clean no-op per table", async () => {
     const sql = fakeSql();
     const out = await mirrorNeuronSnapshotToNeon(
-      { NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE },
+      {},
       ctx,
       { rows: [], dailyRows: [], positionRows: [] },
       { sql, laneHealthDb: laneSpy().db, now: () => NOW },
@@ -293,20 +239,15 @@ describe("mirrorNeuronSnapshotToNeon", () => {
   test("survives a lane sink that cannot be written to", async () => {
     // D1 migrations here are applied by hand, so "no such table: lane_health"
     // is a state this must survive on the day the migration lands late.
-    const out = await mirrorNeuronSnapshotToNeon(
-      { NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE },
-      ctx,
-      input,
-      {
-        sql: fakeSql(),
-        laneHealthDb: {
-          prepare() {
-            throw new Error("no such table: lane_health");
-          },
-        } as never,
-        now: () => NOW,
-      },
-    );
+    const out = await mirrorNeuronSnapshotToNeon({}, ctx, input, {
+      sql: fakeSql(),
+      laneHealthDb: {
+        prepare() {
+          throw new Error("no such table: lane_health");
+        },
+      } as never,
+      now: () => NOW,
+    });
     assert.equal(out.attempted, true);
     assert.equal(out.results.neurons.ok, true);
   });

@@ -41,7 +41,7 @@ const block = {
 };
 
 describe("blocks_head", () => {
-  const env = { NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE, HYPERDRIVE: HD };
+  const env = { HYPERDRIVE: HD };
 
   test("a re-poll that read no event_count or author cannot erase them", async () => {
     // The whole reason the statement is reused rather than rebuilt as a
@@ -68,17 +68,8 @@ describe("blocks_head", () => {
     assert.deepEqual(calls[0]!.values, [10, "0xa", "0xb", 2, null, null, 500]);
   });
 
-  test("off unless the flag names the lane", async () => {
-    const { sql, calls } = recordingSql();
-    const out = await mirrorBlocksHeadToNeon(
-      { NEON_DUAL_WRITE_LANES: "neurons", HYPERDRIVE: HD },
-      ctx,
-      block,
-      { sql, laneHealthDb: null },
-    );
-    assert.equal(out.attempted, false);
-    assert.equal(calls.length, 0);
-  });
+  // The off-arm test lived here until #10051: with D1 deleted the write is
+  // unconditional, and the behaviour it pinned is gone.
 
   test("never throws when the store does", async () => {
     const { sql } = recordingSql("connection reset");
@@ -93,7 +84,6 @@ describe("blocks_head", () => {
 
 describe("raw_capture_state", () => {
   const env = {
-    NEON_DUAL_WRITE_LANES: RAW_CAPTURE_STATE_NEON_LANE,
     HYPERDRIVE: HD,
   };
 
@@ -110,14 +100,9 @@ describe("raw_capture_state", () => {
   });
 
   test("enabled but unbound is a verdict, not silence", async () => {
-    const out = await mirrorRawCaptureStateToNeon(
-      { NEON_DUAL_WRITE_LANES: RAW_CAPTURE_STATE_NEON_LANE },
-      ctx,
-      "mainnet",
-      1,
-      1,
-      { laneHealthDb: null },
-    );
+    const out = await mirrorRawCaptureStateToNeon({}, ctx, "mainnet", 1, 1, {
+      laneHealthDb: null,
+    });
     assert.equal(out.attempted, true);
     assert.equal(out.result, undefined);
   });
@@ -148,7 +133,6 @@ describe("the write-behind buffer seam (#10659)", () => {
     const rec = recordingSql();
     await mirrorBlocksHeadToNeon(
       {
-        NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
         HYPERDRIVE: HD,
         ...ns,
       },
@@ -170,7 +154,6 @@ describe("the write-behind buffer seam (#10659)", () => {
     const rec = recordingSql();
     await mirrorBlocksHeadToNeon(
       {
-        NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
         NEON_WRITE_BUFFER_LANES: BLOCKS_HEAD_NEON_LANE,
         HYPERDRIVE: HD,
         ...ns,
@@ -187,7 +170,6 @@ describe("the write-behind buffer seam (#10659)", () => {
     const ns = bufferNamespace();
     await mirrorRawCaptureStateToNeon(
       {
-        NEON_DUAL_WRITE_LANES: RAW_CAPTURE_STATE_NEON_LANE,
         NEON_WRITE_BUFFER_LANES: RAW_CAPTURE_STATE_NEON_LANE,
         HYPERDRIVE: HD,
         ...ns,
@@ -218,7 +200,6 @@ describe("the write-behind buffer seam (#10659)", () => {
     const ns = bufferNamespace(503);
     const out = await mirrorRawCaptureStateToNeon(
       {
-        NEON_DUAL_WRITE_LANES: RAW_CAPTURE_STATE_NEON_LANE,
         NEON_WRITE_BUFFER_LANES: RAW_CAPTURE_STATE_NEON_LANE,
         HYPERDRIVE: HD,
         ...ns,
@@ -242,7 +223,6 @@ describe("the buffer seam degrades safely", () => {
     const rec = recordingSql();
     await mirrorBlocksHeadToNeon(
       {
-        NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
         NEON_WRITE_BUFFER_LANES: BLOCKS_HEAD_NEON_LANE,
         HYPERDRIVE: HD,
       },
@@ -260,7 +240,7 @@ describe("the runner's unbound cases", () => {
     // createPgSql needs somewhere to park its teardown. Without a ctx there is
     // no runner to build, and the lane must say so rather than throw.
     const out = await mirrorBlocksHeadToNeon(
-      { NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE, HYPERDRIVE: HD },
+      { HYPERDRIVE: HD },
       null,
       block,
       {},
@@ -272,12 +252,7 @@ describe("the runner's unbound cases", () => {
 
 describe("no store bound at all", () => {
   test("an enabled lane with no Hyperdrive is a MISCONFIGURATION, and says so", async () => {
-    const out = await mirrorBlocksHeadToNeon(
-      { NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE },
-      ctx,
-      block,
-      {},
-    );
+    const out = await mirrorBlocksHeadToNeon({}, ctx, block, {});
     assert.equal(out.attempted, true);
     assert.equal(out.result, undefined);
   });
@@ -316,7 +291,6 @@ describe("a buffered lane writes no enqueue-time verdict (#10690)", () => {
     };
   }
   const enabled = {
-    NEON_DUAL_WRITE_LANES: RAW_CAPTURE_STATE_NEON_LANE,
     NEON_WRITE_BUFFER_LANES: RAW_CAPTURE_STATE_NEON_LANE,
     HYPERDRIVE: HD,
   };

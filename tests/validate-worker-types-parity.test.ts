@@ -55,11 +55,11 @@ describe("var literal parity", () => {
   it("rejects a var missing from the types entirely", () => {
     const errors = workerTypesParityErrors(
       worker,
-      { vars: { NEON_DUAL_WRITE_LANES: "neurons" } },
+      { vars: { NEON_WRITE_BUFFER_LANES: "neurons" } },
       "\tSOMETHING_ELSE: string;\n",
     );
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toContain("NEON_DUAL_WRITE_LANES is missing");
+    expect(errors[0]).toContain("NEON_WRITE_BUFFER_LANES is missing");
   });
 
   it("handles a var whose value embeds JSON, quotes and all", () => {

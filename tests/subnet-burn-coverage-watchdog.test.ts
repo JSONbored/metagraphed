@@ -106,7 +106,6 @@ describe("the lane record", () => {
     return {
       recorded,
       env: {
-        NEON_SOLE_STORE_TABLES: SUBNET_BURN_COVERAGE_TABLES.join(","),
         HYPERDRIVE: { connectionString: "postgres://x" },
         __db: db,
       } as unknown as Env,

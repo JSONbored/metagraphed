@@ -32,7 +32,6 @@ import {
   neonWriteRunner,
 } from "./neon-write-buffer.ts";
 import {
-  neonDualWriteEnabled,
   pruneCardOutsideKeySet,
   recordNeonWriteVerdict,
   writeRowsToNeon,
@@ -304,10 +303,14 @@ export async function mirrorFamilyToNeon(
   deps: FamilyMirrorDeps = {},
 ): Promise<FamilyMirrorOutcome> {
   const plan = FAMILY_MIRROR_PLANS[lane];
-  // An unknown lane is a no-op rather than a throw: the flag is a free-text
-  // list, and a typo there must not take down the D1 write this runs behind.
-  if (!plan || !neonDualWriteEnabled(env, lane))
-    return { attempted: false, results: {} };
+  // An unknown lane stays a no-op rather than a throw: callers name lanes in
+  // code now (#10051 deleted the free-text flag), and a name this table lacks
+  // is a config defect for lane_health to surface, not a crash.
+  if (!plan) return { attempted: false, results: {} };
+  // The dual-write gate stood here until #10051: with D1 deleted this is the
+  // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
+  // no-arm means "do not persist" is not a cutover control any more, it is an
+  // off switch nothing should be holding.
 
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
@@ -331,7 +334,24 @@ export async function mirrorFamilyToNeon(
       now(),
       buffered,
     );
-    return { attempted: true, results: {} };
+    // ... and the miss is IN-BAND now (#10051): with the dual-write gate gone
+    // this arm is the only "not durable" left, and returning empty results
+    // let a sync route ack a write nothing held -- the false ok its own
+    // comment warns advances the producer's resume head past unpersisted
+    // blocks. Every table the plan would have written reports the failure.
+    const results: Record<string, NeonWriteResult> = {};
+    for (const table of [
+      plan.latest.table,
+      ...(plan.history ? [plan.history.table] : []),
+    ]) {
+      results[table] = {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: "hyperdrive unbound",
+      };
+    }
+    return { attempted: true, results };
   }
 
   const results: Record<string, NeonWriteResult> = {};

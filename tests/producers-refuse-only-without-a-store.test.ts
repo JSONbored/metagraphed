@@ -55,11 +55,10 @@ const LANES: {
 ];
 
 describe("with Neon owning its tables and no D1 bound", () => {
-  for (const { name, tables, refusal, run } of LANES) {
+  for (const { name, refusal, run } of LANES) {
     test(`${name} gets past its store check`, async () => {
       const result = await run({
         HYPERDRIVE,
-        NEON_SOLE_STORE_TABLES: tables.join(","),
         METAGRAPH_CONTROL: {
           put: async () => undefined,
           get: async () => null,
@@ -75,13 +74,12 @@ describe("with Neon owning its tables and no D1 bound", () => {
 });
 
 describe("with nothing bound at all", () => {
-  for (const { name, tables, refusal, run } of LANES) {
+  for (const { name, refusal, run } of LANES) {
     test(`${name} still refuses`, async () => {
       // Without this the assertions above would also pass against a lane whose
       // store check was simply deleted -- and for these two lanes running with
       // no store is worse than not running: see this file's header.
       const result = await run({
-        NEON_SOLE_STORE_TABLES: tables.join(","),
         METAGRAPH_CONTROL: {
           put: async () => undefined,
           get: async () => null,

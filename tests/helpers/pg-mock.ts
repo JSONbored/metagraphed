@@ -209,7 +209,6 @@ export function createPgMock() {
  * them out produces a suite that runs and asserts nothing:
  *
  *   HYPERDRIVE               can this isolate reach the store at all
- *   NEON_SOLE_STORE_TABLES   is Neon the declared owner of these tables
  *   NEON_DUAL_WRITE_LANES    may a WRITER run for this lane
  *
  * The last one is the easiest to miss: without it `mirrorLedgerToNeon` and its
@@ -218,12 +217,13 @@ export function createPgMock() {
  * consumer rather than on its own env.
  */
 export function pgMockEnv(
-  tables: readonly string[] = ALL_TABLES,
+  // Kept for call-site clarity about which tables a suite exercises; the
+  // sole-store declaration this fed is gone (#10051).
+  _tables: readonly string[] = ALL_TABLES,
   lanes: readonly string[] = ALL_LANES,
 ) {
   return {
     HYPERDRIVE: { connectionString: "postgresql://mock/db" },
-    NEON_SOLE_STORE_TABLES: tables.join(","),
     NEON_DUAL_WRITE_LANES: lanes.join(","),
   };
 }

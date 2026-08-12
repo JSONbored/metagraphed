@@ -27,7 +27,6 @@
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
-  neonDualWriteEnabled,
   recordNeonWriteVerdict,
   writeRowsToNeon,
   type NeonWriteResult,
@@ -390,9 +389,10 @@ export async function mirrorNeuronSnapshotToNeon(
   input: NeuronMirrorInput,
   deps: NeuronMirrorDeps = {},
 ): Promise<NeuronMirrorOutcome> {
-  const empty: NeuronMirrorOutcome = { attempted: false, results: {} };
-  if (!neonDualWriteEnabled(env, NEURONS_NEON_LANE)) return empty;
-
+  // The dual-write gate stood here until #10051: with D1 deleted this is the
+  // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
+  // no-arm means "do not persist" is not a cutover control any more, it is an
+  // off switch nothing should be holding.
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
@@ -416,7 +416,19 @@ export async function mirrorNeuronSnapshotToNeon(
       now(),
       buffered,
     );
-    return { attempted: true, results: {} };
+    // ... and the miss is IN-BAND now (#10051): with the dual-write gate gone
+    // this arm is the only "not durable" left, and empty results let a sync
+    // route ack a write nothing held. Every plan reports the failure instead.
+    const unbound: Record<string, NeonWriteResult> = {};
+    for (const name of Object.keys(NEURON_MIRROR_PLANS)) {
+      unbound[name] = {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: "hyperdrive unbound",
+      };
+    }
+    return { attempted: true, results: unbound };
   }
 
   // Keyed by the same names as NEURON_MIRROR_PLANS, so the loop below indexes

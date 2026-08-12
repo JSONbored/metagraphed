@@ -374,10 +374,7 @@ import {
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
-import {
-  chainDetailTables,
-  mirrorChainDetailToNeon,
-} from "../src/chain-detail-neon-write.ts";
+import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
 import {
   ACCOUNT_IDENTITY_NEON_LANE,
   SUBNET_HYPERPARAMS_NEON_LANE,
@@ -405,7 +402,6 @@ import {
   neuronSnapshotWrite,
 } from "../src/neurons-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
-import { neonOwnsTable } from "../src/neon-write.ts";
 import { KV_TAO_USD_CURRENT } from "../src/kv-keys.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
@@ -3485,11 +3481,9 @@ async function handlePollerLaneHealthSync(request: Request, env: Env) {
   return writeJson({
     ok: true,
     lane_health_written: written,
-    stores: [
-      neonOwnsTable(env as unknown as Record<string, unknown>, "lane_health")
-        ? "neon"
-        : "d1",
-    ],
+    // "d1" left this ack with the flag (#10051): the answer was already a
+    // dead vocabulary reporting a deleted store.
+    stores: ["neon"],
   });
 }
 
@@ -3712,12 +3706,9 @@ export const NEURONS_SNAPSHOT_TABLES = [
  * once Neon is the store, a pass that did not reach it did not happen.
  */
 export function neonOwnsNeuronsSnapshot(env: Env): boolean {
-  return (
-    Boolean(env.HYPERDRIVE?.connectionString) &&
-    NEURONS_SNAPSHOT_TABLES.every((table) =>
-      neonOwnsTable(env as unknown as Record<string, unknown>, table),
-    )
-  );
+  // the ownership term collapsed with the flag (#10051): Neon is the only
+  // store, so durability is the binding question alone.
+  return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
 /**
@@ -3752,44 +3743,32 @@ export function neonOwnsLedger(env: Env, lane: string): boolean {
     (t): t is string => Boolean(t),
   );
   if (!tables.length) return false;
-  return (
-    Boolean(env.HYPERDRIVE?.connectionString) &&
-    tables.every((table) =>
-      neonOwnsTable(env as unknown as Record<string, unknown>, table),
-    )
-  );
+  // the ownership term collapsed with the flag (#10051): Neon is the only
+  // store, so durability is the binding question alone.
+  return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
 export function neonOwnsNominatorPositions(env: Env): boolean {
-  return (
-    Boolean(env.HYPERDRIVE?.connectionString) &&
-    ["nominator_positions", "nominator_positions_passes"].every((table) =>
-      neonOwnsTable(env as unknown as Record<string, unknown>, table),
-    )
-  );
+  // the ownership term collapsed with the flag (#10051): Neon is the only
+  // store, so durability is the binding question alone.
+  return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
 /** Whether Neon solely owns every chain_detail table. Shared by BOTH of this
  * lane's writers -- #9728 is the precedent for why covering one of two is worse
  * than covering neither: the row count looks nearly right. */
 export function neonOwnsChainDetail(env: Env): boolean {
-  return (
-    Boolean(env.HYPERDRIVE?.connectionString) &&
-    chainDetailTables().every((table) =>
-      neonOwnsTable(env as unknown as Record<string, unknown>, table),
-    )
-  );
+  // the ownership term collapsed with the flag (#10051): Neon is the only
+  // store, so durability is the binding question alone.
+  return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
 export function neonOwnsFamily(env: Env, lane: string): boolean {
   const plan = FAMILY_MIRROR_PLANS[lane];
   if (!plan) return false;
-  return (
-    Boolean(env.HYPERDRIVE?.connectionString) &&
-    [plan.latest.table, plan.history.table].every((table) =>
-      neonOwnsTable(env as unknown as Record<string, unknown>, table),
-    )
-  );
+  // the ownership term collapsed with the flag (#10051): Neon is the only
+  // store, so durability is the binding question alone.
+  return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
 export const ALERT_TRIGGER_TABLES = [
@@ -3831,12 +3810,12 @@ export const ACCOUNT_STATE_TABLES = [
 export function userStateRunner(
   env: Env,
   ctx: ExecutionContext,
-  tables: readonly string[],
+  // Kept for call-site clarity about which tables ride the runner; the
+  // per-table ownership question collapsed with the flag (#10051).
+  _tables: readonly string[],
 ): D1Sql | null {
-  const neonOwnsAll = tables.every((table) =>
-    neonOwnsTable(env as unknown as Record<string, unknown>, table),
-  );
-  if (neonOwnsAll && env.HYPERDRIVE?.connectionString) {
+  // the ownership term collapsed with the flag (#10051).
+  if (env.HYPERDRIVE?.connectionString) {
     return createPgSql(env.HYPERDRIVE, ctx);
   }
   return null;

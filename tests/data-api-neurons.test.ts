@@ -424,24 +424,9 @@ test("neurons-sync 503s when there is no store bound for the route", async () =>
   });
 });
 
-test("neurons-sync 503s unless ALL THREE tables are declared Neon's", async () => {
-  // One pass derives all three tables from one snapshot, so a half-declared
-  // family would write the declared tables and leave the others behind -- and
-  // no read gate would notice, because each table answers fine on its own.
-  const res = await postSync(
-    [syncRow()],
-    env({ NEON_SOLE_STORE_TABLES: "neurons,neuron_daily" }),
-  );
-  assert.equal(res.status, 503);
-  assert.deepEqual(await res.json(), {
-    error: "no store bound for this route",
-  });
-  assert.equal(
-    await count("neurons"),
-    0,
-    "refused before anything was written",
-  );
-});
+// The all-three-tables-declared 503 retired with NEON_SOLE_STORE_TABLES
+// (#10051): Neon is the only store, so a partially-declared snapshot cannot
+// exist. The no-store 503 above pins what remains refusable.
 
 test("a failed table is a 502, and the tables written before it are NOT rolled back", async () => {
   // A behaviour change worth stating rather than discovering. D1's batch was

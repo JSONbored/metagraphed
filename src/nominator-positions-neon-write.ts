@@ -31,7 +31,6 @@ import {
   type PassTallyInput,
 } from "./pass-completeness.ts";
 import {
-  neonDualWriteEnabled,
   pruneKeysInNeon,
   recordNeonWriteVerdict,
   writeRowsToNeon,
@@ -130,10 +129,10 @@ export async function mirrorNominatorPositionsToNeon(
 ): Promise<NominatorPositionsMirrorOutcome> {
   const lane = input.lane ?? NOMINATOR_POSITIONS_NEON_LANE;
   const source = input.source ?? POSITION_SOURCE_ALPHA;
-  if (!neonDualWriteEnabled(env, lane)) {
-    return { attempted: false };
-  }
-
+  // The dual-write gate stood here until #10051: with D1 deleted this is the
+  // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
+  // no-arm means "do not persist" is not a cutover control any more, it is an
+  // off switch nothing should be holding.
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
@@ -155,7 +154,12 @@ export async function mirrorNominatorPositionsToNeon(
       reason: "hyperdrive unbound",
     };
     await recordNeonWriteVerdict(laneDb, lane, failure, now(), buffered);
-    return { attempted: true };
+    // The miss is IN-BAND too (#10051): with the dual-write gate gone this is
+    // the only "not durable" left, and an outcome carrying no parts slipped
+    // past the sync route's `[write, prune, pass].filter(r => r && !r.ok)`
+    // guard -- an unbound store 200-acked, and the producer's resume head
+    // moved past rows nothing held. The write slot reports the failure.
+    return { attempted: true, write: failure };
   }
 
   // `source` is STAMPED HERE, never taken from the wire. A producer that could

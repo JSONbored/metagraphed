@@ -147,12 +147,11 @@ function envWith(over: Record<string, unknown> = {}) {
     // because the two flags are NOT interchangeable and this lane is where
     // that bites: the refusal gate reads NEON_SOLE_STORE_TABLES ("is there a
     // durable watermark at all") while the write inside
-    // mirrorRawCaptureStateToNeon is gated on NEON_DUAL_WRITE_LANES ("may this
+    // mirrorRawCaptureStateToNeon ran gated on the dual-write flag ("may this
     // lane write"). Declare only the first and the lane runs, reports ok, and
     // silently never persists a watermark -- so every tick re-captures from
     // the genesis floor. Verified: dropping this line alone turns the
     // resume-from-the-watermark test below into a 5-block re-capture.
-    NEON_DUAL_WRITE_LANES: "raw-capture-state",
     ...over,
   };
   return { env, puts };
@@ -203,12 +202,10 @@ describe("runRawCaptureSync — refusal paths", () => {
   // the stored value, so a tick that runs without one starts at the genesis
   // floor and re-captures the same blocks every five minutes, forever, while
   // every other signal says the lane is healthy.
+  // The "not declared Neon's" arm retired with NEON_SOLE_STORE_TABLES
+  // (#10051); the binding is the one way left to have no watermark store.
   for (const [what, over] of [
     ["Hyperdrive is unbound", { HYPERDRIVE: undefined }],
-    [
-      "the table is not declared Neon's",
-      { NEON_SOLE_STORE_TABLES: "neurons,neuron_daily" },
-    ],
   ] as [string, Record<string, unknown>][]) {
     test(`an unbound watermark refuses LOUDLY when ${what}`, async () => {
       const captures: unknown[] = [];

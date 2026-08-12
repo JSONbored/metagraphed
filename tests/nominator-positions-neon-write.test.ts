@@ -16,7 +16,6 @@ import { beforeEach, describe, test } from "vitest";
 import {
   mirrorNominatorPositionsToNeon,
   NOMINATOR_POSITIONS_CONFLICT,
-  NOMINATOR_POSITIONS_NEON_LANE,
 } from "../src/nominator-positions-neon-write.ts";
 import {
   normalizeShareFractionsInNeon,
@@ -77,7 +76,7 @@ const rows = [
   },
 ];
 const cutoffs = new Map([["5A", 9]]);
-const on = { NEON_DUAL_WRITE_LANES: NOMINATOR_POSITIONS_NEON_LANE };
+const on = {}; // the dual-write flag is gone (#10051); the write is unconditional
 
 // recordNeonWriteVerdict coalesces an unchanged `ok` for ten minutes, keyed per
 // lane in MODULE state. Without this reset a test's verdicts depend on which
@@ -378,27 +377,8 @@ describe("mirrorNominatorPositionsToNeon", () => {
     );
   });
 
-  test("does nothing unless the lane is named", async () => {
-    const sql = fakeSql();
-    for (const env of [
-      undefined,
-      null,
-      {},
-      { NEON_DUAL_WRITE_LANES: "neurons" },
-    ]) {
-      assert.deepEqual(
-        await mirrorNominatorPositionsToNeon(
-          env,
-          ctx,
-          { rows, coldkeyMaxCapturedAt: cutoffs },
-          { sql },
-        ),
-        { attempted: false },
-      );
-    }
-    assert.equal(sql.calls.length, 0);
-  });
-
+  // "does nothing unless the lane is named" lived here until #10051: with
+  // D1 deleted the write is unconditional, and the off-arm it pinned is gone.
   test("enabled with no binding records the misconfiguration", async () => {
     const spy = laneSpy();
     const out = await mirrorNominatorPositionsToNeon(
@@ -407,7 +387,17 @@ describe("mirrorNominatorPositionsToNeon", () => {
       { rows, coldkeyMaxCapturedAt: cutoffs },
       { sql: null, laneHealthDb: spy.db, now: () => NOW },
     );
-    assert.deepEqual(out, { attempted: true });
+    // The miss is IN-BAND since #10051 -- an outcome with no parts slipped
+    // past the sync route's guard and an unbound store 200-acked.
+    assert.deepEqual(out, {
+      attempted: true,
+      write: {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: "hyperdrive unbound",
+      },
+    });
     assert.deepEqual(spy.rows, [
       { lane: "neon:nominator-positions", verdict: "stale" },
     ]);
@@ -441,7 +431,7 @@ describe("mirrorNominatorPositionsToNeon", () => {
 test("the outcome carries the pass result", async () => {
   const sql = fakeSql();
   const out = await mirrorNominatorPositionsToNeon(
-    { NEON_DUAL_WRITE_LANES: "nominator-positions" },
+    {},
     { waitUntil: () => undefined },
     {
       rows,
@@ -459,7 +449,7 @@ test("a withheld tally is reported as failed, not as absent", async () => {
   // legitimate state and would let the 502 be skipped.
   const sql = fakeSql("delete");
   const out = await mirrorNominatorPositionsToNeon(
-    { NEON_DUAL_WRITE_LANES: "nominator-positions" },
+    {},
     { waitUntil: () => undefined },
     {
       rows,
@@ -475,7 +465,7 @@ test("a withheld tally is reported as failed, not as absent", async () => {
 test("no declared pass leaves the result undefined", async () => {
   const sql = fakeSql();
   const out = await mirrorNominatorPositionsToNeon(
-    { NEON_DUAL_WRITE_LANES: "nominator-positions" },
+    {},
     { waitUntil: () => undefined },
     { rows, coldkeyMaxCapturedAt: new Map() },
     { sql, laneHealthDb: null },

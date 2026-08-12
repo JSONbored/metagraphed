@@ -158,8 +158,6 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
       METAGRAPH_HEALTH_DB: undefined,
       VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
       HYPERDRIVE: { connectionString: "postgresql://example/db" },
-      NEON_SOLE_STORE_TABLES:
-        "validator_nominator_counts,validator_nominator_counts_passes",
     } as unknown as Env);
     assert.notEqual(res.status, 503, "still demanding a D1 binding");
   });

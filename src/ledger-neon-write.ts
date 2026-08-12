@@ -33,7 +33,6 @@ import {
   type PassTallyInput,
 } from "./pass-completeness.ts";
 import {
-  neonDualWriteEnabled,
   recordNeonWriteVerdict,
   writeRowsToNeon,
   type NeonWriteResult,
@@ -205,10 +204,15 @@ export async function mirrorLedgerToNeon(
   pass?: PassTallyInput | null,
 ): Promise<{ attempted: boolean; result?: NeonWriteResult }> {
   const plan = LEDGER_MIRROR_PLANS[lane];
-  // An unknown lane is a NO-OP rather than a throw, and deliberately so: the
-  // flag is a free-text list, and a typo there must not take down the D1 write
-  // this runs behind.
-  if (!plan || !neonDualWriteEnabled(env, lane)) return { attempted: false };
+  // An unknown lane stays a NO-OP rather than a throw: callers name lanes in
+  // code now (#10051 deleted the free-text flag), but a caller passing a name
+  // this table lacks is still a config defect to surface via lane_health, not
+  // a reason to crash the pass around it.
+  if (!plan) return { attempted: false };
+  // The dual-write gate stood here until #10051: with D1 deleted this is the
+  // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
+  // no-arm means "do not persist" is not a cutover control any more, it is an
+  // off switch nothing should be holding.
 
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF

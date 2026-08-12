@@ -34,7 +34,6 @@
 // response"). Writing nothing on failure is how an outage becomes an absence,
 // and absence in this table means "not measured" -- the one claim that must
 // stay honest, because the whole endpoint turns on it.
-import { neonOwnsTable } from "./neon-write.ts";
 import {
   createPgSql,
   type HyperdriveLike,
@@ -156,13 +155,11 @@ export async function runSelfHealthProbe(
     deps.sql ??
     (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
 
-  // Both tables or neither: a tick written without its rollup row would make
-  // the day's count disagree with its own evidence.
-  const owned = ["self_health_checks", "self_health_daily"].every((t) =>
-    neonOwnsTable(env, t),
-  );
-  if (!sql || !owned) {
-    const reason = !sql ? "no postgres runner" : "tables not owned by Neon";
+  // The both-tables-or-neither ownership check collapsed with the flag
+  // (#10051): Neon is the only store, so a half-owned family cannot exist and
+  // the runner is the whole question.
+  if (!sql) {
+    const reason = "no postgres runner";
     await recordLaneVerdict(laneDb, {
       lane: SELF_HEALTH_PROBE_LANE,
       verdict: "stale",

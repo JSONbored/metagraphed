@@ -25,7 +25,6 @@ import {
 import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
-import { neonOwnsTable } from "./neon-write.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import type { WaitUntilLike } from "./pg-sql.ts";
 import {
@@ -385,15 +384,12 @@ export async function runRawCaptureSync(
   // A watermark this tick can READ AND WRITE (#10158). The refusal stays even
   // though there is only one store left: without a durable watermark the next
   // tick cannot know where to resume, which is exactly how a gap forms.
-  const captureStateOnNeon =
-    neonOwnsTable(
-      env as unknown as Record<string, unknown>,
-      "raw_capture_state",
-    ) &&
-    Boolean(
-      (env as { HYPERDRIVE?: { connectionString?: string } })?.HYPERDRIVE
-        ?.connectionString,
-    );
+  // the ownership check collapsed with the flag (#10051): Neon is the only
+  // store, so durability is the BINDING question alone
+  const captureStateOnNeon = Boolean(
+    (env as { HYPERDRIVE?: { connectionString?: string } })?.HYPERDRIVE
+      ?.connectionString,
+  );
   if (!captureStateOnNeon) {
     return loud(
       "watermark_unavailable",

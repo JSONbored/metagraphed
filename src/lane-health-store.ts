@@ -32,7 +32,6 @@
 // This preserves that -- a failed verdict write is a dropped verdict, exactly as
 // it is on D1 today.
 import { Client } from "pg";
-import { neonOwnsTable } from "./neon-write.ts";
 import { toPositionalPlaceholders, type HyperdriveLike } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
@@ -101,8 +100,7 @@ export function laneHealthStore(
   if (injected) return injected;
   const hyperdrive = (env as Record<string, unknown> | null | undefined)
     ?.HYPERDRIVE as HyperdriveLike | undefined;
-  const bag = env as Record<string, unknown> | null | undefined;
-  if (hyperdrive?.connectionString && neonOwnsTable(bag, "lane_health")) {
+  if (hyperdrive?.connectionString) {
     return pgLaneHealthDb(hyperdrive.connectionString, deps);
   }
   return undefined;

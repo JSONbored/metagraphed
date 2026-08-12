@@ -22,7 +22,6 @@ import {
 } from "../src/revenue-feed.ts";
 import { handleFeedRequest } from "../src/feeds.ts";
 import { resolveRevenueFeedItems } from "../workers/api.ts";
-import { REVENUE_FEED_TABLES } from "../src/read-store-tables.ts";
 import { mockEnv } from "./row-type.ts";
 
 const NOW = Date.parse("2026-08-10T00:00:00Z");
@@ -529,7 +528,6 @@ describe("resolveRevenueFeedItems", () => {
     const waited: Promise<unknown>[] = [];
     const env = mockEnv({
       HYPERDRIVE: { connectionString: "postgres://example.invalid/db" },
-      NEON_SOLE_STORE_TABLES: REVENUE_FEED_TABLES.join(","),
     });
     const out = await resolveRevenueFeedItems(env as never, {
       waitUntil: (p) => void waited.push(p),

@@ -435,15 +435,10 @@ export const OBSERVATION_TABLES = [
  * silently, and a probe not stored is gone. */
 export function neonOwnsObservations(
   env: Record<string, unknown> | null | undefined,
-  neonOwnsTable: (
-    env: Record<string, unknown> | null | undefined,
-    table: string,
-  ) => boolean,
 ): boolean {
+  // The injected ownership predicate left with the flag (#10051): Neon is the
+  // only store, so durability is the binding question alone.
   const hyperdrive = env?.HYPERDRIVE as
     { connectionString?: string } | undefined;
-  return (
-    Boolean(hyperdrive?.connectionString) &&
-    OBSERVATION_TABLES.every((table) => neonOwnsTable(env, table))
-  );
+  return Boolean(hyperdrive?.connectionString);
 }

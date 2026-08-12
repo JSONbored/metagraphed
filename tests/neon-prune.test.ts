@@ -211,31 +211,22 @@ describe("pruneNeonTable — what it does", () => {
 });
 
 describe("runNeonPrune", () => {
-  test("it only touches tables the backfill flag actually enables", async () => {
-    // A table absent from the flag has an EMPTY Neon copy -- not a window with
-    // a tail. Pruning it would be deleting a backfill in progress.
-    const pg = fakeSql({ doomed: 10, survivors: 10 });
-    const lane = laneSpy();
-    const out = await runNeonPrune(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "neuron_daily" },
-      ctx,
-      { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
-    );
-    assert.equal(out.attempted, true);
-    assert.deepEqual(out.outcomes, []);
-    assert.equal(pg.deletes().length, 0);
-    assert.match(String(lane.written[0]!.detail), /no mirrored window/);
-  });
+  // "it only touches tables the backfill flag actually enables" retired
+  // with the ownership filter (#10051): every planned table is Neon's, so
+  // an empty-copy backfill it must not trim cannot exist. The plan itself
+  // is what bounds the prune now, asserted below.
 
   test("an enabled window is pruned and recorded", async () => {
     const pg = fakeSql({ doomed: 7, survivors: 900 });
     const lane = laneSpy();
-    await runNeonPrune(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "surface_checks" },
-      ctx,
-      { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
-    );
-    assert.equal(pg.deletes().length, 1);
+    await runNeonPrune({ HYPERDRIVE: {} }, ctx, {
+      sql: pg.sql,
+      laneHealthDb: lane.db,
+      now: () => NOW,
+    });
+    // Both planned tables prune now (#10051): the ownership filter that used
+    // to narrow the pass to flag-named tables is gone with the flag.
+    assert.equal(pg.deletes().length, 2);
     assert.equal(lane.written[0]!.lane, NEON_PRUNE_LANE);
     assert.equal(lane.written[0]!.verdict, "ok");
     assert.match(String(lane.written[0]!.detail), /surface_checks -7/);
@@ -253,7 +244,6 @@ describe("runNeonPrune", () => {
       {
         HYPERDRIVE: {},
         NEON_BACKFILL_LANES: "",
-        NEON_SOLE_STORE_TABLES: "surface_checks,subnet_burn_history",
       },
       ctx,
       { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
@@ -261,30 +251,20 @@ describe("runNeonPrune", () => {
     assert.equal(pg.deletes().length, 2, "both owned windows must be pruned");
   });
 
-  test("does not prune a table Neon does not own", async () => {
-    // The other half, and the reason the original gate existed: a table Neon
-    // is not the store for may hold a partial copy, and deleting from that is
-    // deleting a fill in progress rather than trimming a window.
-    const pg = fakeSql({ doomed: 7, survivors: 900 });
-    const lane = laneSpy();
-    await runNeonPrune({ HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "" }, ctx, {
-      sql: pg.sql,
-      laneHealthDb: lane.db,
-      now: () => NOW,
-    });
-    assert.equal(pg.deletes().length, 0);
-  });
+  // "does not prune a table Neon does not own" retired with the flag
+  // (#10051): Neon is the only store, so a partial-copy fill it must not
+  // trim cannot exist any more.
 
   test("a REFUSAL is stale, not ok", async () => {
     // Silence would make the guard pointless: a plan disagreeing with its own
     // table is exactly the thing somebody has to look at.
     const pg = fakeSql({ doomed: 900, survivors: 0 });
     const lane = laneSpy();
-    await runNeonPrune(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "surface_checks" },
-      ctx,
-      { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
-    );
+    await runNeonPrune({ HYPERDRIVE: {} }, ctx, {
+      sql: pg.sql,
+      laneHealthDb: lane.db,
+      now: () => NOW,
+    });
     assert.equal(lane.written[0]!.verdict, "stale");
   });
 

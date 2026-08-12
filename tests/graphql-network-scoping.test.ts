@@ -209,9 +209,6 @@ describe("the resolvers ask the twin path", () => {
     const env = {
       ICEBERG_BLOCKS_MAX: "1",
       HYPERDRIVE: { connectionString: "postgresql://mock/db" },
-      NEON_SOLE_STORE_TABLES:
-        "chain_detail_blocks,chain_detail_extrinsics," +
-        "chain_detail_chain_events,chain_detail_account_events",
     };
     const extrinsics = await query(
       '{ block_extrinsics(ref: "9") { block_number extrinsic_count } }',
