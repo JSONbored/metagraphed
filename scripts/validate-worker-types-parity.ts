@@ -43,7 +43,7 @@ import { repoRoot, stripJsonComments } from "./lib.ts";
 // that was one config edit away from biting).
 //
 // The fix for any failure here is always the same: `npm run types:workers`,
-// then commit all three files.
+// then commit every generated file.
 
 export interface WorkerConfig {
   /** The wrangler config, relative to the repo root. */
@@ -62,7 +62,36 @@ export const WORKERS: WorkerConfig[] = [
     config: "wrangler.registry.jsonc",
     types: "workers/registry-sync-api.worker-configuration.d.ts",
   },
+  // #10861: the fourth, and the one this list was missing. Every wrangler
+  // config in the repo belongs here -- an omission is invisible, because a
+  // Worker with no generated types has nothing for the gate to disagree with.
+  {
+    config: "wrangler.wss-lb.jsonc",
+    types: "workers/wss-lb.worker-configuration.d.ts",
+  },
 ];
+
+/**
+ * EVERY wrangler config must appear in WORKERS above (#10861).
+ *
+ * `wss-lb` sat outside this list from the day it was added, and nothing could
+ * report that: the gate only compares configs it was told about, so a missing
+ * entry is a silent exemption rather than a failure. It cost the balancer
+ * literal-typed vars for its whole life -- `workers/wss-lb.ts` hand-wrote
+ * `WssLbEnv` with every field `?: string`, so deleting a var from the config
+ * still compiled and the code's fallbacks quietly took over.
+ *
+ * This is the same shape as the exemption lists this repo has been bitten by
+ * before: what a checker does not enumerate, it cannot check. So the roster is
+ * derived from the filesystem and compared, rather than trusted.
+ */
+export function findUnlistedConfigs(rootFiles: string[]): string[] {
+  const listed = new Set(WORKERS.map((w) => w.config));
+  return rootFiles
+    .filter((f) => /^wrangler(\..+)?\.jsonc$/.test(f))
+    .filter((f) => !listed.has(f))
+    .sort();
+}
 
 /** Binding blocks whose entries carry a `binding` (or `name`) to declare. */
 const BINDING_KEYS = [
@@ -188,9 +217,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     errors.push(...workerTypesParityErrors(worker, config, types));
   }
 
+  // The roster itself, checked against the filesystem (#10861). Without this a
+  // new Worker joins the repo untyped and ungated, and the only symptom is a
+  // number in this script's own success line that nobody reads.
+  for (const unlisted of findUnlistedConfigs(await fs.readdir(repoRoot))) {
+    errors.push(
+      `${unlisted} is not in WORKERS, so nothing generates or checks its Env types. Add it to WORKERS and to the \`types:workers\` script.`,
+    );
+  }
+
   if (errors.length > 0) {
     console.error(
-      `Generated Worker Env types are stale:\n${errors.map((line) => `  - ${line}`).join("\n")}\n\nRun \`npm run types:workers\` and commit all three files.`,
+      `Generated Worker Env types are stale:\n${errors.map((line) => `  - ${line}`).join("\n")}\n\nRun \`npm run types:workers\` and commit every generated file.`,
     );
     process.exit(1);
   }

@@ -23,6 +23,7 @@ packages/contract/index.d.ts
 workers/worker-configuration.d.ts
 workers/data-api.worker-configuration.d.ts
 workers/registry-sync-api.worker-configuration.d.ts
+workers/wss-lb.worker-configuration.d.ts
 public/metagraph
 public/datasets
 public/.assetsignore
