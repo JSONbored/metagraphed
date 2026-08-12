@@ -9,6 +9,7 @@
 // envelope. Null-safe: an empty snapshot yields a schema-stable zeroed card.
 
 import { median, percentile } from "./lib/stats.ts";
+import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
 
 // The neurons-tier columns the network yield handler reads. `netuid` lets the
 // artifact report how many subnets the snapshot spans (mirrors
@@ -37,18 +38,9 @@ function nullableTao(value: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-// Sum in rao-integer BigInt space, not float space -- summing potentially
-// thousands of network-wide stake_tao/emission_tao floats with plain `+=`
-// compounds rounding error across the accumulation even when each individual
-// value is itself exact (metagraphed#2922, mirrors the toRao pattern already
-// proven in src/account-balance.ts for #2070). Convert back to TAO only
-// once, at the very end. Callers pass finite nullableTao() results into toRaoBig.
-function toRaoBig(tao: number): bigint {
-  return BigInt(Math.round(tao * 1e9));
-}
-function raoBigToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
 
 // Coerce a D1 netuid cell to a non-negative integer, or null. Accept ONLY a real
 // number or an all-digits string: a bare Number() would turn "", null, or false

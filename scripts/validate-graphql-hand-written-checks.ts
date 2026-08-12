@@ -55,8 +55,20 @@ import { readFileSync } from "node:fs";
  *
  * It is ONE throw serving FOUR fields. Writing it per field, as the existing
  * collection resolvers do, would have cost four.
+ *
+ * RAISED AGAIN, 246 -> 247 (#10928), same shape of explanation.
+ * `subnet_emission_split_history` validates `netuid`, and `netuid` is a PATH
+ * parameter -- `resolveRouteArgs` (src/route-query.ts) resolves a field's args
+ * against `routeQuerySchemasForPathname`, which is the route's QUERY schema
+ * only, so a path parameter is passed through unparsed and nothing has checked
+ * it by the time the resolver runs. That is the third case above: an argument
+ * with no bound the contract can enforce here.
+ *
+ * Its `window` argument is NOT hand-checked, precisely because that one IS
+ * published in ROUTE_QUERY_SCHEMAS and therefore is parsed at dispatch -- so
+ * this route costs one throw, not the two its yield/history sibling spends.
  */
-const CEILING = 246;
+const CEILING = 247;
 
 const SOURCE = "src/graphql.ts";
 

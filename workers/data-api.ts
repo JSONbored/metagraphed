@@ -83,6 +83,14 @@ import {
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
 } from "../src/subnet-yield.ts";
+import {
+  buildSubnetEmissionSplitHistory,
+  EMISSION_SPLIT_HISTORY_ROW_CAP,
+} from "../src/emission-split.ts";
+import {
+  DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+} from "../src/route-limits.ts";
 import { buildAccountPortfolio } from "../src/account-portfolio.ts";
 import {
   buildNeuronHistory,
@@ -7384,6 +7392,50 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         SELECT validator_permit, stake_tao, emission_tao, netuid, captured_at
         FROM neurons WHERE netuid != 0`;
       return json(buildChainYield(rows));
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/emission-split/history -- who received the
+  // subnet's emission, per day. Joins the day's subnet_snapshots row for
+  // `alpha_out_emission`, which is what turns the per-UID ratio into an
+  // absolute daily figure; the join is LEFT so a day the snapshot lane missed
+  // still publishes its MEASURED validator/miner split with the reconstructed
+  // fields null, rather than dropping the day entirely.
+  const emissionSplitHistoryMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/emission-split\/history$/,
+  );
+  if (emissionSplitHistoryMatch) {
+    return async (sql) => {
+      const netuid = Number(emissionSplitHistoryMatch[1]);
+      const cutoff = windowCutoffDate(
+        url,
+        SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+        DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+      );
+      const rows = await sql<{
+        snapshot_date: NeuronDaily["snapshot_date"];
+        validator_permit: NeuronDaily["validator_permit"];
+        emission_tao: NeuronDaily["emission_tao"];
+        alpha_out_emission: SubnetSnapshots["alpha_out_emission"];
+        alpha_price_tao: SubnetSnapshots["alpha_price_tao"];
+      }>`
+        SELECT nd.snapshot_date, nd.validator_permit, nd.emission_tao,
+               ss.alpha_out_emission, ss.alpha_price_tao
+        FROM neuron_daily nd
+        LEFT JOIN subnet_snapshots ss
+          ON ss.netuid = nd.netuid AND ss.snapshot_date = nd.snapshot_date
+        WHERE nd.netuid = ${netuid} AND nd.snapshot_date >= ${cutoff}
+        ORDER BY nd.snapshot_date DESC LIMIT ${EMISSION_SPLIT_HISTORY_ROW_CAP}`;
+      return json(
+        buildSubnetEmissionSplitHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+            DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
+        }),
+      );
     };
   }
 

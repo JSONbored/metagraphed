@@ -3626,6 +3626,8 @@ export type Query = {
   subnet_deregistrations: SubnetDeregistrations;
   /** One subnet's emission-pipeline decomposition OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. */
   subnet_emission_pipeline_history: SubnetPipelineHistory;
+  /** Per-subnet per-day emission split by recipient class from the neuron_daily rollup over a 7d/30d/90d window (default 30d): the owner, validator and miner legs, the exact measured validator/miner ratio, and how many UIDs of each class actually earned, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. The owner leg and every absolute figure are reconstructed — the owner cut is paid outside the UID set. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history. */
+  subnet_emission_split_history: SubnetEmissionSplitHistory;
   /** One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible; threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints. */
   subnet_endpoints?: Maybe<Scalars['JSON']['output']>;
   /** One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary. */
@@ -4756,6 +4758,12 @@ export type QuerySubnet_DeregistrationsArgs = {
 
 
 export type QuerySubnet_Emission_Pipeline_HistoryArgs = {
+  netuid: Scalars['Int']['input'];
+  window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySubnet_Emission_Split_HistoryArgs = {
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
 };
@@ -6236,6 +6244,57 @@ export type SubnetEmissionDecomposition = {
   /** Their sum -- the subnet's whole TAO intake this block. Null unless both channels were actually read. */
   tao_total?: Maybe<Scalars['Float']['output']>;
   weighted_share?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Per-day split of one subnet's emission by recipient class — owner, validators, miners — over a 7d/30d/90d window, newest first. The validator/miner split is MEASURED from the per-UID neuron_daily rollup; the owner leg and every absolute figure are RECONSTRUCTED, because the owner's cut is paid outside the UID set and `SubnetOwnerCut` is unset on chain. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history. */
+export type SubnetEmissionSplitHistory = {
+  __typename?: 'SubnetEmissionSplitHistory';
+  /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+  field_sources?: Maybe<Scalars['JSON']['output']>;
+  netuid: Scalars['Int']['output'];
+  point_count: Scalars['Int']['output'];
+  points: Array<SubnetEmissionSplitHistoryPoint>;
+  schema_version: Scalars['Int']['output'];
+  /** The resolved window label (7d/30d/90d). */
+  window?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetEmissionSplitHistoryPoint = {
+  __typename?: 'SubnetEmissionSplitHistoryPoint';
+  /** The day's alpha price in TAO, from the same daily snapshot. This is `SubnetMovingPrice`, the chain's emission-weighting average — not a traded mark. */
+  alpha_price_tao?: Maybe<Scalars['Float']['output']>;
+  /** Non-validator UIDs that recorded emission above zero on this day. Against `miner_count` this is how many registered miners earned anything at all — the median subnet has almost none, and a miner count read alone overstates participation. */
+  earning_miner_count?: Maybe<Scalars['Int']['output']>;
+  /** Validator-permit UIDs that recorded emission above zero on this day. */
+  earning_validator_count?: Maybe<Scalars['Int']['output']>;
+  /** Emission to non-validator UIDs, alpha-denominated. */
+  miner_alpha?: Maybe<Scalars['Float']['output']>;
+  miner_count?: Maybe<Scalars['Int']['output']>;
+  /** Miner share of the whole day. Reconstructed. */
+  miner_share?: Maybe<Scalars['Float']['output']>;
+  /** Miner share of the observed per-UID emission. Measured. */
+  miner_share_of_uid?: Maybe<Scalars['Float']['output']>;
+  neuron_count?: Maybe<Scalars['Int']['output']>;
+  /** The owner leg, `total_alpha x owner_cut`. RECONSTRUCTED. It is NOT summed from the rows — the owner cut is paid outside the UID set, so no per-UID row carries it. */
+  owner_alpha?: Maybe<Scalars['Float']['output']>;
+  /** The owner share applied to this day. `SubnetOwnerCut` is 11796/65535 — 18%, not 1/6 — and is UNSET on chain, so this is the runtime default rather than a read. Published so a reader can see which constant produced the reconstructed fields. */
+  owner_cut?: Maybe<Scalars['Float']['output']>;
+  /** Owner share of the whole day. Reconstructed. `owner_share + validator_share + miner_share` sums to 1 within rao precision. */
+  owner_share?: Maybe<Scalars['Float']['output']>;
+  snapshot_date: Scalars['String']['output'];
+  /** The whole day's alpha emission: `alpha_out_emission x 7200 blocks`. RECONSTRUCTED. Null when the day's snapshot carries no `alpha_out_emission` — the measured legs are still published beside it, because a validator/miner split is a real answer even when the day's total is not known. */
+  total_alpha?: Maybe<Scalars['Float']['output']>;
+  /** `total_alpha` priced through `alpha_price_tao`. Reconstructed, and null whenever either input is. */
+  total_tao?: Maybe<Scalars['Float']['output']>;
+  /** Emission across the whole UID set. This is NOT the day's total emission: the subnet owner's cut is paid outside the UID set, so this is the distributable remainder — see `total_alpha`. */
+  uid_alpha?: Maybe<Scalars['Float']['output']>;
+  /** Emission to validator-permit UIDs. ALPHA-denominated for every non-root subnet — safe to compare within one subnet, never across subnets without the price join. */
+  validator_alpha?: Maybe<Scalars['Float']['output']>;
+  validator_count?: Maybe<Scalars['Int']['output']>;
+  /** Validator share of the WHOLE day, owner leg included — so it is strictly below `validator_share_of_uid`, which is a share of the distributable remainder only. Reconstructed. */
+  validator_share?: Maybe<Scalars['Float']['output']>;
+  /** Validator share of the observed per-UID emission. MEASURED and parameter-free — a ratio of two sums this response also publishes. Null when the day emitted nothing, never 0, which would read as 'validators received none of it'. */
+  validator_share_of_uid?: Maybe<Scalars['Float']['output']>;
 };
 
 /** One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope. */
@@ -8166,6 +8225,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetDeregistrations: ResolverTypeWrapper<SubnetDeregistrations>;
   SubnetEconomics: ResolverTypeWrapper<SubnetEconomics>;
   SubnetEmissionDecomposition: ResolverTypeWrapper<SubnetEmissionDecomposition>;
+  SubnetEmissionSplitHistory: ResolverTypeWrapper<SubnetEmissionSplitHistory>;
+  SubnetEmissionSplitHistoryPoint: ResolverTypeWrapper<SubnetEmissionSplitHistoryPoint>;
   SubnetEventSummary: ResolverTypeWrapper<SubnetEventSummary>;
   SubnetEventSummaryArtifactCategories: ResolverTypeWrapper<SubnetEventSummaryArtifactCategories>;
   SubnetEventSummaryArtifactEventKinds: ResolverTypeWrapper<SubnetEventSummaryArtifactEventKinds>;
@@ -8602,6 +8663,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetDeregistrations: SubnetDeregistrations;
   SubnetEconomics: SubnetEconomics;
   SubnetEmissionDecomposition: SubnetEmissionDecomposition;
+  SubnetEmissionSplitHistory: SubnetEmissionSplitHistory;
+  SubnetEmissionSplitHistoryPoint: SubnetEmissionSplitHistoryPoint;
   SubnetEventSummary: SubnetEventSummary;
   SubnetEventSummaryArtifactCategories: SubnetEventSummaryArtifactCategories;
   SubnetEventSummaryArtifactEventKinds: SubnetEventSummaryArtifactEventKinds;
@@ -11511,6 +11574,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_conviction?: Resolver<ResolversTypes['SubnetConviction'], ParentType, ContextType, RequireFields<QuerySubnet_ConvictionArgs, 'netuid'>>;
   subnet_deregistrations?: Resolver<ResolversTypes['SubnetDeregistrations'], ParentType, ContextType, RequireFields<QuerySubnet_DeregistrationsArgs, 'netuid'>>;
   subnet_emission_pipeline_history?: Resolver<ResolversTypes['SubnetPipelineHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Emission_Pipeline_HistoryArgs, 'netuid'>>;
+  subnet_emission_split_history?: Resolver<ResolversTypes['SubnetEmissionSplitHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Emission_Split_HistoryArgs, 'netuid'>>;
   subnet_endpoints?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_EndpointsArgs, 'netuid'>>;
   subnet_event_summary?: Resolver<ResolversTypes['SubnetEventSummary'], ParentType, ContextType, RequireFields<QuerySubnet_Event_SummaryArgs, 'netuid'>>;
   subnet_events?: Resolver<ResolversTypes['SubnetEvents'], ParentType, ContextType, RequireFields<QuerySubnet_EventsArgs, 'netuid'>>;
@@ -12384,6 +12448,37 @@ export type SubnetEmissionDecompositionResolvers<ContextType = GqlContext, Paren
   tao_in_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   tao_total?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   weighted_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetEmissionSplitHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEmissionSplitHistory'] = ResolversParentTypes['SubnetEmissionSplitHistory']> = ResolversObject<{
+  field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['SubnetEmissionSplitHistoryPoint']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetEmissionSplitHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEmissionSplitHistoryPoint'] = ResolversParentTypes['SubnetEmissionSplitHistoryPoint']> = ResolversObject<{
+  alpha_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  earning_miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  earning_validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  miner_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  miner_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  miner_share_of_uid?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  neuron_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  owner_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_cut?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  uid_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validator_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  validator_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validator_share_of_uid?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetEventSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEventSummary'] = ResolversParentTypes['SubnetEventSummary']> = ResolversObject<{
@@ -13932,6 +14027,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetDeregistrations?: SubnetDeregistrationsResolvers<ContextType>;
   SubnetEconomics?: SubnetEconomicsResolvers<ContextType>;
   SubnetEmissionDecomposition?: SubnetEmissionDecompositionResolvers<ContextType>;
+  SubnetEmissionSplitHistory?: SubnetEmissionSplitHistoryResolvers<ContextType>;
+  SubnetEmissionSplitHistoryPoint?: SubnetEmissionSplitHistoryPointResolvers<ContextType>;
   SubnetEventSummary?: SubnetEventSummaryResolvers<ContextType>;
   SubnetEventSummaryArtifactCategories?: SubnetEventSummaryArtifactCategoriesResolvers<ContextType>;
   SubnetEventSummaryArtifactEventKinds?: SubnetEventSummaryArtifactEventKindsResolvers<ContextType>;

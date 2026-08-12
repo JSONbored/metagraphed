@@ -461,6 +461,8 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetWeightsArtifact: "SubnetWeights",
   SubnetYieldArtifact: "SubnetYield",
   SubnetYieldArtifactNeurons: "SubnetYieldNeuron",
+  SubnetEmissionSplitHistoryArtifact: "SubnetEmissionSplitHistory",
+  SubnetEmissionSplitHistoryArtifactPoints: "SubnetEmissionSplitHistoryPoint",
   SubnetYieldHistoryArtifact: "SubnetYieldHistory",
   SubnetYieldHistoryArtifactPoints: "SubnetYieldHistoryPoint",
   SudoKeyArtifact: "SudoKey",

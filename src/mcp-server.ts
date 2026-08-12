@@ -148,6 +148,10 @@ import {
   GetSubnetYieldHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-yield-history.ts";
 import {
+  GetSubnetEmissionSplitHistoryInputSchema,
+  GetSubnetEmissionSplitHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-emission-split-history.ts";
+import {
   GetSubnetStakeFlowInputSchema,
   GetSubnetStakeFlowOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-stake-flow.ts";
@@ -1418,6 +1422,10 @@ import {
   buildSubnetYieldHistory,
   parseSubnetYieldHistoryWindow,
 } from "./subnet-yield.ts";
+import {
+  buildSubnetEmissionSplitHistory,
+  parseEmissionSplitHistoryWindow,
+} from "./emission-split.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -4397,8 +4405,26 @@ function optionalPositiveInt(args: Row, key: string) {
   return value;
 }
 
+/**
+ * A netuid argument, bounded to the u16 range the chain actually has.
+ *
+ * THE CEILING IS ENFORCED HERE BECAUSE NOTHING ELSE ENFORCES IT. The REST
+ * routes get it from `isU16Netuid` and answer `invalid_netuid` 400; an MCP tool
+ * argument has no router regex in front of it, and dispatch does not validate
+ * against the Zod input schema -- so `netuid: 70000` used to pass straight
+ * through all 70 call sites and degrade to an empty card, which reads as "this
+ * subnet has no data" rather than "there is no such subnet". Two different
+ * facts, and the wrong one is the one that looks like an answer.
+ */
 function requireNetuid(args: Row) {
-  return requireNonNegativeInt(args, "netuid");
+  const netuid = requireNonNegativeInt(args, "netuid");
+  if (netuid > 65535) {
+    throw toolError(
+      "invalid_params",
+      "Argument `netuid` must be an integer in the u16 range 0..65535.",
+    );
+  }
+  return netuid;
 }
 
 function optionalBoolean(args: Row, key: string) {
@@ -7485,6 +7511,48 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "METAGRAPH_NEURONS_SOURCE",
         )) ??
         buildSubnetYieldHistory([], netuid, {
+          window: label,
+          capped: false,
+        })
+      );
+    },
+  },
+  {
+    name: "get_subnet_emission_split_history",
+    title: "Get subnet emission split by recipient",
+    description:
+      "Fetch the per-day split of one subnet's emission by recipient class " +
+      "over a 7d, 30d, or 90d window (default 30d): how much went to the " +
+      "owner, to validators, and to miners, plus how many validator and miner " +
+      "UIDs actually earned anything that day. The validator/miner split is " +
+      "MEASURED from the per-UID neuron_daily rows and is exact. The owner leg " +
+      "and every absolute alpha/TAO figure are RECONSTRUCTED: the owner's cut " +
+      "is paid OUTSIDE the UID set, so summing the rows alone yields 82% of " +
+      "the emission rather than all of it, and SubnetOwnerCut is unset on " +
+      "chain so the 18% is a runtime default. Read `field_sources` before " +
+      "quoting an absolute figure, and never present a reconstructed leg as a " +
+      "reading. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history.",
+    inputSchema: inputJsonSchema(GetSubnetEmissionSplitHistoryInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetEmissionSplitHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      const parsed = parseEmissionSplitHistoryWindow(args?.window);
+      if (args?.window !== undefined && "error" in parsed && parsed.error) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      const { label } = parsed as { label: string };
+      return (
+        (await tryDataApiTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/subnets/${netuid}/emission-split/history`,
+            { window: label },
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildSubnetEmissionSplitHistory([], netuid, {
           window: label,
           capped: false,
         })
@@ -14786,6 +14854,9 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   ),
   get_subnet_yield: outputJsonSchema(GetSubnetYieldOutputSchema),
   get_subnet_yield_history: outputJsonSchema(GetSubnetYieldHistoryOutputSchema),
+  get_subnet_emission_split_history: outputJsonSchema(
+    GetSubnetEmissionSplitHistoryOutputSchema,
+  ),
   get_subnet_stake_flow: outputJsonSchema(GetSubnetStakeFlowOutputSchema),
   get_subnet_event_summary: outputJsonSchema(GetSubnetEventSummaryOutputSchema),
   get_subnet_stake_moves: outputJsonSchema(GetSubnetStakeMovesOutputSchema),

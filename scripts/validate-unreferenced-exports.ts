@@ -73,8 +73,20 @@ import { repoRoot } from "./lib.ts";
  * generated one became aliases of it, so the shapes they restated stopped
  * being separate declarations. A deletion this time, and the RIGHT kind --
  * nothing lost, because the thing deleted was a copy.
+ *
+ * 734 after #10928: three `z.infer` type exports for the new emission-split
+ * route and its MCP tool. This is the shape EVERY route and tool schema in the
+ * tree already has -- `schemas-src/routes` and `schemas-src/mcp-tools` are the
+ * overwhelming majority of the count on their own -- because the inferred type
+ * is exported beside the schema whether or not a consumer has imported it yet.
+ * Adding a route without them would make the two new files the only ones that
+ * differ.
+ *
+ * NOTE the arithmetic: this branch was written against 733 and would have said
+ * 736, but main had meanwhile taken the ceiling DOWN to 731. Carrying 736
+ * across the rebase would have silently handed back the two main had earned.
  */
-export const MAX_UNREFERENCED_EXPORTS: number = 731;
+export const MAX_UNREFERENCED_EXPORTS: number = 734;
 
 /** knip's JSON shape, as much of it as this gate reads. */
 interface KnipIssue {

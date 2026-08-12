@@ -258,6 +258,7 @@ import {
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
+  handleSubnetEmissionSplitHistory,
   handleSubnetYieldHistory,
   handleChainConcentration,
   handleChainConcentrationSubnets,
@@ -270,6 +271,7 @@ import {
   canonicalValidatorHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   canonicalSubnetPerformanceHistoryCachePath,
+  canonicalSubnetEmissionSplitHistoryCachePath,
   canonicalSubnetYieldHistoryCachePath,
   handleSubnetTurnover,
   canonicalSubnetTurnoverCachePath,
@@ -699,6 +701,7 @@ import {
   SUBNET_CONCENTRATION_PATH_PATTERN,
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
   SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN,
+  SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN,
   SUBNET_YIELD_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
@@ -6163,6 +6166,27 @@ async function dispatchRequest(
         canonicalSubnetPerformanceHistoryCachePath(resolved.url, request),
       );
     }
+    const emissionSplitHistoryMatch =
+      SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (emissionSplitHistoryMatch) {
+      // Per-day recipient split over the neuron_daily rollup, deterministic per
+      // cron snapshot -- edge-cache like its yield/concentration siblings.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-emission-split-history",
+        () =>
+          handleSubnetEmissionSplitHistory(
+            request,
+            env,
+            Number(emissionSplitHistoryMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetEmissionSplitHistoryCachePath(resolved.url, request),
+      );
+    }
+
     const yieldHistoryMatch = SUBNET_YIELD_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -7463,6 +7487,8 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_HISTORY_PATH_PATTERN.test(pathname) ||
+    // neuron_daily carries no network dimension, same as its yield twin.
+    SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||

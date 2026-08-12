@@ -89,7 +89,11 @@ describe("checkQueryArguments", () => {
     // for the first time. The companion assertion is `skipped`, below -- a
     // count of what reproduces exactly means nothing without the count of what
     // was never compared.
-    assert.equal(report.exact, 201);
+    // 202 after #10928 added subnet_emission_split_history, whose `window`
+    // argument is derived from the route's own query schema rather than
+    // restated -- so it lands in `exact` rather than in `violations`, which is
+    // the outcome this count exists to confirm.
+    assert.equal(report.exact, 202);
     assert.equal(report.skipped, 0);
   });
 

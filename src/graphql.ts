@@ -283,6 +283,8 @@ import {
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
 } from "./subnet-yield.ts";
+import { buildSubnetEmissionSplitHistory } from "./emission-split.ts";
+import { DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW } from "./route-limits.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -933,6 +935,7 @@ import type {
   QuerySubnet_Weight_SettersArgs,
   QuerySubnet_WeightsArgs,
   QuerySubnet_YieldArgs,
+  QuerySubnet_Emission_Split_HistoryArgs,
   QuerySubnet_Yield_HistoryArgs,
   QuerySubnetsArgs,
   QuerySurfacesArgs,
@@ -3357,6 +3360,46 @@ const rootValue = {
       window: data.window ?? windowParam,
       point_count: data.point_count ?? 0,
       points: data.points ?? [],
+    };
+  },
+  async subnet_emission_split_history(
+    { netuid, window }: QuerySubnet_Emission_Split_HistoryArgs,
+    context: GqlContext,
+  ) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // NO hand-written window check. `parseArgumentsAtDispatch` already parses
+    // this field's arguments against the route's published query schema, so an
+    // unsupported window is rejected before this resolver runs. Restating the
+    // enum here would put a second copy of a published fact where the contract
+    // cannot see it -- the drift #10060 removed.
+    const windowParam = window ?? DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW;
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      ((await tryDataApiTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/emission-split/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) as Row | null) ??
+      buildSubnetEmissionSplitHistory([], netuid, {
+        window: windowParam,
+        capped: false,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      point_count: data.point_count ?? 0,
+      points: data.points ?? [],
+      field_sources: data.field_sources ?? null,
     };
   },
 
