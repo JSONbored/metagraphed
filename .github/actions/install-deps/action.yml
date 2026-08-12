@@ -1,0 +1,54 @@
+# npm ci behind a node_modules cache, so an install's network exposure -- the
+# npm registry AND every postinstall's own download -- happens once per
+# lockfile change instead of in every job of every run.
+#
+# Why this exists (#10871): `@posthog/cli` rides in transitively via
+# apps/ui's `@posthog/rollup-plugin`, and its postinstall downloads a platform
+# binary from GitHub's release CDN on every `npm ci`. setup-node's `cache: npm`
+# does not help -- it caches registry tarballs, and this download bypasses npm
+# entirely. On 2026-08-12 that CDN served 503s and four jobs across three PRs
+# died inside `npm ci` before running a single test, each failure reading like
+# an unrelated flake until the log was opened. A restored node_modules runs no
+# postinstalls at all, which is the point: the property to keep is that a test
+# shard's install opens no network connection a lockfile change did not buy.
+#
+# EXACT key only -- deliberately no `restore-keys`. A prefix fallback would
+# hand `npm ci`'s clean-slate guarantee to whatever stale tree matched last,
+# which is how phantom "works in CI, fails locally" trees get minted. A miss
+# pays one full install and saves; every later job in every later run on the
+# same lockfile restores.
+#
+# The key carries the Node major (.nvmrc) because node_modules holds
+# ABI-specific native builds, and the OS for the same reason.
+name: Install dependencies
+description: npm ci, skipped when the lockfile-keyed node_modules cache hits.
+runs:
+  using: composite
+  steps:
+    - name: Restore node_modules
+      id: modules
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        key: node-modules-${{ runner.os }}-node${{ hashFiles('.nvmrc') }}-${{ hashFiles('package-lock.json') }}
+        path: |
+          node_modules
+          apps/ui/node_modules
+          packages/*/node_modules
+    - name: npm ci
+      if: steps.modules.outputs.cache-hit != 'true'
+      shell: bash
+      # The miss path still gambles on the registry and every postinstall's
+      # CDN -- the exact class this action exists to kill -- so it retries
+      # rather than handing one 503 a whole job. Between attempts the tree is
+      # removed: a failed npm ci leaves a partial node_modules, and npm ci's
+      # own clean-slate rm is what the retry would otherwise spend its time
+      # on. Three attempts, 30s apart, covers the transient window measured
+      # on 2026-08-12 (the same URL succeeded on immediate rerun).
+      run: |
+        for attempt in 1 2 3; do
+          npm ci && exit 0
+          [ "$attempt" = 3 ] && exit 1
+          echo "npm ci failed (attempt $attempt); retrying in 30s"
+          rm -rf node_modules apps/ui/node_modules packages/*/node_modules
+          sleep 30
+        done
