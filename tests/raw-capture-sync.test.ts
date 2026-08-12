@@ -71,29 +71,25 @@ beforeEach(() => {
   pg.control.queries.length = 0;
 });
 
-/** A `prepare().bind().first()` facade over the same real SQLite database.
+/** A `first()/run()/query()` facade over the same real SQLite database.
  *
  * Still hand-built rather than taken from the mock, because `watermarkRead` is
  * a READ-ONLY helper that takes a handle -- the lakehouse-seam watchdog passes
  * it one from `readStore` -- so its tests exercise the function directly rather
  * than through a store the lane resolves for itself. */
-function d1() {
+function runner() {
   return {
-    prepare(sql: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            first: async () =>
-              (db.prepare(sql).get(...(values as never[])) ?? null) as Record<
-                string,
-                unknown
-              > | null,
-            run: async () => db.prepare(sql).run(...(values as never[])),
-            all: async () => db.prepare(sql).all(...(values as never[])),
-          };
-        },
-      };
+    first: async (sql: string, values: unknown[] = []) =>
+      (db.prepare(sql).get(...(values as never[])) ?? null) as Record<
+        string,
+        unknown
+      > | null,
+    run: async (sql: string, values: unknown[] = []) => {
+      db.prepare(sql).run(...(values as never[]));
+      return { changes: 1 };
     },
+    query: async (sql: string, values: unknown[] = []) =>
+      db.prepare(sql).all(...(values as never[])) as Record<string, unknown>[],
   };
 }
 
@@ -418,7 +414,7 @@ describe("runRawCaptureSync — capture", () => {
 // records SQL never parses it.
 describe("watermarkRead", () => {
   test("returns null when no row exists yet", async () => {
-    assert.equal(await watermarkRead(d1() as never)(), null);
+    assert.equal(await watermarkRead(runner() as never)(), null);
   });
 
   test("reads back the row the capture lane writes, per network", async () => {
@@ -430,8 +426,8 @@ describe("watermarkRead", () => {
       `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
        VALUES (?, ?, ?)`,
     ).run("testnet", 99, 7);
-    assert.equal(await watermarkRead(d1() as never, "mainnet")(), 42);
-    assert.equal(await watermarkRead(d1() as never, "testnet")(), 99);
+    assert.equal(await watermarkRead(runner() as never, "mainnet")(), 42);
+    assert.equal(await watermarkRead(runner() as never, "testnet")(), 99);
   });
 
   // A value that is not a number is not a watermark of zero: the capture

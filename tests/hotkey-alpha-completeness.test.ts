@@ -31,15 +31,11 @@ const SCHEMA = fs.readFileSync(
 
 let db: InstanceType<typeof DatabaseSync>;
 
-/** The D1 shim shape this reader uses: prepare().first(). */
-function d1() {
+/** The store shape this reader uses: first(). */
+function storeHandle() {
   return {
-    prepare(sql: string) {
-      return {
-        async first() {
-          return db.prepare(sql).get() ?? null;
-        },
-      };
+    async first(sql: string) {
+      return db.prepare(sql).get() ?? null;
     },
   };
 }
@@ -64,7 +60,7 @@ beforeEach(() => {
 
 describe("latestCompleteHotkeyAlphaPass", () => {
   test("declines while no pass has completed", async () => {
-    const result = await latestCompleteHotkeyAlphaPass(d1());
+    const result = await latestCompleteHotkeyAlphaPass(storeHandle());
     assert.equal(result.capturedAt, null);
     assert.equal(result.reason, "no_complete_pass");
     assert.equal(mayPriceHotkeyAlpha(result), false);
@@ -74,14 +70,14 @@ describe("latestCompleteHotkeyAlphaPass", () => {
     // THE REGRESSION SHAPE. Rows are present and every one is correct; the
     // pass simply has not finished. Pricing over it underprices silently.
     insertPass(1_785_910_000_000, 148_211, 140_000, null);
-    const result = await latestCompleteHotkeyAlphaPass(d1());
+    const result = await latestCompleteHotkeyAlphaPass(storeHandle());
     assert.equal(result.capturedAt, null);
     assert.equal(mayPriceHotkeyAlpha(result), false);
   });
 
   test("prices once a pass is recorded complete", async () => {
     insertPass(1_785_910_000_000, 148_211, 148_211, 1_785_910_500_000);
-    const result = await latestCompleteHotkeyAlphaPass(d1());
+    const result = await latestCompleteHotkeyAlphaPass(storeHandle());
     assert.equal(result.capturedAt, 1_785_910_000_000);
     assert.equal(result.expectedRows, 148_211);
     assert.equal(result.receivedRows, 148_211);
@@ -94,7 +90,7 @@ describe("latestCompleteHotkeyAlphaPass", () => {
     // expected_rows. Keying on completed_at rather than on equality is what
     // keeps that from reading as unfinished.
     insertPass(1_785_910_000_000, 148_211, 153_211, 1_785_910_500_000);
-    const result = await latestCompleteHotkeyAlphaPass(d1());
+    const result = await latestCompleteHotkeyAlphaPass(storeHandle());
     assert.equal(mayPriceHotkeyAlpha(result), true);
     assert.equal(result.receivedRows, 153_211);
   });
@@ -104,7 +100,7 @@ describe("latestCompleteHotkeyAlphaPass", () => {
     insertPass(1_785_910_000_000, 200, 200, 1_785_910_500_000);
     // An in-flight pass newer than both must not displace the complete one.
     insertPass(1_785_920_000_000, 300, 10, null);
-    const result = await latestCompleteHotkeyAlphaPass(d1());
+    const result = await latestCompleteHotkeyAlphaPass(storeHandle());
     assert.equal(result.capturedAt, 1_785_910_000_000);
   });
 
@@ -120,12 +116,8 @@ describe("latestCompleteHotkeyAlphaPass", () => {
     // Migrations are applied by hand, so "the table is not there yet" is a real
     // state -- and it means the same thing as an unfinished pass.
     const throwing = {
-      prepare() {
-        return {
-          async first(): Promise<unknown> {
-            throw new Error("no such table: hotkey_alpha_passes");
-          },
-        };
+      first() {
+        throw new Error("no such table: hotkey_alpha_passes");
       },
     };
     const result = await latestCompleteHotkeyAlphaPass(throwing);
@@ -137,7 +129,7 @@ describe("latestCompleteHotkeyAlphaPass", () => {
     // completed_at is set but the key is nonsense: scoping a price read to it
     // would match no pool rows at all and value every position at nothing.
     insertPass(0, 10, 10, 1_785_910_500_000);
-    const result = await latestCompleteHotkeyAlphaPass(d1());
+    const result = await latestCompleteHotkeyAlphaPass(storeHandle());
     assert.equal(result.capturedAt, null);
     assert.equal(mayPriceHotkeyAlpha(result), false);
   });
@@ -145,7 +137,7 @@ describe("latestCompleteHotkeyAlphaPass", () => {
   test("a complete pass with unreadable counts still prices", async () => {
     // The counts are reporting, not the gate: completed_at is the fact.
     insertPass(1_785_910_000_000, 0, 0, 1_785_910_500_000);
-    const result = await latestCompleteHotkeyAlphaPass(d1());
+    const result = await latestCompleteHotkeyAlphaPass(storeHandle());
     assert.equal(mayPriceHotkeyAlpha(result), true);
     assert.equal(result.expectedRows, null);
     assert.equal(result.receivedRows, null);

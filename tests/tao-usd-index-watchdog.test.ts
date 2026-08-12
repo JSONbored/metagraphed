@@ -352,28 +352,21 @@ describe("the thresholds are derived, not typed twice", () => {
 
 describe("the runner, and what it records", () => {
   const store = (results: unknown[] | Error) => ({
-    prepare: () => ({
-      bind: () => ({
-        all: async () => {
-          if (results instanceof Error) throw results;
-          return { results };
-        },
-      }),
-    }),
+    query: async <Row>() => {
+      if (results instanceof Error) throw results;
+      return results as Row[];
+    },
   });
   const laneSpy = () => {
     const rows: Record<string, unknown>[] = [];
     return {
       rows,
       db: {
-        prepare: () => ({
-          bind: (...v: unknown[]) => ({
-            run: async () => {
-              rows.push({ lane: v[0], verdict: v[1], detail: v[3] });
-              return {};
-            },
-          }),
-        }),
+        query: async () => [],
+        run: async (_sql: string, v: unknown[] = []) => {
+          rows.push({ lane: v[0], verdict: v[1], detail: v[3] });
+          return { changes: 1 };
+        },
       },
     };
   };
@@ -522,8 +515,8 @@ describe("the shapes a real store hands back", () => {
     assert.ok(v.alerts.some((a) => a.includes("unstated")));
   });
 
-  test("a store answering without `results` is an empty window, not a crash", async () => {
-    const db = { prepare: () => ({ bind: () => ({ all: async () => ({}) }) }) };
+  test("a store answering zero rows is an empty window, not a crash", async () => {
+    const db = { query: async () => [] };
     const out = await runTaoUsdIndexWatchdog({}, { db, now: () => NOW });
     assert.equal(out.verdict, "fail");
     assert.ok(out.alerts[0].includes("wrote no rows"));

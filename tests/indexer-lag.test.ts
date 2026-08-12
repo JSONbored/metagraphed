@@ -31,13 +31,8 @@ function db(rows: Array<[number, number, number]>) {
   for (const [block, observed, synced] of rows)
     insert.run(block, observed, synced);
   return {
-    prepare(sql: string) {
-      const stmt = sqlite.prepare(sql);
-      return {
-        bind() {
-          return { first: async () => stmt.get() ?? null };
-        },
-      };
+    async first(sql: string) {
+      return sqlite.prepare(sql).get() ?? null;
     },
   };
 }
@@ -105,36 +100,26 @@ describe("loadIndexerLag", () => {
 
   it("returns null when the read throws", async () => {
     const throwing = {
-      prepare() {
-        return {
-          bind() {
-            return {
-              first: async () => {
-                throw new Error("D1_ERROR");
-              },
-            };
-          },
-        };
+      first: async () => {
+        throw new Error("store read failed");
       },
     };
     expect(await loadIndexerLag(throwing)).toBeNull();
   });
 
-  it("returns null when first() is absent or answers a non-row", async () => {
-    const noFirst = { prepare: () => ({ bind: () => ({}) }) };
+  it("returns null when the store has no first(), or answers a non-row", async () => {
+    const noFirst = {};
     expect(await loadIndexerLag(noFirst as never)).toBeNull();
-    const scalar = {
-      prepare: () => ({ bind: () => ({ first: async () => 7 }) }),
-    };
+    const scalar = { first: async () => 7 };
     expect(await loadIndexerLag(scalar as never)).toBeNull();
   });
 
   it("runs the exported statement, so the constant cannot drift from it", () => {
     let seen = "";
     const spy = {
-      prepare(sql: string) {
+      async first(sql: string) {
         seen = sql;
-        return { bind: () => ({ first: async () => null }) };
+        return null;
       },
     };
     void loadIndexerLag(spy);

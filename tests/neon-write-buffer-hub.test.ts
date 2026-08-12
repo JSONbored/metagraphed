@@ -79,21 +79,17 @@ function laneSpy() {
   return {
     rows,
     db: {
-      prepare(sql: string) {
-        return {
-          bind(...values: unknown[]) {
-            return {
-              async run() {
-                if (sql.startsWith("INSERT"))
-                  rows.push({
-                    lane: values[0],
-                    verdict: values[1],
-                    detail: values[3],
-                  });
-              },
-            };
-          },
-        };
+      async query() {
+        return [];
+      },
+      async run(sql: string, values: unknown[] = []) {
+        if (sql.startsWith("INSERT"))
+          rows.push({
+            lane: values[0],
+            verdict: values[1],
+            detail: values[3],
+          });
+        return { changes: 1 };
       },
     },
   };

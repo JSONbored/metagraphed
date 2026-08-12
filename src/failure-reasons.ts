@@ -45,11 +45,7 @@ export { FAILURE_REASONS_WINDOW_DAYS, FAILURE_REASONS_WINDOWS };
 type Row = Record<string, unknown>;
 
 export interface FailureReasonsDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 export const FAILURE_REASONS_TABLE = "surface_failure_daily";
@@ -104,7 +100,7 @@ export async function loadFailureReasons(
     nowMs?: number;
   } = {},
 ): Promise<Row[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   const days = FAILURE_REASONS_WINDOW_DAYS[window];
   if (days === undefined) return null;
   const binds: unknown[] = [utcDay(nowMs - days * 86_400_000)];
@@ -118,18 +114,12 @@ export async function loadFailureReasons(
     binds.push(kind);
   }
   try {
-    const res = await (
-      db
-        .prepare(
-          `SELECT day, netuid, kind, classification, checks` +
-            ` FROM ${FAILURE_REASONS_TABLE} WHERE ${where}` +
-            ` ORDER BY day ASC`,
-        )
-        .bind(...binds) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    return (res?.results ?? []) as Row[];
+    return await db.query<Row>(
+      `SELECT day, netuid, kind, classification, checks` +
+        ` FROM ${FAILURE_REASONS_TABLE} WHERE ${where}` +
+        ` ORDER BY day ASC`,
+      binds,
+    );
   } catch {
     return null;
   }

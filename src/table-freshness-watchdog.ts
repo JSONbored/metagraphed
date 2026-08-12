@@ -677,9 +677,9 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   },
 };
 
-/** The minimal D1 surface this needs, so a test can hand it a fake. */
+/** The minimal store surface this needs, so a test can hand it a fake. */
 export interface FreshnessDb {
-  prepare(sql: string): { all(): Promise<{ results?: unknown[] } | null> };
+  query(text: string, values?: unknown[]): Promise<Record<string, unknown>[]>;
 }
 
 /**
@@ -929,21 +929,19 @@ export async function confirmRedirectedStale(
     // The tables' OWN stamps, which is what `freshnessSql` would have read had
     // these entries never been redirected -- so the confirm asks exactly the
     // question the redirect deferred.
-    const result = await db
-      ?.prepare(
-        tables
-          .map(
-            (table) =>
-              `SELECT '${table}' AS t, MAX(${spec[table].column}) AS mx FROM ${table}`,
-          )
-          .join(" UNION ALL "),
-      )
-      .all();
-    if (!result) throw new Error("no result");
+    if (!db?.query) throw new Error("no store");
+    const rows = await db.query(
+      tables
+        .map(
+          (table) =>
+            `SELECT '${table}' AS t, MAX(${spec[table].column}) AS mx FROM ${table}`,
+        )
+        .join(" UNION ALL "),
+    );
     // The SPEC is passed: parseFreshnessRows drops any table its spec does
     // not know, and defaulting to TABLE_FRESHNESS would silently discard
     // every row when a caller (a test, another spec) asks about its own.
-    confirmed = parseFreshnessRows(result.results ?? [], spec);
+    confirmed = parseFreshnessRows(rows, spec);
   } catch {
     return [...stale];
   }
@@ -968,13 +966,10 @@ export async function crossCheckStamps(
   const involved = redirected.flatMap(([t, e]) => [t, e.stampFrom as string]);
   const db = deps.db ?? (readStore(env, involved) as FreshnessDb | undefined);
   try {
-    const result = await db?.prepare(crossCheckSql(spec)).all();
-    if (!result) throw new Error("no result");
+    if (!db?.query) throw new Error("no store");
+    const rows = await db.query(crossCheckSql(spec));
     return {
-      divergences: stampDivergences(
-        (result.results ?? []) as Record<string, unknown>[],
-        spec,
-      ),
+      divergences: stampDivergences(rows, spec),
       failed: false,
     };
   } catch {
@@ -1039,12 +1034,9 @@ export async function runTableFreshnessWatchdog(
     db: FreshnessDb | undefined,
   ): Promise<boolean> => {
     try {
-      const result = await db?.prepare(freshnessSql(group, spec)).all();
-      if (!result) throw new Error("no result");
-      for (const [table, at] of parseFreshnessRows(
-        result.results ?? [],
-        spec,
-      )) {
+      if (!db?.query) throw new Error("no store");
+      const rows = await db.query(freshnessSql(group, spec));
+      for (const [table, at] of parseFreshnessRows(rows, spec)) {
         newest.set(table, at);
       }
       return true;

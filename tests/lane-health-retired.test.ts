@@ -30,8 +30,8 @@ import { TAO_USD_INDEX_NEON_LANE } from "../workers/data-api.ts";
 
 /** Each retired lane, and the producer whose deletion justifies retiring it.
  * `null` marks the one entry whose producer was a KEY SPELLING rather than a
- * file — the pre-#10851 buffer flush wrote per-lane verdicts under the bare
- * statement tag — justified below by a code assertion instead: the live
+ * file -- the pre-#10851 buffer flush wrote per-lane verdicts under the bare
+ * statement tag -- justified below by a code assertion instead: the live
  * writer provably files under the `neon:` prefix. */
 const PRODUCERS: Record<string, string | null> = {
   "neon-parity": "src/neon-parity.ts",
@@ -46,10 +46,8 @@ const PRODUCERS: Record<string, string | null> = {
 
 function fakeDb(rows: Record<string, unknown>[]) {
   return {
-    prepare: () => ({
-      bind: () => ({ run: async () => ({}) }),
-      all: async () => ({ results: rows }),
-    }),
+    query: async () => rows,
+    run: async () => ({ changes: 1 }),
   };
 }
 

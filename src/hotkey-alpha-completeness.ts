@@ -23,9 +23,7 @@
 // floor that leaves a wide publishing band).
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    first(): Promise<unknown>;
-  };
+  first(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export interface HotkeyAlphaCompleteness {
@@ -61,17 +59,15 @@ const NONE: HotkeyAlphaCompleteness = {
 export async function latestCompleteHotkeyAlphaPass(
   db: StatementClientLike | null | undefined,
 ): Promise<HotkeyAlphaCompleteness> {
-  if (!db?.prepare) return { ...NONE, reason: "unavailable" };
+  if (!db?.first) return { ...NONE, reason: "unavailable" };
   try {
-    const row = (await db
-      .prepare(
-        `SELECT captured_at, expected_rows, received_rows
-           FROM hotkey_alpha_passes
-          WHERE completed_at IS NOT NULL
-          ORDER BY completed_at DESC
-          LIMIT 1`,
-      )
-      .first()) as {
+    const row = (await db.first(
+      `SELECT captured_at, expected_rows, received_rows
+         FROM hotkey_alpha_passes
+        WHERE completed_at IS NOT NULL
+        ORDER BY completed_at DESC
+        LIMIT 1`,
+    )) as {
       captured_at?: unknown;
       expected_rows?: unknown;
       received_rows?: unknown;

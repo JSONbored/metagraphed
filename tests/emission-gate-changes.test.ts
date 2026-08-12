@@ -75,24 +75,14 @@ const seed = async (sql: string, params: unknown[] = []) => {
   );
 };
 
-function d1() {
+function storeHandle() {
   return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            async all() {
-              return {
-                results: (await db.query(text, values as never[])).rows,
-              };
-            },
-          };
-        },
-      };
+    async query<Row>(text: string, values: unknown[] = []) {
+      return (await db.query(text, values as never[])).rows as Row[];
     },
   };
 }
-/** An env whose store is the same in-memory fixture `d1()` wraps.
+/** An env whose store is the same in-memory fixture `storeHandle()` wraps.
  *
  * Assigned per call rather than once, because `db` is rebuilt in beforeEach --
  * a controller still holding the previous test's database would answer from a
@@ -186,7 +176,7 @@ describe("predates_capture is never lost", () => {
     // reading, so no change occurred.
     await param(T, { prev: null, predates: true });
     await param(T - 1000, { prev: 2, value: 3, predates: false });
-    const card = buildEmissionChanges(await loadEmissionChanges(d1()));
+    const card = buildEmissionChanges(await loadEmissionChanges(storeHandle()));
     const first = (card.changes as Row[])[0];
     assert.equal(first.predates_capture, true);
     assert.equal(first.previous_value, null);
@@ -200,7 +190,7 @@ describe("predates_capture is never lost", () => {
     await param(T, { predates: true });
     await subnetSwitch(T - 1, 7, true, null, true);
     await flow(T - 2);
-    const card = buildEmissionChanges(await loadEmissionChanges(d1()));
+    const card = buildEmissionChanges(await loadEmissionChanges(storeHandle()));
     for (const c of card.changes as Row[]) {
       assert.equal(typeof c.predates_capture, "boolean");
     }
@@ -213,8 +203,9 @@ describe("one feed, three shapes", () => {
     await param(T);
     await subnetSwitch(T - 1);
     await flow(T - 2, "subnet_ema_tao_flow", 12, true);
-    const changes = buildEmissionChanges(await loadEmissionChanges(d1()))
-      .changes as Row[];
+    const changes = buildEmissionChanges(
+      await loadEmissionChanges(storeHandle()),
+    ).changes as Row[];
     const byKind = Object.fromEntries(changes.map((c) => [c.kind, c]));
 
     // A network-wide parameter has no subnet. `netuid: null` would read as
@@ -267,7 +258,7 @@ describe("the feed is unioned, not merged per table", () => {
     await subnetSwitch(T - 20);
     await param(T - 30);
     await subnetSwitch(T - 40);
-    const card = buildEmissionChanges(await loadEmissionChanges(d1()));
+    const card = buildEmissionChanges(await loadEmissionChanges(storeHandle()));
     assert.deepEqual(
       (card.changes as Row[]).map((c) => c.kind),
       ["param", "flow", "subnet", "param", "subnet"],
@@ -280,7 +271,7 @@ describe("the feed is unioned, not merged per table", () => {
     for (let i = 0; i < 5; i += 1) await param(T - i);
     await subnetSwitch(T - 100);
     const card = buildEmissionChanges(
-      await loadEmissionChanges(d1(), { limit: 2 }),
+      await loadEmissionChanges(storeHandle(), { limit: 2 }),
       { limit: 2 },
     );
     assert.equal(card.change_count, 2);
@@ -296,7 +287,7 @@ describe("the feed is unioned, not merged per table", () => {
     await flow(T - 2);
     for (const kind of EMISSION_CHANGE_KINDS) {
       const card = buildEmissionChanges(
-        await loadEmissionChanges(d1(), { kind }),
+        await loadEmissionChanges(storeHandle(), { kind }),
         { kind },
       );
       assert.equal(card.change_count, 1);
@@ -355,7 +346,7 @@ describe("buildEmissionChanges edges", () => {
   test("no binding and a failed read both return null", async () => {
     assert.equal(await loadEmissionChanges(null), null);
     await db.exec("DROP TABLE emission_flow_watch");
-    assert.equal(await loadEmissionChanges(d1()), null);
+    assert.equal(await loadEmissionChanges(storeHandle()), null);
   });
 
   test("a non-numeric value reads as unmeasured, not zero", () => {
@@ -375,10 +366,10 @@ describe("buildEmissionChanges edges", () => {
     assert.equal((zero.changes as Row[])[0].value, 0);
   });
 
-  test("a driver returning no results object yields an empty feed", async () => {
-    const shim = {
-      prepare: () => ({ bind: () => ({ all: async () => null }) }),
-    };
+  test("zero rows yields an empty feed", async () => {
+    // The D1 "no results object" premise retired with the envelope (#10909):
+    // the owned query() answers rows or throws, so zero rows is the shape.
+    const shim = { query: async () => [] };
     const rows = await loadEmissionChanges(shim as never);
     assert.deepEqual(rows, []);
   });

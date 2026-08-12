@@ -22,9 +22,7 @@
 // mechanical change when someone does.
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    first(): Promise<unknown>;
-  };
+  first(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export interface PassCompleteness {
@@ -94,17 +92,15 @@ export async function latestCompletePass(
   lane: string,
 ): Promise<PassCompleteness> {
   const table = PASS_TABLES[lane];
-  if (!table || !db?.prepare) return { ...NONE, reason: "unavailable" };
+  if (!table || !db?.first) return { ...NONE, reason: "unavailable" };
   try {
-    const row = (await db
-      .prepare(
-        `SELECT captured_at, expected_rows, received_rows
-           FROM ${table}
-          WHERE completed_at IS NOT NULL
-          ORDER BY completed_at DESC
-          LIMIT 1`,
-      )
-      .first()) as {
+    const row = (await db.first(
+      `SELECT captured_at, expected_rows, received_rows
+         FROM ${table}
+        WHERE completed_at IS NOT NULL
+        ORDER BY completed_at DESC
+        LIMIT 1`,
+    )) as {
       captured_at?: unknown;
       expected_rows?: unknown;
       received_rows?: unknown;
@@ -144,61 +140,10 @@ export interface PassTallyInput {
   nowMs: number;
 }
 
-/**
- * The upsert that accumulates a pass, for a lane's own table.
- *
- * `completed_at` is COALESCEd rather than recomputed, so the first write that
- * closes the gap owns the stamp and a later retry cannot move it. The
- * comparison is `>=`, never `=`, precisely so an at-least-once producer cannot
- * leave a complete pass looking unfinished.
- *
- * THROWS for a lane with no table, rather than returning null. A writer calls
- * this with its OWN hardcoded lane name, so an unknown one is a programming
- * error and not a runtime condition — the same posture `packSyncBatchMessages`
- * takes for a pruning lane with no declared key. Returning null instead would
- * put a permanently-false branch in every caller, which is how a file starts
- * collecting coverage pragmas instead of reasons.
- */
-export function passTallyStatement<S>(
-  db: { prepare(sql: string): { bind(...values: unknown[]): S } },
-  lane: string,
-  pass: PassTallyInput,
-): S {
-  const table = PASS_TABLES[lane];
-  if (!table) {
-    throw new Error(
-      `pass-completeness: no pass table for lane ${lane}; add it to PASS_TABLES ` +
-        `and ship the migration, or the tally has nowhere to land`,
-    );
-  }
-  return db
-    .prepare(
-      `INSERT INTO ${table}
-         (captured_at, expected_rows, received_rows, completed_at)
-       VALUES (?, ?, ?, CASE WHEN ? >= ? THEN ? ELSE NULL END)
-       ON CONFLICT (captured_at) DO UPDATE SET
-         expected_rows = excluded.expected_rows,
-         received_rows = ${table}.received_rows + excluded.received_rows,
-         completed_at = COALESCE(
-           ${table}.completed_at,
-           CASE
-             WHEN ${table}.received_rows + excluded.received_rows
-                  >= excluded.expected_rows
-             THEN ?
-             ELSE NULL
-           END
-         )`,
-    )
-    .bind(
-      pass.capturedAt,
-      pass.expectedRows,
-      pass.receivedRows,
-      pass.receivedRows,
-      pass.expectedRows,
-      pass.nowMs,
-      pass.nowMs,
-    );
-}
+// passTallyStatement retired here (#10909): the D1-era statement builder's
+// only remaining callers were its own tests -- the live write path has been
+// writePassTallyToNeon since the cutover, and a builder that exists to feed a
+// deleted store's batch() is scaffolding, not API.
 
 /** The runner shape `createPgSql` hands out. Structural, so a test can assert
  * the emitted text and values without a database. */

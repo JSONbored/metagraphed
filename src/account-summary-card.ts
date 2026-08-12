@@ -43,15 +43,12 @@ import {
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { isR2SqlConfigured } from "./r2-sql.ts";
 import { readStore } from "./read-store.ts";
+import type { Neurons } from "../generated/db/types.ts";
 
 /** The D1 surface this module needs -- structural, so tests can hand it a
  * plain object (the same pattern as src/blocks-cold-tier.ts). */
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 /**
@@ -62,6 +59,14 @@ interface StatementClientLike {
  * rows through the same formatRegistration, and cannot come to disagree about
  * where one hotkey is registered.
  */
+/** Exactly the columns ACCOUNT_REGISTRATIONS_SQL selects, from the generated
+ * table type -- so a renamed or retyped column is a compile error here rather
+ * than a silently-missing field in the card. */
+export type AccountRegistrationRow = Pick<
+  Neurons,
+  "netuid" | "uid" | "stake_tao" | "validator_permit" | "active"
+>;
+
 export const ACCOUNT_REGISTRATIONS_SQL =
   "SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons " +
   "WHERE hotkey = ? ORDER BY netuid";
@@ -77,14 +82,14 @@ export const ACCOUNT_REGISTRATIONS_SQL =
 export async function loadAccountRegistrationsFromStore(
   env: Env | null | undefined,
   ss58: string,
-): Promise<Record<string, unknown>[] | null> {
+): Promise<AccountRegistrationRow[] | null> {
   const db = readStore(env, ["neurons"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return [];
+  if (!db?.query) return [];
   try {
-    const res = await db.prepare(ACCOUNT_REGISTRATIONS_SQL).bind(ss58).all?.();
-    const rows = res?.results;
-    return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
+    return await db.query<AccountRegistrationRow>(ACCOUNT_REGISTRATIONS_SQL, [
+      ss58,
+    ]);
   } catch {
     return null;
   }

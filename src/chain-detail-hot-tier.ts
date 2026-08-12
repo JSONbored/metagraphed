@@ -50,13 +50,8 @@ import { summarizeEvent } from "@jsonbored/chain-summaries";
 
 type Row = Record<string, unknown>;
 
-interface StatementLike {
-  bind(...values: unknown[]): StatementLike;
-  all?(): Promise<{ results?: unknown[] } | null>;
-  first?(): Promise<unknown>;
-}
 interface StatementClientLike {
-  prepare(sql: string): StatementLike;
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 /** The four tables every statement in this module reads (#10148). Handed to
  *  readStore as one set: a hot tier split across stores would answer a block
@@ -71,7 +66,7 @@ export const CHAIN_DETAIL_HOT_TIER_TABLES = [
 function db(env: unknown): StatementClientLike | null {
   const binding = readStore(env, CHAIN_DETAIL_HOT_TIER_TABLES) as unknown as
     StatementClientLike | undefined;
-  return binding?.prepare ? binding : null;
+  return binding?.query ? binding : null;
 }
 
 /** Rows for one bound query, or null when D1 is unbound or the query fails. A
@@ -83,14 +78,9 @@ async function query(
   params: unknown[],
 ): Promise<Row[] | null> {
   const binding = db(env);
-  if (!binding) return null;
+  if (!binding?.query) return null;
   try {
-    const res = await binding
-      .prepare(sql)
-      .bind(...params)
-      .all?.();
-    const rows = res?.results;
-    return Array.isArray(rows) ? (rows as Row[]) : [];
+    return (await binding.query(sql, params)) as Row[];
   } catch {
     return null;
   }

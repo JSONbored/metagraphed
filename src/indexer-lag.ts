@@ -43,13 +43,9 @@
 
 type Row = Record<string, unknown>;
 
-/** The minimal D1 surface used here, so tests can inject a plain object. */
+/** The minimal store surface used here, so tests can inject a plain object. */
 export interface IndexerLagDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      first?(): Promise<unknown>;
-    };
-  };
+  first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export const INDEXER_LAG_TABLE = "chain_detail_blocks";
@@ -88,13 +84,9 @@ export const INDEXER_LAG_SQL =
 export async function loadIndexerLag(
   db: IndexerLagDb | null | undefined,
 ): Promise<Row | null> {
-  if (!db?.prepare) return null;
+  if (!db?.first) return null;
   try {
-    const row = await (
-      db.prepare(INDEXER_LAG_SQL).bind() as {
-        first?(): Promise<unknown>;
-      }
-    ).first?.();
+    const row = await db.first(INDEXER_LAG_SQL);
     return isRow(row) ? row : null;
   } catch {
     return null;

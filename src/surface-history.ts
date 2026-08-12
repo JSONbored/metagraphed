@@ -41,11 +41,7 @@ type Row = Record<string, unknown>;
 
 /** The minimal D1 surface used here, so tests can inject a plain object. */
 export interface SurfaceHistoryDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 export const SURFACE_HISTORY_TABLE = "surface_history";
@@ -78,24 +74,18 @@ export async function loadSurfaceHistory(
   netuid: number,
   { limit = SURFACE_HISTORY_LIMIT_DEFAULT }: { limit?: number } = {},
 ): Promise<Row[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
-    const res = await (
-      db
-        .prepare(
-          `SELECT COALESCE(sh.surface_id, sh.overlay::jsonb ->> 'id') AS surface_id,` +
-            ` sh.action, sh.source_commit, sh.recorded_at,` +
-            ` sh.overlay::jsonb ->> 'kind' AS kind,` +
-            ` sh.overlay::jsonb ->> 'url' AS url,` +
-            ` sh.overlay::jsonb ->> 'name' AS name` +
-            ` FROM ${SURFACE_HISTORY_TABLE} sh WHERE sh.subnet_netuid = ?` +
-            ` ORDER BY sh.recorded_at DESC, sh.id DESC LIMIT ${limit}`,
-        )
-        .bind(netuid) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    return (res?.results ?? []) as Row[];
+    return await db.query<Row>(
+      `SELECT COALESCE(sh.surface_id, sh.overlay::jsonb ->> 'id') AS surface_id,` +
+        ` sh.action, sh.source_commit, sh.recorded_at,` +
+        ` sh.overlay::jsonb ->> 'kind' AS kind,` +
+        ` sh.overlay::jsonb ->> 'url' AS url,` +
+        ` sh.overlay::jsonb ->> 'name' AS name` +
+        ` FROM ${SURFACE_HISTORY_TABLE} sh WHERE sh.subnet_netuid = ?` +
+        ` ORDER BY sh.recorded_at DESC, sh.id DESC LIMIT ${limit}`,
+      [netuid],
+    );
   } catch {
     return null;
   }

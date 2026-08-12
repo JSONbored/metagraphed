@@ -125,13 +125,9 @@ describe("LANE_PRODUCER", () => {
 /** A db whose `all()` returns the given rows, recording what it was asked. */
 function db(rows: unknown[], onSql?: (sql: string, values: unknown[]) => void) {
   return {
-    prepare(sql: string) {
-      return {
-        bind(...values: unknown[]) {
-          onSql?.(sql, values);
-          return { all: async () => ({ results: rows }) };
-        },
-      };
+    query(sql: string, values: unknown[] = []) {
+      onSql?.(sql, values);
+      return Promise.resolve(rows);
     },
   } as unknown as Parameters<typeof loadLaneMaxGap>[0];
 }
@@ -206,13 +202,9 @@ describe("loadLaneMaxGap", () => {
     assert.deepEqual(await loadLaneMaxGap(null, 0), {});
     assert.deepEqual(await loadLaneMaxGap(undefined, 0), {});
     const exploding = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => {
-            throw new Error("neon down");
-          },
-        }),
-      }),
+      query: async () => {
+        throw new Error("neon down");
+      },
     } as unknown as Parameters<typeof loadLaneMaxGap>[0];
     assert.deepEqual(await loadLaneMaxGap(exploding, 0), {});
   });

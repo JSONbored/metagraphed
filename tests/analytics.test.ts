@@ -1913,7 +1913,7 @@ describe("hourly cron writes a daily snapshot", () => {
 // storeAll / hasD1FallbackRows / markD1FallbackRows / d1FallbackGeneration were
 // deleted (2026-07-17, D1 fully eliminated) -- every analytics route now
 // tries the Postgres tier first and a miss falls through to a pure
-// empty-shape builder directly, never a live D1 query, so the D1 read path
+// empty-shape builder directly, never a live store query, so the D1 read path
 // + its fallback-row bookkeeping had zero remaining callers. See
 // workers/request-handlers/analytics.ts's own header comment.
 
@@ -2229,21 +2229,18 @@ describe("#9452 — writeSubnetSnapshot reports its verdict", () => {
       captures,
       overrides: {
         laneHealthDb: {
-          prepare: (sql: string) => ({
-            bind: (...values: unknown[]) => ({
-              run: async () => {
-                if (sql.startsWith("INSERT")) {
-                  rows.push({
-                    lane: values[0],
-                    verdict: values[1],
-                    age_ms: values[2],
-                    detail: values[3],
-                  });
-                }
-              },
-            }),
-          }),
-          batch: async () => [],
+          query: async () => [],
+          run: async (sql: string, values: unknown[] = []) => {
+            if (sql.startsWith("INSERT")) {
+              rows.push({
+                lane: values[0],
+                verdict: values[1],
+                age_ms: values[2],
+                detail: values[3],
+              });
+            }
+            return { changes: 1 };
+          },
         } as never,
         recordExceptionEvent: (async (_env: unknown, event: unknown) => {
           captures.push(event as Row);

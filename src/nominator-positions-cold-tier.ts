@@ -90,11 +90,7 @@ export const BIND_PARAM_CHUNK = 100;
 /** The D1 surface this module needs from `neurons` -- structural, so tests can
  * hand a plain object (same pattern as src/account-feeds-cold-tier.ts). */
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 /**
@@ -113,7 +109,7 @@ export async function neuronStakeByHotkeys(
   if (hotkeys.length === 0) return new Map();
   const db = readStore(env, ["neurons"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   const chunks: string[][] = [];
   for (let i = 0; i < hotkeys.length; i += BIND_PARAM_CHUNK) {
     chunks.push(hotkeys.slice(i, i + BIND_PARAM_CHUNK));
@@ -123,14 +119,10 @@ export async function neuronStakeByHotkeys(
     results = await Promise.all(
       chunks.map(async (chunk) => {
         const placeholders = chunk.map(() => "?").join(", ");
-        const res = await db
-          .prepare(
-            `SELECT hotkey, netuid, stake_tao FROM neurons WHERE hotkey IN (${placeholders})`,
-          )
-          .bind(...chunk)
-          .all?.();
-        if (!Array.isArray(res?.results)) throw new Error("neurons: no rows");
-        return res.results;
+        return await db.query!(
+          `SELECT hotkey, netuid, stake_tao FROM neurons WHERE hotkey IN (${placeholders})`,
+          chunk,
+        );
       }),
     );
   } catch {

@@ -16,17 +16,12 @@ import {
   latestCompletePass,
   mayReadPass,
   PASS_TABLES,
-  passTallyStatement,
 } from "../src/pass-completeness.ts";
 
 const db = (row: unknown, sqlSink?: string[]) => ({
-  prepare(sql: string) {
+  async first(sql: string) {
     sqlSink?.push(sql);
-    return {
-      async first() {
-        return row;
-      },
-    };
+    return row;
   },
 });
 
@@ -80,7 +75,7 @@ describe("latestCompletePass", () => {
     // "do not rank", exactly like no complete pass -- not as a 500 on a
     // published leaderboard.
     const throwing = {
-      prepare() {
+      first() {
         throw new Error("no such table: nominator_positions_passes");
       },
     };
@@ -121,77 +116,14 @@ describe("latestCompletePass", () => {
   });
 });
 
-describe("passTallyStatement", () => {
-  const bindOf = (
-    lane: string,
-    pass: Parameters<typeof passTallyStatement>[2],
-  ) => {
-    let sql = "";
-    let values: unknown[] = [];
-    passTallyStatement(
-      {
-        prepare(text: string) {
-          sql = text;
-          return { bind: (...v: unknown[]) => ((values = v), {}) };
-        },
-      },
-      lane,
-      pass,
-    );
-    return { sql, values };
-  };
+// The passTallyStatement describe retired with the builder (#10909): its only
+// callers were these tests -- the live write path has been writePassTallyToNeon
+// since the cutover, and a statement builder that exists to feed a deleted
+// store's batch() is scaffolding, not API. writePassTallyToNeon's own suite
+// below carries every property this one asserted (accumulate-not-overwrite,
+// stamp-once, the >= comparison).
 
-  test("accumulates rather than overwrites, and stamps once", async () => {
-    const { sql } = bindOf("nominator-positions", {
-      capturedAt: 1,
-      expectedRows: 10,
-      receivedRows: 4,
-      nowMs: 99,
-    });
-    // received_rows ADDS -- a pass is many requests, and the last one must not
-    // erase what the earlier ones delivered.
-    assert.match(
-      sql,
-      /received_rows = nominator_positions_passes\.received_rows \+ excluded\.received_rows/,
-    );
-    // completed_at is COALESCEd -- the first write that closes the gap owns the
-    // stamp, and a later retry cannot move it.
-    assert.match(sql, /completed_at = COALESCE\(/);
-    // >= and never =, so at-least-once cannot leave a complete pass unfinished.
-    assert.match(sql, />= excluded\.expected_rows/);
-  });
-
-  test("binds the values the upsert's CASE arms need", () => {
-    const { values } = bindOf("validator-nominator-counts", {
-      capturedAt: 7,
-      expectedRows: 10,
-      receivedRows: 10,
-      nowMs: 42,
-    });
-    assert.deepEqual(values, [7, 10, 10, 10, 10, 42, 42]);
-  });
-
-  test("THROWS for a lane with no table, rather than silently writing nothing", () => {
-    // A writer calls this with its OWN hardcoded lane, so an unknown one is a
-    // programming error rather than a runtime condition. Returning null would
-    // put a permanently-false branch in every caller -- and worse, a lane added
-    // to a route but not to PASS_TABLES would silently keep no tally, which
-    // looks exactly like the gap this whole mechanism exists to close.
-    assert.throws(
-      () =>
-        passTallyStatement(
-          { prepare: () => ({ bind: () => ({}) }) },
-          // A lane with no pass table. hotkey-alpha was the example until
-          // #10137 gave it one; chain-detail declares no completeness ledger
-          // and is not expected to grow one -- its coverage register is
-          // chain_detail_blocks, not a tally.
-          "chain-detail",
-          { capturedAt: 1, expectedRows: 1, receivedRows: 1, nowMs: 1 },
-        ),
-      /no pass table for lane chain-detail/,
-    );
-  });
-
+describe("PASS_TABLES", () => {
   test("every declared table is one this reader will query", () => {
     // The two lists are the same object, and this asserts it stays that way --
     // a table in one and not the other is a tally nothing reads, or a read of

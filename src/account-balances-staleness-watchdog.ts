@@ -273,9 +273,7 @@ function countOrZero(value: unknown): number {
 }
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): { first(): Promise<unknown> };
-  };
+  first(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export interface AccountBalancesStalenessDeps {
@@ -304,7 +302,7 @@ export async function runAccountBalancesStalenessWatchdog(
   // stalled while the lane was fine.
   const db = readStore(env, ["account_balances"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no store bound" };
+  if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
     Number(env?.ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS) ||
@@ -317,10 +315,9 @@ export async function runAccountBalancesStalenessWatchdog(
     ACCOUNT_BALANCES_COVERAGE_FLOOR_ROWS;
 
   try {
-    const row = (await db
-      .prepare(ACCOUNT_BALANCES_COVERAGE_SQL)
-      .bind(passWindowMs)
-      .first()) as {
+    const row = (await db.first(ACCOUNT_BALANCES_COVERAGE_SQL, [
+      passWindowMs,
+    ])) as {
       latest: number | null;
       covered: number | null;
       total: number | null;

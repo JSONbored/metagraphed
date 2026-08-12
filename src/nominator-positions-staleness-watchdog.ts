@@ -226,9 +226,7 @@ function countOrZero(value: unknown): number {
 }
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): { first(): Promise<unknown> };
-  };
+  first(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export interface NominatorPositionsStalenessDeps {
@@ -257,7 +255,7 @@ export async function runNominatorPositionsStalenessWatchdog(
   // stalled while the lane was fine.
   const db = readStore(env, ["nominator_positions"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no store bound" };
+  if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
     Number(env?.NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS) ||
@@ -270,10 +268,9 @@ export async function runNominatorPositionsStalenessWatchdog(
     NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS;
 
   try {
-    const row = (await db
-      .prepare(NOMINATOR_POSITIONS_COVERAGE_SQL)
-      .bind(passWindowMs)
-      .first()) as {
+    const row = (await db.first(NOMINATOR_POSITIONS_COVERAGE_SQL, [
+      passWindowMs,
+    ])) as {
       latest: number | null;
       covered: number | null;
       total: number | null;

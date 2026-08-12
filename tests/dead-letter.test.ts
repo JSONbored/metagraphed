@@ -32,17 +32,12 @@ function db() {
         .filter((s) => s.sql.startsWith("INSERT INTO lane_health"))
         .map((s) => s.values);
     },
-    prepare(sql: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            async run() {
-              statements.push({ sql, values });
-              return {};
-            },
-          };
-        },
-      };
+    async query() {
+      return [];
+    },
+    async run(sql: string, values: unknown[] = []) {
+      statements.push({ sql, values });
+      return { changes: 1 };
     },
   };
 }

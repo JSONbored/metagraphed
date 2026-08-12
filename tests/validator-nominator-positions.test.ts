@@ -61,23 +61,18 @@ const ck = (n: number) => `5Coldkey${String(n).padStart(40, "0")}`;
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
+function storeHandle() {
   return {
-    prepare(text: string) {
-      const run = (values: unknown[]) => ({
-        async all() {
-          return { results: db.prepare(text).all(...(values as never[])) };
-        },
-        async first() {
-          return db.prepare(text).get(...(values as never[])) ?? null;
-        },
-      });
-      return { bind: (...v: unknown[]) => run(v), ...run([]) };
+    async query<Row>(text: string, values: unknown[] = []) {
+      return db.prepare(text).all(...(values as never[])) as Row[];
+    },
+    async first(text: string, values: unknown[] = []) {
+      return db.prepare(text).get(...(values as never[])) ?? null;
     },
   };
 }
 /** The route's env: a connection string for readStore to find, every table
- * declared Neon's, and the SAME in-memory engine `d1()` reads answering behind
+ * declared Neon's, and the SAME in-memory engine `storeHandle()` reads answering behind
  * the `pg` double -- so a route assertion and a loader assertion below are
  * looking at one set of rows. */
 const env = () => ({ ...pgMockEnv() }) as unknown as Env;
@@ -125,7 +120,7 @@ describe("the positions basis reads the standing ledger", () => {
     position(ck(1), HOTKEY, 2, 0.4); // 200 alpha on netuid 2
     position(ck(2), HOTKEY, 1, 0.25); // 250 alpha on netuid 1
     const card = buildNominatorPositions(
-      await loadNominatorPositions(d1(), HOTKEY),
+      await loadNominatorPositions(storeHandle(), HOTKEY),
       HOTKEY,
     );
     assert.equal(card.basis, "positions");
@@ -153,7 +148,7 @@ describe("the positions basis reads the standing ledger", () => {
     position(ck(1), HOTKEY, 1, 0.5);
     position(ck(1), HOTKEY, 2, 0.5);
     const card = buildNominatorPositions(
-      await loadNominatorPositions(d1(), HOTKEY),
+      await loadNominatorPositions(storeHandle(), HOTKEY),
       HOTKEY,
     );
     const nominator = (card.nominators as Row[])[0];
@@ -169,7 +164,7 @@ describe("the positions basis reads the standing ledger", () => {
     position(ck(1), HOTKEY, 1, 0.5);
     position(ck(2), OTHER_HOTKEY, 1, 0.5);
     const card = buildNominatorPositions(
-      await loadNominatorPositions(d1(), HOTKEY),
+      await loadNominatorPositions(storeHandle(), HOTKEY),
       HOTKEY,
     );
     assert.equal(card.nominator_count, 1);
@@ -189,7 +184,7 @@ describe("the positions basis declines rather than guessing", () => {
     pool(HOTKEY, 1, 1000);
     position(ck(1), HOTKEY, 1, 0.5);
     assert.equal(
-      (await loadNominatorPositions(d1(), HOTKEY)).decline,
+      (await loadNominatorPositions(storeHandle(), HOTKEY)).decline,
       "pool_totals_unproven",
     );
   });
@@ -202,7 +197,7 @@ describe("the positions basis declines rather than guessing", () => {
     completePass();
     db.exec("DROP TABLE nominator_positions");
     assert.equal(
-      (await loadNominatorPositions(d1(), HOTKEY)).decline,
+      (await loadNominatorPositions(storeHandle(), HOTKEY)).decline,
       "unavailable",
     );
   });
@@ -210,21 +205,20 @@ describe("the positions basis declines rather than guessing", () => {
   test("a missing passes table is unavailable", async () => {
     db.exec("DROP TABLE hotkey_alpha_passes");
     assert.equal(
-      (await loadNominatorPositions(d1(), HOTKEY)).decline,
+      (await loadNominatorPositions(storeHandle(), HOTKEY)).decline,
       "unavailable",
     );
   });
 
-  test("a non-array result declines", async () => {
+  test("a failing read declines", async () => {
+    // Was "a non-array result": the D1 envelope could answer without a
+    // `results` array, and that shape retired with it (#10909).
     completePass();
     const broken = {
-      prepare(text: string) {
-        const real = d1().prepare(text);
-        return {
-          bind: () => ({ all: async () => ({ results: undefined }) }),
-          first: real.first,
-        };
+      query: async () => {
+        throw new Error("store read failed");
       },
+      first: storeHandle().first,
     };
     assert.equal(
       (await loadNominatorPositions(broken as never, HOTKEY)).decline,

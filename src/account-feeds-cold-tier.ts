@@ -526,14 +526,10 @@ export async function loadAccountPrometheusColdTier(
   };
 }
 
-/** The D1 surface this module needs from `neurons` -- structural, so tests
+/** The store surface this module needs from `neurons` -- structural, so tests
  * can hand a plain object (same pattern as src/blocks-cold-tier.ts). */
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 /** The hotkey's registered (netuid, uid) slots from D1 `neurons` -- the same
@@ -547,15 +543,13 @@ async function neuronSlots(
 ): Promise<{ netuid: number; uid: number }[] | null> {
   const db = readStore(env, ["neurons"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   let results: unknown[];
   try {
-    const res = await db
-      .prepare("SELECT netuid, uid FROM neurons WHERE hotkey = ?")
-      .bind(addr)
-      .all?.();
-    if (!Array.isArray(res?.results)) return null;
-    results = res.results;
+    results = await db.query(
+      "SELECT netuid, uid FROM neurons WHERE hotkey = ?",
+      [addr],
+    );
   } catch {
     return null;
   }

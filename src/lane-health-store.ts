@@ -54,32 +54,35 @@ export function pgLaneHealthDb(
   connectionString: string,
   deps: LaneHealthStoreDeps = {},
 ): LaneHealthDb {
-  const run = async (text: string, values: unknown[]) => {
+  const exec = async (text: string, values: unknown[]) => {
     const client =
       deps.clientFactory?.(connectionString) ??
       (new Client({ connectionString }) as unknown as LaneHealthPgClient);
     await client.connect();
     try {
       const result = await client.query(toPositionalPlaceholders(text), values);
-      return { results: (result?.rows ?? []) as unknown[] };
+      return (result?.rows ?? []) as Record<string, unknown>[];
     } finally {
       // Awaited, unlike createPgSql's waitUntil -- see this module's header.
       await client.end().catch(() => undefined);
     }
   };
   return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            all: () => run(text, values),
-            run: () => run(text, values),
-          };
-        },
-        all: () => run(text, []),
-      };
+    async query<Row = Record<string, unknown>>(
+      text: string,
+      values: unknown[] = [],
+    ) {
+      return (await exec(text, values)) as Row[];
     },
-  } as unknown as LaneHealthDb;
+    async run(text: string, values: unknown[] = []) {
+      await exec(text, values);
+      // The driver's rowCount is not read back here: recordLaneVerdict treats
+      // any resolved run as landed, and the per-operation client closes before
+      // a count could be consulted. Zero keeps the type honest without
+      // claiming a count nobody measures.
+      return { changes: 0 };
+    },
+  };
 }
 
 /**

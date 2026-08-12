@@ -234,11 +234,10 @@ interface RawCaptureEnv {
 }
 
 export interface WatermarkReadDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      first?(): Promise<Record<string, unknown> | null>;
-    };
-  };
+  first?(
+    text: string,
+    values?: unknown[],
+  ): Promise<Record<string, unknown> | null>;
 }
 
 /**
@@ -322,12 +321,10 @@ export function watermarkRead(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): () => Promise<number | null> {
   return async () => {
-    const row = await db
-      .prepare(
-        `SELECT last_contiguous_block FROM raw_capture_state WHERE network = ?`,
-      )
-      .bind(network)
-      .first?.();
+    const row = await db.first?.(
+      `SELECT last_contiguous_block FROM raw_capture_state WHERE network = ?`,
+      [network],
+    );
     const value = row?.last_contiguous_block;
     return typeof value === "number" ? value : null;
   };

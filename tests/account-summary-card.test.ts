@@ -104,7 +104,7 @@ function lakehouse({ fail = false }: { fail?: boolean } = {}) {
  * `seen` is a LIVE view over the mock's log rather than a copy, because every
  * caller destructures this object and holds `seen` across the loader call --
  * a getter would be evaluated once, at destructure time, and freeze empty. */
-function d1({ rows = [NEURON_ROW] as unknown[], fail = false } = {}) {
+function runner({ rows = [NEURON_ROW] as unknown[], fail = false } = {}) {
   const seen: { sql: string; params: unknown[] }[] = [];
   pg.control.rows = rows;
   pg.control.failNext = fail ? new Error("store down") : null;
@@ -124,7 +124,7 @@ describe("loadAccountRegistrationsFromStore", () => {
     // Same columns, same predicate, same order -- so the summary's
     // `registrations` and /subnets' `subnets` cannot come to disagree about
     // where one hotkey is registered.
-    const db = d1();
+    const db = runner();
     const rows = await loadAccountRegistrationsFromStore(db as never, SS58);
     assert.deepEqual(rows, [NEURON_ROW]);
     // Compared through toPositionalPlaceholders because the store applies it on
@@ -151,7 +151,7 @@ describe("loadAccountRegistrationsFromStore", () => {
     assert.deepEqual(await loadAccountRegistrationsFromStore(null, SS58), []);
     assert.equal(
       await loadAccountRegistrationsFromStore(
-        d1({ fail: true }) as never,
+        runner({ fail: true }) as never,
         SS58,
       ),
       null,
@@ -163,7 +163,7 @@ describe("loadAccountRegistrationsFromStore", () => {
     // array, so the guard is exercised one level lower -- at a driver answering
     // with something that is not a row set at all, which is the only way a
     // non-array now reaches this loader.
-    const db = d1();
+    const db = runner();
     pg.control.rows = { not: "rows" } as unknown as unknown[];
     assert.deepEqual(
       await loadAccountRegistrationsFromStore(db as never, SS58),
@@ -176,7 +176,7 @@ describe("answerAccountSummary", () => {
   test("the card carries BOTH legs — events and current registrations", async () => {
     lakehouse();
     const answer = await answerAccountSummary(
-      { ...d1(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
+      { ...runner(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
       SS58,
     );
     assert.equal(answer.kind, "answer");
@@ -199,7 +199,7 @@ describe("answerAccountSummary", () => {
   test("a configured lakehouse that cannot answer DECLINES, never a zero card", async () => {
     lakehouse({ fail: true });
     const answer = await answerAccountSummary(
-      { ...d1(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
+      { ...runner(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
       SS58,
     );
     assert.equal(answer.kind, "gap");
@@ -210,7 +210,7 @@ describe("answerAccountSummary", () => {
     // payload to say which half is which.
     lakehouse();
     const answer = await answerAccountSummary(
-      { ...d1({ fail: true }), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
+      { ...runner({ fail: true }), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
       SS58,
     );
     assert.equal(answer.kind, "gap");
@@ -220,14 +220,14 @@ describe("answerAccountSummary", () => {
     // A self-hoster or CI run has no chain history to read at all, so there is
     // nothing to decline about.
     lakehouse();
-    const answer = await answerAccountSummary(d1() as never, SS58);
+    const answer = await answerAccountSummary(runner() as never, SS58);
     assert.equal(answer.kind, "miss");
   });
 
   test("an unusable address declines rather than scanning every account", async () => {
     lakehouse();
     const answer = await answerAccountSummary(
-      { ...d1(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
+      { ...runner(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
       "not-an-address",
     );
     assert.equal(answer.kind, "gap");

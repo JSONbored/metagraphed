@@ -325,23 +325,19 @@ describe("recordNeonWriteVerdict", () => {
     return {
       rows,
       db: {
-        prepare(sql: string) {
-          return {
-            bind(...values: unknown[]) {
-              return {
-                async run() {
-                  if (sql.startsWith("INSERT")) {
-                    rows.push({
-                      lane: values[0],
-                      verdict: values[1],
-                      age_ms: values[2],
-                      detail: values[3],
-                    });
-                  }
-                },
-              };
-            },
-          };
+        async query() {
+          return [];
+        },
+        async run(sql: string, values: unknown[] = []) {
+          if (sql.startsWith("INSERT")) {
+            rows.push({
+              lane: values[0],
+              verdict: values[1],
+              age_ms: values[2],
+              detail: values[3],
+            });
+          }
+          return { changes: 1 };
         },
       },
     };
@@ -497,17 +493,13 @@ describe("verdict coalescing, end to end", () => {
     return {
       inserts,
       db: {
-        prepare(sql: string) {
-          return {
-            bind(...values: unknown[]) {
-              return {
-                async run() {
-                  if (sql.startsWith("INSERT"))
-                    inserts.push({ lane: values[0], verdict: values[1] });
-                },
-              };
-            },
-          };
+        async query() {
+          return [];
+        },
+        async run(sql: string, values: unknown[] = []) {
+          if (sql.startsWith("INSERT"))
+            inserts.push({ lane: values[0], verdict: values[1] });
+          return { changes: 1 };
         },
       },
     };
@@ -640,17 +632,13 @@ describe("a buffered lane's enqueue-time verdict", () => {
     return {
       rows,
       db: {
-        prepare(sql: string) {
-          return {
-            bind(...values: unknown[]) {
-              return {
-                async run() {
-                  if (sql.startsWith("INSERT"))
-                    rows.push({ lane: values[0], verdict: values[1] });
-                },
-              };
-            },
-          };
+        async query() {
+          return [];
+        },
+        async run(sql: string, values: unknown[] = []) {
+          if (sql.startsWith("INSERT"))
+            rows.push({ lane: values[0], verdict: values[1] });
+          return { changes: 1 };
         },
       },
     };
@@ -710,16 +698,10 @@ describe("a buffered lane's enqueue-time verdict", () => {
     // where the distinction lives.
     const details: string[] = [];
     const db = {
-      prepare(sql: string) {
-        return {
-          bind(...values: unknown[]) {
-            return {
-              async run() {
-                if (sql.startsWith("INSERT")) details.push(String(values[3]));
-              },
-            };
-          },
-        };
+      query: async () => [],
+      async run(sql: string, values: unknown[] = []) {
+        if (sql.startsWith("INSERT")) details.push(String(values[3]));
+        return { changes: 1 };
       },
     };
     await recordNeonWriteVerdict(

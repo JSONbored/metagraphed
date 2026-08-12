@@ -431,7 +431,7 @@ export function buildSubnetEconomics(
 }
 
 interface StatementClientLike {
-  prepare(sql: string): { all(): Promise<{ results?: Row[] } | null> };
+  query(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 interface KvLike {
@@ -479,7 +479,7 @@ export async function refreshLiveEconomics(
   // every three hours, with a fresh timestamp on it.
   const db = readStore(env, ["neurons", "subnet_snapshots"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "store_unavailable" };
+  if (!db?.query) return { ok: false, reason: "store_unavailable" };
 
   const now = deps.now ?? Date.now;
   try {
@@ -540,17 +540,13 @@ export async function refreshLiveEconomics(
       values[name] = await storage.readValue(hash, blockHash);
     }
 
-    const neuronRows = await db.prepare(NEURON_AGGREGATE_QUERY).all();
-    const neurons = indexNeuronAggregates(neuronRows?.results);
+    const neuronRows = await db.query(NEURON_AGGREGATE_QUERY);
+    const neurons = indexNeuronAggregates(neuronRows);
     // `now` threaded, not defaulted: every other timestamp in this tick comes
     // from the injected clock, and a cutoff read off Date.now would put the
     // window on a different clock from the rows it bounds.
-    const historyRows = await db
-      .prepare(alphaPriceHistoryQuery(undefined, now))
-      .all();
-    const priceHistoryByNetuid = indexAlphaPriceHistoryByNetuid(
-      historyRows?.results,
-    );
+    const historyRows = await db.query(alphaPriceHistoryQuery(undefined, now));
+    const priceHistoryByNetuid = indexAlphaPriceHistoryByNetuid(historyRows);
 
     const economicsByNetuid = new Map<number, Row>();
     for (const netuid of netuids) {

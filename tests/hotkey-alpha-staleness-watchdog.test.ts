@@ -434,12 +434,11 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
       now: () => NOW,
       recordException: noopRecord,
       laneHealthDb: {
-        prepare: (sql: string) => ({
-          bind: (...values: unknown[]) => {
-            lanes.push({ sql, values });
-            return { run: async () => ({}) };
-          },
-        }),
+        query: async () => [],
+        run: async (sql: string, values: unknown[] = []) => {
+          lanes.push({ sql, values });
+          return { changes: 1 };
+        },
       } as never,
     });
     // Written EVERY tick, not only when stale: a dropped exception is otherwise

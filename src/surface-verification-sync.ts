@@ -182,7 +182,7 @@ export async function runSurfaceVerificationSync(
     ctx?.waitUntil?.(pending);
     return { ok: false, skipped: true, reason };
   };
-  if (!db?.prepare) {
+  if (!db?.query) {
     return loud(
       "no store is bound; refusing to run. A storeless sweep " +
         "reads zero rows for every subnet, which would publish a snapshot " +

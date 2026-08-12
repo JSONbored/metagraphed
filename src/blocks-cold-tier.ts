@@ -45,6 +45,7 @@ import {
   type BlockFeedQuery,
 } from "./r2-sql-blocks.ts";
 import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
+import type { BlocksHead, ChainDetailBlocks } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { readStore } from "./read-store.ts";
@@ -107,16 +108,36 @@ const STORE_SELECT =
   // between a block being seen and being decoded -- the window that used to
   // publish null and render "Events 0".
   "COALESCE(c.chain_event_count, b.event_count) AS event_count";
+/**
+ * What STORE_SELECT returns: a JOIN projection, not either table.
+ *
+ * Every field takes its type by INDEXED ACCESS from the generated table it
+ * actually comes from, so a renamed or retyped column on either side of the
+ * join is a compile error here (#10261). Written as its own interface rather
+ * than `Pick<BlocksHead, ...> & { ... }` deliberately: an alias-and-widen of a
+ * generated type is what validate:type-duplicates exists to refuse, and it is
+ * right to -- a field a PRODUCER adds belongs in the schema. This adds none:
+ * it is the shape of a query over two tables, which is a third thing.
+ */
+interface BlockSeamRow {
+  block_number: BlocksHead["block_number"];
+  block_hash: BlocksHead["block_hash"];
+  parent_hash: BlocksHead["parent_hash"];
+  extrinsic_count: BlocksHead["extrinsic_count"];
+  observed_at: BlocksHead["observed_at"];
+  author: BlocksHead["author"];
+  /** COALESCE(c.chain_event_count, b.event_count) -- either side answers. */
+  event_count:
+    ChainDetailBlocks["chain_event_count"] | BlocksHead["event_count"];
+  spec_version: ChainDetailBlocks["spec_version"];
+}
+
 const STORE_FROM =
   "blocks_head b LEFT JOIN chain_detail_blocks c " +
   "ON c.block_number = b.block_number";
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 /** The one binding this module still reads directly, independent of the full
@@ -244,7 +265,7 @@ async function storeHeadRows(
 ): Promise<Record<string, unknown>[] | null> {
   const db = readStore(env, BLOCKS_SEAM_TABLES) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare || want <= 0) return null;
+  if (!db?.query || want <= 0) return null;
 
   // Every predicate is qualified to `b`: block_number, observed_at and
   // extrinsic_count all exist on BOTH sides of the join, so an unqualified
@@ -274,15 +295,11 @@ async function storeHeadRows(
   }
 
   try {
-    const res = await db
-      .prepare(
-        `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${where.join(" AND ")}
-         ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
-      )
-      .bind(...params, want)
-      .all?.();
-    const rows = res?.results;
-    return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
+    return (await db.query(
+      `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${where.join(" AND ")}
+       ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
+      [...params, want],
+    )) as Record<string, unknown>[];
   } catch {
     // A cold or unbound D1 must not fail the request: the lakehouse leg below
     // still has every block up to the seam.
@@ -423,18 +440,16 @@ export async function loadBlockColdTier(
   // a source switch, so the same 0 meant the right thing there.
   const aboveSeam =
     network === DEFAULT_CHAIN_NETWORK && asNumber !== null && asNumber > seam;
-  if (db?.prepare && (aboveSeam || asHash !== null)) {
+  if (db?.query && (aboveSeam || asHash !== null)) {
     try {
       const predicate =
         asNumber !== null ? "b.block_number = ?" : "lower(b.block_hash) = ?";
       const value = asNumber !== null ? asNumber : asHash!;
-      const res = await db
-        .prepare(
-          `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
-        )
-        .bind(value)
-        .all?.();
-      const row = (res?.results as Record<string, unknown>[] | undefined)?.[0];
+      const rows = await db.query<BlockSeamRow>(
+        `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
+        [value],
+      );
+      const row = rows[0];
       if (row) return buildBlock(row as never, ref);
     } catch {
       // Fall through to the lakehouse rather than failing the request.

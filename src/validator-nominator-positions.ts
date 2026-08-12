@@ -43,13 +43,8 @@ export const NOMINATOR_BASES = ["flow", "positions"] as const;
 export const DEFAULT_NOMINATOR_BASIS = "flow";
 
 export interface NominatorPositionsDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-      first?(): Promise<unknown>;
-    };
-    first?(): Promise<unknown>;
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export type NominatorPositionsDecline = "pool_totals_unproven" | "unavailable";
@@ -92,7 +87,7 @@ export async function loadNominatorPositions(
   const declined = (
     decline: NominatorPositionsDecline,
   ): NominatorPositionsRead => ({ rows: [], capturedAt: null, decline });
-  if (!db?.prepare) return declined("unavailable");
+  if (!db?.query) return declined("unavailable");
 
   const alpha = await latestCompleteHotkeyAlphaPass(
     db as unknown as Parameters<typeof latestCompleteHotkeyAlphaPass>[0],
@@ -103,13 +98,11 @@ export async function loadNominatorPositions(
     );
   }
   try {
-    const res = await db
-      .prepare(nominatorPositionsSql(alpha.capturedAt))
-      .bind(hotkey)
-      .all?.();
-    if (!Array.isArray(res?.results)) throw new Error("positions: no rows");
+    const rows = await db.query<Row>(nominatorPositionsSql(alpha.capturedAt), [
+      hotkey,
+    ]);
     return {
-      rows: res.results as Row[],
+      rows,
       capturedAt: alpha.capturedAt,
       decline: null,
     };

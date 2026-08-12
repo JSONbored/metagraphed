@@ -92,14 +92,12 @@ export async function loadSubnetLifecycle(
 ): Promise<SubnetLifecycleEntry[] | null> {
   const db = readStore(env, ["subnet_lifecycle"], injected);
   if (!db) return null;
-  const { results } = await db
-    .prepare(
-      `SELECT ${COLUMNS} FROM subnet_lifecycle WHERE netuid = ? ` +
-        "ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
-    )
-    .bind(netuid, limit, offset)
-    .all();
-  return formatEntries(results ?? []);
+  const results = await db.query(
+    `SELECT ${COLUMNS} FROM subnet_lifecycle WHERE netuid = ? ` +
+      "ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
+    [netuid, limit, offset],
+  );
+  return formatEntries(results);
 }
 
 /** The network-wide feed, newest first, optionally windowed by `since`. */
@@ -116,15 +114,13 @@ export async function loadChainSubnetLifecycle(
   if (!db) return null;
   const windowed =
     Number.isFinite(sinceMs as number) && (sinceMs as number) > 0;
-  const { results } = await db
-    .prepare(
-      `SELECT ${COLUMNS} FROM subnet_lifecycle ` +
-        (windowed ? "WHERE observed_at >= ? " : "") +
-        "ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
-    )
-    .bind(...(windowed ? [sinceMs, limit, offset] : [limit, offset]))
-    .all();
-  return formatEntries(results ?? []);
+  const results = await db.query(
+    `SELECT ${COLUMNS} FROM subnet_lifecycle ` +
+      (windowed ? "WHERE observed_at >= ? " : "") +
+      "ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?",
+    windowed ? [sinceMs, limit, offset] : [limit, offset],
+  );
+  return formatEntries(results);
 }
 
 /** The per-subnet envelope. */

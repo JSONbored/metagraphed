@@ -352,12 +352,11 @@ describe("the lane records a durable verdict", () => {
     return {
       rows,
       db: {
-        prepare: (_sql: string) => ({
-          bind: (...v: unknown[]) => {
-            rows.push({ v });
-            return { run: async () => ({}) };
-          },
-        }),
+        query: async () => [],
+        run: async (_sql: string, v: unknown[] = []) => {
+          rows.push({ v });
+          return { changes: 1 };
+        },
       } as never,
     };
   }

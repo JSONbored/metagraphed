@@ -53,15 +53,13 @@ const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
 // it misses (or its flag is off), the D1 read replaces what used to be a
 // guaranteed-empty payload.
 //
-// The read slice of the D1 API these loaders use — structural (mirroring
-// ObservationsDb, the write slice in observations-d1.ts) so tests can hand
-// in node:sqlite-backed fakes and the real binding both.
+// The read slice these loaders use -- the owned query() verb (#10909),
+// structural so tests can hand in plain fakes and the real store both.
 export interface ObservationsReadDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all(): Promise<{ results?: unknown[] } | unknown>;
-    };
-  };
+  query<Row = Record<string, unknown>>(
+    text: string,
+    values?: unknown[],
+  ): Promise<Row[]>;
 }
 
 // A failed D1 read degrades to zero rows, and the payload built from those
@@ -89,18 +87,11 @@ export async function storeAll(
   sql: string,
   params: unknown[],
 ): Promise<Record<string, unknown>[]> {
-  if (!db?.prepare) return [];
+  if (!db?.query) return [];
   try {
-    const outcome = await db
-      .prepare(sql)
-      .bind(...params)
-      .all();
-    // D1 wraps rows in { results }; a node:sqlite-backed test fake returns
-    // the array directly. Accept both, and anything else is zero rows.
-    const rows = Array.isArray(outcome)
-      ? outcome
-      : (outcome as { results?: unknown[] })?.results;
-    return (Array.isArray(rows) ? rows : []) as Record<string, unknown>[];
+    // The dual-envelope acceptance (D1's { results } vs a bare array) retired
+    // with the emulators (#10909): query() answers rows, full stop.
+    return await db.query(sql, params);
   } catch (error) {
     storeReadFailureGeneration += 1;
     console.error("[analytics-store]", String((error as Error)?.message));

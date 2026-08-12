@@ -54,47 +54,34 @@ function fakeDb(
     calls,
     written,
     db: {
-      prepare(sql: string) {
+      async query(sql: string) {
         calls.push(sql);
-        return {
-          async all() {
-            if (failOn.some((f) => sql.includes(f))) {
-              throw new Error("D1_ERROR: overloaded");
-            }
-            const names = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
-              (m) => m[1],
-            );
-            if (sql.includes("AS cheap")) {
-              return {
-                results: names.map((t) => ({
-                  t,
-                  cheap: crossCheck[t]?.cheap ?? null,
-                  actual: crossCheck[t]?.actual ?? null,
-                })),
-              };
-            }
-            return {
-              results: names.map((t) => ({ t, mx: byTable[t] ?? null })),
-            };
-          },
-          bind(...values: unknown[]) {
-            return {
-              async run() {
-                if (sql.startsWith("INSERT")) {
-                  written.push({
-                    lane: values[0],
-                    verdict: values[1],
-                    age: values[2],
-                    detail: values[3],
-                  });
-                }
-              },
-              async all() {
-                return { results: [] };
-              },
-            };
-          },
-        };
+        if (failOn.some((f) => sql.includes(f))) {
+          throw new Error("store: overloaded");
+        }
+        const names = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
+          (m) => m[1],
+        );
+        if (sql.includes("AS cheap")) {
+          return names.map((t) => ({
+            t,
+            cheap: crossCheck[t]?.cheap ?? null,
+            actual: crossCheck[t]?.actual ?? null,
+          }));
+        }
+        return names.map((t) => ({ t, mx: byTable[t] ?? null }));
+      },
+      async run(sql: string, values: unknown[] = []) {
+        calls.push(sql);
+        if (sql.startsWith("INSERT")) {
+          written.push({
+            lane: values[0],
+            verdict: values[1],
+            age: values[2],
+            detail: values[3],
+          });
+        }
+        return { changes: 1 };
       },
     },
   };
@@ -497,17 +484,10 @@ describe("crossCheckStamps", () => {
     });
   });
 
-  test("a result with no rows key is treated as agreement, not a crash", async () => {
-    // D1 can answer without a `results` key at all.
-    const db = {
-      prepare() {
-        return {
-          async all() {
-            return {} as { results?: unknown[] };
-          },
-        };
-      },
-    };
+  test("zero cross-check rows is agreement, not a crash", async () => {
+    // The D1 "no results key" case retired with the envelope (#10909): the
+    // owned query() answers rows, so zero rows IS the agreement shape.
+    const db = { query: async () => [] };
     assert.deepEqual(
       await crossCheckStamps(null, { db: db as never }, redirected),
       { divergences: [], failed: false },
@@ -515,15 +495,7 @@ describe("crossCheckStamps", () => {
   });
 
   test("rows that disagree come back as divergences", async () => {
-    const db = {
-      prepare() {
-        return {
-          async all() {
-            return { results: [{ t: "big", cheap: 2, actual: 1 }] };
-          },
-        };
-      },
-    };
+    const db = { query: async () => [{ t: "big", cheap: 2, actual: 1 }] };
     const out = await crossCheckStamps(null, { db: db as never }, redirected);
     assert.equal(out.failed, false);
     assert.deepEqual(out.divergences, [
@@ -533,12 +505,8 @@ describe("crossCheckStamps", () => {
 
   test("a throwing store is a failure, not an exception", async () => {
     const db = {
-      prepare() {
-        return {
-          async all(): Promise<never> {
-            throw new Error("D1_ERROR: overloaded");
-          },
-        };
+      query: async (): Promise<never> => {
+        throw new Error("store: overloaded");
       },
     };
     assert.deepEqual(
@@ -576,21 +544,12 @@ describe("confirmRedirectedStale (#10656)", () => {
   /** Answers the confirm's own `{t, mx}` shape. */
   function confirmDb(byTable: Record<string, number | null>, fail = false) {
     return {
-      prepare(sql: string) {
-        return {
-          async all() {
-            if (fail) throw new Error("D1_ERROR: overloaded");
-            const names = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
-              (m) => m[1],
-            );
-            return {
-              results: names.map((t) => ({
-                t,
-                mx: byTable[t as string] ?? null,
-              })),
-            };
-          },
-        };
+      async query(sql: string) {
+        if (fail) throw new Error("store: overloaded");
+        const names = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
+          (m) => m[1],
+        );
+        return names.map((t) => ({ t, mx: byTable[t as string] ?? null }));
       },
     };
   }
@@ -1110,25 +1069,12 @@ describe("runTableFreshnessWatchdog", () => {
     assert.equal(spy.written[0].verdict, "unknown");
   });
 
-  test("a batch response with no `results` key contributes nothing, not a crash", async () => {
-    // D1 can answer without the key at all; `?? []` must absorb it rather than
-    // letting a TypeError take out the batch.
+  test("a batch answering zero rows contributes nothing, not a crash", async () => {
+    // The D1 "no results key" premise retired with the envelope (#10909):
+    // zero rows is the one nothing-shape the owned store can produce.
     const noKey = {
-      prepare(sql: string) {
-        return {
-          async all() {
-            return sql.startsWith("SELECT") ? {} : { results: [] };
-          },
-          bind() {
-            return {
-              async run() {},
-              async all() {
-                return { results: [] };
-              },
-            };
-          },
-        };
-      },
+      query: async () => [],
+      run: async () => ({ changes: 1 }),
     };
     const out = await runTableFreshnessWatchdog(null, {
       db: noKey,

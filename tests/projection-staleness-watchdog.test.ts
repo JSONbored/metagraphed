@@ -390,25 +390,19 @@ describe("every tick leaves a durable verdict, not just a notification", () => {
         // Only the INSERT is recorded: recordLaneVerdict also prunes expired
         // rows on the way through, and counting that would make this assert
         // the number of statements rather than the number of verdicts.
-        prepare(sql: string) {
-          const isInsert = sql.startsWith("INSERT INTO lane_health");
-          return {
-            bind(...values: unknown[]) {
-              return {
-                async run() {
-                  if (isInsert) {
-                    rows.push({
-                      lane: values[0],
-                      verdict: values[1],
-                      age_ms: values[2],
-                      detail: values[3],
-                    });
-                  }
-                  return {};
-                },
-              };
-            },
-          };
+        async query() {
+          return [];
+        },
+        async run(sql: string, values: unknown[] = []) {
+          if (sql.startsWith("INSERT INTO lane_health")) {
+            rows.push({
+              lane: values[0],
+              verdict: values[1],
+              age_ms: values[2],
+              detail: values[3],
+            });
+          }
+          return { changes: 1 };
         },
       },
     };
@@ -479,7 +473,10 @@ describe("every tick leaves a durable verdict, not just a notification", () => {
       {
         now: () => now,
         laneHealthDb: {
-          prepare() {
+          query() {
+            throw new Error("no such table: lane_health");
+          },
+          run() {
             throw new Error("no such table: lane_health");
           },
         } as never,

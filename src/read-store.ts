@@ -56,33 +56,23 @@ export interface ReadStoreClient {
  * allowed to write, not about safety. */
 type Row = Record<string, unknown>;
 
-/** D1's read surface, as the callers actually use it.
- *
- * `all` and `first` are generic for the same reason D1's are: the ~45 call
- * sites this replaced write `all<SubnetRow>()` and read named columns off the
- * result. A non-generic `unknown[]` would compile only after adding a cast at
- * every one of them, which is churn that hides exactly the mistakes a cast-free
- * swap makes visible. */
+/** The read store's surface, with OUR verbs (#10909) -- rows directly, no
+ * D1 envelope. `query`/`first` are generic for the same reason the emulated
+ * `all`/`first` were: the ~45 call sites read named columns off the result,
+ * and a non-generic `unknown[]` would compile only after adding a cast at
+ * every one of them. Loaders shared with the producer store (tao-usd,
+ * pipeline-history, chain-concentration-history) consume the same verbs, so
+ * one loader serves both providers with no adapter shape between them. */
 export interface ReadStoreDb {
-  prepare(text: string): {
-    bind(...values: unknown[]): {
-      all<T = Row>(): Promise<{ results: T[] }>;
-      first<T = Row>(): Promise<T | null>;
-    };
-    all<T = Row>(): Promise<{ results: T[] }>;
-    first<T = Row>(): Promise<T | null>;
-  };
-  /** The owned verb (#10309): rows directly, no D1 envelope. Loaders shared
-   * with the producer store (tao-usd, pipeline-history) consume THIS, so one
-   * loader serves both providers without an adapter shape between them. */
   query<T = Row>(text: string, values?: unknown[]): Promise<T[]>;
+  first<T = Row>(text: string, values?: unknown[]): Promise<T | null>;
 }
 
 export interface ReadStoreDeps {
   clientFactory?: (connectionString: string) => ReadStoreClient;
 }
 
-/** A D1-shaped read handle over Postgres, one connection per operation. */
+/** The read handle over Postgres, one connection per operation. */
 export function pgReadStore(
   connectionString: string,
   deps: ReadStoreDeps = {},
@@ -94,32 +84,26 @@ export function pgReadStore(
     await client.connect();
     try {
       const result = await client.query(toPositionalPlaceholders(text), values);
-      return (result?.rows ?? []) as unknown[];
+      // ALWAYS an array. `rows` is the driver's, and a driver that answers
+      // something else (a mock, a future client) would otherwise put a
+      // `.length` TypeError inside every caller's decline path -- the guard
+      // each of them used to carry, now stated once (#10909).
+      const rows = result?.rows;
+      return (Array.isArray(rows) ? rows : []) as unknown[];
     } finally {
       // Awaited, unlike createPgSql's waitUntil -- see this module's header.
       await client.end().catch(() => undefined);
     }
   };
-  // The generic parameter is the CALLER's claim about the row shape, exactly as
-  // it is on D1: Postgres hands back whatever the query selected, and neither
-  // store validates it. Cast here rather than at 45 call sites.
-  const ops = (text: string, values: unknown[]) => ({
-    async all<T = unknown>() {
-      return { results: (await run(text, values)) as T[] };
-    },
-    async first<T = unknown>() {
-      return ((await run(text, values))[0] ?? null) as T | null;
-    },
-  });
+  // The generic parameter is the CALLER's claim about the row shape: Postgres
+  // hands back whatever the query selected and nothing validates it. Cast
+  // here rather than at 45 call sites.
   return {
-    prepare(text: string) {
-      return {
-        bind: (...values: unknown[]) => ops(text, values),
-        ...ops(text, []),
-      };
-    },
     async query<T = Row>(text: string, values: unknown[] = []) {
       return (await run(text, values)) as T[];
+    },
+    async first<T = Row>(text: string, values: unknown[] = []) {
+      return ((await run(text, values))[0] ?? null) as T | null;
     },
   };
 }

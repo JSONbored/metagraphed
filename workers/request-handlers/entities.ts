@@ -3494,23 +3494,17 @@ export async function buildSubnetValidatorEconomicsPayload(
   const db = readStore(env, VALIDATOR_ECONOMICS_TABLES) as
     ReadStoreDb | undefined;
   const rows = db
-    ? ((
-        await db
-          .prepare(
-            `SELECT ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
-          )
-          .bind(netuid)
-          .all()
-      )?.results ?? [])
+    ? await db.query(
+        `SELECT ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
+        [netuid],
+      )
     : [];
 
   const hyperRow = db
-    ? await db
-        .prepare(
-          "SELECT max_validators, min_childkey_take_ratio FROM subnet_hyperparams WHERE netuid = ? LIMIT 1",
-        )
-        .bind(netuid)
-        .first()
+    ? await db.first(
+        "SELECT max_validators, min_childkey_take_ratio FROM subnet_hyperparams WHERE netuid = ? LIMIT 1",
+        [netuid],
+      )
     : null;
 
   const { row: economics, generatedAt } = await readEconomicsRow(env, netuid);
@@ -3724,30 +3718,22 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
     ReadStoreDb | undefined;
 
   const neuronRows = db
-    ? ((
-        await db
-          .prepare(
-            // `hotkey` is selected only so the owner's unconditional permit can be kept
-            // out of the observed floor.
-            "SELECT snapshot_date, hotkey, stake_tao, validator_permit, dividends, active " +
-              "FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? " +
-              "ORDER BY snapshot_date DESC LIMIT ?",
-          )
-          .bind(netuid, cutoff, VALIDATOR_ECONOMICS_HISTORY_ROW_CAP)
-          .all()
-      )?.results ?? [])
+    ? await db.query(
+        // `hotkey` is selected only so the owner's unconditional permit can be kept
+        // out of the observed floor.
+        "SELECT snapshot_date, hotkey, stake_tao, validator_permit, dividends, active " +
+          "FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? " +
+          "ORDER BY snapshot_date DESC LIMIT ?",
+        [netuid, cutoff, VALIDATOR_ECONOMICS_HISTORY_ROW_CAP],
+      )
     : [];
 
   const emissionRows = db
-    ? ((
-        await db
-          .prepare(
-            "SELECT snapshot_date, tao_in_emission_tao FROM subnet_snapshots " +
-              "WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC",
-          )
-          .bind(netuid, cutoff)
-          .all()
-      )?.results ?? [])
+    ? await db.query(
+        "SELECT snapshot_date, tao_in_emission_tao FROM subnet_snapshots " +
+          "WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC",
+        [netuid, cutoff],
+      )
     : [];
 
   // The cap travels on every point so the observed floor is interpretable without a
@@ -3758,15 +3744,11 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   // never happened. Rows before the window still matter — the cap in force on day one is
   // whatever the last change before it set — so this is not bounded by the cutoff.
   const capHistory = db
-    ? ((
-        await db
-          .prepare(
-            "SELECT observed_at, max_validators FROM subnet_hyperparams_history " +
-              "WHERE netuid = ? AND max_validators IS NOT NULL ORDER BY observed_at ASC",
-          )
-          .bind(netuid)
-          .all()
-      )?.results ?? [])
+    ? await db.query(
+        "SELECT observed_at, max_validators FROM subnet_hyperparams_history " +
+          "WHERE netuid = ? AND max_validators IS NOT NULL ORDER BY observed_at ASC",
+        [netuid],
+      )
     : [];
 
   const { row: economics } = await readEconomicsRow(env, netuid);
@@ -3879,13 +3861,9 @@ export async function buildValidatorEconomicsRankingPayload(
   const db = readStore(env, VALIDATOR_ECONOMICS_RANKING_TABLES) as
     ReadStoreDb | undefined;
   const neuronRows = db
-    ? ((
-        await db
-          .prepare(
-            `SELECT netuid, ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid != 0 ORDER BY netuid, uid`,
-          )
-          .all()
-      )?.results ?? [])
+    ? await db.query(
+        `SELECT netuid, ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid != 0 ORDER BY netuid, uid`,
+      )
     : [];
 
   // Two bulk reads that make the ranking carry the SAME per-subnet fields the
@@ -3904,18 +3882,13 @@ export async function buildValidatorEconomicsRankingPayload(
   if (db) {
     // Newest observation per subnet. A window function rather than a
     // correlated subquery: one pass over the (netuid, observed_at DESC) index.
-    const burnRows =
-      (
-        await db
-          .prepare(
-            `SELECT netuid, burn_tao FROM (
-               SELECT netuid, burn_tao,
-                 ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY observed_at DESC) AS rn
-               FROM subnet_burn_history
-             ) WHERE rn = 1`,
-          )
-          .all()
-      )?.results ?? [];
+    const burnRows = await db.query(
+      `SELECT netuid, burn_tao FROM (
+         SELECT netuid, burn_tao,
+           ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY observed_at DESC) AS rn
+         FROM subnet_burn_history
+       ) WHERE rn = 1`,
+    );
     for (const row of burnRows as Array<Record<string, unknown>>) {
       // burn_tao is NOT NULL in the table and a genuine 0 is a real price
       // (netuid 76 reads a true zero), so this must test for null, never falsy.
@@ -3923,14 +3896,9 @@ export async function buildValidatorEconomicsRankingPayload(
         latestBurnByNetuid.set(Number(row.netuid), Number(row.burn_tao));
       }
     }
-    const hyperRows =
-      (
-        await db
-          .prepare(
-            "SELECT netuid, min_childkey_take_ratio FROM subnet_hyperparams",
-          )
-          .all()
-      )?.results ?? [];
+    const hyperRows = await db.query(
+      "SELECT netuid, min_childkey_take_ratio FROM subnet_hyperparams",
+    );
     for (const row of hyperRows as Array<Record<string, unknown>>) {
       // Same rule: 0 is a real ratio, and the detail route reports it as 0.
       if (row?.netuid != null && row.min_childkey_take_ratio != null) {

@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { OHLC_INTERVALS } from "../src/subnet-ohlc.ts";
 import {
+  loadTaoUsdAtInstants,
   loadTaoUsdBuckets,
   ohlcUsdWindowStart,
   taoUsdBucketMap,
@@ -107,7 +108,7 @@ describe("the bucketing SQL", () => {
 
 describe("loading rates", () => {
   const db = (results: unknown[]) => ({
-    prepare: () => ({ bind: () => ({ all: async () => ({ results }) }) }),
+    query: async <Row>() => results as Row[],
   });
 
   test("a missing store is a FAILED read, not an empty one", async () => {
@@ -125,13 +126,9 @@ describe("loading rates", () => {
 
   test("a throwing store yields null rather than propagating", async () => {
     const boom = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => {
-            throw new Error("connection reset");
-          },
-        }),
-      }),
+      query: async () => {
+        throw new Error("connection reset");
+      },
     };
     assert.equal(
       await loadTaoUsdBuckets(boom, { sinceMs: 0, bucketMs: HOUR }),
@@ -466,10 +463,11 @@ describe("pricing trend days", () => {
 });
 
 describe("shapes the store actually returns", () => {
-  test("a result object with no `results` key reads as empty, not as a failure", async () => {
+  test("zero rows reads as empty, not as a failure", async () => {
     // A store that answers but has nothing to say is an EMPTY series; only a
-    // throw or a missing binding is a failed read.
-    const db = { prepare: () => ({ bind: () => ({ all: async () => ({}) }) }) };
+    // throw or a missing binding is a failed read. (The D1 "no results key"
+    // premise retired with the envelope, #10909.)
+    const db = { query: async () => [] };
     assert.deepEqual(
       await loadTaoUsdBuckets(db, { sinceMs: 0, bucketMs: HOUR }),
       [],
@@ -543,5 +541,100 @@ describe("deciding whether to read at all", () => {
       ),
       null,
     );
+  });
+});
+
+describe("loadTaoUsdAtInstants", () => {
+  // The per-instant read behind /accounts/{ss58}/transfers' USD pricing. It had
+  // no direct test: every assertion about it went through the route, so the
+  // rules it enforces on its own rows -- which instants make it into the map,
+  // and which deliberately do not -- were only ever implied.
+  const READING = {
+    instant: T0,
+    usd_per_tao: 191.5,
+    observed_at: T0 - 60_000,
+    block_number: 8_800_000,
+    price_basis: "pool-twap",
+  };
+
+  test("maps each instant to the newest reading at or before it", async () => {
+    const db = { query: async <Row>() => [READING] as Row[] };
+    const map = await loadTaoUsdAtInstants(db, [T0]);
+    assert.equal(map?.size, 1);
+    assert.equal(map?.get(T0)?.usd_per_tao, 191.5);
+    // The stamp is ISO on the way out, not the raw epoch the row carries.
+    assert.equal(
+      map?.get(T0)?.observed_at,
+      new Date(T0 - 60_000).toISOString(),
+    );
+    assert.equal(map?.get(T0)?.block_number, 8_800_000);
+    assert.equal(map?.get(T0)?.price_basis, "pool-twap");
+  });
+
+  test("an instant that predates the index is ABSENT, never a null rate", async () => {
+    // #8602's rule: the index starts when collection started, and an event
+    // older than that has NO rate. A null-valued entry would read as "the rate
+    // was nothing", which is a number nobody measured.
+    const db = {
+      query: async <Row>() => [{ ...READING, usd_per_tao: null }] as Row[],
+    };
+    const map = await loadTaoUsdAtInstants(db, [T0]);
+    assert.equal(map?.size, 0);
+    assert.equal(map?.has(T0), false);
+  });
+
+  test("a row whose instant is unreadable is dropped, not keyed on NaN", async () => {
+    const db = {
+      query: async <Row>() => [{ ...READING, instant: "nope" }] as Row[],
+    };
+    assert.equal((await loadTaoUsdAtInstants(db, [T0]))?.size, 0);
+  });
+
+  test("no instants asked is an empty map, and asks the store nothing", async () => {
+    // Distinct from a decline: the caller had nothing to price, which is a
+    // real answer and must not cost a query.
+    let asked = 0;
+    const db = {
+      query: async <Row>() => {
+        asked += 1;
+        return [] as Row[];
+      },
+    };
+    assert.deepEqual(await loadTaoUsdAtInstants(db, []), new Map());
+    assert.deepEqual(await loadTaoUsdAtInstants(db, [Number.NaN]), new Map());
+    assert.equal(asked, 0, "an empty ask must not reach the store");
+  });
+
+  test("no store and a throwing read are both null, never an empty map", async () => {
+    // The distinction the callers act on: an empty map says "priced nothing",
+    // null says "could not price", and only the second may suppress a figure.
+    assert.equal(await loadTaoUsdAtInstants(null, [T0]), null);
+    assert.equal(await loadTaoUsdAtInstants({}, [T0]), null);
+    const throwing = {
+      query: async () => {
+        throw new Error("store read failed");
+      },
+    };
+    assert.equal(await loadTaoUsdAtInstants(throwing, [T0]), null);
+  });
+
+  test("the statement bins every wanted instant through ONE lateral join", async () => {
+    // One query for N instants, not N queries: the unnest+LATERAL shape is
+    // what keeps a 1000-transfer page from becoming 1000 point reads.
+    let sql = "";
+    let values: unknown[] = [];
+    const db = {
+      query: async <Row>(text: string, v: unknown[] = []) => {
+        sql = text;
+        values = v;
+        return [] as Row[];
+      },
+    };
+    await loadTaoUsdAtInstants(db, [T0, T0 - 1000, T0]);
+    assert.match(sql, /unnest\(\?::bigint\[\]\)/);
+    assert.match(sql, /LEFT JOIN LATERAL/);
+    assert.match(sql, /ORDER BY observed_at DESC LIMIT 1/);
+    // Deduplicated: the same instant asked twice is bound once.
+    assert.deepEqual(values, [[T0, T0 - 1000]]);
   });
 });

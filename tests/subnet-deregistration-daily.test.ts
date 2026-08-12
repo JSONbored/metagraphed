@@ -242,14 +242,11 @@ describe("the lane", () => {
   // written on every path.
   const statements: string[] = [];
   const laneHealthDb = {
-    prepare: (text: string) => ({
-      bind: () => ({
-        run: async () => {
-          statements.push(text);
-          return { meta: { changes: 1 } };
-        },
-      }),
-    }),
+    query: async () => [],
+    run: async (text: string) => {
+      statements.push(text);
+      return { changes: 1 };
+    },
   } as never;
   const verdicts = () =>
     statements.filter((text) => /INSERT INTO lane_health/i.test(text));

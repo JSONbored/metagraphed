@@ -36,22 +36,25 @@ import {
   POSITION_SCAN_CAP,
 } from "./nominator-positions-cold-tier.ts";
 import { readStore } from "./read-store.ts";
+import type { NominatorPositions } from "../generated/db/types.ts";
 
 /** The D1 surface this module needs -- structural, so tests can hand a plain
  * object (same pattern as src/nominator-positions-cold-tier.ts). */
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-      first?(): Promise<unknown>;
-    };
-    first?(): Promise<unknown>;
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 /** Kept identical to the cold tier's SELECT list (minus `coldkey`, which the
  * predicate already fixes) so both tiers hand the formatter the same shape. */
 const POSITION_COLUMNS = "hotkey, netuid, share_fraction, captured_at";
+
+/** Exactly the columns POSITION_COLUMNS selects, from the generated table
+ * type. */
+type NominatorPositionRow = Pick<
+  NominatorPositions,
+  "hotkey" | "netuid" | "share_fraction" | "captured_at"
+>;
 
 /**
  * One coldkey's current positions from D1, or null to let the caller fall
@@ -69,7 +72,7 @@ export async function loadAccountPositionsFromStore(
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
   const db = readStore(env, ["nominator_positions"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return null;
+  if (!db?.query || !db?.first) return null;
 
   let rows: Record<string, unknown>[];
   let ledgerCapturedAt: number | null;
@@ -78,23 +81,16 @@ export async function loadAccountPositionsFromStore(
     // decline path alike, and serialising two independent point reads on a
     // request path buys nothing.
     const [positionsResult, latestRow] = await Promise.all([
-      db
-        .prepare(
-          `SELECT ${POSITION_COLUMNS} FROM nominator_positions` +
-            ` WHERE coldkey = ? LIMIT ?`,
-        )
+      db.query<NominatorPositionRow>(
+        `SELECT ${POSITION_COLUMNS} FROM nominator_positions` +
+          ` WHERE coldkey = ? LIMIT ?`,
         // One row over the cap is enough to know the cap was exceeded, and
         // cheaper than a second counting query over the same predicate.
-        .bind(ss58, POSITION_SCAN_CAP + 1)
-        .all?.(),
-      db
-        .prepare("SELECT MAX(captured_at) AS latest FROM nominator_positions")
-        .first?.(),
+        [ss58, POSITION_SCAN_CAP + 1],
+      ),
+      db.first("SELECT MAX(captured_at) AS latest FROM nominator_positions"),
     ]);
-    if (!Array.isArray(positionsResult?.results)) {
-      throw new Error("nominator_positions: no rows");
-    }
-    rows = positionsResult.results as Record<string, unknown>[];
+    rows = positionsResult;
     const latest = (latestRow as { latest?: unknown } | null)?.latest;
     ledgerCapturedAt = typeof latest === "number" ? latest : null;
   } catch {

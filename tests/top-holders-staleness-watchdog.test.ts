@@ -245,24 +245,20 @@ describe("runTopHoldersStalenessWatchdog", () => {
     return {
       rows,
       db: {
-        prepare(sql: string) {
-          return {
-            bind(...values: unknown[]) {
-              return {
-                async run() {
-                  if (sql.startsWith("INSERT")) {
-                    rows.push({
-                      lane: values[0],
-                      verdict: values[1],
-                      age_ms: values[2],
-                      detail: values[3],
-                      checked_at: values[4],
-                    });
-                  }
-                },
-              };
-            },
-          };
+        async query() {
+          return [];
+        },
+        async run(sql: string, values: unknown[] = []) {
+          if (sql.startsWith("INSERT")) {
+            rows.push({
+              lane: values[0],
+              verdict: values[1],
+              age_ms: values[2],
+              detail: values[3],
+              checked_at: values[4],
+            });
+          }
+          return { changes: 1 };
         },
       },
     };

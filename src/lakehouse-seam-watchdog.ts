@@ -239,7 +239,7 @@ async function capturedThrough(env: unknown): Promise<number | null> {
   // watermark it reports a gap that only ever widens.
   const db = readStore(env, ["raw_capture_state"]) as unknown as
     Parameters<typeof watermarkRead>[0] | undefined;
-  if (!db?.prepare) return null;
+  if (!db?.first) return null;
   try {
     return await watermarkRead(db)();
   } catch {

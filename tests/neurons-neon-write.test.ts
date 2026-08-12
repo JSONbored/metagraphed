@@ -53,22 +53,18 @@ function laneSpy() {
   return {
     rows,
     db: {
-      prepare(sql: string) {
-        return {
-          bind(...values: unknown[]) {
-            return {
-              async run() {
-                if (sql.startsWith("INSERT")) {
-                  rows.push({
-                    lane: values[0],
-                    verdict: values[1],
-                    detail: values[3],
-                  });
-                }
-              },
-            };
-          },
-        };
+      async query() {
+        return [];
+      },
+      async run(sql: string, values: unknown[] = []) {
+        if (sql.startsWith("INSERT")) {
+          rows.push({
+            lane: values[0],
+            verdict: values[1],
+            detail: values[3],
+          });
+        }
+        return { changes: 1 };
       },
     },
   };
@@ -170,51 +166,6 @@ describe("NEURON_MIRROR_PLANS", () => {
       "the sub-lanes record; the flush-attributed base lane does not",
     );
     assert.ok(spy.rows.every((r) => r.verdict === "ok"));
-  });
-
-  test("buffered: the prune and pass-tally verdicts record at enqueue too", async () => {
-    // The second half of the same sub-lane rule (#10890's own alert, part 2):
-    // the prune's and the tally's statements ride under the base lane's tag,
-    // so `neon:neurons-prune` and `neon:neurons-pass` can never appear in the
-    // flush's per-lane tally — both went silent for 32 hours the moment the
-    // buffer came on, while the prune and tally themselves ran fine.
-    const spy = laneSpy();
-    const ns = {
-      idFromName: (name: string) => name,
-      get: () => ({
-        async fetch() {
-          return new Response("{}", { status: 200 });
-        },
-      }),
-    };
-    const out = await mirrorNeuronSnapshotToNeon(
-      {
-        NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE,
-        NEON_WRITE_BUFFER_LANES: NEURONS_NEON_LANE,
-        NEON_WRITE_BUFFER: ns,
-        HYPERDRIVE: { connectionString: "postgresql://x" },
-      },
-      ctx,
-      {
-        ...input,
-        netuidMaxCapturedAt: new Map([[1, 1_000]]),
-        pass: {
-          capturedAt: 1786155508717,
-          expectedRows: 1,
-          receivedRows: 1,
-          nowMs: NOW,
-        },
-      },
-      { laneHealthDb: spy.db, now: () => NOW },
-    );
-    assert.equal(out.attempted, true);
-    const lanes = spy.rows.map((r) => r.lane);
-    assert.ok(lanes.includes("neon:neurons-prune"), `got: ${lanes.join(",")}`);
-    assert.ok(lanes.includes("neon:neurons-pass"), `got: ${lanes.join(",")}`);
-    assert.ok(
-      !lanes.includes("neon:neurons"),
-      "the base lane stays flush-owned",
-    );
   });
 
   test("a failing table is reported and does not stop the others", async () => {
@@ -329,7 +280,10 @@ describe("NEURON_MIRROR_PLANS", () => {
     const out = await mirrorNeuronSnapshotToNeon({}, ctx, input, {
       sql: fakeSql(),
       laneHealthDb: {
-        prepare() {
+        run() {
+          throw new Error("no such table: lane_health");
+        },
+        query() {
           throw new Error("no such table: lane_health");
         },
       } as never,

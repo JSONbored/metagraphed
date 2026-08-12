@@ -225,11 +225,11 @@ describe("loadAccountPositionsFromStore", () => {
       null,
     );
 
-    const malformed = d1Stub([], CAPTURED_AT, [], "malformed");
-    assert.equal(
-      await loadAccountPositionsFromStore(malformed.env as never, COLDKEY),
-      null,
-    );
+    // The "malformed result" arm retired with the shape doubt (#10909): the
+    // store guarantees an array (src/read-store.ts), so `results.length`
+    // cannot be a TypeError here and there is no non-array for this loader to
+    // decline on. A driver answering nonsense reads as zero rows, which
+    // tests/account-summary-card.test.ts pins directly against the store.
 
     // A partial stake map silently DROPS the positions it could not price,
     // and buildAccountPositions cannot tell that from a deregistered hotkey.

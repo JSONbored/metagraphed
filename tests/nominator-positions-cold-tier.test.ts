@@ -249,7 +249,7 @@ describe("loadAccountPositionsColdTier", () => {
     );
   });
 
-  test("declines when the stake leg is missing, throws, or answers malformed", async () => {
+  test("declines when the stake leg is missing or throws", async () => {
     // A partial stake map silently DROPS the positions it could not price,
     // and buildAccountPositions cannot tell that from a deregistered hotkey.
     sqlFetch([positionRow(HOTKEY_A, 18, 1)]);
@@ -266,12 +266,11 @@ describe("loadAccountPositionsColdTier", () => {
       null,
     );
 
-    sqlFetch([positionRow(HOTKEY_A, 18, 1)]);
-    const malformed = d1Stub([], "malformed");
-    assert.equal(
-      await loadAccountPositionsColdTier(malformed.env as never, COLDKEY),
-      null,
-    );
+    // The "answers malformed" arm retired with the shape doubt (#10909): the
+    // store guarantees an array (src/read-store.ts), so a driver answering a
+    // non-row-set reads as zero rows here rather than as a distinct decline.
+    // The missing-store and throwing-store declines above are what remain, and
+    // they are the two a caller can actually be in.
   });
 
   test("a zero contradicted by a newer stake event is DEGRADED, not a confident zero", async () => {

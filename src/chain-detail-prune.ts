@@ -179,15 +179,13 @@ export async function pruneChainDetail(
   // and the tier it is supposed to bound grew without limit. Reading through
   // readStore is what keeps the bound following the rows.
   const reader = readStore(env, PRUNE_TABLES, deps.readDb);
-  if (!reader?.prepare) return { ok: false, reason: "no store bound" };
+  if (!reader?.first) return { ok: false, reason: "no store bound" };
 
   try {
-    const bounds = (await reader
-      .prepare(
-        "SELECT MIN(block_number) AS floor, MAX(block_number) AS head " +
-          "FROM chain_detail_blocks",
-      )
-      .first?.()) as { floor?: unknown; head?: unknown } | null;
+    const bounds = (await reader.first(
+      "SELECT MIN(block_number) AS floor, MAX(block_number) AS head " +
+        "FROM chain_detail_blocks",
+    )) as { floor?: unknown; head?: unknown } | null;
     const floor = toInt(bounds?.floor);
     const head = toInt(bounds?.head);
     // An empty tier is not a failure: the lane has simply not written yet.

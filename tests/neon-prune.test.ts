@@ -45,27 +45,17 @@ function laneSpy() {
   return {
     written,
     db: {
-      prepare(sql: string) {
-        return {
-          async all() {
-            return { results: [] };
-          },
-          bind(...values: unknown[]) {
-            return {
-              async run() {
-                if (sql.startsWith("INSERT"))
-                  written.push({
-                    lane: values[0],
-                    verdict: values[1],
-                    detail: values[3],
-                  });
-              },
-              async all() {
-                return { results: [] };
-              },
-            };
-          },
-        };
+      async query() {
+        return [];
+      },
+      async run(sql: string, values: unknown[] = []) {
+        if (sql.startsWith("INSERT"))
+          written.push({
+            lane: values[0],
+            verdict: values[1],
+            detail: values[3],
+          });
+        return { changes: 1 };
       },
     },
   };

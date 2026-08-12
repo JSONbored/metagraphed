@@ -21,18 +21,10 @@ function fakeDb(rows: Row[], opts: { throws?: boolean } = {}) {
   const seen: { sql: string; params: unknown[] }[] = [];
   return {
     seen,
-    prepare(sql: string) {
-      return {
-        bind(...params: unknown[]) {
-          return {
-            all() {
-              seen.push({ sql, params });
-              if (opts.throws) return Promise.reject(new Error("d1 down"));
-              return Promise.resolve({ results: rows });
-            },
-          };
-        },
-      };
+    query<T>(sql: string, params: unknown[] = []) {
+      seen.push({ sql, params });
+      if (opts.throws) return Promise.reject(new Error("store down"));
+      return Promise.resolve(rows as T[]);
     },
   };
 }
