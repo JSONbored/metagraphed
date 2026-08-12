@@ -202,6 +202,13 @@ export const RpcEndpointsArtifactSchema = ArtifactBaseSchema.extend({
       by_status: z.record(z.string(), z.int().min(0)).optional(),
     })
     .strict(),
+  // mergeRpcEndpoints stamps the overlay's run stamp at the artifact level on
+  // every response the 15-minute cron has data for -- the same declaration the
+  // pools artifact below already carries, missed here (#10897: the route
+  // 500'd on every request for a day once #10853's .strict() went live).
+  // ONLY this half of the overlay, same reasoning as pools: `health_source`
+  // is per-ENDPOINT here and EndpointResourceSchema already declares it.
+  operational_observed_at: LIVE_HEALTH_OVERLAY.operational_observed_at,
   endpoints: z.array(RpcEndpointSchema),
 });
 export type RpcEndpointsArtifact = z.infer<typeof RpcEndpointsArtifactSchema>;

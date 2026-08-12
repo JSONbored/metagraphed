@@ -314,6 +314,15 @@ import {
   AgentResourcesArtifactSchema,
   AgentReadinessStatusSchema,
 } from "../schemas-src/routes/agent-catalog.ts";
+// #10897: the serve-time overlay composers, driven directly below so the
+// fields they stamp onto `data` stay inside each artifact's contract — the
+// committed-artifact parses alone could never see a serve-time stamp, which
+// is exactly how three routes 500'd for a day under #10853's .strict().
+import {
+  mergeRpcEndpoints,
+  overlayCatalogDetail,
+  overlayCatalogIndex,
+} from "../src/health-serving.ts";
 import { generateOpenApiZodComponents } from "../scripts/generate-openapi-zod-components.ts";
 import {
   buildContractsArtifact,
@@ -3661,6 +3670,16 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
     });
     const parsed = RpcEndpointsArtifactSchema.parse(artifact);
     assert.ok(parsed);
+    // #10897: the 15-minute cron's overlay stamps operational_observed_at at
+    // the artifact level. Driven through the REAL composer so the stamped
+    // shape cannot drift out of the contract again.
+    const overlaid = mergeRpcEndpoints(artifact, {
+      last_run_at: GENERATED_AT_10,
+      endpoints: [{ id: "s1", status: "ok", classification: "live" }],
+    });
+    assert.ok(overlaid, "the overlay must apply");
+    const overlaidParsed = RpcEndpointsArtifactSchema.parse(overlaid);
+    assert.equal(overlaidParsed.operational_observed_at, GENERATED_AT_10);
   });
   test("rpc-endpoints: RpcEndpointsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = RpcEndpointsArtifactSchema.safeParse({});
@@ -3905,6 +3924,15 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
     const body = (await res.json()) as { data: unknown };
     const parsed = SchemaIndexArtifactSchema.parse(body.data);
     assert.ok(parsed);
+    // #10897: the schema-snapshots cron serves the KV-promoted index, which
+    // carries the promotion provenance pair the committed baseline never has.
+    // The exact served shape, parsed, so the pair stays inside the contract.
+    const promoted = SchemaIndexArtifactSchema.parse({
+      ...(body.data as Record<string, unknown>),
+      promoted_at: "2026-08-12T00:00:00.000Z",
+      promoted_by: "worker-cron",
+    });
+    assert.equal(promoted.promoted_by, "worker-cron");
   });
   test("schemas: SchemaIndexArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = SchemaIndexArtifactSchema.safeParse({});
@@ -4003,6 +4031,20 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
     const parsed = AgentCatalogArtifactSchema.parse(data);
     assert.ok(parsed);
     assert.ok(agentReadiness31.blockers.length > 0);
+    // #10897: overlayCatalogIndex stamps the provenance pair at serve time —
+    // the pair whose absence from this schema 500'd the route for a day.
+    const overlaid = overlayCatalogIndex(data, {
+      subnets: [{ netuid: 7, status: "ok" }],
+      last_run_at: "2026-08-12T00:00:00.000Z",
+      health_source: "live-cron-prober",
+    });
+    assert.ok(overlaid, "the overlay must apply");
+    const overlaidParsed = AgentCatalogArtifactSchema.parse(overlaid);
+    assert.equal(overlaidParsed.health_source, "live-cron-prober");
+    assert.equal(
+      overlaidParsed.operational_observed_at,
+      "2026-08-12T00:00:00.000Z",
+    );
   });
   test("agent-catalog: AgentCatalogArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = AgentCatalogArtifactSchema.safeParse({});
@@ -4077,6 +4119,21 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
     };
     const parsed = AgentCatalogSubnetArtifactSchema.parse(data);
     assert.ok(parsed);
+    // #10897's LATENT twin: overlayCatalogDetail stamps the same pair, and
+    // this route is parameterized, so no parameterless sweep can catch it —
+    // only this test can.
+    const overlaid = overlayCatalogDetail(
+      data,
+      {
+        surfaces: [],
+        last_run_at: "2026-08-12T00:00:00.000Z",
+        health_source: "live-cron-prober",
+      },
+      data.netuid,
+    );
+    assert.ok(overlaid, "the overlay must apply");
+    const overlaidParsed = AgentCatalogSubnetArtifactSchema.parse(overlaid);
+    assert.equal(overlaidParsed.health_source, "live-cron-prober");
   });
   test("agent-catalog-subnet: AgentCatalogSubnetArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = AgentCatalogSubnetArtifactSchema.safeParse({});

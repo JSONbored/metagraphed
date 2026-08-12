@@ -36,7 +36,7 @@ import {
 } from "../envelope.ts";
 import { IntegrationReadinessSchema } from "./subnet-profile.ts";
 import { AgentReadinessBlockerSchema } from "./coverage.ts";
-import { AuthSchema } from "./subnet-detail.ts";
+import { AuthSchema, LIVE_HEALTH_OVERLAY } from "./subnet-detail.ts";
 
 export const AgentReadinessStatusSchema = z
   .object({
@@ -128,6 +128,11 @@ export const AgentCatalogArtifactSchema = ArtifactBaseSchema.extend({
   // (#10790) -- the omission the undeclared-field report found.
   content_hash: ContentHashSchema,
   published_at: PublishedAtSchema,
+  // The live overlay's provenance pair, stamped by overlayCatalogIndex on
+  // every response the 15-minute cron has data for. Undeclared, it was a
+  // passthrough; #10853's .strict() made it a hard refusal, and the route
+  // 500'd on every request for a day (#10897).
+  ...LIVE_HEALTH_OVERLAY,
   total_subnet_count: z.int().min(0).optional(),
   subnet_count: z.int().min(0),
   blocked_subnet_count: z.int().min(0).optional(),
@@ -258,6 +263,10 @@ const AgentCatalogExampleSchema = z
   .strict();
 
 export const AgentCatalogSubnetArtifactSchema = ArtifactBaseSchema.extend({
+  // overlayCatalogDetail stamps the same provenance pair the index gets --
+  // the LATENT twin of #10897's break: this route is parameterized, so the
+  // parameterless sweep that caught the index could never reach it.
+  ...LIVE_HEALTH_OVERLAY,
   netuid: z.int().min(0),
   slug: z.string().optional(),
   name: z.string().optional(),
