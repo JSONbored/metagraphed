@@ -188,6 +188,48 @@ describe("mirrorNeuronSnapshotToNeon", () => {
     assert.ok(spy.rows.every((r) => r.verdict === "ok"));
   });
 
+  test("buffered: the derived tables record at enqueue; the base lane waits for the flush", async () => {
+    // #10888. Every statement here rides under the ONE lane tag the runner
+    // was built with (NEURONS_NEON_LANE), so the flush's per-lane tally can
+    // only ever name `neon:neurons` -- the derived tables' suppressed
+    // successes could be recorded by nothing at all, and the moment the
+    // buffer came on (#10758) both lanes went silent while the tables held
+    // that day's snapshot. This is #10826's sub-lane shape exactly, so their
+    // verdicts must land at enqueue time; the base lane's suppression stays,
+    // because its statements DO carry its name and the flush's verdict for it
+    // is the honest one.
+    const spy = laneSpy();
+    const sent: unknown[] = [];
+    const ns = {
+      idFromName: (name: string) => name,
+      get: () => ({
+        async fetch(request: Request) {
+          sent.push(await request.json());
+          return new Response("{}", { status: 200 });
+        },
+      }),
+    };
+    const out = await mirrorNeuronSnapshotToNeon(
+      {
+        NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE,
+        NEON_WRITE_BUFFER_LANES: NEURONS_NEON_LANE,
+        NEON_WRITE_BUFFER: ns,
+        HYPERDRIVE: { connectionString: "postgresql://x" },
+      },
+      ctx,
+      input,
+      { laneHealthDb: spy.db, now: () => NOW },
+    );
+    assert.equal(out.attempted, true);
+    assert.ok(sent.length >= 3, "statements must enqueue, not connect");
+    assert.deepEqual(
+      spy.rows.map((r) => r.lane),
+      ["neon:neuron_daily", "neon:account_position_daily"],
+      "the sub-lanes record; the flush-attributed base lane does not",
+    );
+    assert.ok(spy.rows.every((r) => r.verdict === "ok"));
+  });
+
   test("a failing table is reported and does not stop the others", async () => {
     // The mirror is best-effort per table. A missing `neuron_daily` must not
     // cost `account_position_daily` its refresh, and each gets its own verdict

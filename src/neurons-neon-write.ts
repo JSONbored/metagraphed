@@ -438,7 +438,26 @@ export async function mirrorNeuronSnapshotToNeon(
       plan.guard,
     );
     results[name] = result;
-    await recordNeonWriteVerdict(laneDb, name, result, now(), buffered);
+    // The derived tables are SUB-LANES of the buffered runner (#10888): every
+    // statement here rides under the ONE lane tag the runner was built with,
+    // NEURONS_NEON_LANE, so the flush can only ever file `neon:neurons` --
+    // `neon:neuron_daily` and `neon:account_position_daily` never appear in
+    // its per-lane tally under any key. Suppressing their buffered successes
+    // on the flush's behalf therefore silenced them permanently the moment
+    // the buffer came on (#10758): 30 hours of "neon:neuron_daily is silent"
+    // alarms, measured 2026-08-12, while the table held that day's snapshot.
+    // oncePerPass is #10826's remedy for exactly this shape, and the cost
+    // argument holds at this cadence too: two extra verdict rows per 15-minute
+    // pass. The base lane stays flush-attributed -- its statements DO carry
+    // its name.
+    await recordNeonWriteVerdict(
+      laneDb,
+      name,
+      result,
+      now(),
+      buffered,
+      name !== NEURONS_NEON_LANE,
+    );
   }
 
   // THE DEREGISTRATION PRUNE (#10184). D1's writer ran this and the Neon mirror
