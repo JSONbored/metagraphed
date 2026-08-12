@@ -96,6 +96,30 @@ export interface Passthrough {
   line: number;
 }
 
+/**
+ * One producer-side fallback (`x ?? <literal>` / `x || <literal>`) feeding a
+ * contract field (#10868).
+ *
+ * Each is a default the contract does not state, applied where no reader can
+ * see it -- the mechanism behind the `?? null`-against-non-null class #10786
+ * closed. This walk already visits every such write; recording the fallback
+ * is the census that issue asked for, and the triage (a real default belongs
+ * in the schema as `.default()`, dead defensive noise gets deleted, a
+ * degraded-arm marker must agree with a `.nullable()`) happens against this
+ * list rather than against a grep.
+ */
+export interface FallbackSite {
+  /** `Owner.field` -- the contract field the fallback feeds. */
+  path: string;
+  file: string;
+  line: number;
+  operator: "??" | "||";
+  /** The fallback's source text, e.g. `null`, `0`, `[]`, `"24h"`. */
+  fallback: string;
+  /** Does the field's published type admit null? */
+  fieldNullable: boolean;
+}
+
 const ARTIFACT_PASSTHROUGH =
   "an artifact passthrough: the spread republishes a document a typed " +
   "builder produced against the SAME Zod component this GraphQL type was " +
@@ -158,6 +182,8 @@ export interface NullabilityReport {
   undecided: Undecided[];
   /** Declared passthrough spreads, counted against `DECLARED_PASSTHROUGHS`. */
   passthroughs: Passthrough[];
+  /** Producer-side literal fallbacks feeding contract fields (#10868). */
+  fallbacks: FallbackSite[];
   /** Declared passthrough owners the walk never saw a spread on -- stale. */
   stalePassthroughs: string[];
   /** Property writes compared against a declared field. */
@@ -287,9 +313,58 @@ export function findOverPromises(
   const findings: OverPromise[] = [];
   const undecided: Undecided[] = [];
   const passthroughs: Passthrough[] = [];
+  const fallbacks: FallbackSite[] = [];
   const decided = new Set<string>();
   let examined = 0;
   let fields = 0;
+
+  /**
+   * Record every `?? <literal>` / `|| <literal>` inside one contract-field
+   * write (#10868). Only literal-ish right operands count -- `a ?? b` defers
+   * to another value and states no default; `a ?? 0` states one the schema
+   * does not.
+   */
+  const collectFallbacks = (
+    expression: ts.Expression,
+    path: string,
+    file: string,
+    fieldNullable: boolean,
+  ) => {
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isBinaryExpression(node) &&
+        (node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+          node.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+      ) {
+        const right = unwrap(node.right);
+        const literalish =
+          right.kind === ts.SyntaxKind.NullKeyword ||
+          right.kind === ts.SyntaxKind.TrueKeyword ||
+          right.kind === ts.SyntaxKind.FalseKeyword ||
+          ts.isNumericLiteral(right) ||
+          ts.isStringLiteralLike(right) ||
+          ts.isArrayLiteralExpression(right) ||
+          ts.isObjectLiteralExpression(right) ||
+          (ts.isPrefixUnaryExpression(right) &&
+            ts.isNumericLiteral(right.operand));
+        if (literalish) {
+          fallbacks.push({
+            path,
+            file,
+            line: lineOf(node),
+            operator:
+              node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+                ? "??"
+                : "||",
+            fallback: right.getText().replace(/\s+/g, " ").slice(0, 40),
+            fieldNullable,
+          });
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(expression);
+  };
 
   /** Guards mutual recursion between a card builder and its own helpers. */
   const seen = new Set<string>();
@@ -412,6 +487,12 @@ export function findOverPromises(
       const value = ts.isPropertyAssignment(member)
         ? member.initializer
         : member.name;
+      collectFallbacks(
+        value,
+        `${owner.name}.${name.text}`,
+        file,
+        !(field.type instanceof GraphQLNonNull),
+      );
       const actual = checker.getTypeAtLocation(value);
       examined += 1;
       if (isAny(actual)) {
@@ -469,6 +550,7 @@ export function findOverPromises(
     undecided,
     passthroughs,
     stalePassthroughs,
+    fallbacks,
     examined,
     fields,
     decided,
