@@ -52,3 +52,16 @@ runs:
           rm -rf node_modules apps/ui/node_modules packages/*/node_modules
           sleep 30
         done
+    - name: Regenerate codegen the cache cannot carry
+      # The cache-hit path skips every postinstall ON PURPOSE -- the property
+      # is network exposure, and a restored node_modules opens no connection.
+      # But apps/ui's fumadocs-mdx postinstall GENERATES apps/ui/.source, a
+      # gitignored tree OUTSIDE node_modules that the cache neither stores nor
+      # restores, and apps/ui's typecheck imports it (`collections/*` maps to
+      # ./.source/* in its tsconfig). So a cache hit shipped a tree that
+      # type-checks nowhere, found the first time the path-filtered ui job ran
+      # after #10871 landed. Local codegen over repo content, no network --
+      # re-running it unconditionally (the miss path's own run is idempotent)
+      # keeps the cache's actual contract intact.
+      shell: bash
+      run: npm run postinstall --workspace=apps/ui --if-present
