@@ -7,7 +7,10 @@ import { McpUnsortedPageFields, netuidSchema } from "./shared.ts";
 import { ListSubnetHealthInputSchema } from "./subnet-scoped-lists.ts";
 import { HealthSubnetSummarySchema } from "../routes/health.ts";
 import { LIVE_HEALTH_OVERLAY } from "../routes/subnet-detail.ts";
-import { ReliabilityScoreSchema } from "../routes/health-surfaces.ts";
+import {
+  HealthSubnetSurfaceSchema,
+  ReliabilityScoreSchema,
+} from "../routes/health-surfaces.ts";
 
 /**
  * DERIVED FROM THE NETWORK-WIDE SIBLING (#9998).
@@ -24,19 +27,15 @@ export const GetSubnetHealthInputSchema = ListSubnetHealthInputSchema.omit({
   .strict();
 export type GetSubnetHealthInput = z.infer<typeof GetSubnetHealthInputSchema>;
 
-// objectItems(...) properties, none required at the item level (see
-// search-subnets.ts's same note from the pilot batch).
-const GetSubnetHealthSurfaceSchema = z
-  .object({
-    surface_id: z.string().optional(),
-    netuid: netuidSchema().optional(),
-    kind: z.string().nullable().optional(),
-    status: z.string().optional(),
-    latency_ms: z.int().nullable().optional(),
-    last_checked: z.string().nullable().optional(),
-    last_ok: z.string().nullable().optional(),
-  })
-  .strict();
+// THE ROUTE'S OWN ROW SCHEMA (#10904), not a copy. This tool serves the
+// same overlaySubnetHealth()/fallback-tier rows GET /subnets/{netuid}/health
+// serves, and its previous hand-copied row schema sat five fields behind
+// the route's -- so the outbound tripwire refused every netuid-0 call the
+// moment the fallback tier answered. A second declaration is how the copy
+// comes to omit the field that matters (#10790's own words); this tool
+// advertises no `fields`, so the rows are never projected and the route's
+// exact shape is the right one.
+const GetSubnetHealthSurfaceSchema = HealthSubnetSurfaceSchema;
 
 export const GetSubnetHealthOutputSchema = z
   .object({
