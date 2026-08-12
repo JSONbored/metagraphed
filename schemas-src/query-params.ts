@@ -163,7 +163,16 @@ export const ss58Schema = () =>
       "An SS58 account address (47-48 base58 characters). Coldkey or hotkey " +
         "depending on the tool — see the tool description for which this expects.",
     )
-    .meta({ examples: ["5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F"] });
+    .meta({ examples: ["5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F"] })
+    // Branded (#10866): every identifier the API takes was `string`, so
+    // transposing any two compiled. The brand is type-level only -- the wire
+    // format, the emitted JSON Schema and the published examples do not move
+    // -- but a parsed address now refuses to BE a slug, and vice versa, at
+    // compile time across all three surfaces at once.
+    .brand<"Ss58Address">();
+
+/** A parsed SS58 address — what `ss58Schema()` proves, as a nominal type. */
+export type Ss58Address = z.infer<ReturnType<typeof ss58Schema>>;
 
 /**
  * Sort direction. 31 of the 32 `order` parameters are this exact pair and mean
@@ -756,7 +765,15 @@ export const providerSlugSchema = () =>
       "Restrict to one provider, by SLUG (`opentensor-foundation`), not " +
         "display name. Unknown slugs yield an empty result, not an error.",
     )
-    .meta({ examples: ["opentensor-foundation"] });
+    .meta({ examples: ["opentensor-foundation"] })
+    // Branded (#10866): a provider slug and a subnet slug are both short
+    // lowercase strings, and handing one to the other's lookup compiled --
+    // the `adapter(slug:)`/`provider(slug:)` vocabulary confusion blinded a
+    // production probe exactly that way once (#10769).
+    .brand<"ProviderSlug">();
+
+/** A parsed provider slug, nominally distinct from a subnet slug. */
+export type ProviderSlug = z.infer<ReturnType<typeof providerSlugSchema>>;
 
 /** A surface id, the stable key a surface keeps across renames. */
 export const surfaceIdSchema = () =>
@@ -773,7 +790,7 @@ export const surfaceIdSchema = () =>
  * in that the tools using it name the ROLE in the parameter, so the sentence
  * says which one rather than deferring to the tool description.
  */
-export const accountKeySchema = (role: "hotkey" | "coldkey") =>
+export const accountKeySchema = <R extends "hotkey" | "coldkey">(role: R) =>
   z
     .string()
     .regex(SS58_PATTERN)
@@ -786,7 +803,19 @@ export const accountKeySchema = (role: "hotkey" | "coldkey") =>
     )
     .meta({
       examples: ["5CS3g6nVJM6ouns8n9buN9CzFf2C1YDHVcVGRcxoirKs2xbV"],
-    });
+    })
+    // Double-branded (#10866): a hotkey IS an address, so it stays assignable
+    // wherever the generic `Ss58Address` is asked for -- and refuses to be a
+    // COLDKEY, which is the transposition that used to compile. Both keys
+    // parse the same base58 pattern; the brand carries the ROLE the pattern
+    // cannot.
+    .brand<"Ss58Address">()
+    .brand<{ hotkey: "Hotkey"; coldkey: "Coldkey" }[R]>();
+
+/** A parsed hotkey — an `Ss58Address` that has proved its role. */
+export type Hotkey = z.infer<ReturnType<typeof accountKeySchema<"hotkey">>>;
+/** A parsed coldkey — an `Ss58Address` that has proved its role. */
+export type Coldkey = z.infer<ReturnType<typeof accountKeySchema<"coldkey">>>;
 
 /** A neuron's position within one subnet. */
 export const uidSchema = () =>
