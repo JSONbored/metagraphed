@@ -75,7 +75,7 @@ describe("blockChainEventsQuery", () => {
   it("coerces the Postgres tier's string-serialized bigints and backfills the per-row block_number", async () => {
     // Real production shape: the per-block route's rows omit block_number
     // (redundant — every row is the same block) and serialize event_index /
-    // observed_at as JSON strings (bigint columns), unlike the D1-backed
+    // observed_at as JSON strings (bigint columns), unlike the store-backed
     // events/extrinsics routes which return plain numbers and ISO strings.
     resolveWith({
       block_number: 8559857,

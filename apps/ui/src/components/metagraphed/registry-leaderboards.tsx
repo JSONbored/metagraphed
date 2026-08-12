@@ -5,7 +5,7 @@ import { BrandIcon } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { LeaderboardBoardKey, LeaderboardRow } from "@/lib/metagraphed/types";
 
-// #6995: surface the registry's own D1-computed leaderboards on /leaderboards.
+// #6995: surface the registry's own store-computed leaderboards on /leaderboards.
 // Ten boards, split into economic-opportunity boards (open-slots,
 // cheapest-registration, highest-emission, validator-headroom) — the
 // "where should I register / validate" boards, placed first per the issue — and

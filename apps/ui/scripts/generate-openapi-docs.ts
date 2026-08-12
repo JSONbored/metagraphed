@@ -65,7 +65,6 @@ const WORD_OVERRIDES = {
   rpc: "RPC",
   id: "ID",
   ss58: "SS58",
-  d1: "D1",
   hhi: "HHI",
   ai: "AI",
   url: "URL",
