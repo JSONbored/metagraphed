@@ -28,7 +28,14 @@ export const GetAdapterInputSchema = z
       .describe(
         "The registry slug — lowercase, hyphenated (`gittensor`), not the display name. Slugs are stable across renames. Only subnets with a captured adapter snapshot have one; `list_subnets` is the way to find which.",
       )
-      .meta({ examples: ["gittensor"] }),
+      .meta({ examples: ["gittensor"] })
+      // Branded (#10866): this is a SUBNET slug, and `slug` is two
+      // vocabularies -- `provider(slug:)` takes a provider slug, this takes a
+      // subnet slug, and the confusion blinded a production probe once
+      // (#10769: `adapter(slug: "apex")` resolved null and the silence read
+      // as absence of evidence). The brand makes the transposition a compile
+      // error; the wire format does not move.
+      .brand<"SubnetSlug">(),
   })
   .strict();
 export type GetAdapterInput = z.infer<typeof GetAdapterInputSchema>;
