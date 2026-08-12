@@ -43,12 +43,11 @@ export { PIPELINE_HISTORY_WINDOW_DAYS, PIPELINE_HISTORY_WINDOWS };
 
 type Row = Record<string, unknown>;
 
+/** The minimal store surface used here -- the owned query() verb, served by
+ * both readStore and the producer store -- so tests can inject a plain
+ * object. */
 export interface PipelineHistoryDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 export const PIPELINE_HISTORY_TABLE = "subnet_snapshots";
@@ -78,28 +77,22 @@ export async function loadPipelineHistory(
     nowMs = Date.now(),
   }: { window?: string; nowMs?: number } = {},
 ): Promise<Row[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   const days = PIPELINE_HISTORY_WINDOW_DAYS[window];
   if (days === undefined) return null;
   try {
-    const res = await (
-      db
-        .prepare(
-          `SELECT snapshot_date, pipeline_block, pipeline_block_hash,` +
-            ` emission_share, tao_in_pool_tao, tao_in_emission_tao, excess_tao,` +
-            ` alpha_in_emission, alpha_out_emission, miner_burned_fraction,` +
-            ` emission_enabled, first_emission_block, alpha_price_tao,` +
-            ` captured_at` +
-            ` FROM ${PIPELINE_HISTORY_TABLE}` +
-            ` WHERE netuid = ? AND pipeline_block IS NOT NULL` +
-            ` AND snapshot_date >= ?` +
-            ` ORDER BY snapshot_date ASC`,
-        )
-        .bind(netuid, utcDay(nowMs - days * 86_400_000)) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    return (res?.results ?? []) as Row[];
+    return await db.query<Row>(
+      `SELECT snapshot_date, pipeline_block, pipeline_block_hash,` +
+        ` emission_share, tao_in_pool_tao, tao_in_emission_tao, excess_tao,` +
+        ` alpha_in_emission, alpha_out_emission, miner_burned_fraction,` +
+        ` emission_enabled, first_emission_block, alpha_price_tao,` +
+        ` captured_at` +
+        ` FROM ${PIPELINE_HISTORY_TABLE}` +
+        ` WHERE netuid = ? AND pipeline_block IS NOT NULL` +
+        ` AND snapshot_date >= ?` +
+        ` ORDER BY snapshot_date ASC`,
+      [netuid, utcDay(nowMs - days * 86_400_000)],
+    );
   } catch {
     return null;
   }

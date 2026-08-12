@@ -73,17 +73,14 @@ function seedDay(
 
 function asDb(sqlite: DatabaseSync) {
   return {
-    prepare(sql: string) {
-      const stmt = sqlite.prepare(sql);
-      return {
-        bind(...values: unknown[]) {
-          const v = values as Array<string | number | null>;
-          return {
-            all: async () => ({ results: stmt.all(...v) }),
-            run: async () => stmt.run(...v),
-          };
-        },
-      };
+    async query<T>(sql: string, values: unknown[] = []) {
+      const v = values as Array<string | number | null>;
+      return sqlite.prepare(sql).all(...v) as T[];
+    },
+    async run(sql: string, values: unknown[] = []) {
+      const v = values as Array<string | number | null>;
+      const out = sqlite.prepare(sql).run(...v);
+      return { changes: Number(out.changes ?? 0) };
     },
   };
 }
@@ -218,20 +215,19 @@ describe("rollupChainConcentration", () => {
     const db = asDb(sqlite);
     // Delete the rows between the scan and the read, so the day is pending but
     // unreadable -- the shape of a capture that vanished mid-tick.
-    const original = db.prepare.bind(db);
     let scanned = false;
     const racy = {
-      prepare(sql: string) {
-        const stmt = original(sql);
+      async query<T>(sql: string, values: unknown[] = []) {
         if (!scanned && sql.includes("LEFT JOIN")) {
           scanned = true;
-          return stmt;
+          return db.query<T>(sql, values);
         }
         if (sql.includes("FROM neuron_daily WHERE snapshot_date")) {
           sqlite.exec("DELETE FROM neuron_daily");
         }
-        return stmt;
+        return db.query<T>(sql, values);
       },
+      run: db.run,
     };
     const out = await rollupChainConcentration(racy, { nowMs: T });
     expect(out.rolled).toBe(false);
@@ -249,22 +245,13 @@ describe("rollupChainConcentration", () => {
     seedDay(sqlite, "2026-08-05", 3);
     const original = asDb(sqlite);
     const flaky = {
-      prepare(sql: string) {
-        const stmt = original.prepare(sql);
-        return {
-          bind(...values: unknown[]) {
-            const bound = stmt.bind(...values);
-            if (values[0] === "2026-08-05" && sql.includes("neuron_daily")) {
-              return {
-                all: async () => {
-                  throw new Error("D1_ERROR");
-                },
-              };
-            }
-            return bound;
-          },
-        };
+      async query<T>(sql: string, values: unknown[] = []) {
+        if (values[0] === "2026-08-05" && sql.includes("neuron_daily")) {
+          throw new Error("store read failed");
+        }
+        return original.query<T>(sql, values);
       },
+      run: original.run,
     };
     const out = await rollupChainConcentration(flaky, { nowMs: T });
     expect(out.days_rolled).toEqual(["2026-08-04"]);
@@ -281,9 +268,10 @@ describe("rollupChainConcentration", () => {
       reason: "unavailable",
     });
     const broken = {
-      prepare() {
+      query() {
         throw new Error("no such table: chain_concentration_daily");
       },
+      run: async () => ({ changes: 0 }),
     } as never;
     expect(await rollupChainConcentration(broken)).toEqual({
       rolled: false,
@@ -293,32 +281,17 @@ describe("rollupChainConcentration", () => {
 
   it("ignores a scan row that cannot name a day", async () => {
     const noDays = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => ({ results: [{ day: null }, { day: "" }, {}] }),
-        }),
-      }),
+      query: async <T>() => [{ day: null }, { day: "" }, {}] as T[],
+      run: async () => ({ changes: 0 }),
     };
     const out = await rollupChainConcentration(noDays, { nowMs: T });
     expect(out.rolled).toBe(false);
     expect(out.days_pending).toBe(0);
   });
 
-  it("survives a scan or read whose all() is absent or answers nothing", async () => {
-    // The optional-call and nullish-coalescing guards on both reads: a driver
-    // that answers nothing must leave the day pending, not crash the tick.
-    const noAll = { prepare: () => ({ bind: () => ({}) }) } as never;
-    expect(await rollupChainConcentration(noAll, { nowMs: T })).toMatchObject({
-      rolled: false,
-      days_pending: 0,
-    });
-    const nullResult = {
-      prepare: () => ({ bind: () => ({ all: async () => null }) }),
-    } as never;
-    expect(
-      await rollupChainConcentration(nullResult, { nowMs: T }),
-    ).toMatchObject({ rolled: false, days_pending: 0 });
-  });
+  // The "all() absent / answers nothing" arms retired with the D1 envelope
+  // (#10309): the owned query() either answers rows or throws, and both are
+  // pinned -- the throw as scan_failed above, zero rows as the empty scan.
 
   it("stores a null source_captured_at when no row carries a usable one", async () => {
     const sqlite = sqliteDb();
@@ -339,14 +312,19 @@ describe("rollupChainConcentration", () => {
     const sqlite = sqliteDb();
     seedDay(sqlite, "2026-08-05", 2);
     const base = asDb(sqlite);
-    for (const perDay of [{}, { all: async () => null }]) {
+    {
+      // The per-day read answers zero rows: the day must stay pending, with
+      // no card manufactured. (The D1 "absent all()/null result" arms retired
+      // with the envelope, #10309 -- zero rows is the one nothing-shape the
+      // owned store can produce.)
       const partial = {
-        prepare(sql: string) {
+        async query<T>(sql: string, values: unknown[] = []) {
           if (sql.includes("FROM neuron_daily WHERE snapshot_date")) {
-            return { bind: () => perDay };
+            return [] as T[];
           }
-          return base.prepare(sql);
+          return base.query<T>(sql, values);
         },
+        run: base.run,
       } as never;
       const out = await rollupChainConcentration(partial, { nowMs: T });
       expect(out.days_failed).toEqual(["2026-08-05"]);
@@ -366,20 +344,15 @@ describe("rollupChainConcentration", () => {
     seedDay(sqlite, "2026-08-05", 2);
     const base = asDb(sqlite);
     const noVersion = {
-      prepare(sql: string) {
+      async query<T>(sql: string, values: unknown[] = []) {
         if (sql.includes("FROM neuron_daily WHERE snapshot_date")) {
-          return {
-            bind: () => ({
-              // No captured_at either, so the builder's schema_version is the
-              // only thing distinguishing this from a normal day.
-              all: async () => ({
-                results: [{ stake_tao: 1, emission_tao: 1, coldkey: "a" }],
-              }),
-            }),
-          };
+          // No captured_at either, so the builder's schema_version is the
+          // only thing distinguishing this from a normal day.
+          return [{ stake_tao: 1, emission_tao: 1, coldkey: "a" }] as T[];
         }
-        return base.prepare(sql);
+        return base.query<T>(sql, values);
       },
+      run: base.run,
     } as never;
     await rollupChainConcentration(noVersion, { nowMs: T });
     expect(
@@ -462,23 +435,18 @@ describe("loadChainConcentrationHistory", () => {
     expect(await loadChainConcentrationHistory(undefined)).toBeNull();
     expect(await loadChainConcentrationHistory({} as never)).toBeNull();
     const throwing = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => {
-            throw new Error("D1_ERROR");
-          },
-        }),
-      }),
+      query: async () => {
+        throw new Error("store read failed");
+      },
     };
     expect(await loadChainConcentrationHistory(throwing)).toBeNull();
   });
 
-  it("returns an empty list when all() is absent or answers nothing", async () => {
-    const noAll = { prepare: () => ({ bind: () => ({}) }) };
-    expect(await loadChainConcentrationHistory(noAll as never)).toEqual([]);
-    const empty = {
-      prepare: () => ({ bind: () => ({ all: async () => null }) }),
-    };
+  it("returns an empty list on zero rows", async () => {
+    // The "all() absent / null result" arms retired with the D1 envelope
+    // (#10309): the owned query() answers rows or throws (null, above), so
+    // zero rows is the one nothing-shape left to pin.
+    const empty = { query: async <T>() => [] as T[] };
     expect(await loadChainConcentrationHistory(empty)).toEqual([]);
   });
 });

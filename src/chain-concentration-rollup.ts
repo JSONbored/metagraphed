@@ -45,13 +45,11 @@ export const CHAIN_CONCENTRATION_DAILY_TABLE = "chain_concentration_daily";
 export const CHAIN_CONCENTRATION_DAILY_READ_COLUMNS =
   "stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at";
 
+/** The minimal producer-store surface used here (src/producer-store.ts),
+ * structural so tests can inject a plain object. */
 export interface RollupDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-      run?(): Promise<unknown>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  run?(text: string, values?: unknown[]): Promise<{ changes: number }>;
 }
 
 /**
@@ -93,15 +91,12 @@ export async function rollupChainConcentration(
     env = null,
   }: { nowMs?: number; maxDays?: number; env?: unknown } = {},
 ): Promise<Row> {
-  if (!db?.prepare) return { rolled: false, reason: "unavailable" };
+  if (!db?.query || !db?.run) return { rolled: false, reason: "unavailable" };
 
   let pending: string[];
   try {
-    const res = await db
-      .prepare(pendingDaysSql())
-      .bind(utcDay(nowMs), maxDays)
-      .all?.();
-    pending = ((res?.results ?? []) as Row[])
+    const res = await db.query<Row>(pendingDaysSql(), [utcDay(nowMs), maxDays]);
+    pending = res
       .map((r) => r?.day)
       .filter((d): d is string => typeof d === "string" && d.length > 0);
   } catch (error) {
@@ -116,14 +111,11 @@ export async function rollupChainConcentration(
   const failed: string[] = [];
   for (const day of pending) {
     try {
-      const res = await db
-        .prepare(
-          `SELECT ${CHAIN_CONCENTRATION_DAILY_READ_COLUMNS}` +
-            " FROM neuron_daily WHERE snapshot_date = ?",
-        )
-        .bind(day)
-        .all?.();
-      const rows = (res?.results ?? []) as Row[];
+      const rows = await db.query<Row>(
+        `SELECT ${CHAIN_CONCENTRATION_DAILY_READ_COLUMNS}` +
+          " FROM neuron_daily WHERE snapshot_date = ?",
+        [day],
+      );
       // A day with no rows is not a day of zero concentration -- it is a day
       // the capture did not run. Storing a card for it would manufacture a
       // point; leaving it pending costs one scan a tick and stays honest.
@@ -132,20 +124,18 @@ export async function rollupChainConcentration(
         continue;
       }
       const card = buildChainConcentration(rows) as unknown as Row;
-      await db
-        .prepare(
-          `INSERT INTO ${CHAIN_CONCENTRATION_DAILY_TABLE}` +
-            " (day, neuron_count, card, source_captured_at, computed_at," +
-            " builder_version)" +
-            " VALUES (?, ?, ?, ?, ?, ?)" +
-            " ON CONFLICT(day) DO UPDATE SET" +
-            " neuron_count = excluded.neuron_count," +
-            " card = excluded.card," +
-            " source_captured_at = excluded.source_captured_at," +
-            " computed_at = excluded.computed_at," +
-            " builder_version = excluded.builder_version",
-        )
-        .bind(
+      await db.run(
+        `INSERT INTO ${CHAIN_CONCENTRATION_DAILY_TABLE}` +
+          " (day, neuron_count, card, source_captured_at, computed_at," +
+          " builder_version)" +
+          " VALUES (?, ?, ?, ?, ?, ?)" +
+          " ON CONFLICT(day) DO UPDATE SET" +
+          " neuron_count = excluded.neuron_count," +
+          " card = excluded.card," +
+          " source_captured_at = excluded.source_captured_at," +
+          " computed_at = excluded.computed_at," +
+          " builder_version = excluded.builder_version",
+        [
           day,
           // The row count, not a field read back out of the card: it is the
           // same number by definition, and taking it from the rows keeps the
@@ -162,8 +152,8 @@ export async function rollupChainConcentration(
           // point as computed under a definition it was not, which is the one
           // thing this column exists to prevent.
           Number(card.schema_version),
-        )
-        .run?.();
+        ],
+      );
       rolled.push(day);
     } catch (error) {
       failed.push(day);

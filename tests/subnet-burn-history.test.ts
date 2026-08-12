@@ -24,39 +24,27 @@ type Row = Record<string, unknown>;
 
 const NOW = 1_785_800_000_000;
 
-/** A D1 double recording every statement and its bound values. */
+/** A store double recording every statement and its bound values. */
 function fakeDb({ failBatch = false, failSweep = false } = {}) {
   const calls: { sql: string; values: unknown[] }[] = [];
   const db = {
-    prepare(sql: string) {
-      return {
-        bind(...values: unknown[]) {
-          const call = { sql, values };
-          return {
-            run: async () => {
-              calls.push(call);
-              if (failSweep && sql.startsWith("DELETE")) {
-                throw new Error("D1_ERROR: busy");
-              }
-              return { success: true };
-            },
-            all: async () => {
-              calls.push(call);
-              return { results: [] };
-            },
-            __call: call,
-          };
-        },
-      };
-    },
-    async batch(statements: unknown[]) {
-      if (failBatch) throw new Error("D1_ERROR: no such table");
-      for (const s of statements) {
-        calls.push(
-          (s as { __call: { sql: string; values: unknown[] } }).__call,
-        );
+    async run(sql: string, values: unknown[] = []) {
+      calls.push({ sql, values });
+      if (failSweep && sql.startsWith("DELETE")) {
+        throw new Error("store: busy");
       }
-      return [];
+      return { changes: 1 };
+    },
+    async query<T>(sql: string, values: unknown[] = []) {
+      calls.push({ sql, values });
+      return [] as T[];
+    },
+    async transaction(statements: { text: string; values?: unknown[] }[]) {
+      if (failBatch) throw new Error("store: no such table");
+      for (const stmt of statements) {
+        calls.push({ sql: stmt.text, values: stmt.values ?? [] });
+      }
+      return statements.map(() => ({ changes: 1 }));
     },
   };
   return { db, calls };
@@ -93,8 +81,8 @@ describe("captureSubnetBurnHistory", () => {
     // row. A verdict that counts intent cannot see that, so it must count the
     // batch's own reported changes when the runner reports them.
     const db = {
-      prepare: () => ({ bind: () => ({ __call: {} }), run: async () => {} }),
-      batch: async () => [{ meta: { changes: 1 } }, { meta: { changes: 0 } }],
+      run: async () => ({ changes: 1 }),
+      transaction: async () => [{ changes: 1 }, { changes: 0 }],
     } as unknown as BurnHistoryDb;
     const out = await captureSubnetBurnHistory({} as Env, {
       db,
@@ -110,20 +98,10 @@ describe("captureSubnetBurnHistory", () => {
     assert.equal(out.captured, 1, "two statements, one row actually written");
   });
 
-  test("a runner that reports no changes falls back to the intended count", async () => {
-    // The inversion guard: an empty batch result means "cannot count", not
-    // "wrote nothing", and reading it as zero would alarm on a working lane.
-    const db = {
-      prepare: () => ({ bind: () => ({ __call: {} }), run: async () => {} }),
-      batch: async () => [],
-    } as unknown as BurnHistoryDb;
-    const out = await captureSubnetBurnHistory({} as Env, {
-      db,
-      now: () => 1_700_000_000_000,
-      load: async () => ({ subnets: [{ netuid: 1, burn_tao: 0.5 }] }) as never,
-    });
-    assert.equal(out.captured, 1);
-  });
+  // The "runner that reports no changes" fallback retired with the D1 shape
+  // (#10309): the owned store answers one { changes } per statement BY
+  // CONTRACT (src/producer-store.ts), so "cannot count its own writes" is no
+  // longer a constructable state and the fallback it excused is gone.
 
   test("a genuine zero price is recorded, not skipped", async () => {
     // netuid 76 is the cheapest registration on the network. Dropping it as falsy
@@ -235,13 +213,8 @@ describe("captureSubnetBurnHistory", () => {
     ] as const) {
       const db = batch
         ? {
-            prepare: (sql: string) => ({
-              bind: (...values: unknown[]) => ({
-                run: async () => ({}),
-                __call: { sql, values },
-              }),
-            }),
-            batch: async () => {
+            run: async () => ({ changes: 1 }),
+            transaction: async () => {
               throw "kaboom";
             },
           }
@@ -431,11 +404,13 @@ describe("loadSubnetBurnHistory", () => {
     );
   });
 
-  test("a read that returns no result set is an empty series, not null", async () => {
-    // D1 can answer with no `results` key. That is zero rows, which is a real
-    // answer -- distinct from the read failing, which is what null means here.
+  test("zero rows is an empty series, not null", async () => {
+    // The D1 "no results key" case retired with the envelope (#10309): the
+    // owned query() answers rows directly, so zero rows IS the empty array --
+    // a real answer, distinct from the read failing, which is what null means
+    // here (pinned above).
     const db = {
-      prepare: () => ({ bind: () => ({ all: async () => null }) }),
+      query: async <T>() => [] as T[],
     };
     assert.deepEqual(
       await loadSubnetBurnHistory(db as never, 7, {

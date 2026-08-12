@@ -42,17 +42,9 @@ const repoRoot = path.resolve(
 function recordingDb() {
   const calls: Array<{ sql: string; values: unknown[] }> = [];
   const db: RevenueStoreDb = {
-    prepare(sql: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            run: async () => {
-              calls.push({ sql, values });
-              return {};
-            },
-          };
-        },
-      };
+    async run(sql: string, values: unknown[] = []) {
+      calls.push({ sql, values });
+      return { changes: 1 };
     },
   };
   return { db, calls };
@@ -60,17 +52,9 @@ function recordingDb() {
 
 function readingDb(rows: unknown[] | null, throws = false) {
   return {
-    prepare() {
-      return {
-        bind() {
-          return {
-            all: async () => {
-              if (throws) throw new Error("connection reset");
-              return rows === null ? null : { results: rows };
-            },
-          };
-        },
-      };
+    query: async <T>() => {
+      if (throws) throw new Error("connection reset");
+      return (rows ?? []) as T[];
     },
   } as unknown as RevenueStoreDb;
 }
@@ -172,16 +156,8 @@ describe("persistRevenueProbe", () => {
     // A capture lane that could take down the cron it runs on would be worse
     // than a gap in the series.
     const db = {
-      prepare() {
-        return {
-          bind() {
-            return {
-              run: async () => {
-                throw new Error("syntax error at or near");
-              },
-            };
-          },
-        };
+      run: async () => {
+        throw new Error("syntax error at or near");
       },
     } as unknown as RevenueStoreDb;
     const r = await persistRevenueProbe(db, {
@@ -354,9 +330,9 @@ describe("loadRevenueObservations", () => {
     const db = readingDb([]);
     let captured = "";
     const spy = {
-      prepare(sql: string) {
+      query: async <T>(sql: string) => {
         captured = sql;
-        return { bind: () => ({ all: async () => ({ results: [] }) }) };
+        return [] as T[];
       },
     } as unknown as RevenueStoreDb;
     await loadRevenueObservations(spy, 64);
@@ -381,13 +357,9 @@ describe("loadRevenueObservations", () => {
   test("a network-wide read binds no netuid", async () => {
     let bound: unknown[] = ["unset"];
     const spy = {
-      prepare() {
-        return {
-          bind: (...v: unknown[]) => {
-            bound = v;
-            return { all: async () => ({ results: [] }) };
-          },
-        };
+      query: async <T>(_sql: string, v: unknown[] = []) => {
+        bound = v;
+        return [] as T[];
       },
     } as unknown as RevenueStoreDb;
     await loadRevenueObservations(spy, null);
@@ -518,16 +490,8 @@ describe("degenerate input", () => {
 
   test("a non-Error throw still yields a readable verdict", async () => {
     const db = {
-      prepare() {
-        return {
-          bind() {
-            return {
-              run: async () => {
-                throw "connection lost";
-              },
-            };
-          },
-        };
+      run: async () => {
+        throw "connection lost";
       },
     } as unknown as RevenueStoreDb;
     const r = await persistRevenueProbe(db, {
@@ -557,14 +521,10 @@ describe("degenerate input", () => {
     assert.equal(surface.url, "");
   });
 
-  test("a result set with no rows key reads as empty, not as a throw", async () => {
-    const db = {
-      prepare: () => ({ bind: () => ({ all: async () => ({}) }) }),
-    } as unknown as RevenueStoreDb;
-    const map = await loadRevenueObservations(db, 64);
-    assert.ok(map);
-    assert.equal(map.size, 0);
-  });
+  // "a result set with no rows key" retired with the D1 envelope (#10309):
+  // query() answers rows directly, so zero rows is the empty array -- the
+  // empty-map case is pinned in "a read failure is null, an empty store is an
+  // empty map".
 
   test("a row missing its surface_id is dropped rather than keyed on empty", async () => {
     const map = await loadRevenueObservations(
@@ -771,13 +731,8 @@ describe("the queue lane (#10715)", () => {
   }
 
   const store = () => ({
-    prepare: () => ({
-      bind: () => ({
-        run: async () => undefined,
-        all: async () => ({ results: [] }),
-      }),
-      all: async () => ({ results: [] }),
-    }),
+    run: async () => ({ changes: 1 }),
+    query: async <T>() => [] as T[],
   });
 
   const deps = (over: Record<string, unknown> = {}) => ({

@@ -247,14 +247,11 @@ export async function checkOrigin(
 
 // ── the store ───────────────────────────────────────────────────────────────
 
+/** The minimal producer-store surface used here (src/producer-store.ts),
+ * structural so tests can inject a plain object. */
 export interface OriginStoreDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      run?(): Promise<unknown>;
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-    all?(): Promise<{ results?: unknown[] } | null>;
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  run?(text: string, values?: unknown[]): Promise<{ changes: number }>;
 }
 
 /**
@@ -271,27 +268,25 @@ export async function persistOriginCheck(
   db: OriginStoreDb | null | undefined,
   check: OriginCheck,
 ): Promise<{ ok: boolean; reason?: string }> {
-  if (!db?.prepare) return { ok: false, reason: "no_store_binding" };
+  if (!db?.run) return { ok: false, reason: "no_store_binding" };
   try {
-    await db
-      .prepare(
-        `INSERT INTO origin_reachability` +
-          ` (origin, checked_at, surface_count, samples, verdict)` +
-          ` VALUES (?, ?, ?, ?, ?)` +
-          ` ON CONFLICT (origin) DO UPDATE SET` +
-          ` checked_at = EXCLUDED.checked_at,` +
-          ` surface_count = EXCLUDED.surface_count,` +
-          ` samples = EXCLUDED.samples,` +
-          ` verdict = EXCLUDED.verdict`,
-      )
-      .bind(
+    await db.run(
+      `INSERT INTO origin_reachability` +
+        ` (origin, checked_at, surface_count, samples, verdict)` +
+        ` VALUES (?, ?, ?, ?, ?)` +
+        ` ON CONFLICT (origin) DO UPDATE SET` +
+        ` checked_at = EXCLUDED.checked_at,` +
+        ` surface_count = EXCLUDED.surface_count,` +
+        ` samples = EXCLUDED.samples,` +
+        ` verdict = EXCLUDED.verdict`,
+      [
         check.origin,
         check.checked_at,
         check.surface_ids.length,
         check.samples.length,
         check.verdict,
-      )
-      .run?.();
+      ],
+    );
     return { ok: true };
   } catch (error) {
     return {
@@ -321,17 +316,15 @@ export interface OriginRecord {
 export async function loadDeadOrigins(
   db: OriginStoreDb | null | undefined,
 ): Promise<OriginRecord[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
-    const res = await db
-      .prepare(
-        `SELECT origin, checked_at, surface_count, samples, verdict` +
-          ` FROM origin_reachability WHERE verdict IN ('not-routing', 'unreachable')` +
-          ` ORDER BY surface_count DESC, origin ASC`,
-      )
-      .all?.();
+    const rows = await db.query<OriginReachability>(
+      `SELECT origin, checked_at, surface_count, samples, verdict` +
+        ` FROM origin_reachability WHERE verdict IN ('not-routing', 'unreachable')` +
+        ` ORDER BY surface_count DESC, origin ASC`,
+    );
     const out: OriginRecord[] = [];
-    for (const raw of res?.results ?? []) {
+    for (const raw of rows) {
       const row = raw as OriginReachability;
       const at = Number(row.checked_at);
       out.push({

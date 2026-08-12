@@ -44,12 +44,11 @@ export {
 
 type Row = Record<string, unknown>;
 
+/** The minimal store surface used here -- the owned query() verb, served by
+ * both readStore and the producer store -- so tests can inject a plain
+ * object. */
 export interface ChainConcentrationHistoryDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 export const CHAIN_CONCENTRATION_HISTORY_TABLE = "chain_concentration_daily";
@@ -62,23 +61,17 @@ export async function loadChainConcentrationHistory(
     nowMs = Date.now(),
   }: { window?: string; nowMs?: number } = {},
 ): Promise<Row[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   const days = CHAIN_CONCENTRATION_HISTORY_WINDOW_DAYS[window];
   if (days === undefined) return null;
   try {
-    const res = await (
-      db
-        .prepare(
-          "SELECT day, neuron_count, card, source_captured_at," +
-            " builder_version" +
-            ` FROM ${CHAIN_CONCENTRATION_HISTORY_TABLE}` +
-            " WHERE day >= ? ORDER BY day ASC",
-        )
-        .bind(utcDay(nowMs - days * 86_400_000)) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    return (res?.results ?? []) as Row[];
+    return await db.query<Row>(
+      "SELECT day, neuron_count, card, source_captured_at," +
+        " builder_version" +
+        ` FROM ${CHAIN_CONCENTRATION_HISTORY_TABLE}` +
+        " WHERE day >= ? ORDER BY day ASC",
+      [utcDay(nowMs - days * 86_400_000)],
+    );
   } catch {
     return null;
   }

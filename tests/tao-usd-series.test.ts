@@ -90,18 +90,10 @@ let db: InstanceType<typeof DatabaseSync>;
 
 /** The store handle the LOADER tests inject directly -- loadTaoUsdSeries takes
  * one, so those tests never need the module mock. */
-function d1() {
+function storeHandle() {
   return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
-            },
-          };
-        },
-      };
+    async query<T>(text: string, values: unknown[] = []) {
+      return db.prepare(text).all(...(values as never[])) as T[];
     },
   };
 }
@@ -144,7 +136,7 @@ describe("loadTaoUsdSeries against real SQLite", () => {
     reading(0, 196.17, 100);
     reading(60_000, 196.2, 99);
     reading(3 * 60 * 60 * 1000, 190, 98); // outside a 1h window
-    const rows = await loadTaoUsdSeries(d1(), {
+    const rows = await loadTaoUsdSeries(storeHandle(), {
       windowHours: 1,
       now: () => NOW,
     });
@@ -161,7 +153,7 @@ describe("loadTaoUsdSeries against real SQLite", () => {
     );
     db.exec("DROP TABLE tao_usd_index");
     assert.equal(
-      await loadTaoUsdSeries(d1(), { windowHours: 1, now: () => NOW }),
+      await loadTaoUsdSeries(storeHandle(), { windowHours: 1, now: () => NOW }),
       null,
     );
   });
@@ -184,7 +176,10 @@ describe("buildTaoUsdSeries", () => {
   test("carries the latest reading with its whole derivation", async () => {
     reading(0, 196.17);
     const card = buildTaoUsdSeries(
-      await loadTaoUsdSeries(d1(), { windowHours: 24, now: () => NOW }),
+      await loadTaoUsdSeries(storeHandle(), {
+        windowHours: 24,
+        now: () => NOW,
+      }),
       { window: "24h" },
     );
     const latest = card.latest as Row;

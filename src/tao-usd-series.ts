@@ -69,13 +69,11 @@ function isStale(row: Row, nowMs: number): boolean {
   return age === null ? true : age > TAO_USD_MAX_AGE_MS;
 }
 
-/** The minimal D1 surface used here, so tests can inject a plain object. */
+/** The minimal store surface used here -- the owned query() verb, served by
+ * both readStore and the producer store -- so tests can inject a plain
+ * object. */
 export interface TaoUsdSeriesDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 export const TAO_USD_TABLE = "tao_usd_index";
@@ -110,22 +108,16 @@ export async function loadTaoUsdSeries(
   db: TaoUsdSeriesDb | null | undefined,
   { windowHours, now = Date.now }: { windowHours: number; now?: () => number },
 ): Promise<Row[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
     const cutoff = now() - windowHours * 60 * 60 * 1000;
-    const res = await (
-      db
-        .prepare(
-          `SELECT block_number, observed_at, usd_per_tao, price_basis,` +
-            ` eth_usd, pool_count, pools FROM ${TAO_USD_TABLE}` +
-            ` WHERE observed_at >= ?` +
-            ` ORDER BY observed_at DESC LIMIT ${TAO_USD_MAX_POINTS}`,
-        )
-        .bind(cutoff) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    return (res?.results ?? []) as Row[];
+    return await db.query<Row>(
+      `SELECT block_number, observed_at, usd_per_tao, price_basis,` +
+        ` eth_usd, pool_count, pools FROM ${TAO_USD_TABLE}` +
+        ` WHERE observed_at >= ?` +
+        ` ORDER BY observed_at DESC LIMIT ${TAO_USD_MAX_POINTS}`,
+      [cutoff],
+    );
   } catch {
     return null;
   }

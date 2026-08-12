@@ -72,6 +72,10 @@ export interface ReadStoreDb {
     all<T = Row>(): Promise<{ results: T[] }>;
     first<T = Row>(): Promise<T | null>;
   };
+  /** The owned verb (#10309): rows directly, no D1 envelope. Loaders shared
+   * with the producer store (tao-usd, pipeline-history) consume THIS, so one
+   * loader serves both providers without an adapter shape between them. */
+  query<T = Row>(text: string, values?: unknown[]): Promise<T[]>;
 }
 
 export interface ReadStoreDeps {
@@ -113,6 +117,9 @@ export function pgReadStore(
         bind: (...values: unknown[]) => ops(text, values),
         ...ops(text, []),
       };
+    },
+    async query<T = Row>(text: string, values: unknown[] = []) {
+      return (await run(text, values)) as T[];
     },
   };
 }

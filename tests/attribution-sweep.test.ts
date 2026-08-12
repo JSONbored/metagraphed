@@ -219,17 +219,13 @@ describe("sweeping one subnet", () => {
 describe("the store", () => {
   function db(sink: { sql: string; binds: unknown[] }[], rows: unknown[] = []) {
     return {
-      prepare(sql: string) {
-        return {
-          bind(...binds: unknown[]) {
-            sink.push({ sql, binds });
-            return {
-              run: async () => undefined,
-              all: async () => ({ results: rows }),
-            };
-          },
-          all: async () => ({ results: rows }),
-        };
+      async run(sql: string, binds: unknown[] = []) {
+        sink.push({ sql, binds });
+        return { changes: 1 };
+      },
+      async query<T>(sql: string, binds: unknown[] = []) {
+        sink.push({ sql, binds });
+        return rows as T[];
       },
     };
   }
@@ -272,7 +268,7 @@ describe("the store", () => {
   test("a write failure is reported rather than swallowed", async () => {
     const out = await persistSweep(
       {
-        prepare() {
+        run() {
           throw new Error("relation does not exist");
         },
       },
@@ -312,7 +308,7 @@ describe("the store", () => {
     assert.equal(
       await loadSweepRecord(
         {
-          prepare() {
+          query() {
             throw new Error("store unavailable");
           },
         },
@@ -507,7 +503,7 @@ describe("shapes the registry and the store can really produce", () => {
   test("a thrown non-Error still names the failure", async () => {
     const out = await persistSweep(
       {
-        prepare() {
+        run() {
           throw "a bare string";
         },
       },
@@ -524,22 +520,14 @@ describe("shapes the registry and the store can really produce", () => {
     assert.match(String(out.reason), /a bare string/);
   });
 
-  test("a driver returning no results key reads as unswept", async () => {
-    const db = {
-      prepare: () => ({
-        bind: () => ({ all: async () => ({}) }),
-        all: async () => ({}),
-      }),
-    };
-    assert.equal(await loadSweepRecord(db, 64), null);
-  });
+  // "a driver returning no results key" retired with the D1 envelope
+  // (#10309): query() answers rows directly, so there is no envelope whose
+  // absence needs a reading. The unswept case is the empty array, pinned
+  // above.
 
   test("a row with no verdict reads as null, not as a finding", async () => {
     const db = {
-      prepare: () => ({
-        bind: () => ({ all: async () => ({ results: [{ swept_at: NOW }] }) }),
-        all: async () => ({ results: [{ swept_at: NOW }] }),
-      }),
+      query: async <T>() => [{ swept_at: NOW }] as T[],
     };
     const out = await loadSweepRecord(db, 64);
     assert.equal(out?.verdict, null);
@@ -617,13 +605,8 @@ describe("consuming a sweep batch", () => {
   }
 
   const store = () => ({
-    prepare: () => ({
-      bind: () => ({
-        run: async () => undefined,
-        all: async () => ({ results: [] }),
-      }),
-      all: async () => ({ results: [] }),
-    }),
+    run: async () => ({ changes: 1 }),
+    query: async <T>() => [] as T[],
   });
 
   const deps = (
@@ -876,13 +859,8 @@ describe("the last of the queue shapes", () => {
         },
       ],
       {
-        prepare: () => ({
-          bind: () => ({
-            run: async () => undefined,
-            all: async () => ({ results: [] }),
-          }),
-          all: async () => ({ results: [] }),
-        }),
+        run: async () => ({ changes: 1 }),
+        query: async <T>() => [] as T[],
       },
       {
         fetchText: async () => null,

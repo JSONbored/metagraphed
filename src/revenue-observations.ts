@@ -35,14 +35,11 @@ export const REVENUE_PROBE_FAILURES_TABLE = "revenue_probe_failures";
 
 type Row = Record<string, unknown>;
 
+/** The minimal producer-store surface used here (src/producer-store.ts),
+ * structural so tests can inject a plain object. */
 export interface RevenueStoreDb {
-  prepare(sql: string): {
-    bind(...args: unknown[]): {
-      run?(): Promise<unknown>;
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
-  batch?(statements: unknown[]): Promise<unknown>;
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  run?(text: string, values?: unknown[]): Promise<{ changes: number }>;
 }
 
 /**
@@ -72,7 +69,7 @@ export async function persistRevenueProbe(
   retryable: boolean;
   reason?: string;
 }> {
-  if (!db?.prepare) {
+  if (!db?.run) {
     // Nothing was recorded, so the next delivery is the only chance this work
     // gets. Retryable even though a missing binding will not fix itself: the
     // alternative is acking work that left no trace anywhere.
@@ -97,17 +94,15 @@ export async function persistRevenueProbe(
     // Appending instead would grow ~30 rows per surface per tick and make the
     // serving read a per-period argmax over duplicates.
     for (const o of observations) {
-      await db
-        .prepare(
-          `INSERT INTO ${REVENUE_OBSERVATIONS_TABLE}` +
-            ` (surface_id, netuid, period, grain, amount, currency, provenance, response_hash, observed_at)` +
-            ` VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)` +
-            ` ON CONFLICT (surface_id, period) DO UPDATE SET` +
-            ` amount = EXCLUDED.amount, currency = EXCLUDED.currency,` +
-            ` grain = EXCLUDED.grain, provenance = EXCLUDED.provenance,` +
-            ` response_hash = EXCLUDED.response_hash, observed_at = EXCLUDED.observed_at`,
-        )
-        .bind(
+      await db.run(
+        `INSERT INTO ${REVENUE_OBSERVATIONS_TABLE}` +
+          ` (surface_id, netuid, period, grain, amount, currency, provenance, response_hash, observed_at)` +
+          ` VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)` +
+          ` ON CONFLICT (surface_id, period) DO UPDATE SET` +
+          ` amount = EXCLUDED.amount, currency = EXCLUDED.currency,` +
+          ` grain = EXCLUDED.grain, provenance = EXCLUDED.provenance,` +
+          ` response_hash = EXCLUDED.response_hash, observed_at = EXCLUDED.observed_at`,
+        [
           o.surface_id,
           o.netuid,
           o.period,
@@ -117,21 +112,19 @@ export async function persistRevenueProbe(
           o.provenance,
           o.response_hash,
           o.observed_at,
-        )
-        .run?.();
+        ],
+      );
     }
     // A fetch that failed is recorded as a failure, never as a zero. The
     // primary key is (surface_id, observed_at), so a retried tick at the same
     // millisecond updates rather than erroring the pass.
     for (const f of failures) {
-      await db
-        .prepare(
-          `INSERT INTO ${REVENUE_PROBE_FAILURES_TABLE}` +
-            ` (surface_id, netuid, reason, observed_at) VALUES (?, ?, ?, ?)` +
-            ` ON CONFLICT (surface_id, observed_at) DO UPDATE SET reason = EXCLUDED.reason`,
-        )
-        .bind(f.surface_id, f.netuid, f.reason, f.observed_at)
-        .run?.();
+      await db.run(
+        `INSERT INTO ${REVENUE_PROBE_FAILURES_TABLE}` +
+          ` (surface_id, netuid, reason, observed_at) VALUES (?, ?, ?, ?)` +
+          ` ON CONFLICT (surface_id, observed_at) DO UPDATE SET reason = EXCLUDED.reason`,
+        [f.surface_id, f.netuid, f.reason, f.observed_at],
+      );
     }
   } catch (error) {
     return {
@@ -302,21 +295,18 @@ export async function loadRevenueObservations(
   netuid: number | null,
   { limit = 4000 }: { limit?: number } = {},
 ): Promise<Map<string, RevenueObservation[]> | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
     const where =
       netuid === null
         ? `WHERE currency = 'USD'`
         : `WHERE netuid = ? AND currency = 'USD'`;
-    const statement = db
-      .prepare(
-        `SELECT surface_id, period, amount, response_hash, observed_at` +
-          ` FROM ${REVENUE_OBSERVATIONS_TABLE} ${where}` +
-          ` ORDER BY period DESC LIMIT ${Number(limit)}`,
-      )
-      .bind(...(netuid === null ? [] : [netuid]));
-    const res = await statement.all?.();
-    const rows = (res?.results ?? []) as Row[];
+    const rows = await db.query<Row>(
+      `SELECT surface_id, period, amount, response_hash, observed_at` +
+        ` FROM ${REVENUE_OBSERVATIONS_TABLE} ${where}` +
+        ` ORDER BY period DESC LIMIT ${Number(limit)}`,
+      netuid === null ? [] : [netuid],
+    );
     const bySurface = new Map<string, RevenueObservation[]>();
     for (const row of rows) {
       const surface_id = String(row.surface_id ?? "");

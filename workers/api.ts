@@ -3,10 +3,7 @@ import {
   CHAIN_CONCENTRATION_DAILY_TABLE,
   rollupChainConcentration,
 } from "../src/chain-concentration-rollup.ts";
-import {
-  createPgStatementClient,
-  storeBoolean,
-} from "../src/pg-statement-client.ts";
+import { createProducerStore, storeBoolean } from "../src/producer-store.ts";
 import {
   API_ROUTES,
   PUBLIC_ARTIFACTS,
@@ -2468,7 +2465,7 @@ function producerStore(
   if (!env.HYPERDRIVE?.connectionString) {
     return { db: undefined, close: () => undefined };
   }
-  const pg = createPgStatementClient(env.HYPERDRIVE!.connectionString);
+  const pg = createProducerStore(env.HYPERDRIVE!.connectionString);
   return {
     db: pg,
     close: () => ctx?.waitUntil?.(pg.close()),
@@ -4723,15 +4720,14 @@ function emissionGateSyncBodyError(parsed: unknown): string | null {
   return null;
 }
 
-/** The producer store's read surface, as this lane uses it. */
-type ProducerDb = ReturnType<typeof createPgStatementClient>;
+/** The producer store's surface, as this lane uses it. */
+type ProducerDb = ReturnType<typeof createProducerStore>;
 
 async function emissionGateSyncRows(
   db: ProducerDb,
   sql: string,
 ): Promise<Row[]> {
-  const outcome = await db.prepare(sql).all();
-  return (outcome?.results ?? []) as Row[];
+  return await db.query<Row>(sql);
 }
 
 /** Every table this lane writes. All three or none: one sync derives all three
@@ -4878,49 +4874,46 @@ async function handleEmissionGateSync(
     ];
 
     const statements = [
-      ...paramChanges.map((change) =>
-        db
-          .prepare(EMISSION_GATE_INSERT_PARAM_SQL)
-          .bind(
-            change.param,
-            change.value,
-            change.previous_value,
-            change.source,
-            change.block_number,
-            change.observed_at,
-            flag(change.predates_capture),
-          ),
-      ),
-      ...enabledChanges.map((change) =>
-        db
-          .prepare(EMISSION_GATE_INSERT_ENABLED_SQL)
-          .bind(
-            change.netuid,
-            flag(change.enabled),
-            flag(change.previous_enabled),
-            change.block_number,
-            change.observed_at,
-            flag(change.predates_capture),
-          ),
-      ),
-      ...flowEvents.map((event) =>
-        db
-          .prepare(EMISSION_GATE_INSERT_FLOW_SQL)
-          .bind(
-            event.item,
-            event.netuid,
-            flag(event.is_set),
-            event.ema_block,
-            event.block_number,
-            event.observed_at,
-            flag(event.predates_capture),
-          ),
-      ),
+      ...paramChanges.map((change) => ({
+        text: EMISSION_GATE_INSERT_PARAM_SQL,
+        values: [
+          change.param,
+          change.value,
+          change.previous_value,
+          change.source,
+          change.block_number,
+          change.observed_at,
+          flag(change.predates_capture),
+        ],
+      })),
+      ...enabledChanges.map((change) => ({
+        text: EMISSION_GATE_INSERT_ENABLED_SQL,
+        values: [
+          change.netuid,
+          flag(change.enabled),
+          flag(change.previous_enabled),
+          change.block_number,
+          change.observed_at,
+          flag(change.predates_capture),
+        ],
+      })),
+      ...flowEvents.map((event) => ({
+        text: EMISSION_GATE_INSERT_FLOW_SQL,
+        values: [
+          event.item,
+          event.netuid,
+          flag(event.is_set),
+          event.ema_block,
+          event.block_number,
+          event.observed_at,
+          flag(event.predates_capture),
+        ],
+      })),
     ];
-    // db.batch([]) is a D1 error, and a no-change run (the common case, the
-    // whole reason the differs exist) produces exactly that.
+    // A no-change run (the common case, the whole reason the differs exist)
+    // has nothing to write, so it opens no transaction at all.
     if (statements.length > 0) {
-      await db.batch(statements);
+      await db.transaction(statements);
     }
 
     // The alertable list rides back to the script so its stderr ALERT +

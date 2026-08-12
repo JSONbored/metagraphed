@@ -533,7 +533,7 @@ describe("the deny-list is honest", () => {
     //
     // Every declared column must be guarded. The reverse does NOT have to
     // hold: BOOLEAN_COLUMNS also lists columns whose only writer is a
-    // storeBoolean call in src/pg-statement-client.ts, and dropping those from the
+    // storeBoolean call in src/producer-store.ts, and dropping those from the
     // deny-list because no plan happens to name them is how one goes
     // unguarded.
     const declared = new Set<string>();

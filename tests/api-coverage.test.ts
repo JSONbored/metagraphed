@@ -5,7 +5,7 @@ import { afterEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
-// src/read-store.ts and src/pg-statement-client.ts -- neither of which a
+// src/read-store.ts and src/producer-store.ts -- neither of which a
 // `handleRequest(request, env, ctx)` or `handleScheduled(...)` caller can
 // inject into. Mocking the module is the seam; see tests/helpers/pg-mock.ts
 // for why, and for why the controller has to be built inside vi.hoisted.
@@ -3031,7 +3031,7 @@ describe("health trends store error handling", () => {
 
   // "bulk route treats a D1 response without results as empty" was DELETED
   // here. Its subject was D1's `{ results }` envelope arriving without the
-  // key; on Postgres src/pg-statement-client.ts constructs that envelope itself from
+  // key; on Postgres the store client answers rows the handler envelopes itself from
   // `res.rows ?? []`, so the shape it guarded against cannot occur and the
   // test could only have been restated as "an empty read is an empty payload"
   // -- which the two cases above already cover.
@@ -3301,7 +3301,7 @@ describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
     ])
       await db.exec(fs.readFileSync(f, "utf8"));
     // REAL POSTGRES, on the real Neon DDL, standing behind the pg double --
-    // producerStore builds its own `createPgStatementClient` handle from
+    // producerStore builds its own `createProducerStore` handle from
     // env.HYPERDRIVE, so there is nothing to inject (#10328).
     //
     // This is the case that most needed it. The SQLite fixture this replaced

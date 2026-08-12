@@ -307,17 +307,13 @@ describe("checking one origin", () => {
 describe("the store", () => {
   function db(sink: { sql: string; binds: unknown[] }[], rows: unknown[] = []) {
     return {
-      prepare(sql: string) {
-        return {
-          bind(...binds: unknown[]) {
-            sink.push({ sql, binds });
-            return {
-              run: async () => undefined,
-              all: async () => ({ results: rows }),
-            };
-          },
-          all: async () => ({ results: rows }),
-        };
+      async run(sql: string, binds: unknown[] = []) {
+        sink.push({ sql, binds });
+        return { changes: 1 };
+      },
+      async query<T>(sql: string, binds: unknown[] = []) {
+        sink.push({ sql, binds });
+        return rows as T[];
       },
     };
   }
@@ -354,7 +350,7 @@ describe("the store", () => {
   test("a write failure is reported rather than swallowed", async () => {
     const out = await persistOriginCheck(
       {
-        prepare() {
+        run() {
           throw new Error("relation does not exist");
         },
       },
@@ -390,7 +386,7 @@ describe("the store", () => {
     assert.equal(await loadDeadOrigins(null), null);
     assert.equal(
       await loadDeadOrigins({
-        prepare() {
+        query() {
           throw new Error("store unavailable");
         },
       }),
@@ -559,7 +555,7 @@ describe("shapes the store can really produce", () => {
   test("a thrown non-Error still names the failure", async () => {
     const out = await persistOriginCheck(
       {
-        prepare() {
+        run() {
           throw "a bare string";
         },
       },
@@ -574,22 +570,13 @@ describe("shapes the store can really produce", () => {
     assert.match(String(out.reason), /a bare string/);
   });
 
-  test("a driver returning no results key reads as nothing dead", async () => {
-    const db = {
-      prepare: () => ({
-        bind: () => ({ all: async () => ({}) }),
-        all: async () => ({}),
-      }),
-    };
-    assert.deepEqual(await loadDeadOrigins(db), []);
-  });
+  // "a driver returning no results key" retired with the D1 envelope
+  // (#10309): query() answers rows directly, so there is no envelope whose
+  // absence needs a reading. The nothing-dead case is the empty array.
 
   test("a row with no origin or verdict still reads without inventing one", async () => {
     const db = {
-      prepare: () => ({
-        bind: () => ({ all: async () => ({ results: [{}] }) }),
-        all: async () => ({ results: [{}] }),
-      }),
+      query: async <T>() => [{}] as T[],
     };
     const out = await loadDeadOrigins(db);
     assert.equal(out?.[0].origin, "");
@@ -680,13 +667,8 @@ describe("consuming an origin batch", () => {
   }
 
   const store = () => ({
-    prepare: () => ({
-      bind: () => ({
-        run: async () => undefined,
-        all: async () => ({ results: [] }),
-      }),
-      all: async () => ({ results: [] }),
-    }),
+    run: async () => ({ changes: 1 }),
+    query: async <T>() => [] as T[],
   });
 
   const deps = (over: Record<string, unknown> = {}) => ({
