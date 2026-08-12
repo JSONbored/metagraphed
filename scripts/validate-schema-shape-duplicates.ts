@@ -180,35 +180,33 @@ function schemaFiles(): string[] {
 /**
  * The count this gate holds the line at, and it only goes DOWN.
  *
- * A RATCHET, not a rule, and MEASURED rather than assumed.
- * `scripts/report-shape-duplicate-drift.ts` compares each duplicated
- * vocabulary field by field, and the answer decides which pile the pair lands
- * in:
+ * **42 to 1.** Every duplicated object vocabulary in `schemas-src/` has been
+ * collapsed, and `scripts/report-shape-duplicate-drift.ts` is what made that
+ * safe: it compares each pair field by field, so a mechanical collapse was
+ * never confused with a contract change. Some became a shared const, some a
+ * FACTORY where the shape was one vocabulary and the measure was not
+ * (`distributionStatsSchema`, `subnetHistoryArtifactSchema`,
+ * `subnetEntryListSchema`), and four were the #10064 derivation idiom that this
+ * gate used to misread as duplication until it learned that
+ * `Route.shape.field` is a borrowing rather than a second opinion.
  *
- *   IDENTICAL  a mechanical collapse. #10790 did all of them -- `auth`,
- *              `revenue`, the entity label whose two copies each told the
- *              other to "keep both in sync", the social-links block, and the
- *              GitHub release shape written out three times byte for byte.
- *   DIVERGENT  42 remain, and NOT ONE is mechanical. The two declarations
- *              disagree about at least one field, so collapsing means choosing
- *              which side is right -- a published-contract decision per field,
- *              not a cleanup.
+ * ONE REMAINS, and it is not duplication:
  *
- * What that disagreement looks like, from the report:
+ *   {limit, since, tag, until}
+ *     schemas-src/route-queries.ts       FEED_QUERY_SCHEMAS.common
+ *     schemas-src/mcp-tools/feed.ts      GetFeedOutput.filters
  *
- *   limit         `limitSchema(1000, 20)` against `limitSchema(100, 20)` --
- *                 collapsing changes the page a caller may ask for.
- *   captured_at   `z.string()` against `z.iso.datetime()`.
- *   recent_events required on one side, `.optional()` on the other.
- *   netuid        the network-wide list's optional FILTER against the
- *                 subnet-scoped list's required SUBJECT. Same name, same key
- *                 set, different field -- and collapsing those two would be
- *                 actively wrong.
+ * The first is what a caller may SEND -- `since` accepts a bare date, `limit`
+ * carries the route's ceiling. The second is what the response ECHOES BACK:
+ * the filters as applied, `since` already resolved to an instant. Same four
+ * names, opposite directions, different value spaces. Collapsing them would
+ * either make the echo reject a value the handler legitimately produced or
+ * make the input accept anything the echo can carry -- which is the input/
+ * output conflation #10790 was explicitly told to keep separate.
  *
- * So the mechanism lands with the measurement beside it, and the backlog is
- * worked with data rather than by hand. Run `npm run report:shape-duplicates`.
+ * So the ceiling is 1, and it is a rule in all but name.
  */
-const CEILING = 42;
+const CEILING = 1;
 
 function main(): void {
   const files = schemaFiles();

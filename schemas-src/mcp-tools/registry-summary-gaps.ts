@@ -6,13 +6,12 @@
 // array). None mirror an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { GAP_REVIEW_FILTERS } from "./enrichment-evidence-and-targets.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { RegistrySummaryArtifactSchema } from "../routes/registry-summary-leaderboards.ts";
 import {
-  reviewStateSchema,
   McpListPageFields,
   McpSubnetListArtifactStamp,
-  kindSchema,
   limitSchema,
   netuidSchema,
   projectableRows,
@@ -21,8 +20,6 @@ import {
   McpSortableListPage,
 } from "./shared.ts";
 import { SubnetGapsArtifactSchema } from "../routes/review-gaps-profile.ts";
-import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
-import { CURATION_LEVEL_VALUES } from "../shared.ts";
 import {
   AgentReadinessBlockerSchema,
   CoverageDepthDimensionsSchema,
@@ -201,23 +198,13 @@ export const GetSubnetGapsOutputSchema = z
   .strict();
 export type GetSubnetGapsOutput = z.infer<typeof GetSubnetGapsOutputSchema>;
 
-const CURATION_LEVELS = CURATION_LEVEL_VALUES;
-const SURFACE_KINDS = SURFACE_KIND_VALUES;
 // The REST route pages this artifact through the review-gap-priorities
 // collection (rows live under `priorities`), not the network-wide `gaps`
 // collection -- same sort fields as list_review_gaps (batch 10, #8074).
 export const ListSubnetGapsInputSchema = z
   .object({
     netuid: netuidSchema(),
-    curation_level: kindSchema(CURATION_LEVELS).optional(),
-    missing_kinds: z
-      .enum(SURFACE_KINDS)
-      .optional()
-      .describe(
-        "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
-      )
-      .meta({ examples: [SURFACE_KINDS[0]] }),
-    review_state: reviewStateSchema().optional(),
+    ...GAP_REVIEW_FILTERS,
     sort: sortSchema(
       API_QUERY_COLLECTIONS["review-gap-priorities"].sort_fields,
     ).optional(),

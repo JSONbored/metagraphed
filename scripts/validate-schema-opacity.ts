@@ -86,6 +86,11 @@ const ROUTE_OPEN_SITES: Record<string, string> = {
   // that shape, not us. Empty on every published route -- the API is public --
   // and declared rather than left undescribed since #10790.
   "OpenApiArtifact.security[]": EMBEDDED_JSON_SCHEMA,
+  // Reachable since #10790 collapsed the account-scoped extrinsic feed onto the
+  // network-wide route's `ExtrinsicSchema`. It was `z.unknown()` before -- which
+  // is not an OPEN OBJECT, so this gate could not see it, and which described
+  // the payload less than the open record does.
+  "AccountExtrinsicsArtifact.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
   "BlockChainEventsArtifact.events[].args": DECODED_CHAIN_PAYLOAD,
   "BlockExtrinsicsArtifact.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
   "ChainEventsFeedArtifact.events[].args": DECODED_CHAIN_PAYLOAD,
@@ -128,6 +133,7 @@ const MCP_REASONED_OPEN_SITES: Record<string, string> = {
   // before -- which is not an OPEN OBJECT, so this gate could not see them,
   // and which described the payload less than the open record does. Same blob
   // as the REST entries above, same reason.
+  "get_account_extrinsics.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
   "get_block_chain_events.events[].args": DECODED_CHAIN_PAYLOAD,
   "get_extrinsic_chain_events.events[].args": DECODED_CHAIN_PAYLOAD,
   "get_api_schema.document": EMBEDDED_THIRD_PARTY_DOCUMENT,
