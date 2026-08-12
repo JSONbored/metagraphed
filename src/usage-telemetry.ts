@@ -86,6 +86,21 @@ export const USAGE_ACCOUNT_NAMESPACE = "account:";
 export const USAGE_ANONYMOUS_NAMESPACE = "ip:";
 
 /**
+ * The namespace a calling Worker is counted under.
+ *
+ * A Worker-to-Worker subrequest carries no client address and is still a
+ * caller. `cf-worker` is set by Cloudflare rather than by the sender, so it is
+ * trustworthy and low-cardinality (one value per calling Worker) -- the same
+ * reason `resolveUsageClient` already trusts it for the `client` dimension.
+ *
+ * Never a person: it is a piece of software, and #9004 found one such caller
+ * (`zeronode.workers.dev`) accounting for 82% of `block-detail` -- so this
+ * namespace can be high-VOLUME while staying tiny in cardinality, which is
+ * exactly the shape that must not mint profiles.
+ */
+export const USAGE_WORKER_NAMESPACE = "worker:";
+
+/**
  * Worker secret holding the salt for the anonymous-caller hash.
  *
  * UNSET IS A SUPPORTED STATE, and it degrades to the pre-#10606 behaviour:
@@ -730,6 +745,17 @@ export function resolvePostHogHost(env: Env | null | undefined): string {
 
 function sanitizeLabel(value: unknown): string | undefined {
   return trimToLength(value, MAX_LABEL_CHARS);
+}
+
+/**
+ * Bound a caller-derived label before it becomes a distinct_id.
+ *
+ * Exported because `resolveUsageDistinctId` builds the `worker:` id in
+ * workers/api.ts, and an unbounded id is an unbounded property on an event
+ * this project emits ~1.1M times a day.
+ */
+export function sanitizeUsageLabel(value: unknown): string {
+  return sanitizeLabel(value) ?? "unknown";
 }
 
 // ─── $mcp_error_type projection (#8963) ────────────────────────────────────

@@ -151,7 +151,9 @@ import {
   parseUserAgentClient,
   statusClassOf,
   anonymousUsageDistinctId,
+  sanitizeUsageLabel,
   USAGE_ACCOUNT_NAMESPACE,
+  USAGE_WORKER_NAMESPACE,
   type UsageEvent,
 } from "../src/usage-telemetry.ts";
 import {
@@ -1647,8 +1649,30 @@ async function resolveUsageDistinctId(
   // a count built on that reads as "one caller" exactly the way the shared
   // fallback already did -- except now it looks specific. So an unresolved
   // address falls back to the shared id, which at least says so.
-  if (ip === ANONYMOUS_CLIENT_KEY) return undefined;
-  return anonymousUsageDistinctId(salt, ip);
+  if (ip !== ANONYMOUS_CLIENT_KEY) {
+    return anonymousUsageDistinctId(salt, ip);
+  }
+  // #10606: a Worker-to-Worker subrequest has no client address and IS a
+  // caller. `cf-worker` is set by Cloudflare, not by the sender, so it is
+  // trustworthy and low-cardinality -- one value per calling Worker -- and
+  // `resolveUsageClient` above already trusts it for the `client` dimension
+  // for exactly that reason.
+  //
+  // RANKED BELOW THE ADDRESS, matching `resolveUsageClient`'s own precedence:
+  // a Worker proxying a browser forwards the end user's `cf-connecting-ip`,
+  // and the person behind the proxy is the more interesting caller than the
+  // proxy. Only when there is no address at all does the calling Worker
+  // become the best available answer.
+  //
+  // Worth having rather than collapsing to the shared id: #9004 found ONE
+  // Worker (`zeronode.workers.dev`) was 82% of `block-detail`, which was in
+  // turn the largest route in the project -- a caller that dominated the
+  // traffic and could not be counted.
+  const callingWorker = request.headers.get("cf-worker");
+  if (callingWorker) {
+    return `${USAGE_WORKER_NAMESPACE}${sanitizeUsageLabel(callingWorker)}`;
+  }
+  return undefined;
 }
 
 /**

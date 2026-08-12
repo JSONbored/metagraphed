@@ -1281,3 +1281,71 @@ describe("withUsageTelemetry — chain-firehose cap attribution", () => {
     assert.equal("errorCode" in (spy.events.at(-1)?.event ?? {}), false);
   });
 });
+
+// ── A calling Worker is a caller (#10606) ──────────────────────────────────
+//
+// A Worker-to-Worker subrequest carries no `cf-connecting-ip`, so it fell
+// through to the shared id — and #9004 found ONE such caller
+// (`zeronode.workers.dev`) was 82% of `block-detail`, the largest route in the
+// project. A caller that dominates the traffic and cannot be counted is the
+// exact gap this namespace closes.
+describe("withUsageTelemetry — the calling Worker", () => {
+  const SALTED_ENV = {
+    ...CONFIGURED_ENV,
+    USAGE_DISTINCT_ID_SALT: "test-salt-not-a-real-secret",
+  };
+
+  async function idFor(headers: Record<string, string>) {
+    const spy = recorder();
+    const ctx = fakeCtx();
+    await withUsageTelemetry(
+      req("/api/v1/subnets", { headers }),
+      SALTED_ENV as unknown as Env,
+      ctx,
+      async () => new Response("ok"),
+      spy,
+    );
+    await Promise.all(ctx.scheduled);
+    return (spy.events[0]?.deps as { distinctId?: string } | undefined)
+      ?.distinctId;
+  }
+
+  test("a subrequest with no address is counted as its Worker", async () => {
+    assert.equal(
+      await idFor({ "cf-worker": "zeronode.workers.dev" }),
+      "worker:zeronode.workers.dev",
+    );
+  });
+
+  test("an address outranks the calling Worker", async () => {
+    // A Worker proxying a browser forwards the end user's cf-connecting-ip,
+    // and the person behind the proxy is the more interesting caller — the
+    // same precedence resolveUsageClient already applies to `client`.
+    const id = await idFor({
+      "cf-worker": "proxy.workers.dev",
+      "cf-connecting-ip": "203.0.113.7",
+    });
+    assert.match(String(id), /^ip:[0-9a-f]{16}$/);
+  });
+
+  test("two Workers are two callers", async () => {
+    assert.notEqual(
+      await idFor({ "cf-worker": "a.workers.dev" }),
+      await idFor({ "cf-worker": "b.workers.dev" }),
+    );
+  });
+
+  test("neither an address nor a Worker still falls back", async () => {
+    assert.equal(await idFor({}), undefined);
+  });
+
+  test("a Worker is never a person", async () => {
+    // It is software. High volume, tiny cardinality — exactly the shape that
+    // must not mint profiles.
+    const { assignUsagePersonProcessing } =
+      await import("../src/usage-telemetry.ts");
+    const properties: Record<string, unknown> = {};
+    assignUsagePersonProcessing(properties, "worker:zeronode.workers.dev");
+    assert.equal(properties.$process_person_profile, false);
+  });
+});
