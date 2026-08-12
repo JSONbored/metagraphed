@@ -20,6 +20,9 @@ import {
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { storeAll } from "./analytics-live.ts";
 import { readStore } from "./read-store.ts";
+// The one table latestIdentityHashes reads (#10700), declared where every
+// other read-store table set is.
+import { SUBNET_IDENTITY_HISTORY_TABLES } from "./read-store-tables.ts";
 
 /** The one table latestBlockNumber reads. Declared so readStore can refuse when
  * Neon does not own it, rather than reading a store that has no such table. */
@@ -185,33 +188,59 @@ function rowNetuid(value: unknown): number | null {
 // query D1's own subnet_identity_history directly; now reads the same latest-
 // per-netuid hash via the Postgres-backed internal endpoint (workers/data-
 // api.ts's /api/v1/internal/subnet-identity-latest-hashes), reusing
-// METAGRAPH_SUBNET_IDENTITY_SOURCE (same table, already flipped to postgres).
-// An unavailable/off tier degrades to an empty map -- every profile then
-// reads as "changed" for that one run, the same degrade recordSubnetIdentity
-// Changes already tolerates on a cold table.
+// the same table DIRECTLY (see latestIdentityHashes below): no flag, no
+// forward. METAGRAPH_SUBNET_IDENTITY_SOURCE is back to "retired" and reads
+// nowhere (#10893), so a tier read here would decline unconditionally. An
+// unreadable store degrades to an empty map -- every profile then reads as
+// "changed" for that one run, the same degrade recordSubnetIdentityChanges
+// already tolerates on a cold table.
 /**
- * THERE IS NO BASELINE, and saying so is the point (#10700).
+ * THE BASELINE: the newest identity hash per netuid (#10700).
  *
- * This read `tryDataApiTier(..., "METAGRAPH_SUBNET_IDENTITY_SOURCE")` and
- * derived the map from `pg?.hashes`. That flag reads "retired" in every deployed
- * config and is absent from FORWARDABLE_TIER_FLAGS, so the tier resolved to null
- * on every call, `pg?.hashes` was always undefined, and the `|| []` absorbed it
- * without a throw, a log or a degraded marker. The map has been empty in
- * production ever since the flag was retired.
+ * WAS AN EMPTY MAP, and the emptiness was load-bearing in the worst way. The
+ * original read went through `tryDataApiTier(...,
+ * "METAGRAPH_SUBNET_IDENTITY_SOURCE")`, a flag that reads "retired" in every
+ * deployed config and is absent from FORWARDABLE_TIER_FLAGS, so the tier
+ * resolved to null on every call and `pg?.hashes` was always undefined --
+ * absorbed by a `|| []` with no throw, no log and no degraded marker. #10190
+ * removed the dead read and left the empty Map behind with this note, because
+ * removing it does not change behaviour: `recordSubnetIdentityChanges` diffs
+ * against this map, so an empty one makes EVERY subnet look changed on every
+ * tick and the prober publishes that count (~129 phantom changes an hour).
  *
- * The dead read is removed rather than kept as decoration, because it made this
- * look like a source that might answer. It never did. The CONSEQUENCE is filed
- * as #10700: `recordSubnetIdentityChanges` diffs against this map, so an empty
- * one makes every subnet look changed on every tick, and the prober publishes
- * that count. Removing the read does not change that behaviour -- it makes it
- * visible, which is the prerequisite for fixing it.
+ * A DIRECT STORE READ, not a restored tier forward -- the move
+ * src/health-status-live.ts made for the same reason, and the one
+ * `latestBlockNumber` below already makes for `blocks_head`. The table is a
+ * Neon table with a live writer since #10740 (the chain-direct poller lane,
+ * hourly), it is declared in SUBNET_IDENTITY_HISTORY_TABLES, and reading it
+ * needs no flag: `readStore` refuses when the binding is absent, which is the
+ * only question a read here actually has.
  *
- * A real baseline wants a direct read of the latest hash per netuid from
- * `subnet_identity_history` (a Neon table), the move src/health-status-live.ts
- * already made when it stopped going through tryDataApiTier for the same reason.
+ * DISTINCT (netuid) ON, ordered newest-first, so one row per subnet comes back
+ * -- the same latest-per-netuid shape the deleted internal endpoint returned.
+ *
+ * Still degrades to an empty Map rather than throwing: no binding, an
+ * undeclared table or an unreadable query all mean "no baseline this tick",
+ * which is the state that existed before -- and the caller already treats a
+ * read failure as its own outcome (`read_failed`) rather than as "unchanged".
  */
-async function latestIdentityHashes(): Promise<Map<number, unknown>> {
-  return new Map<number, unknown>();
+async function latestIdentityHashes(env: Env): Promise<Map<number, unknown>> {
+  const rows = await storeAll(
+    readStore(env, SUBNET_IDENTITY_HISTORY_TABLES) as never,
+    "SELECT DISTINCT ON (netuid) netuid, identity_hash FROM subnet_identity_history " +
+      "ORDER BY netuid, observed_at DESC, id DESC",
+    [],
+  );
+  const byNetuid = new Map<number, unknown>();
+  for (const row of rows as Row[]) {
+    const netuid = Number(row?.netuid);
+    // A row whose netuid is unusable cannot be matched against a profile, and
+    // seeding it under NaN would make one subnet's baseline unreachable while
+    // looking present in the map's size.
+    if (!Number.isSafeInteger(netuid)) continue;
+    byNetuid.set(netuid, row?.identity_hash ?? null);
+  }
+  return byNetuid;
 }
 
 /**
