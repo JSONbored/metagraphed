@@ -74,7 +74,7 @@ import { repoRoot } from "./lib.ts";
  * being separate declarations. A deletion this time, and the RIGHT kind --
  * nothing lost, because the thing deleted was a copy.
  */
-export const MAX_UNREFERENCED_EXPORTS: number = 734;
+export const MAX_UNREFERENCED_EXPORTS: number = 733;
 
 /** knip's JSON shape, as much of it as this gate reads. */
 interface KnipIssue {
