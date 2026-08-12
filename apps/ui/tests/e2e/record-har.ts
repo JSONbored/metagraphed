@@ -15,12 +15,30 @@
 // incidents-feed overflow that sat undetected for ~14h until unrelated data
 // changed underneath it).
 //
-// Run after starting a dev server (`npm run dev --workspace=apps/ui`), and
-// re-run whenever a page's real API surface changes (new query, new
+// RECORD AGAINST THE SERVER THE SPEC USES, which is the one
+// playwright.config.ts starts: `node tests/e2e/serve-e2e.ts $PORT` over a
+// built worker bundle (`npm run build:worker` first), NOT `vite dev`.
+//
+// That distinction is not pedantry -- it is how this drifted (#10938).
+// Measured 2026-08-12: under `vite dev` the /chain/analytics page issues
+// ZERO `/api/v1/` requests (the shell renders, no query fires), so a
+// recording made the documented way produced an EMPTY har; under the e2e
+// server the same page issues 14, four of which the committed fixture
+// lacked. With `notFound: "abort"` those four aborted, the page rendered its
+// error state, and main went red on a backend-only commit.
+//
+//   npm run build:worker --workspace=apps/ui
+//   node tests/e2e/serve-e2e.ts 8080 &        # the port playwright.config uses
+//   npm run test:e2e:record-har --workspace=apps/ui
+//
+// The PORT is the same either way, which is exactly why the mistake is easy:
+// `npm run dev` also listens on 8080, and a recording made against it looks
+// like it worked.
+//
+// Re-run whenever a page's real API surface changes (new query, new
 // endpoint) -- a stale HAR makes the replayed test abort loudly on a
-// request that isn't in the recording (notFound: "abort" in the spec),
-// which is the intended signal that a re-record is due, not a silent
-// fall-through back to live data.
+// request that isn't in the recording, which is the intended signal that a
+// re-record is due, not a silent fall-through back to live data.
 import { mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
 import { ROUTES, VIEWPORTS } from "./overflow-check.config.ts";
