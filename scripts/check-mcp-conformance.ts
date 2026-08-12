@@ -169,14 +169,19 @@ export interface ConformanceReport {
   violations: ConformanceViolation[];
 }
 
-async function callTool(name: string, args: Row): Promise<Row> {
+/**
+ * Exported so the tripwire pre-flight (#10789) sweeps production through the
+ * SAME transport, spacing and rate-limit backoff this check uses. Two sweeps
+ * with two call paths would differ on retries first and on results eventually.
+ */
+export async function callTool(name: string, args: Row): Promise<Row> {
   const body = await rpc("tools/call", { name, arguments: args });
   await sleep(CALL_SPACING_MS);
   return body;
 }
 
 /** The tool's structured result, or null when it declined. */
-function structuredOf(body: Row): Row | null {
+export function structuredOf(body: Row): Row | null {
   if (body?.error) return null;
   if (body?.result?.isError) return null;
   const structured = body?.result?.structuredContent;

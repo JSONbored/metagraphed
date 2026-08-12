@@ -57,7 +57,13 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
-const env = createLocalArtifactEnv();
+// THE TRIPWIRE IS ON IN HERE (#10789). The harness already validates every
+// structuredContent against the tool's published outputSchema with ajv; turning
+// the flag on additionally routes all 235 tools through the ENFORCEMENT path
+// itself, on the degraded and cold-tier answers production does not show you
+// when you ask (#10786). A tripwire false-positive is then a loud CI failure
+// rather than something discovered after deploy.
+const env = createLocalArtifactEnv({ METAGRAPH_VALIDATE_RESPONSES: "true" });
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
 // Compile each tool's declared outputSchema once; callOk asserts every

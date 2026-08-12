@@ -175,11 +175,43 @@ const MCP_DEGRADED_BLOCK = z
   .strict()
   .optional();
 
+/**
+ * The Zod a published output schema was emitted FROM, carried on the emitted
+ * object (#10789).
+ *
+ * The response tripwire has to parse a tool's answer against the schema that
+ * describes it, and "which schema describes this tool" must be DERIVED -- the
+ * hand-listed version of this idea (#7860) fell behind the day it landed. Every
+ * tool's output schema passes through `outputJsonSchema` and nowhere else, so
+ * the emitted JSON carries a reference back to its source: a tool registered
+ * tomorrow is covered tonight, with no list to update.
+ *
+ * NON-ENUMERABLE and symbol-keyed, so it does not serialize. `tools/list`
+ * publishes these objects verbatim and a stray property would become part of
+ * the wire contract.
+ */
+const ZOD_SOURCE = Symbol.for("metagraphed.mcp.outputSchemaSource");
+
+/** The Zod behind a published output schema, or null if it came from elsewhere. */
+export function outputSchemaSource(published: unknown): z.ZodType | null {
+  if (!published || typeof published !== "object") return null;
+  const source = (published as Record<symbol, unknown>)[ZOD_SOURCE];
+  return (source as z.ZodType | undefined) ?? null;
+}
+
 export function outputJsonSchema(schema: z.ZodType) {
   const object = schema instanceof z.ZodObject ? schema : null;
   const published =
     object && !("degraded" in object.shape)
       ? object.extend({ degraded: MCP_DEGRADED_BLOCK })
       : schema;
-  return z.toJSONSchema(published, { target: "draft-2020-12" });
+  const json = z.toJSONSchema(published, { target: "draft-2020-12" });
+  // The DEGRADED-EXTENDED schema, not the argument: what the tripwire must
+  // parse against is what the tool publishes, and dispatch can stamp that
+  // block on any result.
+  Object.defineProperty(json, ZOD_SOURCE, {
+    value: published,
+    enumerable: false,
+  });
+  return json;
 }

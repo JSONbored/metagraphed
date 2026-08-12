@@ -20813,6 +20813,59 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.artifacts[0].id, "subnets");
   });
 
+  test("the outbound tripwire REJECTS a drifted result when the flag is on", async () => {
+    // #10789: the MCP half of what REST has done since #7860. Proven to FIRE,
+    // because a tripwire nobody has seen reject anything is indistinguishable
+    // from one wired to nothing -- and this one resolves its schema through a
+    // reference on the emitted object, which is exactly the kind of link that
+    // can go missing without a single test noticing.
+    const deps = makeDeps({
+      "/metagraph/contracts.json": {
+        schema_version: 1,
+        contract_version: "2026-07-03.2",
+        artifacts: [{ id: "subnets", path: "/metagraph/subnets.json" }],
+        leaked_internal_field: "should never reach a caller",
+      },
+    });
+    const res = await callTool(
+      "get_contracts",
+      {},
+      { deps, env: { METAGRAPH_VALIDATE_RESPONSES: "true" } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /response_schema_drift: .*drifted from its published outputSchema/,
+    );
+    // A STABLE CODE, not the generic internal_error every unexpected throw
+    // collapses into: an agent can tell "this answer is not the shape the tool
+    // promised" from "the upstream is down", and only one is worth retrying.
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "response_schema_drift",
+    );
+  });
+
+  test("and SERVES the same drift when the flag is off", async () => {
+    // The other half: the tripwire is gated, so a deployment that has not opted
+    // in behaves exactly as before. Without this, the test above would pass
+    // just as well against a tripwire that ignored the flag entirely.
+    const deps = makeDeps({
+      "/metagraph/contracts.json": {
+        schema_version: 1,
+        contract_version: "2026-07-03.2",
+        artifacts: [{ id: "subnets", path: "/metagraph/subnets.json" }],
+        leaked_internal_field: "should never reach a caller",
+      },
+    });
+    const res = await callTool("get_contracts", {}, { deps });
+    assert.notEqual(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.leaked_internal_field,
+      "should never reach a caller",
+    );
+  });
+
   test("get_contracts reports not_found when the artifact is absent", async () => {
     const res = await callTool("get_contracts", {}, { deps: makeDeps() });
     assert.equal(res.body.result.isError, true);
