@@ -595,6 +595,7 @@ import {
 import {
   NEURON_FIELD_NAMES,
   NEURON_SORT_FIELD_NAMES,
+  SERVING_BOUND,
 } from "../schemas-src/mcp-tools/shared.ts";
 import {
   GetSubnetHistoryInputSchema,
@@ -4100,7 +4101,7 @@ export function validateToolArguments(
   // a filter, a cache-key difference, or a 400 from someone else's API.
   return applyPublishedDefaults(
     tool,
-    clampPublishedLimit(tool, splitMcpIntent(args).rest),
+    clampServingBounds(tool, splitMcpIntent(args).rest),
   );
 }
 
@@ -4207,7 +4208,8 @@ function applyPublishedDefaults(tool: ToolArgumentSource, args: Row): Row {
 }
 
 /**
- * Clamp `limit` to the ceiling the tool itself publishes (#10174).
+ * Clamp every SERVING bound to the ceiling the tool itself publishes
+ * (#10174, marker-driven since the #10780 aftermath).
  *
  * Over-ceiling `limit` used to do two different things depending on which
  * handler an agent happened to reach: 25 tools rejected it -- 15 through the
@@ -4222,26 +4224,39 @@ function applyPublishedDefaults(tool: ToolArgumentSource, args: Row): Row {
  * that miscounts a page size gets an answer instead of an error, and the
  * response already reports the limit actually applied.
  *
- * The ceiling is read from the tool's OWN inputSchema rather than a list kept
- * alongside it, so a tool cannot be added with a bound this does not honour.
- *
- * Deliberately `limit` only. A published `maximum` on an identifier is a
- * validity bound, not a page size: clamping `netuid: 99999` to 65535 would
- * answer a question the caller did not ask, where rejecting it is correct.
+ * WHICH bounds bend is no longer this function's opinion. `limitSchema` and
+ * `offsetSchema` declare it in the published schema itself --
+ * `x-serving-bound: true` (SERVING_BOUND), the keyword #10316 added exactly so
+ * "a policy we may clamp" and "the shape of the value" stop looking alike --
+ * and this reads the declaration off the tool's OWN inputSchema. `netuid:
+ * 99999` stays rejected because a validity bound never carries the marker:
+ * clamping it to 65535 would answer a question the caller did not ask. The
+ * GraphQL dispatch already clamps by the same marker (`isServingBound` in
+ * src/route-query.ts), so the two lenient surfaces now read one declaration
+ * instead of each keeping a private list of names.
  *
  * And deliberately only ABOVE the ceiling. `limit: 0`, a negative, and `1.5`
  * are malformed rather than over-ambitious, and each still reaches the handler
  * that rejects it -- `0` in particular means different things to the three
  * page-size rules (REST floors it to 1, MCP falls back to the tool's default,
  * the row builders honour it as zero), so rewriting it here would flatten a
- * distinction tests/pagination-bound-parity.test.ts exists to keep.
+ * distinction tests/pagination-bound-parity.test.ts exists to keep. (An
+ * over-ceiling `offset` reached its handler's clamp before this ran at
+ * dispatch; same final answer, one mechanism earlier.)
  */
-function clampPublishedLimit(tool: ToolArgumentSource, args: Row): Row {
-  const max = rowOf(tool.inputSchema?.properties?.limit)?.maximum;
-  const value = args?.limit;
-  if (typeof max !== "number" || typeof value !== "number") return args;
-  if (!Number.isInteger(value) || value <= max) return args;
-  return { ...args, limit: max };
+function clampServingBounds(tool: ToolArgumentSource, args: Row): Row {
+  const properties = rowOf(tool.inputSchema?.properties);
+  if (!properties || !args || typeof args !== "object") return args;
+  let clamped: Row | null = null;
+  for (const [name, value] of Object.entries(args)) {
+    const property = rowOf(properties[name]);
+    if (property?.[SERVING_BOUND] !== true) continue;
+    const max = property.maximum;
+    if (typeof max !== "number" || typeof value !== "number") continue;
+    if (!Number.isInteger(value) || value <= max) continue;
+    clamped = { ...(clamped ?? args), [name]: max };
+  }
+  return clamped ?? args;
 }
 
 /**
