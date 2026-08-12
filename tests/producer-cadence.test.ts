@@ -11,6 +11,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  LANE_PRODUCER,
   PRODUCER_CADENCE_SECS,
   cadenceMs,
   missedTicksMs,
@@ -104,6 +105,30 @@ describe("the cadence table", () => {
         `${lane} cadence ${secs} is not a positive integer`,
       );
     }
+  });
+
+  test("every lane the alarm maps names a cadence in this table", () => {
+    // A lane mapped to a producer with no declared cadence falls back to the
+    // OBSERVED gap between its lane_health writes -- and a lane that writes
+    // several verdicts per pass measures intra-pass minutes rather than the
+    // interval between passes. That is how `self-stake` (daily) alarmed at
+    // "stale: 20.2h (producer cadence 3.1h)" on 2026-08-12: a bound roughly
+    // an eighth of the real one, so a healthy lane read stale most of the day.
+    for (const [lane, producer] of Object.entries(LANE_PRODUCER)) {
+      assert.ok(
+        producer in PRODUCER_CADENCE_SECS,
+        `${lane} maps to ${producer}, which has no declared cadence`,
+      );
+    }
+  });
+
+  test("self-stake is declared daily, not inferred", () => {
+    // The specific regression: both spellings must resolve, because the
+    // buffered writer files under the prefixed key and the poller under the
+    // bare one.
+    assert.equal(PRODUCER_CADENCE_SECS.self_stake, 86_400);
+    assert.equal(LANE_PRODUCER["self-stake"], "self_stake");
+    assert.equal(LANE_PRODUCER["neon:self-stake"], "self_stake");
   });
 
   test("hotkey-alpha runs four times less often than account-balances", () => {

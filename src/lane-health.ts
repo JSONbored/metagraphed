@@ -98,6 +98,19 @@ export const RETIRED_LANES: readonly string[] = [
   // test pins this to code rather than to a deleted file: the live writer
   // provably cannot produce the bare key.
   "raw-capture-state",
+  // The SAME #10851 fossil, two more spellings (alerted 2026-08-12, "silent
+  // 21.9h" apiece). Both stopped receiving verdicts at 2026-08-11T23:35Z --
+  // the same instant as each other, which is the signature of a writer that
+  // changed its key rather than of two lanes independently dying -- while
+  // `neon:neurons` and `neon:tao-usd-index` were both `ok` on the same read
+  // ("11 statement(s) flushed", "10 statement(s) flushed", 22:01Z the next
+  // day). Since #10851 every verdict for these lanes lands under the
+  // prefixed key, and nothing else writes the bare ones: unlike
+  // `account-balances` and `validator-nominators`, whose bare names carry the
+  // POLLER's own scan outcome ("558009 scanned, 366107 written") and are
+  // therefore live, these two are written only from inside the Worker.
+  "neurons",
+  "tao-usd-index",
 ];
 
 /**

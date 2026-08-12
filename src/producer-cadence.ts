@@ -96,6 +96,21 @@ export const PRODUCER_CADENCE_SECS = {
    * Revisit once it has run a full day (metagraphed-infra#454).
    */
   subnet_ownership: 300,
+  /**
+   * SELF_STAKE_POLL_SECS -- daily (`20 4 * * *`), one pass of ~64 minutes.
+   *
+   * ABSENT UNTIL NOW, which is the whole defect (alerted 2026-08-12: "lane
+   * self-stake is stale: 20.2h (producer cadence 3.1h)"). With no declared
+   * cadence the alarm fell back to the OBSERVED gap between lane_health
+   * writes -- and this lane writes several verdicts per pass, so the gaps it
+   * measured were intra-pass minutes rather than the day between passes. The
+   * inferred ~187m bound is roughly an eighth of the real interval, so a
+   * perfectly healthy daily lane read `stale` for most of every day.
+   *
+   * Exactly what the floor in this table exists for, and the same trap
+   * `account_identity` hit in #10329 from the other direction.
+   */
+  self_stake: 86_400,
 } as const;
 
 export type ProducerLane = keyof typeof PRODUCER_CADENCE_SECS;
@@ -135,6 +150,8 @@ export const LANE_PRODUCER: Readonly<Record<string, ProducerLane>> = {
   "neon:account-identity": "account_identity",
   "subnet-hyperparams": "subnet_hyperparams",
   "neon:subnet-hyperparams": "subnet_hyperparams",
+  "self-stake": "self_stake",
+  "neon:self-stake": "self_stake",
   "subnet-identity": "subnet_identity",
   "neon:subnet-identity": "subnet_identity",
   // No `neon:` sibling: this lane writes Postgres directly rather than through
