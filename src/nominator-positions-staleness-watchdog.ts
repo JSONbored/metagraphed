@@ -225,7 +225,7 @@ function countOrZero(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): { first(): Promise<unknown> };
   };
@@ -256,7 +256,7 @@ export async function runNominatorPositionsStalenessWatchdog(
   // a frozen D1 copy and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["nominator_positions"]) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

@@ -1926,7 +1926,7 @@ export async function loadSubnetReliability(): Promise<null> {
 // snapshot and replace the embedded health on composed artifacts.
 //
 // D1 retirement (2026-07-16, item 5 of the D1->Postgres cleanup): the KV-cold
-// fallback reads Postgres via tryPostgresTier(METAGRAPH_HEALTH_SOURCE) against
+// fallback reads Postgres via tryDataApiTier(METAGRAPH_HEALTH_SOURCE) against
 // a synthesized internal request to /api/v1/internal/health-status-live
 // (workers/data-api.ts) -- the same "no client request to forward,
 // synthesize one" shape workers/request-handlers/analytics-routes.ts's

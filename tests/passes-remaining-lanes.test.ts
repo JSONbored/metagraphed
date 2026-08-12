@@ -87,7 +87,7 @@ describe("validator-nominator-counts", () => {
     //
     // The schemas do carry two extra columns -- `scanned` and `outcome` -- but
     // NEITHER WRITER SETS THEM. writeHotkeyAlphaToD1 and
-    // writeAccountBalancesToD1 both insert exactly the four standard columns,
+    // writeAccountBalancesToStore both insert exactly the four standard columns,
     // the same four writePassTallyToNeon writes. So the exclusion was based on
     // the table's shape rather than on anything a writer did, and its effect
     // was that D1's tally filled while Neon's stayed empty -- on a lane about

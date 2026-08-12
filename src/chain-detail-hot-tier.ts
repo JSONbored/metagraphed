@@ -50,13 +50,13 @@ import { summarizeEvent } from "@jsonbored/chain-summaries";
 
 type Row = Record<string, unknown>;
 
-interface D1Statement {
-  bind(...values: unknown[]): D1Statement;
+interface StatementLike {
+  bind(...values: unknown[]): StatementLike;
   all?(): Promise<{ results?: unknown[] } | null>;
   first?(): Promise<unknown>;
 }
-interface D1Like {
-  prepare(sql: string): D1Statement;
+interface StatementClientLike {
+  prepare(sql: string): StatementLike;
 }
 /** The four tables every statement in this module reads (#10148). Handed to
  *  readStore as one set: a hot tier split across stores would answer a block
@@ -68,9 +68,9 @@ export const CHAIN_DETAIL_HOT_TIER_TABLES = [
   "chain_detail_account_events",
 ] as const;
 
-function db(env: unknown): D1Like | null {
+function db(env: unknown): StatementClientLike | null {
   const binding = readStore(env, CHAIN_DETAIL_HOT_TIER_TABLES) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   return binding?.prepare ? binding : null;
 }
 

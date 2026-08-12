@@ -28,7 +28,7 @@ import {
   ACCOUNT_SUMMARY_GAP_CODE,
   accountSummaryGapMessage,
   answerAccountSummary,
-  loadAccountRegistrationsD1,
+  loadAccountRegistrationsFromStore,
 } from "../src/account-summary-card.ts";
 import { toPositionalPlaceholders } from "../src/pg-sql.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
@@ -119,13 +119,13 @@ beforeEach(() => {
   pg.control.onQuery = null;
 });
 
-describe("loadAccountRegistrationsD1", () => {
+describe("loadAccountRegistrationsFromStore", () => {
   test("runs the SAME bound query DATA_API's /subnets leg runs", async () => {
     // Same columns, same predicate, same order -- so the summary's
     // `registrations` and /subnets' `subnets` cannot come to disagree about
     // where one hotkey is registered.
     const db = d1();
-    const rows = await loadAccountRegistrationsD1(db as never, SS58);
+    const rows = await loadAccountRegistrationsFromStore(db as never, SS58);
     assert.deepEqual(rows, [NEURON_ROW]);
     // Compared through toPositionalPlaceholders because the store applies it on
     // the way out: both legs hand the SAME `?` text to the SAME rewriter, so
@@ -144,10 +144,16 @@ describe("loadAccountRegistrationsD1", () => {
     // The difference is the whole point: a deployment without D1 has no neuron
     // snapshot to be missing, while a database that IS there and erroring is a
     // fault the card must not paper over.
-    assert.deepEqual(await loadAccountRegistrationsD1({} as never, SS58), []);
-    assert.deepEqual(await loadAccountRegistrationsD1(null, SS58), []);
+    assert.deepEqual(
+      await loadAccountRegistrationsFromStore({} as never, SS58),
+      [],
+    );
+    assert.deepEqual(await loadAccountRegistrationsFromStore(null, SS58), []);
     assert.equal(
-      await loadAccountRegistrationsD1(d1({ fail: true }) as never, SS58),
+      await loadAccountRegistrationsFromStore(
+        d1({ fail: true }) as never,
+        SS58,
+      ),
       null,
     );
   });
@@ -159,7 +165,10 @@ describe("loadAccountRegistrationsD1", () => {
     // non-array now reaches this loader.
     const db = d1();
     pg.control.rows = { not: "rows" } as unknown as unknown[];
-    assert.deepEqual(await loadAccountRegistrationsD1(db as never, SS58), []);
+    assert.deepEqual(
+      await loadAccountRegistrationsFromStore(db as never, SS58),
+      [],
+    );
   });
 });
 

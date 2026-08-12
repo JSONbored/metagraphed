@@ -272,7 +272,7 @@ export interface SubnetEventsQuery {
  *
  * NOT A PORT OF A POSTGRES QUERY — there was nothing to port. data-api never
  * registered `/api/v1/subnets/:netuid/events`, so this route's
- * tryPostgresTier call has always missed and the handler has always fallen
+ * tryDataApiTier call has always missed and the handler has always fallen
  * through to buildSubnetEvents([]) — the feed read empty even while the box
  * was alive. Live proof of the gap: /subnets/1/events reported event_count 0
  * while /subnets/1/stake-flow counted 1,142 stake events over the same subnet

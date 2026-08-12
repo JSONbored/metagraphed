@@ -90,7 +90,7 @@ async function loadSubnetTempo(
   // `overdue: null` on every subnet's weight-setters card, which is exactly the
   // #9389 regression #9396 fixed.
   const db = readStore(env, SUBNET_HYPERPARAMS_TEMPO_TABLES) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return null;
   try {
     const res = await db
@@ -104,7 +104,7 @@ async function loadSubnetTempo(
 }
 
 /** The minimal D1 surface this needs, so tests can hand it a plain object. */
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       first?(): Promise<unknown>;

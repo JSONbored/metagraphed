@@ -7,7 +7,7 @@
 // table to diff, writes both tables, and REPORTS a failure of either rather
 // than swallowing it, because there is no second store left to have got the
 // rows. The one behavior beyond the neurons lane is the COLD-TIER contract: a
-// table with no rows at all answers 503 so the api worker's tryPostgresTier
+// table with no rows at all answers 503 so the api worker's tryDataApiTier
 // degrades to null and the serving handler falls through to the lakehouse
 // cold-tier snapshot -- pinned here in both directions (empty table -> 503;
 // populated table with an absent row -> the schema-stable shape).

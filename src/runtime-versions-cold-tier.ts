@@ -1,7 +1,7 @@
 // The runtime-upgrade timeline, read from the Iceberg lakehouse.
 //
 // /api/v1/runtime, `get_runtime` and GraphQL's `runtime` all ran the same
-// `tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) ?? buildRuntimeVersionHistory([])`
+// `tryDataApiTier(METAGRAPH_BLOCKS_SOURCE) ?? buildRuntimeVersionHistory([])`
 // fallback, and with the Postgres tier gone every one of them published the
 // empty history: `transitions: []`, `transition_count: 0`,
 // `current_spec_version: null` — beside a `current` block that reported spec

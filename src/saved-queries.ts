@@ -122,7 +122,7 @@ export const SAVED_QUERY_TEMPLATES: SavedQueryTemplate[] = [
     ],
     notes:
       "Wraps buildChainRegistrations (src/chain-registrations.ts) behind the " +
-      "same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) cutover the REST " +
+      "same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) cutover the REST " +
       "route, GraphQL resolver, and MCP tool already share.",
   },
 ];
@@ -138,9 +138,9 @@ export const SAVED_QUERY_HANDLERS: Record<string, SavedQueryHandler> = {
     return data;
   },
   async "chain-registrations-window"(env, { window, limit }) {
-    // NO TIER READ (#10190): this ran tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)
+    // NO TIER READ (#10190): this ran tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)
     // and fell to `buildChainRegistrations([])`. That flag reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so the tier arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the tier arm
     // resolved to null on every call -- and unlike its three sibling surfaces
     // this one had NO rung under it, so run_saved_query has been answering an
     // empty leaderboard while GET /api/v1/chain/registrations served a full one

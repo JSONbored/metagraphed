@@ -8,7 +8,7 @@
 // does the D1 read + envelope. Null-safe: no positions -> schema-stable empty card.
 
 import { computeConcentration } from "./concentration.ts";
-import { loadD1AlphaPricesByNetuid } from "./metagraph-neurons.ts";
+import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
 
 // The neurons-tier columns the portfolio reads for one hotkey.
 export const ACCOUNT_PORTFOLIO_READ_COLUMNS =
@@ -210,7 +210,7 @@ export async function loadAccountPortfolio(
       [ss58],
     ),
     // #9051: TAO-price the cross-subnet totals from the D1 snapshots mirror.
-    loadD1AlphaPricesByNetuid(d1),
+    loadStoreAlphaPricesByNetuid(d1),
   ]);
   return buildAccountPortfolio(rows, ss58, { priceByNetuid });
 }

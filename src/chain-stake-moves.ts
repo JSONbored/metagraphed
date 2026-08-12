@@ -9,7 +9,7 @@
 // (the account initiating the move), not the origin hotkey.
 //
 // The D1 loader (loadChainStakeMoves) was removed — account_events' D1 write path is retired and
-// the table is dropped in production (#4772 / #4909), so serving goes tryPostgresTier →
+// the table is dropped in production (#4772 / #4909), so serving goes tryDataApiTier →
 // schema-stable empty stub, never D1.
 
 import { median, percentile } from "./lib/stats.ts";

@@ -219,7 +219,7 @@ describe("buildChainStakeMoves", () => {
 // buildChainStakeMoves([], {...}) on any Postgres miss/outage.
 describe("GET /api/v1/chain/stake-moves", () => {
   // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and
-  // is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never
+  // is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was never
   // asked -- the #9146 projection lane is what answers. Doubled at the same
   // transport (the archive bucket) and given the lane's ROWS rather than a built
   // payload, so the builder under test is the one production runs. `body` stays
@@ -298,16 +298,16 @@ describe("GET /api/v1/chain/stake-moves", () => {
 
   test("the retired tier flag is not consulted even when set (#10190)", async () => {
     // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is
-    // absent from DATA_API_FORWARD_FLAGS, so this route reads no tier at all.
+    // absent from FORWARDABLE_TIER_FLAGS, so this route reads no tier at all.
     // Binding a DATA_API that WOULD answer and proving nothing asks it is the
-    // whole assertion: a reintroduced tryPostgresTier call resolves to null too,
+    // whole assertion: a reintroduced tryDataApiTier call resolves to null too,
     // so without this it would be invisible -- which is how it sat dead.
     const tier = forbiddenDataApi();
     const res = await handleRequest(
       req("?window=7d"),
       {
         ...createLocalArtifactEnv(),
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
       {},
@@ -319,7 +319,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
   test("flag=postgres degrades to the empty card when DATA_API fails", async () => {
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");

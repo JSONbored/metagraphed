@@ -10,7 +10,7 @@
 import { WEIGHTS_EVENT_KIND } from "./subnet-weights.ts";
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -237,7 +237,7 @@ export function buildSubnetWeightSetters(
 // the subnet-wide totals (count + true distinct setters + newest observed_at, matching
 // /weights). Cold/absent store -> the schema-stable empty card.
 export async function loadSubnetWeightSetters(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: number,
   { windowLabel, windowDays }: { windowLabel?: string; windowDays: number },
 ): Promise<Row> {

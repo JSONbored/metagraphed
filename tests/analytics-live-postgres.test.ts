@@ -60,7 +60,7 @@ import {
   loadSubnetPercentiles,
   loadSubnetTrajectory,
   loadSubnetUptime,
-  loadLeaderboardD1Rows,
+  loadLeaderboardStoreRows,
   loadRegistryLeaderboards,
   loadCompareSubnets,
   type ObservationsReadDb,
@@ -118,7 +118,7 @@ function readDb(): ObservationsReadDb {
 /**
  * The same runner presenting rows as a BARE ARRAY rather than `{ results }`.
  *
- * `d1All` accepts both and the loaders reach it through a structural type, so
+ * `storeAll` accepts both and the loaders reach it through a structural type, so
  * the unwrap branch is not covered by the shape production happens to send.
  * The predecessor covered it, and dropping it while changing engines would
  * confuse "no longer tested" with "no longer true".
@@ -506,7 +506,7 @@ describe("trajectory and economics trends", () => {
 // and a fragment that no longer parses only fails at execution.
 
 describe("registry leaderboards and compare", () => {
-  test("loadLeaderboardD1Rows executes all four reads", async () => {
+  test("loadLeaderboardStoreRows executes all four reads", async () => {
     await seedStatus({
       surface_id: "a",
       netuid: 3,
@@ -542,7 +542,7 @@ describe("registry leaderboards and compare", () => {
       ok_count: 9,
     });
 
-    const out = await loadLeaderboardD1Rows(readDb());
+    const out = await loadLeaderboardStoreRows(readDb());
 
     const health = out.healthRows.find((r) => Number(r.netuid) === 3)!;
     assert.equal(Number(health.total), 3);
@@ -559,8 +559,8 @@ describe("registry leaderboards and compare", () => {
     assert.equal(Number(out.reliabilityRows[0].ok_count), 9);
   });
 
-  test("loadLeaderboardD1Rows returns empty sets without a binding", async () => {
-    const out = await loadLeaderboardD1Rows(null);
+  test("loadLeaderboardStoreRows returns empty sets without a binding", async () => {
+    const out = await loadLeaderboardStoreRows(null);
     assert.deepEqual(out.healthRows, []);
     assert.deepEqual(out.rpcRows, []);
     assert.deepEqual(out.growthSamples, []);

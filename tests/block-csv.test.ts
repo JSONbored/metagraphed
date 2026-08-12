@@ -32,7 +32,7 @@ test("GET /blocks/{ref}/extrinsics?format=csv emits a header-only CSV for an emp
 
 test("GET /blocks/{ref}/extrinsics?format=csv exports the block's extrinsics via the Postgres tier", async () => {
   // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
-  // absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never asked.
+  // absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was never asked.
   // The per-block extrinsics come from the lakehouse, through the same builder --
   // so the CSV below is produced from lakehouse rows exactly as in production.
   const lake = lakehouse([
@@ -91,7 +91,7 @@ test("GET /blocks/{ref}/events?format=csv emits a header-only CSV for an empty b
 
 test("GET /blocks/{ref}/events?format=csv exports the block's events via the Postgres tier", async () => {
   // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
-  // absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never asked.
+  // absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was never asked.
   // The per-block events come from the lakehouse, through the same builder --
   // so the CSV below is produced from lakehouse rows exactly as in production.
   const lake = lakehouse([

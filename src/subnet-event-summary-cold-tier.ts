@@ -4,7 +4,7 @@
 // EVERY netuid -- 1, 8, 19, 64 all answered zero -- while
 // `/subnets/{netuid}/events` served real rows off the same stream. Like the
 // sibling feed (#9260, see loadSubnetEventsColdTier), the handler ran
-// `tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ?? buildSubnetEventSummary([], [], …)`
+// `tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ?? buildSubnetEventSummary([], [], …)`
 // and nothing Cloudflare-native ever replaced the deleted Postgres tier.
 //
 // THE OBVIOUS QUERY IS REJECTED. The natural port is one grouped rollup:

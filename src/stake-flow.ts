@@ -7,7 +7,7 @@
 //
 // The D1 loader (loadSubnetStakeFlow) was removed — account_events' D1 write path
 // is retired and the table is dropped in production (#4772 / #4909 / #6016), so
-// serving goes tryPostgresTier → schema-stable empty stub, never D1.
+// serving goes tryDataApiTier → schema-stable empty stub, never D1.
 //
 // The 7d/30d/90d windows match the set the concentration/history route already uses,
 // keeping the per-subnet analytics windows consistent for the recent-capital-movement

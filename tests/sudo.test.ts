@@ -90,7 +90,7 @@ test("GET /api/v1/sudo is schema-stable when D1 is cold (never 404)", async () =
 
 test("GET /api/v1/sudo?format=csv exports the filtered rows via the Postgres tier", async () => {
   // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
-  // absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never asked.
+  // absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was never asked.
   // The lakehouse cold tier answers, and it feeds the SAME buildExtrinsicFeed --
   // so the CSV below is produced from lakehouse rows exactly as in production.
   const lake = lakehouse([

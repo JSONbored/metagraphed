@@ -34,7 +34,7 @@
 // and it is the only thing that would notice if that ever stopped being true.
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 function toIso(ms: unknown): string | null {
   if (ms == null) return null;
@@ -206,7 +206,7 @@ const RUNTIME_LATEST_SQL =
 // Cold/empty D1 (or a store with no spec_version reading yet) yields the
 // schema-stable empty shape, never throws.
 export async function loadRuntimeVersionHistory(
-  d1: D1Runner,
+  d1: SqlRunner,
 ): Promise<RuntimeVersionHistory> {
   const rows = await d1(RUNTIME_TRANSITIONS_SQL, []);
   const latestRows = await d1(RUNTIME_LATEST_SQL, []);

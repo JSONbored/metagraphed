@@ -5,7 +5,7 @@
 // snapshot yields a schema-stable zero (never throws), matching the live tiers.
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 // The neuron_daily columns the turnover handler reads — its D1 read contract
 // (mirrors BLOCK_READ_COLUMNS / CONCENTRATION_READ_COLUMNS). A bare `hotkey`
@@ -328,7 +328,7 @@ export function turnoverChangeDetail(changes: Row): Row {
 }
 
 async function loadTurnoverBoundaryRows(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: number,
   { windowDays }: { windowDays?: number | null },
 ): Promise<{ startDate: string | null; endDate: string | null; rows: Row[] }> {
@@ -362,7 +362,7 @@ async function loadTurnoverBoundaryRows(
 // to the subnet's newest stored day for finite windows), read exactly those two
 // days' rows, shape with buildTurnover. Cold D1 → comparable:false.
 export async function loadSubnetTurnover(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: number,
   {
     windowLabel,

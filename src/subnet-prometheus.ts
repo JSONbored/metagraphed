@@ -11,7 +11,7 @@
 import { PROMETHEUS_DEGRADED_NOT_CURATED } from "./uncurated-event-streams.ts";
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -101,7 +101,7 @@ export function buildSubnetPrometheus(
 // buildSubnetPrometheus. The handler resolves windowLabel/windowDays from the window param.
 // Cold/absent store -> the schema-stable zeroed card.
 export async function loadSubnetPrometheus(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: unknown,
   { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
 ): Promise<Row> {

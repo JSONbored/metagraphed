@@ -2,7 +2,7 @@
 //
 // `/api/v1/accounts/{ss58}/history` returned `day_count: 0` for every account,
 // including hotkeys whose own `/events` feed is busy. It ran
-// `tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ?? buildAccountHistory([], …)`
+// `tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ?? buildAccountHistory([], …)`
 // and the Postgres tier that owned `account_events_daily` is gone.
 //
 // COMPUTED, NOT READ FROM THE ROLLUP -- deliberately, and the choice matters.

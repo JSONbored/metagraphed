@@ -228,7 +228,7 @@ describe("createPgSql", () => {
     assert.deepEqual(life, ["connect", "end"]);
   });
 
-  test("unsafe() takes prebuilt text, matching createD1Sql's escape hatch", async () => {
+  test("unsafe() takes prebuilt text -- the escape hatch kept from the D1 runner", async () => {
     const { client, calls } = fakeClient();
     const { ctx } = ctxSpy();
     const sql = createPgSql(
@@ -410,7 +410,7 @@ describe("createPgQuestionMarkRunner", () => {
     assert.deepEqual(calls[0]!.values, [64, "2026-08-01"]);
   });
 
-  test("defaults params, matching the D1Runner contract", async () => {
+  test("defaults params, matching the SqlRunner contract", async () => {
     const { client, calls } = fakeClient();
     const { ctx } = ctxSpy();
     const run = createPgQuestionMarkRunner(

@@ -114,7 +114,7 @@ import {
 // already use) -- not a reimplementation.
 import { loadProfilesList } from "./profiles-mcp.ts";
 import { contractVersion } from "../workers/responses.ts";
-import { tryPostgresTier } from "../workers/postgres-tier.ts";
+import { tryDataApiTier } from "../workers/data-api-tier.ts";
 import {
   buildSubnetValidatorEconomicsPayload,
   buildSubnetValidatorEconomicsHistoryPayload,
@@ -507,7 +507,7 @@ import {
 import { answerAccountEntities } from "./account-entities-answer.ts";
 import { loadValidatorNominatorsColdTier } from "./account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
-import { loadAccountPositionsD1 } from "./nominator-positions-hot-tier.ts";
+import { loadAccountPositionsFromStore } from "./nominator-positions-hot-tier.ts";
 import { coldTierChainEventsPayload } from "./chain-events-degraded.ts";
 import { subnetOwnershipHistoryNode } from "./subnet-ownership-answer.ts";
 import { SUBNET_CONVICTION_FIELD_SOURCES } from "./subnet-conviction.ts";
@@ -2001,7 +2001,7 @@ async function loadEconomicsRows(context: GqlContext) {
   return Array.isArray(data?.subnets) ? data.subnets : [];
 }
 
-// Synthesize the GET request tryPostgresTier forwards to the DATA_API service
+// Synthesize the GET request tryDataApiTier forwards to the DATA_API service
 // binding, keyed off the same origin as the inbound GraphQL POST (GraphQL has
 // no REST-shaped request of its own to forward, unlike every REST handler
 // that already owns one matching its own route). Same technique
@@ -2029,7 +2029,7 @@ function postgresTierRequest(
 }
 
 // #6978: the ownership-history/conviction/lease-history routes are
-// Postgres-only all-events tier -- unlike every tryPostgresTier(flagName)
+// Postgres-only all-events tier -- unlike every tryDataApiTier(flagName)
 // call above, there is no D1 predecessor and so no per-table flag to gate on
 // (workers/api.ts forwards these three paths to DATA_API unconditionally).
 // Mirrors MCP's own loadSubnetOwnershipHistory/loadSubnetConviction/
@@ -2744,12 +2744,12 @@ const rootValue = {
     { netuid }: QuerySubnet_HyperparametersArgs,
     context: GqlContext,
   ) {
-    // Same tryPostgresTier(METAGRAPH_SUBNET_HYPERPARAMS_SOURCE) -> buildSubnetHyperparams
+    // Same tryDataApiTier(METAGRAPH_SUBNET_HYPERPARAMS_SOURCE) -> buildSubnetHyperparams
     // fallback contract handleSubnetHyperparams uses. The D1 write path is retired, so a
     // cold tier is an expected steady state, not an error: it yields a schema-stable card
     // with hyperparameters:null rather than a GraphQL error or a 404.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -2832,7 +2832,7 @@ const rootValue = {
     // empty/absent cursor stays offset-paged, unchanged.
     if (cursor != null && cursor !== "") params.set("cursor", String(cursor));
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -2864,7 +2864,7 @@ const rootValue = {
     { netuid, validator_permit, fields }: QuerySubnet_MetagraphArgs,
     context: GqlContext,
   ) {
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
     // fallback contract get_subnet_metagraph uses; a subnet with no indexed
     // neurons is a schema-stable empty metagraph, never a GraphQL error.
     const params = new URLSearchParams();
@@ -2873,7 +2873,7 @@ const rootValue = {
     // it and `fields` is the only projection a caller has.
     if (fields != null && fields !== "") params.set("fields", fields);
     return (
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3028,7 +3028,7 @@ const rootValue = {
     // the live flow lane takes `sort`/`limit` directly.
     return (
       // NO TIER READ (#10190): METAGRAPH_TOP_HOLDERS_SOURCE is retired and
-      // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on
+      // absent from FORWARDABLE_TIER_FLAGS, so that arm resolved to null on
       // every request.
       //
       // The live flow lane below is the tier the REST handler and the MCP tool
@@ -3051,7 +3051,7 @@ const rootValue = {
     // schema-stable empty trajectory, never a GraphQL error.
     //
     // NO TIER READ (#10190). METAGRAPH_SUBNET_SNAPSHOTS_SOURCE reads "retired" in
-    // every deployed config and is absent from DATA_API_FORWARD_FLAGS, so that
+    // every deployed config and is absent from FORWARDABLE_TIER_FLAGS, so that
     // arm resolved to null on every request.
     const data = await loadSubnetTrajectory(netuid, {
       db: observationsReadDb(
@@ -3096,7 +3096,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetRegistrations
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetRegistrations
     // zeroed-card fallback contract handleSubnetRegistrations uses; a subnet with no
     // NeuronRegistered events in the window is a schema-stable zeroed card, never a
     // GraphQL error.
@@ -3104,7 +3104,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetEventCardColdTier(
         context.env as unknown as Parameters<
@@ -3142,7 +3142,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetDeregistrations
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetDeregistrations
     // zeroed-card fallback contract handleSubnetDeregistrations uses; a subnet with no
     // NeuronDeregistered events in the window is a schema-stable zeroed card, never a
     // GraphQL error.
@@ -3150,7 +3150,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // #9307: same UID-reuse derivation REST's handleSubnetDeregistrations
       // reads, then the same MARKED empty when nothing derived it.
@@ -3187,7 +3187,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetServing
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetServing
     // zeroed-card fallback contract handleSubnetServing uses; a subnet with no
     // AxonServed events in the window is a schema-stable zeroed card, never a
     // GraphQL error.
@@ -3195,7 +3195,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetEventCardColdTier(
         context.env as unknown as Parameters<
@@ -3233,7 +3233,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetAxonRemovals
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetAxonRemovals
     // zeroed-card fallback contract handleSubnetAxonRemovals uses; a subnet with no
     // AxonInfoRemoved events in the window is a schema-stable zeroed card, never a
     // GraphQL error.
@@ -3241,7 +3241,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       buildSubnetAxonRemovals(null, netuid, { window: windowParam });
     return {
@@ -3273,13 +3273,13 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
     if (cursor) params.set("cursor", cursor);
-    // Same tryPostgresTier(METAGRAPH_SUBNET_IDENTITY_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_SUBNET_IDENTITY_SOURCE) ->
     // D1 retirement: subnet_identity_history's D1 write/read path is fully
     // retired (2026-07-16), so a Postgres miss/outage degrades straight to
     // the schema-stable empty timeline (entry_count 0), never a GraphQL
     // error and never a live D1 read.
     // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
-    // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+    // config and is absent from FORWARDABLE_TIER_FLAGS, so this resolved to
     // null on every request. The composer's lakehouse leg
     // is what answers, and it is now asked with no tier result rather than one
     // that never arrives.
@@ -3323,7 +3323,7 @@ const rootValue = {
     // (2026-07-16), so a Postgres miss/outage degrades to a schema-stable
     // empty feed (count 0), never a GraphQL error.
     // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
-    // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+    // config and is absent from FORWARDABLE_TIER_FLAGS, so this resolved to
     // null on every request.
     const data = await answerChainIdentityHistory(context.env, null, {
       limit: safeLimit,
@@ -3345,12 +3345,12 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetPerformance([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetPerformance([])
     // cold fallback contract handleSubnetPerformance / MCP get_subnet_performance
     // use: a subnet with no neurons is a schema-stable zeroed card (metric
     // blocks null), never a GraphQL error. No window — current snapshot only.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3664,12 +3664,12 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildConcentration([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildConcentration([])
     // cold fallback contract handleSubnetConcentration / MCP get_subnet_concentration
     // use: a subnet with no neurons is a schema-stable zeroed card (metric blocks
     // null), never a GraphQL error. No window -- current snapshot only.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3712,12 +3712,12 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetPerformanceHistory([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetPerformanceHistory([])
     // empty-series fallback the neuron_daily-derived REST route + MCP tool use.
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3758,12 +3758,12 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYieldHistory([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYieldHistory([])
     // empty-series fallback the neuron_daily-derived REST route + MCP tool use.
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3804,12 +3804,12 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildConcentrationHistory([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildConcentrationHistory([])
     // empty-series fallback the neuron_daily-derived REST route + MCP tool use.
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3842,11 +3842,11 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronDetail(null)
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronDetail(null)
     // cold fallback contract handleNeuron / MCP get_neuron use: an absent UID
     // is a schema-stable card with neuron:null, never a GraphQL error.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3889,12 +3889,12 @@ const rootValue = {
     const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronHistory([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronHistory([])
     // fallback contract handleNeuronHistory / MCP get_neuron_history use; a
     // UID with no neuron_daily rows in the window is a schema-stable
     // empty-points card, never a GraphQL error.
     const hot =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3932,12 +3932,12 @@ const rootValue = {
   },
 
   async subnet_yield({ netuid }: QuerySubnet_YieldArgs, context: GqlContext) {
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYield cold
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYield cold
     // fallback contract handleSubnetYield uses: a subnet with no neurons is a
     // schema-stable zeroed card, never a GraphQL error. No window param — the
     // route reads the CURRENT metagraph snapshot.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -3988,7 +3988,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetWeights
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetWeights
     // zeroed-card fallback contract handleSubnetWeights uses; a subnet with no
     // WeightsSet events in the window is a schema-stable zeroed card, never a
     // GraphQL error.
@@ -3996,7 +3996,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetWeightsColdTier(
         context.env as unknown as Parameters<
@@ -4032,7 +4032,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetStakeMoves
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetStakeMoves
     // zeroed-card fallback contract handleSubnetStakeMoves uses; a subnet with no
     // StakeMoved events in the window is a schema-stable zeroed card, never a
     // GraphQL error.
@@ -4040,7 +4040,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetEventCardColdTier(
         context.env as unknown as Parameters<
@@ -4078,7 +4078,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildSubnetStakeTransfers zeroed-card fallback contract
     // handleSubnetStakeTransfers uses; a subnet with no StakeTransferred events
     // in the window is a schema-stable zeroed card, never a GraphQL error.
@@ -4086,7 +4086,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetEventCardColdTier(
         context.env as unknown as Parameters<
@@ -4120,12 +4120,12 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetIdleStake([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetIdleStake([])
     // zeroed-card fallback handleSubnetIdleStake + the get_subnet_idle_stake MCP
     // tool use; a subnet with no neurons is a schema-stable zeroed card, never a
     // GraphQL error.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/idle-stake`),
         "METAGRAPH_NEURONS_SOURCE",
@@ -4169,13 +4169,13 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     params.set("direction", directionParam);
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } ->
     // buildStakeFlow([]) zeroed-card fallback handleSubnetStakeFlow uses;
     // direction only narrows the live query, so a cold tier degrades to the same
     // zeroed card the direction-less builder produces.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // #9146: same chain-stake-flow projection slice REST and MCP read.
       ((
@@ -4230,7 +4230,7 @@ const rootValue = {
     // same way the sibling account_events field forwards its own -- an opaque
     // token handed back verbatim, not a number to construct.
     if (cursor != null && cursor !== "") params.set("cursor", cursor);
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) handleSubnetEvents and
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) handleSubnetEvents and
     // the get_subnet_events MCP tool use. The events list passes through whole;
     // graphql's default resolver reads each AccountEvent field, matching
     // account_events' shaped rows.
@@ -4244,7 +4244,7 @@ const rootValue = {
     // exist and nobody asked the table that holds them".
     const tierResult =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       null;
     const data = await answerSubnetEvents(context.env, netuid, tierResult, {
@@ -4287,11 +4287,11 @@ const rootValue = {
     const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetHistory([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetHistory([])
     // empty-series fallback handleSubnetHistory uses; a subnet with no daily
     // rollup is a schema-stable point_count:0 series, never a GraphQL error.
     const hot =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -4342,13 +4342,13 @@ const rootValue = {
     }
     const params = new URLSearchParams();
     params.set("window", windowParam);
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildSubnetPrometheus(null) zeroed-card fallback handleSubnetPrometheus
     // uses; a subnet with no PrometheusServed events is a schema-stable zeroed
     // card, never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // #10322: the same cold-tier rung REST's handleSubnetPrometheus gained.
       // Without it this resolver bottomed out in the zeroed builder while
@@ -4398,14 +4398,14 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildSubnetWeightSetters([], null, ...) empty-leaderboard fallback
     // contract handleSubnetWeightSetters / MCP get_subnet_weight_setters use.
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       ((await loadSubnetWeightSettersColdTier(
         context.env as unknown as Parameters<
@@ -4935,7 +4935,7 @@ const rootValue = {
     params.set("window", label);
     const data =
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadGlobalIncidentsLedger(context.env, { label })).data;
     const ledger = {
@@ -5075,7 +5075,7 @@ const rootValue = {
     const details = [];
     for (const hotkey of parsed) {
       details.push(
-        ((await tryPostgresTier(
+        ((await tryDataApiTier(
           context.env,
           postgresTierRequest(
             context,
@@ -5190,7 +5190,7 @@ const rootValue = {
     // cards), so unwrap it before falling back to the zeroed build.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (
         await loadSubnetAlphaVolumeFromArtifact(context.env, netuid, {
@@ -5284,7 +5284,7 @@ const rootValue = {
     // tier had returned a full one.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The SAME lakehouse reader REST's handleSubnetOhlc and MCP's
       // get_subnet_ohlc fall to, so the three surfaces cannot disagree about a
@@ -5426,11 +5426,11 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetValidators([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetValidators([])
     // empty-snapshot fallback the REST route and list_subnet_validators share.
     // REST takes no filter params here, so neither does this mirror.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/validators`),
         "METAGRAPH_NEURONS_SOURCE",
@@ -5456,7 +5456,7 @@ const rootValue = {
     // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
     assertRouteArgs("/api/v1/subnets/{netuid}/health/percentiles", { window });
     const label = window ?? DEFAULT_ANALYTICS_WINDOW;
-    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetPercentiles
+    // Same tryDataApiTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetPercentiles
     // fallback the REST route and the get_subnet_health_percentiles MCP tool
     // share -- the tier owns the percentile computation, so nothing is
     // duplicated here, and a subnet with no probe history yields a
@@ -5465,7 +5465,7 @@ const rootValue = {
     params.set("window", label);
     const data =
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       await loadSubnetPercentiles(netuid, {
         window: label,
@@ -5526,7 +5526,7 @@ const rootValue = {
     params.set("limit", String(limitParam));
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // #9303: same stream, same rollup -- the non-null contract below is now
       // satisfied with real numbers rather than only with the empty shape.
@@ -5736,7 +5736,7 @@ const rootValue = {
     // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
     assertRouteArgs("/api/v1/subnets/{netuid}/health/incidents", { window });
     const label = window ?? DEFAULT_ANALYTICS_WINDOW;
-    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetIncidents D1
+    // Same tryDataApiTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetIncidents D1
     // fallback contract handleHealthIncidents and the get_subnet_health_incidents
     // MCP tool share -- the tier owns the gap-island incident reconstruction, so
     // nothing is duplicated here, and a subnet with no probe history yields a
@@ -5745,7 +5745,7 @@ const rootValue = {
     params.set("window", label);
     const data =
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       await loadSubnetIncidents(netuid, {
         window: label,
@@ -5817,7 +5817,7 @@ const rootValue = {
     if (to != null) params.set("to", to);
     const data =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The extrinsics cold tier REST and MCP both read (#9540).
       //
@@ -6006,7 +6006,7 @@ const rootValue = {
     if (success != null) params.set("success", String(success));
     const data =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The extrinsics cold tier REST and MCP both read (#9540). `module` is
       // the pathname->pallet predicate data-api applies to this route
@@ -6041,7 +6041,7 @@ const rootValue = {
   async extrinsic({ ref }: QueryExtrinsicArgs, context: GqlContext) {
     const data =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The same hot/cold cascade REST and MCP run (#9540). A composite
       // "<block>-<index>" ref routes through answerBlockDetail, so it inherits
@@ -6116,7 +6116,7 @@ const rootValue = {
     // logic duplicated here; the REST route and MCP tool share this exact path.
     const data =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The extrinsics cold tier REST and MCP both read (#9540). `module` is
       // the pathname->pallet predicate data-api applies to this route
@@ -6190,7 +6190,7 @@ const rootValue = {
     // fall back to the same pure builder REST uses, never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-      // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
       // on every request.
       // The blocks cold tier REST and MCP both read (#9540). Every filter is
       // forwarded, so the tier does the filtering -- the empty builder below
@@ -6236,7 +6236,7 @@ const rootValue = {
     // non-null BlocksSummary! contract, never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-      // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
       // on every request.
       // #9146: same blocks-summary projection REST and MCP read -- on the SAME
       // chain as the tier above, because a fallback that changed network would
@@ -6270,7 +6270,7 @@ const rootValue = {
     // contract, never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-      // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
       // on every request.
       // #9265: `chain.blocks` carries the same spec_version column, so the
       // non-null contract below is now satisfied with the real timeline
@@ -6313,7 +6313,7 @@ const rootValue = {
     const chain = chainNetworkFromChainName(network);
     const data =
       // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-      // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
       // on every request.
       // The block cold tier REST and MCP both read (#9540), on the SAME chain
       // as the tier above (#10394).
@@ -6352,7 +6352,7 @@ const rootValue = {
     params.set("offset", String(safeOffset));
     const { data } =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       {
         // The hot/cold cascade REST and MCP both run (#9540). Not a plain loader:
@@ -6421,7 +6421,7 @@ const rootValue = {
     params.set("offset", String(safeOffset));
     const { data } =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       {
         // The hot/cold cascade REST and MCP both run (#9540). Not a plain loader:
@@ -6499,7 +6499,7 @@ const rootValue = {
     params.set("sort", requestedSort);
     params.set("limit", String(GLOBAL_VALIDATOR_LIMIT_MAX));
     const data = overlayFeaturedValidators(
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, "/api/v1/validators", params),
         "METAGRAPH_NEURONS_SOURCE",
@@ -6614,7 +6614,7 @@ const rootValue = {
     if (coldkey != null) params.set("coldkey", coldkey);
     if (limit != null) params.set("limit", String(limit));
     if (offset != null) params.set("offset", String(offset));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildValidatorNominators
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildValidatorNominators
     // fallback contract REST uses. The Postgres tier's response is a REST-style
     // { data, generatedAt } envelope, so only its `.data` is taken; `generatedAt` is
     // REST envelope meta with no GraphQL field to carry it. A hotkey with no
@@ -6625,7 +6625,7 @@ const rootValue = {
     // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The SAME lakehouse reader REST's handleValidatorNominators and MCP's
       // get_validator_nominators fall to, so the three surfaces cannot
@@ -6669,7 +6669,7 @@ const rootValue = {
   },
 
   async validator({ hotkey }: QueryValidatorArgs, context: GqlContext) {
-    const data = await tryPostgresTier(
+    const data = await tryDataApiTier(
       context.env,
       postgresTierRequest(
         context,
@@ -6707,12 +6707,12 @@ const rootValue = {
       }
       params.set("netuid", String(netuid));
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildValidatorHistory
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildValidatorHistory
     // fallback contract handleValidatorHistory uses; a hotkey with no
     // neuron_daily rows in the window is a schema-stable empty-points card,
     // never a GraphQL error.
     const hot =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -6780,12 +6780,12 @@ const rootValue = {
     const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPositionHistory
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPositionHistory
     // fallback contract the REST handler uses; an account with no neuron_daily
     // rows for the subnet in the window is a schema-stable empty-points card,
     // never a GraphQL error.
     const hot =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -6829,7 +6829,7 @@ const rootValue = {
     params.set("sort", requestedSort);
     params.set("limit", String(safeLimit));
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, "/api/v1/accounts", params),
         "METAGRAPH_NEURONS_SOURCE",
@@ -6855,7 +6855,7 @@ const rootValue = {
       });
     }
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
     // guarded resolved to null before it could touch DATA_API.
     // #9254/#9263: the SAME composition REST and MCP run. The zeroed card stays
     // the answer only where there is no tier to ask at all; a tier that exists
@@ -6936,7 +6936,7 @@ const rootValue = {
     // the pure builder over an empty row set, same as REST's own fallback.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // #10322: the same cold-tier rung REST's handleAccountPrometheus gained.
       // Without it this resolver answered a confident zero for every account.
@@ -6987,14 +6987,14 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("direction", requestedDirection);
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data, generatedAt }
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data, generatedAt }
     // -> buildAccountStakeFlow([]) zeroed-card fallback contract handleAccountStakeFlow
     // uses. direction only narrows the live Postgres-tier query -- the fallback builder
     // takes no direction argument, so a cold/absent tier degrades to the same zeroed
     // card regardless of the requested direction.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The account cold tier REST and MCP both read (#9540); the loader
       // returns the same { data } envelope the retired tier did.
@@ -7033,12 +7033,12 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPortfolio([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPortfolio([])
     // fallback contract handleAccountPortfolio uses. This route's Postgres-tier
     // body is flat (like `account`'s own), not the { data, generatedAt } envelope
     // the account-event-footprint family uses.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -7074,7 +7074,7 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> lakehouse cold tier ->
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> lakehouse cold tier ->
     // buildAccountPositions([], new Map(), ss58) fallback contract
     // handleAccountPositions uses -- no D1 predecessor, flat body (like
     // account_portfolio's), not the { data, generatedAt } envelope the
@@ -7082,7 +7082,7 @@ const rootValue = {
     // REST and MCP's get_account_positions fall to, so the three surfaces
     // cannot disagree about what a coldkey holds.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -7090,7 +7090,10 @@ const rootValue = {
         ),
         "METAGRAPH_NEURONS_SOURCE",
       )) as Row | null) ??
-      ((await loadAccountPositionsD1(context.env, ss58)) as Row | null) ??
+      ((await loadAccountPositionsFromStore(
+        context.env,
+        ss58,
+      )) as Row | null) ??
       ((await loadAccountPositionsColdTier(context.env, ss58)) as Row | null) ??
       unavailableAccountPositions(ss58);
     return {
@@ -7120,13 +7123,13 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountSubnets([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountSubnets([])
     // fallback contract the REST route (/accounts/{ss58}/subnets) and the
     // get_account_subnets MCP tool use -- a flat body (like account_portfolio's),
     // not the { data, generatedAt } envelope the account-event footprint family
     // uses. An unregistered address is a schema-stable empty card, never null.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -7161,7 +7164,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountRegistrations([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no NeuronRegistered events in the window
     // is a schema-stable zeroed card, never a GraphQL error.
@@ -7169,7 +7172,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The account cold tier REST and MCP both read (#9540); the loader
       // returns the same { data } envelope the retired tier did.
@@ -7215,7 +7218,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountDeregistrations([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no derived deregistration in the window
     // is a schema-stable zeroed card, never a GraphQL error.
@@ -7223,7 +7226,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // #9307: an account's deregistrations are the slots where it was the
       // PREVIOUS holder, derived from UID reuse — the same reader REST's
@@ -7276,7 +7279,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountServing([], ...) zeroed-card cold fallback) the REST
     // handler uses; an account with no AxonServed events in the window is a
     // schema-stable zeroed card, never a GraphQL error.
@@ -7284,7 +7287,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The account cold tier REST and MCP both read (#9540); the loader
       // returns the same { data } envelope the retired tier did.
@@ -7330,7 +7333,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountAxonRemovals([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no AxonInfoRemoved events in the window
     // is a schema-stable zeroed card, never a GraphQL error.
@@ -7338,7 +7341,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       buildAccountAxonRemovals([], ss58, { window: windowParam });
     return {
@@ -7380,7 +7383,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountStakeMoves([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no StakeMoved events in the window is a
     // schema-stable zeroed card, never a GraphQL error.
@@ -7388,7 +7391,7 @@ const rootValue = {
     params.set("window", windowParam);
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The account cold tier REST and MCP both read (#9540); the loader
       // returns the same { data } envelope the retired tier did.
@@ -7437,12 +7440,12 @@ const rootValue = {
     }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data, generatedAt }
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data, generatedAt }
     // envelope handleAccountWeightSetters (makeAccountEventHandler) uses; a cold
     // or absent tier degrades to buildAccountWeightSetters' own zeroed card.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The account cold tier REST and MCP both read (#9540); the loader
       // returns the same { data } envelope the retired tier did.
@@ -7480,8 +7483,8 @@ const rootValue = {
     // buildAccountEntities' own zeroed card; a cold/absent R2 artifact degrades
     // to an empty labels list.
     // NO TIER READ (#10190). METAGRAPH_SUBNET_OWNERSHIP_SOURCE reads "retired"
-    // in every deployed config and is absent from DATA_API_FORWARD_FLAGS, so
-    // tryPostgresTier resolved to null on every request -- a subrequest that
+    // in every deployed config and is absent from FORWARDABLE_TIER_FLAGS, so
+    // tryDataApiTier resolved to null on every request -- a subrequest that
     // could not be made, awaited on the critical path. The composer's own
     // lakehouse leg is what has been answering; it is now asked with no tier
     // result rather than one that never arrives.
@@ -7533,7 +7536,7 @@ const rootValue = {
     // every field null, never a GraphQL error -- a Postgres miss/outage
     // degrades to that exact same schema-stable shape, never a live D1 read.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -7577,7 +7580,7 @@ const rootValue = {
     if (offset != null) params.set("offset", String(offset));
     if (cursor != null) params.set("cursor", cursor);
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,
@@ -7637,7 +7640,7 @@ const rootValue = {
         });
       }
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
     // MCP tool use, forwarding counterparty/limit as query params. The
     // account_events D1 write path is retired (#4772), so a tier miss resolves
     // to the pure builders over an empty scan -- a schema-stable zero card in
@@ -7647,7 +7650,7 @@ const rootValue = {
     if (counterparty != null) params.set("counterparty", counterparty);
     if (limit != null) params.set("limit", String(limit));
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
     let data: Row | null = null;
     // The cold tiers REST and MCP both read (#9540). Two of them, because this
@@ -7784,13 +7787,13 @@ const rootValue = {
     if (direction != null) params.set("direction", direction);
     if (block_start != null) params.set("block_start", String(block_start));
     if (block_end != null) params.set("block_end", String(block_end));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
     // MCP get_account_transfers tool use. The account_events D1 write path is
     // retired (#4772), so a tier miss resolves through buildAccountTransfers over
     // an empty scan -- a schema-stable empty feed, never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The account cold tier REST and MCP both read (#9540). Every filter is
       // forwarded, so the tier filters -- the empty builder below ignores them.
@@ -7856,13 +7859,13 @@ const rootValue = {
     if (cursor != null) params.set("cursor", cursor);
     if (block_start != null) params.set("block_start", String(block_start));
     if (block_end != null) params.set("block_end", String(block_end));
-    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) the REST handler and MCP
+    // Same tryDataApiTier(METAGRAPH_EXTRINSICS_SOURCE) the REST handler and MCP
     // get_account_extrinsics tool use. The extrinsics D1 write path is retired
     // (#4772), so a tier miss resolves through buildAccountExtrinsics over an
     // empty scan -- a schema-stable empty feed, never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The account cold tier REST and MCP both read (#9540). Every filter is
       // forwarded, so the tier filters -- the empty builder below ignores them.
@@ -7925,13 +7928,13 @@ const rootValue = {
     if (cursor != null) params.set("cursor", cursor);
     if (block_start != null) params.set("block_start", String(block_start));
     if (block_end != null) params.set("block_end", String(block_end));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
     // MCP get_account_events tool use. The account_events D1 write path is
     // retired (#4772), so a tier miss resolves through buildAccountEvents over an
     // empty scan -- a schema-stable empty feed, never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The account cold tier REST and MCP both read (#9540). Every filter is
       // forwarded, so the tier filters -- the empty builder below ignores them.
@@ -8012,7 +8015,7 @@ const rootValue = {
     if (from != null) params.set("from", from);
     if (to != null) params.set("to", to);
     if (cursor != null) params.set("cursor", cursor);
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> D1
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> D1
     // (loadAccountHistory) fallback the REST handler and MCP get_account_history
     // tool use -- a cold store is a schema-stable empty series, never a
     // GraphQL error.
@@ -8026,7 +8029,7 @@ const rootValue = {
     };
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       await loadAccountHistory(context.env, ss58, historyOptions);
     return {
@@ -8066,7 +8069,7 @@ const rootValue = {
     // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same tier
     // and fallback contract REST's handleEconomicsTrends uses.
     // NO TIER READ (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
-    // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on every
+    // absent from FORWARDABLE_TIER_FLAGS, so that arm resolved to null on every
     // request.
     const data = (
       await loadEconomicsTrends({
@@ -8230,11 +8233,11 @@ const rootValue = {
     params.set("window", requestedWindow);
     params.set("sort", requestedSort);
     params.set("limit", String(requestedLimit));
-    // Same tryPostgresTier + buildMovers([], [], ...) fallback contract REST's
+    // Same tryDataApiTier + buildMovers([], [], ...) fallback contract REST's
     // handleSubnetMovers uses -- a cold/absent tier yields a schema-stable
     // empty leaderboard, never a GraphQL error.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, "/api/v1/subnets/movers", params),
         "METAGRAPH_NEURONS_SOURCE",
@@ -8295,14 +8298,14 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainTurnover([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildChainTurnover([])
     // fallback contract REST's handleChainTurnover uses: unlike the chain_weights
     // family there is no D1 live-rollup loader here (the churn needs two
     // neuron_daily snapshots, which only the Postgres tier serves), so a cold
     // store yields the schema-stable empty/non-comparable envelope, never a
     // GraphQL error.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/turnover", params),
         "METAGRAPH_NEURONS_SOURCE",
@@ -8348,7 +8351,7 @@ const rootValue = {
       ANALYTICS_WINDOW_DAYS[label as keyof typeof ANALYTICS_WINDOW_DAYS];
     const params = new URLSearchParams();
     params.set("window", label);
-    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainActivity
+    // Same tryDataApiTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainActivity
     // fallback handleChainActivity uses; the tier owns the per-day extrinsic/block
     // rollup (no logic duplicated here), and a cold store yields a schema-stable
     // empty series.
@@ -8357,7 +8360,7 @@ const rootValue = {
     // window before returning, keeping day_count consistent with the label.
     const data = trimChainActivityToWindow(
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier REST reads (#9540). Window-based like REST's
       // handleChainActivity, NOT the blocks-based loadChainActivity MCP's
@@ -8429,12 +8432,12 @@ const rootValue = {
     params.set("group_by", requestedGroupBy);
     params.set("limit", String(safeLimit));
     if (callModule != null) params.set("call_module", callModule);
-    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainCalls fallback
+    // Same tryDataApiTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainCalls fallback
     // handleChainCalls uses; the tier owns the call-mix aggregation (no logic
     // duplicated here), and a cold store yields a schema-stable empty breakdown.
     const data =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier REST and MCP both read (#9540). callModule is
       // threaded rather than dropped: the reader DECLINES a pallet-scoped call
@@ -8491,14 +8494,14 @@ const rootValue = {
     params.set("window", label);
     params.set("limit", String(safeLimit));
     if (callModule != null) params.set("call_module", callModule);
-    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainFees fallback
+    // Same tryDataApiTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainFees fallback
     // handleChainFees uses; the tier owns the daily/median/payer aggregation (no
     // logic duplicated here), and a cold store yields a schema-stable empty series.
     // #8421: mirror handleChainFees's #8242 fix -- trim the UTC-day buckets to
     // the requested window so a 7d request never reports 8 days.
     const data = trimChainFeesToWindow(
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier REST and MCP both read (#9540); same
       // declines-a-scoped-call contract as chain_calls above.
@@ -8557,14 +8560,14 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildChainWeights
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildChainWeights
     // fallback contract REST's handleChainWeights uses -- a cold store yields a
     // schema-stable empty leaderboard, never a GraphQL error. #4772 D1 retirement:
     // the `account_events` D1 table is dropped in production, so the fallback goes
     // straight to the pure builder with no rows, never a live D1 query.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // Same shared loader REST and MCP use; GraphQL keeps its own
       // schema-stable card below because that contract is this surface's own.
@@ -8614,12 +8617,12 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
     // the table is dropped in production, so a D1 query here would always miss
-    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's chainServing route uses, never
     // a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // Same shared loader REST and MCP use. GraphQL keeps its own fallback
       // below because answering with the schema-stable card rather than an
@@ -8666,12 +8669,12 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
     // the table is dropped in production, so a D1 query here would always miss
-    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainAxonRemovals uses,
     // never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       buildChainAxonRemovals([], { window: requestedWindow, limit: safeLimit });
     return {
@@ -8716,12 +8719,12 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
     // the table is dropped in production, so a D1 query here would always miss
-    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainDeregistrations
     // uses, never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // #9307: same UID-reuse derivation REST's handleChainDeregistrations
       // reads, then the same MARKED empty when nothing derived it.
@@ -8778,12 +8781,12 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
     // the table is dropped in production, so a D1 query here would always miss
-    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainRegistrations uses,
     // never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // #9146: same chain-registrations projection REST reads, so the two
       // surfaces cannot report different registration activity.
@@ -8834,12 +8837,12 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
     // the table is dropped in production, so a D1 query here would always miss
-    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainPrometheus uses,
     // never a GraphQL error.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The same lakehouse rung REST and MCP now use (#10248). Wiring one
       // surface and not the others is exactly the drift chain-serving-loader.ts
@@ -8909,7 +8912,7 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     if (sort != null) params.set("sort", sort);
     if (callModule != null) params.set("call_module", callModule);
-    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainSigners
+    // Same tryDataApiTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainSigners
     // fallback contract handleChainSigners uses, including the KV health:meta
     // observed_at stamp REST passes; no ranking/aggregation logic is duplicated
     // here, and a cold store yields a schema-stable empty leaderboard. #4772 D1
@@ -8917,7 +8920,7 @@ const rootValue = {
     // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const data =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier (#9146) REST reads and this field skipped. The
       // loader declines a pallet-scoped call itself (serving the unfiltered
@@ -8978,7 +8981,7 @@ const rootValue = {
     // always miss. Postgres → schema-stable empty stub, never a live D1 read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // Same lakehouse reader REST and MCP use; the zeroed card below stays the
       // fallback because this resolver's contract is a schema-stable card
@@ -9014,7 +9017,7 @@ const rootValue = {
     });
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildChainAlphaVolume
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildChainAlphaVolume
     // fallback contract REST's handleChainAlphaVolume uses -- a cold store yields
     // a schema-stable zeroed card (subnet_count 0, empty leaderboard, neutral
     // sentiment), never a GraphQL error. Fixed 24h window, no window arg. #4772 D1
@@ -9022,7 +9025,7 @@ const rootValue = {
     // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier REST and MCP both read (#9540); without it this
       // resolver's whole answer was the empty card below. The market-cap index
@@ -9059,12 +9062,12 @@ const rootValue = {
   },
 
   async chain_idle_stake(_args: unknown, context: GqlContext) {
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainIdleStake([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildChainIdleStake([])
     // cold fallback contract handleChainIdleStake / MCP get_chain_idle_stake
     // use: a cold/absent tier yields a schema-stable empty ranking, never a
     // GraphQL error. No window/limit args -- current snapshot only.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/idle-stake"),
         "METAGRAPH_NEURONS_SOURCE",
@@ -9096,12 +9099,12 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainStakeFlow empty-card fallback REST's handleChainStakeFlow
     // uses. #4909 D1 retirement: never a live D1 read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier REST and MCP both read (#9540). Without this rung
       // the ladder below is the whole answer, and the retired flag above
@@ -9157,12 +9160,12 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainStakeMoves empty-card fallback REST's handleChainStakeMoves
     // uses. #4909 D1 retirement: never a live D1 read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier REST and MCP both read (#9540). Without this rung
       // the ladder below is the whole answer, and the retired flag above
@@ -9215,12 +9218,12 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainStakeTransfers empty-card fallback REST's
     // handleChainStakeTransfers uses. #4909 D1 retirement: never a live D1 read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier REST and MCP both read (#9540). Without this rung
       // the ladder below is the whole answer, and the retired flag above
@@ -9279,12 +9282,12 @@ const rootValue = {
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
     if (sort != null) params.set("sort", sort);
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainTransferPairs empty-card fallback REST uses, including the KV
     // health:meta observed_at stamp. #4909 D1 retirement: never a live D1 read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier (#9146) REST reads and this field skipped.
       ((await loadChainTransferPairsFromArtifact(
@@ -9335,13 +9338,13 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainTransfers empty-card fallback REST's handleChainTransfers
     // uses, including the KV health:meta observed_at stamp. #4909 D1
     // retirement: never a live D1 read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       // The projection tier (#9146): a cron recomputes this window's scorecard
       // from the lakehouse and REST reads it here. GraphQL was never given the
@@ -9383,7 +9386,7 @@ const rootValue = {
     { window, limit, offset }: QueryHealth_TrendsArgs,
     context: GqlContext,
   ) {
-    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadBulkHealthTrends
+    // Same tryDataApiTier(METAGRAPH_HEALTH_SOURCE) -> loadBulkHealthTrends
     // fallback contract REST's handleBulkHealthTrends and the get_health_trends
     // MCP tool share -- a cold store yields both windows zeroed, never a
     // GraphQL error.
@@ -9422,7 +9425,7 @@ const rootValue = {
     }
     const data =
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (
         await loadBulkHealthTrends({
@@ -9448,7 +9451,7 @@ const rootValue = {
     { netuid }: QuerySubnet_Health_TrendsArgs,
     context: GqlContext,
   ) {
-    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetHealthTrends D1
+    // Same tryDataApiTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetHealthTrends D1
     // fallback contract REST's handleHealthTrends and the
     // get_subnet_health_trends MCP tool share -- the route takes no window arg
     // (it returns every configured window), and a subnet with no probe history
@@ -9457,7 +9460,7 @@ const rootValue = {
     // duplicated here.
     const data =
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       await loadSubnetHealthTrends(netuid, {
         observedAt: await loadObservedAt(context),
@@ -9603,14 +9606,14 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     if (sampleFloor !== null) params.set("min_samples", String(sampleFloor));
-    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetUptime D1
+    // Same tryDataApiTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetUptime D1
     // fallback contract REST's handleUptime and the get_subnet_uptime MCP tool
     // share -- a subnet with no daily history yields a schema-stable empty
     // surfaces card, never a GraphQL error. The tier owns the
     // surface_uptime_daily aggregation; nothing is duplicated here.
     const data =
       // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-      // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetUptime(netuid, {
         window: windowParam,
@@ -9643,7 +9646,7 @@ const rootValue = {
     params.set("window", requestedWindow);
     // The tier cascade is src/rpc-usage-answer.ts's, shared verbatim with
     // REST's handleRpcUsage and the get_rpc_usage MCP tool. This resolver used
-    // to run its own `tryPostgresTier -> loadRpcUsage` copy, which -- with the
+    // to run its own `tryDataApiTier -> loadRpcUsage` copy, which -- with the
     // Postgres box gone -- resolved to the zeroed floor while REST served the
     // real numbers from two live stores (#9269). A cold store still yields a
     // schema-stable zeroed card, never a GraphQL error.
@@ -9733,14 +9736,14 @@ const rootValue = {
   },
 
   async chain_performance(_args: unknown, context: GqlContext) {
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainPerformance([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildChainPerformance([])
     // cold fallback contract handleChainPerformance / MCP get_chain_performance
     // use: a cold/absent tier yields a schema-stable zeroed card (every metric
     // block null), never a GraphQL error. handleChainPerformance validates
     // against an EMPTY param allowlist, so there is no window/limit arg to
     // mirror -- current snapshot only.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/performance"),
         "METAGRAPH_NEURONS_SOURCE",
@@ -9761,11 +9764,11 @@ const rootValue = {
   },
 
   async chain_yield(_args: unknown, context: GqlContext) {
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainYield([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildChainYield([])
     // fallback contract handleChainYield uses -- a cold/absent tier yields a
     // schema-stable zeroed card (every aggregate null), never a GraphQL error.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/yield"),
         "METAGRAPH_NEURONS_SOURCE",
@@ -9800,7 +9803,7 @@ const rootValue = {
   },
 
   async chain_concentration(_args: unknown, context: GqlContext) {
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainConcentration([])
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildChainConcentration([])
     // cold fallback contract handleChainConcentration / MCP get_chain_concentration
     // use: a cold/absent tier yields a schema-stable zeroed card (every metric
     // block null), never a GraphQL error. handleChainConcentration reads every
@@ -9808,7 +9811,7 @@ const rootValue = {
     // param allowlist, so there is no window/limit arg to mirror -- current
     // snapshot only.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/concentration"),
         "METAGRAPH_NEURONS_SOURCE",
@@ -9935,13 +9938,13 @@ const rootValue = {
     // Opt into REST's ?changes=true per-neuron detail. Only forward the param
     // when true, so the default scorecard request stays byte-identical.
     if (changes === true) params.set("changes", "true");
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildTurnover([]) empty-card
+    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildTurnover([]) empty-card
     // fallback contract the REST handler uses (neuron_daily boundary snapshots); a
     // subnet with no boundary rows in the window is a schema-stable empty card,
     // never a GraphQL error. The cold fallback carries no `changes` block, so the
     // field resolves to null even when the toggle is set.
     const data =
-      ((await tryPostgresTier(
+      ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
           context,

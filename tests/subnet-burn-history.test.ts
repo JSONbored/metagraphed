@@ -270,7 +270,7 @@ describe("captureSubnetBurnHistory", () => {
     // A capture lane that could take down the cron it runs on would be worse than a
     // gap in the series.
     const cases: Array<[Record<string, unknown>, string]> = [
-      [{ db: null }, "no_d1_binding"],
+      [{ db: null }, "no_store_binding"],
       [
         {
           db: fakeDb().db,

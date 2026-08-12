@@ -248,7 +248,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
     new Request(`https://api.metagraph.sh/api/v1/chain/weights/setters${q}`);
 
   // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and
-  // is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never
+  // is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was never
   // asked -- loadChainWeightSettersColdTier answers. Doubled at that transport
   // and given the lane's ROWS, so buildChainWeightSetters runs here exactly as
   // it does in production (`share` is derived, not asserted into existence).
@@ -374,15 +374,15 @@ describe("GET /api/v1/chain/weights/setters", () => {
 
   test("the retired tier flag is not consulted even when set (#10190)", async () => {
     // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is
-    // absent from DATA_API_FORWARD_FLAGS, so this route reads no tier. Bind a
+    // absent from FORWARDABLE_TIER_FLAGS, so this route reads no tier. Bind a
     // DATA_API that WOULD answer and prove nothing asks it -- a reintroduced
-    // tryPostgresTier call resolves to null too, so nothing else would notice.
+    // tryDataApiTier call resolves to null too, so nothing else would notice.
     const tier = forbiddenDataApi();
     const res = await handleRequest(
       req("?window=7d"),
       {
         ...createLocalArtifactEnv(),
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
       {},
@@ -394,7 +394,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("flag=postgres degrades to the empty leaderboard when DATA_API fails", async () => {
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");

@@ -21,7 +21,7 @@
 // they should move, and the shapes are identical on purpose so that it is a
 // mechanical change when someone does.
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     first(): Promise<unknown>;
   };
@@ -56,7 +56,7 @@ const NONE: PassCompleteness = {
 export const PASS_TABLES: Readonly<Record<string, string>> = {
   neurons: "neurons_passes",
   // Absent until #10124, which is why account_balances_passes had ZERO rows in
-  // Neon while D1's copy filled: writeAccountBalancesToD1 takes the pass and
+  // Neon while D1's copy filled: writeAccountBalancesToStore takes the pass and
   // writes the tally, but mirrorLedgerToNeon skips any lane missing from this
   // map -- silently, since a lane with no pass table is a legitimate state.
   //
@@ -90,7 +90,7 @@ export const PASS_TABLES: Readonly<Record<string, string>> = {
  * rank", not as a 500.
  */
 export async function latestCompletePass(
-  db: D1Like | null | undefined,
+  db: StatementClientLike | null | undefined,
   lane: string,
 ): Promise<PassCompleteness> {
   const table = PASS_TABLES[lane];

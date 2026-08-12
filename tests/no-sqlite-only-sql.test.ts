@@ -78,7 +78,7 @@ const SQLITE_ONLY: [RegExp, string][] = [
   // This is how src/health-sql.ts's percentile picker shipped a SQLite-only
   // expression into every serving read of surface_checks (#10200):
   // `CAST(q*n AS INTEGER) + (q*n > CAST(q*n AS INTEGER))` -- SQLite's ceil,
-  // written as trunc-plus-carry because SQLite had no ceil. `d1All` degrades a
+  // written as trunc-plus-carry because SQLite had no ceil. `storeAll` degrades a
   // read failure to zero rows, so /uptime, /health/percentiles and the
   // per-subnet /health/trends each published an empty card over a table that
   // had rows in it. Both engines have ceil(); use it.

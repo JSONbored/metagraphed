@@ -1,10 +1,11 @@
-// #9540/#10320: every RESOLVER, REST HANDLER and MCP TOOL whose tier flag is
-// RETIRED must reach a cold-tier/artifact loader, or it can only ever answer
-// zero.
+// #9540/#10320: every RESOLVER, REST HANDLER and MCP TOOL whose ladder the
+// tier sweep emptied must reach a cold-tier/artifact loader, or it can only
+// ever answer zero.
 //
-// Eight tier flags read "retired" in wrangler.jsonc, and tryPostgresTier
-// returns null for all of them. A resolver whose ladder is
-// `tryPostgresTier(...) ?? build...([])` is therefore structurally empty in
+// Eight tier flags read "retired" in wrangler.jsonc when this was written;
+// #10228 deleted them from config outright. Either way tryDataApiTier cannot
+// answer for them. A resolver whose ladder was
+// `tryDataApiTier(...) ?? build...([])` is therefore structurally empty in
 // production -- and it answers with a schema-valid zero and an empty `errors`
 // array, so a consumer cannot tell it apart from "the chain has no data".
 // Measured live before the fix: blocks, extrinsics, sudo,
@@ -49,18 +50,35 @@ const MCP_SRC = path.join(process.cwd(), "src/mcp-server.ts");
 const REST_DIR = path.join(process.cwd(), "workers/request-handlers");
 const WRANGLER = path.join(process.cwd(), "wrangler.jsonc");
 
-/** A resolver reaching one of these can never get rows from that tier. Read
- * from wrangler.jsonc rather than hardcoded, so flipping a flag back to a live
- * value automatically narrows what this test polices. */
-function retiredFlags(): Set<string> {
+/** Flags whose config value names a tier that can actually answer. Read from
+ * wrangler.jsonc rather than hardcoded, so flipping a flag live automatically
+ * narrows what this test polices.
+ *
+ * INVERTED from the original retired-value allowlist (#10228): the fossil
+ * flags are deleted from config now, not spelled "retired", and an allowlist
+ * of retired spellings drained to zero the moment they left -- the same
+ * self-blinding #10250 describes and this gate has already been rebuilt out
+ * of once. A LIVE allowlist cannot drain that way: a note naming a deleted
+ * flag, a "retired" value, or the one "postgres" holdout (#10893) all stay
+ * counted, and only a flag that really forwards excuses its ladder. */
+function liveFlags(): Set<string> {
   const text = fs.readFileSync(WRANGLER, "utf8");
   const flags = new Set<string>();
   for (const match of text.matchAll(
-    /"(METAGRAPH_[A-Z_]*SOURCE)"\s*:\s*"([a-z]+)"/g,
+    /"(METAGRAPH_[A-Z_]*SOURCE)"\s*:\s*"([a-z-]+)"/g,
   )) {
-    if (match[2] === "retired") flags.add(match[1]);
+    if (match[2] === "data-api") flags.add(match[1]);
   }
   return flags;
+}
+
+/** A #10190 sweep note marks a ladder the sweep emptied. It stays a DEAD
+ * ladder unless every flag it names is live in config -- a note naming no
+ * flag at all is dead too, because the note itself is the tombstone. */
+function deadTierNote(body: string, live: Set<string>): boolean {
+  if (!/NO TIER READ \(#10190\)/.test(body)) return false;
+  const named = body.match(/METAGRAPH_[A-Z_]*SOURCE/g) ?? [];
+  return named.length === 0 || named.some((flag) => !live.has(flag));
 }
 
 interface Resolver {
@@ -84,7 +102,7 @@ interface Resolver {
  */
 function resolvers(): Resolver[] {
   const lines = fs.readFileSync(GRAPHQL_SRC, "utf8").split("\n");
-  const retired = retiredFlags();
+  const live = liveFlags();
   const out: Resolver[] = [];
   for (const [start, line] of lines.entries()) {
     if (!/^ {2}(?:async )?[a-z_0-9]+\(/.test(line)) continue;
@@ -102,7 +120,7 @@ function resolvers(): Resolver[] {
         break;
       }
     }
-    out.push(buildResolver(name, lines.slice(start, end).join("\n"), retired));
+    out.push(buildResolver(name, lines.slice(start, end).join("\n"), live));
   }
   return out;
 }
@@ -110,26 +128,22 @@ function resolvers(): Resolver[] {
 function buildResolver(
   name: string,
   body: string,
-  retired: Set<string>,
+  live: Set<string>,
 ): Resolver {
   return {
     name,
     body,
-    // WAS `/tryPostgresTier\(/ && a retired flag` (#10190). That predicate
-    // stopped selecting anything the moment the sweep deleted the last dead
-    // call: the population went to zero and the gate could no longer fail,
-    // which is the exact way #10250 says a gate blinds itself during the
-    // sweep it guards.
+    // WAS `/tryDataApiTier\(/ && a retired flag` (#10190), then `marker && a
+    // retired-VALUED flag` -- and each spelling blinded itself in turn: the
+    // first when the sweep deleted the last dead call, the second when #10228
+    // deleted the fossil flags from config outright, which is the exact way
+    // #10250 says a gate blinds itself during the sweep it guards.
     //
-    // The question is unchanged -- "this ladder's tier was retired, so does it
-    // still have a rung?" -- so it now keys on the marker the sweep leaves at
-    // every site it emptied. That set is fixed and cannot silently drain: a
-    // deleted note is a deleted ladder, and a new dead tier read gets a new
-    // note. `retired` still gates it so a note naming a LIVE flag (there are
-    // none today, and there should never be) is not counted.
-    usesRetiredTier:
-      /NO TIER READ \(#10190\)/.test(body) &&
-      [...retired].some((flag) => body.includes(flag)),
+    // The question is unchanged -- "this ladder's tier was emptied, so does it
+    // still have a rung?" -- so it keys on the sweep's own marker, excused
+    // only by a flag that is LIVE in config today (see deadTierNote). A
+    // deleted flag stays dead forever without a line to drain.
+    usesRetiredTier: deadTierNote(body, live),
     // The rung: any shared cold-tier / artifact reader, OR a composer that owns
     // the whole ladder on the resolver's behalf.
     //
@@ -155,7 +169,7 @@ function buildResolver(
  * would absorb the gap between two handlers -- the same mistake the resolver
  * slicer documents, and the reason its comment exists.
  */
-function restHandlers(retired: Set<string>): Resolver[] {
+function restHandlers(live: Set<string>): Resolver[] {
   const out: Resolver[] = [];
   for (const file of fs.readdirSync(REST_DIR)) {
     if (!file.endsWith(".ts")) continue;
@@ -173,7 +187,7 @@ function restHandlers(retired: Set<string>): Resolver[] {
         }
       }
       out.push(
-        buildResolver(match[1], lines.slice(start, end).join("\n"), retired),
+        buildResolver(match[1], lines.slice(start, end).join("\n"), live),
       );
     }
   }
@@ -189,7 +203,7 @@ function restHandlers(retired: Set<string>): Resolver[] {
  * the ladder is often built in a helper above the handler, inside the same
  * entry.
  */
-function mcpTools(retired: Set<string>): Resolver[] {
+function mcpTools(live: Set<string>): Resolver[] {
   const lines = fs.readFileSync(MCP_SRC, "utf8").split("\n");
   const out: Resolver[] = [];
   for (const [start, line] of lines.entries()) {
@@ -202,17 +216,15 @@ function mcpTools(retired: Set<string>): Resolver[] {
         break;
       }
     }
-    out.push(
-      buildResolver(match[1], lines.slice(start, end).join("\n"), retired),
-    );
+    out.push(buildResolver(match[1], lines.slice(start, end).join("\n"), live));
   }
   return out;
 }
 
 /** Every ladder on every surface, which is the set the assertions run over. */
 function ladders(): Resolver[] {
-  const retired = retiredFlags();
-  return [...resolvers(), ...restHandlers(retired), ...mcpTools(retired)];
+  const live = liveFlags();
+  return [...resolvers(), ...restHandlers(live), ...mcpTools(live)];
 }
 
 /**
@@ -278,7 +290,7 @@ const NO_TIER_ANYWHERE: Record<string, string> = {
 // Positive control. A pure "nothing is broken" assertion passes just as well
 // when the detector matches nothing at all, so pin that it really does classify
 // a known-good resolver as having its rung -- chain_weights is the shape the
-// broken ones are being fixed toward (src/graphql.ts, tryPostgresTier ->
+// broken ones are being fixed toward (src/graphql.ts, tryDataApiTier ->
 // loadChainWeightsColdTier -> buildChainWeights([])).
 test("the detector recognises a resolver that DOES reach its loader", () => {
   const all = resolvers();

@@ -79,7 +79,7 @@ async function json(res: Response): Promise<Row> {
  * statement, plus the ctx they need to reach it.
  *
  * THE ctx IS NOT PLUMBING. observationsReadDb parks the pooled connection's
- * teardown on `waitUntil` and answers `undefined` without one, and `d1All`
+ * teardown on `waitUntil` and answers `undefined` without one, and `storeAll`
  * reads `undefined` as zero rows -- so a handler called with the default
  * `ctx = {}` serves a confident empty payload no matter what the store holds.
  * Passing `{}` here would make every assertion below vacuous.
@@ -113,7 +113,7 @@ async function errorJson(res: Response, status = 400): Promise<Row> {
 // These used to build a Postgres-tier hit -- METAGRAPH_SUBNET_SNAPSHOTS_SOURCE
 // set to "postgres" plus a DATA_API mock -- so the handlers' serve/CSV/
 // format-negotiation logic could be exercised with real data. That flag reads
-// "retired" in every deployed config and is absent from DATA_API_FORWARD_FLAGS,
+// "retired" in every deployed config and is absent from FORWARDABLE_TIER_FLAGS,
 // so the arm they drove declined on every real request: the logic was proven
 // against a path production never takes.
 //
@@ -130,7 +130,7 @@ function snapshotStoreEnv(rows: SnapshotFixture[]) {
 }
 
 // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
-// DATA_API_FORWARD_FLAGS, so the tier this doubled never answered --
+// FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered --
 // loadSubnetUptime reads `surface_uptime_daily` through readStore. Doubled at
 // that transport, and given the (surface, day) ROWS the GROUP BY emits rather
 // than a built payload, so formatUptime runs here as it does in production.
@@ -354,7 +354,6 @@ describe("handleTrajectory", () => {
 
   test("flag=postgres falls back to schema-stable empty when DATA_API fails", async () => {
     const env = {
-      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -534,7 +533,6 @@ describe("handleEconomicsTrends", () => {
 
   test("flag=postgres falls back to schema-stable empty when DATA_API fails", async () => {
     const env = {
-      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -698,7 +696,7 @@ describe("handleUptime", () => {
 
   test("flag=postgres falls back to schema-stable empty when DATA_API fails", async () => {
     const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -743,7 +741,7 @@ describe("handleUptime", () => {
     );
     // THE ctx IS NOT PLUMBING (see storeEnv's note): observationsReadDb parks
     // the pooled connection's teardown on waitUntil and answers `undefined`
-    // without one, which d1All reads as zero rows -- a header-only CSV that
+    // without one, which storeAll reads as zero rows -- a header-only CSV that
     // would pass every assertion except the row.
     const res = await handleUptime(
       req("/"),
@@ -934,14 +932,14 @@ describe("handleCompare", () => {
 
   // #4832 gap-closure: handleCompare has no single D1 route to forward, so
   // its health dimension synthesizes its own /api/v1/internal/compare-health
-  // request rather than reusing tryPostgresTier's usual "forward the caller's
+  // request rather than reusing tryDataApiTier's usual "forward the caller's
   // request unchanged" contract -- these tests prove that wiring in
   // isolation, same reused METAGRAPH_HEALTH_SOURCE flag as handleUptime
   // above. D1 fully eliminated (2026-07-17): a tier miss now always falls
   // through to an empty health row set, never a live D1 query.
   test("health dimension: the store answers, and the retired tier is not consulted", async () => {
     // #10190: the health dimension read METAGRAPH_HEALTH_SOURCE, a flag that
-    // reads "d1" and is absent from DATA_API_FORWARD_FLAGS -- so it returned
+    // reads "d1" and is absent from FORWARDABLE_TIER_FLAGS -- so it returned
     // null and this dimension published `health: null` for every subnet while
     // the get_compare_subnets MCP tool served real numbers off the same table.
     // It reads `surface_status` directly now, the same read MCP makes.
@@ -975,7 +973,7 @@ describe("handleCompare", () => {
 
   test("health dimension: falls back to an empty health row when DATA_API fails", async () => {
     const env = createLocalArtifactEnv();
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.METAGRAPH_HEALTH_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -1139,7 +1137,7 @@ describe("handleCompareValidators", () => {
 
   test("netuid context: flag=postgres carries subnet_context from the per-hotkey Postgres response", async () => {
     const env = createLocalArtifactEnv();
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     const requestedPaths: string[] = [];
     env.DATA_API = {
       fetch: async (request: Request) => {
@@ -1168,7 +1166,7 @@ describe("handleCompareValidators", () => {
 
   test("generated_at tracks the latest captured_at across mixed-order per-hotkey responses", async () => {
     const env = createLocalArtifactEnv();
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     const HOTKEY_C = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
     const capturedAtByHotkey: Record<string, string> = {
       [HOTKEY_A]: "2026-06-20T00:00:00.000Z",
@@ -1200,7 +1198,7 @@ describe("handleCompareValidators", () => {
   });
 
   // #6325: REST and MCP share the identical composeValidatorComparison
-  // projection and the identical tryPostgresTier(METAGRAPH_NEURONS_SOURCE)
+  // projection and the identical tryDataApiTier(METAGRAPH_NEURONS_SOURCE)
   // per-hotkey fallback contract -- this proves it directly rather than only
   // via each surface's own mirrored-but-separate test suite.
   test("REST/MCP parity: identical hotkeys+netuid inputs produce identical data", async () => {

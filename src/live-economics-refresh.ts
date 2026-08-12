@@ -430,7 +430,7 @@ export function buildSubnetEconomics(
   };
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): { all(): Promise<{ results?: Row[] } | null> };
 }
 
@@ -478,7 +478,7 @@ export async function refreshLiveEconomics(
   // history -- off a frozen table it would republish yesterday's economics
   // every three hours, with a fresh timestamp on it.
   const db = readStore(env, ["neurons", "subnet_snapshots"]) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "store_unavailable" };
 
   const now = deps.now ?? Date.now;

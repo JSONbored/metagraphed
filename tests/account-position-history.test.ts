@@ -241,7 +241,7 @@ function positionHistoryEnv(overrides = {}) {
 // returning the given account-position-history payload.
 function postgresPositionHistoryEnv(payload: unknown) {
   return positionHistoryEnv({
-    METAGRAPH_NEURONS_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: { fetch: async () => Response.json(payload) },
   });
 }

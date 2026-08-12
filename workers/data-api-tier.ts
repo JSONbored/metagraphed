@@ -52,16 +52,16 @@ import { registerModuleStateReset } from "../src/module-state-registry.ts";
 // why this also now reaches PostHog, not just Wrangler's own log tail.
 let postgresTierFallbackGeneration = 0;
 
-registerModuleStateReset("workers/postgres-tier.ts", () => {
+registerModuleStateReset("workers/data-api-tier.ts", () => {
   postgresTierFallbackGeneration = 0;
 });
 
-function markPostgresTierFallback(): null {
+function markDataApiTierFallback(): null {
   postgresTierFallbackGeneration += 1;
   return null;
 }
 
-export function currentPostgresTierFallbackGeneration(): number {
+export function currentDataApiTierFallbackGeneration(): number {
   return postgresTierFallbackGeneration;
 }
 
@@ -69,7 +69,7 @@ export function currentPostgresTierFallbackGeneration(): number {
 // no-throw, awaited-not-waitUntil'd contract as workers/data-api.ts's
 // captureDataApiError (this module has no ExecutionContext threaded down
 // from either of its callers, REST or MCP, to hand a background task to).
-// tryPostgresTier is a shared chokepoint across every data source (blocks,
+// tryDataApiTier is a shared chokepoint across every data source (blocks,
 // health, neurons, ...), so `flagName` (e.g. "METAGRAPH_HEALTH_SOURCE") is
 // the tag -- the one thing that distinguishes which tier actually degraded.
 //
@@ -82,14 +82,14 @@ export function currentPostgresTierFallbackGeneration(): number {
 // at all -- and the issue's own title said 502 while every recent event said
 // 503, because both group under the same flag. The path in the message is
 // per-event, which is exactly where that distinction is legible.
-async function capturePostgresTierFallback(
+async function captureDataApiTierFallback(
   err: unknown,
   flagName: keyof Env,
   env: Env,
 ): Promise<void> {
   await recordExceptionEvent(env, {
     error: err,
-    route: `postgres-tier:${String(flagName)}`,
+    route: `data-api-tier:${String(flagName)}`,
     errorCode: "upstream_unavailable",
   });
 }
@@ -124,7 +124,7 @@ function maskedPath(request: Request): string {
  * genuinely down should degrade quickly rather than hold every request open --
  * the empty response is still the right destination, just not the first stop.
  */
-export const POSTGRES_TIER_RETRY_ATTEMPTS = 2;
+export const DATA_API_TIER_RETRY_ATTEMPTS = 2;
 
 /** The floor for "the upstream failed", as opposed to "we asked wrongly". */
 const SERVER_ERROR_FLOOR = 500;
@@ -137,34 +137,40 @@ const SERVER_ERROR_FLOOR = 500;
 // A BLANKET "FORWARD ON d1" WOULD BE WRONG. METAGRAPH_HEALTH_SOURCE and
 // METAGRAPH_SUBNET_SNAPSHOTS_SOURCE also hold "d1", and DATA_API does not
 // serve the routes they gate -- widening this set would make those call sites
-// forward, take a non-2xx, and fire capturePostgresTierFallback on every
+// forward, take a non-2xx, and fire captureDataApiTierFallback on every
 // request. src/health-status-live.ts works through that for the health flag in
 // full, including why it calls the service binding directly instead: DATA_API
 // implements exactly one of that flag's routes, and a per-flag switch cannot
 // do a per-route job.
-const DATA_API_FORWARD_FLAGS = new Set<string>([
+/**
+ * The flags whose "d1" value forwards to DATA_API -- as a TYPE as well as a
+ * set (#10190). `flagName: keyof Env` let 222 call sites name flags that can
+ * never forward, invisibly: the comparison happened inside this helper, so
+ * `tsc` had no opinion. Narrowing the parameter to this union is what turns
+ * the dead-site sweep from a grep into a compiler-enumerated list.
+ */
+export const FORWARDABLE_TIER_FLAGS = [
   "METAGRAPH_NEURONS_SOURCE",
-  // tests/fixtures/sqlite-schema/0009: the hyperparams + account-identity
-  // dispatchers also live in DATA_API ahead of its Hyperdrive gate
-  // (matchHyperparamsIdentityD1Route -- still D1-named, tracked by #10223).
-  // Their cold-tier fallback depends on this forward too: DATA_API answers 503
-  // while its table is still empty, which is what sends the serving handler on
-  // to the lakehouse cold-tier reader.
   "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
   "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-]);
+] as const;
+export type ForwardableTierFlag = (typeof FORWARDABLE_TIER_FLAGS)[number];
 
-export async function tryPostgresTier(
+export async function tryDataApiTier(
   env: Env,
   request: Request,
-  flagName: keyof Env,
+  flagName: ForwardableTierFlag,
 ): Promise<Record<string, unknown> | null> {
   const value = env[flagName];
-  const forwards =
-    value === "postgres" ||
-    (value === "d1" && DATA_API_FORWARD_FLAGS.has(flagName as string));
-  if (!forwards) return null;
-  if (!env.DATA_API) return markPostgresTierFallback();
+  // The membership half of this predicate is the TYPE now (#10190/#10223):
+  // an unforwardable flag cannot be passed, so `FORWARDABLE_TIER_FLAGS.has`
+  // was constant-true here. And `"postgres"` was never set by any config --
+  // the compiler proved the comparison unreachable the moment the parameter
+  // narrowed (Env types these flags' value "d1"). What remains runtime-
+  // decidable is the VALUE: "data-api" forwards, anything else stays -- the
+  // value stopped saying "d1" about a deleted database in the same change.
+  if (value !== "data-api") return null;
+  if (!env.DATA_API) return markDataApiTierFallback();
   const upstreamRequest =
     request.method === "HEAD"
       ? new Request(request, { method: "GET" })
@@ -174,7 +180,7 @@ export async function tryPostgresTier(
   // normalized to GET above, so there is no consumed body to replay.
   let upstream: Response | undefined;
   let transportError: unknown = null;
-  for (let attempt = 0; attempt < POSTGRES_TIER_RETRY_ATTEMPTS; attempt += 1) {
+  for (let attempt = 0; attempt < DATA_API_TIER_RETRY_ATTEMPTS; attempt += 1) {
     try {
       upstream = await env.DATA_API.fetch(upstreamRequest);
       transportError = null;
@@ -193,42 +199,42 @@ export async function tryPostgresTier(
   }
   if (upstream === undefined) {
     console.error(
-      `tryPostgresTier(${flagName}): DATA_API fetch failed for ${path}, degrading to the schema-stable empty response:`,
+      `tryDataApiTier(${flagName}): DATA_API fetch failed for ${path}, degrading to the schema-stable empty response:`,
       transportError,
     );
-    await capturePostgresTierFallback(transportError, flagName, env);
-    return markPostgresTierFallback();
+    await captureDataApiTierFallback(transportError, flagName, env);
+    return markDataApiTierFallback();
   }
   if (!upstream.ok) {
     const err = new Error(
-      `tryPostgresTier(${flagName}): DATA_API returned ${upstream.status} for ${path}`,
+      `tryDataApiTier(${flagName}): DATA_API returned ${upstream.status} for ${path}`,
     );
     console.error(
-      `tryPostgresTier(${flagName}): DATA_API returned ${upstream.status} for ${path}, degrading to the schema-stable empty response`,
+      `tryDataApiTier(${flagName}): DATA_API returned ${upstream.status} for ${path}, degrading to the schema-stable empty response`,
     );
-    await capturePostgresTierFallback(err, flagName, env);
-    return markPostgresTierFallback();
+    await captureDataApiTierFallback(err, flagName, env);
+    return markDataApiTierFallback();
   }
   let body;
   try {
     body = await upstream.json();
   } catch (err) {
     console.error(
-      `tryPostgresTier(${flagName}): DATA_API response body unparseable, degrading to the schema-stable empty response:`,
+      `tryDataApiTier(${flagName}): DATA_API response body unparseable, degrading to the schema-stable empty response:`,
       err,
     );
-    await capturePostgresTierFallback(err, flagName, env);
-    return markPostgresTierFallback();
+    await captureDataApiTierFallback(err, flagName, env);
+    return markDataApiTierFallback();
   }
   if (!body || typeof body !== "object") {
     const err = new Error(
-      `tryPostgresTier(${flagName}): DATA_API response was not a JSON object`,
+      `tryDataApiTier(${flagName}): DATA_API response was not a JSON object`,
     );
     console.error(
-      `tryPostgresTier(${flagName}): DATA_API response was not a JSON object, degrading to the schema-stable empty response`,
+      `tryDataApiTier(${flagName}): DATA_API response was not a JSON object, degrading to the schema-stable empty response`,
     );
-    await capturePostgresTierFallback(err, flagName, env);
-    return markPostgresTierFallback();
+    await captureDataApiTierFallback(err, flagName, env);
+    return markDataApiTierFallback();
   }
   return body as Record<string, unknown>;
 }

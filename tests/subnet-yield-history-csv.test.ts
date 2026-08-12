@@ -67,7 +67,7 @@ describe("handleSubnetYieldHistory CSV export", () => {
 
   test("sorts and exports real points ascending by snapshot_date via the Postgres tier", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({

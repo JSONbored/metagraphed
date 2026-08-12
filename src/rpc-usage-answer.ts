@@ -6,7 +6,7 @@
 // same instant: REST reported 118,309 requests on its top endpoint while
 // GraphQL's `rpc_usage(window:"7d")` reported `total_requests: 0` and an empty
 // endpoint list, because #9207 wired the lakehouse tier into the REST handler
-// only and the siblings still went `tryPostgresTier -> loadRpcUsage` into the
+// only and the siblings still went `tryDataApiTier -> loadRpcUsage` into the
 // zeroed floor (#9269). That is the second time the same shape of bug landed
 // on this codebase (#9263 was the accounts version), and it recurs for a
 // structural reason, not a careless one: a cascade that lives at the call site

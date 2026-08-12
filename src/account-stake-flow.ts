@@ -8,7 +8,7 @@
 //
 // The D1 loader (loadAccountStakeFlow) was removed — account_events' D1 write path
 // is retired and the table is dropped in production (#4772 / #4909 / #6016), so
-// serving goes tryPostgresTier → schema-stable empty stub, never D1.
+// serving goes tryDataApiTier → schema-stable empty stub, never D1.
 //
 // This is the account-level companion of the per-subnet stake-flow route: that one
 // answers "how much capital moved through subnet N", this one answers "where did THIS

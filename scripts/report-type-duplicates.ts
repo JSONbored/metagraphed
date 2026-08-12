@@ -240,7 +240,7 @@ export function runCensus(program: ts.Program): CensusReport {
         return;
       }
       // ALREADY DERIVED FROM A GENERATED TYPE, so not a parallel shape at all.
-      // `type AccountIdentityD1Row = Pick<AccountIdentity, (typeof COLUMNS)[number]>`
+      // `type AccountIdentityStoreRow = Pick<AccountIdentity, (typeof COLUMNS)[number]>`
       // matches its source structurally today only because the column list
       // currently covers every column -- and that is the point of writing it
       // that way. Replacing it with a bare alias would delete the tracking and

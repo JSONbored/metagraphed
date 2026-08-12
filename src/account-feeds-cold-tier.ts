@@ -97,7 +97,7 @@ import {
   NOMINATOR_SORTS,
   NOMINATOR_WINDOWS,
 } from "./validator-nominators.ts";
-import { d1All } from "./analytics-live.ts";
+import { storeAll } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
@@ -391,7 +391,7 @@ async function alphaPriceByNetuidDate(
   if (netuids.length === 0) return prices;
   try {
     const since = new Date(cutoff).toISOString().slice(0, 10);
-    const snapshots = await d1All(
+    const snapshots = await storeAll(
       readStore(env, ACCOUNT_STAKE_MOVES_PRICE_TABLES) as never,
       `SELECT netuid, snapshot_date, alpha_price_tao FROM subnet_snapshots
        WHERE snapshot_date >= ? AND netuid IN (${netuids.join(", ")})
@@ -528,7 +528,7 @@ export async function loadAccountPrometheusColdTier(
 
 /** The D1 surface this module needs from `neurons` -- structural, so tests
  * can hand a plain object (same pattern as src/blocks-cold-tier.ts). */
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       all?(): Promise<{ results?: unknown[] } | null>;
@@ -545,7 +545,8 @@ async function neuronSlots(
   env: Env | null | undefined,
   addr: string,
 ): Promise<{ netuid: number; uid: number }[] | null> {
-  const db = readStore(env, ["neurons"]) as unknown as D1Like | undefined;
+  const db = readStore(env, ["neurons"]) as unknown as
+    StatementClientLike | undefined;
   if (!db?.prepare) return null;
   let results: unknown[];
   try {

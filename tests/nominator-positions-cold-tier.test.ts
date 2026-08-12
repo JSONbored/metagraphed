@@ -18,7 +18,7 @@ const { pg } = await vi.hoisted(async () => ({
 vi.mock("pg", () => pg.module);
 
 import {
-  D1_BIND_PARAM_CAP,
+  BIND_PARAM_CHUNK,
   LEDGER_STAMP_MEMO_TTL_MS,
   POSITION_SCAN_CAP,
   latestStakeEventAt,
@@ -190,8 +190,8 @@ describe("loadAccountPositionsColdTier", () => {
     assert.equal(calls.length, 3, "250 hotkeys is three capped statements");
     for (const call of calls) {
       assert.ok(
-        call.params.length <= D1_BIND_PARAM_CAP,
-        `no statement may exceed ${D1_BIND_PARAM_CAP} bound parameters`,
+        call.params.length <= BIND_PARAM_CHUNK,
+        `no statement may exceed ${BIND_PARAM_CHUNK} bound parameters`,
       );
     }
     assert.equal(

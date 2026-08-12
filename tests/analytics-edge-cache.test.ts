@@ -19,7 +19,7 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
   DEGRADED_HEADER,
   DEGRADED_TIER_UNAVAILABLE,
-  markPostgresTierFallbackResponse,
+  markDataApiTierFallbackResponse,
   withEdgeCache,
 } from "../workers/request-handlers/analytics.ts";
 import {
@@ -184,7 +184,7 @@ function mockCaches() {
 
 // D1 fully eliminated (2026-07-17): percentiles/incidents/trends/bulk-trends/
 // #10190: these routes' tier flag reads "d1"/"retired" and is absent from
-// DATA_API_FORWARD_FLAGS, so the DATA_API call this used to count never happened
+// FORWARDABLE_TIER_FLAGS, so the DATA_API call this used to count never happened
 // in production. The upstream the edge cache actually protects is the STORE, so
 // that is what is counted now -- through the pg module double's onQuery hook.
 //
@@ -1129,7 +1129,7 @@ describe("analytics edge cache", () => {
           },
           "short",
         );
-        return markPostgresTierFallbackResponse(response);
+        return markDataApiTierFallbackResponse(response);
       },
     );
     await Promise.resolve();
@@ -1144,7 +1144,7 @@ describe("analytics edge cache", () => {
   });
 
   // #6012: handleSubnetStakeFlow / handleBlocksSummary used to pass the
-  // *Promise* from envelopeResponse into markPostgresTierFallbackResponse. withEdgeCache
+  // *Promise* from envelopeResponse into markDataApiTierFallbackResponse. withEdgeCache
   // then saw the awaited Response (a different object) and cached the stub.
   test("NO-CACHE-ON-ERROR: handleSubnetStakeFlow stub is marked and not edge-cached (#6012)", async () => {
     originalCaches = globalWithCaches.caches;
@@ -1263,7 +1263,7 @@ describe("analytics edge cache", () => {
     const dataApiMethods: string[] = [];
     const env = {
       ...analyticsEnv([]),
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         async fetch(request: Request) {
           dataApiMethods.push(request.method);
@@ -1679,7 +1679,7 @@ describe("analytics edge cache", () => {
         path: "/api/v1/subnets/7/trajectory",
         search: "",
         // NO TIER (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
-        // absent from DATA_API_FORWARD_FLAGS, so this route is cacheable on a
+        // absent from FORWARDABLE_TIER_FLAGS, so this route is cacheable on a
         // LIVE STORE hit rather than a tier hit -- which is what it has actually
         // been doing. `store: true` gives it the pg mock plus a Hyperdrive
         // binding, since handleTrajectory marks an unbound read a fallback and a
@@ -2009,12 +2009,11 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
 // ignore the header, which is the same bug one step later.
 describe("degraded-tier labelling (#9110)", () => {
   test("a tier miss is labelled on every analytics route that can degrade", async () => {
-    // No DATA_API bound, tier flags on -> tryPostgresTier degrades on each.
+    // No DATA_API bound, tier flags on -> tryDataApiTier degrades on each.
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
+      METAGRAPH_HEALTH_SOURCE: "data-api",
     } as unknown as Env;
     const routes = [
       "/api/v1/chain/calls?window=30d",
@@ -2026,7 +2025,7 @@ describe("degraded-tier labelling (#9110)", () => {
       // branch, which #10186 deleted as dead -- and removing the route from
       // this sweep then exposed that an empty chain-fees payload had been
       // going out UNLABELLED in production for months, since the labelled path
-      // only ever ran inside tryPostgresTier and a "retired" flag never
+      // only ever ran inside tryDataApiTier and a "retired" flag never
       // reaches it. #10189 gave the projection tier's own decline the same
       // label, so the route degrades honestly again.
       "/api/v1/chain/fees?window=7d",
@@ -2058,7 +2057,7 @@ describe("degraded-tier labelling (#9110)", () => {
 
   // #10189 REGRESSION PIN, and the one that matters: NO flag is forced here.
   //
-  // The sweep above sets METAGRAPH_*_SOURCE to "postgres" so tryPostgresTier
+  // The sweep above sets METAGRAPH_*_SOURCE to "postgres" so tryDataApiTier
   // degrades on demand. Useful, but it exercises a configuration production
   // has not been in since #9193 -- and that is exactly why this gap hid. At
   // the DEPLOYED value the live tier never runs, the projection tier declines,
@@ -2169,10 +2168,10 @@ describe("degraded-tier labelling (#9110)", () => {
   });
 
   test("marking is idempotent and tags the returned object", () => {
-    const once = markPostgresTierFallbackResponse(
+    const once = markDataApiTierFallbackResponse(
       new Response("{}", { headers: { "content-type": "application/json" } }),
     );
-    const twice = markPostgresTierFallbackResponse(once);
+    const twice = markDataApiTierFallbackResponse(once);
     assert.equal(once.headers.get(DEGRADED_HEADER), DEGRADED_TIER_UNAVAILABLE);
     // withEdgeCache checks the WeakSet on the object it receives back, so the
     // header is set IN PLACE and the same object comes out -- twice over.
@@ -2186,7 +2185,7 @@ describe("degraded-tier labelling (#9110)", () => {
     // copies instead of letting the TypeError escape.
     const immutable = Response.redirect("https://api.metagraph.sh/x", 302);
     assert.throws(() => immutable.headers.set("x-probe", "1"), TypeError);
-    const marked = markPostgresTierFallbackResponse(immutable);
+    const marked = markDataApiTierFallbackResponse(immutable);
     assert.notEqual(marked, immutable, "an immutable response must be copied");
     assert.equal(
       marked.headers.get(DEGRADED_HEADER),

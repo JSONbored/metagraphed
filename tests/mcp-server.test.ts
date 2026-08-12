@@ -38,7 +38,7 @@ import {
   handleMcpRequest,
   markMcpTierDegraded,
 } from "../src/mcp-server.ts";
-import { currentPostgresTierFallbackGeneration } from "../workers/postgres-tier.ts";
+import { currentDataApiTierFallbackGeneration } from "../workers/data-api-tier.ts";
 import {
   decodeWatermarkKey,
   resetDecodeWatermarkCache,
@@ -5039,7 +5039,7 @@ describe("MCP get_chain_activity (lakehouse tier)", () => {
 // #9146: the three MCP-only subnet loaders degrade rather than throw.
 //
 // They reach DATA_API directly (the all-events tier has no per-table
-// tryPostgresTier flag) and used to throw on binding-absent, on a rejected
+// tryDataApiTier flag) and used to throw on binding-absent, on a rejected
 // binding, and on any non-ok status -- which is what they did in production
 // once the Postgres box went away, verified live:
 //
@@ -5656,7 +5656,7 @@ describe("MCP get_subnet_performance", () => {
 
 describe("MCP get_subnet_snapshot", () => {
   // No Postgres-tier flags set and no DATA_API bound -- every one of the five
-  // component tryPostgresTier calls degrades to its own schema-stable empty
+  // component tryDataApiTier calls degrades to its own schema-stable empty
   // fallback (get_subnet_performance's own precedent above), and the compound
   // handler just merges the five cold cards under their named keys.
   test("degrades to five schema-stable empty cards when every Postgres tier is cold", async () => {
@@ -5685,9 +5685,9 @@ describe("MCP get_subnet_snapshot", () => {
     return {
       calls,
       env: {
-        METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
-        METAGRAPH_NEURONS_SOURCE: "postgres",
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
+        METAGRAPH_NEURONS_SOURCE: "data-api",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         DATA_API: {
           fetch: async (request: Request) => {
             const url = new URL(request.url);
@@ -5734,9 +5734,9 @@ describe("MCP get_subnet_snapshot", () => {
               });
             }
             // /subnets/7/events is deliberately NOT served here. Four of these
-            // five views still go through tryPostgresTier on a flag that
+            // five views still go through tryDataApiTier on a flag that
             // FORWARDS (hyperparams and neurons are both in
-            // DATA_API_FORWARD_FLAGS); the events view's flag is retired, so a
+            // FORWARDABLE_TIER_FLAGS); the events view's flag is retired, so a
             // path served here would be a path production never requests. The
             // events fixture rides on the lakehouse instead -- see
             // subnetSnapshotEventsLake below.
@@ -5956,12 +5956,11 @@ describe("MCP get_chain_signers", () => {
   test("returns an empty leaderboard when the Postgres-tier DATA_API call fails", async () => {
     // D1 is fully eliminated (2026-07-17, reconfirmed live 2026-07-25) -- this
     // used to mock a hanging D1 .all() call, but with no METAGRAPH_EXTRINSICS_SOURCE
-    // flag set to "postgres", tryPostgresTier short-circuited on the tier-flag
+    // flag set to "postgres", tryDataApiTier short-circuited on the tier-flag
     // check before ever touching that (fictional) D1 mock: vacuous, same as the
     // analytics.test.ts sibling bug this mirrors (metagraphed#8081 follow-up).
     // The real failure mode is a rejected DATA_API fetch.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           throw new Error("DATA_API unreachable");
@@ -6027,7 +6026,7 @@ describe("MCP get_chain_signers", () => {
 describe("MCP get_chain_fees", () => {
   // D1 fully eliminated (2026-07-16): extrinsics' D1 write path is retired
   // (#4772) and the table is dropped in production, so get_chain_fees now
-  // goes tryPostgresTier -> buildChainFees({...}) on any miss/outage, never a
+  // goes tryDataApiTier -> buildChainFees({...}) on any miss/outage, never a
   // live D1 read. The COALESCE/median SQL-shape assertions this used to
   // verify against D1 now apply to Postgres's own equivalent query in
   // workers/data-api.ts's chain-fees route (its own dedicated coverage).
@@ -6204,7 +6203,7 @@ describe("MCP get_chain_registrations", () => {
   // D1 fully eliminated (2026-07-16): account_events' D1 write path is
   // retired (#4772) and the table is dropped in production, so
   // loadChainRegistrations (the D1-querying loader) is gone -- the tool now
-  // goes tryPostgresTier -> buildChainRegistrations([], {...}) on any
+  // goes tryDataApiTier -> buildChainRegistrations([], {...}) on any
   // miss/outage. This mocks the Postgres tier by running the same pure
   // builder the real Postgres route would.
   // The #9146 chain-registrations lane, which stores the per-subnet rows and the
@@ -6473,7 +6472,7 @@ describe("MCP get_evm_address_mapping (#6725/#6728)", () => {
 describe("MCP get_chain_transfers", () => {
   // D1 fully eliminated (2026-07-17): account_events' D1 write path is
   // retired (#4772) and the table is dropped in production, so
-  // get_chain_transfers now goes tryPostgresTier -> buildChainTransfers({...})
+  // get_chain_transfers now goes tryDataApiTier -> buildChainTransfers({...})
   // on any miss/outage, never a live D1 read. This mocks the Postgres tier by
   // running the same pure builder over the caller's own window query param,
   // so the mocked response is byte-identical to what production would
@@ -6544,7 +6543,7 @@ describe("MCP stake-flow and movers economics tools", () => {
 
   // account_events' D1 write path is retired (#4772) and the table is dropped
   // in production, so get_subnet_stake_flow and every get_account_* footprint
-  // tool below now goes tryPostgresTier -> buildXxx({...}) on any miss/outage,
+  // tool below now goes tryDataApiTier -> buildXxx({...}) on any miss/outage,
   // never a live D1 read. These mock the Postgres tier by running the real
   // pure builder over the caller's own window query param, so the mocked
   // response is byte-identical to what production would actually serve --
@@ -6552,7 +6551,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   function stakeFlowPostgresEnv(netuid: unknown, rows: Row[] = []) {
     return {
       env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         DATA_API: {
           fetch: async (request: Request) => {
             const url = new URL(request.url);
@@ -6573,7 +6572,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   ) {
     return {
       env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         DATA_API: {
           fetch: async (request: Request) => {
             const url = new URL(request.url);
@@ -6586,11 +6585,11 @@ describe("MCP stake-flow and movers economics tools", () => {
   }
 
   // neuron_daily's D1 write path is retired (#4772) and the table is dropped
-  // in production, so get_subnet_movers now goes tryPostgresTier ->
+  // in production, so get_subnet_movers now goes tryDataApiTier ->
   // buildMovers([], [], {...}) on any miss/outage, never a live D1 read. This
   // mocks the Postgres tier by running the real pure builder over the
   // caller's own window/sort/limit query params -- get_subnet_movers reads
-  // the raw tryPostgresTier body directly (no .data wrapper), unlike the
+  // the raw tryDataApiTier body directly (no .data wrapper), unlike the
   // account_events-backed tools above.
   function moversPostgresEnv({
     startRows = [],
@@ -6598,7 +6597,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   }: { startRows?: Row[]; endRows?: Row[] } = {}) {
     return {
       env: {
-        METAGRAPH_NEURONS_SOURCE: "postgres",
+        METAGRAPH_NEURONS_SOURCE: "data-api",
         DATA_API: {
           fetch: async (request: Request) => {
             const url = new URL(request.url);
@@ -7272,12 +7271,12 @@ describe("MCP get_subnet_event_summary", () => {
 
 // account_events' D1 write path is retired (#4772) and the table is dropped in
 // production, so every get_subnet_* single-card activity tool below now goes
-// tryPostgresTier -> buildSubnetXxx(null, netuid, {window}) on any miss/outage,
+// tryDataApiTier -> buildSubnetXxx(null, netuid, {window}) on any miss/outage,
 // never a live D1 read. This mocks the Postgres tier by running the real pure
 // builder over the caller's own window query param, so the mocked response is
 // byte-identical to what production would actually serve -- mirrors
 // chainTransfersPostgresEnv/accountEventsPostgresEnv above. Unlike the
-// account_events-backed get_account_* tools, these read the raw tryPostgresTier
+// account_events-backed get_account_* tools, these read the raw tryDataApiTier
 // body directly (no .data wrapper), matching get_subnet_movers.
 function subnetEventsPostgresEnv(
   buildFn: (row: Row | null, netuid: unknown, opts: { window?: string }) => Row,
@@ -7286,7 +7285,7 @@ function subnetEventsPostgresEnv(
 ) {
   return {
     env: {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (request: Request) => {
           const url = new URL(request.url);
@@ -7678,11 +7677,11 @@ describe("MCP get_subnet_performance_history", () => {
 
 describe("MCP get_subnet_yield_history", () => {
   // neuron_daily's D1 write path is retired (#4772) and the table is dropped in
-  // production, so get_subnet_yield_history now goes tryPostgresTier ->
+  // production, so get_subnet_yield_history now goes tryDataApiTier ->
   // buildSubnetYieldHistory([], netuid, {...}) on any miss/outage, never a live
   // D1 read. The "payload validates" test below configures a real Postgres
   // tier by running the real pure builder over the caller's own window query
-  // param, mirroring subnetEventsPostgresEnv above (raw tryPostgresTier body,
+  // param, mirroring subnetEventsPostgresEnv above (raw tryDataApiTier body,
   // no .data wrapper).
 
   test("defaults to the 30d window on cold D1", async () => {
@@ -7715,7 +7714,7 @@ describe("MCP get_subnet_yield_history", () => {
       { netuid: 7 },
       {
         env: {
-          METAGRAPH_NEURONS_SOURCE: "postgres",
+          METAGRAPH_NEURONS_SOURCE: "data-api",
           DATA_API: {
             fetch: async (request: Request) => {
               const url = new URL(request.url);
@@ -7748,7 +7747,7 @@ describe("MCP get_network_activity", () => {
   // D1 fully eliminated (2026-07-16): extrinsics'/blocks' D1 write path is
   // retired (#4772) and the tables are dropped in production, so
   // loadNetworkActivity (the D1-querying loader) is gone -- the tool now
-  // goes tryPostgresTier -> buildChainActivity({...}) on any miss/outage.
+  // goes tryDataApiTier -> buildChainActivity({...}) on any miss/outage.
   test("merges the extrinsic and block row sets into one day series", async () => {
     // WAS a DATA_API double returning the finished `days` array, success_rate
     // included -- the merge and the rate asserted themselves, over a request
@@ -7917,7 +7916,7 @@ describe("MCP get_rpc_usage", () => {
 
   // D1 fully eliminated (2026-07-17): rpc_proxy_events is Postgres-only now
   // (loadRpcUsage is only reached on a tier miss and always returns the
-  // schema-stable empty shape), so get_rpc_usage now goes tryPostgresTier ->
+  // schema-stable empty shape), so get_rpc_usage now goes tryDataApiTier ->
   // formatRpcUsage(...) on any miss/outage, never a live D1 read. This mocks
   // the Postgres tier directly with a REST-shaped response, mirroring
   // workers/data-api.ts's own rpc/usage route.
@@ -11913,7 +11912,7 @@ describe("MCP economics + metagraph data tools", () => {
   // #9120: a data-tier miss is invisible on this surface unless the dispatcher
   // says so. MCP results carry no headers, so #9114's x-metagraph-degraded
   // cannot reach an agent, and MCP handlers bypass withEdgeCache where that
-  // label is applied -- they call tryPostgresTier directly, at 126 sites.
+  // label is applied -- they call tryDataApiTier directly, at 126 sites.
   //
   // Both directions. An unmarked degraded result is the bug. A marked healthy
   // result is a false alarm that teaches agents to ignore the field, which is
@@ -11922,18 +11921,18 @@ describe("MCP economics + metagraph data tools", () => {
     // Tier flags on with no DATA_API bound: every tier read degrades.
     //
     // ONLY THE FLAGS THAT STILL FORWARD. The marker fires when a call advances
-    // tryPostgresTier's fallback generation, so a tool that reads no tier can
+    // tryDataApiTier's fallback generation, so a tool that reads no tier can
     // never carry it -- and after #10190's sweep that is most of them.
-    // DATA_API_FORWARD_FLAGS is the whole surviving set: NEURONS,
+    // FORWARDABLE_TIER_FLAGS is the whole surviving set: NEURONS,
     // SUBNET_HYPERPARAMS and ACCOUNT_IDENTITY. METAGRAPH_EXTRINSICS_SOURCE and
     // METAGRAPH_ACCOUNT_EVENTS_SOURCE were here and are gone with the reads they
     // gated; listing a flag whose call sites are deleted asserts a marker on
     // something that cannot happen, which is how this test came to pass over
     // two tools that never consulted a tier at all.
     const degradedEnv = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
-      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
     };
 
     test("a tier miss is marked, whichever tool it happened in", async () => {
@@ -11965,7 +11964,7 @@ describe("MCP economics + metagraph data tools", () => {
       // today, so this guard is unreachable through dispatch -- exercised
       // directly rather than left uncovered, since a `v8 ignore` here would
       // hide a real branch (the codecov/patch gate counts it either way).
-      const stale = currentPostgresTierFallbackGeneration() - 1;
+      const stale = currentDataApiTierFallbackGeneration() - 1;
       for (const payload of [[1, 2], "text", 42, null]) {
         assert.deepEqual(
           markMcpTierDegraded(payload, stale),
@@ -11987,7 +11986,7 @@ describe("MCP economics + metagraph data tools", () => {
       // `tier_unavailable` would erase, making MCP the one surface unable to
       // report WHY a zero is untrustworthy. Both answers are degraded either
       // way, so keeping the specific one never loses the signal.
-      const stale = currentPostgresTierFallbackGeneration() - 1;
+      const stale = currentDataApiTierFallbackGeneration() - 1;
       const specific = {
         position_count: 0,
         degraded: {
@@ -12013,7 +12012,7 @@ describe("MCP economics + metagraph data tools", () => {
         { netuid: 7 },
         {
           env: {
-            METAGRAPH_NEURONS_SOURCE: "postgres",
+            METAGRAPH_NEURONS_SOURCE: "data-api",
             DATA_API: {
               fetch: async () =>
                 Response.json({
@@ -12044,7 +12043,7 @@ describe("MCP economics + metagraph data tools", () => {
   describe("fields= projection (#9082)", () => {
     function neuronsEnv(payload: Row) {
       return {
-        METAGRAPH_NEURONS_SOURCE: "postgres",
+        METAGRAPH_NEURONS_SOURCE: "data-api",
         DATA_API: { fetch: async () => Response.json(payload) },
       };
     }
@@ -12478,7 +12477,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.changes, []);
   });
 
-  // #8832: out-of-range limit must hard-error before tryPostgresTier, not
+  // #8832: out-of-range limit must hard-error before tryDataApiTier, not
   // degrade into a success-shaped empty feed.
   describe("get_chain_identity_history limit validation", () => {
     // Malformed rather than over-ambitious: 0, a negative, a fraction and a
@@ -12488,7 +12487,6 @@ describe("MCP economics + metagraph data tools", () => {
       test(`rejects limit=${JSON.stringify(limit)} as invalid_params`, async () => {
         let fetched = false;
         const env = {
-          METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
           DATA_API: {
             fetch: async () => {
               fetched = true;
@@ -12570,7 +12568,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   // #4832 gap-closure: get_chain_identity_history mirrors REST's
   // handleChainIdentityHistory tier-selection exactly (same
-  // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryPostgresTier contract) --
+  // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryDataApiTier contract) --
   // see the equivalent "flag=postgres" tests for handleSubnetIdentityHistory
   // in tests/request-handlers-entities.test.ts. D1 fully eliminated
   // (2026-07-16): a Postgres miss/outage now degrades straight to the
@@ -12624,7 +12622,7 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   // neuron_daily's D1 write path is retired (#4772) and the table is dropped in
-  // production, so get_chain_turnover now goes tryPostgresTier ->
+  // production, so get_chain_turnover now goes tryDataApiTier ->
   // buildChainTurnover([], {...}) on any miss/outage, never a live D1 read.
   // Real Postgres-tier plumbing (flag/URL/fallback) is covered by the marker
   // test in "MCP chain-*/subnet-* analytics tools — Postgres tier wiring"
@@ -12637,7 +12635,7 @@ describe("MCP economics + metagraph data tools", () => {
   ) {
     return {
       env: {
-        METAGRAPH_NEURONS_SOURCE: "postgres",
+        METAGRAPH_NEURONS_SOURCE: "data-api",
         DATA_API: {
           fetch: async (request: Request) => {
             const url = new URL(request.url);
@@ -12718,7 +12716,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   // D1 fully eliminated (2026-07-16): account_events' D1 write path is
   // retired (#4772) and the table is dropped in production, so
-  // get_chain_stake_flow now goes tryPostgresTier -> buildChainStakeFlow([],
+  // get_chain_stake_flow now goes tryDataApiTier -> buildChainStakeFlow([],
   // ...) on any miss/outage, never a live D1 read. This mocks the Postgres
   // tier by running the same pure builder over the caller's own window/limit
   // params, reusing the shared chainAccountEventsPostgresEnv helper (its
@@ -12825,7 +12823,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   // D1 fully eliminated (2026-07-16): account_events' D1 write path is
   // retired (#4772) and the table is dropped in production, so
-  // get_chain_alpha_volume now goes tryPostgresTier -> buildChainAlphaVolume(
+  // get_chain_alpha_volume now goes tryDataApiTier -> buildChainAlphaVolume(
   // [], ...) on any miss/outage, never a live D1 read. Reuses the shared
   // chainAccountEventsPostgresEnv helper (this builder ignores the unused
   // window/networkDistinct options — fixed 24h window, own row-derived rollup).
@@ -12944,7 +12942,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   // D1 fully eliminated (2026-07-16): account_events' D1 write path is
   // retired (#4772) and the table is dropped in production, so
-  // get_chain_weights now goes tryPostgresTier -> buildChainWeights([], ...)
+  // get_chain_weights now goes tryDataApiTier -> buildChainWeights([], ...)
   // on any miss/outage, never a live D1 read. Reuses the shared
   // chainAccountEventsPostgresEnv helper -- same shape as
   // get_chain_stake_moves' Postgres-tier test above.
@@ -13045,9 +13043,9 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   // WAS chainAccountEventsPostgresEnv: a DATA_API double that ran the SAME pure
-  // builder the tool runs, behind METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres".
+  // builder the tool runs, behind METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api".
   // Two things were wrong with it. That flag reads "retired" in wrangler.jsonc
-  // and is absent from DATA_API_FORWARD_FLAGS, so the binding was never asked --
+  // and is absent from FORWARDABLE_TIER_FLAGS, so the binding was never asked --
   // every one of these tests was reading the empty fallback. And had it been
   // asked, running the builder to check the builder proves only that it is
   // deterministic.
@@ -13449,7 +13447,7 @@ describe("MCP economics + metagraph data tools", () => {
         { window, limit: 10 },
         {
           env: {
-            METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+            METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
             ...LAKEHOUSE_ENV,
             ...tier,
             ...(archive as unknown as Row),
@@ -13827,7 +13825,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   // D1 fully eliminated (2026-07-16): account_events' D1 write path is
   // retired (#4772) and the table is dropped in production, so
-  // get_chain_transfer_pairs now goes tryPostgresTier ->
+  // get_chain_transfer_pairs now goes tryDataApiTier ->
   // buildChainTransferPairs({...}) on any miss/outage, never a live D1 read.
   // This mocks the Postgres tier by running the same pure builder over the
   // caller's own window/sort query params, so the mocked response is
@@ -14435,7 +14433,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   // D1 fully eliminated (2026-07-16): extrinsics' D1 write path is retired
   // (#4772) and the table is dropped in production, so get_chain_calls now
-  // goes tryPostgresTier -> buildChainCalls({...}) on any miss/outage, never
+  // goes tryDataApiTier -> buildChainCalls({...}) on any miss/outage, never
   // a live D1 read. This mocks the Postgres tier by running the same pure
   // builder over the caller's own window/group_by query params, so the
   // mocked response is byte-identical to what production would actually
@@ -14694,7 +14692,7 @@ describe("MCP economics + metagraph data tools", () => {
   test("compare_subnets: the health dimension groups surface_status in the live store", async () => {
     // WAS an assertion on "/api/v1/internal/compare-health?netuids=7" -- a
     // request METAGRAPH_HEALTH_SOURCE cannot make: it reads "d1" and is absent
-    // from DATA_API_FORWARD_FLAGS, and DATA_API does not implement that route
+    // from FORWARDABLE_TIER_FLAGS, and DATA_API does not implement that route
     // anyway. So compare_subnets served `health: null` for every subnet while
     // this test read a health block straight back out of its own mock.
     //
@@ -14762,7 +14760,7 @@ describe("MCP economics + metagraph data tools", () => {
   // row in an empty healthByNetuid map).
   test("compare_subnets: health dimension flag=postgres falls back to the schema-stable empty health on DATA_API failure", async () => {
     const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -14782,7 +14780,7 @@ describe("MCP economics + metagraph data tools", () => {
   test("compare_subnets: non-health dimensions never attempt Postgres even when flag=postgres", async () => {
     let dataApiCalled = false;
     const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           dataApiCalled = true;
@@ -15336,7 +15334,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   // account_events/neurons' D1 write path is retired (#4772) and both tables
   // are dropped in production; get_account, get_account_events, and
-  // get_account_subnets each now go tryPostgresTier -> buildAccountXxx(...)
+  // get_account_subnets each now go tryDataApiTier -> buildAccountXxx(...)
   // on any miss/outage, never a live D1 read. accountPostgresEnv mirrors the
   // real DATA_API endpoint (workers/data-api.ts's own buildAccountSummary
   // call) by running the same pure builders directly, so the mocked response
@@ -15348,8 +15346,8 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     recent = [],
   }: Row = {}) {
     return {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (request: Request) => {
           const url = new URL(request.url);
@@ -15928,7 +15926,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   // REMOVED (#10190): "get_account_entities: a successful DATA_API response wins
   // over the schema-stable cold fallback". METAGRAPH_SUBNET_OWNERSHIP_SOURCE is
-  // retired and absent from DATA_API_FORWARD_FLAGS, so there was no response to
+  // retired and absent from FORWARDABLE_TIER_FLAGS, so there was no response to
   // win -- the ties came from the test's own stub. Ownership-tie shaping is proven
   // against the composer's live leg in tests/account-entities-answer.test.ts.
 
@@ -16051,15 +16049,14 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
   // account_events_daily/extrinsics/account_events' D1 write paths are all
   // retired (#4772) and their tables are dropped in production, so
   // get_account_history, get_account_extrinsics, and get_account_transfers
-  // each now go tryPostgresTier -> buildAccountXxx(...) on any miss/outage,
+  // each now go tryDataApiTier -> buildAccountXxx(...) on any miss/outage,
   // never a live D1 read. tailPostgresEnv mocks the Postgres tier by running
   // the real pure builder over the caller's own limit/offset query params, so
   // the mocked response is byte-identical to what production would actually
   // serve -- mirrors chainTransfersPostgresEnv/accountPostgresEnv above.
   function tailPostgresEnv(fixtures: Row = {}): Row {
     return {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (request: Request) => {
           const url = new URL(request.url);
@@ -16163,7 +16160,7 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
   });
 
   // extrinsics' D1 write path is retired (#4772) and the table is dropped in
-  // production, so get_account_extrinsics now goes tryPostgresTier ->
+  // production, so get_account_extrinsics now goes tryDataApiTier ->
   // buildAccountExtrinsics([], ss58, {...}) on any miss/outage, never a live
   // D1 read -- the empty-fallback shape is covered by "degrades to empty
   // payload on cold D1" below; populated-row schema conformance is covered by
@@ -16215,7 +16212,7 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
   });
 
   // account_events' D1 write path is retired (#4772) and the table is dropped
-  // in production, so get_account_transfers now goes tryPostgresTier ->
+  // in production, so get_account_transfers now goes tryDataApiTier ->
   // buildAccountTransfers([], ss58, {...}) on any miss/outage, never a live D1
   // read -- the empty-fallback shape is covered by "degrades to empty payload
   // on cold D1" below; direction-labeled row-shaping against real Postgres
@@ -16317,7 +16314,7 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
   });
 
   test("get_account_transfers treats direction='all' identically to omitting direction", async () => {
-    // WAS asserted on the `direction` query param tryPostgresTier sent (null in
+    // WAS asserted on the `direction` query param tryDataApiTier sent (null in
     // both cases). The flag forwards nothing, so that proved only that the tool
     // dropped the argument. The claim is about the ROWS: "all" and omitted must
     // select the same set, which on the lakehouse means the same predicate --
@@ -17627,7 +17624,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
 
   // #4694: list_extrinsics/get_extrinsic mirror REST's handleExtrinsics/
   // handleExtrinsic tier-selection exactly (same METAGRAPH_EXTRINSICS_SOURCE
-  // flag, same tryPostgresTier fallback contract) -- see the equivalent
+  // flag, same tryDataApiTier fallback contract) -- see the equivalent
   // "flag=postgres" tests for handleExtrinsics/handleExtrinsic in
   // tests/request-handlers-entities.test.ts, which this block mirrors.
   describe("D1 -> Postgres serving cutover (#4694)", () => {
@@ -17695,12 +17692,12 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     });
 
     // extrinsics' D1 write path is retired (#4772) and the table is dropped
-    // in production, so the tail of the tryPostgresTier ?? chain is now the
+    // in production, so the tail of the tryDataApiTier ?? chain is now the
     // schema-stable empty feed (buildExtrinsicFeed([], {...})), not a live D1
     // query -- a D1 mock, if bound, is never queried either way.
     test("list_extrinsics: flag=postgres falls back to the schema-stable empty feed on Postgres failure", async () => {
       const env: Row = {};
-      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.METAGRAPH_EXTRINSICS_SOURCE = "data-api";
       env.DATA_API = {
         fetch: async () => {
           throw new Error("boom");
@@ -17724,13 +17721,13 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     });
 
     // "list_extrinsics: flag=postgres forwards filters as REST-equivalent query
-    // params" was here, asserting the query string tryPostgresTier built. The
+    // params" was here, asserting the query string tryDataApiTier built. The
     // flag forwards nothing, and every filter it listed is now a SQL predicate
     // -- asserted where it lands, in "list_extrinsics expresses every filter and
     // skips the tier on call_hash" above, including the call_hash gate that
     // keeps an unexpressible filter from being silently dropped.
     // "get_extrinsic: flag=postgres uses Postgres data, D1 never queried"
-    // was here: it asserted the URL tryPostgresTier built and read a marker
+    // was here: it asserted the URL tryDataApiTier built and read a marker
     // back off the mocked tier. That flag forwards nothing (#10190), so the
     // request was never made -- covered by "get_extrinsic resolves a composite ref and embeds formatted events", through the transport that answers.
 
@@ -17767,13 +17764,13 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     });
 
     // extrinsics' D1 write path is retired (#4772) and the table is dropped
-    // in production, so the tail of the tryPostgresTier ?? chain is now the
+    // in production, so the tail of the tryDataApiTier ?? chain is now the
     // schema-stable extrinsic:null detail (buildExtrinsic(undefined, ref)),
     // not a live D1 query.
     test("get_extrinsic: flag=postgres falls back to the schema-stable empty detail on Postgres failure", async () => {
       const hash = "0x" + "c".repeat(64);
       const env: Row = {};
-      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.METAGRAPH_EXTRINSICS_SOURCE = "data-api";
       env.DATA_API = {
         fetch: async () => new Response("err", { status: 500 }),
       };
@@ -17784,7 +17781,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     });
 
     // "get_extrinsic: flag=postgres forwards the ref in the request path"
-    // was here: it asserted the URL tryPostgresTier built and read a marker
+    // was here: it asserted the URL tryDataApiTier built and read a marker
     // back off the mocked tier. That flag forwards nothing (#10190), so the
     // request was never made -- the ref is now resolved into a SQL predicate, asserted in "get_extrinsic resolves a composite ref and embeds formatted events", through the transport that answers.
   });
@@ -17793,7 +17790,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     const ajv = new Ajv2020({ strict: false });
     const validatorFor = (name: string) => ajv.compile(outputSchemaFor(name));
     const hash = "0x" + "c".repeat(64);
-    // Every block-explorer tool now goes tryPostgresTier -> buildXxx(...) on
+    // Every block-explorer tool now goes tryDataApiTier -> buildXxx(...) on
     // any miss/outage, never a live D1 read (#4772/D1 fully eliminated
     // 2026-07-17). These mock the Postgres tier by running the real pure
     // builders directly, so the mocked response is byte-identical to what
@@ -17810,7 +17807,6 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       [
         "list_block_extrinsics",
         {
-          METAGRAPH_EXTRINSICS_SOURCE: "postgres",
           DATA_API: {
             fetch: async () =>
               Response.json({
@@ -17828,7 +17824,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       [
         "get_block_events",
         {
-          METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+          METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
           DATA_API: {
             fetch: async () =>
               Response.json({
@@ -17844,7 +17840,6 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       [
         "list_extrinsics",
         {
-          METAGRAPH_EXTRINSICS_SOURCE: "postgres",
           DATA_API: {
             fetch: async () =>
               Response.json(
@@ -17861,7 +17856,6 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       [
         "get_extrinsic",
         {
-          METAGRAPH_EXTRINSICS_SOURCE: "postgres",
           DATA_API: {
             fetch: async () =>
               Response.json(
@@ -18292,11 +18286,12 @@ describe("MCP tool-input validation — typed errors, never a throw (#742)", () 
 // MCP↔REST parity tools (#393): per-subnet history/concentration-history, per-UID
 // neuron history, the subnet chain-event stream, the provider detail, and the
 // discovery-bundle artifact reads. Each mirrors its existing REST route's
-// data-access (mcpD1Runner over the same SQL, or loadArtifactData over the same
-// artifact) so an agent reaches the same data through MCP.
-describe("MCP parity tools — subnet history / events (D1-backed)", () => {
+// data-access (the store runner over the same SQL -- mcpD1Runner in the D1
+// era -- or loadArtifactData over the same artifact) so an agent reaches the
+// same data through MCP.
+describe("MCP parity tools — subnet history / events (store-backed)", () => {
   // neuron_daily's D1 write path is retired (#4772) and the table is dropped
-  // in production, so get_subnet_history now goes tryPostgresTier ->
+  // in production, so get_subnet_history now goes tryDataApiTier ->
   // buildSubnetHistory([], netuid, {window}) on any miss/outage, never a live
   // D1 read. Real Postgres-tier plumbing is covered by the marker test in
   // "MCP chain-*/subnet-* analytics tools — Postgres tier wiring"; row-shaping
@@ -18355,7 +18350,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
 
   // #4832 gap-closure: get_subnet_identity_history mirrors REST's
   // handleSubnetIdentityHistory tier-selection exactly (same
-  // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryPostgresTier fallback
+  // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryDataApiTier fallback
   // contract) -- see the equivalent "flag=postgres" tests for
   // handleSubnetIdentityHistory in tests/request-handlers-entities.test.ts,
   // which this block mirrors. Also mirrors list_extrinsics/get_extrinsic's own
@@ -21584,7 +21579,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
 
   test("compare_validators: flag=postgres projects each detail and extracts the netuid subnet_context", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           const hotkey = decodeURIComponent(
@@ -21633,7 +21628,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
 
   test("compare_validators: flag=postgres falls back to the empty base on failure", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -21747,7 +21742,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
   });
 
   // "get_validator_nominators: flag=postgres unwraps the DATA_API {data, generatedAt} envelope onto the top level"
-  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // was here: it asserted the URL tryDataApiTier built and read a marker
   // back off the mocked tier. That flag forwards nothing (#10190), so the
   // request was never made -- there is no envelope to unwrap now; the reader returns the built card, asserted in "get_validator_nominators serves the nominator list from the lakehouse", through the transport that answers.
 
@@ -22264,7 +22259,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
   describe("get_account_identity D1 -> Postgres serving cutover", () => {
     test("flag=postgres uses Postgres data, D1 never queried", async () => {
       const env = {
-        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
         DATA_API: {
           fetch: async () =>
             Response.json({
@@ -22289,7 +22284,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     // the cold-D1 case above.
     test("flag=postgres falls back to the schema-stable empty identity on failure", async () => {
       const env = {
-        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
         DATA_API: {
           fetch: async () => {
             throw new Error("boom");
@@ -22330,7 +22325,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
   describe("get_account_identity_history D1 -> Postgres serving cutover", () => {
     test("flag=postgres uses Postgres data, D1 never queried", async () => {
       const env = {
-        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
         DATA_API: {
           fetch: async () =>
             Response.json({
@@ -22406,8 +22401,8 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
 
   test("get_account_positions never asks DATA_API, on either tool", async () => {
     // #10808. The tier arm here was a REAL forward -- METAGRAPH_NEURONS_SOURCE
-    // is in DATA_API_FORWARD_FLAGS -- to a route DATA_API does not implement:
-    // matchNeuronsD1Route covers /portfolio, /subnets and
+    // is in FORWARDABLE_TIER_FLAGS -- to a route DATA_API does not implement:
+    // matchNeuronsStoreRoute covers /portfolio, /subnets and
     // /subnets/:netuid/history, and /positions fell through to the gone-tier
     // 503 on all 36 occurrences measured in 4 days.
     //
@@ -22423,7 +22418,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
       const res = await callTool(tool, args, {
         env: {
           // The value that WOULD forward, on the flag that genuinely forwards.
-          METAGRAPH_NEURONS_SOURCE: "d1",
+          METAGRAPH_NEURONS_SOURCE: "data-api",
           DATA_API: {
             fetch: async (request: Request) => {
               paths.push(new URL(request.url).pathname);
@@ -22512,8 +22507,8 @@ describe("MCP get_account_snapshot", () => {
       throw new Error("balance RPC should not fire");
     };
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       // MCP_RATE_LIMITER must succeed so the transport-level limiter (which
       // falls back to RPC_RATE_LIMITER when MCP_RATE_LIMITER is absent, per
       // get_account_balance's own "applies the RPC rate limiter" test above)
@@ -22629,8 +22624,8 @@ describe("MCP get_account_snapshot", () => {
     ];
     const env = {
       ...pgMockEnv(["nominator_positions", "neurons"]),
-      METAGRAPH_NEURONS_SOURCE: "postgres",
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...LAKEHOUSE_ENV,
       // A passing RPC_RATE_LIMITER here exercises the handler's own
       // success-path branch, distinct from the no-limiter-bound cold test
@@ -22698,7 +22693,7 @@ describe("MCP get_account_snapshot", () => {
 
   test("recent_events_limit is forwarded to the events route", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (request: Request) => {
           const url = new URL(request.url);
@@ -22735,7 +22730,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
   });
 
   // "get_sudo: flag=postgres forwards to /api/v1/sudo, D1 never queried"
-  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // was here: it asserted the URL tryDataApiTier built and read a marker
   // back off the mocked tier. That flag forwards nothing (#10190), so the
   // request was never made -- covered by "get_sudo and get_governance_config_changes serve their fixed modules", through the transport that answers.
 
@@ -22752,7 +22747,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
   });
 
   // "get_governance_config_changes: flag=postgres forwards to /api/v1/governance/config-changes"
-  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // was here: it asserted the URL tryDataApiTier built and read a marker
   // back off the mocked tier. That flag forwards nothing (#10190), so the
   // request was never made -- covered by "get_sudo and get_governance_config_changes serve their fixed modules", through the transport that answers.
 
@@ -22922,7 +22917,6 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
         {
           env: {
             R2_SQL_TOKEN: "cfut_test",
-            METAGRAPH_BLOCKS_SOURCE: "postgres",
             DATA_API: {
               fetch: async (req: Request) => {
                 tierPaths.push(new URL(req.url).pathname);
@@ -23061,7 +23055,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
 // table below tests -- verified separately here rather than folded into
 // that table, same isolation rationale as every other flag-scoped block.
 // REWRITTEN (#10190): was "MCP get_top_holders — Postgres tier wiring".
-// METAGRAPH_TOP_HOLDERS_SOURCE is retired and absent from DATA_API_FORWARD_FLAGS,
+// METAGRAPH_TOP_HOLDERS_SOURCE is retired and absent from FORWARDABLE_TIER_FLAGS,
 // so the forwarded path and `marker: "from-postgres"` came only from the stub. The
 // live tier is the flow projection (tests/top-holders-flow-tier.test.ts); what this
 // tool owes on its own is a schema-stable card when nothing answers.
@@ -23210,7 +23204,7 @@ describe("MCP endpoint tools — live overlay staleness fix (#5225)", () => {
 // (neurons/neuron_daily are dropped), so they always served zeroed/empty
 // data in production while their REST siblings (entities.ts's
 // handleSubnetConcentration et al.) served real Postgres data via
-// tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE"). This block
+// tryDataApiTier(env, request, "METAGRAPH_NEURONS_SOURCE"). This block
 // confirms the same wiring now reaches DATA_API at REST's exact path +
 // query params, and degrades safely to the schema-stable empty shape (never
 // isError) on any Postgres failure -- same contract as the pre-existing
@@ -23364,7 +23358,7 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
       path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/portfolio",
     },
     // get_account_positions is NOT here (#10808). Every other entry names a path
-    // matchNeuronsD1Route actually implements; /positions was the one that did
+    // matchNeuronsStoreRoute actually implements; /positions was the one that did
     // not, so this loop asserted a forward that answered 503 every time in
     // production. Its replacement asserts the absence of the request --
     // "get_account_positions never asks DATA_API, on either tool" above.
@@ -23389,7 +23383,7 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
     test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
       let captured;
       const env = {
-        METAGRAPH_NEURONS_SOURCE: "postgres",
+        METAGRAPH_NEURONS_SOURCE: "data-api",
         DATA_API: {
           fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
@@ -23413,7 +23407,7 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
       const env = {
-        METAGRAPH_NEURONS_SOURCE: "postgres",
+        METAGRAPH_NEURONS_SOURCE: "data-api",
         DATA_API: {
           fetch: async () => {
             throw new Error("boom");
@@ -23480,7 +23474,7 @@ describe("MCP get_rpc_usage — window handling and the cold shape", () => {
 // and its own CASES array.
 // REWRITTEN (#10190): was "MCP subnet-snapshots-tier analytics tools — Postgres
 // tier wiring". METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired everywhere and absent
-// from DATA_API_FORWARD_FLAGS, so the forwarded path and `marker: "from-postgres"`
+// from FORWARDABLE_TIER_FLAGS, so the forwarded path and `marker: "from-postgres"`
 // these cases asserted came only from their own DATA_API stub.
 //
 // Unlike the identity tools, these two have a LIVE source -- `subnet_snapshots` is
@@ -23609,15 +23603,15 @@ describe("MCP extrinsics-tier chain analytics tools — Postgres tier wiring", (
 
     test(`${label}: the retired tier flag is not consulted even when set`, async () => {
       // WAS "uses Postgres data at the REST-equivalent path", asserting the URL
-      // tryPostgresTier sent. METAGRAPH_EXTRINSICS_SOURCE reads
+      // tryDataApiTier sent. METAGRAPH_EXTRINSICS_SOURCE reads
       // "retired"/"d1" in wrangler.jsonc and is absent from
-      // DATA_API_FORWARD_FLAGS, so that request was never made -- the assertion
+      // FORWARDABLE_TIER_FLAGS, so that request was never made -- the assertion
       // described a call production does not perform, over a payload it cannot
       // produce. `path` stays in CASES as the documentation of what the REST twin
       // serves; what is provable here is the retirement.
       const tier = forbiddenDataApi();
       const res = await callTool(tool, args, {
-        env: { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier },
+        env: { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier },
       });
       assert.equal(res.body.result.isError, false, label);
       assert.deepEqual(tier.paths, [], label);
@@ -23626,7 +23620,6 @@ describe("MCP extrinsics-tier chain analytics tools — Postgres tier wiring", (
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
       const env = {
-        METAGRAPH_EXTRINSICS_SOURCE: "postgres",
         DATA_API: {
           fetch: async () => {
             throw new Error("boom");
@@ -23659,7 +23652,7 @@ describe("MCP extrinsics-tier chain analytics tools — Postgres tier wiring", (
 
 // list_blocks / get_blocks_summary / get_block USED to be gated on
 // METAGRAPH_BLOCKS_SOURCE. That flag is retired in every deployed config and
-// absent from DATA_API_FORWARD_FLAGS, so the tier read resolved to null on every
+// absent from FORWARDABLE_TIER_FLAGS, so the tier read resolved to null on every
 // call and the cold tier has been the answer all along (#10190).
 //
 // These pin the retirement rather than the wiring: flag set, DATA_API bound and
@@ -23708,7 +23701,6 @@ describe("MCP blocks-tier chain-explorer tools — no tier read (#10190)", () =>
       const tier = recordingDataApi();
       const res = await callTool(tool, args, {
         env: {
-          METAGRAPH_BLOCKS_SOURCE: "postgres",
           DATA_API: tier.binding,
         },
       });
@@ -23733,7 +23725,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
   test("get_subnet_hyperparams: flag=postgres uses Postgres data at the REST-equivalent path", async () => {
     let captured;
     const env = {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
@@ -23754,7 +23746,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
 
   test("get_subnet_hyperparams: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
     const env = {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -23788,7 +23780,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
   test("get_subnet_hyperparams_history: flag=postgres uses Postgres data at the REST-equivalent path", async () => {
     let captured;
     const env = {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
@@ -23813,7 +23805,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
   test("get_subnet_hyperparams_history: flag=postgres forwards a supplied limit/offset", async () => {
     let captured;
     const env = {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
@@ -23836,7 +23828,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
   test("get_subnet_hyperparams_history: flag=postgres forwards a supplied cursor", async () => {
     let captured;
     const env = {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
@@ -23858,7 +23850,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
 
   test("get_subnet_hyperparams_history: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
     const env = {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -24157,15 +24149,15 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
 
     test(`${label}: the retired tier flag is not consulted even when set`, async () => {
       // WAS "uses Postgres data at the REST-equivalent path", asserting the URL
-      // tryPostgresTier sent. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+      // tryDataApiTier sent. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
       // "retired"/"d1" in wrangler.jsonc and is absent from
-      // DATA_API_FORWARD_FLAGS, so that request was never made -- the assertion
+      // FORWARDABLE_TIER_FLAGS, so that request was never made -- the assertion
       // described a call production does not perform, over a payload it cannot
       // produce. `path` stays in CASES as the documentation of what the REST twin
       // serves; what is provable here is the retirement.
       const tier = forbiddenDataApi();
       const res = await callTool(tool, args, {
-        env: { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres", ...tier },
+        env: { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api", ...tier },
       });
       assert.equal(res.body.result.isError, false, label);
       assert.deepEqual(tier.paths, [], label);
@@ -24174,7 +24166,7 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
       const env = {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         DATA_API: {
           fetch: async () => {
             throw new Error("boom");
@@ -24209,7 +24201,7 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
 // METAGRAPH_ACCOUNT_EVENTS_SOURCE, but unlike the flat-data-shaped tools in
 // the CASES loop above (whose DATA_API response IS the builder payload),
 // entities.ts's handleSubnetStakeFlow/handleSubnetAlphaVolume destructure
-// `{ data, generatedAt }` from tryPostgresTier's result (mirroring
+// `{ data, generatedAt }` from tryDataApiTier's result (mirroring
 // workers/data-api.ts's `/subnets/:netuid/stake-flow` and `/volume` routes,
 // which return `json({ data: buildX(...), generatedAt })`, not a flat
 // buildX(...) body) -- so these two tools unwrap `.data` before falling back,
@@ -24261,7 +24253,7 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
 
   test("get_subnet_stake_flow: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -24337,7 +24329,7 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
 
   test("get_subnet_volume: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -24382,7 +24374,7 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
 // get_subnet_ohlc is also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE and, like
 // get_subnet_stake_flow/get_subnet_volume above, entities.ts's
 // handleSubnetOhlc destructures `{ data, generatedAt }` from
-// tryPostgresTier's result -- so the DATA_API mock here nests the marker
+// tryDataApiTier's result -- so the DATA_API mock here nests the marker
 // under `data` to exercise that unwrap.
 describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
   test("the candle series is assembled from the lakehouse trade buckets", async () => {
@@ -24431,7 +24423,7 @@ describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
 
   test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -24463,14 +24455,14 @@ describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
 // get_account_weight_setters are also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE,
 // and like get_subnet_stake_flow/get_subnet_volume above (not like the
 // flat-shaped CASES tools), entities.ts's handleAccountStakeFlow et al.
-// destructure `{ data, generatedAt }` from tryPostgresTier's result, so these
+// destructure `{ data, generatedAt }` from tryDataApiTier's result, so these
 // four tools unwrap `.data` before falling back -- the DATA_API mock here
 // nests the marker under `data` to exercise that unwrap.
 describe("MCP account activity feeds — what answers now that the tier is gone", () => {
-  // WAS eight near-identical trios asserting the URL tryPostgresTier sent and a
+  // WAS eight near-identical trios asserting the URL tryDataApiTier sent and a
   // `marker` field read back off the mocked tier. METAGRAPH_ACCOUNT_EVENTS_SOURCE
   // reads "retired" in wrangler.jsonc and is absent from
-  // DATA_API_FORWARD_FLAGS, so none of those requests was ever made and the
+  // FORWARDABLE_TIER_FLAGS, so none of those requests was ever made and the
   // marker could never appear -- 24 tests over one dead code path.
   //
   // Seven of these eight tools DO have a reader: the lakehouse `account_events`
@@ -24661,7 +24653,7 @@ describe("MCP account activity feeds — what answers now that the tier is gone"
       { ss58: SS58 },
       {
         env: {
-          METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+          METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
           ...LAKEHOUSE_ENV,
           ...tier,
         },
@@ -24676,13 +24668,13 @@ describe("MCP account activity feeds — what answers now that the tier is gone"
 });
 describe("MCP get_block_events — Postgres tier wiring", () => {
   // "get_block_events: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path"
-  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // was here: it asserted the URL tryDataApiTier built and read a marker
   // back off the mocked tier. That flag forwards nothing (#10190), so the
   // request was never made -- covered by "get_block_events serves one block's events in read order", through the transport that answers.
 
   test("get_block_events: a 0x hash ref costs a block lookup, and the page is sliced", async () => {
     // WAS an assertion on `/api/v1/blocks/{hash}/events?limit=25&offset=50` --
-    // the URL tryPostgresTier built. The flag forwards nothing, and the two
+    // the URL tryDataApiTier built. The flag forwards nothing, and the two
     // claims inside that URL now land in different places:
     //
     //   * the HASH is not a predicate on account_events at all. R2 SQL cannot
@@ -24748,7 +24740,7 @@ describe("MCP get_block_events — Postgres tier wiring", () => {
 
   test("get_block_events: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -24779,22 +24771,22 @@ describe("MCP get_block_events — Postgres tier wiring", () => {
 // METAGRAPH_EXTRINSICS_SOURCE, not METAGRAPH_NEURONS_SOURCE (the shared CASES
 // loop above) or METAGRAPH_ACCOUNT_EVENTS_SOURCE (the account_events-tier CASES
 // loop), so neither fits either shared array. get_account_extrinsics mirrors
-// REST's handleAccountExtrinsics, which uses tryPostgresTier's result directly
+// REST's handleAccountExtrinsics, which uses tryDataApiTier's result directly
 // (a flat buildAccountExtrinsics(...) body, same shape as get_account_events);
 // list_block_extrinsics mirrors handleBlockExtrinsics, which destructures
-// `{ data }` from tryPostgresTier's result (workers/data-api.ts's
+// `{ data }` from tryDataApiTier's result (workers/data-api.ts's
 // /blocks/:ref/extrinsics route returns `json({ data: buildBlockExtrinsics(...) })`),
 // same shape as the get_block_events tool above.
 describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
   // "get_account_extrinsics: flag=postgres uses Postgres data at the REST-equivalent path"
-  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // was here: it asserted the URL tryDataApiTier built and read a marker
   // back off the mocked tier. That flag forwards nothing (#10190), so the
   // request was never made -- covered by "get_account_extrinsics filters by signer from the lakehouse", through the transport that answers.
 
   test("get_account_extrinsics: every range filter becomes a predicate, and an unusable cursor declines", async () => {
-    // WAS an assertion on the query string tryPostgresTier built. Same filters,
+    // WAS an assertion on the query string tryDataApiTier built. Same filters,
     // asserted where they now take effect -- and one thing the URL form could
     // not show: a cursor the codec cannot decode must DECLINE rather than page
     // from the top, because a caller holding a stale token would otherwise be
@@ -24876,7 +24868,6 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
 
   test("get_account_extrinsics: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -24911,7 +24902,7 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
 
 describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
   // "list_block_extrinsics: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path"
-  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // was here: it asserted the URL tryDataApiTier built and read a marker
   // back off the mocked tier. That flag forwards nothing (#10190), so the
   // request was never made -- covered by "list_block_extrinsics serves one block's extrinsics", through the transport that answers.
 
@@ -24973,7 +24964,6 @@ describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
 
   test("list_block_extrinsics: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");
@@ -25085,15 +25075,15 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
 
     test(`${label}: the retired tier flag is not consulted even when set`, async () => {
       // WAS "uses Postgres data at the REST-equivalent path", asserting the URL
-      // tryPostgresTier sent. METAGRAPH_HEALTH_SOURCE reads
+      // tryDataApiTier sent. METAGRAPH_HEALTH_SOURCE reads
       // "retired"/"d1" in wrangler.jsonc and is absent from
-      // DATA_API_FORWARD_FLAGS, so that request was never made -- the assertion
+      // FORWARDABLE_TIER_FLAGS, so that request was never made -- the assertion
       // described a call production does not perform, over a payload it cannot
       // produce. `path` stays in CASES as the documentation of what the REST twin
       // serves; what is provable here is the retirement.
       const tier = forbiddenDataApi();
       const res = await callTool(tool, args, {
-        env: { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier },
+        env: { METAGRAPH_HEALTH_SOURCE: "data-api", ...tier },
       });
       assert.equal(res.body.result.isError, false, label);
       assert.deepEqual(tier.paths, [], label);
@@ -25102,7 +25092,7 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
       const env = {
-        METAGRAPH_HEALTH_SOURCE: "postgres",
+        METAGRAPH_HEALTH_SOURCE: "data-api",
         DATA_API: {
           fetch: async () => {
             throw new Error("boom");

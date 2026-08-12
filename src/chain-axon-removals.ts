@@ -2,7 +2,7 @@
 // per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
 // (buildChainAxonRemovals); the D1 loader was retired in #4909 (account_events' D1 table was
 // dropped in #4772, so it always missed -- see #6013). Callers now go
-// tryPostgresTier() ?? buildChainAxonRemovals([]). The field semantics live in
+// tryDataApiTier() ?? buildChainAxonRemovals([]). The field semantics live in
 // schemas-src/routes/chain-network-rollups.ts (ChainAxonRemovalsArtifact). The teardown-side companion
 // to the axon-announcement /chain/serving: AxonInfoRemoved is emitted when a neuron's announced axon
 // endpoint is removed on a subnet (which subnets churn their serving infrastructure), read from the

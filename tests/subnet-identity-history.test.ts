@@ -448,13 +448,13 @@ describe("overlayPreviouslyKnownAs", () => {
 // these tests fail loudly instead of silently passing.
 describe("recordSubnetIdentityChanges", () => {
   // D1 retirement: latestIdentityHashes now reads Postgres's latest-hash-per-
-  // netuid via tryPostgresTier against /api/v1/internal/subnet-identity-
+  // netuid via tryDataApiTier against /api/v1/internal/subnet-identity-
   // latest-hashes, instead of querying D1 directly. Mock env.DATA_API.fetch
   // instead of a `db` binding.
   // THE BASELINE, INJECTED (#10190/#10700). These tests used to build it by
   // stubbing DATA_API behind METAGRAPH_SUBNET_IDENTITY_SOURCE="postgres" -- a
   // flag value no deployment sets, gating an arm absent from
-  // DATA_API_FORWARD_FLAGS, so the baseline they exercised never existed in
+  // FORWARDABLE_TIER_FLAGS, so the baseline they exercised never existed in
   // production. The dead read is gone; the DIFF's contract is what these tests
   // are actually about, so they now hand it a baseline directly.
   const ENV = {} as unknown as Env;
@@ -568,7 +568,7 @@ describe("recordSubnetIdentityChanges", () => {
     );
   });
 
-  // tryPostgresTier itself never throws (any DATA_API failure is caught
+  // tryDataApiTier itself never throws (any DATA_API failure is caught
   // internally and degrades to null), so the only way latestIdentityHashes
   // can still throw is a malformed-but-truthy `hashes` payload that isn't
   // iterable -- e.g. an object instead of an array.
@@ -603,7 +603,6 @@ describe("recordSubnetIdentityChanges", () => {
 
   test("reads latest hashes when the Postgres response has no hashes array", async () => {
     const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => new Response(JSON.stringify({}), { status: 200 }),
       },
@@ -616,7 +615,7 @@ describe("recordSubnetIdentityChanges", () => {
 
   // D1's own `blocks` table was fully dropped (#4772), and the tier that
   // replaced it (METAGRAPH_BLOCKS_SOURCE) is retired in every deployed config
-  // and absent from DATA_API_FORWARD_FLAGS -- so it stamped null on every real
+  // and absent from FORWARDABLE_TIER_FLAGS -- so it stamped null on every real
   // call (#10190). The source is `blocks_head` now: one row per block, written
   // by the firehose every ~30s and already watched by TABLE_FRESHNESS.
   //

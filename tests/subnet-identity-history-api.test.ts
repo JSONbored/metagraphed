@@ -10,11 +10,11 @@ function req(path: string) {
 
 // D1 fully eliminated (2026-07-16): subnet_identity_history's D1 write/read
 // path is fully retired -- handleSubnetIdentityHistory now goes
-// tryPostgresTier -> buildSubnetIdentityHistory([], ...) on any miss/outage,
+// tryDataApiTier -> buildSubnetIdentityHistory([], ...) on any miss/outage,
 // never a live D1 read.
 // REMOVED (#10190): "returns the identity timeline (#1647)". It served the
 // timeline by stubbing DATA_API behind METAGRAPH_SUBNET_IDENTITY_SOURCE
-// ="postgres" -- retired everywhere and absent from DATA_API_FORWARD_FLAGS, so
+// ="postgres" -- retired everywhere and absent from FORWARDABLE_TIER_FLAGS, so
 // that arm declined on every real request and the MIAO row it asserted existed
 // only in this test. The route's real leg is the lakehouse cold tier through
 // src/identity-history-answer.ts; the schema-stable cold shape is pinned by the
@@ -47,7 +47,7 @@ test("GET /subnets/{netuid}/identity-history is schema-stable when cold (no Post
 //
 // They populated the overlay by stubbing DATA_API behind
 // METAGRAPH_SUBNET_IDENTITY_SOURCE="postgres". That flag is retired everywhere
-// and absent from DATA_API_FORWARD_FLAGS, so the alias read declined on every
+// and absent from FORWARDABLE_TIER_FLAGS, so the alias read declined on every
 // real request -- the field has been empty in production since the flag was
 // retired, on all three routes that publish it. Nothing writes
 // subnet_identity_history at all: D1 was its primary writer and the Postgres

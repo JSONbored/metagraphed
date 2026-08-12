@@ -125,7 +125,7 @@ describe("loadBulkHealthTrends", () => {
   });
 
   test("degrades to the empty shape when the D1 read fails", async () => {
-    // d1All contains the failure: a serving path must not turn a store outage
+    // storeAll contains the failure: a serving path must not turn a store outage
     // into a route error.
     const { data, rows } = (await loadBulkHealthTrends({
       observedAt: "2026-08-03T00:00:00.000Z",

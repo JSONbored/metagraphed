@@ -234,7 +234,7 @@ function countOrZero(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): { first(): Promise<unknown> };
   };
@@ -264,7 +264,8 @@ export async function runNeuronsStalenessWatchdog(
   // laneHealthStore already; this read did not, so the watchdog was measuring
   // a frozen D1 copy and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
-  const db = readStore(env, ["neurons"]) as unknown as D1Like | undefined;
+  const db = readStore(env, ["neurons"]) as unknown as
+    StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs = neuronsStalenessThresholdMs(env);

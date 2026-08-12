@@ -242,6 +242,6 @@ export function buildChainAlphaVolume(
 // #4772 D1 retirement: loadChainAlphaVolume (the D1 loader that read the
 // account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
 // path is retired and the `account_events` table is dropped in production, so a live
-// D1 query would always miss. Serving now goes tryPostgresTier -> buildChainAlphaVolume([...]),
+// D1 query would always miss. Serving now goes tryDataApiTier -> buildChainAlphaVolume([...]),
 // never D1. See src/graphql.ts's chain_alpha_volume and src/mcp-server.ts's
 // get_chain_alpha_volume tool for the call sites.

@@ -27,7 +27,7 @@ test("GET /validators/{hotkey}/nominators?format=csv emits a header-only CSV whe
 
 test("GET /validators/{hotkey}/nominators?format=csv exports the ranked nominator rows via the Postgres tier", async () => {
   // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-  // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was
+  // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was
   // never asked. The lakehouse cold tier answers, through the same builder.
   const lake = lakehouse([
     {

@@ -1,7 +1,7 @@
 // Live network-wide axon-serving announcement activity from the account_events AxonServed stream:
 // a per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
 // (buildChainServing); the D1 loader was retired in #4909 (account_events' D1 table was dropped
-// in #4772, so it always missed -- see #6013). Callers now go tryPostgresTier() ?? buildChainServing([]).
+// in #4772, so it always missed -- see #6013). Callers now go tryDataApiTier() ?? buildChainServing([]).
 // The field semantics live in schemas-src/routes/chain-network-rollups.ts (ChainServingArtifact).
 
 import { median, percentile } from "./lib/stats.ts";

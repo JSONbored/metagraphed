@@ -1,7 +1,7 @@
 // REST, MCP and GraphQL must answer /api/v1/rpc/usage the SAME way (#9269).
 //
 // The bug: #9207 wired the lakehouse cold tier into the REST handler only.
-// The MCP tool and the GraphQL resolver still ran `tryPostgresTier ->
+// The MCP tool and the GraphQL resolver still ran `tryDataApiTier ->
 // loadRpcUsage`, and with the Postgres box destroyed that tier always missed,
 // so both fell to the schema-stable ZEROED card. Measured live 2026-08-03:
 // REST reported 118,309 requests on its top endpoint while

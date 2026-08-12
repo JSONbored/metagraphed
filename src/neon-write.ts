@@ -13,7 +13,7 @@
 //
 // ## Why this is NOT `src/neurons-d1-write.ts` with a different runner
 //
-// `createPgSql` is deliberately interface-compatible with `createD1Sql`, and
+// `createPgSql` kept the deleted D1 runner's exact interface (#10051), and
 // that is enough for the READ path -- a route moves store by being handed a
 // different `sql`. The WRITE path cannot follow, because its SQL is not
 // portable: D1 caps a statement at 100 bound parameters, so the bulk writes

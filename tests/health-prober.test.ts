@@ -222,7 +222,7 @@ function makeDb({ priorStatus = [] as unknown[] } = {}) {
 }
 
 // D1 fully eliminated from runHealthProber (2026-07-16): priorStatus now
-// reads Postgres via tryPostgresTier(METAGRAPH_HEALTH_SOURCE) against
+// reads Postgres via tryDataApiTier(METAGRAPH_HEALTH_SOURCE) against
 // /api/v1/internal/health-status-live, and surface_status/surface_checks are
 // written only via syncHealthChecksToPostgres's POST to
 // /api/v1/internal/health-checks-sync (whose `probed` body is the new
@@ -230,7 +230,7 @@ function makeDb({ priorStatus = [] as unknown[] } = {}) {
 // INSERT-statement inspection).
 // healthSource is a parameter, not a constant, because the flag VALUE is what
 // #9522 turned on: production has read "d1" since the box was retired, and
-// tryPostgresTier only forwards "d1" for flags listed in DATA_API_FORWARD_FLAGS.
+// tryDataApiTier only forwards "d1" for flags listed in FORWARDABLE_TIER_FLAGS.
 // Every continuity test below ran under "postgres", which forwards, so they
 // all passed while production silently resolved the prior read to null.
 function makeProberEnv({
@@ -1981,7 +1981,7 @@ describe("pruneHealthHistory", () => {
 // D1 IS THE SOLE WRITER AGAIN. The Postgres mirror this used to fan out to was
 // retired with the box (#9193) and its endpoint answered 503 for months before
 // the call was finally removed; `rolled` now reflects whether
-// rollupUptimeDailyToD1 succeeded, which is what it had effectively meant all
+// rollupUptimeDailyToStore succeeded, which is what it had effectively meant all
 // along.
 describe("rollupDailyUptime (durable daily history)", () => {
   // The still-live invariant: a failed uptime rollup must skip the prune

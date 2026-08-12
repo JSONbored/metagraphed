@@ -54,15 +54,15 @@ const env = {
   // latest-hash state before writing, and an empty result set means "cold
   // history", so every row diffs as changed.
   ...pgMockEnv(),
-  // The read families flag-switch on these (neuronsServedFromD1 /
-  // matchHyperparamsIdentityD1Route): "postgres" keeps every read route in
+  // The read families flag-switch on these (neuronsServedFromStore /
+  // matchHyperparamsIdentityStoreRoute): "postgres" keeps every read route in
   // this suite OFF the D1 lane, which since #9193 means it falls through to
   // the dispatcher's gone-tier 503. The D1 read lanes are exercised for real
   // in tests/data-api-neurons.test.ts and
   // tests/data-api-hyperparams-identity.test.ts. Writes ignore these flags.
-  METAGRAPH_NEURONS_SOURCE: "postgres",
-  METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
-  METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+  METAGRAPH_NEURONS_SOURCE: "data-api",
+  METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
+  METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
   NEURONS_SYNC_SECRET,
   NEURON_DAILY_BACKFILL_SECRET,
   ROLLUP_SYNC_SECRET,
@@ -1259,7 +1259,7 @@ test("account-balances-sync accepts the lane onto the queue (#9478)", async () =
 // #4832 Tier 2: the 12 chain-wide account_events analytics routes
 // (mirroring src/chain-*.mjs's D1 loaders). These reuse the ALREADY-flipped
 // METAGRAPH_ACCOUNT_EVENTS_SOURCE flag (no new table/secret), so entities.ts
-// -- err, analytics.ts's -- own tryPostgresTier wiring is tested at the
+// -- err, analytics.ts's -- own tryDataApiTier wiring is tested at the
 // handler layer (tests/chain-*.test.mjs); these exercise the actual SQL/
 // shaping in workers/data-api.ts itself, including the cold-store guard
 // branch each "network + subnet" route shares.

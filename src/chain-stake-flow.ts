@@ -281,5 +281,5 @@ export function buildChainStakeFlow(
 // #4772 D1 retirement: loadChainStakeFlow (the D1 loader that read the
 // account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
 // path is retired and the `account_events` table is dropped in production, so a live
-// D1 query would always miss. Serving now goes tryPostgresTier -> buildChainStakeFlow([...]),
+// D1 query would always miss. Serving now goes tryDataApiTier -> buildChainStakeFlow([...]),
 // never D1. See src/mcp-server.ts's get_chain_stake_flow tool for the call site.

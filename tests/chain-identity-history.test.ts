@@ -219,7 +219,7 @@ describe("GET /api/v1/chain/identity-history", () => {
   // subnet_identity_history table this route already reads, no new flag).
   // REMOVED (#10190): "flag=postgres serves the DATA_API response". The feed it
   // asserted came from its own DATA_API stub behind METAGRAPH_SUBNET_IDENTITY_SOURCE
-  // -- retired everywhere and absent from DATA_API_FORWARD_FLAGS, so the route has
+  // -- retired everywhere and absent from FORWARDABLE_TIER_FLAGS, so the route has
   // been serving the frozen lakehouse export (and, past it, nothing). Restore a
   // populated feed with #10710, which gives the table a writer again. The
   // degrade-to-empty sibling below is what production actually does.
@@ -227,7 +227,6 @@ describe("GET /api/v1/chain/identity-history", () => {
   test("flag=postgres degrades to the empty feed when DATA_API fails", async () => {
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");

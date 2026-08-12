@@ -13,7 +13,6 @@ const { pg } = await vi.hoisted(async () => ({
 }));
 vi.mock("pg", () => pg.module);
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { forbiddenDataApi } from "./helpers/cold-tier-env.ts";
 import { handleRequest } from "../workers/api.ts";
 import { afterEach, describe, test, vi } from "vitest";
 import {
@@ -28,7 +27,7 @@ import {
   handleChainCalls,
   handleChainSigners,
   handleChainFees,
-  markPostgresTierFallbackResponse,
+  markDataApiTierFallbackResponse,
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
   canonicalHealthWindowCachePath,
@@ -46,7 +45,7 @@ import { CHAIN_STAKE_FLOW_LIMIT_DEFAULT } from "../src/chain-stake-flow.ts";
 import { CHAIN_WEIGHTS_LIMIT_DEFAULT } from "../src/chain-weights.ts";
 import { CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } from "../src/chain-weight-setters.ts";
 import { CHAIN_SERVING_LIMIT_DEFAULT } from "../src/chain-serving.ts";
-import { tryPostgresTier } from "../workers/postgres-tier.ts";
+import { tryDataApiTier } from "../workers/data-api-tier.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import {
@@ -77,15 +76,15 @@ type SourceFlagName = Extract<keyof Env, `METAGRAPH_${string}_SOURCE`>;
  * `wrangler types` pins each of these vars to the string LITERAL currently in
  * wrangler.jsonc ("d1", "retired"), so `env.METAGRAPH_HEALTH_SOURCE =
  * "postgres"` is a type error. The handlers do not read them that narrowly --
- * they pass the flag NAME to tryPostgresTier, which compares `env[flagName]`
+ * they pass the flag NAME to tryDataApiTier, which compares `env[flagName]`
  * at runtime with no narrowing -- so it is the generated TYPE, not the code,
  * that objects.
  *
  * BE HONEST ABOUT WHAT THE "postgres" CALLERS BELOW PIN. No deployed flag in
  * any of the three wrangler configs holds "postgres" any more; they are all
- * "d1" or "retired". So these tests pin tryPostgresTier's own forwarding
+ * "d1" or "retired". So these tests pin tryDataApiTier's own forwarding
  * CONTRACT, not a path production takes -- the live path is its other
- * disjunct, `"d1"` plus membership in DATA_API_FORWARD_FLAGS. They are kept because
+ * disjunct, `"d1"` plus membership in FORWARDABLE_TIER_FLAGS. They are kept because
  * that contract, and the `=== "postgres"` branch implementing it, are still in
  * the tree: deleting the tests while the branch stays would leave it untested
  * rather than retired. Retiring the disjunct itself is the change that makes
@@ -671,15 +670,15 @@ describe("analyticsQueryError", () => {
   });
 });
 
-// d1All / hasD1FallbackRows / d1Runner were deleted (2026-07-17, D1 fully
+// storeAll / hasD1FallbackRows / d1Runner were deleted (2026-07-17, D1 fully
 // eliminated) -- every handler now goes straight to a schema-stable empty
 // payload on a Postgres-tier miss, never a live D1 read, so the D1 read
 // path + its fallback-row bookkeeping had zero remaining callers.
 
-describe("markPostgresTierFallbackResponse", () => {
-  test("markPostgresTierFallbackResponse tags a Response object", () => {
+describe("markDataApiTierFallbackResponse", () => {
+  test("markDataApiTierFallbackResponse tags a Response object", () => {
     const response = new Response("{}");
-    const tagged = markPostgresTierFallbackResponse(response);
+    const tagged = markDataApiTierFallbackResponse(response);
     assert.equal(tagged, response);
   });
 });
@@ -837,7 +836,7 @@ describe("withEdgeCache", () => {
       env,
       "bulk-trends",
       async () =>
-        markPostgresTierFallbackResponse(
+        markDataApiTierFallbackResponse(
           new Response(JSON.stringify({ ok: true }), { status: 200 }),
         ),
     );
@@ -860,10 +859,10 @@ describe("withEdgeCache", () => {
       env,
       "blocks-summary",
       async () => {
-        await tryPostgresTier(
-          { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres" } as unknown as Env,
+        await tryDataApiTier(
+          { METAGRAPH_NEURONS_SOURCE: "data-api" } as unknown as Env,
           req("/api/v1/blocks/summary"),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          "METAGRAPH_NEURONS_SOURCE",
         );
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       },
@@ -1029,7 +1028,7 @@ describe("handleBulkHealthTrends", () => {
   test("edge cache MISS then HIT avoids a second DATA_API call", async () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier miss now falls straight
     // through to an empty payload that's ALWAYS marked a D1 fallback, so it can
-    // never be cached (mirrors withEdgeCache's own POSTGRES_TIER_FALLBACK_RESPONSES guard).
+    // never be cached (mirrors withEdgeCache's own DATA_API_TIER_FALLBACK_RESPONSES guard).
     // The only path that still gets cached is a Postgres-tier HIT, so that's
     // what this now exercises -- was a D1-mock MISS/HIT pair.
     originalCaches = globalWithCaches.caches;
@@ -1485,7 +1484,7 @@ describe("handleGlobalIncidents", () => {
   // D1 fallback ledger is always empty now), so these stub DATA_API with a payload
   // in the exact shape formatGlobalIncidents emits.
   // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
-  // DATA_API_FORWARD_FLAGS, so the tier this stubbed never answered --
+  // FORWARDABLE_TIER_FLAGS, so the tier this stubbed never answered --
   // loadGlobalIncidentsLedger reads `surface_checks` through readStore. Doubled
   // there, and given INCIDENT rows rather than a finished surfaces list: the
   // pagination/sort/filter under test is applied to what formatGlobalIncidents
@@ -1889,130 +1888,22 @@ describe("chain analytics ?format=csv export", () => {
 // all until now. METAGRAPH_EXTRINSICS_SOURCE is reused (already "postgres"
 // in production -- see wrangler.jsonc) since these read the same
 // extrinsics/blocks tables the Tier 1a routes already serve from Postgres;
-// no new flag-flip cycle needed. tryPostgresTier's own fallback contract is
-// unit-tested in workers/postgres-tier.ts's own tests, so these just prove
-// the wiring: a Postgres hit is served as-is with D1 never queried, and a
-// Postgres failure falls back to D1 with fallback-marking intact.
-describe("chain analytics extrinsics-derived: postgres tier wiring", () => {
-  const cases = [
-    {
-      name: "chain-activity",
-      path: "/api/v1/chain/activity",
-      handler: handleChainActivity,
-      pgBody: {
-        schema_version: 1,
-        window: "7d",
-        observed_at: null,
-        day_count: 1,
-        days: [
-          {
-            day: "2026-07-10",
-            block_count: 5,
-            extrinsic_count: 10,
-            event_count: 20,
-            successful_extrinsics: 9,
-            success_rate: 0.9,
-            unique_signers: 3,
-          },
-        ],
-      },
-    },
-    {
-      name: "chain-calls",
-      path: "/api/v1/chain/calls",
-      handler: handleChainCalls,
-      pgBody: {
-        schema_version: 1,
-        window: "7d",
-        group_by: "module",
-        observed_at: null,
-        total_extrinsics: 10,
-        call_count: 1,
-        calls: [
-          {
-            call_module: "SubtensorModule",
-            call_function: null,
-            count: 10,
-            share: 1,
-          },
-        ],
-      },
-    },
-    {
-      name: "chain-signers",
-      path: "/api/v1/chain/signers",
-      handler: handleChainSigners,
-      pgBody: {
-        schema_version: 1,
-        window: "7d",
-        sort: "tx_count",
-        observed_at: null,
-        signer_count: 1,
-        signers: [
-          {
-            signer: "5PgSigner",
-            tx_count: 10,
-            total_fee_tao: 1,
-            total_tip_tao: 0,
-            last_tx_block: 100,
-          },
-        ],
-      },
-    },
-  ];
-
-  // "chain-fees charges the data-tier limiter before Postgres" stood here, and
-  // chain-fees was a fourth entry in `cases` above. Both went with the route's
-  // Postgres tier: it sat behind an inline
-  // `env.METAGRAPH_EXTRINSICS_SOURCE === "postgres"` pre-check that has been
-  // false since the var went to "retired" (#9193), so neither the limiter call
-  // nor the tryPostgresTier call had been executing. The three siblings below
-  // keep their coverage -- they call tryPostgresTier bare, which still forwards
-  // on "postgres".
-  for (const { name, path, handler, pgBody } of cases) {
-    test(`${name}: the retired tier flag is not consulted even when set (#10190)`, async () => {
-      // METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
-      // absent from DATA_API_FORWARD_FLAGS, so `pgBody` was never what this
-      // route served -- the #9146 projection was. Binding a DATA_API that WOULD
-      // answer and proving nothing asks it is what keeps the deletion honest:
-      // a reintroduced call resolves to null and would otherwise be invisible.
-      const { env } = dbWith({ rows: [] });
-      setSourceFlag(env, "METAGRAPH_EXTRINSICS_SOURCE", "postgres");
-      const tier = forbiddenDataApi();
-      env.DATA_API = tier.DATA_API as unknown as Fetcher;
-      const p = `${path}?window=7d`;
-      const res = await handler(req(p), env, url(p), ctx);
-      assert.equal(res.status, 200);
-      assert.deepEqual(tier.paths, []);
-      const body = await jsonBody(res);
-      assert.notDeepEqual(body.data, pgBody);
-    });
-
-    test(`${name}: flag=postgres falls back to D1 when DATA_API fails`, async () => {
-      const { env } = dbWith({ rows: [] });
-      setSourceFlag(env, "METAGRAPH_EXTRINSICS_SOURCE", "postgres");
-      env.DATA_API = {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      } as unknown as Fetcher;
-      const p = `${path}?window=7d`;
-      const res = await handler(req(p), env, url(p), ctx);
-      assert.equal(res.status, 200);
-      const body = await jsonBody(res);
-      assert.equal(body.data.schema_version, 1);
-    });
-  }
-});
+// no new flag-flip cycle needed. tryDataApiTier's own fallback contract is
+// unit-tested in workers/data-api-tier.ts's own tests, so these just prove
+// The extrinsics-derived tier-wiring describe retired whole with its flag
+// (#10223): METAGRAPH_EXTRINSICS_SOURCE no longer exists in Env, so a
+// reintroduced tier call cannot name it -- the property its two guards
+// pinned at runtime is the compiler's now, held by the ForwardableTierFlag
+// union and its expect-error pin in tests/data-api-tier.test.ts.
 
 // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE is a NEW flag, deliberately
 // left unset in wrangler.jsonc (see handleBulkHealthTrends' own header
 // comment) -- these tests only prove the wiring, not a live flip.
 describe("health analytics: postgres tier wiring", () => {
-  test("handleBulkHealthTrends: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+  test("handleBulkHealthTrends: flag=data-api serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, windows: { "7d": {}, "30d": {} } }),
@@ -2037,7 +1928,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleBulkHealthTrends: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -2050,10 +1941,10 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(body.data.schema_version, 1);
   });
 
-  test("handleHealthTrends: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+  test("handleHealthTrends: flag=data-api serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, netuid: NETUID, windows: {} }),
@@ -2074,7 +1965,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleHealthTrends: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -2087,10 +1978,10 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(body.data.schema_version, 1);
   });
 
-  test("handleHealthPercentiles: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+  test("handleHealthPercentiles: flag=data-api serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
@@ -2111,7 +2002,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleHealthPercentiles: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -2124,10 +2015,10 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(body.data.schema_version, 1);
   });
 
-  test("handleHealthIncidents: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+  test("handleHealthIncidents: flag=data-api serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
@@ -2148,7 +2039,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleHealthIncidents: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -2161,10 +2052,10 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(body.data.schema_version, 1);
   });
 
-  test("handleGlobalIncidents: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+  test("handleGlobalIncidents: flag=data-api serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () =>
         Response.json({
@@ -2189,7 +2080,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleGlobalIncidents: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");

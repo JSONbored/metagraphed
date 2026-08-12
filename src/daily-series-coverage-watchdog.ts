@@ -222,7 +222,7 @@ export function coverageDetail(
     .join(" | ");
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       all(): Promise<{ results?: unknown[] } | null>;
@@ -250,7 +250,7 @@ export async function runDailySeriesCoverageWatchdog(
   const db = readStore(
     env,
     DAILY_SERIES.map((s) => s.table),
-  ) as unknown as D1Like | undefined;
+  ) as unknown as StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const verdicts: DailySeriesVerdict[] = [];

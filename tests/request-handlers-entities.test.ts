@@ -761,7 +761,7 @@ async function assertValidComponent(componentName: string, data: unknown) {
 }
 
 // An env whose D1 read REJECTS (schema drift / "no such column" / connection
-// failure). d1All catches this and degrades to [] — the handler must stay 200 +
+// failure). storeAll catches this and degrades to [] — the handler must stay 200 +
 // schema-stable, never propagate the throw or 404. Bound (a real prepared
 // statement chain) so .prepare().bind().all() exists and only .all() rejects.
 function dbThrows(message = "no such column") {
@@ -829,7 +829,7 @@ describe("handleSubnetMetagraph", () => {
   // tier because that is the only path that produces real rows to narrow.
   test("fields= narrows each row and echoes the projection in meta", async () => {
     const { env } = dbWith({ neurons: [] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json(buildSubnetMetagraph([neuronRow()], NETUID)),
@@ -851,7 +851,7 @@ describe("handleSubnetMetagraph", () => {
 
   test("omitting fields= leaves the response and its meta exactly as before", async () => {
     const { env } = dbWith({ neurons: [] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json(buildSubnetMetagraph([neuronRow()], NETUID)),
@@ -872,7 +872,7 @@ describe("handleSubnetMetagraph", () => {
   test("an unsupported field is a 400 that names it, before any tier read", async () => {
     let fetched = false;
     const { env } = dbWith({ neurons: [] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       async fetch() {
         fetched = true;
@@ -899,7 +899,7 @@ describe("handleSubnetMetagraph", () => {
   // field to ask for when none of them is.
   test("a declared field absent from every row is accepted, not rejected", async () => {
     const { env } = dbWith({ neurons: [] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json(
@@ -1006,7 +1006,7 @@ describe("handleSubnetValidators", () => {
 
   test("fields= narrows each validator row and echoes the projection (#9082)", async () => {
     const { env } = dbWith({ neurons: [] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json(buildSubnetValidators([neuronRow()], NETUID)),
@@ -1041,7 +1041,7 @@ describe("handleSubnetValidators", () => {
     // its default stake-ranked view (see overlayFeaturedValidators).
     const env = {
       ...emptyEnv(),
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -1160,7 +1160,7 @@ describe("handleGlobalValidators", () => {
   test("moves a featured validator to the front on the default (unsorted) view (#5166, Postgres tier)", async () => {
     const env = {
       ...emptyEnv(),
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -1192,7 +1192,7 @@ describe("handleGlobalValidators", () => {
   test("does NOT reorder an explicit, non-default ?sort= -- `featured` stays present (#5166)", async () => {
     const env = {
       ...emptyEnv(),
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -1462,7 +1462,7 @@ describe("handleSubnetConcentration", () => {
   });
 
   test("degrades to schema-stable null blocks when the D1 read throws", async () => {
-    // A bound DB whose .all() rejects (schema drift) — d1All swallows it to [],
+    // A bound DB whose .all() rejects (schema drift) — storeAll swallows it to [],
     // so the handler still answers 200 with null metric blocks, never 5xx/404.
     const res = await handleSubnetConcentration(
       req(`/api/v1/subnets/${NETUID}/concentration`),
@@ -1504,7 +1504,7 @@ describe("handleSubnetConcentrationHistory", () => {
   });
 
   test("degrades to an empty series when the D1 read throws", async () => {
-    // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
+    // storeAll swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       dbThrows("d1 timeout") as unknown as Env,
@@ -1544,7 +1544,7 @@ describe("handleSubnetPerformanceHistory", () => {
   });
 
   test("degrades to an empty series when the D1 read throws", async () => {
-    // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
+    // storeAll swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       dbThrows("d1 timeout") as unknown as Env,
@@ -1584,7 +1584,7 @@ describe("handleSubnetYieldHistory", () => {
   });
 
   test("degrades to an empty series when the D1 read throws", async () => {
-    // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
+    // storeAll swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
       dbThrows("d1 timeout") as unknown as Env,
@@ -3771,7 +3771,7 @@ describe("handleAccountIdentity", () => {
 
   test("happy path returns the account's identity", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -3810,7 +3810,7 @@ describe("handleAccountIdentityHistory", () => {
 
   test("happy path returns identity timeline rows", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -4384,7 +4384,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // No head-leg fixture: the lakehouse is then the only leg that can answer,
     // so the marker below identifies the source unambiguously.
     const { env } = dbWith({});
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.METAGRAPH_BLOCKS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     Object.assign(env, LAKEHOUSE_TOKEN);
@@ -4406,7 +4406,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleBlock: the retired blocks flag is not consulted even when set", async () => {
     const { env } = dbWith({ blockDetail: blockRow() });
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.METAGRAPH_BLOCKS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     Object.assign(env, LAKEHOUSE_TOKEN);
@@ -4428,7 +4428,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleExtrinsics: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.METAGRAPH_EXTRINSICS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4446,7 +4446,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleExtrinsic: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ extrinsicDetail: extrinsicRow() });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.METAGRAPH_EXTRINSICS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4467,7 +4467,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountEvents: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const path = `/api/v1/accounts/${SS58}/events`;
@@ -4489,7 +4489,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // wiring as blocks/extrinsics/account_events above (METAGRAPH_NEURONS_SOURCE).
   test("handleSubnetMetagraph: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4515,7 +4515,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleNeuron: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4548,7 +4548,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // schema-stable null/empty shape a cold store returns, not to D1 data.
   test("handleSubnetHyperparams: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ subnetHyperparams: [hyperparamsRow()] });
-    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4575,7 +4575,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetHyperparams: flag=postgres falls back to schema-stable null on failure (D1 retired)", async () => {
     const env: Row = {};
-    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -4593,7 +4593,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env, captures } = dbWith({
       subnetHyperparamsHistory: [hyperparamsHistoryRow()],
     });
-    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4620,7 +4620,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetHyperparamsHistory: flag=postgres falls back to schema-stable empty on failure (D1 retired)", async () => {
     const env: Row = {};
-    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -4645,7 +4645,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env, captures } = dbWith({
       accountIdentity: [accountIdentityRow()],
     });
-    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4664,7 +4664,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountIdentity: flag=postgres falls back to schema-stable null on failure (D1 retired)", async () => {
     const env: Row = {};
-    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -4695,7 +4695,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         },
       ],
     });
-    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4722,7 +4722,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountIdentityHistory: flag=postgres falls back to schema-stable empty on failure (D1 retired)", async () => {
     const env: Row = {};
-    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -4772,7 +4772,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4800,7 +4800,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env, captures } = dbWith({
       neurons: [neuronRow({ netuid: NETUID })],
     });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4825,7 +4825,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleValidatorDetail: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
         schema_version: 1,
@@ -4855,7 +4855,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleValidatorNominators: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4874,7 +4874,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountWeightSetters: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4896,7 +4896,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetWeightSetters: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4915,7 +4915,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountStakeFlow: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4934,7 +4934,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetStakeFlow: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4953,7 +4953,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountStakeMoves: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4972,7 +4972,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetStakeMoves: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -4991,7 +4991,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetStakeTransfers: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5010,7 +5010,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountRegistrations: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5029,7 +5029,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetRegistrations: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5048,7 +5048,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountServing: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5067,7 +5067,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetServing: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5086,7 +5086,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountAxonRemovals: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5124,7 +5124,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetAxonRemovals: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5143,7 +5143,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountPrometheus: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5162,7 +5162,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetPrometheus: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5181,7 +5181,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountDeregistrations: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5200,7 +5200,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetDeregistrations: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5219,7 +5219,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountTransfers: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5238,7 +5238,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountCounterparties: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5257,7 +5257,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountCounterparties: flag=postgres accepts relationship drilldown envelope", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({
@@ -5316,7 +5316,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleBlockExtrinsics: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.METAGRAPH_EXTRINSICS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5335,7 +5335,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleBlockEvents: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ blockEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5354,7 +5354,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleBlocksSummary: the retired flag is not consulted; the projection answers", async () => {
     const { env } = dbWith({ blocksFeed: [blockRow()] });
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.METAGRAPH_BLOCKS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     // #9146: the blocks-summary projection is what serves this card now.
@@ -5379,7 +5379,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountExtrinsics: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.METAGRAPH_EXTRINSICS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5400,7 +5400,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env, captures } = dbWith({
       extrinsics: [extrinsicRow({ call_module: "Sudo" })],
     });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.METAGRAPH_EXTRINSICS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5420,7 +5420,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env, captures } = dbWith({
       extrinsics: [extrinsicRow({ call_module: "AdminUtils" })],
     });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.METAGRAPH_EXTRINSICS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5438,7 +5438,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleRuntime: the retired flag is not consulted; the lakehouse answers", async () => {
     const { env } = dbWith({ blocksFeed: [blockRow()] });
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.METAGRAPH_BLOCKS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     Object.assign(env, LAKEHOUSE_TOKEN);
@@ -5573,7 +5573,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetWeights: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5592,7 +5592,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetAlphaVolume: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5610,7 +5610,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetEvents: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ subnetEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5632,7 +5632,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       subnetEventSummaryKinds: [],
       subnetEventSummaryRecent: [],
     });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5654,7 +5654,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccount: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -5675,7 +5675,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountSubnets: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", subnets: [] }),
@@ -5696,7 +5696,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetConcentration: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", netuid: NETUID }),
@@ -5714,7 +5714,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", netuid: NETUID }),
@@ -5732,7 +5732,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetYield: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", neurons: [] }),
@@ -5751,7 +5751,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleChainConcentration: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
     };
@@ -5767,7 +5767,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleChainConcentrationSubnets: forwards to the tier and envelopes it", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
     };
@@ -5786,7 +5786,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // An empty ranking that reports lens=stake to someone who asked for
     // lens=stake is a different statement from one that reports the default.
     const { env } = dbWith({ neurons: [] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = { fetch: async () => new Response(null, { status: 503 }) };
     const query = "?lens=stake&sort=gini&order=desc&limit=5";
     const body = await json(
@@ -5806,7 +5806,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleChainPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
     };
@@ -5822,7 +5822,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleChainYield: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
     };
@@ -5835,7 +5835,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   // REMOVED (#10190): "handleSelfHealth: flag=postgres uses Postgres data, D1
   // never queried". METAGRAPH_SELF_HEALTH_SOURCE reads "retired" in every
-  // deployed config and is absent from DATA_API_FORWARD_FLAGS, so the forward it
+  // deployed config and is absent from FORWARDABLE_TIER_FLAGS, so the forward it
   // asserted never happened outside this test -- the `marker: "pg"` it checked
   // for could only come from its own DATA_API stub. What the route actually
   // serves from is Neon, then the lakehouse cold tier, both covered below.
@@ -5920,7 +5920,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountPortfolio: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", positions: [] }),
@@ -5938,7 +5938,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountPositions: flag=postgres uses Postgres data, D1 never queried (#5233)", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", positions: [] }),
@@ -5961,7 +5961,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // than publishing a confident `total_stake_alpha: 0`, which is the
     // #9260/#9263 defect class this route shared.
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -5988,7 +5988,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountsList: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", accounts: [] }),
@@ -6013,7 +6013,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // REMOVED (#10190): "handleTopHoldersList: flag=postgres uses Postgres data,
   // D1 never queried". Same reason as the self-health one above --
   // METAGRAPH_TOP_HOLDERS_SOURCE is retired and absent from
-  // DATA_API_FORWARD_FLAGS. The live tier is the flow projection
+  // FORWARDABLE_TIER_FLAGS. The live tier is the flow projection
   // (src/top-holders-flow-tier.ts), covered by tests/top-holders-flow-tier.test.ts
   // and by the CSV export test in tests/top-holders.test.ts.
 
@@ -6022,7 +6022,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleValidatorHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", points: [] }),
@@ -6041,7 +6041,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleNeuronHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", points: [] }),
@@ -6061,7 +6061,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", points: [] }),
@@ -6080,7 +6080,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetConcentrationHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", points: [] }),
@@ -6099,7 +6099,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetPerformanceHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", points: [] }),
@@ -6118,7 +6118,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetYieldHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", points: [] }),
@@ -6137,7 +6137,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleChainTurnover: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", subnets: [] }),
@@ -6155,7 +6155,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetTurnover: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", subnets: [] }),
@@ -6174,7 +6174,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleSubnetMovers: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", movers: [] }),
@@ -6195,7 +6195,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountPositionHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", points: [] }),
@@ -6216,7 +6216,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   test("handleAccountPositionHistory: HEAD uses the Postgres GET representation", async () => {
     const { env, captures } = dbWith({});
     let forwardedMethod;
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async (request: Request) => {
         forwardedMethod = request.method;
@@ -6250,7 +6250,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // same schema-stable empty series a cold store returns, never a D1 read.
   test("handleAccountPositionHistory: flag=postgres degrades to an empty schema-stable series on failure, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -6276,7 +6276,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountHistory: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     const body = await json(
@@ -6297,7 +6297,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // through to the schema-stable empty shape, never a live D1 read.
   test("handleAccountHistory: flag=postgres falls back to schema-stable empty on failure, D1 never queried", async () => {
     const { env, captures } = dbWith({});
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");

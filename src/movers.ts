@@ -14,7 +14,7 @@ export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
 // the date-first idx_neuron_daily_date_netuid_agg (migrations/0030) covers them.
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 // Supported comparison windows (label -> days): the 7d/30d/90d set the concentration scorecards use.
 export const MOVERS_WINDOWS: Record<string, number> = {
@@ -345,7 +345,7 @@ export function buildMovers(
 // covers both the boundary scan and this aggregate), shape with buildMovers. Cold/absent
 // or single-snapshot D1 -> empty movers.
 export async function loadSubnetMovers(
-  d1: D1Runner,
+  d1: SqlRunner,
   {
     windowLabel = DEFAULT_MOVERS_WINDOW,
     sort = DEFAULT_MOVERS_SORT,

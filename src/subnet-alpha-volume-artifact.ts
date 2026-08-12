@@ -2,7 +2,7 @@
 // chain-wide leaderboard already serves from (#9146).
 //
 // Sixth instance of the shape #9367/#9369 fixed. `handleSubnetAlphaVolume` had a
-// two-tier fallback -- `tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)`, which is
+// two-tier fallback -- `tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)`, which is
 // `"retired"` and declines unconditionally, then a zeroed card. Its chain-wide sibling
 // got the projection tier and this route did not.
 //

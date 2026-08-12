@@ -214,7 +214,7 @@ function countOrZero(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): { first(): Promise<unknown> };
   };
@@ -259,7 +259,7 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
   // threaded in by hand. Each of those alone is silent -- the lane simply stops
   // reporting, and an absent verdict reads as health.
   const db = readStore(env, ["validator_nominator_counts"]) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

@@ -130,7 +130,7 @@ export function lifecycleDetail(
   return `${parts.join("; ")} (${observedCount} subnet(s) observed)`;
 }
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       all(): Promise<{ results?: unknown[] } | null>;
@@ -160,7 +160,7 @@ export async function runSubnetLifecycleLane(
   const now = deps.now ?? Date.now;
   const floor = deps.coverageFloor ?? NEURONS_COVERAGE_FLOOR_NETUIDS;
   const db = readStore(env, ["neurons", "subnet_lifecycle"]) as unknown as
-    D1Like | undefined;
+    StatementClientLike | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const record = async (

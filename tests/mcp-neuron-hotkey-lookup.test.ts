@@ -23,11 +23,11 @@ function snapshotRows(): Row[] {
 }
 
 // The neurons tier answering /metagraph and /neurons/{uid}, the two paths
-// these tools reach through tryPostgresTier.
+// these tools reach through tryDataApiTier.
 function neuronsTierEnv() {
   return {
     ...createLocalArtifactEnv(),
-    METAGRAPH_NEURONS_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: {
       async fetch(input: Request | string) {
         const url = new URL(typeof input === "string" ? input : input.url);
@@ -150,7 +150,7 @@ describe("get_neuron accepts a hotkey (#9872)", () => {
   });
 
   test("a cold tier answers neuron: null with a null stamp, never a stale one", async () => {
-    // No METAGRAPH_NEURONS_SOURCE, so tryPostgresTier declines and the empty
+    // No METAGRAPH_NEURONS_SOURCE, so tryDataApiTier declines and the empty
     // snapshot builder answers. The stamp must come back null rather than
     // being invented: "we have no snapshot" and "the snapshot says no" are
     // different answers and a caller has to be able to tell them apart.
@@ -171,7 +171,7 @@ describe("get_neuron accepts a hotkey (#9872)", () => {
     // for it.
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         async fetch() {
           return Response.json({});

@@ -619,7 +619,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
 
   test("flag=postgres routes through DATA_API and unwraps {data, generatedAt}", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was
     // never asked. loadSubnetOhlcColdTier answers, and the candle below is what
     // the SAME builder makes of the lane's own bucket row.
     const lake = lakehouse([

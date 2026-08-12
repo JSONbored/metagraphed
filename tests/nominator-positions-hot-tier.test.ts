@@ -20,7 +20,7 @@ const { pg } = await vi.hoisted(async () => ({
 }));
 vi.mock("pg", () => pg.module);
 
-import { loadAccountPositionsD1 } from "../src/nominator-positions-hot-tier.ts";
+import { loadAccountPositionsFromStore } from "../src/nominator-positions-hot-tier.ts";
 import { POSITION_SCAN_CAP } from "../src/nominator-positions-cold-tier.ts";
 import {
   POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
@@ -100,7 +100,7 @@ function positionRow(hotkey: string, netuid: number, fraction: number) {
   };
 }
 
-describe("loadAccountPositionsD1", () => {
+describe("loadAccountPositionsFromStore", () => {
   test("prices the ledger's share fractions off the live neurons table", async () => {
     const { calls, env } = d1Stub(
       [positionRow(HOTKEY_A, 18, 0.5), positionRow(HOTKEY_B, 4, 0.25)],
@@ -110,7 +110,7 @@ describe("loadAccountPositionsD1", () => {
         { hotkey: HOTKEY_B, netuid: 4, stake_tao: 40 },
       ],
     );
-    const data = await loadAccountPositionsD1(env as never, COLDKEY);
+    const data = await loadAccountPositionsFromStore(env as never, COLDKEY);
 
     const positionsSql = calls.find((c) =>
       c.sql.includes("FROM nominator_positions WHERE coldkey"),
@@ -136,7 +136,10 @@ describe("loadAccountPositionsD1", () => {
     // The cutover is a property of the data, not of a deploy: until the
     // revived lane posts anything, this leg must get out of the way.
     const { env } = d1Stub([], null, []);
-    assert.equal(await loadAccountPositionsD1(env as never, COLDKEY), null);
+    assert.equal(
+      await loadAccountPositionsFromStore(env as never, COLDKEY),
+      null,
+    );
   });
 
   test("a rowless coldkey in a POPULATED ledger is a live zero with a real stamp", async () => {
@@ -144,7 +147,7 @@ describe("loadAccountPositionsD1", () => {
     // nothing" are different answers, and the old payload could not tell them
     // apart because both were `position_count: 0, captured_at: null`.
     const { calls, env } = d1Stub([], CAPTURED_AT, []);
-    const data = await loadAccountPositionsD1(env as never, COLDKEY);
+    const data = await loadAccountPositionsFromStore(env as never, COLDKEY);
     assert.equal(data!.position_count, 0);
     assert.equal(data!.total_stake_alpha, 0);
     assert.equal(
@@ -176,7 +179,7 @@ describe("loadAccountPositionsD1", () => {
       CAPTURED_AT,
       hotkeys.map((hotkey, i) => ({ hotkey, netuid: i, stake_tao: 2 })),
     );
-    const data = await loadAccountPositionsD1(env as never, COLDKEY);
+    const data = await loadAccountPositionsFromStore(env as never, COLDKEY);
     const stakeCalls = calls.filter((c) => c.sql.includes("FROM neurons"));
     assert.equal(stakeCalls.length, 3);
     for (const call of stakeCalls) assert.ok(call.params.length <= 100);
@@ -191,17 +194,23 @@ describe("loadAccountPositionsD1", () => {
       CAPTURED_AT,
       [],
     );
-    assert.equal(await loadAccountPositionsD1(env as never, COLDKEY), null);
+    assert.equal(
+      await loadAccountPositionsFromStore(env as never, COLDKEY),
+      null,
+    );
   });
 
   test("declines with no binding, a throwing read, a malformed result, or a failed stake leg", async () => {
-    assert.equal(await loadAccountPositionsD1({} as never, COLDKEY), null);
-    assert.equal(await loadAccountPositionsD1(null, COLDKEY), null);
+    assert.equal(
+      await loadAccountPositionsFromStore({} as never, COLDKEY),
+      null,
+    );
+    assert.equal(await loadAccountPositionsFromStore(null, COLDKEY), null);
     // Hyperdrive bound, but this deployment has not declared nominator_positions
     // Neon's -- readStore returns nothing rather than reading a table it was
     // not told the store owns.
     assert.equal(
-      await loadAccountPositionsD1(
+      await loadAccountPositionsFromStore(
         {
           HYPERDRIVE: { connectionString: "postgresql://mock/db" },
         } as never,
@@ -212,13 +221,13 @@ describe("loadAccountPositionsD1", () => {
 
     const thrown = d1Stub([], CAPTURED_AT, [], "throw");
     assert.equal(
-      await loadAccountPositionsD1(thrown.env as never, COLDKEY),
+      await loadAccountPositionsFromStore(thrown.env as never, COLDKEY),
       null,
     );
 
     const malformed = d1Stub([], CAPTURED_AT, [], "malformed");
     assert.equal(
-      await loadAccountPositionsD1(malformed.env as never, COLDKEY),
+      await loadAccountPositionsFromStore(malformed.env as never, COLDKEY),
       null,
     );
 
@@ -231,14 +240,17 @@ describe("loadAccountPositionsD1", () => {
       "stake-throw",
     );
     assert.equal(
-      await loadAccountPositionsD1(stakeDown.env as never, COLDKEY),
+      await loadAccountPositionsFromStore(stakeDown.env as never, COLDKEY),
       null,
     );
   });
 
   test("a non-numeric ledger stamp is treated as an empty ledger", async () => {
     const { env } = d1Stub([], "2026-08-02" as never, []);
-    assert.equal(await loadAccountPositionsD1(env as never, COLDKEY), null);
+    assert.equal(
+      await loadAccountPositionsFromStore(env as never, COLDKEY),
+      null,
+    );
   });
 });
 

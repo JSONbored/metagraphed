@@ -537,7 +537,7 @@ test("a route no matcher claims falls through to the gone-tier 503", async () =>
 });
 
 // The METAGRAPH_NEURONS_SOURCE gate is gone from this dispatcher --
-// matchNeuronsD1Route takes only a URL now. It existed to hand a route back to
+// matchNeuronsStoreRoute takes only a URL now. It existed to hand a route back to
 // a Postgres tier that no longer exists, and the test that pinned it is deleted
 // rather than rewritten: the main Worker still reads the flag to decide whether
 // to FORWARD here, which is a different assertion in a different suite. What

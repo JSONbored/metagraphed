@@ -11,7 +11,7 @@ import { clampRowLimit } from "../workers/request-params.ts";
 // leaderboard.
 //
 // The D1 loader (loadChainWeightSetters) was removed — account_events' D1 write path is retired
-// and the table is dropped in production (#4772 / #4909), so serving goes tryPostgresTier →
+// and the table is dropped in production (#4772 / #4909), so serving goes tryDataApiTier →
 // schema-stable empty stub, never D1.
 
 // Supported windows (label -> days) + default, matching the sibling /chain/weights route.

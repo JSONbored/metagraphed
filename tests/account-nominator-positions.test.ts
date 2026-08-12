@@ -38,7 +38,7 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
       new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/positions`),
       {
         ...createLocalArtifactEnv(),
-        METAGRAPH_NEURONS_SOURCE: "postgres",
+        METAGRAPH_NEURONS_SOURCE: "data-api",
         DATA_API: {
           fetch: async () =>
             Response.json({

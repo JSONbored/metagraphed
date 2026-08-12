@@ -82,7 +82,7 @@ describe("module state registry", () => {
       for (const expected of [
         "workers/api.ts",
         "workers/storage.ts",
-        "workers/postgres-tier.ts",
+        "workers/data-api-tier.ts",
         "workers/request-handlers/analytics.ts",
         "workers/request-handlers/analytics-routes.ts",
         "workers/request-handlers/rpc-proxy.ts",

@@ -61,7 +61,7 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
 
   test("exports paginated entries via the Postgres tier, hyperparameters serialized as one JSON cell", async () => {
     const env = {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({

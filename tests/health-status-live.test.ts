@@ -1,11 +1,11 @@
 // src/health-status-live.ts (#9522) — the probe-status continuity read.
 //
-// This helper exists because the previous route through tryPostgresTier could
+// This helper exists because the previous route through tryDataApiTier could
 // not be fixed without collateral: METAGRAPH_HEALTH_SOURCE is shared with
 // /api/v1/health/trends, /api/v1/incidents and /api/v1/internal/compare-health,
-// none of which data-api implements, so adding it to DATA_API_FORWARD_FLAGS would
+// none of which data-api implements, so adding it to FORWARDABLE_TIER_FLAGS would
 // have made all three forward, take a non-2xx, and emit a
-// capturePostgresTierFallback exception per request.
+// captureDataApiTierFallback exception per request.
 //
 // So the contract has two halves and both are pinned below: the flag still
 // decides WHETHER to ask, and every failure mode answers with an empty array
@@ -22,7 +22,7 @@ const ROWS = [{ surface_id: "a", last_ok: 1000, consecutive_failures: 2 }];
 function env(overrides: Record<string, unknown> = {}) {
   const calls: string[] = [];
   const base = {
-    METAGRAPH_HEALTH_SOURCE: "d1",
+    METAGRAPH_HEALTH_SOURCE: "data-api",
     DATA_API: {
       async fetch(request: Request) {
         calls.push(request.url);
@@ -65,19 +65,26 @@ test("normalizes an unusable since to 0 rather than passing it through", async (
 // --- the flag still gates the read -----------------------------------------
 
 test("does not reach the tier when the flag names none", async () => {
-  for (const value of [undefined, "", "retired", "postgress"]) {
+  // "postgres" and "d1" are the RETIRED spellings, not typos: after #10223's
+  // collapse they must decline exactly like any other non-answering value.
+  for (const value of [
+    undefined,
+    "",
+    "retired",
+    "postgres",
+    "d1",
+    "data-apx",
+  ]) {
     const { env: e, calls } = env({ METAGRAPH_HEALTH_SOURCE: value });
     assert.deepEqual(await readLiveSurfaceStatus(e, 0), [], String(value));
     assert.equal(calls.length, 0, `must not call DATA_API for ${value}`);
   }
 });
 
-test("reaches the tier for both flag values that name one", async () => {
-  for (const value of ["d1", "postgres"]) {
-    const { env: e, calls } = env({ METAGRAPH_HEALTH_SOURCE: value });
-    assert.deepEqual(await readLiveSurfaceStatus(e, 0), ROWS, value);
-    assert.equal(calls.length, 1);
-  }
+test("reaches the tier for the one flag value that names one", async () => {
+  const { env: e, calls } = env({ METAGRAPH_HEALTH_SOURCE: "data-api" });
+  assert.deepEqual(await readLiveSurfaceStatus(e, 0), ROWS);
+  assert.equal(calls.length, 1);
 });
 
 // --- every failure mode degrades to an empty array -------------------------

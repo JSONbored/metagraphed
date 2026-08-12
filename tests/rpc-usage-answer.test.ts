@@ -398,7 +398,7 @@ describe("the cascade order, in one place instead of three", () => {
   // it kept its place ahead of the lakehouse, and that a surface with no upstream
   // request skipped it. Each was correct about the code and, in production, about
   // nothing -- METAGRAPH_RPC_USAGE_SOURCE reads "retired" in every deployed
-  // config and is absent from DATA_API_FORWARD_FLAGS, so the branch they pinned
+  // config and is absent from FORWARDABLE_TIER_FLAGS, so the branch they pinned
   // declined on every real request. A `postgres` stub was the only thing that
   // ever made it answer.
 

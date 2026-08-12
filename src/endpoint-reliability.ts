@@ -20,7 +20,7 @@
 // It does not claim to predict throughput. It replaces "whoever answered a tiny request
 // fastest in the last 15 minutes" with "whoever has actually stayed up and responsive
 // for a month", which is the property a load balancer wants from a tie-break.
-import { d1All, type ObservationsReadDb } from "./analytics-live.ts";
+import { storeAll, type ObservationsReadDb } from "./analytics-live.ts";
 import { scoreFromStats } from "./reliability.ts";
 import { utcWindowCutoffDay } from "./health-serving.ts";
 
@@ -56,7 +56,7 @@ export async function loadEndpointReliability(
   const cutoffDay = utcWindowCutoffDay(now, RELIABILITY_WINDOW_DAYS);
   let rows: Record<string, unknown>[];
   try {
-    rows = await d1All(
+    rows = await storeAll(
       db,
       `SELECT COALESCE(surface_key, surface_id) AS key,
               SUM(samples)   AS samples,

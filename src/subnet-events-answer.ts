@@ -4,7 +4,7 @@
 //
 // WHY A COMPOSER AND NOT THREE CASCADES. #9212 added the lakehouse leg to the
 // REST handler alone. account_events was never registered on the Postgres tier
-// and METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so tryPostgresTier declines
+// and METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so tryDataApiTier declines
 // unconditionally and the other two surfaces fell straight to the empty
 // builder: GET /api/v1/subnets/1/events served real rows off
 // chain.account_events (441,963,747 rows, genesis to head) while
@@ -16,7 +16,7 @@
 // the rule they established -- a surface may not own the cascade, because
 // "which store answers, and what an absence means" is one decision, not three.
 //
-// THE TIER PROBE STAYS WITH THE SURFACE. tryPostgresTier needs a Request and
+// THE TIER PROBE STAYS WITH THE SURFACE. tryDataApiTier needs a Request and
 // each surface has a different one (REST forwards the caller's, MCP and GraphQL
 // synthesize theirs), so the surface probes and hands the RESULT here. This
 // module owns everything after it -- the part that drifted.
@@ -45,7 +45,7 @@ export interface AnswerSubnetEventsOptions {
 /**
  * One subnet's chain-event page from whichever store can answer.
  *
- * `tierResult` is the surface's own tryPostgresTier outcome: a payload when the
+ * `tierResult` is the surface's own tryDataApiTier outcome: a payload when the
  * tier answered, null when it declined or is retired.
  *
  * Never returns null -- the schema-stable empty feed is the documented floor

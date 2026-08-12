@@ -4878,16 +4878,16 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ sudo(limit: 5, offset: 2, block: 42, call_function: "sudo", success: true) { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4895,16 +4895,16 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: a block_start/block_end height range is forwarded to the Postgres tier (#7874) — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ sudo(block_start: 100, block_end: 500) { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4912,16 +4912,16 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: a from/to observed_at range is forwarded to the Postgres tier (#7874) — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ sudo(from: "1750000000000", to: "1760000000000") { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4960,15 +4960,14 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: a cursor arg is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(`{ sudo(cursor: "abc123") { total } }`, {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -4979,7 +4978,6 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   test("sudo: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -5113,16 +5111,16 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: filter args are forwarded as query params to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ extrinsics(limit: 5, block: 42, signer: "5Signer", call_module: "SubtensorModule", call_function: "register", success: true) { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5130,9 +5128,9 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: call_hash, block-range, and time-range filters are forwarded to the Postgres tier (#7872) — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -5145,7 +5143,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
           from: "1750000000000"
           to: "1760000000000"
         ) { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5186,16 +5184,16 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: a cursor arg is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ extrinsics(cursor: "abc123") { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5222,13 +5220,13 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
 
   test("extrinsic: a malformed Postgres-tier body falls back to the requested ref — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const ref = "8621331-0";
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module } } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5238,7 +5236,6 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   test("extrinsics: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -5362,7 +5359,6 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
 
   test("governance_config_changes: a partial Postgres-tier body degrades to a schema-stable empty page", async () => {
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       // Body omits extrinsics / extrinsic_count / next_cursor entirely -- the
       // resolver must fall back to [] / 0 / null rather than surface undefined.
       DATA_API: { fetch: async () => Response.json({}) },
@@ -5380,16 +5376,16 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   });
 
   test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module) — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ governance_config_changes(limit: 5, block: 42, call_function: "sudo_set_tempo", success: true) { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5399,11 +5395,11 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   test("governance_config_changes: a block range is forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request's query string.
     // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
-    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    // FORWARDABLE_TIER_FLAGS, so that request was never made.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       "{ governance_config_changes(block_start: 100, block_end: 200) { total } }",
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5413,11 +5409,11 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   test("governance_config_changes: a time range is forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request's query string.
     // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
-    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    // FORWARDABLE_TIER_FLAGS, so that request was never made.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       "{ governance_config_changes(from: 1750000000, to: 1760000000) { total } }",
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5427,11 +5423,11 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   test("governance_config_changes: block and time bounds combine with the existing filters (#7873) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request's query string.
     // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
-    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    // FORWARDABLE_TIER_FLAGS, so that request was never made.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ governance_config_changes(limit: 5, call_function: "sudo_set_tempo", block_start: 10, block_end: 20, from: 1, to: 2) { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5441,11 +5437,11 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   test("governance_config_changes: omitted bounds are not forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request's query string.
     // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
-    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    // FORWARDABLE_TIER_FLAGS, so that request was never made.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       "{ governance_config_changes { total } }",
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5468,16 +5464,16 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   });
 
   test("governance_config_changes: a cursor arg is forwarded as a query param — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ governance_config_changes(cursor: "abc123") { total } }`,
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5498,7 +5494,7 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
 });
 
 // #10190: METAGRAPH_BLOCKS_SOURCE is retired in every deployed config and absent
-// from DATA_API_FORWARD_FLAGS, so these fields never read the Postgres tier --
+// from FORWARDABLE_TIER_FLAGS, so these fields never read the Postgres tier --
 // the lakehouse is what answers, and the filters that used to be asserted as
 // query params on the tier's URL are SQL predicates now.
 describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
@@ -5738,13 +5734,13 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
 
   test("block: a malformed Postgres-tier body falls back to the requested ref — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_BLOCKS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const ref = "8621331";
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ block(ref: "${ref}") { ref block { block_number } } }`,
-      { METAGRAPH_BLOCKS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_BLOCKS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5778,7 +5774,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
 
   test("validators: resolves Postgres-tier rows, normalizing latest_* into captured_at/block_number", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -5859,7 +5855,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   test("validators: sort is forwarded to the Postgres tier; limit is always the REST max window", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -5887,7 +5883,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   test("validators: an omitted GraphQL limit still fetches the REST max window from the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -5935,7 +5931,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       ],
     };
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => Response.json(payload),
       },
@@ -5960,7 +5956,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
 
   test("validators: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(
@@ -5980,7 +5976,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   test("validators: an unsupported sort value is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -6023,7 +6019,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
 
   test("validator: resolves Postgres-tier detail data, normalizing captured_at/block_number", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -6068,7 +6064,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
 
   test("validator: a malformed Postgres-tier body degrades to a schema-stable zeroed aggregate", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(
@@ -6098,7 +6094,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     // entity disagreeing. The detail's `subnets` is the uncapped
     // per-membership row list, one entry per UID, so its length IS uid_count.
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -6125,7 +6121,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     // and uid_count measure different things (distinct netuids vs rows) and
     // agree only because a hotkey holds one UID per subnet.
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -6174,7 +6170,7 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
 
   test("resolves the Postgres-tier points for the requested window", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -6245,7 +6241,7 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
   test("window is forwarded as a query param to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -6265,7 +6261,7 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -6334,7 +6330,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
 
   test("resolves the Postgres-tier scorecard for the requested window", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -6374,7 +6370,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
   test("window + netuid are forwarded to the Postgres tier route", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -6389,7 +6385,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -6433,7 +6429,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
   test("changes: true forwards ?changes=true and resolves the typed churn detail (#7883)", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -6484,7 +6480,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
   test("without the changes toggle the param is omitted and changes is null (#7883)", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -6514,7 +6510,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
 
   test("changes counts fall back to list lengths and malformed entries are dropped (#7883)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -6551,7 +6547,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
 
   test("a changes block with no lists resolves to zeroed, empty lists (#7883)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         // A block carrying neither counts nor lists must still satisfy the
         // non-nullable list fields rather than resolving them to null.
@@ -6576,7 +6572,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
 
   test("a non-object changes value resolves to null, not a malformed block (#7883)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => Response.json({ netuid: 5, changes: "unexpected" }),
       },
@@ -7134,7 +7130,7 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
 
   test("resolves the Postgres-tier points for the requested window", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -7179,7 +7175,7 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
   test("window is forwarded as a query param to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -7197,7 +7193,7 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -7307,7 +7303,6 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty trajectory", async () => {
     const env = {
-      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(trajectoryQuery, env);
@@ -7411,7 +7406,6 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -7472,7 +7466,6 @@ describe("graphql — chain_identity_history (#5878, Postgres-tier + empty-feed 
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -7510,7 +7503,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
 
   test("accounts: resolves Postgres-tier rows", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -7567,7 +7560,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   test("accounts: sort and limit args are forwarded as query params to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -7592,7 +7585,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   test("accounts: an omitted sort/limit forwards the defaults to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -7615,7 +7608,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
 
   test("accounts: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(
@@ -7635,7 +7628,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   test("accounts: an unsupported sort value is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -7658,7 +7651,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   test("account: an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -7832,13 +7825,13 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
 
   test("account: activity.modules_called_capped is published when requested (#8822) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ account(ss58: "${SS58}") { activity { tx_count modules_called_capped } } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -7881,13 +7874,13 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
 
   test("resolves the Postgres-tier footprint for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "7d")`),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -7897,9 +7890,9 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
   });
 
   test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -7907,7 +7900,7 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "90d")`),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -7938,7 +7931,7 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
 
   test("a partial data envelope degrades missing fields to their defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => Response.json({ data: {}, generatedAt: null }),
       },
@@ -7960,7 +7953,7 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -8032,13 +8025,13 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
 
   test("resolves the Postgres-tier scorecard for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "7d")`),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -8048,9 +8041,9 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
   });
 
   test("window and direction are forwarded as query params to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -8058,7 +8051,7 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "90d", direction: "in")`),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -8096,7 +8089,7 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
 
   test("a partial data envelope degrades missing fields to their defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => Response.json({ data: {}, generatedAt: null }),
       },
@@ -8125,7 +8118,7 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -8204,7 +8197,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
 
   test("resolves the Postgres-tier portfolio (flat body, unlike the account-event footprint family)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -8264,7 +8257,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
   test("ss58 is forwarded on the Postgres-tier request path", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -8282,7 +8275,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty card", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
@@ -8306,7 +8299,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -8357,7 +8350,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
 
   test("resolves the Postgres-tier positions (flat body, matches GET /api/v1/accounts/{ss58}/positions parity)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -8399,7 +8392,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
   test("ss58 is forwarded on the Postgres-tier request path", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -8417,7 +8410,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty card", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
@@ -8435,7 +8428,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -8549,7 +8542,7 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
 
   test("resolves the Postgres-tier footprint (flat body, unlike the account-event footprint family)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -8590,7 +8583,7 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
   test("ss58 is forwarded on the Postgres-tier request path", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -8609,7 +8602,7 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty footprint", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
@@ -8625,7 +8618,7 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -8716,9 +8709,9 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
   });
 
   test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -8727,7 +8720,7 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
       query(
         `(ss58: "${SS58}", limit: 5, offset: 10, cursor: "abc123", block_start: 100, block_end: 200)`,
       ),
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -8756,7 +8749,6 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -9177,7 +9169,6 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
     const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
       // Every field absent -- the resolver's own ?? / || defaults must fill them in.
       DATA_API: dataApi(Response.json({})),
     };
@@ -9202,7 +9193,7 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
 
 describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledger)", () => {
   // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
-  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered.
+  // FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered.
   // loadGlobalIncidentsLedger reads `surface_checks` through readStore, and
   // formatGlobalIncidents aggregates its INCIDENT rows into the surfaces below.
   const CADENCE_MS = 15 * 60 * 1000;
@@ -9325,7 +9316,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
 
 describe("graphql — global_incidents (#7643, get_global_incidents-aligned alias)", () => {
   // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
-  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered --
+  // FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered --
   // loadGlobalIncidentsLedger reads `surface_checks` through readStore. Doubled
   // there, and given INCIDENT rows rather than a finished surfaces list: the
   // paging/filtering under test applies to what formatGlobalIncidents
@@ -9632,7 +9623,7 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -9640,7 +9631,7 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
           netuid window observed_at distinct_registrants registrations registrations_per_registrant
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -9651,7 +9642,7 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -9714,7 +9705,7 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
 
   test("resolves the Postgres-tier reward + score blocks", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -9818,7 +9809,7 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
   test("forwards the performance path to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -9832,7 +9823,7 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -9900,7 +9891,7 @@ describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card f
 
   test("resolves the Postgres-tier stake + emission concentration blocks", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -9983,7 +9974,7 @@ describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card f
   test("forwards the concentration path to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -9997,7 +9988,7 @@ describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card f
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -10057,7 +10048,7 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
 
   test("resolves the Postgres-tier per-day trend points", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -10112,7 +10103,7 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
   test("forwards the window to the concentration/history Postgres path", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -10520,7 +10511,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
   test("compare_validators fetches each hotkey from the Postgres tier", async () => {
     const paths: string[] = [];
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           paths.push(new URL(req.url).pathname);
@@ -10921,7 +10912,7 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
   // REMOVED (#10190): "top_holders resolves the postgres tier payload". It
   // asserted the URL and query params forwarded to DATA_API under
   // METAGRAPH_TOP_HOLDERS_SOURCE="postgres" -- a flag value no deployment sets,
-  // gating an arm absent from DATA_API_FORWARD_FLAGS. The live tier is the flow
+  // gating an arm absent from FORWARDABLE_TIER_FLAGS. The live tier is the flow
   // projection (tests/top-holders-flow-tier.test.ts), and the cold shape is
   // pinned by the neighbouring test below.
 
@@ -11171,7 +11162,7 @@ describe("graphql — registry_summary / source_health / lineage / rpc_endpoints
 describe("graphql — subnet metagraph / overview / profile (#7169, composed-route parity)", () => {
   function tierEnv(sourceKey: string, payload: Row, onUrl?: AnyFn) {
     return {
-      [sourceKey]: "postgres",
+      [sourceKey]: "data-api",
       DATA_API: {
         fetch: async (r: Row) => {
           onUrl?.(new URL(r.url));
@@ -11181,7 +11172,7 @@ describe("graphql — subnet metagraph / overview / profile (#7169, composed-rou
     };
   }
 
-  test("subnet_metagraph resolves the postgres-tier payload", async () => {
+  test("subnet_metagraph resolves the data-api-tier payload", async () => {
     let url: URL | undefined;
     const env = tierEnv(
       "METAGRAPH_NEURONS_SOURCE",
@@ -11407,9 +11398,9 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   // what the producer sends, and it hid the resolver reading `candles` off the
   // envelope -- so every real tier answer became an empty series.
   test("subnet_ohlc forwards interval + days and unwraps the tier's { data } envelope — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -11417,7 +11408,7 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     const { status, body } = await gql(
       '{ subnet_ohlc(netuid: 7, interval: "1d", days: 30) { interval candles { bucket_start close event_count } } }',
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -11428,7 +11419,7 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
 
   test("subnet_ohlc does not read candles off an envelope-less tier body", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           Response.json({
@@ -11483,7 +11474,7 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
         };
       },
       async () => {
-        // No METAGRAPH_ACCOUNT_EVENTS_SOURCE, so tryPostgresTier declines
+        // No METAGRAPH_ACCOUNT_EVENTS_SOURCE, so tryDataApiTier declines
         // without forwarding and the lakehouse is the tier that answers.
         const env = { R2_SQL_TOKEN: "cfut_test" };
         const { status, body } = await gql(
@@ -11511,7 +11502,7 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   // self-hosted case) leaves the schema-stable empty in place, never an error.
   test("subnet_ohlc keeps its empty card when the lakehouse declines too", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: { fetch: async () => new Response("nope", { status: 503 }) },
     };
     const { status, body } = await gql(
@@ -11868,7 +11859,7 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   test("subnet_validators resolves the Postgres-tier validator set", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -11957,8 +11948,8 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     // A fresh Response per fetch -- a single Response body can only be consumed
     // once, so reusing one would make the second query silently miss the tier.
     const emptyTier = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const ohlc = await gql(
@@ -12063,16 +12054,16 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
   });
 
   test("forwards the window to the health/percentiles Postgres path — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       '{ subnet_health_percentiles(netuid: 3, window: "30d") { netuid } }',
-      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -12193,9 +12184,9 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
   });
 
   test("clamps the recent-event limit into 1..50 and forwards it — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -12203,7 +12194,7 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     const { status, body } = await gql(
       '{ subnet_event_summary(netuid: 3, window: "90d", limit: 999) { netuid } }',
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -12213,9 +12204,9 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
   });
 
   test("clamps a below-range limit up to 1 — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -12223,7 +12214,7 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     const { status, body } = await gql(
       "{ subnet_event_summary(netuid: 3, limit: 0) { netuid } }",
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -13005,7 +12996,7 @@ describe("graphql — subnet_performance_history (#6981, neuron_daily reward-dis
 
   test("resolves the Postgres-tier per-day trend points", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -13077,7 +13068,7 @@ describe("graphql — subnet_performance_history (#6981, neuron_daily reward-dis
   test("forwards the window to the performance/history Postgres path", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -13140,7 +13131,7 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
 
   test("resolves the Postgres-tier per-day trend points", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -13200,7 +13191,7 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
   test("forwards the window to the yield/history Postgres path", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -13264,7 +13255,7 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
 
   test("resolves the Postgres-tier neuron detail row", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -13324,7 +13315,7 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
 
   test("exposes immunity_expires_at_block/immunity_expires_at when the REST tier returns them (#6640)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -13361,7 +13352,7 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
   test("hits /api/v1/subnets/{netuid}/neurons/{uid} on the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -13375,7 +13366,7 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -13443,7 +13434,7 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
 
   test("resolves the Postgres-tier points for the requested window", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -13507,7 +13498,7 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
     // invisible to the schema-vs-schema parity gate, so only selecting the
     // fields proves they resolve.
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -13550,7 +13541,7 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
   test("window is forwarded as a query param to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -13568,7 +13559,7 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -13649,7 +13640,7 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
 
   test("resolves the Postgres-tier card, including the per-UID neuron rows", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -13720,7 +13711,7 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -13780,7 +13771,7 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -13788,7 +13779,7 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
           netuid window observed_at distinct_setters weight_sets sets_per_setter
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -13799,7 +13790,7 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -13859,7 +13850,7 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
 
   test("resolves the Postgres-tier leaderboard for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -13868,7 +13859,7 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
           setters { hotkey uid weight_sets share first_set_at last_set_at }
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -13878,9 +13869,9 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
   });
 
   test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -13888,7 +13879,7 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
     const { status, body } = await gql(
       '{ subnet_weight_setters(netuid: 3, window: "30d") { setter_count } }',
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -13899,7 +13890,7 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -13972,7 +13963,7 @@ describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fal
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -13980,7 +13971,7 @@ describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fal
           netuid window observed_at distinct_movers movements movements_per_mover
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -13991,7 +13982,7 @@ describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fal
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -14049,7 +14040,7 @@ describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14057,7 +14048,7 @@ describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card
           netuid window observed_at distinct_senders transfers transfers_per_sender
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -14068,7 +14059,7 @@ describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -14110,7 +14101,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   // A Postgres-tier env whose DATA_API returns `payload` and, if `captured` is
   // passed, records the forwarded URL so a test can assert path/query forwarding.
   const tierEnv = (source: string, payload: Row, captured?: Row) => ({
-    [source]: "postgres",
+    [source]: "data-api",
     DATA_API: {
       fetch: async (req: Request) => {
         if (captured) captured.url = new URL(req.url);
@@ -14622,7 +14613,7 @@ describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14630,7 +14621,7 @@ describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card
           netuid window observed_at distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -14641,7 +14632,7 @@ describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -14699,7 +14690,7 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14707,7 +14698,7 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
           netuid window observed_at distinct_servers announcements announcements_per_server
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -14718,7 +14709,7 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -14778,16 +14769,16 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
   });
 
   test("resolves Postgres-tier data, forwarding netuid in the path + window param — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       incidentsQuery(`(netuid: ${NETUID}, window: "30d")`),
-      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -14856,7 +14847,7 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14864,7 +14855,7 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
           netuid window observed_at distinct_removers removals removals_per_remover
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -14875,7 +14866,7 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -14936,7 +14927,7 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
@@ -14988,7 +14979,7 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({ data: {} })),
     };
     const { status, body } = await gql(
@@ -15118,7 +15109,7 @@ describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-car
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({ data: {} })),
     };
     const { status, body } = await gql(
@@ -15190,7 +15181,7 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
@@ -15241,7 +15232,7 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({ data: {} })),
     };
     const { status, body } = await gql(
@@ -15328,7 +15319,7 @@ describe("graphql — account_axon_removals (#5699, Postgres-tier + zeroed-card 
           subnets { netuid removals first_removed_at last_removed_at }
         } }`,
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -15348,7 +15339,7 @@ describe("graphql — account_axon_removals (#5699, Postgres-tier + zeroed-card 
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({ data: {} })),
     };
     const { status, body } = await gql(
@@ -15420,7 +15411,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
@@ -15487,7 +15478,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({ data: {} })),
     };
     const { status, body } = await gql(
@@ -15677,13 +15668,13 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
 
   test("resolves the Postgres-tier footprint for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "30d")`),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -15693,9 +15684,9 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
   });
 
   test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -15703,7 +15694,7 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "30d")`),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -15734,7 +15725,7 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
 
   test("a partial data envelope degrades missing fields to their defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => Response.json({ data: {}, generatedAt: null }),
       },
@@ -15756,7 +15747,7 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -15849,7 +15840,7 @@ describe("graphql — account_entities (#6976, R2 entity labels + Postgres-tier 
 
   // REMOVED (#10190): "resolves ownership ties from the Postgres tier".
   // METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired and absent from
-  // DATA_API_FORWARD_FLAGS, so the tie list it asserted could only ever come
+  // FORWARDABLE_TIER_FLAGS, so the tie list it asserted could only ever come
   // from its own DATA_API stub. Ownership-tie SHAPING is proven against the
   // composer's live leg in tests/account-entities-answer.test.ts (populated
   // ties, counts and role mapping); GraphQL's field wiring for the same card is
@@ -15857,7 +15848,6 @@ describe("graphql — account_entities (#6976, R2 entity labels + Postgres-tier 
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty ownership card", async () => {
     const env = {
-      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
@@ -15874,7 +15864,6 @@ describe("graphql — account_entities (#6976, R2 entity labels + Postgres-tier 
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the artifact or Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -15904,7 +15893,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
   // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" and is absent from
-  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered. Both modes
+  // FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered. Both modes
   // read the lakehouse: list mode scans this account's Transfer rows and
   // buildCounterparties AGGREGATES them, relationship mode narrows to one pair.
   //
@@ -16321,7 +16310,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
 
   test("resolves the flat Postgres-tier envelope, mapping each transfer's fields", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
@@ -16424,7 +16413,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
@@ -16447,7 +16436,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
 
   test("a transfer row with missing fields degrades each to null", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
@@ -16477,7 +16466,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -16540,7 +16529,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
 
   test("resolves the Postgres-tier envelope, mapping each event's fields", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
@@ -16596,7 +16585,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
 
   test("hits /api/v1/accounts/{ss58}/events and forwards every filter", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
@@ -16643,7 +16632,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
@@ -16661,7 +16650,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
 
   test("an event row with missing fields degrades each to null", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
@@ -16690,7 +16679,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -16740,7 +16729,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   test("a malformed from is BAD_USER_INPUT, not a silently empty series", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -16939,7 +16928,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
@@ -17012,7 +17001,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   test("rejects a malformed ss58 before hitting the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -17072,7 +17061,7 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
   test("resolves Postgres-tier data as-is, forwarding limit/offset/cursor as query params", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
       DATA_API: {
         fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
@@ -17122,7 +17111,7 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
 
   test("a bare Postgres-tier response ({}) still resolves schema-stable defaults", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(historyQuery(`(ss58: "${SS58}")`), env);
@@ -17140,7 +17129,7 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
 
   test("an entry missing observed_at/name/identity_hash resolves those fields as null", async () => {
     const env = {
-      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({ entries: [{}] }) },
     };
     const { status, body } = await gql(historyQuery(`(ss58: "${SS58}")`), env);
@@ -17231,13 +17220,12 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
 
   // REMOVED (#10190): asserted the window forwarded to a tier that forwards
   // nowhere -- METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and absent from
-  // DATA_API_FORWARD_FLAGS. That the window is HONOURED is asserted against the
+  // FORWARDABLE_TIER_FLAGS. That the window is HONOURED is asserted against the
   // live store at the route and tool boundaries
   // (tests/request-handlers-analytics-routes.test.ts, tests/mcp-server.test.ts).
 
   test("a malformed Postgres-tier body falls back to the D1 rollup (schema-stable empty on cold D1)", async () => {
     const env = {
-      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(
@@ -17353,7 +17341,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
   test("resolves Postgres-tier movers for a valid non-default window/sort combination", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
@@ -17427,7 +17415,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
   test("a limit argument is forwarded as a query param to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
@@ -17441,7 +17429,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
 
   test("a malformed Postgres-tier body degrades to schema-stable defaults (no throw)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(moversQuery(""), env);
@@ -17537,7 +17525,7 @@ describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
@@ -17599,7 +17587,7 @@ describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(turnoverQuery(""), env);
@@ -17669,9 +17657,9 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -17679,7 +17667,7 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
     const { status, body } = await gql(
       weightsQuery('(window: "30d", limit: 5)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -17871,9 +17859,9 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("window/group_by/limit/call_module args are forwarded to the /chain/calls path — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -17882,7 +17870,7 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
       callsQuery(
         `(window: "30d", group_by: "module", limit: 5, call_module: "SubtensorModule")`,
       ),
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -17971,11 +17959,10 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
 
   test("trims an 8-day series to the requested 7d window (#8421) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(activityQuery(`(window: "7d")`), {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -18035,15 +18022,14 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
   });
 
   test("the window arg is forwarded to the /chain/activity path — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(activityQuery(`(window: "30d")`), {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -18133,11 +18119,10 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
 
   test("trims an 8-day daily series to the requested 7d window (#8421) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
-    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(feesQuery(`(window: "7d")`), {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -18210,16 +18195,16 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
   });
 
   test("window/limit/call_module args are forwarded to the /chain/fees path — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       feesQuery(`(window: "30d", limit: 5, call_module: "Balances")`),
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -18295,9 +18280,9 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -18305,7 +18290,7 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
     const { status, body } = await gql(
       servingQuery('(window: "30d", limit: 5)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -18395,9 +18380,9 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -18405,7 +18390,7 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
     const { status, body } = await gql(
       weightSettersQuery('(window: "30d", limit: 5)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -18509,15 +18494,15 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
   });
 
   test("resolves Postgres-tier data for an explicit limit, forwarding it as a query param — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(alphaVolumeQuery("(limit: 5)"), {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -18526,15 +18511,15 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
   });
 
   test("clamps an over-max limit before forwarding it to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(alphaVolumeQuery("(limit: 9999)"), {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -18652,15 +18637,15 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data, forwarding the request unchanged — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(trendsQuery(), {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -18776,15 +18761,15 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
   });
 
   test("resolves Postgres-tier data, forwarding the netuid in the path — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(trendsQuery(NETUID), {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -19112,16 +19097,16 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data and forwards window + min_samples — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
       uptimeQuery(`netuid: ${NETUID}, window: "1y", min_samples: 5`),
-      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -19373,7 +19358,7 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
   // "warm" D1 mock (real rows) must not change the response.
   test("no Postgres tier flag: never queries D1, returns the schema-stable zeroed card", async () => {
     const env = {
-      METAGRAPH_RPC_USAGE_SOURCE: "d1",
+      METAGRAPH_RPC_USAGE_SOURCE: "data-api",
       METAGRAPH_HEALTH_DB: rpcUsageD1({
         totals: {
           total: 200,
@@ -19703,9 +19688,9 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   });
 
   test("resolves Postgres-tier data for a valid non-default window/sort, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -19715,7 +19700,7 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
         `(hotkey: "${HOTKEY}", window: "7d", sort: "gross_staked")`,
       ),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -19796,9 +19781,9 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   });
 
   test("coldkey narrows to one nominator, forwarded to the Postgres tier as a query param (#7884) — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -19807,7 +19792,7 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", coldkey: "${COLDKEY}")`),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -19830,9 +19815,9 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   });
 
   test("limit/offset are forwarded to the Postgres tier as query params, matching REST (#8547) — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -19840,7 +19825,7 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 10, offset: 10)`),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -19996,7 +19981,7 @@ describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fall
   test("resolves Postgres-tier data, requesting the mirrored REST path", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
@@ -20052,7 +20037,7 @@ describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fall
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(PERFORMANCE_QUERY, env);
@@ -20096,7 +20081,7 @@ describe("graphql — chain_concentration (#5872, Postgres-tier + zeroed-card fa
   test("resolves Postgres-tier data, requesting the mirrored REST path", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
@@ -20145,7 +20130,7 @@ describe("graphql — chain_concentration (#5872, Postgres-tier + zeroed-card fa
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(CONCENTRATION_QUERY, env);
@@ -20194,7 +20179,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
 
   test("resolves the Postgres-tier card, including the nested distribution", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -20248,7 +20233,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
   test("forwards to /api/v1/chain/yield with no query params", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
@@ -20263,7 +20248,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       // Every field absent -- the resolver's own ?? defaults must fill them in.
       DATA_API: dataApi(Response.json({})),
     };
@@ -20294,7 +20279,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
 
   test("a distribution present but missing individual fields degrades those to zero, not null, since the field is non-null", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
           schema_version: 1,
@@ -21226,7 +21211,7 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
 
   function hpEnv(body: Row) {
     return {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json(body) },
     };
   }
@@ -21287,7 +21272,7 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
   test("subnet_hyperparameters requests the subnet's own hyperparameters route", async () => {
     let seen: URL | null = null;
     await gql(`{ subnet_hyperparameters(netuid: 12) { netuid } }`, {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           seen = new URL(req.url);
@@ -21376,7 +21361,7 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
   test("subnet_hyperparameters_history forwards limit/offset, clamped to the REST feed bounds", async () => {
     let seen: URL | null = null;
     const env = {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           seen = new URL(req.url);
@@ -21493,7 +21478,7 @@ describe("Query.account_identity", () => {
     let d1Called = false;
     let seen: URL | null = null;
     const env = {
-      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
       DATA_API: {
         fetch: async (req: Request) => {
           seen = new URL(req.url);
@@ -21536,7 +21521,7 @@ describe("Query.account_identity", () => {
     const { status, body } = await gql(
       `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
       {
-        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
         DATA_API: { fetch: async () => Response.json({}) },
       },
     );
@@ -21560,7 +21545,7 @@ describe("Query.account_identity", () => {
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -21664,9 +21649,9 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -21674,7 +21659,7 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     const { status, body } = await gql(
       prometheusQuery('(window: "30d", limit: 5)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -21710,15 +21695,15 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   });
 
   test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(prometheusQuery("(limit: 99999)"), {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -21740,7 +21725,7 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -21841,9 +21826,9 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -21851,7 +21836,7 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     const { status, body } = await gql(
       removalsQuery('(window: "30d", limit: 5)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -21887,15 +21872,15 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   });
 
   test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(removalsQuery("(limit: 99999)"), {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -21917,7 +21902,7 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -22021,15 +22006,15 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(regQuery('(window: "30d", limit: 5)'), {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -22064,15 +22049,15 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   });
 
   test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(regQuery("(limit: 99999)"), {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -22092,7 +22077,7 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -22196,9 +22181,9 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -22206,7 +22191,7 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     const { status, body } = await gql(
       deregQuery('(window: "30d", limit: 5)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -22242,15 +22227,15 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   });
 
   test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(deregQuery("(limit: 99999)"), {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -22270,7 +22255,7 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -22356,9 +22341,9 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data, forwarding window/limit/sort/call_module — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -22367,7 +22352,7 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
       signersQuery(
         '(window: "30d", limit: 5, sort: "total_fee_tao", call_module: "Balances")',
       ),
-      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "data-api", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -22375,15 +22360,14 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 
   test("omits the optional sort/call_module params when the caller supplies neither — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(signersQuery(""), {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -22441,15 +22425,14 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 
   test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(signersQuery("(limit: 99999)"), {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -22469,7 +22452,6 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   test("an unsupported sort is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -22492,7 +22474,6 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
     let called = false;
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -22512,7 +22493,6 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   test("an over-long call_module is BAD_USER_INPUT, matching REST's 100-char bound", async () => {
     let called = false;
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -22561,7 +22541,7 @@ describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallba
   test("resolves Postgres-tier data", async () => {
     let capturedUrl: URL | undefined;
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
@@ -22592,7 +22572,7 @@ describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallba
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults", async () => {
     const env = {
-      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: { fetch: async () => Response.json({}) },
     };
     const { status, body } = await gql(query, env);
@@ -22652,15 +22632,15 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
   });
 
   test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(flowQuery('(window: "30d", limit: 5)'), {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       ...tier,
     } as unknown as Env);
     assert.equal(status, 200);
@@ -22671,7 +22651,7 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
   test("unsupported window is BAD_USER_INPUT", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -22739,9 +22719,9 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
   });
 
   test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -22749,7 +22729,7 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
     const { status, body } = await gql(
       movesQuery('(window: "30d", limit: 8)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -22820,9 +22800,9 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
   });
 
   test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -22830,7 +22810,7 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
     const { status, body } = await gql(
       transfersQuery('(window: "30d", limit: 3)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -22896,9 +22876,9 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
   });
 
   test("resolves Postgres-tier data forwarding window/sort/limit — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -22906,7 +22886,7 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
     const { status, body } = await gql(
       pairsQuery('(window: "30d", sort: "count", limit: 10)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -22927,7 +22907,7 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
   test("unsupported sort is BAD_USER_INPUT", async () => {
     let called = false;
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () => {
           called = true;
@@ -22993,9 +22973,9 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
   });
 
   test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
-    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // WAS a forwarding assertion: it captured the URL tryDataApiTier sent
     // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
-    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that request
     // was never made -- the assertion described a call production does not
     // perform. What is left to prove is the retirement itself: bind a DATA_API
     // that WOULD answer, and show nothing asks it.
@@ -23003,7 +22983,7 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
     const { status, body } = await gql(
       xfersQuery('(window: "30d", limit: 15)'),
       {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
         ...tier,
       } as unknown as Env,
     );
@@ -23987,7 +23967,7 @@ describe("graphql — subnet_hyperparameters_history cursor (#7882)", () => {
   /** Captures the URL the resolver forwards to the Postgres tier. */
   function capturingEnv(seen: { url?: string }) {
     return {
-      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
       DATA_API: {
         fetch: async (input: Request | string) => {
           seen.url = typeof input === "string" ? input : input.url;
@@ -24223,7 +24203,7 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
       DATA_API: { fetch: async () => Response.json(payload) },
       ...extra,
     }) as unknown as Env;
-  const neurons = { METAGRAPH_NEURONS_SOURCE: "postgres" };
+  const neurons = { METAGRAPH_NEURONS_SOURCE: "data-api" };
   const SS58 = "5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL";
 
   test("subnet_conviction forwards field_sources", async () => {

@@ -1829,7 +1829,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
 
   // D1 fully eliminated (2026-07-16, item 5 of the D1->Postgres cleanup): the
   // KV-cold fallback now reads Postgres ONLY via
-  // tryPostgresTier(METAGRAPH_HEALTH_SOURCE) against
+  // tryDataApiTier(METAGRAPH_HEALTH_SOURCE) against
   // /api/v1/internal/health-status-live -- no D1 fallback remains (surface_
   // status's own D1 write is retired too, see runHealthProber's own header
   // comment in src/health-prober.ts).
@@ -1837,7 +1837,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
     test("serves Postgres surface_status rows when the flag is on", async () => {
       let requestedUrl: string | undefined;
       const env = {
-        METAGRAPH_HEALTH_SOURCE: "postgres",
+        METAGRAPH_HEALTH_SOURCE: "data-api",
         DATA_API: {
           fetch: async (request: Request) => {
             requestedUrl = request.url;
@@ -1880,7 +1880,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
 
     test("returns null when the Postgres tier returns no rows", async () => {
       const env = {
-        METAGRAPH_HEALTH_SOURCE: "postgres",
+        METAGRAPH_HEALTH_SOURCE: "data-api",
         DATA_API: {
           fetch: async () =>
             new Response(JSON.stringify({ rows: [] }), { status: 200 }),
@@ -1896,7 +1896,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
 
     test("returns null when the Postgres fetch fails", async () => {
       const env = {
-        METAGRAPH_HEALTH_SOURCE: "postgres",
+        METAGRAPH_HEALTH_SOURCE: "data-api",
         DATA_API: {
           fetch: async () => {
             throw new Error("network down");
@@ -1938,7 +1938,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
     // would make new Date().toISOString() throw a RangeError and 500 the live
     // health response. One corrupt cell must degrade to null, not crash the row.
     const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           new Response(
@@ -1979,7 +1979,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
 
   test("folds unrecognized surface status into unknown in global status_counts", async () => {
     const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
           new Response(
@@ -3379,7 +3379,7 @@ describe("loadSubnetReliability (D1 retired, no Postgres-tier mirror yet)", () =
 // rather than a badge-specific one.
 //
 // It reached that route by SYNTHESIZING an internal request through
-// tryPostgresTier(METAGRAPH_HEALTH_SOURCE), which is how the badge came to
+// tryDataApiTier(METAGRAPH_HEALTH_SOURCE), which is how the badge came to
 // publish "n/a" again once that flag stopped forwarding (#10190): measured on
 // production 2026-08-11, /api/v1/subnets/64/badge.svg?metric=uptime said
 // "metagraphed: n/a" while /api/v1/subnets/64/uptime reported grade C at 0.9296

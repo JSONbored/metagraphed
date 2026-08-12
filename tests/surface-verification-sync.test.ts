@@ -517,7 +517,7 @@ describe("runSurfaceVerificationSync", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { env, puts } = syncEnv();
     const deps = syncDeps({
-      // A real failing read: d1All swallows the throw and bumps the failure
+      // A real failing read: storeAll swallows the throw and bumps the failure
       // generation, which is exactly the signal this guard reads.
       loadUptime: async (netuid: number, options: Row) => {
         const { loadSubnetUptime } = await import("../src/analytics-live.ts");
@@ -539,11 +539,11 @@ describe("runSurfaceVerificationSync", () => {
     assert.deepEqual(result, {
       ok: false,
       skipped: true,
-      reason: "d1_read_failed",
+      reason: "store_read_failed",
     });
     assert.equal(
       (deps.recordException as Row).mock.calls[0][1].errorCode,
-      "surface_verification_d1_read_failed",
+      "surface_verification_store_read_failed",
     );
     assert.equal(puts.length, 0);
   });

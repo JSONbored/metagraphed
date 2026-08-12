@@ -201,7 +201,7 @@ describe("passTallyStatement", () => {
     }
     assert.deepEqual(Object.keys(PASS_TABLES).sort(), [
       // Added #10124. It was ABSENT while D1's account_balances_passes filled
-      // normally, because writeAccountBalancesToD1 takes the pass and writes
+      // normally, because writeAccountBalancesToStore takes the pass and writes
       // the tally itself -- only the Neon mirror consults this map, and a lane
       // missing from it is skipped silently (a lane with no pass table being a
       // legitimate state). Neon's copy therefore had zero rows.

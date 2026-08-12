@@ -154,7 +154,7 @@
     // Workers cannot disagree about which tier answers. Change them together:
     // flipping one side alone is the split-brain this pins shut -- the main
     // Worker would stop forwarding while this one kept serving D1.
-    "METAGRAPH_NEURONS_SOURCE": "d1",
+    "METAGRAPH_NEURONS_SOURCE": "data-api",
     // metagraphed-infra#336, step one of the order #9711 set out.
     //
     // THE MIRROR IS ON; NOTHING READS FROM IT. `neurons` now writes D1 first
@@ -239,8 +239,8 @@
     // writing and ignoring it, and the Neon write becomes authoritative -- any
     // table's failure is now the request's failure. A pass that did not reach
     // the store did not happen.
-    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
-    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "data-api",
+    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "data-api",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
     // write goes through sync-batches instead of landing inline on the request.
     // One lane at a time; adding a name routes it, removing a name routes it

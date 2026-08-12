@@ -20,7 +20,7 @@ import {
   HEALTH_TREND_WINDOWS,
   MAX_BULK_TREND_ROWS,
 } from "../workers/config.ts";
-import { d1All, type ObservationsReadDb } from "./analytics-live.ts";
+import { storeAll, type ObservationsReadDb } from "./analytics-live.ts";
 import { formatBulkTrends, utcWindowCutoffDay } from "./health-serving.ts";
 
 /** Sum of healthy readings behind the day's mean, 0 when the day has no mean. */
@@ -62,7 +62,7 @@ export async function loadBulkHealthTrends({
   const maxWindowDays = Math.max(...Object.values(requested));
   const cutoffDay = utcWindowCutoffDay(now, maxWindowDays);
 
-  const rows = await d1All(
+  const rows = await storeAll(
     db,
     `SELECT netuid,
             day AS date,

@@ -180,7 +180,6 @@ describe("handleRpcUsage", () => {
     let dataApiCalled = false;
     const env = {
       ...AE_ENV,
-      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           dataApiCalled = true;
@@ -224,9 +223,9 @@ describe("handleRpcUsage", () => {
   });
 
   // REWRITTEN (#10190). This proved the fall-through by stubbing a DATA_API
-  // response behind `METAGRAPH_RPC_USAGE_SOURCE: "postgres"` and asserting its
+  // response behind `METAGRAPH_RPC_USAGE_SOURCE: "data-api"` and asserting its
   // 42 came back. That flag reads "retired" in every deployed config and is
-  // absent from DATA_API_FORWARD_FLAGS, so the arm it exercised declined on
+  // absent from FORWARDABLE_TIER_FLAGS, so the arm it exercised declined on
   // every real request -- the 42 only ever arrived in this test.
   //
   // The claim worth keeping is that an empty AE window is NOT published as an
@@ -276,7 +275,6 @@ describe("handleRpcUsage", () => {
 
   test("flag=postgres falls back to the empty payload when DATA_API fails", async () => {
     const env = {
-      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
           throw new Error("boom");

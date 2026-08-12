@@ -6,7 +6,7 @@
 // exercised the D1-served account_events query directly (a capturing D1 stub +
 // handleSubnetStakeTransfers). account_events' D1 write path is retired
 // (#4772) and the table is dropped in production, so that query no longer
-// runs at all — handleSubnetStakeTransfers now only calls tryPostgresTier,
+// runs at all — handleSubnetStakeTransfers now only calls tryDataApiTier,
 // falling back to a schema-stable-empty buildSubnetStakeTransfers(null, ...)
 // literal on a miss, never D1. Only the pure cache-key coverage below
 // (canonicalSubnetStakeTransfersCachePath, untouched by the retirement)

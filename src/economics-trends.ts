@@ -11,7 +11,7 @@ import {
   DEFAULT_HISTORY_WINDOW,
   parseHistoryWindow,
 } from "./neuron-history.ts";
-import { d1All, type ObservationsReadDb } from "./analytics-live.ts";
+import { storeAll, type ObservationsReadDb } from "./analytics-live.ts";
 import { DAY_MS } from "../workers/config.ts";
 
 // ~129 netuids (128 subnets + root) × 365 days ≈ 47k rows for `all`;
@@ -56,7 +56,7 @@ export async function loadEconomicsTrends({
   }
   sql += " ORDER BY snapshot_date DESC LIMIT ?";
   params.push(ECONOMICS_TRENDS_ROW_CAP);
-  const rows = await d1All(db, sql, params);
+  const rows = await storeAll(db, sql, params);
   // Hitting the LIMIT means the oldest snapshot_date is truncated mid-day;
   // flag it so buildEconomicsTrends drops that partial day (the pre-elimination
   // contract, mirroring loadSubnetConcentrationHistory).

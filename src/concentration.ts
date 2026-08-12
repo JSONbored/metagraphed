@@ -861,7 +861,7 @@ export function buildConcentrationHistory(
   };
 }
 
-type D1Runner = (
+type SqlRunner = (
   sql: string,
   params: unknown[],
 ) => Promise<Array<Record<string, unknown>>>;
@@ -869,7 +869,7 @@ type D1Runner = (
 // Shared D1 loaders for MCP tools — mirror handleSubnetConcentration and
 // handleSubnetConcentrationHistory in workers/request-handlers/entities.ts.
 export async function loadSubnetConcentration(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: number,
 ): Promise<ConcentrationResult> {
   const rows = await d1(
@@ -880,7 +880,7 @@ export async function loadSubnetConcentration(
 }
 
 export async function loadSubnetConcentrationHistory(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: number,
   { windowLabel, windowDays }: { windowLabel?: string; windowDays: number },
 ): Promise<ConcentrationHistoryResult> {

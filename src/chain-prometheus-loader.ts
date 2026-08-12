@@ -1,7 +1,7 @@
 // Shared chain-prometheus loader for REST + MCP + GraphQL parity.
 //
 // THE RUNG THAT WAS MISSING (#10248). Both prometheus and its axon twin resolve
-// their data the same way -- `tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)`
+// their data the same way -- `tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)`
 // first -- and that flag reads "retired", so the call can never forward (#10190
 // counts eight such flags). `/chain/serving` survives that because it has a
 // SECOND rung, `loadChainServingColdTier`, which reads the lakehouse rollup.

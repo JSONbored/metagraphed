@@ -22,7 +22,7 @@
 // does and does not cover (a failed POST mid-sequence, and a 10%-of-762,577
 // floor that leaves a wide publishing band).
 
-interface D1Like {
+interface StatementClientLike {
   prepare(sql: string): {
     first(): Promise<unknown>;
   };
@@ -59,7 +59,7 @@ const NONE: HotkeyAlphaCompleteness = {
  * leaderboard that cannot prove its inputs should fall back, not 500.
  */
 export async function latestCompleteHotkeyAlphaPass(
-  db: D1Like | null | undefined,
+  db: StatementClientLike | null | undefined,
 ): Promise<HotkeyAlphaCompleteness> {
   if (!db?.prepare) return { ...NONE, reason: "unavailable" };
   try {

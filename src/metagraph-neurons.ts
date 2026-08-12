@@ -30,7 +30,7 @@ import {
 export { GLOBAL_VALIDATOR_LIMIT_DEFAULT, GLOBAL_VALIDATOR_LIMIT_MAX };
 
 type Row = Record<string, unknown>;
-type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 // --- `fields=` projection (#9082) ------------------------------------------
 //
@@ -1161,7 +1161,7 @@ export function overlayFeaturedValidators(
 // truth). `d1` is a (sql, params) => Promise<rows[]> runner; a cold/unbound DB
 // returns [] → a schema-stable empty payload.
 export async function loadSubnetMetagraph(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: unknown,
   { validatorsOnly = false }: { validatorsOnly?: boolean } = {},
 ): Promise<Row> {
@@ -1175,7 +1175,7 @@ export async function loadSubnetMetagraph(
 }
 
 export async function loadSubnetValidators(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: unknown,
 ): Promise<Row> {
   // Tie-break equal stake by the unique uid so the ranking is deterministic
@@ -1194,8 +1194,8 @@ export async function loadSubnetValidators(
 // than DISTINCT ON (SQLite has neither). A cold/absent table yields an empty
 // map, which prices nothing: every non-root row is excluded from the totals
 // rather than being silently counted 1:1.
-export async function loadD1AlphaPricesByNetuid(
-  d1: D1Runner,
+export async function loadStoreAlphaPricesByNetuid(
+  d1: SqlRunner,
 ): Promise<Map<number, number | null>> {
   try {
     const rows = await d1(
@@ -1224,7 +1224,7 @@ export async function loadD1AlphaPricesByNetuid(
 // account_identity is actively written in D1 (the account-identity-sync
 // path), so it is joined here like any other side table.
 export async function loadGlobalValidators(
-  d1: D1Runner,
+  d1: SqlRunner,
   {
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -1238,7 +1238,7 @@ export async function loadGlobalValidators(
         "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
       [],
     ),
-    loadD1AlphaPricesByNetuid(d1),
+    loadStoreAlphaPricesByNetuid(d1),
     loadIdentityByColdkeyMap(d1),
   ]);
   return buildGlobalValidators(rows, {
@@ -1250,7 +1250,7 @@ export async function loadGlobalValidators(
 }
 
 export async function loadNeuron(
-  d1: D1Runner,
+  d1: SqlRunner,
   netuid: unknown,
   uid: unknown,
 ): Promise<Row> {
@@ -1446,7 +1446,7 @@ export function buildValidatorDetail(
 
 // Identity joined here too -- see loadGlobalValidators' comment.
 export async function loadValidatorDetail(
-  d1: D1Runner,
+  d1: SqlRunner,
   hotkey: unknown,
 ): Promise<Row> {
   const [rows, priceByNetuid, identityByColdkey] = await Promise.all([
@@ -1454,7 +1454,7 @@ export async function loadValidatorDetail(
       `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
       [hotkey],
     ),
-    loadD1AlphaPricesByNetuid(d1),
+    loadStoreAlphaPricesByNetuid(d1),
     loadIdentityByColdkeyMap(d1),
   ]);
   return buildValidatorDetail(rows, hotkey, {
