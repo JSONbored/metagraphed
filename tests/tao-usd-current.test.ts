@@ -63,7 +63,12 @@ describe("reading the current TAO/USD blob", () => {
       env,
       NOW + TAO_USD_CURRENT_KV_TTL_MS - 1,
     );
-    assert.deepEqual(a, { usd_per_tao: 204.125 });
+    assert.deepEqual(a, {
+      usd_per_tao: 204.125,
+      observed_at: null,
+      block_number: null,
+      price_basis: null,
+    });
     assert.deepEqual(b, a);
     assert.equal(state.reads, 1, "the second call must not hit KV");
   });
@@ -92,8 +97,8 @@ describe("reading the current TAO/USD blob", () => {
     resetModuleState();
     const a = envWith({ usd_per_tao: 1 });
     const b = envWith({ usd_per_tao: 2 });
-    assert.deepEqual(await readTaoUsdCurrentKv(a.env, NOW), { usd_per_tao: 1 });
-    assert.deepEqual(await readTaoUsdCurrentKv(b.env, NOW), { usd_per_tao: 2 });
+    assert.equal((await readTaoUsdCurrentKv(a.env, NOW))?.usd_per_tao, 1);
+    assert.equal((await readTaoUsdCurrentKv(b.env, NOW))?.usd_per_tao, 2);
     assert.equal(
       b.state.reads,
       1,
@@ -110,6 +115,110 @@ describe("reading the current TAO/USD blob", () => {
       TAO_USD_CURRENT_KV_TTL_MS < TAO_USD_MAX_AGE_MS,
       "the memo must never outlive the freshness bound",
     );
+  });
+
+  // The producer wrote `observed_at` as the raw epoch-ms integer from
+  // `tao_usd_index`, while `TaoUsdReading` declares a string. `taoUsdUsable`
+  // grades the stamp with `Date.parse`, which returns NaN for a stringified
+  // integer -- and an unparseable stamp is graded `index_stale` by design. So a
+  // cache rewritten every minute read as permanently stale, and /economics,
+  // /subnets/{netuid}/volume and /chain/alpha-volume declined every USD field.
+  describe("the observed_at stamp is normalised to ISO", () => {
+    test("an epoch-ms stamp is graded fresh, not stale", async () => {
+      resetModuleState();
+      const { env } = envWith({
+        usd_per_tao: 204.125,
+        observed_at: NOW - 1000,
+      });
+      const reading = await readTaoUsdCurrentKv(env, NOW);
+      assert.equal(reading?.observed_at, new Date(NOW - 1000).toISOString());
+      const { taoUsdUsable } = await import("../src/alpha-usd.ts");
+      assert.equal(
+        taoUsdUsable(reading, NOW).ok,
+        true,
+        "a one-second-old reading must not be graded stale",
+      );
+    });
+
+    test("an ISO stamp is passed through unchanged", async () => {
+      // Values written before the producer fix are numbers and values after it
+      // are strings; both are in KV at the same time across a deploy.
+      resetModuleState();
+      const iso = new Date(NOW - 1000).toISOString();
+      const { env } = envWith({ usd_per_tao: 204.125, observed_at: iso });
+      assert.equal((await readTaoUsdCurrentKv(env, NOW))?.observed_at, iso);
+    });
+
+    test("a genuinely stale stamp is still stale", async () => {
+      // Proving the fix cannot pass by making everything look fresh.
+      resetModuleState();
+      const { TAO_USD_MAX_AGE_MS, taoUsdUsable } =
+        await import("../src/alpha-usd.ts");
+      const { env } = envWith({
+        usd_per_tao: 204.125,
+        observed_at: NOW - TAO_USD_MAX_AGE_MS - 1000,
+      });
+      const graded = taoUsdUsable(await readTaoUsdCurrentKv(env, NOW), NOW);
+      assert.equal(graded.ok, false);
+      assert.equal(graded.ok === false && graded.reason, "index_stale");
+    });
+
+    test("an unusable stamp stays stale rather than defaulting to fresh", async () => {
+      resetModuleState();
+      const { taoUsdUsable } = await import("../src/alpha-usd.ts");
+      // 1e20 ms is past the Date range, so `new Date(v)` is Invalid Date --
+      // the one finite-positive number that still cannot become a stamp.
+      for (const bad of [0, -1, Number.NaN, {}, true, 1e20]) {
+        const { env } = envWith({ usd_per_tao: 204.125, observed_at: bad });
+        const reading = await readTaoUsdCurrentKv(env, NOW);
+        assert.equal(reading?.observed_at, null, `${JSON.stringify(bad)}`);
+        assert.equal(taoUsdUsable(reading, NOW).ok, false);
+        resetModuleState();
+      }
+    });
+
+    test("block_number is carried when it is a real height, else null", async () => {
+      resetModuleState();
+      const good = envWith({
+        usd_per_tao: 204.125,
+        observed_at: NOW - 1000,
+        block_number: 25_692_599,
+      });
+      assert.equal(
+        (await readTaoUsdCurrentKv(good.env, NOW))?.block_number,
+        25_692_599,
+      );
+      // A fractional or non-numeric height is not a height. It rides along as
+      // the audit trail for the rate, so a wrong one is worse than none.
+      for (const bad of [25_692_599.5, "25692599", null]) {
+        resetModuleState();
+        const { env } = envWith({
+          usd_per_tao: 204.125,
+          observed_at: NOW - 1000,
+          block_number: bad,
+        });
+        assert.equal(
+          (await readTaoUsdCurrentKv(env, NOW))?.block_number,
+          null,
+          `${JSON.stringify(bad)}`,
+        );
+      }
+    });
+
+    test("an unpriced blob is index_unpriced, never a zero rate", async () => {
+      resetModuleState();
+      const { taoUsdUsable } = await import("../src/alpha-usd.ts");
+      const { env } = envWith({
+        usd_per_tao: null,
+        observed_at: NOW - 1000,
+        price_basis: "insufficient_pools",
+      });
+      const reading = await readTaoUsdCurrentKv(env, NOW);
+      assert.equal(reading?.usd_per_tao, null);
+      assert.equal(reading?.price_basis, "insufficient_pools");
+      const graded = taoUsdUsable(reading, NOW);
+      assert.equal(graded.ok === false && graded.reason, "index_unpriced");
+    });
   });
 
   test("module-state reset clears it between test files", async () => {

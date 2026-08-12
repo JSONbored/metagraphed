@@ -5217,7 +5217,8 @@ export type RegistryLeaderboards = {
 export type RevenueCoverageBasis = {
   __typename?: 'RevenueCoverageBasis';
   tao: Scalars['Float']['output'];
-  usd: Scalars['Float']['output'];
+  /** The TAO leg priced through the TAO/USD index, or NULL when that moment is not priceable — an index below its two-pool quorum, a reading past its two-hour freshness bound, or no reading at all. NEVER 0: a zero here next to a positive `tao` claims the emission is worthless rather than unpriced, which is what this field published for all 129 subnets until the TAO/USD wiring was fixed. */
+  usd?: Maybe<Scalars['Float']['output']>;
 };
 
 export type RevenueEmission = {
@@ -5226,7 +5227,8 @@ export type RevenueEmission = {
   /** SubnetTaoInEmission + SubnetExcessTao, the TAO the network directs into this subnet. Fully measured rather than reconstructed. The alternates are published beside it and never silently substituted. */
   basis: Scalars['String']['output'];
   tao: Scalars['Float']['output'];
-  usd: Scalars['Float']['output'];
+  /** The measured TAO denominator priced in USD, or NULL when the TAO/USD index could not price this moment. NEVER 0 — `emission.tao` carries a real figure, so a zero here reads as 'the network directs this much TAO into the subnet and it is worth nothing', which is what shipped for all 129 subnets until the TAO/USD wiring was fixed. */
+  usd?: Maybe<Scalars['Float']['output']>;
 };
 
 export type RevenueEmissionAlternates = {
@@ -11559,14 +11561,14 @@ export type RegistryLeaderboardsResolvers<ContextType = GqlContext, ParentType e
 
 export type RevenueCoverageBasisResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueCoverageBasis'] = ResolversParentTypes['RevenueCoverageBasis']> = ResolversObject<{
   tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  usd?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type RevenueEmissionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueEmission'] = ResolversParentTypes['RevenueEmission']> = ResolversObject<{
   alternates?: Resolver<ResolversTypes['RevenueEmissionAlternates'], ParentType, ContextType>;
   basis?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  usd?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type RevenueEmissionAlternatesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueEmissionAlternates'] = ResolversParentTypes['RevenueEmissionAlternates']> = ResolversObject<{

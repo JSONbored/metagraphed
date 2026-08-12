@@ -33,7 +33,7 @@
 // young series read as a complete one is how a four-day chart becomes a claim
 // about the month.
 
-import { TAO_USD_MAX_AGE_MS } from "./alpha-usd.ts";
+import { TAO_USD_MAX_AGE_MS, type TaoUsdReading } from "./alpha-usd.ts";
 
 type Row = Record<string, unknown>;
 
@@ -118,6 +118,46 @@ export async function loadTaoUsdSeries(
         ` ORDER BY observed_at DESC LIMIT ${TAO_USD_MAX_POINTS}`,
       [cutoff],
     );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The newest reading, in the shape `taoUsdUsable` grades.
+ *
+ * For callers that need the RATE and not the series -- revenue coverage and
+ * owner-cut price one scalar each and would otherwise pull 2000 rows to read
+ * the first. `LIMIT 1` on the same index the series query already uses.
+ *
+ * Returns the newest row WITHOUT skipping unpriced ones. A row carrying
+ * `price_basis: insufficient_pools` is the current state of the index, and
+ * stepping back to an older priced row would serve a rate past its freshness
+ * bound while looking healthy -- the failure ADR 0025 published the basis to
+ * make visible. `taoUsdUsable` tells `index_unpriced` from `index_stale`; this
+ * function's job is to report, not to choose.
+ *
+ * Null means the read failed or the table is empty, which is a third state
+ * again (`no_index_reading`) and equally not a price.
+ */
+export async function loadLatestTaoUsdReading(
+  db: TaoUsdSeriesDb | null | undefined,
+): Promise<TaoUsdReading | null> {
+  if (!db?.query) return null;
+  try {
+    const rows = await db.query<Row>(
+      `SELECT block_number, observed_at, usd_per_tao, price_basis` +
+        ` FROM ${TAO_USD_TABLE}` +
+        ` ORDER BY observed_at DESC LIMIT 1`,
+    );
+    const row = rows?.[0];
+    if (!row) return null;
+    return {
+      usd_per_tao: positiveOrNull(row.usd_per_tao),
+      observed_at: toIsoOrNull(row.observed_at),
+      block_number: intOrNull(row.block_number),
+      price_basis: typeof row.price_basis === "string" ? row.price_basis : null,
+    };
   } catch {
     return null;
   }

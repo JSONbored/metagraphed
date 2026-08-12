@@ -36,13 +36,14 @@ import {
   TAO_USD_MAX_POINTS,
   TAO_USD_WINDOWS,
   buildTaoUsdSeries,
+  loadLatestTaoUsdReading,
   loadTaoUsdSeries,
 } from "../src/tao-usd-series.ts";
 import { handleRequest } from "../workers/api.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
-import { TAO_USD_MAX_AGE_MS } from "../src/alpha-usd.ts";
+import { TAO_USD_MAX_AGE_MS, taoUsdUsable } from "../src/alpha-usd.ts";
 
 // The real DDL, so the CHECK constraint that pairs a null price with
 // `insufficient_pools` is enforced in the fixtures too — a test that could
@@ -169,6 +170,82 @@ describe("loadTaoUsdSeries against real SQLite", () => {
         )
         .run(),
     );
+  });
+});
+
+// Revenue coverage and owner-cut need the RATE, not the series. They
+// used to read `/metagraph/network/tao-usd.json`, an artifact that is never
+// published, so the price was null on every request and every USD leg of
+// /revenue and /chain/revenue-coverage went with it.
+describe("loadLatestTaoUsdReading", () => {
+  test("returns the newest row, shaped for taoUsdUsable", async () => {
+    reading(60_000, 196.2, 99);
+    reading(0, 196.17, 100);
+    reading(3 * 60 * 60 * 1000, 190, 98);
+    const r = await loadLatestTaoUsdReading(storeHandle());
+    assert.equal(r?.usd_per_tao, 196.17);
+    assert.equal(r?.block_number, 100);
+    assert.equal(r?.price_basis, "wrapped_onchain_median");
+    // ISO, not the stored epoch-ms. `taoUsdUsable` grades the stamp with
+    // Date.parse, which returns NaN for a stringified integer and grades an
+    // unparseable stamp as stale -- so a fresh reading would read as hours old.
+    assert.equal(typeof r?.observed_at, "string");
+    assert.equal(r?.observed_at, new Date(NOW).toISOString());
+    assert.equal(taoUsdUsable(r, NOW).ok, true);
+  });
+
+  test("an unpriced newest row declines rather than falling back to an older price", async () => {
+    reading(60 * 60 * 1000, 196.2, 99);
+    reading(0, null, 100);
+    const r = await loadLatestTaoUsdReading(storeHandle());
+    // Stepping back to the older priced row would serve a rate the index has
+    // since withdrawn, while looking healthy.
+    assert.equal(r?.usd_per_tao, null);
+    assert.equal(r?.price_basis, "insufficient_pools");
+    const graded = taoUsdUsable(r, NOW);
+    assert.equal(graded.ok, false);
+    assert.equal(graded.ok === false && graded.reason, "index_unpriced");
+  });
+
+  test("a stale newest row is graded stale, not fresh", async () => {
+    reading(TAO_USD_MAX_AGE_MS + 60_000, 196.2, 99);
+    const graded = taoUsdUsable(
+      await loadLatestTaoUsdReading(storeHandle()),
+      NOW,
+    );
+    assert.equal(graded.ok, false);
+    assert.equal(graded.ok === false && graded.reason, "index_stale");
+  });
+
+  test("a non-string price_basis normalises to null, not to the raw value", async () => {
+    // The column is TEXT under a CHECK, so this is defensive -- but the shape
+    // is what `taoUsdUsable` grades, and a number leaking into `price_basis`
+    // would be published as the reason a price is missing.
+    const handle = {
+      async query<T>() {
+        return [
+          {
+            block_number: 100,
+            observed_at: NOW,
+            usd_per_tao: 196.17,
+            price_basis: 7,
+          },
+        ] as T[];
+      },
+    };
+    const r = await loadLatestTaoUsdReading(handle);
+    assert.equal(r?.price_basis, null);
+    assert.equal(r?.usd_per_tao, 196.17);
+  });
+
+  test("no binding, an empty table and a failed read are all null", async () => {
+    assert.equal(await loadLatestTaoUsdReading(null), null);
+    assert.equal(await loadLatestTaoUsdReading(storeHandle()), null);
+    db.exec("DROP TABLE tao_usd_index");
+    assert.equal(await loadLatestTaoUsdReading(storeHandle()), null);
+    // All three converge on `no_index_reading` -- never on a price of zero.
+    const graded = taoUsdUsable(null, NOW);
+    assert.equal(graded.ok === false && graded.reason, "no_index_reading");
   });
 });
 

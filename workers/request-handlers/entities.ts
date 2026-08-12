@@ -194,6 +194,7 @@ import {
 } from "../../src/failure-reasons.ts";
 import {
   buildTaoUsdSeries,
+  loadLatestTaoUsdReading,
   loadTaoUsdSeries,
   TAO_USD_WINDOWS,
 } from "../../src/tao-usd-series.ts";
@@ -428,7 +429,7 @@ import {
 import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { withUsdAtTx } from "../../src/price-at-tx.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
-import type { TaoUsdReading } from "../../src/alpha-usd.ts";
+import { taoUsdUsable } from "../../src/alpha-usd.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
 import { loadSubnetStakeFlowFromArtifact } from "../../src/subnet-stake-flow-artifact.ts";
 import {
@@ -4111,7 +4112,7 @@ export async function handleSubnetAlphaVolume(
       // per-trade instant survives to here. See src/alpha-usd-overlay.ts.
       data: withAlphaVolumeUsd(
         data as unknown as Record<string, unknown>,
-        (await readTaoUsdCurrentKv(env)) as TaoUsdReading | null,
+        await readTaoUsdCurrentKv(env),
         Date.now(),
       ),
       meta: await accountMeta(
@@ -7334,17 +7335,36 @@ async function subnetSurfacesFor(
     : null;
 }
 
-/** Latest TAO/USD, or null. Null prices the emission at 0 USD, which yields
- * null ratios -- honest, since without a rate there is no USD comparison. */
+/**
+ * Latest usable TAO/USD, or null when this moment is not priceable.
+ *
+ * READS THE INDEX, NOT AN ARTIFACT. This used to read
+ * `/metagraph/network/tao-usd.json`, which is not published -- the artifact
+ * 404s in R2 with `artifact_not_found`, so the price was null on EVERY request
+ * and every USD leg of /revenue, /chain/revenue-coverage and /owner-cut went
+ * with it. The identical #10566 shape: a decline standing in for a read that
+ * could never have succeeded, indistinguishable from a genuine "no rate"
+ * because null is the documented normal answer.
+ *
+ * `/api/v1/network/tao-usd` was healthy the whole time because it reads
+ * `tao_usd_index` directly -- 1,433 of 1,433 points priced, ~1/minute since
+ * 2026-08-02. Same store, same staleness rule as every other USD surface, so
+ * this cannot drift from what /network/tao-usd reports.
+ *
+ * `taoUsdUsable` grades the reading rather than this function re-deriving the
+ * bound: an unpriced reading (`insufficient_pools`), one past
+ * TAO_USD_MAX_AGE_MS, and an empty table are three distinct outcomes that all
+ * correctly converge on "no rate" -- and none of them is a rate of zero.
+ */
 async function usdPerTaoOrNull(env: Env): Promise<number | null> {
-  try {
-    const artifact = await readArtifact(env, "/metagraph/network/tao-usd.json");
-    if (!artifact.ok) return null;
-    const data = artifact.data as Record<string, unknown> | undefined;
-    const latest = data?.latest as Record<string, unknown> | undefined;
-    const usd = latest?.usd_per_tao;
-    return typeof usd === "number" && Number.isFinite(usd) ? usd : null;
-  } catch {
-    return null;
-  }
+  const reading = await loadLatestTaoUsdReading(
+    readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
+      typeof loadLatestTaoUsdReading
+    >[0],
+  );
+  // Not `reading?.usd_per_tao ?? null` behind the grade: `taoUsdUsable` only
+  // returns ok for a non-null, finite, positive rate, so that `??` arm is
+  // unreachable -- and an unreachable branch reads as a tested one.
+  if (!reading || !taoUsdUsable(reading, Date.now()).ok) return null;
+  return reading.usd_per_tao;
 }

@@ -26,7 +26,6 @@
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import { withChainAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
-import type { TaoUsdReading } from "../../src/alpha-usd.ts";
 import { readStore } from "../../src/read-store.ts";
 import { HEALTH_CHECK_TABLES } from "../../src/read-store-tables.ts";
 import {
@@ -1839,7 +1838,7 @@ export async function handleChainAlphaVolume(
       // the window is fixed at 24h. See src/alpha-usd-overlay.ts.
       const priced = withChainAlphaVolumeUsd(
         data as unknown as Record<string, unknown>,
-        (await readTaoUsdCurrentKv(env)) as TaoUsdReading | null,
+        await readTaoUsdCurrentKv(env),
         Date.now(),
       ) as unknown as typeof data;
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +

@@ -69,7 +69,9 @@ export interface SubnetRevenueInput {
   tao_total_per_block: number;
   alpha_out_per_block?: number;
   alpha_price_tao?: number;
-  usd_per_tao: number;
+  /** Null when the index could not price this moment. Passed through to
+   * computeCoverage, which declines every USD leg rather than zeroing it. */
+  usd_per_tao: number | null;
   /** Every declared revenue surface for this subnet, readable or not. */
   sources: RevenueSourceRow[];
   /** When the subnet was searched and nothing found (#10543). */

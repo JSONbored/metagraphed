@@ -129,10 +129,12 @@ export function loadSubnetRevenue(
     tao_total_per_block: taoTotalPerBlock(input.economics),
     alpha_out_per_block: num(input.economics?.alpha_out_emission),
     alpha_price_tao: num(input.economics?.alpha_price_tao),
-    // A missing price prices the emission at 0 USD, which computeCoverage then
-    // turns into null ratios -- the same output as unobserved revenue, and the
-    // honest one: without a rate there is no USD comparison to make.
-    usd_per_tao: input.usd_per_tao ?? 0,
+    // NOT `?? 0`. Coalescing here priced every subnet's emission at
+    // literally zero USD -- the ratios did come out null as intended, but
+    // `emission.usd` and both `alternates` branches published a hard 0 beside a
+    // real `emission.tao`. A missing rate travels as null the whole way down,
+    // and computeCoverage declines every USD leg together.
+    usd_per_tao: input.usd_per_tao,
     sources,
     observations: input.observations,
     searched_at: input.searched_at ?? null,

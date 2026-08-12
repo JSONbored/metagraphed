@@ -5952,7 +5952,11 @@ type RevenueEmission {
   """
   basis: String!
   tao: Float!
-  usd: Float!
+
+  """
+  The measured TAO denominator priced in USD, or NULL when the TAO/USD index could not price this moment. NEVER 0 — \`emission.tao\` carries a real figure, so a zero here reads as 'the network directs this much TAO into the subnet and it is worth nothing', which is what shipped for all 129 subnets until the TAO/USD wiring was fixed.
+  """
+  usd: Float
   alternates: RevenueEmissionAlternates!
 }
 
@@ -5963,7 +5967,11 @@ type RevenueEmissionAlternates {
 
 type RevenueCoverageBasis {
   tao: Float!
-  usd: Float!
+
+  """
+  The TAO leg priced through the TAO/USD index, or NULL when that moment is not priceable — an index below its two-pool quorum, a reading past its two-hour freshness bound, or no reading at all. NEVER 0: a zero here next to a positive \`tao\` claims the emission is worthless rather than unpriced, which is what this field published for all 129 subnets until the TAO/USD wiring was fixed.
+  """
+  usd: Float
 }
 
 type RevenueSource {
