@@ -3688,9 +3688,10 @@ async function loadSubnetIdentityHistoryTool(
   netuid: number,
   { limit, offset, cursor }: Row,
 ) {
-  // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
-  // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
-  // null on every request.
+  // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE has no live
+  // reader -- #10190 deleted every call site, PR #10771 flipped only the
+  // config, and #10893 settled the disagreement by reverting it to "retired"
+  // -- so this resolved to null on every request.
   // Through the composer (src/identity-history-answer.ts): it owns the tier
   // order and the empty floor, so this tool cannot report entry_count 0 while
   // REST serves the frozen verified timeline for the same netuid.

@@ -536,10 +536,18 @@
     // degrades to a schema-stable empty feed rather than a 404.
     //
     // #10740 built the writer (POST /api/v1/internal/subnet-identity-sync, fed
-    // by the chain-direct poller lane) and 0021/0023 gave it the tables. This
-    // is the read half: "postgres" is what makes tryPostgresTier forward, and
-    // without it the writer would fill a table nothing selects from.
-    "METAGRAPH_SUBNET_IDENTITY_SOURCE": "postgres",
+    // by the chain-direct poller lane) and 0021/0023 gave it the tables. The
+    // read half never followed: #10190's sweep deleted every call site that
+    // consulted this flag, and PR #10771's flip to "postgres" changed only
+    // this file -- no reader was restored with it (#10893, determined
+    // 2026-08-12: zero non-comment mentions in src/ or workers/).
+    //
+    // THIS VALUE IS NOT READ. It is "retired" so the config stops implying a
+    // forward that cannot happen; restoring the read tier means adding the
+    // reader first (the serving path is the identity-history composer,
+    // src/identity-history-answer.ts) and flipping this with it. The writer
+    // filling a table nothing selects from is #10818's question.
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE": "retired",
     // rpc_proxy_events (#4832 gap-closure follow-up): FLIPPED to "postgres"
     // 2026-07-12, after a one-time historical backfill closed the only gap --
     // D1 had 70 rows (wrangler d1 execute, confirmed the same day), Postgres
