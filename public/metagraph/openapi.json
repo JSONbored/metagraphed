@@ -1430,7 +1430,9 @@
             "content_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
             "contract_version": "2026-06-29.1",
             "generated_at": "2026-06-01T00:00:00.000Z",
+            "health_source": "probe-derived",
             "notes": "Example description.",
+            "operational_observed_at": "2026-06-01T00:00:00.000Z",
             "published_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "subnet_count": 1,
@@ -1501,10 +1503,12 @@
               }
             ],
             "generated_at": "2026-06-01T00:00:00.000Z",
+            "health_source": "probe-derived",
             "integration_readiness": 1,
             "name": "Example Subnet",
             "netuid": 7,
             "notes": "Example description.",
+            "operational_observed_at": "2026-06-01T00:00:00.000Z",
             "previously_known_as": [
               "example"
             ],
@@ -7930,6 +7934,7 @@
             ],
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
+            "operational_observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "source": "live-cron-prober",
             "summary": {
@@ -8224,6 +8229,8 @@
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
             "observed_at": "2026-06-01T00:00:00.000Z",
+            "promoted_at": "2026-06-01T00:00:00.000Z",
+            "promoted_by": "worker-cron",
             "schema_version": 1,
             "schemas": [
               {
@@ -17695,6 +17702,17 @@
           "generated_at": {
             "type": "string"
           },
+          "health_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer."
+          },
           "notes": {
             "anyOf": [
               {
@@ -17708,6 +17726,17 @@
               }
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
           },
           "published_at": {
             "anyOf": [
@@ -17915,6 +17944,17 @@
           "generated_at": {
             "type": "string"
           },
+          "health_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer."
+          },
           "integration_readiness": {
             "maximum": 100,
             "minimum": 0,
@@ -17941,6 +17981,17 @@
               }
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
           },
           "previously_known_as": {
             "items": {
@@ -41447,6 +41498,17 @@
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
           },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
+          },
           "schema_version": {
             "const": 1,
             "type": "number"
@@ -42837,6 +42899,15 @@
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
           },
           "observed_at": {
+            "type": "string"
+          },
+          "promoted_at": {
+            "description": "When the schema-snapshots cron promoted this index into the store. Absent on a build-baked baseline the cron has not promoted.",
+            "type": "string"
+          },
+          "promoted_by": {
+            "const": "worker-cron",
+            "description": "Which producer promoted this index. Absent on a build-baked baseline.",
             "type": "string"
           },
           "schema_version": {

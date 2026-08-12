@@ -8914,6 +8914,23 @@ async function handleApiRequest(
           `[METAGRAPH_VALIDATE_RESPONSES] ${matched.id} refused:`,
           err.detail,
         );
+        // A published route refusing every request is a DOWN route, not a
+        // routine decline (#10897): three routes 500'd for 26 hours and error
+        // tracking showed nothing, because this branch filed no fault — the
+        // refusals were visible only as usage_event ok:false, and a latency
+        // sweep found them before any alarm did. The fingerprint keys on
+        // route+message, so each drifted route surfaces as its own issue
+        // rather than cross-throttling another's. The drift detail rides in
+        // the message: the unrecognized keys ARE the diagnosis, and the
+        // console.error above is unreachable without a tail.
+        scheduleExceptionEvent(env, ctx, recordExceptionEvent, {
+          error: new Error(
+            `response_schema_drift: ${matched.id} refused: ` +
+              String(JSON.stringify(err.detail)).slice(0, 400),
+          ),
+          route: matched.id,
+          errorCode: "response_schema_drift",
+        });
         return errorResponse(
           "response_schema_drift",
           `The ${matched.id} response did not match its published schema and was not served.`,

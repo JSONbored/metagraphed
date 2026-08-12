@@ -151,5 +151,23 @@ export const SchemaIndexArtifactSchema = ArtifactBaseSchema.extend({
   // properties, only legal today via additionalProperties:true.
   observed_at: z.string().optional(),
   summary: SchemaDriftSummarySchema.optional(),
+  // The schema-snapshots cron's promotion provenance (SchemaIndexArtifact in
+  // src/schema-snapshots-sync.ts: "with only summary/schemas replaced ... and
+  // two provenance fields added"). The SERVED artifact carries them once the
+  // cron has promoted; the committed baseline never does, hence optional.
+  // Undeclared, they were a passthrough; #10853's .strict() 500'd the route
+  // on every request for a day (#10897).
+  promoted_at: z
+    .string()
+    .optional()
+    .describe(
+      "When the schema-snapshots cron promoted this index into the store. Absent on a build-baked baseline the cron has not promoted.",
+    ),
+  promoted_by: z
+    .literal("worker-cron")
+    .optional()
+    .describe(
+      "Which producer promoted this index. Absent on a build-baked baseline.",
+    ),
 });
 export type SchemaIndexArtifact = z.infer<typeof SchemaIndexArtifactSchema>;

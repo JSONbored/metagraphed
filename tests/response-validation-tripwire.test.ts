@@ -210,6 +210,72 @@ describe("workers/api.ts fails the request on drift", () => {
     assert.equal((body.error as Row).code, "response_schema_drift");
   });
 
+  test("flag on: the refusal FILES A FAULT naming the route (#10897)", async () => {
+    // Three published routes were down for 26 hours and error tracking showed
+    // nothing: the refusal was correct-by-design and silent, visible only as
+    // usage_event ok:false, and a latency sweep found it before any alarm. A
+    // published route refusing every request is a DOWN route — the 500 must
+    // carry an exception event naming it, with the drift detail in the
+    // message, because the unrecognized keys ARE the diagnosis.
+    vi.resetModules();
+    const captured: Row[] = [];
+    vi.doMock("../src/response-validation-tripwire.ts", async () => {
+      const actual = await vi.importActual<
+        typeof import("../src/response-validation-tripwire.ts")
+      >("../src/response-validation-tripwire.ts");
+      return {
+        ...actual,
+        validateResponseTripwire: async (routeId: string) => {
+          throw new actual.ResponseSchemaDriftError(routeId, [
+            { code: "unrecognized_keys", keys: ["stray_field"] },
+          ]);
+        },
+      };
+    });
+    vi.doMock("../src/usage-telemetry.ts", async () => {
+      const actual = await vi.importActual<
+        typeof import("../src/usage-telemetry.ts")
+      >("../src/usage-telemetry.ts");
+      return {
+        ...actual,
+        recordExceptionEvent: async (_env: unknown, event: Row) => {
+          captured.push(event);
+          return true;
+        },
+      };
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { handleRequest: freshHandle } = await import("../workers/api.ts");
+    try {
+      const env = createLocalArtifactEnv() as Row;
+      env.METAGRAPH_VALIDATE_RESPONSES = "true";
+      const waits: Promise<unknown>[] = [];
+      const res = await (freshHandle as unknown as typeof handleRequest)(
+        req("/api/v1/economics"),
+        env as unknown as Env,
+        { waitUntil: (p: Promise<unknown>) => waits.push(p) } as never,
+      );
+      assert.equal(res.status, 500);
+      await Promise.all(waits);
+      const fault = captured.find(
+        (e) => e.errorCode === "response_schema_drift",
+      );
+      assert.ok(fault, "the refusal must file a fault, not just a 500");
+      // The route rides in the event, so the fingerprint separates one
+      // drifted route's issue from another's instead of cross-throttling.
+      assert.equal(fault!.route, "economics");
+      assert.match(
+        String((fault!.error as Error).message),
+        /stray_field/,
+        "the drift detail must reach the alarm — it is the diagnosis",
+      );
+    } finally {
+      vi.doUnmock("../src/response-validation-tripwire.ts");
+      vi.doUnmock("../src/usage-telemetry.ts");
+      vi.resetModules();
+    }
+  });
+
   test("flag on: subnet-stake-quote refuses a drifting response too", async () => {
     // Its own call site -- the route is matched and returned early in
     // workers/api.ts, before the generic envelope path, so it needs its own.

@@ -5750,8 +5750,12 @@ export interface components {
             content_hash?: string;
             contract_version?: string;
             generated_at: string;
+            /** @description Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer. */
+            health_source?: string | null;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp. */
+            operational_observed_at?: string | null;
             /** @description Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds. */
             published_at?: string | null;
             /** @constant */
@@ -5792,11 +5796,15 @@ export interface components {
                 url: string;
             }[];
             generated_at: string;
+            /** @description Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer. */
+            health_source?: string | null;
             integration_readiness?: number;
             name?: string;
             netuid: number;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp. */
+            operational_observed_at?: string | null;
             previously_known_as?: string[];
             readiness?: components["schemas"]["IntegrationReadiness"];
             /** @constant */
@@ -9933,6 +9941,8 @@ export interface components {
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp. */
+            operational_observed_at?: string | null;
             /** @constant */
             schema_version: 1;
             /** @description Which producer answered: `artifact-build` for the committed catalog, the prober's label once the live overlay applies. */
@@ -10195,6 +10205,13 @@ export interface components {
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             observed_at?: string;
+            /** @description When the schema-snapshots cron promoted this index into the store. Absent on a build-baked baseline the cron has not promoted. */
+            promoted_at?: string;
+            /**
+             * @description Which producer promoted this index. Absent on a build-baked baseline.
+             * @constant
+             */
+            promoted_by?: "worker-cron";
             /** @constant */
             schema_version: 1;
             schemas: {
@@ -22594,7 +22611,9 @@ export interface operations {
                      *         "content_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "published_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
@@ -22735,10 +22754,12 @@ export interface operations {
                      *           }
                      *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
                      *         "integration_readiness": 1,
                      *         "name": "Example Subnet",
                      *         "netuid": 7,
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "previously_known_as": [
                      *           "example"
                      *         ],
@@ -37876,6 +37897,7 @@ export interface operations {
                      *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "source": "live-cron-prober",
                      *         "summary": {
@@ -38471,6 +38493,8 @@ export interface operations {
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "promoted_at": "2026-06-01T00:00:00.000Z",
+                     *         "promoted_by": "worker-cron",
                      *         "schema_version": 1,
                      *         "schemas": [
                      *           {
