@@ -202,7 +202,9 @@ describe("get_neuron accepts a hotkey (#9872)", () => {
       { required: ["uid"] },
       { required: ["hotkey"] },
     ]);
-    assert.deepEqual(input.required, ["netuid"]);
+    // `context` rides every advertised required list (unenforced — see
+    // withAdvertisedRequiredIntent); the tool's own requirement is netuid.
+    assert.deepEqual(input.required, ["netuid", "context"]);
   });
 });
 
