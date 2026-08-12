@@ -86,6 +86,18 @@ export const RETIRED_LANES: readonly string[] = [
   // src/neon-mirror-lag.ts -- measured how far a mirror trailed its D1 source
   // (#10167). Reports `ok`, so it alarms nothing; it is equally a lie.
   "neon-mirror-lag",
+  // The BARE spelling, not `neon:raw-capture-state` (which is live and stays
+  // watched). Its producer was the pre-#10851 buffer flush, which filed
+  // per-lane verdicts under the raw statement tag; #10851 put both writers on
+  // neonLaneKey, so every verdict for this lane now lands under the `neon:`
+  // prefix and the bare key's newest row is frozen at the #10851 deploy --
+  // which is exactly when its silence alarm started counting (silent 20.9h,
+  // alerted 2026-08-12). Unlike the poller lanes, nothing else ever wrote
+  // this bare name: the watermark is worker-internal, so there is no
+  // producer-side usage record to keep the old spelling alive. The retirement
+  // test pins this to code rather than to a deleted file: the live writer
+  // provably cannot produce the bare key.
+  "raw-capture-state",
 ];
 
 /**

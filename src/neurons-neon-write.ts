@@ -513,6 +513,13 @@ export async function mirrorNeuronSnapshotToNeon(
       prune,
       now(),
       buffered,
+      // A SUB-LANE of the buffered runner, same as the three tables (#10890)
+      // and the nominator `-pass`/`-prune` pair before it (#10826): its
+      // statements ride under the base lane's tag, so the flush can never
+      // file `neon:neurons-prune` and a suppressed success here is recorded
+      // by nothing at all. Went silent for 32 hours the moment the buffer
+      // came on (2026-08-12 alert), while the prune itself ran fine.
+      true,
     );
   }
 
@@ -544,6 +551,10 @@ export async function mirrorNeuronSnapshotToNeon(
       verdict,
       now(),
       buffered,
+      // Same sub-lane rule as the prune above (#10890): the tally's
+      // statements carry the base lane's tag, so only recording at enqueue
+      // keeps `neon:neurons-pass` alive under buffering.
+      true,
     );
     results[`${NEURONS_NEON_LANE}_passes`] = verdict;
   }
