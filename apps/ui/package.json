@@ -34,7 +34,6 @@
     "@jsonbored/ui-kit": "*",
     "@polkadot/api": "^16.5.6",
     "@polkadot/extension-dapp": "^0.63.1",
-    "@posthog/rollup-plugin": "^1.4.7",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-router": "^1.170.23",
@@ -62,6 +61,9 @@
     "vite-tsconfig-paths": "^6.0.2",
     "workers-og": "^0.0.27",
     "zod": "^4.4.3"
+  },
+  "optionalDependencies": {
+    "@posthog/rollup-plugin": "^1.4.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

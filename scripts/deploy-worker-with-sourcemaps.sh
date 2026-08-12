@@ -86,6 +86,29 @@ if [[ -n "${POSTHOG_CLI_API_KEY:-}" && -n "${POSTHOG_CLI_PROJECT_ID:-}" ]]; then
   POSTHOG_ENABLED=true
 fi
 
+# ...AND THE CLI HAS TO BE INSTALLED (#10916). `@posthog/cli` is an optional
+# dependency now, reached through apps/ui's optional `@posthog/rollup-plugin`:
+# its postinstall downloads a platform binary from GitHub's release CDN, that
+# download fails intermittently ("socket hang up"), and while the package was
+# mandatory the failure took `npm ci` down with it. On Cloudflare Workers
+# Builds -- which auto-installs before running any configured command and
+# exposes no install command to retry -- that meant the build died before this
+# script ever ran. npm's contract for an optional dependency is that the
+# install proceeds without it, so the package may legitimately be absent here.
+#
+# SKIP, NEVER FAIL. A Worker deployed without symbolication is a small
+# observability loss; a Worker that did not deploy is an outage. The same
+# trade apps/ui's vite config makes for the same package. `--no-install` is
+# what makes this a check rather than a download attempt: without it, npx
+# would try to fetch the missing package from the network and hang the deploy
+# on the very CDN this is routing around.
+if [[ "$POSTHOG_ENABLED" == "true" ]] &&
+  ! npx --no-install @posthog/cli --version >/dev/null 2>&1; then
+  echo "warning: @posthog/cli is not installed (optional dependency, see" \
+    "#10916); deploying WITHOUT sourcemap injection or upload." >&2
+  POSTHOG_ENABLED=false
+fi
+
 if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # Phase 0: start from an empty $OUTDIR. `wrangler --outdir` writes into the
   # directory without clearing it, so anything left there from an earlier run

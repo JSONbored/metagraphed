@@ -8,7 +8,42 @@ import { defineConfig, type LovableViteTanstackOptions } from "@lovable.dev/vite
 import type { NitroPluginConfig } from "nitro/vite";
 import type { NormalizedOutputOptions, OutputBundle, Plugin, PluginContext } from "rollup";
 import mdx from "fumadocs-mdx/vite";
-import posthogRollupPlugin from "@posthog/rollup-plugin";
+// OPTIONAL AT INSTALL TIME (#10916), so this import must tolerate absence.
+// `@posthog/cli` -- which this plugin pulls in -- downloads a platform binary
+// from GitHub's release CDN in its postinstall, and that download fails
+// intermittently ("socket hang up"). While the plugin was a hard dependency
+// that failure took `npm ci` down with it, which on Cloudflare Workers Builds
+// means the build dies before running anything: five Worker projects, both
+// repos, red on a coin flip. It is an optionalDependency now, and npm's
+// contract for those is that the install proceeds without them -- so the
+// module may genuinely not be here.
+//
+// `createRequire` rather than a top-level `await import`: this config is
+// loaded synchronously by Vite, and the resolution failure has to be caught
+// rather than becoming an unhandled rejection.
+import { createRequire } from "node:module";
+
+const requireOptional = createRequire(import.meta.url);
+// Returns a Vite/Rollup plugin -- typed as the plugin array's own element
+// so `withTolerantSourcemapUpload` still type-checks its argument.
+type PosthogRollupPlugin = (
+  options: Record<string, unknown>,
+) => Plugin;
+let posthogRollupPlugin: PosthogRollupPlugin | null = null;
+try {
+  const loaded = requireOptional("@posthog/rollup-plugin") as
+    { default?: PosthogRollupPlugin } | PosthogRollupPlugin;
+  posthogRollupPlugin = (typeof loaded === "function" ? loaded : loaded.default) ?? null;
+} catch {
+  // The build proceeds WITHOUT sourcemap upload rather than failing. That is
+  // the same trade `withTolerantSourcemapUpload` below already makes for an
+  // upload that fails at runtime -- a shipped build with no symbolication
+  // beats a build that did not ship.
+  console.warn(
+    "[vite] @posthog/rollup-plugin is not installed; skipping PostHog " +
+      "sourcemap upload for this build (see #10916)",
+  );
+}
 
 // Cloudflare Workers Builds auto-injects this (no manual dashboard step) --
 // confirmed via Cloudflare's own docs (workers/ci-cd/builds/configuration/,
@@ -113,29 +148,35 @@ export default defineConfig({
     // PostHog error tracking (metagraphed#7759) source-map upload, wrapped
     // for the two build-safety gaps documented above this file's
     // `posthogSourcemapsEnabled` const.
-    withTolerantSourcemapUpload(
-      posthogRollupPlugin({
-        personalApiKey: posthogApiKey ?? "",
-        projectId: posthogProjectId,
-        sourcemaps: {
-          enabled: posthogSourcemapsEnabled,
-          // Stable name + per-deploy version, matching the Worker deploys'
-          // convention (scripts/deploy-worker-with-sourcemaps.sh passes
-          // metagraphed-<config> / <sha>). Passing the SHA as releaseName
-          // made every deploy its own one-off "project" in PostHog's release
-          // UI instead of versions of one app. commitSha is undefined
-          // locally/in PR CI, where sourcemaps.enabled is already false.
-          releaseName: "metagraphed-ui",
-          releaseVersion: commitSha,
-          // Same "don't publicly serve the app's own source maps" rationale
-          // as Sentry's filesToDeleteAfterUpload above -- this plugin's own
-          // equivalent option (config.ts's `deleteAfterUpload`, defaults
-          // true) already matches, set explicitly so the intent is documented
-          // here rather than relying on an unstated default.
-          deleteAfterUpload: true,
-        },
-      }),
-    ),
+    // Spread, so an absent plugin contributes NOTHING to the array rather
+    // than a null Vite would have to be asked to tolerate (#10916).
+    ...(posthogRollupPlugin
+      ? [
+          withTolerantSourcemapUpload(
+            posthogRollupPlugin({
+              personalApiKey: posthogApiKey ?? "",
+              projectId: posthogProjectId,
+              sourcemaps: {
+                enabled: posthogSourcemapsEnabled,
+                // Stable name + per-deploy version, matching the Worker deploys'
+                // convention (scripts/deploy-worker-with-sourcemaps.sh passes
+                // metagraphed-<config> / <sha>). Passing the SHA as releaseName
+                // made every deploy its own one-off "project" in PostHog's release
+                // UI instead of versions of one app. commitSha is undefined
+                // locally/in PR CI, where sourcemaps.enabled is already false.
+                releaseName: "metagraphed-ui",
+                releaseVersion: commitSha,
+                // Same "don't publicly serve the app's own source maps" rationale
+                // as Sentry's filesToDeleteAfterUpload above -- this plugin's own
+                // equivalent option (config.ts's `deleteAfterUpload`, defaults
+                // true) already matches, set explicitly so the intent is documented
+                // here rather than relying on an unstated default.
+                deleteAfterUpload: true,
+              },
+            }),
+          ),
+        ]
+      : []),
   ],
   // `vite: { ... }` is this preset's own documented passthrough for plain
   // Vite options beyond plugins (see the header comment above) --
