@@ -21,8 +21,15 @@
 //   about the data, not about the argument, and no schema can express it.
 //
 //   CROSS-ARGUMENT rules -- `counterparty must differ from ss58` relates two
-//   values, which JSON Schema cannot state (#10219 tracks `.refine()` for the
-//   ones that could move into the schema).
+//   values, which JSON Schema cannot state. MEASURED for `.refine()`
+//   migration in the #10780 aftermath and the movable set is EMPTY: every
+//   known cross-argument rule relates a PATH parameter to a QUERY parameter,
+//   and the route query schema cannot see the path by construction -- while
+//   no query-to-query pair exists (an inverted from/to range answers empty,
+//   which is a valid answer, not a rejection). A schema-native home for the
+//   path+query rules arrives only with a canonical per-operation input that
+//   unifies both, the operations-registry evolution -- not a `.refine()`
+//   sprinkled where it cannot reach.
 //
 //   FIELDS WITH NO ROUTE -- the eight `QUERY_BINDINGS` entries with
 //   `route: null` compose several routes or none, so there is no single
