@@ -12,7 +12,7 @@ import { clampRowLimit } from "../workers/request-params.ts";
 //
 // The D1 loader (loadChainWeightSetters) was removed — account_events' D1 write path is retired
 // and the table is dropped in production (#4772 / #4909), so serving goes tryDataApiTier →
-// schema-stable empty stub, never D1.
+// schema-stable empty stub, never the store.
 
 // Supported windows (label -> days) + default, matching the sibling /chain/weights route.
 export const CHAIN_WEIGHT_SETTERS_WINDOWS = { "7d": 7, "30d": 30 };
@@ -38,7 +38,7 @@ function round(value: number, dp = 4): number {
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);

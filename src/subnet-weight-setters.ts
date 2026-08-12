@@ -4,7 +4,7 @@
 // activity. The drill-in behind /api/v1/subnets/{netuid}/weights, which only reports the
 // aggregate (distinct setters + total events + intensity) and never names the setters. Read
 // live from the account_events WeightsSet stream. Pure shaping (buildSubnetWeightSetters) + a
-// thin D1 loader (loadSubnetWeightSetters); the Worker adds the envelope. Null-safe: a cold
+// thin store loader (loadSubnetWeightSetters); the Worker adds the envelope. Null-safe: a cold
 // store or a subnet with no WeightsSet events yields a schema-stable empty leaderboard.
 
 import { WEIGHTS_EVENT_KIND } from "./subnet-weights.ts";
@@ -20,7 +20,7 @@ export const SUBNET_WEIGHT_SETTERS_WINDOWS: Record<string, number> = {
   "30d": 30,
 };
 export const DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW = "7d";
-// Leaderboard cap — the top-N most active setters. Bounds the response and the D1 read; a
+// Leaderboard cap — the top-N most active setters. Bounds the response and the store read; a
 // subnet rarely has more than a few dozen active setters in a 7d/30d window.
 export const SUBNET_WEIGHT_SETTERS_LIMIT = 50;
 
@@ -45,7 +45,7 @@ function round(value: number, dp = 4): number {
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -237,12 +237,12 @@ export function buildSubnetWeightSetters(
 // the subnet-wide totals (count + true distinct setters + newest observed_at, matching
 // /weights). Cold/absent store -> the schema-stable empty card.
 export async function loadSubnetWeightSetters(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: number,
   { windowLabel, windowDays }: { windowLabel?: string; windowDays: number },
 ): Promise<Row> {
   const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT MAX(hotkey) AS hotkey, MAX(uid) AS uid, COUNT(*) AS weight_sets, " +
       "MIN(observed_at) AS first_set, MAX(observed_at) AS last_set " +
       "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ? " +
@@ -253,7 +253,7 @@ export async function loadSubnetWeightSetters(
       " ORDER BY weight_sets DESC, last_set DESC LIMIT ?",
     [netuid, WEIGHTS_EVENT_KIND, cutoff, SUBNET_WEIGHT_SETTERS_LIMIT],
   );
-  const totals = await d1(
+  const totals = await runner(
     "SELECT COUNT(*) AS weight_sets, COUNT(DISTINCT " +
       SETTER_IDENTITY +
       ") AS distinct_setters, MAX(observed_at) AS newest_observed " +
@@ -265,7 +265,7 @@ export async function loadSubnetWeightSetters(
   // fatal: if the hyperparams row is missing the leaderboard still serves, with the
   // overdue fields null. Losing the whole card because a cadence was unknown would trade
   // a useful answer for no answer.
-  const tempo = await d1(
+  const tempo = await runner(
     "SELECT tempo FROM subnet_hyperparams WHERE netuid = ?",
     [netuid],
   )

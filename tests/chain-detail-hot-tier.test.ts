@@ -82,7 +82,7 @@ type Handler = (
  * tests/helpers/pg-mock.ts spells out: every caller here destructures `seen`
  * and reads it after the loader has already run.
  */
-function d1(handler: Handler, opts: { throws?: boolean } = {}) {
+function runner(handler: Handler, opts: { throws?: boolean } = {}) {
   const seen: { sql: string; params: unknown[] }[] = [];
   pg.control.queries.length = 0;
   pg.control.answers = [];
@@ -207,7 +207,7 @@ describe("the empty-payload predicates", () => {
 
 describe("chainDetailCoverage / chainDetailHead", () => {
   test("report the window the register holds", async () => {
-    const { env } = d1(registry([ABOVE, ABOVE + 5]));
+    const { env } = runner(registry([ABOVE, ABOVE + 5]));
     assert.deepEqual(await chainDetailCoverage(env), {
       floor: ABOVE,
       head: ABOVE + 5,
@@ -217,7 +217,7 @@ describe("chainDetailCoverage / chainDetailHead", () => {
   });
 
   test("an empty register is null, not zero", async () => {
-    const { env } = d1(registry([]));
+    const { env } = runner(registry([]));
     assert.equal(await chainDetailCoverage(env), null);
     assert.equal(await chainDetailHead(env), null);
   });
@@ -234,7 +234,7 @@ describe("chainDetailCoverage / chainDetailHead", () => {
       }),
       null,
     );
-    const { env } = d1(registry([ABOVE]), { throws: true });
+    const { env } = runner(registry([ABOVE]), { throws: true });
     assert.equal(await chainDetailHead(env), null);
   });
 
@@ -243,14 +243,14 @@ describe("chainDetailCoverage / chainDetailHead", () => {
     // aggregates are null. Here the statement comes back with zero rows, and
     // reading `.floor` off `rows[0]` would throw inside a read path whose whole
     // job is to degrade quietly.
-    const { env } = d1(() => []);
+    const { env } = runner(() => []);
     assert.equal(await chainDetailCoverage(env), null);
   });
 });
 
 describe("the hot loaders", () => {
   test("block extrinsics come back through the shared formatter, in read order", async () => {
-    const { env, seen } = d1((sql) =>
+    const { env, seen } = runner((sql) =>
       sql.includes("chain_detail_extrinsics")
         ? [extrinsicRow(ABOVE, 0), extrinsicRow(ABOVE, 1)]
         : [],
@@ -271,7 +271,7 @@ describe("the hot loaders", () => {
   });
 
   test("block account-events likewise", async () => {
-    const { env, seen } = d1((sql) =>
+    const { env, seen } = runner((sql) =>
       sql.includes("chain_detail_account_events")
         ? [accountEventRow(ABOVE)]
         : [],
@@ -286,7 +286,7 @@ describe("the hot loaders", () => {
   });
 
   test("an unusable page, an unbound D1 and a failing query all decline (null)", async () => {
-    const { env } = d1(() => []);
+    const { env } = runner(() => []);
     assert.equal(
       await loadBlockExtrinsicsHotTier(env, "1", 1, { limit: 0 }),
       null,
@@ -304,7 +304,7 @@ describe("the hot loaders", () => {
       await loadBlockExtrinsicsHotTier({}, "1", 1, { limit: 10 }),
       null,
     );
-    const failing = d1(() => [], { throws: true });
+    const failing = runner(() => [], { throws: true });
     assert.equal(
       await loadBlockEventsHotTier(failing.env, "1", 1, { limit: 10 }),
       null,
@@ -399,7 +399,7 @@ describe("formatChainEvent", () => {
 
 describe("loadBlockChainEventsHotTier", () => {
   test("returns the published {block_number,count,events} shape", async () => {
-    const { env } = d1((sql) =>
+    const { env } = runner((sql) =>
       sql.includes("chain_detail_chain_events")
         ? [
             {
@@ -422,7 +422,7 @@ describe("loadBlockChainEventsHotTier", () => {
 
 describe("loadExtrinsicHotTier", () => {
   test("resolves the composite <block>-<index> form and embeds its events", async () => {
-    const { env, seen } = d1((sql) => {
+    const { env, seen } = runner((sql) => {
       if (sql.includes("chain_detail_extrinsics"))
         return [extrinsicRow(ABOVE, 3)];
       if (sql.includes("chain_detail_account_events"))
@@ -436,7 +436,7 @@ describe("loadExtrinsicHotTier", () => {
   });
 
   test("resolves the hash form case-insensitively", async () => {
-    const { env, seen } = d1((sql) =>
+    const { env, seen } = runner((sql) =>
       sql.includes("chain_detail_extrinsics") ? [extrinsicRow(ABOVE, 1)] : [],
     );
     const detail = await loadExtrinsicHotTier(env, XT_HASH.toUpperCase());
@@ -445,7 +445,7 @@ describe("loadExtrinsicHotTier", () => {
   });
 
   test("a ref it cannot hold is null -- absence here is never a confirmation", async () => {
-    const { env } = d1(() => []);
+    const { env } = runner(() => []);
     assert.equal(await loadExtrinsicHotTier(env, `${ABOVE}-0`), null);
     assert.equal(await loadExtrinsicHotTier(env, "not-a-ref"), null);
     assert.equal(await loadExtrinsicHotTier(env, "0xdead"), null);
@@ -461,7 +461,7 @@ describe("loadExtrinsicHotTier", () => {
   test("a failing EVENTS query still yields the extrinsic, with an empty list", async () => {
     // Withholding a row we hold because a second query blipped would be the
     // opposite of this tier's posture; the cold tier makes the same call.
-    const { env } = d1((sql) => {
+    const { env } = runner((sql) => {
       if (sql.includes("chain_detail_extrinsics"))
         return [extrinsicRow(ABOVE, 3)];
       throw new Error("d1 blip on the events read");
@@ -472,7 +472,7 @@ describe("loadExtrinsicHotTier", () => {
   });
 
   test("an unformattable position still yields the row, with no events", async () => {
-    const { env } = d1((sql) =>
+    const { env } = runner((sql) =>
       sql.includes("chain_detail_extrinsics")
         ? [
             {
@@ -497,7 +497,7 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
   });
 
   test("at or below the seam the lakehouse answers and the hot tier is never asked", async () => {
-    const { env, seen } = d1(registry([BELOW]));
+    const { env, seen } = runner(registry([BELOW]));
     const answer = await answerBlockDetail(env, String(BELOW), {
       hot: async () => {
         throw new Error("the hot tier must not be consulted below the seam");
@@ -512,13 +512,13 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
   });
 
   test("below the seam, a cold tier that cannot answer is a MISS, not a gap", async () => {
-    const { env } = d1(registry([]));
+    const { env } = runner(registry([]));
     const answer = await answerBlockDetail(env, String(BELOW), ops(null, null));
     assert.equal(answer.kind, "miss");
   });
 
   test("above the seam, a covered block is served hot -- including an EMPTY answer", async () => {
-    const { env } = d1(registry([ABOVE - 1, ABOVE, ABOVE + 1]));
+    const { env } = runner(registry([ABOVE - 1, ABOVE, ABOVE + 1]));
     const served = await answerBlockDetail(
       env,
       String(ABOVE),
@@ -540,7 +540,7 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
   test("above the seam and UNCOVERED, real lakehouse rows still win over a decline", async () => {
     // The published watermark is a MIN across four tables, so rows can exist
     // above it -- refusing them would be the same failure in a new place.
-    const { env } = d1(registry([ABOVE + 500]));
+    const { env } = runner(registry([ABOVE + 500]));
     const answer = await answerBlockDetail(
       env,
       String(ABOVE),
@@ -550,7 +550,7 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
   });
 
   test("above the seam, uncovered, and nothing holds it: GAP", async () => {
-    const { env } = d1(registry([ABOVE + 500, ABOVE + 900]));
+    const { env } = runner(registry([ABOVE + 500, ABOVE + 900]));
     const answer = await answerBlockDetail(
       env,
       String(ABOVE),
@@ -571,14 +571,14 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
   });
 
   test("a covered block whose hot loader declines falls through, then gaps", async () => {
-    const { env } = d1(registry([ABOVE]));
+    const { env } = runner(registry([ABOVE]));
     const answer = await answerBlockDetail(env, String(ABOVE), ops(null, null));
     assert.equal(answer.kind, "gap");
     assert.equal(answer.kind === "gap" && answer.coverage?.head, ABOVE);
   });
 
   test("an empty hot tier still reports the gap, with a null window", async () => {
-    const { env } = d1(registry([]));
+    const { env } = runner(registry([]));
     const answer = await answerBlockDetail(env, String(ABOVE), ops(null, null));
     assert.equal(answer.kind, "gap");
     assert.equal(answer.kind === "gap" && answer.coverage, null);
@@ -589,7 +589,7 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
   });
 
   test("the seam RESOLVES: a published watermark moves the boundary", async () => {
-    const base = d1(registry([]));
+    const base = runner(registry([]));
     // With the watermark past this block, it is the lakehouse's -- so the cold
     // answer is served instead of the decline the floor alone would give.
     const answer = await answerBlockDetail(
@@ -602,13 +602,13 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
   });
 
   test("a HASH the register carries routes by its resolved height", async () => {
-    const { env } = d1(registry([ABOVE], { [HASH]: ABOVE }));
+    const { env } = runner(registry([ABOVE], { [HASH]: ABOVE }));
     const answer = await answerBlockDetail(env, HASH, ops({ count: 4 }, null));
     assert.equal(answer.kind === "answer" && answer.tier, "hot");
   });
 
   test("a hash the register carries BELOW the seam goes cold, or misses", async () => {
-    const { env } = d1(registry([BELOW], { [HASH]: BELOW }));
+    const { env } = runner(registry([BELOW], { [HASH]: BELOW }));
     const answer = await answerBlockDetail(env, HASH, ops(null, { count: 1 }));
     assert.equal(answer.kind === "answer" && answer.tier, "cold");
     // And when the lakehouse cannot answer at all, it is a MISS -- the caller's
@@ -619,7 +619,7 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
   });
 
   test("an unknown hash or an unusable ref keeps the cold tier's own answer", async () => {
-    const { env } = d1(registry([ABOVE]));
+    const { env } = runner(registry([ABOVE]));
     // A hash the hot tier does not carry proves nothing: 8.7M blocks are not
     // in this window, so this must NOT decline.
     const unknownHash = await answerBlockDetail(
@@ -641,7 +641,7 @@ describe("answerBlockDetail — the seam decides, and a gap DECLINES", () => {
 
 describe("answerExtrinsicDetail — a position declines, a hash does not", () => {
   test("the composite form follows the seam and gaps like a block read", async () => {
-    const { env } = d1(registry([ABOVE + 900]));
+    const { env } = runner(registry([ABOVE + 900]));
     const answer = await answerExtrinsicDetail(env, `${ABOVE}-2`, async () => ({
       schema_version: 1,
       ref: `${ABOVE}-2`,
@@ -652,7 +652,7 @@ describe("answerExtrinsicDetail — a position declines, a hash does not", () =>
   });
 
   test("the composite form serves the hot row when the register covers it", async () => {
-    const { env } = d1((sql, params) => {
+    const { env } = runner((sql, params) => {
       const base = registry([ABOVE])(sql, params);
       if (base.length) return base;
       if (sql.includes("chain_detail_extrinsics"))
@@ -668,7 +668,7 @@ describe("answerExtrinsicDetail — a position declines, a hash does not", () =>
   });
 
   test("the HASH form asks hot first, then cold, and never declines", async () => {
-    const hot = d1((sql) =>
+    const hot = runner((sql) =>
       sql.includes("chain_detail_extrinsics") ? [extrinsicRow(ABOVE, 0)] : [],
     );
     const hotAnswer = await answerExtrinsicDetail(
@@ -678,7 +678,7 @@ describe("answerExtrinsicDetail — a position declines, a hash does not", () =>
     );
     assert.equal(hotAnswer.kind === "answer" && hotAnswer.tier, "hot");
 
-    const cold = d1(() => []);
+    const cold = runner(() => []);
     const coldAnswer = await answerExtrinsicDetail(
       cold.env,
       XT_HASH,

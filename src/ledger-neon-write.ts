@@ -98,7 +98,7 @@ interface LedgerPlan {
   columns: readonly string[];
   conflict: readonly string[];
   /** A SQL predicate rows must satisfy to be inserted, over the `src` alias
-   * buildPgUpsert gives the VALUES list. Present only where the D1 writer
+   * buildPgUpsert gives the VALUES list. Present only where the store writer
    * filters too -- a mirror that stores MORE than its source is a mirror in
    * name only (#9832). */
   filter?: string;
@@ -114,10 +114,10 @@ interface LedgerPlan {
 }
 
 /**
- * One plan per lane, keyed by the name used in NEON_DUAL_WRITE_LANES.
+ * One plan per lane, keyed by the lane's `lane_health` name.
  *
  * The conflict keys match each table's PRIMARY KEY in Neon, created 2026-08-07
- * from D1's own DDL. An ON CONFLICT naming columns with no unique index behind
+ * from the store's own DDL. An ON CONFLICT naming columns with no unique index behind
  * them is a runtime error, not a slower query.
  */
 export const LEDGER_MIRROR_PLANS: Readonly<Record<string, LedgerPlan>> = {
@@ -132,13 +132,13 @@ export const LEDGER_MIRROR_PLANS: Readonly<Record<string, LedgerPlan>> = {
     conflict: ["hotkey", "netuid"],
     // THE FILTER D1 HAS HAD SINCE #9558, finally on this side too.
     //
-    // D1 stores only pools a `nominator_positions` row references, because
+    // D1 stored only pools a `nominator_positions` row references, because
     // `TotalHotkeyAlpha` has ~762,577 entries and the positions name ~17,900
     // -- the other 43x is "written every pass, read by nothing" and saturated
     // D1 outright. The mirror never had the predicate, so Neon accumulated
-    // 47,320 rows against D1's 17,867 (#9832).
+    // 47,320 rows against the store's 17,867 (#9832).
     //
-    // Postgres spelling of the same EXISTS the D1 writer passes to
+    // Postgres spelling of the same EXISTS the store writer passes to
     // chunkStatements; `src` is the alias buildPgUpsert gives the VALUES list.
     //
     // `::int` IS LOad BEARING, and its absence broke this lane outright. A
@@ -186,8 +186,11 @@ export interface LedgerMirrorDeps {
 /**
  * Mirror one ledger batch into Neon. Never throws.
  *
- * While dual-writing, D1 is the store every route reads, so a Neon failure
- * costs a mirror and a lane verdict and nothing a caller can see.
+ * Never throwing is about the BOUNDARY, not about the write being optional:
+ * Neon is the store every route reads, so a batch that did not land here did
+ * not land at all. The result is returned rather than raised so each caller
+ * decides -- and they all treat `ok: false` as a failed pass (502), which is
+ * what the name "mirror" no longer implies.
  */
 export async function mirrorLedgerToNeon(
   env: Record<string, unknown> | null | undefined,

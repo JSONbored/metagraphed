@@ -8,7 +8,7 @@
 // attributable to its subnet. Pure + injectable for tests; the Worker does the
 // Postgres read + envelope (D1 fully eliminated, 2026-07-16 -- the pure builder
 // below is called directly with an empty array on a Postgres miss/outage,
-// never a live D1 read). Null-safe: a non-array/empty read yields a
+// never a live store read). Null-safe: a non-array/empty read yields a
 // schema-stable empty feed and never throws.
 
 import {
@@ -119,11 +119,14 @@ export function buildChainIdentityHistory(
  * reason this selects `READ_COLUMNS` rather than restating it.
  */
 export async function loadChainIdentityHistory(
-  d1: (sql: string, params: unknown[]) => Promise<Record<string, unknown>[]>,
+  runner: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Record<string, unknown>[]>,
   { limit }: { limit?: string | number | null } = {},
 ): Promise<ChainIdentityHistoryResult> {
   const lim = clampLimit(limit, FEED_PAGINATION);
-  const rows = await d1(
+  const rows = await runner(
     `SELECT netuid, ${READ_COLUMNS} FROM subnet_identity_history` +
       " ORDER BY block_number DESC, netuid ASC, id DESC LIMIT ?",
     [lim],

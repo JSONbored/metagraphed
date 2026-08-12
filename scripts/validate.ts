@@ -1253,7 +1253,7 @@ async function validateGeneratedArtifacts(
   );
   // The committed coverage.json is an inert cold-start seed (ADR 0006) that
   // legitimately drifts from live source as candidate PRs merge — the data publish
-  // advances R2/D1, not the committed copy. These committed-vs-fresh count-parity
+  // advances R2 or the store, not the committed copy. These committed-vs-fresh count-parity
   // checks are a post-build freshness guarantee (CI builds before validating, and
   // pipeline:refresh rebuilds), so they are meaningless against the stale seed in
   // a no-build context. METAGRAPH_ALLOW_SEED_DRIFT lets the no-build test suite
@@ -1642,7 +1642,7 @@ async function validateGeneratedArtifacts(
       evidenceLedgerArtifact.claims.length,
     "evidence ledger: claim count mismatch",
   );
-  // Operational health is live-only (served from KV/D1, no static artifact), so
+  // Operational health is live-only (served from KV and the store, no static artifact), so
   // there is no longer a committed health/latest|summary to validate here.
   assert(
     rpcEndpointsArtifact.endpoints.length ===

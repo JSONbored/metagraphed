@@ -22,10 +22,10 @@
 // `state_queryStorageAt` per storage ITEM across all netuids, pinned to one
 // block hash (src/subtensor-pinned-storage.ts) -- with the two aggregates that
 // are genuinely per-UID (stake and the validator/miner split) taken from the
-// D1 `neurons` table the poller Container keeps on a 15-minute tick, rather
+// `neurons` table the poller Container keeps on a 15-minute tick, rather
 // than re-walking ~33k double-map entries over RPC.
 //
-// That makes the whole sweep ~22 RPC calls plus two D1 queries, and it makes
+// That makes the whole sweep ~22 RPC calls plus two store queries, and it makes
 // registration_allowed / alpha_price_tao PINNED where the SDK path read them
 // off the bulk call at its own height. The two `*_pinned` companion fields
 // (#8744) stay in the row regardless: they are a published pair whose whole
@@ -34,7 +34,7 @@
 // tier that still has two.
 //
 // THE D1 READS GO THROUGH THE BINDING, not the Cloudflare HTTP API. That is
-// not a preference: the repo's CLOUDFLARE_API_TOKEN has no D1 read permission,
+// not a preference: the repo's CLOUDFLARE_API_TOKEN has no store read permission,
 // which is why the Actions path's alpha_price_change_* fields 403'd into nulls
 // (#9189) -- and null change fields on a KV blob that shadows R2 look exactly
 // like "no history exists". The binding has no token to be missing.
@@ -284,7 +284,7 @@ export function decodeMovingPrice(raw: string | undefined): {
   };
 }
 
-/** Per-netuid aggregates from the D1 `neurons` table. */
+/** Per-netuid aggregates from the `neurons` table. */
 export interface NeuronAggregate {
   uid_count: number;
   validator_count: number;

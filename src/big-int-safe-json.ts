@@ -8,7 +8,7 @@
 // (confirmed: a stored literal like 9131459485341369597 round-trips through
 // `SELECT call_args::text` unchanged) -- the corruption is purely an
 // artifact of JS's own JSON.parse, the same mechanism already accepted for
-// SubtensorModule.register's PoW nonce (D1 serves 9131459485341369000 vs the
+// SubtensorModule.register's PoW nonce (D1 served 9131459485341369000 vs the
 // true 9131459485341369597 -- this is that same bug, not a D1-specific one).
 //
 // Approach: before handing the text to JSON.parse, wrap any bare integer

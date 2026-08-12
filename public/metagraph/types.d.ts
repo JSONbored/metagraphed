@@ -109,7 +109,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks D1 tier (#1345).
+         * Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks tier (#1345).
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blocksFeedByNetwork"];
@@ -129,7 +129,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.
+         * Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks tier (#1345); 200 with block:null when cold/unknown.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blockDetailByNetwork"];
@@ -189,7 +189,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.
+         * Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics tier (#1845); 200 with extrinsics:[] when cold/unknown.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blockExtrinsicsByNetwork"];
@@ -269,7 +269,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.
+         * Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainActivityByNetwork"];
@@ -329,7 +329,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.
+         * Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics tier (#1989); schema-stable call_count:0/calls:[] when cold.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainCallsByNetwork"];
@@ -369,7 +369,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.
+         * Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics tier (#1988); schema-stable day_count:0 + empty lists when cold.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainFeesByNetwork"];
@@ -409,7 +409,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.
+         * Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics tier (#1990); schema-stable signer_count:0/signers:[] when cold.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainSignersByNetwork"];
@@ -629,7 +629,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345).
+         * Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics tier (#1345).
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["extrinsicsFeedByNetwork"];
@@ -649,7 +649,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.
+         * Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["extrinsicDetailByNetwork"];
@@ -868,7 +868,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons. */
+        /** Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons store. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons. */
         get: operations["accountsList"];
         put?: never;
         post?: never;
@@ -953,7 +953,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. Pass ?format=csv to download the list-mode leaderboard as CSV; it's rejected alongside ?counterparty since the drilldown returns a single composite object, not rows. */
+        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events store. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. Pass ?format=csv to download the list-mode leaderboard as CSV; it's rejected alongside ?counterparty since the drilldown returns a single composite object, not rows. */
         get: operations["accountCounterparties"];
         put?: never;
         post?: never;
@@ -1021,7 +1021,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
+        /** Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["accountExtrinsics"];
         put?: never;
         post?: never;
@@ -1055,7 +1055,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity D1 tier. has_identity is false for the common case of an account that never called set_identity. */
+        /** Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity tier. has_identity is false for the common case of an account that never called set_identity. */
         get: operations["accountIdentity"];
         put?: never;
         post?: never;
@@ -1106,7 +1106,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons D1 tier. */
+        /** Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons store. */
         get: operations["accountPortfolio"];
         put?: never;
         post?: never;
@@ -1123,7 +1123,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons D1 tier. Root (netuid 0) stake is not covered. */
+        /** Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons store. Root (netuid 0) stake is not covered. */
         get: operations["accountPositions"];
         put?: never;
         post?: never;
@@ -1157,7 +1157,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Windowed registration events including re-registrations after a deregistration; the account-level companion to GET /api/v1/chain/registrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
+        /** Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events store. Windowed registration events including re-registrations after a deregistration; the account-level companion to GET /api/v1/chain/registrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
         get: operations["accountRegistrations"];
         put?: never;
         post?: never;
@@ -1191,7 +1191,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Operational activity (announcing an axon endpoint); the account-level companion to GET /api/v1/chain/serving, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state) and GET /api/v1/accounts/{ss58}/registrations (registration events). */
+        /** Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events store. Operational activity (announcing an axon endpoint); the account-level companion to GET /api/v1/chain/serving, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state) and GET /api/v1/accounts/{ss58}/registrations (registration events). */
         get: operations["accountServing"];
         put?: never;
         post?: never;
@@ -1208,7 +1208,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. */
+        /** Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events store. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. */
         get: operations["accountStakeFlow"];
         put?: never;
         post?: never;
@@ -1225,7 +1225,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow. */
+        /** Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events store. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow. */
         get: operations["accountStakeMoves"];
         put?: never;
         post?: never;
@@ -1242,7 +1242,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier. */
+        /** Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons store. */
         get: operations["accountSubnets"];
         put?: never;
         post?: never;
@@ -1259,7 +1259,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["accountSubnetPositionHistory"];
         put?: never;
         post?: never;
@@ -1276,7 +1276,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
+        /** Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events store. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["accountTransfers"];
         put?: never;
         post?: never;
@@ -1293,7 +1293,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first and last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Keyed on the hotkey (the validator submitting weights); the account-level companion to GET /api/v1/chain/weights/setters and GET /api/v1/subnets/{netuid}/weights/setters. */
+        /** Fetch one account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first and last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events store. Keyed on the hotkey (the validator submitting weights); the account-level companion to GET /api/v1/chain/weights/setters and GET /api/v1/subnets/{netuid}/weights/setters. */
         get: operations["accountWeightSetters"];
         put?: never;
         post?: never;
@@ -1310,7 +1310,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window -- a negative value is a real net outflow, not a missing value -- and null-valued rows sort last on the net_flow_* keys. TWO TIERS, SELECTED BY SORT (#9469/#9502). The net_flow_* sorts are LIVE: the top-holders-flow projection lane recomputes all three windows daily from chain.account_events, so captured_at advances and the ranking is a real one. The same lane composes the three holdings sorts from D1 -- free_tao from account_balances, delegated_tao by valuing each nominator_positions row as share_fraction x hotkey_alpha.total_alpha x that netuid's alpha_price_tao (#9502 captured the pool totals; neurons.stake_tao covers only hotkeys holding a UID on that exact subnet, 22.8% of position rows, so recomputing from it would drop real top holders out of the ranking), and total_tao as free + delegated ranked across the FULL tables rather than summed over the other two sorts' capped rows, since the top of a sum is not contained in the union of the tops of its addends. A holdings sort is served live ONLY while its producer's most recent pass is recorded COMPLETE: ranking over a partially-loaded ledger returns the largest values PRESENT rather than the largest that EXIST, which is a well-formed leaderboard quietly missing real top holders, and for the pool ledger a missing total silently UNDERPRICES rather than dropping a row. While an input is unproven that sort DECLINES and answers from a fixed materialization taken 2026-08-02 whose captured_at and last_updated do not advance -- an account that has moved TAO since is misreported and one first funded since is absent, so read that ranking as historical and use GET /api/v1/accounts/{ss58}/balance for the live per-account balance. Which sorts are currently live is a property of the artifact, not a fixed list. On a net_flow_*-sorted page the three holdings columns are null rather than zero, because a zero would assert an empty wallet. */
+        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window -- a negative value is a real net outflow, not a missing value -- and null-valued rows sort last on the net_flow_* keys. TWO TIERS, SELECTED BY SORT (#9469/#9502). The net_flow_* sorts are LIVE: the top-holders-flow projection lane recomputes all three windows daily from chain.account_events, so captured_at advances and the ranking is a real one. The same lane composes the three holdings sorts from the store -- free_tao from account_balances, delegated_tao by valuing each nominator_positions row as share_fraction x hotkey_alpha.total_alpha x that netuid's alpha_price_tao (#9502 captured the pool totals; neurons.stake_tao covers only hotkeys holding a UID on that exact subnet, 22.8% of position rows, so recomputing from it would drop real top holders out of the ranking), and total_tao as free + delegated ranked across the FULL tables rather than summed over the other two sorts' capped rows, since the top of a sum is not contained in the union of the tops of its addends. A holdings sort is served live ONLY while its producer's most recent pass is recorded COMPLETE: ranking over a partially-loaded ledger returns the largest values PRESENT rather than the largest that EXIST, which is a well-formed leaderboard quietly missing real top holders, and for the pool ledger a missing total silently UNDERPRICES rather than dropping a row. While an input is unproven that sort DECLINES and answers from a fixed materialization taken 2026-08-02 whose captured_at and last_updated do not advance -- an account that has moved TAO since is misreported and one first funded since is absent, so read that ranking as historical and use GET /api/v1/accounts/{ss58}/balance for the live per-account balance. Which sorts are currently live is a property of the artifact, not a fixed list. On a net_flow_*-sorted page the three holdings columns are null rather than zero, because a zero would assert an empty wallet. */
         get: operations["topHolders"];
         put?: never;
         post?: never;
@@ -1429,7 +1429,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks D1 tier (#1345). */
+        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks tier (#1345). */
         get: operations["blocksFeed"];
         put?: never;
         post?: never;
@@ -1446,7 +1446,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown. */
+        /** Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks tier (#1345); 200 with block:null when cold/unknown. */
         get: operations["blockDetail"];
         put?: never;
         post?: never;
@@ -1497,7 +1497,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown. */
+        /** Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics tier (#1845); 200 with extrinsics:[] when cold/unknown. */
         get: operations["blockExtrinsics"];
         put?: never;
         post?: never;
@@ -1599,7 +1599,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold. */
+        /** Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain tiers (#1987); schema-stable day_count:0/days:[] when the store is cold. */
         get: operations["chainActivity"];
         put?: never;
         post?: never;
@@ -1667,7 +1667,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold. */
+        /** Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics tier (#1989); schema-stable call_count:0/calls:[] when cold. */
         get: operations["chainCalls"];
         put?: never;
         post?: never;
@@ -1684,7 +1684,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        /** Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons store; schema-stable nulls when cold. */
         get: operations["chainConcentration"];
         put?: never;
         post?: never;
@@ -1786,7 +1786,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold. */
+        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics tier (#1988); schema-stable day_count:0 + empty lists when cold. */
         get: operations["chainFees"];
         put?: never;
         post?: never;
@@ -1854,7 +1854,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold. */
+        /** Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons store; schema-stable empty ranking when cold. */
         get: operations["chainIdleStake"];
         put?: never;
         post?: never;
@@ -1871,7 +1871,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the block-indexing latency card. How long after a block is produced it becomes queryable here (#9620). chain_detail_blocks has carried two clocks since migration 0010 -- observed_at, the chain's own timestamp as the firehose poller read it, and synced_at, the wall clock of the sync handler that wrote the row -- and nothing had ever selected the second: the writer binds it on every row and no route, watchdog or artifact read it back. Their difference is the end-to-end age of a block at the moment it became answerable, which is the headline latency question for an API over a chain. TWO DIFFERENT NUMBERS, NAMED SEPARATELY: write_latency_ms is the distribution of synced_at - observed_at -- how long each block took to land, as min/p50/p95/p99/max/mean over the retained window (nearest-rank percentiles). head_age_ms is now - the newest observed_at: how far behind the lane is RIGHT NOW. They diverge exactly when it matters, because a stalled lane keeps a perfect write-latency distribution -- every block it did write, it wrote promptly -- while its head age climbs without bound, so serving either under the other's name would report a dead lane as healthy. THE WINDOW IS PUBLISHED because the table is pruned on a rolling basis (1,862 contiguous blocks, about 6.2 hours, measured 2026-08-05): the block range and the observed_at bounds ride on every response, so this reads as the RECENT distribution it is rather than a lifetime one. A NEGATIVE LATENCY IS SERVED AS MEASURED, never clamped to zero -- the two timestamps come from two clocks, so under block-author clock skew a block can appear to have been written before it was produced, and clamping would suppress that evidence on the one route whose whole subject is the difference between those clocks. DECLINES rather than answering on an empty table: degraded.reason no_retained_blocks with NULL measurements, because a zero-millisecond lag is the most flattering thing this route could say about a dead pipeline. Mainnet-only: the D1 hot tier is written by the mainnet firehose poller and carries no network column, the same reason every off-mainnet block ref resolves against the lakehouse instead. */
+        /** Fetch the block-indexing latency card. How long after a block is produced it becomes queryable here (#9620). chain_detail_blocks has carried two clocks since migration 0010 -- observed_at, the chain's own timestamp as the firehose poller read it, and synced_at, the wall clock of the sync handler that wrote the row -- and nothing had ever selected the second: the writer binds it on every row and no route, watchdog or artifact read it back. Their difference is the end-to-end age of a block at the moment it became answerable, which is the headline latency question for an API over a chain. TWO DIFFERENT NUMBERS, NAMED SEPARATELY: write_latency_ms is the distribution of synced_at - observed_at -- how long each block took to land, as min/p50/p95/p99/max/mean over the retained window (nearest-rank percentiles). head_age_ms is now - the newest observed_at: how far behind the lane is RIGHT NOW. They diverge exactly when it matters, because a stalled lane keeps a perfect write-latency distribution -- every block it did write, it wrote promptly -- while its head age climbs without bound, so serving either under the other's name would report a dead lane as healthy. THE WINDOW IS PUBLISHED because the table is pruned on a rolling basis (1,862 contiguous blocks, about 6.2 hours, measured 2026-08-05): the block range and the observed_at bounds ride on every response, so this reads as the RECENT distribution it is rather than a lifetime one. A NEGATIVE LATENCY IS SERVED AS MEASURED, never clamped to zero -- the two timestamps come from two clocks, so under block-author clock skew a block can appear to have been written before it was produced, and clamping would suppress that evidence on the one route whose whole subject is the difference between those clocks. DECLINES rather than answering on an empty table: degraded.reason no_retained_blocks with NULL measurements, because a zero-millisecond lag is the most flattering thing this route could say about a dead pipeline. Mainnet-only: the hot tier is written by the mainnet firehose poller and carries no network column, the same reason every off-mainnet block ref resolves against the lakehouse instead. */
         get: operations["indexerLag"];
         put?: never;
         post?: never;
@@ -1888,7 +1888,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        /** Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the neurons store; schema-stable nulls when cold. */
         get: operations["chainPerformance"];
         put?: never;
         post?: never;
@@ -1973,7 +1973,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
+        /** Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
         get: operations["chainSigners"];
         put?: never;
         post?: never;
@@ -2092,7 +2092,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily D1 rollup; schema-stable zeros when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + stability distribution stay JSON-only). */
+        /** Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily rollup; schema-stable zeros when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + stability distribution stay JSON-only). */
         get: operations["chainTurnover"];
         put?: never;
         post?: never;
@@ -2143,7 +2143,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        /** Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons store; schema-stable nulls when cold. */
         get: operations["chainYield"];
         put?: never;
         post?: never;
@@ -2364,7 +2364,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup. `mean_emission_share` averages the stage-1 price share, so it inherits the same caveat: `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold. */
+        /** Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup. `mean_emission_share` averages the stage-1 price share, so it inherits the same caveat: `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold. */
         get: operations["economicsTrends"];
         put?: never;
         post?: never;
@@ -2466,7 +2466,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345). */
+        /** Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics tier (#1345). */
         get: operations["extrinsicsFeed"];
         put?: never;
         post?: never;
@@ -2483,7 +2483,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed. */
+        /** Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed. */
         get: operations["extrinsicDetail"];
         put?: never;
         post?: never;
@@ -3208,7 +3208,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch subtensor's own root-origin hyperparameter/network-config change feed, newest first — the extrinsics feed hardcoded to call_module='AdminUtils' (re-scoped from the original Council/Senate framing; subtensor has no such pallet). ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function= (e.g. sudo_set_tempo), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics D1 tier (#4310/2.3). */
+        /** Fetch subtensor's own root-origin hyperparameter/network-config change feed, newest first — the extrinsics feed hardcoded to call_module='AdminUtils' (re-scoped from the original Council/Senate framing; subtensor has no such pallet). ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function= (e.g. sudo_set_tempo), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics tier (#4310/2.3). */
         get: operations["governanceConfigChanges"];
         put?: never;
         post?: never;
@@ -3276,7 +3276,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1). `?window=7d|30d` returns just that window and narrows the underlying scan to it rather than reading the widest one and discarding the rest; `?limit`/`?offset` page the `subnets` array within each window. All three are optional and omitting them returns every window and every subnet, which is what this route served before it had them. `subnet_count` always spans every subnet the window measured, not the page, so a paging caller keeps the denominator it is ranking against. */
+        /** Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from the store). `?window=7d|30d` returns just that window and narrows the underlying scan to it rather than reading the widest one and discarding the rest; `?limit`/`?offset` page the `subnets` array within each window. All three are optional and omitting them returns every window and every subnet, which is what this route served before it had them. `subnet_count` always spans every subnet the window measured, not the page, so a paging caller keeps the denominator it is ranking against. */
         get: operations["healthTrendsBulk"];
         put?: never;
         post?: never;
@@ -3293,7 +3293,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary. */
+        /** Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from the store). Pair with /api/v1/health for the overall status summary. */
         get: operations["incidents"];
         put?: never;
         post?: never;
@@ -3480,7 +3480,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d. Omit `board` for all boards. */
+        /** Fetch registry leaderboards computed live from the store + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d. Omit `board` for all boards. */
         get: operations["registryLeaderboards"];
         put?: never;
         post?: never;
@@ -3650,7 +3650,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry). */
+        /** Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from the store telemetry). */
         get: operations["rpcUsage"];
         put?: never;
         post?: never;
@@ -3888,7 +3888,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's registration-cost series. One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into D1 from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404. */
+        /** Fetch one subnet's registration-cost series. One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into the store from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404. */
         get: operations["subnetBurnHistory"];
         put?: never;
         post?: never;
@@ -3922,7 +3922,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier). */
+        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons store). */
         get: operations["subnetConcentration"];
         put?: never;
         post?: never;
@@ -3939,7 +3939,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup). Pass ?format=csv to download the per-day series as CSV. */
+        /** Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily rollup). Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetConcentrationHistory"];
         put?: never;
         post?: never;
@@ -4024,7 +4024,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier. */
+        /** Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events store. */
         get: operations["subnetEventSummary"];
         put?: never;
         post?: never;
@@ -4041,7 +4041,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV. */
+        /** Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events store filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV. */
         get: operations["subnetEvents"];
         put?: never;
         post?: never;
@@ -4109,7 +4109,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from D1). */
+        /** Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from the store). */
         get: operations["subnetHealthIncidents"];
         put?: never;
         post?: never;
@@ -4126,7 +4126,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from D1). */
+        /** Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from the store). */
         get: operations["subnetHealthPercentiles"];
         put?: never;
         post?: never;
@@ -4143,7 +4143,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1). */
+        /** Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from the store). */
         get: operations["subnetHealthTrends"];
         put?: never;
         post?: never;
@@ -4160,7 +4160,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["subnetHistory"];
         put?: never;
         post?: never;
@@ -4194,7 +4194,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams D1 tier. */
+        /** Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams tier. */
         get: operations["subnetHyperparameters"];
         put?: never;
         post?: never;
@@ -4228,7 +4228,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. Served from the frozen lakehouse export of subnet_identity_history -- no D1 table backs this route, and the export stops where the capture did, so observed_at on each entry says how current it is. */
+        /** Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. Served from the frozen lakehouse export of subnet_identity_history -- no table backs this route, and the export stops where the capture did, so observed_at on each entry says how current it is. */
         get: operations["subnetIdentityHistory"];
         put?: never;
         post?: never;
@@ -4245,7 +4245,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the neurons D1 tier). */
+        /** Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the neurons store). */
         get: operations["subnetIdleStake"];
         put?: never;
         post?: never;
@@ -4313,7 +4313,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set. */
+        /** Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons store. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set. */
         get: operations["subnetMetagraph"];
         put?: never;
         post?: never;
@@ -4330,7 +4330,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. */
+        /** Fetch a single neuron's metagraph state by UID, computed live from the neurons store. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. */
         get: operations["subnetNeuron"];
         put?: never;
         post?: never;
@@ -4347,7 +4347,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["subnetNeuronHistory"];
         put?: never;
         post?: never;
@@ -4432,7 +4432,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons D1 tier). The reward-flow companion to /concentration. */
+        /** Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons store). The reward-flow companion to /concentration. */
         get: operations["subnetPerformance"];
         put?: never;
         post?: never;
@@ -4449,7 +4449,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily D1 rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
+        /** Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetPerformanceHistory"];
         put?: never;
         post?: never;
@@ -4670,7 +4670,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1). Pass ?format=csv to download the per-day series as CSV. */
+        /** Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from the store). Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetTrajectory"];
         put?: never;
         post?: never;
@@ -4687,7 +4687,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily D1 rollup). */
+        /** Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily rollup). */
         get: operations["subnetTurnover"];
         put?: never;
         post?: never;
@@ -4704,7 +4704,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history. */
+        /** Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history. */
         get: operations["subnetUptime"];
         put?: never;
         post?: never;
@@ -4755,7 +4755,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set. */
+        /** Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons store. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set. */
         get: operations["subnetValidators"];
         put?: never;
         post?: never;
@@ -4840,7 +4840,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier. Pass ?format=csv to download the ranked neuron rows as CSV. */
+        /** Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons store. Pass ?format=csv to download the ranked neuron rows as CSV. */
         get: operations["subnetYield"];
         put?: never;
         post?: never;
@@ -4857,7 +4857,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily D1 rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
+        /** Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetYieldHistory"];
         put?: never;
         post?: never;
@@ -4874,7 +4874,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup. */
+        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily rollup. */
         get: operations["subnetMovers"];
         put?: never;
         post?: never;
@@ -4891,7 +4891,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the root-origin (Sudo pallet) call table, newest first — subtensor has no Council/Senate, so this is the extrinsics feed hardcoded to call_module='Sudo'. ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics D1 tier (#4310/2.2). */
+        /** Fetch the root-origin (Sudo pallet) call table, newest first — subtensor has no Council/Senate, so this is the extrinsics feed hardcoded to call_module='Sudo'. ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics tier (#4310/2.2). */
         get: operations["sudoCalls"];
         put?: never;
         post?: never;
@@ -4959,7 +4959,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 2000). Computed live from the neurons D1 tier. */
+        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 2000). Computed live from the neurons store. */
         get: operations["globalValidators"];
         put?: never;
         post?: never;
@@ -4976,7 +4976,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons D1 tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404. */
+        /** Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons store. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404. */
         get: operations["validatorDetail"];
         put?: never;
         post?: never;
@@ -4993,7 +4993,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["validatorHistory"];
         put?: never;
         post?: never;
@@ -12361,7 +12361,7 @@ export interface components {
             total_stake_alpha: number;
             validator_count: number;
         };
-        /** @description Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup. */
+        /** @description Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup. */
         SubnetYieldHistoryArtifact: {
             netuid: number;
             point_count: number;

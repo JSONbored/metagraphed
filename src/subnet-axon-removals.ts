@@ -4,7 +4,7 @@
 // companion to the AxonServed announcement activity in /serving (which measures neurons
 // announcing an axon, NOT tearing one down), exactly the way /registrations (raw
 // NeuronRegistered demand) coexists with /turnover (net validator-set churn). Pure shaping
-// (buildSubnetAxonRemovals) + a thin D1 loader (loadSubnetAxonRemovals); the Worker adds the
+// (buildSubnetAxonRemovals) + a thin store loader (loadSubnetAxonRemovals); the Worker adds the
 // envelope. Null-safe: a cold store or a subnet with no AxonInfoRemoved events yields the zeroed card.
 
 import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "./uncurated-event-streams.ts";
@@ -31,7 +31,7 @@ function round(value: number, dp = 2): number {
   return Math.round(value * factor) / factor;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -94,12 +94,12 @@ export function buildSubnetAxonRemovals(
 // COUNT(DISTINCT hotkey) is exact here. The handler resolves windowLabel/windowDays from the
 // window param. Cold/absent store -> the schema-stable zeroed card.
 export async function loadSubnetAxonRemovals(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
 ): Promise<Row> {
   const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT COUNT(*) AS removals, COUNT(DISTINCT hotkey) AS distinct_removers, " +
       "MAX(observed_at) AS newest_observed " +
       "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ?",

@@ -1,13 +1,13 @@
 // Validator-set & registration turnover (churn) for one subnet: how much its
 // validator set and neuron population rotate between two dated snapshots of the
 // neuron_daily rollup (start vs end of a window). Pure + exported for unit tests;
-// the Worker does the D1 reads + envelope. Null-safe: a cold store / single
+// the Worker does the store reads + envelope. Null-safe: a cold store / single
 // snapshot yields a schema-stable zero (never throws), matching the live tiers.
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
-// The neuron_daily columns the turnover handler reads — its D1 read contract
+// The neuron_daily columns the turnover handler reads — its store read contract
 // (mirrors BLOCK_READ_COLUMNS / CONCENTRATION_READ_COLUMNS). A bare `hotkey`
 // column name is public metagraph vocabulary, not a secret; kept in src/ next to
 // its consumer so the Worker handler stays a thin SELECT.
@@ -55,7 +55,7 @@ function validatorHotkeys(rows: Row[]): Set<string> {
 
 function normalizedUid(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const uid = Number(value);
   return Number.isSafeInteger(uid) && uid >= 0 ? uid : null;
@@ -328,7 +328,7 @@ export function turnoverChangeDetail(changes: Row): Row {
 }
 
 async function loadTurnoverBoundaryRows(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: number,
   { windowDays }: { windowDays?: number | null },
 ): Promise<{ startDate: string | null; endDate: string | null; rows: Row[] }> {
@@ -344,13 +344,13 @@ async function loadTurnoverBoundaryRows(
       " AND snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily WHERE netuid = ?)";
     boundsParams.push(`-${windowDays} days`, netuid);
   }
-  const bounds = await d1(boundsSql, boundsParams);
+  const bounds = await runner(boundsSql, boundsParams);
   const startDate = (bounds[0]?.start_date as string | undefined) ?? null;
   const endDate = (bounds[0]?.end_date as string | undefined) ?? null;
   const rows =
     startDate == null || endDate == null
       ? []
-      : await d1(
+      : await runner(
           `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?) ORDER BY snapshot_date ASC, uid ASC`,
           [netuid, startDate, endDate],
         );
@@ -362,7 +362,7 @@ async function loadTurnoverBoundaryRows(
 // to the subnet's newest stored day for finite windows), read exactly those two
 // days' rows, shape with buildTurnover. Cold D1 → comparable:false.
 export async function loadSubnetTurnover(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: number,
   {
     windowLabel,
@@ -375,7 +375,7 @@ export async function loadSubnetTurnover(
   },
 ): Promise<Row> {
   const { startDate, endDate, rows } = await loadTurnoverBoundaryRows(
-    d1,
+    runner,
     netuid,
     {
       windowDays,

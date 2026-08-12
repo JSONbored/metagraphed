@@ -364,7 +364,7 @@ describe("GET /api/v1/subnets/{netuid}/surface-history", () => {
     );
   });
 
-  test("no D1 binding is an empty trail rather than a 500", async () => {
+  test("no store binding is an empty trail rather than a 500", async () => {
     const data = await body(
       await get(`/api/v1/subnets/${NETUID}/surface-history`, {} as Env),
     );

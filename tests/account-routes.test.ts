@@ -12,7 +12,7 @@ function req(path: string, init?: RequestInit) {
   return new Request(`https://api.metagraph.sh${path}`, init);
 }
 
-// A D1 mock that routes by SQL shape so the account handlers (#1347/#1847) get
+// A store mock that routes by SQL shape so the account handlers (#1347/#1847) get
 // realistic rows. Order matters: more-specific shapes first.
 function dbWith({
   agg,
@@ -99,7 +99,7 @@ test("GET /accounts/{ss58}/events?format=csv emits a header-only CSV when cold",
   assert.equal((await res.text()).trim(), EVENTS_CSV_HEADER);
 });
 
-test("GET /accounts/{ss58} is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58} is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}`),
     {} as unknown as Env,
@@ -125,7 +125,7 @@ test("GET /accounts/{ss58}/extrinsics rejects an unsupported query param", async
   assert.equal(res.status, 400);
 });
 
-test("GET /accounts/{ss58}/extrinsics is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/extrinsics is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/extrinsics`),
     {} as unknown as Env,
@@ -151,7 +151,7 @@ test("GET /accounts/{ss58}/extrinsics JSON varies on Accept when CSV is negotiat
   assert.match(res.headers.get("content-type"), /^application\/json/);
 });
 
-test("GET /accounts/{ss58}/extrinsics?format=csv emits a header-only CSV when D1 is cold", async () => {
+test("GET /accounts/{ss58}/extrinsics?format=csv emits a header-only CSV when the store is cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/extrinsics?format=csv`),
     {} as unknown as Env,
@@ -187,7 +187,7 @@ test("GET /accounts/{ss58}/transfers rejects an unsupported direction enum value
   assert.equal(body.meta.parameter, "direction");
 });
 
-test("GET /accounts/{ss58}/transfers is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/transfers is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/transfers`),
     {} as unknown as Env,
@@ -213,7 +213,7 @@ test("GET /accounts/{ss58}/transfers JSON varies on Accept when CSV is negotiate
   assert.match(res.headers.get("content-type"), /^application\/json/);
 });
 
-test("GET /accounts/{ss58}/transfers?format=csv emits a header-only CSV when D1 is cold", async () => {
+test("GET /accounts/{ss58}/transfers?format=csv emits a header-only CSV when the store is cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/transfers?format=csv`),
     {} as unknown as Env,
@@ -228,7 +228,7 @@ test("GET /accounts/{ss58}/transfers?format=csv emits a header-only CSV when D1 
   assert.equal(lines.length, 1);
 });
 
-test("GET /accounts/{ss58}/stake-flow is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/stake-flow is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/stake-flow`),
     {} as unknown as Env,
@@ -241,7 +241,7 @@ test("GET /accounts/{ss58}/stake-flow is schema-stable when D1 is cold (never 40
   assert.equal(Array.isArray(body.data.subnets), true);
 });
 
-test("GET /accounts/{ss58}/weight-setters is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/weight-setters is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/weight-setters`),
     {} as unknown as Env,
@@ -274,7 +274,7 @@ test("GET /accounts/{ss58}/weight-setters rejects an unsupported window with 400
   assert.equal(body.meta.parameter, "window");
 });
 
-test("GET /accounts/{ss58}/registrations is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/registrations is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/registrations`),
     {} as unknown as Env,
@@ -307,7 +307,7 @@ test("GET /accounts/{ss58}/registrations rejects an unsupported window with 400"
   assert.equal(body.meta.parameter, "window");
 });
 
-test("GET /accounts/{ss58}/serving is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/serving is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/serving`),
     {} as unknown as Env,
@@ -340,7 +340,7 @@ test("GET /accounts/{ss58}/serving rejects an unsupported window with 400", asyn
   assert.equal(body.meta.parameter, "window");
 });
 
-test("GET /accounts/{ss58}/deregistrations is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/deregistrations is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/deregistrations`),
     {} as unknown as Env,
@@ -440,7 +440,7 @@ test("GET /accounts/{ss58}/deregistrations rejects an unsupported window with 40
   assert.equal(body.meta.parameter, "window");
 });
 
-test("GET /accounts/{ss58}/prometheus is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/prometheus is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/prometheus`),
     {} as unknown as Env,
@@ -473,7 +473,7 @@ test("GET /accounts/{ss58}/prometheus rejects an unsupported window with 400", a
   assert.equal(body.meta.parameter, "window");
 });
 
-test("GET /accounts/{ss58}/axon-removals is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /accounts/{ss58}/axon-removals is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/axon-removals`),
     {} as unknown as Env,

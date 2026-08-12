@@ -147,7 +147,7 @@ beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
   // THE #9558 FILTER needs a referencing position, or hotkey_alpha stores
-  // nothing: D1 keeps only pools a nominator_positions row actually names, so
+  // nothing: D1 kept only pools a nominator_positions row actually names, so
   // an unseeded fixture makes every "the row was written" assertion fail for a
   // reason that has nothing to do with the consumer.
   db.prepare(

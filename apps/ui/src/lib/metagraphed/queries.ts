@@ -881,7 +881,7 @@ function normalizeLeaderboards(raw: unknown): Leaderboards {
   return out;
 }
 
-// #1111: registry leaderboards — live, D1-computed boards. Six operational
+// #1111: registry leaderboards — live, store-computed boards. Six operational
 // (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing,
 // most-reliable) and four economic-opportunity (open-slots,
 // cheapest-registration, highest-emission, validator-headroom). One artifact
@@ -2783,7 +2783,7 @@ export const accountBalanceQuery = (ss58: string) =>
 
 /**
  * Personal (coldkey) on-chain identity for one account (#4324/5.1), from
- * account_identity via Postgres (D1 frozen fallback). has_identity is false
+ * account_identity via Postgres, with a frozen fallback. has_identity is false
  * for the common case — most accounts never call set_identity — so every
  * field but `account`/`has_identity` stays null rather than erroring.
  */
@@ -3983,7 +3983,7 @@ function normalizeChainEventsStatsEntry(raw: unknown): ChainEventsStatsEntry | n
 }
 
 // #3489: raw all-events tier pallet.method distribution from
-// /api/v1/chain-events/stats — the raw-tier sibling of chainCallsQuery's D1
+// /api/v1/chain-events/stats — the raw-tier sibling of chainCallsQuery's store
 // /chain/calls aggregate. Takes a block window (default 1000, capped 5000
 // server-side); returns the distinct group count and the busiest-first rows.
 // A cold store (before the all-events backfill) yields groups: 0, activity: [].
@@ -6822,7 +6822,7 @@ export function flattenSurfaceIncidents(slas: SurfaceSla[]): FlatSurfaceIncident
 }
 
 // #1115: weekly structural trajectory (completeness / surface / endpoint counts
-// over time) from D1 snapshots.
+// over time) from the stored snapshots.
 export const subnetTrajectoryQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-trajectory", netuid),
@@ -7190,7 +7190,7 @@ export const chainIdleStakeQuery = () =>
   });
 
 // #1302: per-subnet on-chain history — daily neuron/validator counts, total
-// stake and emission over a 7d/30d/90d/1y/all window, from the D1 snapshot store.
+// stake and emission over a 7d/30d/90d/1y/all window, from the snapshot store.
 export const subnetHistoryQuery = (netuid: number, window = "90d") =>
   queryOptions({
     queryKey: k("subnet-history", netuid, window),
@@ -7685,7 +7685,7 @@ export const subnetTurnoverQuery = (netuid: number, window = "30d") =>
   });
 
 // #1302: per-UID on-chain history — daily emission/incentive/consensus/dividends/
-// stake/rank for a single neuron over a window, from the D1 snapshot store.
+// stake/rank for a single neuron over a window, from the snapshot store.
 export const subnetNeuronHistoryQuery = (netuid: number, uid: number, window = "90d") =>
   queryOptions({
     queryKey: k("subnet-neuron-history", netuid, uid, window),
@@ -9359,7 +9359,7 @@ export const rpcEndpointsQuery = () =>
   });
 
 // /api/v1/rpc/usage returns a single analytics object (not a list), like the
-// global incident ledger. Cold/unmigrated D1 already yields a schema-stable
+// global incident ledger. A cold store already yields a schema-stable
 // zeroed payload server-side; this normaliser just hardens against missing
 // fields so a partial response can't crash the proxy panel.
 function normalizeRpcUsage(raw: unknown): RpcUsage {

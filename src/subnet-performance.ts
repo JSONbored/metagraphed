@@ -1,10 +1,10 @@
 // Subnet performance / reward-distribution metrics: pure statistics over a
 // subnet's per-UID PERFORMANCE columns (incentive, dividends, trust, consensus,
-// validator_trust) from the live `neurons` D1 tier. This is the reward-flow and
+// validator_trust) from the live `neurons` store tier. This is the reward-flow and
 // trust companion to concentration.ts — concentration measures who holds the
 // STAKE/EMISSION; this measures how concentrated the actual REWARDS are and how
 // the 0..1 trust/consensus scores are spread across the neurons. Every function
-// is pure + exported for unit tests; the Worker does the D1 read + envelope.
+// is pure + exported for unit tests; the Worker does the store read + envelope.
 // Null-safe by design: an empty / all-zero distribution yields a schema-stable
 // `null` block (never throws), matching the concentration tier it mirrors.
 
@@ -14,7 +14,7 @@ import { percentile } from "./lib/stats.ts";
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
-// The neurons-tier columns the performance handler reads — the D1 read contract
+// The neurons-tier columns the performance handler reads — the store read contract
 // for buildSubnetPerformance (mirrors CONCENTRATION_READ_COLUMNS). Kept next to
 // its consumer so the Worker handler stays a thin SELECT.
 export const PERFORMANCE_READ_COLUMNS =
@@ -44,7 +44,7 @@ function round(value: number): number {
   return Math.round(value * factor) / factor;
 }
 
-// Guard 0/negative epoch ms (a blank/sentinel D1 cell) so a captured_at never
+// Guard 0/negative epoch ms (a blank/sentinel cell) so a captured_at never
 // stamps the 1970 epoch. Mirrors epochMsStamp in concentration.ts / the
 // account-events + snapshot fixes (#2776/#2777).
 function epochMsStamp(ms: number): { ms: number; value: string } | null {
@@ -57,7 +57,7 @@ function epochMsStamp(ms: number): { ms: number; value: string } | null {
 function captureStamp(value: unknown): { ms: number; value: string } | null {
   if (value == null) return null;
   if (typeof value === "string") {
-    // D1 can return an INTEGER captured_at as a numeric-epoch string; Date.parse
+    // the store can return an INTEGER captured_at as a numeric-epoch string; Date.parse
     // returns NaN for a bare epoch string, so coerce it like concentration.ts.
     if (/^\d+$/.test(value)) return epochMsStamp(Number(value));
     const ms = Date.parse(value);
@@ -183,13 +183,13 @@ export function buildSubnetPerformance(
   };
 }
 
-// Shared D1 loader (mirrors handleSubnetPerformance) — read one subnet's neurons
+// Shared store loader (mirrors handleSubnetPerformance) — read one subnet's neurons
 // and shape them into the performance artifact. Exported for the MCP tool.
 export async function loadSubnetPerformance(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
 ): Promise<Row> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${PERFORMANCE_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
     [netuid],
   );

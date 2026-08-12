@@ -1,5 +1,5 @@
 // GET /api/v1/compare/validators (types-epic B batch 7, #8061). Live
-// neurons D1-tier data -- no static file. Modeled from
+// neurons store-tier data -- no static file. Modeled from
 // src/metagraph-neurons.ts's composeValidatorComparison() (the decision-
 // relevant projection of buildValidatorDetail() for each requested hotkey),
 // cross-checked against the hand-edited CompareValidatorsArtifact component

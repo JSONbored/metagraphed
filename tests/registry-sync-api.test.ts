@@ -315,7 +315,7 @@ test("defaults subnet source and surface provider_id when omitted", async () => 
 
 test("does not log surface_history when the surface upsert is a no-op", async () => {
   // Postgres expressed this as WHERE ... IS DISTINCT FROM EXCLUDED.overlay and
-  // let the statement no-op. The D1 path decides it BEFORE building any
+  // let the statement no-op. The store path decides it BEFORE building any
   // statement: an existing row whose overlay is byte-identical is skipped
   // outright, so neither the upsert nor the history row is ever queued.
   selectResults.existingSurface = {
@@ -704,7 +704,7 @@ test("a body stream that errors mid-read still records ok:false on the trace spa
 });
 
 // Hyperdrive's connection-retry tests (METAGRAPHED-7) are gone with Hyperdrive:
-// a D1 binding is not a pooled TCP connection, so there is no dropped socket to
+// a store binding is not a pooled TCP connection, so there is no dropped socket to
 // retry. What replaces them are the risks D1 actually introduces.
 
 test("the keep-list is ONE bound JSON parameter, so the statement text is constant regardless of its size", async () => {

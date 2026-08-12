@@ -20,7 +20,7 @@
 // than summed over the other two legs' capped rows.
 //
 // EACH LEG IS PROVEN SEPARATELY AND THE ARTIFACT SAYS WHICH ONES RAN. The two
-// legs fail independently -- the lakehouse can answer while D1's ledgers are
+// legs fail independently -- the lakehouse can answer while the store's ledgers are
 // unproven, and the reverse is equally possible -- so "which sorts does this
 // artifact rank" is a property of the written object (`sorts`) rather than a
 // constant in this file. That is the decline-while-unproven switch #9292
@@ -254,7 +254,7 @@ export async function computeTopHoldersFlow(
   // The FLOW leg is required: it is the one this lane was built for, and an
   // artifact without it would silently un-rank the net_flow_* sorts.
   if (rows === null) return null;
-  // The HOLDINGS leg is optional and D1-backed, so it is mainnet-only -- the
+  // The HOLDINGS leg is optional and store-backed, so it is mainnet-only -- the
   // testnet projection has no balance ledger or pool ledger of its own, and
   // reading the mainnet ones for it would mislabel another chain's accounts.
   const holdings =

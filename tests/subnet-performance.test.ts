@@ -141,7 +141,7 @@ describe("buildSubnetPerformance", () => {
   });
 
   test("rejects a zero/negative captured_at instead of stamping the 1970 epoch", () => {
-    // A blank/sentinel D1 cell arrives as 0 (or negative). Alone it must yield a
+    // A blank/sentinel cell arrives as 0 (or negative). Alone it must yield a
     // null captured_at — never the 1970 epoch. Mirrors #2776/#2777.
     const zero = buildSubnetPerformance(
       [{ incentive: 0.5, captured_at: 0 }],
@@ -194,11 +194,11 @@ describe("buildSubnetPerformance", () => {
 
   test("loadSubnetPerformance issues one netuid-scoped SELECT and shapes it", async () => {
     let seen: Row | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
       return ROWS;
     };
-    const out = (await loadSubnetPerformance(d1, 7)) as Row;
+    const out = (await loadSubnetPerformance(runner, 7)) as Row;
     assert.match(seen!.sql, /FROM neurons WHERE netuid = \?/);
     assert.deepEqual(seen!.params, [7]);
     assert.equal(out.netuid, 7);

@@ -174,7 +174,7 @@ describe("loadAccountPositionsColdTier", () => {
   });
 
   test("chunks the D1 IN-list at the platform's 100-parameter ceiling", async () => {
-    // D1 rejects a statement with more than 100 bound parameters even though
+    // D1 rejected a statement with more than 100 bound parameters even though
     // `wrangler d1 execute` accepts far more from the CLI -- so one IN-list
     // per hotkey-set would fail for exactly the coldkeys that matter most.
     const hotkeys = Array.from(
@@ -360,7 +360,7 @@ describe("loadAccountPositionsColdTier", () => {
     assert.ok(!("degraded" in data!));
   });
 
-  test("excludes a position whose hotkey D1 has no stake row for", async () => {
+  test("excludes a position whose hotkey D1 had no stake row for", async () => {
     // The retired loader's own contract: a deregistered hotkey (or a snapshot
     // that has not caught up) is omitted, never reported at a fabricated zero.
     sqlFetch([positionRow(HOTKEY_A, 18, 1), positionRow(HOTKEY_B, 4, 1)]);

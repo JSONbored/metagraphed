@@ -410,7 +410,7 @@ describe("buildAccountsList", () => {
 describe("loadAccountsList", () => {
   test("reads every hotkey (no validator_permit filter) and shapes it", async () => {
     let captured: { sql: string; params: unknown[] } | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       // #9051: the loader now also issues a subnet_snapshots price read --
       // answer it separately so the assertions below still pin the neurons
       // query rather than whichever read happened to land last.
@@ -426,7 +426,7 @@ describe("loadAccountsList", () => {
         { ...ROW, hotkey: "hk-b", netuid: 2, validator_permit: 1 },
       ];
     };
-    const data = await loadAccountsList(d1, { sort: "total_stake" });
+    const data = await loadAccountsList(runner, { sort: "total_stake" });
     assert.match(captured!.sql, /FROM neurons/);
     // Spelling-agnostic on purpose. This asserts the leaderboard covers EVERY
     // registered hotkey, so it has to keep failing if a permit filter comes
@@ -445,7 +445,7 @@ describe("loadAccountsList", () => {
     assert.deepEqual(data.accounts, []);
   });
 
-  test("a non-array D1 result degrades to an empty leaderboard", async () => {
+  test("a non-array store result degrades to an empty leaderboard", async () => {
     const data = await loadAccountsList(
       async () => null as unknown as Record<string, unknown>[],
     );
@@ -472,7 +472,7 @@ function accountsListEnv(rows: Row[], captured: Row = {}) {
 }
 
 describe("GET /api/v1/accounts via the Worker", () => {
-  test("is schema-stable when D1 is cold (never 404)", async () => {
+  test("is schema-stable when the store is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts"),
       accountsListEnv([]) as unknown as Env,

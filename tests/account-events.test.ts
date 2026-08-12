@@ -173,7 +173,7 @@ test("buildSubnetEventSummary categorizes the newly-added kinds instead of dumpi
   );
 });
 
-test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
+test("formatAccountEvent maps a store row to an API event (ISO time)", () => {
   const out = formatAccountEvent({
     block_number: 1000,
     event_index: 3,
@@ -312,7 +312,7 @@ test("buildAccountSummary coerces string-typed first/last seen timestamps", () =
 });
 
 test("formatAccountEvent coerces string-typed netuid and uid cells to Numbers", () => {
-  // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
+  // the store can return an INTEGER column as a numeric string ("7" not 7); the bare
   // `?? null` pass-through this replaced would have leaked strings into the API
   // payload. Mirrors the coercion in blocks.ts (#2435) and extrinsics.ts
   // (#2439) — and the block_number / event_index / extrinsic_index coercion
@@ -784,7 +784,7 @@ test("buildAccountTransfers explicit side never flips a normal row (#2362)", () 
   assert.equal(out.transfers[0].to, "5ME");
 });
 
-// loadAccountTransfers (the D1-querying account_events reader) was deleted
+// loadAccountTransfers (the account_events store reader) was deleted
 // (2026-07-17, D1 fully eliminated) -- see src/account-events.ts's own
 // comment. Coverage for buildAccountTransfers direction-labeling / cursor
 // shaping lives in the tests above this block (calling buildAccountTransfers
@@ -857,7 +857,7 @@ test("buildAccountSummary coerces a string scanned probe for the cap flag", () =
 
 test("buildAccountSummary treats a junk scanned probe as zero for cap detection", () => {
   // scanned is present but non-numeric → toBlockNumber returns null → ?? 0,
-  // so the cap probe does not false-positive from a garbage D1 cell.
+  // so the cap probe does not false-positive from a garbage cell.
   const out = buildAccountSummary("5Hk", {
     agg: { c: "42" },
     scanned: "nope",

@@ -92,7 +92,7 @@ describe("formatAccountDay", () => {
   });
 
   test("formatAccountDay coerces string-typed netuid and event_count cells to Numbers", () => {
-    // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
+    // the store can return an INTEGER column as a numeric string ("7" not 7); the bare
     // `?? null` pass-through this replaced would have leaked strings into the API
     // payload. Mirrors the coercion in formatAccountEvent (#2481), blocks.ts
     // (#2435), and extrinsics.ts (#2439).
@@ -167,7 +167,7 @@ describe("buildAccountTransfers", () => {
   });
 });
 
-// loadAccountTransfers (the D1-querying account_events reader) was deleted
+// loadAccountTransfers (the account_events store reader) was deleted
 // (2026-07-17, D1 fully eliminated) -- see src/account-events.ts's own
 // comment. The direction-labeling logic it drove is still covered by the
 // buildAccountTransfers tests above (hand-built rows, no D1 involved).

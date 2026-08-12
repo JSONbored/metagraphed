@@ -79,7 +79,7 @@ let db: InstanceType<typeof DatabaseSync>;
  * two completeness probes, prepare().all() for the ranking query, which binds
  * nothing because every value in it is a constant or a number this module read
  * out of the store itself. */
-function d1() {
+function runner() {
   return { ...pgMockEnv() } as unknown as Env;
 }
 
@@ -240,7 +240,7 @@ describe("topHoldersHoldings prices positions against the pool ledger", () => {
     pool("5Hot", 9, 400);
     price(9, 0.05);
 
-    const leg = await holdings(d1());
+    const leg = await holdings(runner());
     assert.deepEqual(leg?.sorts, ["delegated_tao"]);
     assert.equal(leg?.cells.get("5Holder")?.delegated_tao, 30);
     // free_tao was never proven, so it is absent rather than zero.
@@ -257,7 +257,7 @@ describe("topHoldersHoldings prices positions against the pool ledger", () => {
     pool("5Hot", 8, 5_000);
     price(8, null);
 
-    const leg = await holdings(d1());
+    const leg = await holdings(runner());
     // 80, not 80 + 0 dressed up as a complete total -- the row simply drops out
     // of the addition. The distinction only shows up as a NUMBER when the
     // excluded pool is large, which is why this one is 5,000 alpha.
@@ -274,7 +274,7 @@ describe("topHoldersHoldings prices positions against the pool ledger", () => {
     // entirely for the crime of not being the freshest row in the table.
     price(9, 0.5, "2026-08-05");
 
-    const leg = await holdings(d1());
+    const leg = await holdings(runner());
     assert.equal(leg?.cells.get("5Holder")?.delegated_tao, 2);
   });
 
@@ -286,7 +286,7 @@ describe("topHoldersHoldings prices positions against the pool ledger", () => {
     // coldkey's positions against totals read at a different block.
     pool("5Hot", 7, 999, ALPHA_AT - 86_400_000);
 
-    const leg = await holdings(d1());
+    const leg = await holdings(runner());
     assert.equal(leg, null, "nothing priced, so no holdings leg at all");
   });
 });
@@ -308,7 +308,7 @@ describe("topHoldersHoldings ranks total_tao across the full tables", () => {
     position("5Deleg", "5HotB", 7, 0.9);
     pool("5HotB", 7, 100); // 90 delegated -> total 90
 
-    const leg = await holdings(d1(), 1);
+    const leg = await holdings(runner(), 1);
     assert.deepEqual(leg?.sorts, ["free_tao", "delegated_tao", "total_tao"]);
     const ids = [...leg!.cells.keys()].sort();
     assert.deepEqual(ids, ["5Both", "5Deleg", "5Free"]);
@@ -326,7 +326,7 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     position("5Holder", "5Hot", 7, 1);
     pool("5Hot", 7, 100);
     price(7, 1);
-    assert.equal(await holdings(d1()), null);
+    assert.equal(await holdings(runner()), null);
   });
 
   test("an in-flight balance pass leaves free_tao and total_tao out", async () => {
@@ -339,7 +339,7 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     pool("5Hot", 7, 100);
     price(7, 1);
 
-    const leg = await holdings(d1());
+    const leg = await holdings(runner());
     assert.deepEqual(leg?.sorts, ["delegated_tao"]);
     assert.equal(leg?.cells.has("5Whale"), false);
     assert.equal(leg?.cells.get("5Holder")?.delegated_tao, 100);
@@ -353,7 +353,7 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     pool("5Hot", 7, 100);
     price(7, 1);
 
-    const leg = await holdings(d1());
+    const leg = await holdings(runner());
     assert.deepEqual(leg?.sorts, ["free_tao"]);
     assert.equal(leg?.cells.get("5Whale")?.free_tao, 900_000);
   });
@@ -369,13 +369,13 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
       if (text.includes("AS delegated_tao"))
         pg.control.failNext = new Error("no such table: hotkey_alpha");
     };
-    assert.equal(await holdings(d1()), null);
+    assert.equal(await holdings(runner()), null);
   });
 
   test("declines when a proven pass yields no usable rows", async () => {
     // The pass completed but the ledger has nothing this query can rank.
     pass("hotkey_alpha_passes", ALPHA_AT, true);
-    assert.equal(await holdings(d1()), null);
+    assert.equal(await holdings(runner()), null);
   });
 
   test("a non-array result declines rather than being treated as empty", async () => {
@@ -386,7 +386,7 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     pg.control.answers = [
       { match: "AS delegated_tao", rows: "not-an-array" as never },
     ];
-    assert.equal(await holdings(d1()), null);
+    assert.equal(await holdings(runner()), null);
   });
 
   test("skips unusable cells, and a negative holding is a broken read", async () => {
@@ -401,7 +401,7 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     // string in a REAL column or an integer where an ss58 belongs, and those
     // are exactly the shapes the coercion has to survive.
     pg.control.answers = [{ match: "AS delegated_tao", rows }];
-    const leg = await holdings(d1());
+    const leg = await holdings(runner());
     assert.deepEqual([...leg!.cells.keys()], ["5Ok"]);
   });
 
@@ -413,6 +413,6 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
         rows: [{ ss58: "5Neg", delegated_tao: -1 }],
       },
     ];
-    assert.equal(await holdings(d1()), null);
+    assert.equal(await holdings(runner()), null);
   });
 });

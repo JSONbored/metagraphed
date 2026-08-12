@@ -1,5 +1,5 @@
 // GET /api/v1/accounts/{ss58}/identity + .../identity-history (types-epic B
-// batch 4, #8058). Live account_identity(_history) D1-tier data -- no static
+// batch 4, #8058). Live account_identity(_history) tier data -- no static
 // file. Modeled from src/account-identity.ts's buildAccountIdentity() and
 // src/account-identity-history.ts's buildAccountIdentityHistory()/
 // formatAccountIdentityHistoryEntry(), cross-checked against the hand-edited

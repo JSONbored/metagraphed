@@ -19,7 +19,7 @@
 //
 // Every statement here ran against Postgres until the D1 move: the original had
 // `sql.begin` and `DELETE ... RETURNING`. workers/registry-sync-api.ts had to
-// give that up because D1's `batch()` is a fixed list of statements decided
+// give that up because the store's `batch()` is a fixed list of statements decided
 // before any of them runs, so its reads moved OUT of the transaction and its
 // own header documents the cost:
 //
@@ -39,7 +39,7 @@
 //     watching the row not be touched.
 //   - `json_each(?)` + `json_extract(v,'$.k')` -> `jsonb_array_elements($n)` +
 //     `v->>'k'`; the id-list delete becomes `jsonb_array_elements_text`.
-//   - `probe_eligible` / `public_safe` are 0/1 with a CHECK in D1 and real
+//   - `probe_eligible` / `public_safe` are 0/1 with a CHECK in the store and real
 //     BOOLEAN in Neon, so the bindings become booleans.
 //   - `(unixepoch() * 1000)` -> `(EXTRACT(EPOCH FROM now()) * 1000)::bigint`.
 //

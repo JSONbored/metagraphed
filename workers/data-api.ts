@@ -1,4 +1,4 @@
-// metagraphed data Worker — D1-backed serving, kept SEPARATE from the main
+// metagraphed data Worker — store-backed serving, kept SEPARATE from the main
 // api.ts Worker (which is near its bundle budget); the main Worker routes the
 // relevant paths in via a service binding (DATA_API).
 //
@@ -10,7 +10,7 @@
 // sat behind `env.HYPERDRIVE?.connectionString`, which no wrangler config can
 // make truthy any more, so none of it could run.
 //
-// What is left is the D1 surface: the neurons / subnet-hyperparams /
+// What is left is the store surface: the neurons / subnet-hyperparams /
 // account-identity read families (tests/fixtures/sqlite-schema/0007 + 0009), the user-state
 // routes (accounts, API keys, usage accounting, alert triggers, push
 // subscriptions), the internal sync WRITE routes that land in D1, and the
@@ -316,7 +316,7 @@ function windowLabelFor(
 
 // Resolve a ?window= label to a YYYY-MM-DD cutoff date for a neuron_daily
 // `snapshot_date` (a native DATE column, not an epoch-ms timestamp), matching
-// the D1 loaders' `new Date(Date.now() - days*DAY_MS).toISOString().slice(0,10)`
+// the store loaders' `new Date(Date.now() - days*DAY_MS).toISOString().slice(0,10)`
 // exactly. A `null` day value (e.g. HISTORY_WINDOW_DAYS.all) means no lower bound.
 function windowCutoffDate(
   url: URL,
@@ -565,21 +565,21 @@ type Row = Record<string, unknown>;
 // This is the write path .github/workflows/refresh-metagraph.yml's
 // sign-and-stage job POSTs scripts/fetch-metagraph-native.py's output to,
 // alongside (not replacing, during the #4771 verification window) the
-// existing R2-stage-to-D1 path. The payload is the SAME bare-array shape
+// existing R2-stage-to-store path. The payload is the SAME bare-array shape
 // already produced for D1 (NEURON_INSERT_COLUMNS) -- no new fetch/shape work
 // needed, only a new destination.
 //
-// Collapses D1's two-step architecture (loadStagedNeurons loads the latest
+// Collapses the store's two-step architecture (loadStagedNeurons loads the latest
 // snapshot; a SEPARATE daily cron, rollupNeuronDaily, later snapshots that
 // table into neuron_daily via SQL) into ONE step: every row already carries
 // its own captured_at, so this upserts BOTH neurons (latest-only) AND
 // neuron_daily (dated) from the same payload in the same transaction. No
-// Postgres-side rollup cron is needed, and therefore none of D1's
+// Postgres-side rollup cron is needed, and therefore none of the store's
 // archive-then-prune complexity (src/neuron-history.ts, #4770) has an
 // equivalent here to build.
 const NEURONS_SYNC_TOKEN_HEADER = "x-neurons-sync-token";
 // ~33k rows today (129 netuids x <=256 UIDs); generous headroom over that
-// (matches the D1 staging path's MAX_STAGED_NEURON_ROWS/MAX_STAGED_NEURONS_BYTES,
+// (matches the store staging path's MAX_STAGED_NEURON_ROWS/MAX_STAGED_NEURONS_BYTES,
 // workers/request-handlers/staging.mjs) without inviting a pathological body.
 const NEURONS_SYNC_MAX_BODY_BYTES = 32_000_000;
 const NEURONS_SYNC_MAX_ROWS = 50_000;
@@ -653,13 +653,13 @@ const NEURON_SYNC_ROW_SCHEMA = neuronSyncRowSchema({
   maxStringBytes: NEURONS_SYNC_MAX_STRING_BYTES,
 });
 
-// captured_at is epoch ms; snapshot_date is the UTC day, matching D1's
+// captured_at is epoch ms; snapshot_date is the UTC day, matching the store's
 // rollupNeuronDaily (`date(captured_at / 1000, 'unixepoch')`).
 const neuronSyncSnapshotDate = neuronSnapshotDate;
 
 // Coerce one validated row into the exact JS types each Postgres column
 // expects: 0/1 -> boolean for the BOOLEAN columns (the fetch script emits
-// 0/1 integers, same convention D1's INTEGER columns use), everything else
+// 0/1 integers, same convention the store's INTEGER columns use), everything else
 // passes through (postgres.js binds numbers/strings/nulls as-is).
 function coerceNeuronSyncRow(row: Row) {
   const out: Row = {};
@@ -678,7 +678,7 @@ function stripClientSnapshotDate(row: Row) {
   return rest;
 }
 
-// --- Neurons-family READS on D1 (box decommission; tests/fixtures/sqlite-schema/0007) ------
+// --- Neurons-family READS on the store (box decommission; tests/fixtures/sqlite-schema/0007) ------
 //
 async function handleNeuronsSync(
   request: Request,
@@ -835,17 +835,15 @@ async function handleNeuronsSync(
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
-  // THE NEON MIRROR (metagraphed-infra#336), and it runs AFTER the D1 write
-  // returns, never instead of it and never in front of it.
+  // THE NEON WRITE (metagraphed-infra#336), which was a mirror behind a second
+  // store and is now the write itself.
   //
-  // That ordering is the whole lesson of how the pilot broke: a read moved to
-  // Neon while nothing wrote to it, so a public route served a two-day-old
-  // snapshot. During dual-write, D1 is still the store every route reads, so a
-  // Neon failure must cost a mirror and a lane verdict -- not the pass. It
-  // reports its own outcome and cannot throw.
-  //
-  // Off unless NEON_DUAL_WRITE_LANES names the lane, so the deploy that
-  // introduces this changes nothing.
+  // The ordering it was built with is still the lesson of how the pilot broke:
+  // a read moved to Neon while nothing wrote to it, so a public route served a
+  // two-day-old snapshot. What changed is the cost of failure -- Neon is the
+  // store every route reads, so a pass that did not reach it did not happen,
+  // and the check below returns 502 rather than recording a mirror verdict.
+  // It still reports its own outcome and cannot throw.
   const neon = await mirrorNeuronSnapshotToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
@@ -902,7 +900,7 @@ async function handleNeuronsSync(
 // extrinsics / chain_events / account_events that makes block drill-down
 // current instead of up to an hour stale. Same delivery pattern as every other
 // lane in this file -- the producer decodes, POSTs a token-authed batch, and
-// this lands it in D1 -- so there is no new topology, only a new destination.
+// this lands it in the store -- so there is no new topology, only a new destination.
 //
 // The producer is metagraphed-infra's live-follow poller lane, which follows
 // the FINALIZED head and decodes with the SAME shared decoder the hourly R2
@@ -962,7 +960,7 @@ async function handleChainDetailSync(
   if (!batch.ok) return writeJson({ error: batch.error }, batch.status);
 
   // D1 is the binding this path requires UNTIL Neon owns the four families
-  // (#10144) -- asked only when the D1 write below is going to happen, since an
+  // (#10144) -- asked only when the store write below is going to happen, since an
   // unconditional check answered 503 here and never reached the Neon write.
   //
   // Checked HERE, after parsing and validation, not at the top: a malformed
@@ -1035,7 +1033,7 @@ async function handleChainDetailSync(
   } catch (err) {
     console.error("data-api chain-detail-sync write failed:", err);
     await captureDataApiError(err, "chain-detail-sync-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
+    return writeJson({ error: "store write failed" }, 502);
   }
 
   // The write's failure IS the pass's failure. Reporting ok:true would tell the
@@ -1216,7 +1214,7 @@ async function handleNeuronDailyBackfill(
   // system used to be: write D1, fail the request if that write fails, then
   // mirror to Neon and report `stores: ["d1","neon"]`. Both tables it writes
   // are Neon's outright, so that ordering had the authoritative store in the
-  // mirror's position -- a backfill could report success on a D1 write nothing
+  // mirror's position -- a backfill could report success on a store write nothing
   // reads, and a Neon failure was invisible.
   //
   // The same all-or-nothing family gate the sync handler applies, and checked
@@ -1229,7 +1227,7 @@ async function handleNeuronDailyBackfill(
   //
   // This route writes the SAME two derived tables handleNeuronsSync does, and
   // for a while only that one mirrored. The gap was measurable and stable:
-  // `account_position_daily` for 2026-08-07 held 30,216 rows in D1 against
+  // `account_position_daily` for 2026-08-07 held 30,216 rows in the store against
   // 30,124 in Neon -- 92 rows across 69 accounts, unchanged across
   // measurements minutes apart, so not tick skew. `neurons` matched exactly on
   // a content checksum, because it has only one writer.
@@ -1305,7 +1303,7 @@ async function handleNeuronDailyBackfill(
 // dedicated hourly GitHub Actions workflow (rollup-account-events-daily.yml,
 // retired) made the same POST over
 // the public internet; the cron dispatch constructs the identical request
-// internally instead. Mirrors D1's rollupAccountEventsDaily
+// internally instead. Mirrors the store's rollupAccountEventsDaily
 // (src/account-events.ts) exactly: re-roll the two active UTC days each
 // run (past days are already finalized), upsert idempotently. No request
 // body -- this is a trigger-only POST, not a data-carrying sync.
@@ -1315,7 +1313,7 @@ async function handleNeuronDailyBackfill(
 // The write path into subnet_hyperparams + subnet_hyperparams_history,
 // reached only via workers/api.ts's handleSubnetHyperparamsSyncProxy (the
 // same proxyToDataApi shape as neurons-sync/rollup-account-events-daily
-// above) -- now this workflow's SOLE write path, D1's own R2-stage-to-D1
+// above) -- now this workflow's SOLE write path, the store's own R2-stage-to-D1
 // loader (loadStagedSubnetHyperparams) having been retired alongside D1's
 // copy of these two tables. The producer is metagraphed-infra's
 // data-refresh-cron job, which POSTs directly here. The retired
@@ -1685,7 +1683,7 @@ async function handleSubnetHyperparamsBackfill(
 // snapshot pass hasn't necessarily lost its identity.
 const ACCOUNT_IDENTITY_SYNC_TOKEN_HEADER = "x-account-identity-sync-token";
 // ~460 rows live-observed 2026-07-09 (~1.5% of ~30k active neurons); generous
-// headroom, matching the D1 staging path's MAX_STAGED_ACCOUNT_IDENTITY_ROWS/
+// headroom, matching the store staging path's MAX_STAGED_ACCOUNT_IDENTITY_ROWS/
 // _BYTES.
 const ACCOUNT_IDENTITY_SYNC_MAX_BODY_BYTES = 5_000_000;
 const ACCOUNT_IDENTITY_SYNC_MAX_ROWS = 20_000;
@@ -1704,7 +1702,7 @@ const ACCOUNT_IDENTITY_SYNC_ROW_SCHEMA = accountIdentitySyncRowSchema({
 // sequence for encoding UTF8: 0x00") -- confirmed live 2026-07-11 against a
 // real staged row whose discord/additional fields were a literal U+0000
 // placeholder. SQLite's byte-oriented TEXT storage tolerates this silently
-// (the D1 path never needed to guard against it), so this is a Postgres-only
+// (the store path never needed to guard against it), so this is a Postgres-only
 // concern: strip rather than reject, matching the "sanitize a chain-data
 // value the sink genuinely can't represent" precedent set by
 // weights_rate_limit's u64::MAX widening in subnet-hyperparams-sync.
@@ -2409,7 +2407,7 @@ async function handleValidatorNominatorCountsSync(
     });
   }
 
-  // NO D1 WRITE, and no D1 binding requirement: validator_nominator_counts and
+  // NO D1 WRITE, and no store binding requirement: validator_nominator_counts and
   // its pass ledger are Neon's outright (#10116). What used to be a
   // write-then-mirror pair is now one write, below.
   // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
@@ -2645,7 +2643,7 @@ async function handleNominatorPositionsSync(
     });
   }
 
-  // NO D1 WRITE, and no D1 binding requirement: nominator_positions and its
+  // NO D1 WRITE, and no store binding requirement: nominator_positions and its
   // pass ledger are Neon's outright (#10111). The queue consumer below is this
   // lane's other entry point and it does not write D1 either.
   const neon = await mirrorNominatorPositionsToNeon(
@@ -3369,7 +3367,7 @@ async function handleHotkeyAlphaSync(
   // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
   // other -- #9728 was a single unmirrored writer leaving a table short while
   // the row count looked nearly right. THE PASS RIDES ALONG: it did not, so
-  // D1's tally filled while hotkey_alpha_passes stayed empty in Neon.
+  // the store's tally filled while hotkey_alpha_passes stayed empty in Neon.
   const neon = await mirrorLedgerToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
@@ -3466,7 +3464,7 @@ async function handlePollerLaneHealthSync(request: Request, env: Env) {
   }
   // Whichever store holds lane_health (#10127). Every one of this repo's 27
   // watchdogs already writes its verdicts through laneHealthStore; this route
-  // was the one writer still reaching for the D1 binding by name, so the
+  // was the one writer still reaching for the store binding by name, so the
   // poller's job outcomes were the only verdicts that would have stopped
   // landing when D1 went away -- and recordLaneVerdict swallows failures, so
   // they would have stopped silently.
@@ -3529,7 +3527,7 @@ const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
 // the table is deep enough (~2026-08-09); nothing here needs changing for it.
 export const REALIZED_RETURN_BASELINE_TOLERANCE_DAYS = 2;
 
-// postgres.js returns BIGINT columns as strings; the D1-backed routes return them
+// postgres.js returns BIGINT columns as strings; the store-backed routes return them
 // as numbers. block_number and observed_at are both < 2^53, so Number(...) is
 // lossless — coerce them per event row for a consistent numeric API shape.
 function numberOrNull(v: unknown) {
@@ -3565,7 +3563,7 @@ function numberOrNull(v: unknown) {
 // database (tests/fixtures/sqlite-schema/0004_user_state.sql), not the chain-data Postgres
 // tier -- they are the box's last functional tenants and D1 is exactly their
 // lane (small, transactional, user/config state). The runner below is a
-// tagged-template shim over D1's prepare/bind/all so the ~40 existing call
+// tagged-template shim over the store's prepare/bind/all so the ~40 existing call
 // sites keep their postgres.js-era shape: `sql\`SELECT ... ${value}\``
 // becomes prepare("SELECT ... ?").bind(value).all() and resolves to the
 // result rows.
@@ -3670,7 +3668,7 @@ function normalizeDeliveryRow(row: ChainAlertDeliveries): Row {
  *
  * All or nothing, the same rule every other group in this file follows: the
  * pass writes them from ONE derivation, so a half-listed group would leave
- * neuron_daily in D1 while its parent moved and the two would never agree
+ * neuron_daily in the store while its parent moved and the two would never agree
  * again.
  */
 export const NEURONS_SNAPSHOT_TABLES = [
@@ -3682,7 +3680,7 @@ export const NEURONS_SNAPSHOT_TABLES = [
 /**
  * Whether Neon is the ONLY store behind a neurons snapshot on this deployment.
  *
- * When true the D1 write is skipped outright and the Neon write becomes
+ * When true the store write is skipped outright and the Neon write becomes
  * authoritative -- its failure is the request's failure, where during
  * dual-write it was only a lane verdict. That inversion is the point: while D1
  * still served reads, a Neon failure had to cost a mirror and not the pass;
@@ -3788,7 +3786,7 @@ export const ACCOUNT_STATE_TABLES = [
  * text on either side.
  *
  * Returns null when neither store is available, which the callers turn into
- * the 503 they already returned for a missing D1 binding.
+ * the 503 they already returned for a missing store binding.
  */
 export function userStateRunner(
   env: Env,
@@ -4270,7 +4268,7 @@ async function handleAlertTriggersMatchedWriteback(
     // id), which a tagged template can't express. The first bind is the
     // shared `now` timestamp.
     //
-    // CHUNKED, because the Workers D1 binding caps a statement at 100 bound
+    // CHUNKED, because the Workers store binding caps a statement at 100 bound
     // parameters. AlerterHub.evaluate() posts every matched trigger id in one
     // call and the active-trigger load has no LIMIT, so a broad table_filter
     // across ~100 active triggers bound 101 values, D1 threw "too many SQL
@@ -6335,7 +6333,7 @@ async function handleAccountKeysRoute(
   );
 }
 
-// --- Neurons-family D1 read routes (box decommission; tests/fixtures/sqlite-schema/0007) --
+// --- Neurons-family store read routes (box decommission; tests/fixtures/sqlite-schema/0007) --
 //
 // The D1 twins of every neurons/neuron_daily/account_position_daily read the
 // deleted Postgres dispatcher served, matched whenever METAGRAPH_NEURONS_SOURCE
@@ -6347,7 +6345,7 @@ async function handleAccountKeysRoute(
 // SQLite. Then #9784 gave the same query text a second store to run against,
 // and every one-directional rendering below became a live hazard: the SQLite
 // side is now the ONLY side, executed verbatim against both dialects. A
-// rendering that is merely correct for D1 serves a wrong answer on Neon.
+// rendering that is merely correct for D1 served a wrong answer on Neon.
 //
 // So the surviving rule is ONE PORTABLE RENDERING, not two dialects kept in
 // sync. Each entry says what both stores accept and why the alternatives are
@@ -6355,7 +6353,7 @@ async function handleAccountKeysRoute(
 // a movable route reacquires one:
 //   - snapshot_date needs no ::cast -- it is TEXT 'YYYY-MM-DD' in both, and
 //     lexicographic comparison IS date order for ISO dates in both.
-//   - `validator_permit = TRUE`, never `= 1`. D1 stores the column INTEGER 0/1
+//   - `validator_permit = TRUE`, never `= 1`. D1 stored the column INTEGER 0/1
 //     and Neon declares it BOOLEAN, because the mirror writes real JS booleans.
 //     Postgres rejects `boolean = integer` outright, so `= 1` made the query
 //     throw, the `?? buildGlobalValidators([])` fallback swallowed it, and
@@ -6384,10 +6382,10 @@ async function handleAccountKeysRoute(
 // have NO D1 home yet -- their families are frozen or port separately -- so the
 // twins pass each builder the degraded value the retired Postgres loader's own
 // catch branch produced (empty set/map, null), rather than issuing a query that
-// can only ever throw. Wire the real reads in when those tables land on D1.
+// can only ever throw. Wire the real reads in when those tables land on the store.
 //
 // subnet_hyperparams' TEMPO no longer belongs to that list either (#9342). It
-// landed on D1 in tests/fixtures/sqlite-schema/0009 and is populated for every subnet, but both
+// landed on the store in tests/fixtures/sqlite-schema/0009 and is populated for every subnet, but both
 // validator handlers kept passing `tempoByNetuid: new Map()` -- the placeholder
 // this comment told them to pass. An empty map means every lookup misses, and
 // accumulateApyRow skips a membership whose tempo is unresolved, so apy_estimate
@@ -6407,7 +6405,7 @@ type NeuronsStoreRouteHandler = (sql: PgSql, env: Env) => Promise<Response>;
 // alpha_price_tao. Group-wise-MAX join instead of DISTINCT ON, same
 // degrade-to-empty-map failure contract (every non-root row is then excluded
 // from the totals rather than counted 1:1).
-// netuid -> tempo(blocks) from the subnet_hyperparams D1 tier (#9342), for
+// netuid -> tempo(blocks) from the subnet_hyperparams tier (#9342), for
 // accumulateApyRow to annualize each membership's emission_tao.
 //
 // Same degrade-to-empty-map contract as its siblings: a cold or absent table
@@ -6507,11 +6505,11 @@ async function loadStoreAlphaPricesByNetuid(
   }
 }
 
-// hotkey -> nominator_count for every permitted validator, from the D1 table
+// hotkey -> nominator_count for every permitted validator, from the store table
 // tests/fixtures/sqlite-schema/0012 created (#9146).
 //
 // CORRELATED SUBQUERY, NOT AN IN LIST, and that is load-bearing rather than
-// stylistic: the leaderboard covers ~1,031 hotkeys and the Workers D1 binding
+// stylistic: the leaderboard covers ~1,031 hotkeys and the Workers store binding
 // caps a statement at 100 bound parameters, so an inlined key list would need
 // chunking into a dozen round trips (what the lakehouse reader has to do,
 // having no join to reach for). Joining against `neurons` inside SQLite costs
@@ -7063,7 +7061,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // now. Identity was the last straggler: this dispatcher shipped with
   // identityByColdkey: new Map() while "the Postgres-backed route" did the
   // join -- and when Postgres was removed, every operator name on /validators
-  // silently vanished. account_identity IS actively written in D1 (the
+  // silently vanished. account_identity IS actively written in the store (the
   // account-identity-sync path above), so the join reads it directly.
   if (url.pathname === "/api/v1/validators") {
     return async (sql, env) => {
@@ -7767,7 +7765,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   return null;
 }
 
-// --- Hyperparams + account-identity D1 read routes (box decommission;
+// --- Hyperparams + account-identity store read routes (box decommission;
 // tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql) ------------------------------
 //
 // The D1 twins of the four family reads the deleted Postgres dispatcher
@@ -7778,7 +7776,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
 // means D1, exactly like neuronsServedFromStore).
 //
 // With ONE deliberate addition over the neurons twins: a COLD tier -- the
-// route's D1 table has NO rows at all because no sync has landed since the
+// route's store table has NO rows at all because no sync has landed since the
 // migration -- answers 503 instead of a schema-stable empty. tryDataApiTier
 // treats any non-2xx as "degrade to null", which sends the serving handler to
 // its next fallback: the lakehouse cold-tier reader
@@ -7831,7 +7829,7 @@ function matchHealthStatusStoreRoute(
 }
 
 function storeTierCold() {
-  return json({ error: "d1 tier cold: no sync has landed yet" }, 503);
+  return json({ error: "store tier cold: no sync has landed yet" }, 503);
 }
 
 async function storeTableHasRows(
@@ -8320,7 +8318,7 @@ async function dispatchDataApiRequest(
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
 
-    // Neurons-family reads on D1 (box decommission) -- these serve with no
+    // Neurons-family reads (box decommission) -- these serve with no
     // Postgres tier at all, which is the whole point of the port. Every other
     // route falls through to the gone-tier 503 below. Log + masked-route
     // capture + an opaque 502 that never leaks DB detail.
@@ -8339,7 +8337,7 @@ async function dispatchDataApiRequest(
       }
     }
 
-    // Probe status on D1 (#9522) -- the internal continuity read the prober
+    // Probe status on the store (#9522) -- the internal continuity read the prober
     // and the health-serving fallback have both always called. Same envelope
     // as the neurons block above.
     {
@@ -8352,14 +8350,14 @@ async function dispatchDataApiRequest(
         try {
           return await healthStatusStoreHandler(store, env);
         } catch (err) {
-          console.error("data-api health-status D1 query failed:", err);
+          console.error("data-api health-status store query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
           return json({ error: "data query failed" }, 502);
         }
       }
     }
 
-    // Hyperparams + account-identity reads on D1 (box decommission,
+    // Hyperparams + account-identity reads on the store (box decommission,
     // tests/fixtures/sqlite-schema/0009) -- the same shape as the neurons block above, with
     // the per-family flag check folded into the matcher (each family switches
     // independently). Same catch envelope: log + masked-route capture + an
@@ -8375,7 +8373,10 @@ async function dispatchDataApiRequest(
         try {
           return await hyperparamsIdentityStoreHandler(store, env);
         } catch (err) {
-          console.error("data-api hyperparams/identity D1 query failed:", err);
+          console.error(
+            "data-api hyperparams/identity store query failed:",
+            err,
+          );
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
           return json({ error: "data query failed" }, 502);
         }
@@ -8388,7 +8389,7 @@ async function dispatchDataApiRequest(
     // gate answered all of them. The status and body are deliberately
     // UNCHANGED, because the forward gate depends on them: tryDataApiTier's
     // callers in the main Worker read a non-2xx here as "this tier declines"
-    // and fall through to the lakehouse/D1 tiers exactly as they do today.
+    // and fall through to the lakehouse/store tiers exactly as they do today.
     return json({ error: "hyperdrive binding unavailable" }, 503);
   }
 }
@@ -8839,7 +8840,7 @@ export default {
     // UNCONDITIONAL (#10179). These two maps used to be built only when the D1
     // binding was present, and an absent binding made them `{}` -- which is not
     // "no writer available", it is a consumer that acks every message for every
-    // lane and drops the rows. The Neon writers below need no D1 binding and
+    // lane and drops the rows. The Neon writers below need no store binding and
     // never did.
     const familyWriters: SyncBatchFamilyWriters = {
       "chain-detail": async (families) => {
@@ -9037,7 +9038,7 @@ export default {
       } catch (err) {
         console.error("sync-batches: write failed:", err);
         await captureDataApiError(err, `sync-batches/${body.lane}`, env);
-        // Retried: a D1 write that failed under load is exactly what the queue's
+        // Retried: a store write that failed under load is exactly what the queue's
         // backoff exists for, and this is the failure the one-second producer
         // sleep was standing in for.
         message.retry();

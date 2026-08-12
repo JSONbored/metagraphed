@@ -82,7 +82,7 @@ export async function identityHash(snapshot: unknown): Promise<string | null> {
 
 // Non-negative integer block height, or null for absent/blank/negative cells.
 // Mirrors toBlockNumber in account-events.ts: Number("") / Number("   ") both
-// coerce to 0, so a blank D1 cell must be rejected before the Number() coercion.
+// coerce to 0, so a blank cell must be rejected before the Number() coercion.
 function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
@@ -185,7 +185,7 @@ function rowNetuid(value: unknown): number | null {
 }
 
 // D1 retirement (2026-07-16, item 8 of the D1->Postgres cleanup): used to
-// query D1's own subnet_identity_history directly; now reads the same latest-
+// query the store's own subnet_identity_history directly; now reads the same latest-
 // per-netuid hash via the Postgres-backed internal endpoint (workers/data-
 // api.ts's /api/v1/internal/subnet-identity-latest-hashes), reusing
 // the same table DIRECTLY (see latestIdentityHashes below): no flag, no
@@ -286,7 +286,7 @@ async function latestBlockNumber(env: Env): Promise<number | null> {
  * internet crossing (unlike the other three #4832 sync routes, which are
  * driven by external GitHub Actions workflows and therefore cross the
  * public internet through the proxy). Best-effort: never throws, and a
- * failure here must never block the D1 write above (the primary contract)
+ * failure here must never block the store write above (the primary contract)
  * or the rest of writeSubnetSnapshot's own work.
  */
 
@@ -298,7 +298,7 @@ async function latestBlockNumber(env: Env): Promise<number | null> {
  * INSERT had never successfully appended a single row to production D1
  * (confirmed via direct `wrangler d1 execute`, both before and after a live
  * cron tick -- see wrangler.jsonc's METAGRAPH_SUBNET_IDENTITY_SOURCE comment
- * for the full writeup). This now only reads D1's (frozen, from here on)
+ * for the full writeup). This now only reads the store's (frozen, from here on)
  * last-known hashes to report how many profiles' identity fields look
  * changed against that baseline -- writeSubnetSnapshot's own `identity_history`
  * return value -- without writing anything back.
@@ -368,7 +368,7 @@ export async function recordSubnetIdentityChanges(
 }
 
 export async function loadSubnetIdentityHistory(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   {
     limit,
@@ -396,7 +396,7 @@ export async function loadSubnetIdentityHistory(
     sql += " OFFSET ?";
     params.push(off);
   }
-  const rows = await d1(sql, params);
+  const rows = await runner(sql, params);
   const last = rows.length === lim ? rows[rows.length - 1] : null;
   const nextCursor =
     last && Number.isFinite(Number(last.observed_at))
@@ -410,11 +410,11 @@ export async function loadSubnetIdentityHistory(
 }
 
 export async function loadPreviouslyKnownAs(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   currentName: unknown,
 ): Promise<string[]> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT subnet_name, MAX(observed_at) AS observed_at
      FROM subnet_identity_history
      WHERE netuid = ? AND subnet_name IS NOT NULL AND TRIM(subnet_name) != ''
@@ -462,7 +462,7 @@ export function deriveNetuidGroupedAliases(
 }
 
 export async function loadPreviouslyKnownAsForNetuids(
-  d1: SqlRunner,
+  runner: SqlRunner,
   entries: Row[] | null | undefined,
 ): Promise<Map<number, string[]>> {
   const items = entries || [];
@@ -471,7 +471,7 @@ export async function loadPreviouslyKnownAsForNetuids(
     .filter((netuid): netuid is number => Number.isInteger(netuid));
   if (!netuids.length) return new Map();
   const placeholders = netuids.map(() => "?").join(", ");
-  const rows = await d1(
+  const rows = await runner(
     `SELECT netuid, subnet_name, MAX(observed_at) AS observed_at
      FROM subnet_identity_history
      WHERE netuid IN (${placeholders})

@@ -275,7 +275,7 @@ describe("NEURON_MIRROR_PLANS", () => {
   });
 
   test("survives a lane sink that cannot be written to", async () => {
-    // D1 migrations here are applied by hand, so "no such table: lane_health"
+    // migrations here are applied by hand, so "no such table: lane_health"
     // is a state this must survive on the day the migration lands late.
     const out = await mirrorNeuronSnapshotToNeon({}, ctx, input, {
       sql: fakeSql(),

@@ -7,7 +7,7 @@
 // between-coldkeys sibling of /api/v1/subnets/{netuid}/stake-moves (within-account re-delegation
 // churn) — StakeTransferred (transfer_stake) relocates staked alpha from one account to another on
 // the same hotkey, so it moves ownership, not net capital; the sender is the origin account and the
-// netuid is the origin subnet (origin leg only). Pure shaping (buildSubnetStakeTransfers) + a thin D1
+// netuid is the origin subnet (origin leg only). Pure shaping (buildSubnetStakeTransfers) + a thin store
 // loader (loadSubnetStakeTransfers); the Worker adds the envelope. Null-safe: a cold store or a subnet
 // with no StakeTransferred events yields the zeroed card.
 
@@ -33,7 +33,7 @@ function round(value: number, dp = 2): number {
   return Math.round(value * factor) / factor;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -86,12 +86,12 @@ export function buildSubnetStakeTransfers(
 // (epoch ms), and shape with buildSubnetStakeTransfers. The handler resolves windowLabel/windowDays
 // from the window param. Cold/absent store -> the schema-stable zeroed card.
 export async function loadSubnetStakeTransfers(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
 ): Promise<Row> {
   const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT COUNT(*) AS transfers, COUNT(DISTINCT coldkey) AS distinct_senders, " +
       "MAX(observed_at) AS newest_observed " +
       "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ?",

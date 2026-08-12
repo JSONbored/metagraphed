@@ -1,11 +1,11 @@
 // Network-wide performance / reward-distribution metrics: pure statistics over
 // EVERY subnet's per-UID PERFORMANCE columns (incentive, dividends, trust,
-// consensus, validator_trust) from the live `neurons` D1 tier. The network analog
+// consensus, validator_trust) from the live `neurons` store tier. The network analog
 // of a per-subnet reward scorecard and the reward-flow companion to
 // schemas-src/routes/chain-concentration.ts — concentration measures who holds the STAKE/EMISSION
 // across the network; this measures how concentrated the actual REWARDS are and
 // how the 0..1 trust/consensus scores are spread across all neurons at once.
-// Every function is pure + exported for unit tests; the Worker does the D1 read +
+// Every function is pure + exported for unit tests; the Worker does the store read +
 // envelope. Null-safe: an empty snapshot yields a schema-stable `null` block.
 
 import { computeConcentration } from "./concentration.ts";
@@ -144,7 +144,7 @@ export function buildChainPerformance(
     if (Number(row?.active) === 1) activeCount += 1;
     const rawNetuid = row?.netuid;
     if (rawNetuid != null) {
-      // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+      // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
       if (typeof rawNetuid === "string" && rawNetuid.trim() === "") continue;
       const netuid = Number(rawNetuid);
       // Guard the coercion: a non-numeric cell must not count as subnet 0.
@@ -173,16 +173,16 @@ export function buildChainPerformance(
   };
 }
 
-// Shared D1 loader (mirrors handleChainPerformance + loadChainConcentration): read
+// Shared store loader (mirrors handleChainPerformance + loadChainConcentration): read
 // EVERY subnet's neurons in one pass, no netuid filter, and shape them into the
 // network performance artifact. Exported for the MCP tool.
 export async function loadChainPerformance(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
 ): Promise<ChainPerformanceResult> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${CHAIN_PERFORMANCE_READ_COLUMNS} FROM neurons`,
     [],
   );

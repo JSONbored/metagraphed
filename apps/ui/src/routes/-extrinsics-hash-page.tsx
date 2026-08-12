@@ -574,7 +574,7 @@ function renderCallArgs(
 // One arg's value: a nested call (or a list of them, e.g. a batch's `calls`)
 // expands as its own call card; anything else prints as before. asDecodedCall
 // (not the bare isDecodedCall predicate) so this recognizes a nested call
-// under EITHER ingestion pipeline's shape (#4669) -- D1's
+// under EITHER ingestion pipeline's shape (#4669) -- the legacy
 // {call_module,call_function,...} directly, or indexer-rs's {name,values}
 // enum-tree wrapper, normalized to the same shape before rendering.
 //

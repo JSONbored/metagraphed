@@ -77,7 +77,7 @@ describe("extrinsicCall", () => {
 describe("proxyRealAccount", () => {
   const REAL = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  it("extracts the real arg from a Proxy.proxy call (D1 array shape)", () => {
+  it("extracts the real arg from a Proxy.proxy call (legacy array shape)", () => {
     expect(
       proxyRealAccount("Proxy", "proxy", [
         { name: "real", value: REAL },

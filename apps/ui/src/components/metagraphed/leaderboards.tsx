@@ -5,7 +5,7 @@ import { BrandIcon } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import type { LeaderboardBoardKey, LeaderboardRow } from "@/lib/metagraphed/types";
 
-// #1111: surface the five live, D1-computed registry leaderboards
+// #1111: surface the five live, store-computed registry leaderboards
 // (/api/v1/registry/leaderboards) as a homepage discovery module. Each board's
 // ranked rows link straight to the subnet detail page. Self-contained: the whole
 // section hides on error/empty so a discovery extra never breaks the homepage.

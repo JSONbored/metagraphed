@@ -68,7 +68,7 @@ export async function loadReliabilityAggregate(
       // #8329 fixed the "n/a" badge by forwarding an internal
       // /api/v1/subnets/{netuid}/uptime request to the Postgres tier, because
       // that is where the route read from at the time. METAGRAPH_HEALTH_SOURCE
-      // reads "d1" in wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS,
+      // is deleted from every wrangler config and is absent from FORWARDABLE_TIER_FLAGS,
       // so the forward stopped happening and every block came back null --
       // measured on production 2026-08-11, before this:
       //

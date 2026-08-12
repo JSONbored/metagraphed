@@ -251,14 +251,16 @@ describe("GET /api/v1/chain/deregistrations", () => {
   const warm = { networkRow: [NETWORK], subnetRows: SUBNETS };
 
   // #4909/#6013: account_events' D1 write path is retired and the table is
-  // dropped in production, so this handler no longer queries D1 at all --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  // dropped in production, so this handler no longer queries the store at all --
+  // even a "warm" store mock (real rows) must not change the response.
+  test("never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
     let d1Called = false;
     const env = deregistrationsEnv(warm);
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       d1Called = true;
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const res = await handleRequest(
       req("?window=7d"),
@@ -378,7 +380,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
   // table this handler already reads, no new flag) -- tryDataApiTier's own
   // fallback contract is unit-tested in workers/data-api-tier.ts's own
   // tests, so these two just prove the wiring: a Postgres hit is served
-  // as-is with D1 never queried, and a Postgres failure falls back to D1.
+  // as-is with the store never queried, and a store failure falls back to the schema-stable empty card.
   test("the retired tier flag is not consulted even when set (#10190)", async () => {
     // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is absent from
     // FORWARDABLE_TIER_FLAGS, so this route reads no tier at all. Binding a
@@ -399,10 +401,10 @@ describe("GET /api/v1/chain/deregistrations", () => {
     assert.deepEqual(tier.paths, []);
   });
 
-  // #4909/#6013: the D1 "fallback" is a schema-stable empty stub, not a real
+  // #4909/#6013: the "fallback" is a schema-stable empty stub, not a real
   // D1 read (account_events is retired) -- a Postgres failure degrades to the
-  // empty card, not to whatever a D1 mock might return.
-  test("flag=postgres falls back to the empty stub (not D1) when DATA_API fails", async () => {
+  // empty card, not to whatever a store mock might return.
+  test("flag=postgres falls back to the empty stub (not the store) when DATA_API fails", async () => {
     const env = {
       ...deregistrationsEnv(warm),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
@@ -452,9 +454,9 @@ describe("GET /api/v1/chain/deregistrations", () => {
   const DEREGISTRATIONS_CSV_HEADER =
     "netuid,distinct_deregistered_hotkeys,deregistrations,deregistrations_per_hotkey";
 
-  // #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+  // #4909/#6013: even a "warm" store mock never reaches the response -- the CSV
   // export is always header-only now (account_events is retired).
-  test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
+  test("CSV export with ?format=csv is header-only even with a warm store mock", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
       deregistrationsEnv(warm) as unknown as Env,
@@ -573,7 +575,7 @@ describe("chain/deregistrations edge cache", () => {
       );
     const res = await call();
     assert.equal(res.status, 200);
-    // #4909/#6013: account_events is retired, so even this "warm" D1 mock
+    // #4909/#6013: account_events is retired, so even this "warm" store mock
     // never reaches the response -- subnet_count stays 0.
     assert.equal((await res.json()).data.subnet_count, 0);
     await Promise.all(waits);

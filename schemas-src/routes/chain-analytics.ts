@@ -1,5 +1,5 @@
 // GET /api/v1/chain/activity + .../calls + .../signers + .../fees
-// (types-epic B batch 6, #8060). Live extrinsics/blocks D1-tier data -- no
+// (types-epic B batch 6, #8060). Live extrinsics/blocks tier data -- no
 // static file. Modeled from src/chain-analytics.ts's buildChainActivity()/
 // buildChainCalls()/buildChainSigners()/buildChainFees(), cross-checked
 // against the hand-edited ChainActivityArtifact/ChainCallsArtifact/

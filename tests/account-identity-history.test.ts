@@ -61,7 +61,7 @@ function historyRow(overrides = {}) {
 }
 
 describe("formatAccountIdentityHistoryEntry", () => {
-  test("formats D1 rows into API entries", () => {
+  test("formats store rows into API entries", () => {
     assert.deepEqual(formatAccountIdentityHistoryEntry(historyRow()), {
       observed_at: "2023-11-14T22:13:20.000Z",
       name: "Example Team",
@@ -170,11 +170,11 @@ describe("buildAccountIdentityHistory", () => {
 describe("loadAccountIdentityHistory", () => {
   test("paginates with offset when no cursor is provided", async () => {
     const calls: Array<{ sql: string; params: unknown[] }> = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [historyRow()];
     };
-    const out = await loadAccountIdentityHistory(d1, "5Acc0", {
+    const out = await loadAccountIdentityHistory(runner, "5Acc0", {
       limit: 10,
       offset: 5,
     });
@@ -186,14 +186,14 @@ describe("loadAccountIdentityHistory", () => {
 
   test("uses cursor seek and emits next_cursor for a full page", async () => {
     const calls: Array<{ sql: string; params: unknown[] }> = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [
         historyRow({ id: 9, observed_at: 1_600_000_000_000 }),
         historyRow({ id: 8, observed_at: 1_500_000_000_000 }),
       ];
     };
-    const out = await loadAccountIdentityHistory(d1, "5Acc0", {
+    const out = await loadAccountIdentityHistory(runner, "5Acc0", {
       limit: 2,
       cursor: encodeCursor([1_700_000_000_000, 10]),
     });

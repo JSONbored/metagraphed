@@ -196,7 +196,7 @@ test("is schema-stable-zero on a cold store (no rows)", () => {
   });
 });
 
-test("coerces D1 cell shapes (numeric strings, null, negatives) to non-negative ints", () => {
+test("coerces cell shapes (numeric strings, null, negatives) to non-negative ints", () => {
   const [d] = buildChainActivity({
     window: "7d",
     extrinsicRows: [
@@ -260,7 +260,7 @@ test("GET /api/v1/chain/activity rejects an unsupported window with 400", async 
   assert.equal((await res.json()).error.code, "invalid_query");
 });
 
-test("GET /api/v1/chain/activity is schema-stable empty when D1 is cold", async () => {
+test("GET /api/v1/chain/activity is schema-stable empty when the store is cold", async () => {
   const res = await handleRequest(
     activityReq(),
     createLocalArtifactEnv() as unknown as Env,
@@ -554,17 +554,19 @@ test("buildChainSigners nulls blank and missing last_tx_block cells (not block 0
 });
 
 // #4909/#6013: extrinsics' D1 write path is retired and the table is dropped
-// in production, so handleChainSigners no longer queries D1 at all -- even a
+// in production, so handleChainSigners no longer queries the store at all -- even a
 // "warm" D1 mock (real rows) must not change the response. window/limit are
 // still shape-validated for REST contract stability but no longer feed a read.
-test("GET /api/v1/chain/signers never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+test("GET /api/v1/chain/signers never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
   let d1Called = false;
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
       prepare() {
         d1Called = true;
-        throw new Error("D1 must not be queried -- extrinsics is retired");
+        throw new Error(
+          "the retired tier must not be queried -- extrinsics is retired",
+        );
       },
     },
   };
@@ -621,16 +623,18 @@ test("GET /api/v1/chain/signers rejects unsupported sort values", async () => {
 });
 
 // #4909/#6013: account_events' D1 write path is retired and the table is
-// dropped in production, so handleChainTransfers no longer queries D1 at all
-// -- even a "warm" D1 mock (real rows) must not change the response.
-test("GET /api/v1/chain/transfers never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+// dropped in production, so handleChainTransfers no longer queries the store at all
+// -- even a "warm" store mock (real rows) must not change the response.
+test("GET /api/v1/chain/transfers never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
   let d1Called = false;
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
       prepare() {
         d1Called = true;
-        throw new Error("D1 must not be queried -- account_events is retired");
+        throw new Error(
+          "the retired tier must not be queried -- account_events is retired",
+        );
       },
     },
   };
@@ -737,7 +741,7 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
     );
     assert.equal(second.status, 200);
     assert.equal(await second.text(), "");
-    assert.equal(captured.length, 0, "D1 is never queried");
+    assert.equal(captured.length, 0, "the store is never queried");
     assert.equal(cache.matchCalls, 2);
 
     const get = await handleRequest(
@@ -845,9 +849,9 @@ const TRANSFERS_TOTALS = {
   unique_receivers: 6,
 };
 
-// #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+// #4909/#6013: even a "warm" store mock never reaches the response -- the CSV
 // export is always header-only now (account_events is retired).
-test("GET /api/v1/chain/transfers CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
+test("GET /api/v1/chain/transfers CSV export with ?format=csv is header-only even with a warm store mock", async () => {
   const res = await handleRequest(
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfers?window=7d&format=csv",
@@ -910,7 +914,7 @@ test("GET /api/v1/chain/transfers rejects an unsupported format value with 400",
 // table this handler already reads, no new flag) -- tryDataApiTier's own
 // fallback contract is unit-tested in workers/data-api-tier.ts's own tests,
 // so these two just prove the wiring: a Postgres hit is served as-is with D1
-// never queried, and a Postgres failure falls back to D1.
+// never queried, and a store failure falls back to the schema-stable empty card.
 test("GET /api/v1/chain/transfers: the retired tier flag is not consulted (#10190)", async () => {
   // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is
   // absent from FORWARDABLE_TIER_FLAGS, so this route reads no tier. Bind a
@@ -970,7 +974,7 @@ test("GET /api/v1/chain/transfers: CSV export maps Postgres-tier senders/receive
   assert.equal(lines[2], "receiver,5Rx,60,4");
 });
 
-test("GET /api/v1/chain/transfers: flag=postgres falls back to D1 when DATA_API fails", async () => {
+test("GET /api/v1/chain/transfers: flag=postgres falls back to the empty card when DATA_API fails", async () => {
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
@@ -998,16 +1002,18 @@ test("GET /api/v1/chain/transfers: flag=postgres falls back to D1 when DATA_API 
 });
 
 // #4909/#6013: account_events' D1 write path is retired and the table is
-// dropped in production, so handleChainTransferPairs no longer queries D1 at
-// all -- even a "warm" D1 mock (real rows) must not change the response.
-test("GET /api/v1/chain/transfer-pairs never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+// dropped in production, so handleChainTransferPairs no longer queries the store at
+// all -- even a "warm" store mock (real rows) must not change the response.
+test("GET /api/v1/chain/transfer-pairs never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
   let d1Called = false;
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
       prepare() {
         d1Called = true;
-        throw new Error("D1 must not be queried -- account_events is retired");
+        throw new Error(
+          "the retired tier must not be queried -- account_events is retired",
+        );
       },
     },
   };
@@ -1084,9 +1090,9 @@ const PAIR_TOTALS = {
   top_pair_volume_tao: 80,
 };
 
-// #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+// #4909/#6013: even a "warm" store mock never reaches the response -- the CSV
 // export is always header-only now (account_events is retired).
-test("GET /api/v1/chain/transfer-pairs CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
+test("GET /api/v1/chain/transfer-pairs CSV export with ?format=csv is header-only even with a warm store mock", async () => {
   const res = await handleRequest(
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d&format=csv",
@@ -1223,7 +1229,7 @@ test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", a
 // table this handler already reads, no new flag) -- tryDataApiTier's own
 // fallback contract is unit-tested in workers/data-api-tier.ts's own tests,
 // so these two just prove the wiring: a Postgres hit is served as-is with D1
-// never queried, and a Postgres failure falls back to D1.
+// never queried, and a store failure falls back to the schema-stable empty card.
 test("GET /api/v1/chain/transfer-pairs: the retired tier flag is not consulted (#10190)", async () => {
   const tier = forbiddenDataApi();
   const res = await handleRequest(
@@ -1241,7 +1247,7 @@ test("GET /api/v1/chain/transfer-pairs: the retired tier flag is not consulted (
   assert.deepEqual(tier.paths, []);
 });
 
-test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to D1 when DATA_API fails", async () => {
+test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to the empty card when DATA_API fails", async () => {
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_ACCOUNT_EVENTS_SOURCE: "data-api",
@@ -1474,7 +1480,7 @@ test("GET /api/v1/chain/fees rejects an out-of-range limit", async () => {
   }
 });
 
-test("the new chain routes are schema-stable empty when D1 is cold", async () => {
+test("the new chain routes are schema-stable empty when the store is cold", async () => {
   for (const path of [
     "/api/v1/chain/calls",
     "/api/v1/chain/signers",

@@ -5,7 +5,7 @@ import { registerModuleStateReset } from "../src/module-state-registry.ts";
 // DATA_API-forwarding serving gate, one env flag per data source (originally
 // ADR 0013 Sequencing step 3's gated D1 -> Postgres cutover; D1 fully
 // eliminated 2026-07-17 -- reconfirmed 2026-08-11, zero `d1_databases` blocks
-// in any wrangler config and no D1 binding on any deployed Worker).
+// in any wrangler config and no store binding on any deployed Worker).
 //
 // WHAT THE FLAGS ACTUALLY READ, measured across all three configs 2026-08-11:
 // 8 read "retired", 8 read "d1", and NONE reads "postgres". The

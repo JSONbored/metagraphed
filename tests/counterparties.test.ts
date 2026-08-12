@@ -52,7 +52,7 @@ describe("buildCounterparties", () => {
   });
 
   test("coerces a numeric-string block_number into last_block and its tie-break (#2413)", () => {
-    // D1 can return an INTEGER column as a numeric string; last_block must still
+    // the store can return an INTEGER column as a numeric string; last_block must still
     // populate (matching buildCounterpartyRelationship) so the equal-volume
     // tie-break prefers the more recent counterparty instead of collapsing to 0.
     const data = buildCounterparties(

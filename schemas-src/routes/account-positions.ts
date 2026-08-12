@@ -1,6 +1,6 @@
 // GET /api/v1/accounts/{ss58}/positions + .../subnets/{netuid}/history
 // (types-epic B batch 4, #8058). Live nominator_positions/neurons +
-// account_position_daily D1-tier data -- no static file. Modeled from
+// account_position_daily store-tier data -- no static file. Modeled from
 // src/account-nominator-positions.ts's buildAccountPositions() and
 // src/account-position-history.ts's buildAccountPositionHistory()/
 // formatAccountPosition(), cross-checked against the hand-edited

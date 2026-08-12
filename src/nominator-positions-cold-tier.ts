@@ -11,7 +11,7 @@
 // `share_fraction` is dimensionless, this coldkey's slice of a hotkey's
 // alpha-pool shares on one subnet, with no stake figure of its own (see
 // src/account-nominator-positions.ts's header for why it is stored that way).
-// The stake side comes from `neurons`, which lives on D1 and is current, so
+// The stake side comes from `neurons`, which lives on the store and is current, so
 // this read is lakehouse-for-the-ledger + D1-for-the-stake -- exactly the
 // split the retired Postgres route already ran once `neurons` moved to D1
 // (it called loadNeuronStakeByHotkeysFromStore from inside the Postgres dispatcher).
@@ -87,7 +87,7 @@ export const POSITION_SCAN_CAP = 2_000;
  */
 export const BIND_PARAM_CHUNK = 100;
 
-/** The D1 surface this module needs from `neurons` -- structural, so tests can
+/** The store surface this module needs from `neurons` -- structural, so tests can
  * hand a plain object (same pattern as src/account-feeds-cold-tier.ts). */
 interface StatementClientLike {
   query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;

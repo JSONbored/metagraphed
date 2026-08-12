@@ -76,7 +76,7 @@ test("GET /api/v1/governance/config-changes rejects an unsupported success value
   assert.equal(res.status, 400);
 });
 
-test("GET /api/v1/governance/config-changes is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /api/v1/governance/config-changes is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req("/api/v1/governance/config-changes"),
     dbWith([]) as unknown as Env,

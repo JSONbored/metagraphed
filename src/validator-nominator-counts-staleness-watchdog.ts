@@ -34,14 +34,14 @@
 // the watchdog back to inferring from an absence of report -- the check that
 // already said `ok`).
 //
-// MEASURED 2026-08-05, production D1: 112,250 rows total across three vintages
+// MEASURED 2026-08-05, production: 112,250 rows total across three vintages
 // -- 112,245 at the newest stamp, then 1 and 4 rows at two older ones. Those
 // five stragglers are the no-prune behaviour working as designed (a hotkey the
 // latest scan did not re-send keeps its last known count), and they are why
 // coverage is counted over a WINDOW rather than an exact stamp match.
 //
 // COST: one walk of ~112k rows on a `19,49 * * * *` cron, 48 ticks a day, so
-// ~5.4M D1 rows read a day.
+// ~5.4M store rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { passWindowMs } from "./producer-cadence.ts";
@@ -73,7 +73,7 @@ export const VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS =
 /**
  * How many hotkeys a COMPLETE pass is expected to write.
  *
- * 112,245, read off production D1 on 2026-08-05 as the row count at the newest
+ * 112,245, read off production on 2026-08-05 as the row count at the newest
  * `captured_at`. The table is keyed on (hotkey) alone, so a row IS a hotkey --
  * every hotkey the SubtensorModule::Alpha scan found with at least one
  * nominator.

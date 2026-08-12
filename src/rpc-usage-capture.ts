@@ -1,6 +1,6 @@
 // RPC reverse-proxy usage capture, on Workers Analytics Engine (#9228).
 //
-// This is the writer that stopped existing. D1's `rpc_proxy_events` went with
+// This is the writer that stopped existing. the store's `rpc_proxy_events` went with
 // the chain-data retirement, the Postgres mirror went with the box, and the
 // lakehouse is a read tier nothing appends to -- so the only writer left was
 // a per-request POST to an internal route that has answered 503

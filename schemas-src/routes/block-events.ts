@@ -1,5 +1,5 @@
 // GET /api/v1/blocks/{ref}/events (types-epic B batch 7, #8061). Live
-// account_events D1-tier data -- no static file. Modeled from
+// account_events store-tier data -- no static file. Modeled from
 // src/account-events.ts's buildBlockEvents(), cross-checked against the
 // hand-edited BlockEventsArtifact component it replaces. Reuses
 // AccountEventSchema from subnet-events.ts (types-epic B batch 1, #8055),

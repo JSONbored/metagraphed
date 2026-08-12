@@ -3,8 +3,9 @@
 // WHY THESE TWO NEEDED A MODULE AT ALL. Both families showed exact parity in
 // Neon and looked ready to invert -- and neither handler had ever executed a
 // Neon write. `grep -ci neon` over either returned 0; both end with "the D1
-// write IS the sync". Their Neon copies exist because NEON_BACKFILL_LANES
-// reconciles them on a cron, not because anything mirrors them.
+// write IS the sync". Their Neon copies existed because NEON_BACKFILL_LANES
+// reconciled them on a cron, not because anything mirrored them -- both that
+// flag and the reconciler are since deleted.
 //
 // That distinction is the whole reason this exists. The neurons lane could
 // invert (#10037) on a mirror that had been writing every pass for weeks, so
@@ -13,12 +14,12 @@
 // while simultaneously removing the D1 copy -- which is how a migration loses
 // rows rather than moving them.
 //
-// TRANSITIONAL, AND TRACKED AS SUCH (#10051). This is a rung, not the
-// destination: once these tables are in NEON_SOLE_STORE_TABLES the D1 write
-// goes, and once every table has crossed, NEON_DUAL_WRITE_LANES and every
-// mirror call site including this one get deleted. A reconciler or mirror that
-// outlives the inversion is worse than dead code -- it would copy a frozen D1
-// over live Neon rows, because it cannot tell the direction reversed.
+// THE INVERSION THIS ANTICIPATED HAS HAPPENED (#10051). Both cutover flags
+// are deleted and this is the write, not a mirror of one. What the original
+// note warned about is why no reconciler survived the crossing: one that
+// outlived it would have copied a frozen D1 over live Neon rows, unable to
+// tell that the direction had reversed. The name `mirrorFamilyToNeon` is all
+// that is left of the rung.
 import { laneHealthStore } from "./lane-health-store.ts";
 import { SUBNET_HYPERPARAMS_INSERT_COLUMNS } from "./subnet-hyperparams.ts";
 import {
@@ -289,11 +290,10 @@ export interface FamilyMirrorOutcome {
 /**
  * Write one family into Neon. Never throws.
  *
- * While D1 is still authoritative, a Neon failure costs a lane verdict and
- * nothing a caller can see. Once the family is in NEON_SOLE_STORE_TABLES the
- * handler reads `results` and turns any failure into the request's failure --
- * that inversion lives at the call site, not here, so this function has one
- * behaviour rather than two.
+ * Neon is the only store, so the inversion this once described has already
+ * happened: the handler reads `results` and turns any failure into the
+ * request's failure. That still lives at the call site rather than here, so
+ * this function has one behaviour rather than two.
  */
 export async function mirrorFamilyToNeon(
   env: Record<string, unknown> | null | undefined,

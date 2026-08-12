@@ -2,7 +2,7 @@
 // scripts/sample-emission-gate.ts so the SAME logic runs in two shells: the
 // node script (manual runs / Actions dispatch) and the Worker cron that
 // replaced the Actions schedule. The 10-minute cadence belongs on Cloudflare
-// with the rest of the lane -- the persistence route, the D1 state, and the
+// with the rest of the lane -- the persistence route, the store state, and the
 // differs already live in this Worker, so a third-party trigger hop bought
 // nothing but a failure mode.
 //

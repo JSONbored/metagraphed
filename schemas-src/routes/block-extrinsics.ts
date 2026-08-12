@@ -1,5 +1,5 @@
 // GET /api/v1/blocks/{ref}/extrinsics (types-epic B batch 7, #8061). Live
-// extrinsics D1-tier data -- no static file. Modeled from src/extrinsics.ts's
+// extrinsics store-tier data -- no static file. Modeled from src/extrinsics.ts's
 // buildBlockExtrinsics(), cross-checked against the hand-edited
 // BlockExtrinsicsArtifact component it replaces. Reuses ExtrinsicSchema from
 // extrinsics.ts (the same batch's own conversion of that route).

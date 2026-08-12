@@ -74,7 +74,7 @@ describe("identity-history OpenAPI CSV contract", () => {
 });
 
 describe("handleSubnetIdentityHistory CSV export", () => {
-  test("returns header-only CSV on cold D1", async () => {
+  test("returns header-only CSV on a cold store", async () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
       {} as unknown as Env,
@@ -141,7 +141,7 @@ describe("handleSubnetIdentityHistory CSV export", () => {
 });
 
 describe("handleAccountIdentityHistory CSV export", () => {
-  test("returns header-only CSV on cold D1", async () => {
+  test("returns header-only CSV on a cold store", async () => {
     const res = await handleAccountIdentityHistory(
       req(`/api/v1/accounts/${SS58}/identity-history`),
       {} as unknown as Env,

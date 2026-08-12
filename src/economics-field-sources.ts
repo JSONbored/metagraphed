@@ -271,7 +271,7 @@ export const ECONOMICS_FIELD_SOURCES_LIVE_KV = {
   name: { kind: "reconstructed", storage: null },
   slug: { kind: "reconstructed", storage: null },
 
-  // --- D1 `neurons`, a THIRD instant we do not publish -----------------------
+  // --- `neurons`, a THIRD instant we do not publish -----------------------
   // The poller Container refreshes that table on its own 15-minute tick, so
   // these four were read at neither `capture` nor `chain_state.block`.
   // `read_at` is therefore ABSENT, which the vocabulary defines as "no single

@@ -1,5 +1,5 @@
 // GET /api/v1/extrinsics + /api/v1/extrinsics/{hash} (types-epic B batch 7,
-// #8061). Live extrinsics D1-tier data -- no static file. Modeled from
+// #8061). Live extrinsics store-tier data -- no static file. Modeled from
 // src/extrinsics.ts's buildExtrinsicFeed()/buildExtrinsic(), cross-checked
 // against the hand-edited ExtrinsicsFeedArtifact/ExtrinsicDetailArtifact
 // components they replace.

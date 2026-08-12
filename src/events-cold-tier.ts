@@ -26,7 +26,7 @@
 // `/blocks/{n}/chain-events` are two views of one block, and #9260 happened
 // because one of them had a reader and the other did not. The raw one is the
 // larger stream (894M rows against the projection's own count) and its rows go
-// through formatChainEvent, the SAME formatter the D1 hot tier feeds -- so a
+// through formatChainEvent, the SAME formatter the hot tier feeds -- so a
 // caller cannot tell which tier answered, which is the entire point.
 
 import {
@@ -406,7 +406,7 @@ async function resolveBlockHeight(
 }
 
 /** The payload `/api/v1/blocks/{n}/chain-events` has always published, built
- * here from lakehouse rows and by src/chain-detail-hot-tier.ts from D1 rows. */
+ * here from lakehouse rows and by src/chain-detail-hot-tier.ts from store rows. */
 export interface BlockChainEventsColdResult {
   block_number: number;
   count: number;

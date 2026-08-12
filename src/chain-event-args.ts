@@ -3,7 +3,7 @@
 // apps/ui/src/routes/blocks.$ref.tsx. Every other consumer of the same
 // chain_events.args column (the REST /api/v1/chain-events routes and the
 // list_chain_events/get_block_chain_events/get_extrinsic_chain_events MCP
-// tools, all served unconditionally with no D1 fallback) still got the raw
+// tools, all served unconditionally with no store fallback) still got the raw
 // shape. This decodes once, server-side, so every consumer sees the same
 // human-readable values (#4685).
 //

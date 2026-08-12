@@ -298,7 +298,7 @@ describe("buildSubnetConcentrationRanking", () => {
       [0],
     );
     assert.equal(ranked.subnets[0].neuron_count, 1);
-    // A numeric-string netuid is a legitimate D1 cell and must still group.
+    // A numeric-string netuid is a legitimate cell and must still group.
     const stringy = buildSubnetConcentrationRanking(
       [neuron({ netuid: "7" }), neuron({ netuid: 7, coldkey: "ck-b" })],
       { limit: 10 },

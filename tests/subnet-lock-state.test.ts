@@ -521,7 +521,7 @@ describe("all three conviction surfaces reach the live tier", () => {
     // The whole point: the lane is not rebuilt. A table, migration or write
     // path appearing here would mean someone took the larger road after all.
     // Comments legitimately NAME subnet_locks while explaining its absence, so
-    // this asserts on the code: no D1 binding, no prepared statement, no SQL.
+    // this asserts on the code: no store binding, no prepared statement, no SQL.
     const code = readFileSync("src/subnet-lock-state.ts", "utf8")
       .split("\n")
       .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))

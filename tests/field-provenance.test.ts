@@ -457,7 +457,7 @@ describe("economics provenance is selected per serving tier", () => {
     assert.deepEqual(claimed, []);
   });
 
-  test("the D1-backed aggregates declare no instant", () => {
+  test("the store-backed aggregates declare no instant", () => {
     // The poller Container refreshes `neurons` on its own 15-minute tick, so
     // these were read at neither published instant. Absent means "no single
     // published instant applies"; naming either would be a false claim.

@@ -1,5 +1,5 @@
 // GET /api/v1/chain/turnover (types-epic B batch 6, #8060). Live
-// neuron_daily D1-tier data -- no static file. Modeled from
+// neuron_daily store-tier data -- no static file. Modeled from
 // src/chain-turnover.ts's buildChainTurnover(), cross-checked against the
 // hand-edited ChainTurnoverArtifact component it replaces.
 import { z } from "zod";

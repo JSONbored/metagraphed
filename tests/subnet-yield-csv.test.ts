@@ -48,7 +48,7 @@ describe("subnet yield OpenAPI CSV contract", () => {
 });
 
 describe("handleSubnetYield CSV export", () => {
-  test("returns header-only CSV when D1 is cold", async () => {
+  test("returns header-only CSV when the store is cold", async () => {
     const res = await handleSubnetYield(
       req(`/api/v1/subnets/${NETUID}/yield`),
       {} as unknown as Env,

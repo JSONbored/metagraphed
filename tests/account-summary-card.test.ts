@@ -141,7 +141,7 @@ describe("loadAccountRegistrationsFromStore", () => {
   });
 
   test("no binding is an empty list; a bound failure is a decline", async () => {
-    // The difference is the whole point: a deployment without D1 has no neuron
+    // The difference is the whole point: a deployment without D1 had no neuron
     // snapshot to be missing, while a database that IS there and erroring is a
     // fault the card must not paper over.
     assert.deepEqual(
@@ -205,7 +205,7 @@ describe("answerAccountSummary", () => {
     assert.equal(answer.kind, "gap");
   });
 
-  test("a bound D1 that throws DECLINES too, even with the events leg healthy", async () => {
+  test("a bound store that throws DECLINES too, even with the events leg healthy", async () => {
     // A card that is half measured and half zero carries nothing in the
     // payload to say which half is which.
     lakehouse();

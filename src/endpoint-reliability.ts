@@ -14,7 +14,7 @@
 // bandwidth. This does something cheaper and, for the "which of these is a good
 // neighbour" question, better: it ranks on how the endpoint has BEHAVED, from
 // `surface_uptime_daily` — a rollup we already write and already query elsewhere. One
-// D1 read per 15-minute prober run, no new probe traffic, and a 30-day window instead
+// store read per 15-minute prober run, no new probe traffic, and a 30-day window instead
 // of one sample.
 //
 // It does not claim to predict throughput. It replaces "whoever answered a tiny request

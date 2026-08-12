@@ -1,6 +1,6 @@
 // The alarm for the neurons LIVE lane -- the one freshness surface no other
 // watchdog covers. runFreshnessWatchdog reads the publish-freshness artifact,
-// which tracks build/publish lanes; the neurons table in D1 is fed by the
+// which tracks build/publish lanes; the neurons table in the store is fed by the
 // poller Container's 15-minute tick, and when that tick stalls the routes over
 // it keep serving healthy-looking 200s from an aging snapshot. The first such
 // stall (2026-08-03: a zombie container instance, "running" with healthy:0)
@@ -40,7 +40,7 @@
 // is also why any vintage spread at all is a signal here.
 //
 // COST: one walk of ~30k rows on a `6,21,36,51 * * * *` cron, 96 ticks a day,
-// so ~2.9M D1 rows read a day.
+// so ~2.9M store rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
@@ -106,7 +106,7 @@ export function neuronsStalenessThresholdMs(
 /**
  * How many subnets a COMPLETE pass is expected to cover.
  *
- * 129, read off production D1 on 2026-08-05 as `COUNT(DISTINCT netuid)` at the
+ * 129, read off production on 2026-08-05 as `COUNT(DISTINCT netuid)` at the
  * newest stamp, and matching the 129 native subnets `npm run validate` reports
  * from the registry -- two independent counts of the same thing.
  */
@@ -260,7 +260,7 @@ export async function runNeuronsStalenessWatchdog(
   const record = deps.recordException ?? recordExceptionEvent;
   // Whichever store holds the table (#10154). The verdict WRITE moved to
   // laneHealthStore already; this read did not, so the watchdog was measuring
-  // a frozen D1 copy and would have alarmed permanently -- reporting the lane
+  // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["neurons"]) as unknown as
     StatementClientLike | undefined;

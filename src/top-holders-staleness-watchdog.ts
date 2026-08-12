@@ -21,7 +21,7 @@
 // someone gives the lane a producer or withdraws the route."
 //
 // THE LANE GOT A PRODUCER. src/top-holders-flow-tier.ts's holdings leg composes
-// `free_tao` from the account_balances D1 table and `delegated_tao` from
+// `free_tao` from the account_balances store table and `delegated_tao` from
 // hotkey_alpha, both of which now have live poller lanes, and its daily
 // projection declares all six sortable keys -- verified on the served object
 // 2026-08-07: `sorts: [net_flow_7d, net_flow_30d, net_flow_90d, free_tao,

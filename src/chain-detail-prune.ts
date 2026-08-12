@@ -20,7 +20,7 @@
 //   -> 181.6 KiB per block
 //
 // At the chain's ~300 blocks/hour that is ~53 MiB/hour resident, so the 6h
-// floor below holds ~319 MiB: 3.1% of D1's 10 GB per-database cap. The 24h
+// floor below holds ~319 MiB: 3.1% of the store's 10 GB per-database cap. The 24h
 // ceiling holds ~1.25 GiB, 12.5% of the cap, which is the price of the failure
 // mode where the decoder has been dead for a full day.
 //
@@ -238,7 +238,7 @@ export async function pruneChainDetail(
  * production is not constant and the seam moves independently of the clock.
  *
  * Recomputing a bound per store would be worse than not pruning at all. A
- * wider Neon window keeps blocks D1 has dropped and `neon-parity` reports a
+ * wider Neon window keeps blocks D1 had dropped and `neon-parity` reports a
  * permanent surplus; a narrower one drops blocks the hot tier is still
  * expected to serve and the read cutover silently loses coverage at the seam.
  * Both states look like an in-flight backfill rather than a design error,
@@ -246,9 +246,9 @@ export async function pruneChainDetail(
  * run, so the two stores cannot disagree about the window even transiently.
  *
  * THE STORES STILL PRUNE INDEPENDENTLY. A Neon failure is reported and
- * swallowed, never rethrown -- blocking D1's retention on Neon's availability
+ * swallowed, never rethrown -- blocking the store's retention on Neon's availability
  * would freeze the surviving store's window, which is the same reasoning
- * health-prober.ts:949 already applies to its own two-store prune. D1 has
+ * health-prober.ts:949 already applies to its own two-store prune. D1 had
  * already deleted by the time this runs; the worst case is Neon holding a
  * little extra until the next tick, which the next tick fixes.
  *
@@ -259,7 +259,7 @@ export async function pruneChainDetail(
  *   * On the main Worker, where this actually runs, NEON_BACKFILL_LANES was
  *     undefined -- `vars` are per-config -- so the set was empty and this
  *     returned before opening a connection, every tick, forever. Neon was
- *     measured holding 1,499 blocks BELOW D1's floor and growing.
+ *     measured holding 1,499 blocks BELOW the store's floor and growing.
  *   * #10078 established that a table LEAVES the backfill lanes exactly when
  *     Neon becomes its sole store. So the old gate would have switched the
  *     prune off at the precise moment Neon held the only copy -- a second,

@@ -18,14 +18,14 @@
 //
 // ## The U256 precision decision (#4692 Requirement 2)
 //
-// D1's `nonce`/`value`/`gas_limit`/`max_fee_per_gas`/`max_priority_fee_per_gas`
+// the store's `nonce`/`value`/`gas_limit`/`max_fee_per_gas`/`max_priority_fee_per_gas`
 // are already known to lose precision for large values -- but tracing
 // scripts/fetch-events.py shows this is NOT a D1-specific behavior to
 // reconcile: fetch-events.py writes the exact Python int via json.dumps
 // (lossless at the storage layer; no str()/precision handling anywhere in
 // that file), and the actual corruption happens in the SHARED
 // src/extrinsics.ts formatExtrinsic's `JSON.parse(row.call_args)` call --
-// the same JSON.parse used for BOTH D1 and Postgres rows. So "reproduce D1's
+// the same JSON.parse used for BOTH D1 and Postgres rows. So "reproduce the store's
 // behavior" and "the bug this repo already accepts for
 // SubtensorModule.register's PoW nonce" are the same underlying JS
 // large-integer/JSON.parse issue, not something unique to the EVM fields.
@@ -90,7 +90,7 @@ function unwrapU256Limbs(value: unknown): bigint[] | null {
 
 /** 4-limb little-endian u64 array -> exact decimal string (see module header
  * for why this is a string, not a JS number). Returns `value` unchanged
- * (no-op) when the shape doesn't match -- safe on D1's own already-decoded
+ * (no-op) when the shape doesn't match -- safe on the store's own already-decoded
  * plain-number fields, since a JS number is never a 1-element array. */
 export function decodeU256Limbs(value: unknown): unknown {
   const limbs = unwrapU256Limbs(value);
@@ -100,7 +100,7 @@ export function decodeU256Limbs(value: unknown): unknown {
 }
 
 /** 20-byte array (H160), newtype-wrapped or flat -- lowercase 0x-prefixed
- * hex, matching D1's address string form. Reuses bytes.ts's depth-agnostic
+ * hex, matching the store's address string form. Reuses bytes.ts's depth-agnostic
  * unwrapByteArray (already length-agnostic; H160 is just a 20-byte case of
  * the same generic byte-blob shape #4689 already handles). Returns `value`
  * unchanged when the shape doesn't match. */
@@ -119,9 +119,9 @@ function decodeHash32Bytes(value: unknown): unknown {
   return bytes && bytes.length === 32 ? bytesToHex(bytes) : value;
 }
 
-/** Rust single-field tuple-variant enum ({name, values:[x]}) -> D1's
+/** Rust single-field tuple-variant enum ({name, values:[x]}) -> the store's
  * single-key shorthand ({[name]: decodePayload(x)}). A no-op passthrough
- * (returns `value` unchanged) when the shape doesn't match -- safe on D1's
+ * (returns `value` unchanged) when the shape doesn't match -- safe on the store's
  * own {Name: value} shape or a plain scalar. */
 function decodeTupleVariantEnum(
   value: unknown,
@@ -155,7 +155,7 @@ const U256_FIELDS = [
 // unrelated to the Signature::Sr25519 enum family below). `chain_id`/
 // `odd_y_parity`/`access_list`/Legacy's `signature.v` need no decode
 // (already plain scalars/empty arrays either tier). `input` itself is
-// deliberately left untouched -- its own mojibake bug is D1's, out of scope
+// deliberately left untouched -- its own mojibake bug is the store's, out of scope
 // here (bytes.ts's own header) -- `precompile_call` below is an ADDITIVE
 // field decoded from it, not a rewrite of it.
 function decodeEthereumTransactionPayload(payload: unknown): unknown {

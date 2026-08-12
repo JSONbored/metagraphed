@@ -104,7 +104,7 @@ describe("hyperparamsHash", () => {
 });
 
 describe("formatHyperparamsHistoryEntry", () => {
-  test("formats a D1 row into an API entry, nesting hyperparameters", () => {
+  test("formats a store row into an API entry, nesting hyperparameters", () => {
     const out = formatHyperparamsHistoryEntry(historyRow()) as Row;
     assert.equal(out.block_number, 100);
     assert.equal(out.observed_at, "2023-11-14T22:13:20.000Z");
@@ -203,7 +203,7 @@ describe("buildSubnetHyperparamsHistory", () => {
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
 // D1 retirement: subnet_hyperparams_history's D1 write/read path is retired,
-// so this route never queries D1 -- with no METAGRAPH_SUBNET_HYPERPARAMS_SOURCE=
+// so this route never queries the store -- with no METAGRAPH_SUBNET_HYPERPARAMS_SOURCE=
 // postgres flag configured, it always returns the schema-stable empty shape
 // (buildSubnetHyperparamsHistory([], ...) in workers/request-handlers/
 // entities.ts's handleSubnetHyperparamsHistory). Postgres-hit/-failure

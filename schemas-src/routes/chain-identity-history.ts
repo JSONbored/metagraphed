@@ -1,5 +1,5 @@
 // GET /api/v1/chain/identity-history (types-epic B batch 6, #8060). Live
-// subnet_identity_history D1-tier data -- no static file. Modeled from
+// subnet_identity_history store-tier data -- no static file. Modeled from
 // src/chain-identity-history.ts's buildChainIdentityHistory() (which reuses
 // src/subnet-identity-history.ts's formatIdentityHistoryEntry() -- the same
 // sanitizer subnet-identity-history.ts's own per-subnet route already

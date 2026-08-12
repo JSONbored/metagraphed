@@ -1214,7 +1214,7 @@ export class ChainFirehoseHub implements DurableObject {
   // public archive endpoint itself -- blocks lane only (the other three lanes
   // need SCALE decode, which is the Containers indexer's job, #209). Each new
   // block is BOTH broadcast (the stream every subscriber already speaks) and
-  // written to D1's blocks_head (durable from the moment it is seen). The
+  // written to the store's blocks_head (durable from the moment it is seen). The
   // alarm always re-arms, error or not: a poller that stops on one bad RPC
   // response is an outage, one that skips a tick is a hiccup.
   async alarm(): Promise<void> {

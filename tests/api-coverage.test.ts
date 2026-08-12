@@ -691,7 +691,7 @@ describe("/health readiness", () => {
    * (#8700), returned as the env fragment that makes it reachable.
    *
    * `health_db` in the /health payload is now HYPERDRIVE's connection string
-   * rather than a D1 binding, and that flag is what gates the whole
+   * rather than a store binding, and that flag is what gates the whole
    * chain_events block -- so arming the answers and binding the store are one
    * step here, or a test would arm rows nothing ever reads. */
   function healthDb(row: { head: unknown; latest: unknown } | null) {
@@ -2978,7 +2978,7 @@ describe("health trends store error handling", () => {
   // the swallowed error was logged via storeAll's own "[storeAll]" prefix. D1 is now
   // fully eliminated from this route (workers/request-handlers/analytics.ts's
   // handleHealthTrends goes tryDataApiTier -> loadSubnetHealthTrends with no
-  // rows on any miss, never a live D1 read), so storeAll is never reached from
+  // rows on any miss, never a live store read), so storeAll is never reached from
   // this route anymore -- the assertion tested dead wiring. storeAll itself
   // (still present, unchanged, and still exercised via other D1-mock tests in
   // this describe block) is not exported from workers/request-handlers/

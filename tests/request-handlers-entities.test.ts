@@ -810,7 +810,7 @@ describe("handleSubnetMetagraph", () => {
     assert.equal(res.status, 200);
   });
 
-  test("returns schema-stable empty payload on cold/unbound D1", async () => {
+  test("returns schema-stable empty payload on a cold or unbound store", async () => {
     const body = await assertColdSchema(
       handleSubnetMetagraph,
       req(`/api/v1/subnets/${NETUID}/metagraph`),
@@ -922,7 +922,7 @@ describe("handleSubnetMetagraph", () => {
 });
 
 describe("handleSubnetYield", () => {
-  test("returns schema-stable empty payload on cold/unbound D1", async () => {
+  test("returns schema-stable empty payload on a cold or unbound store", async () => {
     const body = await assertColdSchema(
       handleSubnetYield,
       req(`/api/v1/subnets/${NETUID}/yield`),
@@ -959,7 +959,7 @@ describe("handleNeuron", () => {
     assert.match(body.error.message, /unsupported field for neuron: stake/);
   });
 
-  test("returns schema-stable neuron:null on cold/unbound D1", async () => {
+  test("returns schema-stable neuron:null on a cold or unbound store", async () => {
     const body = await assertColdSchema(
       handleNeuron,
       req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
@@ -1024,7 +1024,7 @@ describe("handleSubnetValidators", () => {
     assert.deepEqual(body.meta.projection, { fields: ["hotkey"] });
   });
 
-  test("returns schema-stable empty validators on cold D1", async () => {
+  test("returns schema-stable empty validators on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetValidators,
       req(`/api/v1/subnets/${NETUID}/validators`),
@@ -1114,7 +1114,7 @@ describe("handleGlobalValidators", () => {
   // It stays as defense in depth for any direct/non-cached caller, so cover it
   // directly here rather than only through the edge-cache route.
 
-  test("returns schema-stable empty leaderboard on cold D1", async () => {
+  test("returns schema-stable empty leaderboard on a cold store", async () => {
     const body = await assertColdSchema(
       handleGlobalValidators,
       req("/api/v1/validators"),
@@ -1284,7 +1284,7 @@ describe("handleNeuronHistory", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns schema-stable empty points on cold D1", async () => {
+  test("returns schema-stable empty points on a cold store", async () => {
     const body = await assertColdSchema(
       handleNeuronHistory,
       req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
@@ -1302,7 +1302,7 @@ describe("handleNeuronHistory", () => {
 });
 
 describe("handleSubnetHistory", () => {
-  test("returns schema-stable empty series on cold D1", async () => {
+  test("returns schema-stable empty series on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetHistory,
       req(`/api/v1/subnets/${NETUID}/history`),
@@ -1374,7 +1374,7 @@ describe("handleSubnetHistory", () => {
 });
 
 describe("handleSubnetIdentityHistory", () => {
-  test("returns schema-stable empty entries on cold D1", async () => {
+  test("returns schema-stable empty entries on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetIdentityHistory,
       req(`/api/v1/subnets/${NETUID}/identity-history`),
@@ -1397,7 +1397,7 @@ describe("handleSubnetIdentityHistory", () => {
 describe("handleSubnetHyperparams", () => {
   // D1 retirement: subnet_hyperparams's D1 write/read path is retired
   // (workers/request-handlers/entities.ts's handleSubnetHyperparams no
-  // longer queries D1 at all), so this is now "Postgres unconfigured" rather
+  // longer queries the store at all), so this is now "Postgres unconfigured" rather
   // than "D1 queried but cold" -- same schema-stable null contract either way.
   test("returns schema-stable hyperparameters:null when Postgres is unconfigured", async () => {
     const body = await assertColdSchema(
@@ -1414,8 +1414,8 @@ describe("handleSubnetHyperparams", () => {
 });
 
 describe("handleSubnetHyperparamsHistory", () => {
-  // D1 retirement: same as handleSubnetHyperparams above -- no D1 fallback
-  // left to query, so this is "Postgres unconfigured" rather than "D1 cold".
+  // D1 retirement: same as handleSubnetHyperparams above -- no store fallback
+  // left to query, so this is "Postgres unconfigured" rather than "the store is cold".
   test("returns schema-stable empty entries when Postgres is unconfigured", async () => {
     const body = await assertColdSchema(
       handleSubnetHyperparamsHistory,
@@ -1431,7 +1431,7 @@ describe("handleSubnetHyperparamsHistory", () => {
 });
 
 describe("handleSubnetPerformance", () => {
-  test("returns schema-stable null blocks on cold D1", async () => {
+  test("returns schema-stable null blocks on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetPerformance,
       req(`/api/v1/subnets/${NETUID}/performance`),
@@ -1447,7 +1447,7 @@ describe("handleSubnetPerformance", () => {
 });
 
 describe("handleSubnetConcentration", () => {
-  test("returns schema-stable null blocks on cold D1", async () => {
+  test("returns schema-stable null blocks on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetConcentration,
       req(`/api/v1/subnets/${NETUID}/concentration`),
@@ -1461,7 +1461,7 @@ describe("handleSubnetConcentration", () => {
     assert.equal(body.data.emission, null);
   });
 
-  test("degrades to schema-stable null blocks when the D1 read throws", async () => {
+  test("degrades to schema-stable null blocks when the store read throws", async () => {
     // A bound DB whose .all() rejects (schema drift) — storeAll swallows it to [],
     // so the handler still answers 200 with null metric blocks, never 5xx/404.
     const res = await handleSubnetConcentration(
@@ -1490,7 +1490,7 @@ describe("handleSubnetConcentrationHistory", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns schema-stable empty series on cold D1", async () => {
+  test("returns schema-stable empty series on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetConcentrationHistory,
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
@@ -1503,11 +1503,11 @@ describe("handleSubnetConcentrationHistory", () => {
     assert.deepEqual(body.data.points, []);
   });
 
-  test("degrades to an empty series when the D1 read throws", async () => {
+  test("degrades to an empty series when the store read throws", async () => {
     // storeAll swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      dbThrows("d1 timeout") as unknown as Env,
+      dbThrows("store timeout") as unknown as Env,
       NETUID,
       url(`/api/v1/subnets/${NETUID}/concentration/history?window=7d`),
     );
@@ -1530,7 +1530,7 @@ describe("handleSubnetPerformanceHistory", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns schema-stable empty series on cold D1", async () => {
+  test("returns schema-stable empty series on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetPerformanceHistory,
       req(`/api/v1/subnets/${NETUID}/performance/history`),
@@ -1543,11 +1543,11 @@ describe("handleSubnetPerformanceHistory", () => {
     assert.deepEqual(body.data.points, []);
   });
 
-  test("degrades to an empty series when the D1 read throws", async () => {
+  test("degrades to an empty series when the store read throws", async () => {
     // storeAll swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
-      dbThrows("d1 timeout") as unknown as Env,
+      dbThrows("store timeout") as unknown as Env,
       NETUID,
       url(`/api/v1/subnets/${NETUID}/performance/history?window=7d`),
     );
@@ -1570,7 +1570,7 @@ describe("handleSubnetYieldHistory", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns schema-stable empty series on cold D1", async () => {
+  test("returns schema-stable empty series on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetYieldHistory,
       req(`/api/v1/subnets/${NETUID}/yield/history`),
@@ -1583,11 +1583,11 @@ describe("handleSubnetYieldHistory", () => {
     assert.deepEqual(body.data.points, []);
   });
 
-  test("degrades to an empty series when the D1 read throws", async () => {
+  test("degrades to an empty series when the store read throws", async () => {
     // storeAll swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
-      dbThrows("d1 timeout") as unknown as Env,
+      dbThrows("store timeout") as unknown as Env,
       NETUID,
       url(`/api/v1/subnets/${NETUID}/yield/history?window=7d`),
     );
@@ -1602,7 +1602,7 @@ describe("handleSubnetYieldHistory", () => {
 });
 
 describe("handleSubnetTurnover", () => {
-  test("returns schema-stable empty turnover on cold D1", async () => {
+  test("returns schema-stable empty turnover on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetTurnover,
       req(`/api/v1/subnets/${NETUID}/turnover`),
@@ -1625,7 +1625,7 @@ describe("handleSubnetTurnover", () => {
     await errorJson(res);
   });
 
-  test("changes=true returns schema-stable empty detail on cold D1", async () => {
+  test("changes=true returns schema-stable empty detail on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetTurnover,
       req(`/api/v1/subnets/${NETUID}/turnover`),
@@ -1803,7 +1803,7 @@ describe("handleSubnetWeights", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns a schema-stable zeroed card on cold D1", async () => {
+  test("returns a schema-stable zeroed card on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetWeights,
       req(`/api/v1/subnets/${NETUID}/weights`),
@@ -1862,7 +1862,7 @@ describe("handleSubnetServing", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns a schema-stable zeroed card on cold D1", async () => {
+  test("returns a schema-stable zeroed card on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetServing,
       req(`/api/v1/subnets/${NETUID}/serving`),
@@ -1923,7 +1923,7 @@ describe("handleSubnetPrometheus", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns a schema-stable zeroed card on cold D1", async () => {
+  test("returns a schema-stable zeroed card on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetPrometheus,
       req(`/api/v1/subnets/${NETUID}/prometheus`),
@@ -1986,7 +1986,7 @@ describe("handleSubnetStakeMoves", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns a schema-stable zeroed card on cold D1", async () => {
+  test("returns a schema-stable zeroed card on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetStakeMoves,
       req(`/api/v1/subnets/${NETUID}/stake-moves`),
@@ -2051,7 +2051,7 @@ describe("handleSubnetStakeTransfers", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns a schema-stable zeroed card on cold D1", async () => {
+  test("returns a schema-stable zeroed card on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetStakeTransfers,
       req(`/api/v1/subnets/${NETUID}/stake-transfers`),
@@ -2116,7 +2116,7 @@ describe("handleSubnetRegistrations", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns a schema-stable zeroed card on cold D1", async () => {
+  test("returns a schema-stable zeroed card on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetRegistrations,
       req(`/api/v1/subnets/${NETUID}/registrations`),
@@ -2181,7 +2181,7 @@ describe("handleSubnetAxonRemovals", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns a schema-stable zeroed card on cold D1", async () => {
+  test("returns a schema-stable zeroed card on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetAxonRemovals,
       req(`/api/v1/subnets/${NETUID}/axon-removals`),
@@ -2246,7 +2246,7 @@ describe("handleSubnetDeregistrations", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns a schema-stable zeroed card on cold D1", async () => {
+  test("returns a schema-stable zeroed card on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetDeregistrations,
       req(`/api/v1/subnets/${NETUID}/deregistrations`),
@@ -2343,7 +2343,7 @@ describe("handleSubnetStakeFlow", () => {
     assert.equal(body.meta.parameter, "direction");
   });
 
-  test("returns schema-stable zeros on cold D1", async () => {
+  test("returns schema-stable zeros on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetStakeFlow,
       req(`/api/v1/subnets/${NETUID}/stake-flow`),
@@ -2463,7 +2463,7 @@ describe("handleSubnetMovers", () => {
     await errorJson(await viaRouter("/api/v1/subnets/movers?limit=0"));
   });
 
-  test("returns a schema-stable empty leaderboard on cold D1", async () => {
+  test("returns a schema-stable empty leaderboard on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetMovers,
       req("/api/v1/subnets/movers"),
@@ -2533,7 +2533,7 @@ describe("handleSubnetMovers", () => {
 });
 
 describe("handleAccount", () => {
-  test("returns schema-stable zero summary on cold/unbound D1", async () => {
+  test("returns schema-stable zero summary on a cold or unbound store", async () => {
     const body = await assertColdSchema(
       handleAccount,
       req(`/api/v1/accounts/${SS58}`),
@@ -2963,7 +2963,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     assert.equal(defaulted.data.window, "30d");
   });
 
-  test("handleAccountPositions prices the lakehouse ledger off D1 neurons", async () => {
+  test("handleAccountPositions prices the lakehouse ledger off the neurons store", async () => {
     const q = lakeFetch([
       {
         hotkey: COUNTERPARTY,
@@ -3063,7 +3063,7 @@ describe("handleAccountEvents", () => {
     );
   });
 
-  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+  test("short-circuits an inverted block_start>block_end window before the store", async () => {
     const { env, captures } = dbWith({
       accountEvents: [accountEventRow()],
     });
@@ -3080,7 +3080,7 @@ describe("handleAccountEvents", () => {
     assert.equal(captures.sql.length, 0);
   });
 
-  test("returns schema-stable empty events on cold D1", async () => {
+  test("returns schema-stable empty events on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountEvents,
       req(`/api/v1/accounts/${SS58}/events`),
@@ -3149,7 +3149,7 @@ describe("handleAccountHistory", () => {
     assert.equal(res.status, 200);
   });
 
-  test("returns schema-stable empty days on cold D1", async () => {
+  test("returns schema-stable empty days on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountHistory,
       req(`/api/v1/accounts/${SS58}/history`),
@@ -3166,9 +3166,9 @@ describe("handleAccountHistory", () => {
   // Postgres-tier miss (the only path this handler has without
   // METAGRAPH_ACCOUNT_EVENTS_SOURCE=postgres) always returns the
   // schema-stable empty shape regardless of those filters. See "returns
-  // schema-stable empty days on cold D1" above for that coverage.
+  // schema-stable empty days on a cold store" above for that coverage.
 
-  test("short-circuits an inverted from>to date window before D1", async () => {
+  test("short-circuits an inverted from>to date window before the store", async () => {
     const { env, captures } = dbWith({ accountEventsDaily: [accountDayRow()] });
     const body = await json(
       await handleAccountHistory(
@@ -3185,7 +3185,7 @@ describe("handleAccountHistory", () => {
 });
 
 describe("handleAccountExtrinsics", () => {
-  test("returns schema-stable empty extrinsics on cold D1", async () => {
+  test("returns schema-stable empty extrinsics on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountExtrinsics,
       req(`/api/v1/accounts/${SS58}/extrinsics`),
@@ -3213,7 +3213,7 @@ describe("handleAccountExtrinsics", () => {
     assert.equal(body.meta.parameter, "block_end");
   });
 
-  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+  test("short-circuits an inverted block_start>block_end window before the store", async () => {
     const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
     const body = await json(
       await handleAccountExtrinsics(
@@ -3258,7 +3258,7 @@ describe("handleAccountTransfers", () => {
     assert.equal(body.meta.parameter, "block_end");
   });
 
-  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+  test("short-circuits an inverted block_start>block_end window before the store", async () => {
     const { env, captures } = dbWith({ transfers: [transferEventRow()] });
     const body = await json(
       await handleAccountTransfers(
@@ -3274,7 +3274,7 @@ describe("handleAccountTransfers", () => {
     assert.equal(captures.sql.length, 0);
   });
 
-  test("returns schema-stable empty transfers on cold D1", async () => {
+  test("returns schema-stable empty transfers on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountTransfers,
       req(`/api/v1/accounts/${SS58}/transfers`),
@@ -3306,7 +3306,7 @@ describe("handleAccountCounterparties", () => {
     }
   });
 
-  test("returns schema-stable empty rollup on cold D1", async () => {
+  test("returns schema-stable empty rollup on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountCounterparties,
       req(`/api/v1/accounts/${SS58}/counterparties`),
@@ -3436,7 +3436,7 @@ describe("handleAccountCounterparties relationship drilldown", () => {
     }
   });
 
-  test("returns schema-stable empty pair detail on cold D1", async () => {
+  test("returns schema-stable empty pair detail on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountCounterparties,
       req(`/api/v1/accounts/${SS58}/counterparties`),
@@ -3472,7 +3472,7 @@ describe("handleAccountStakeFlow", () => {
     assert.equal(body.meta.parameter, "direction");
   });
 
-  test("returns schema-stable zeros on cold D1", async () => {
+  test("returns schema-stable zeros on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountStakeFlow,
       req(`/api/v1/accounts/${SS58}/stake-flow`),
@@ -3506,7 +3506,7 @@ describe("handleAccountStakeMoves", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("returns schema-stable zeros on cold D1", async () => {
+  test("returns schema-stable zeros on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountStakeMoves,
       req(`/api/v1/accounts/${SS58}/stake-moves`),
@@ -3531,7 +3531,7 @@ describe("handleAccountStakeMoves", () => {
 });
 
 describe("handleAccountSubnets", () => {
-  test("returns schema-stable empty subnets on cold D1", async () => {
+  test("returns schema-stable empty subnets on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountSubnets,
       req(`/api/v1/accounts/${SS58}/subnets`),
@@ -3544,7 +3544,7 @@ describe("handleAccountSubnets", () => {
 });
 
 describe("handleSubnetEvents", () => {
-  test("returns schema-stable empty events on cold D1", async () => {
+  test("returns schema-stable empty events on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetEvents,
       req(`/api/v1/subnets/${NETUID}/events`),
@@ -3568,7 +3568,7 @@ describe("handleSubnetEvents", () => {
     assert.equal(body.meta.parameter, "kind");
   });
 
-  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+  test("short-circuits an inverted block_start>block_end window before the store", async () => {
     const { env, captures } = dbWith({
       subnetEvents: [accountEventRow({ block_number: 500 })],
     });
@@ -3620,7 +3620,7 @@ describe("handleSubnetEventSummary", () => {
     assert.equal(body.meta.parameter, "limit");
   });
 
-  test("returns schema-stable empty summary on cold D1", async () => {
+  test("returns schema-stable empty summary on a cold store", async () => {
     const body = await assertColdSchema(
       handleSubnetEventSummary,
       req(`/api/v1/subnets/${NETUID}/event-summary`),
@@ -3757,7 +3757,7 @@ function accountIdentityRow(overrides = {}) {
 }
 
 describe("handleAccountIdentity", () => {
-  test("has_identity is false on cold D1 (schema-stable, never 404)", async () => {
+  test("has_identity is false on a cold store (schema-stable, never 404)", async () => {
     const body = await assertColdSchema(
       handleAccountIdentity,
       req(`/api/v1/accounts/${SS58}/identity`),
@@ -3795,7 +3795,7 @@ describe("handleAccountIdentity", () => {
 });
 
 describe("handleAccountIdentityHistory", () => {
-  test("returns schema-stable empty entries on cold D1", async () => {
+  test("returns schema-stable empty entries on a cold store", async () => {
     const body = await assertColdSchema(
       handleAccountIdentityHistory,
       req(`/api/v1/accounts/${SS58}/identity-history`),
@@ -3845,7 +3845,7 @@ describe("handleAccountIdentityHistory", () => {
 });
 
 describe("handleBlocks", () => {
-  test("returns schema-stable empty feed on cold D1", async () => {
+  test("returns schema-stable empty feed on a cold store", async () => {
     const body = await assertColdSchema(
       handleBlocks,
       req("/api/v1/blocks"),
@@ -3959,7 +3959,7 @@ describe("handleBlocks", () => {
 });
 
 describe("handleBlock", () => {
-  test("returns schema-stable block:null on cold D1", async () => {
+  test("returns schema-stable block:null on a cold store", async () => {
     const body = await assertColdSchema(
       handleBlock,
       req(`/api/v1/blocks/${BLOCK_NUM}`),
@@ -3985,7 +3985,7 @@ describe("handleBlock", () => {
 });
 
 describe("handleBlockExtrinsics", () => {
-  test("returns schema-stable empty extrinsics on cold D1", async () => {
+  test("returns schema-stable empty extrinsics on a cold store", async () => {
     const body = await assertColdSchema(
       handleBlockExtrinsics,
       req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
@@ -4028,7 +4028,7 @@ describe("handleBlockExtrinsics", () => {
 });
 
 describe("handleBlockEvents", () => {
-  test("returns schema-stable empty events on cold D1", async () => {
+  test("returns schema-stable empty events on a cold store", async () => {
     const body = await assertColdSchema(
       handleBlockEvents,
       req(`/api/v1/blocks/${BLOCK_NUM}/events`),
@@ -4114,7 +4114,7 @@ describe("handleExtrinsics", () => {
     assert.equal(res.status, 200);
   });
 
-  test("returns schema-stable empty feed on cold D1", async () => {
+  test("returns schema-stable empty feed on a cold store", async () => {
     const body = await assertColdSchema(
       handleExtrinsics,
       req("/api/v1/extrinsics"),
@@ -4211,7 +4211,7 @@ describe("handleExtrinsics", () => {
     );
   });
 
-  test("short-circuits impossible future time filters before D1", async () => {
+  test("short-circuits impossible future time filters before the store", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const body = await json(
       await handleExtrinsics(
@@ -4227,7 +4227,7 @@ describe("handleExtrinsics", () => {
     );
   });
 
-  test("short-circuits an expired to< retention-floor window before D1", async () => {
+  test("short-circuits an expired to< retention-floor window before the store", async () => {
     // to=2000 (1970 epoch) is below the retained hot window floor; every
     // candidate row would already be pruned, so never touch D1.
     const { env, captures } = dbWith({ extrinsics: [] });
@@ -4245,7 +4245,7 @@ describe("handleExtrinsics", () => {
     );
   });
 
-  test("short-circuits an inverted from>to window before D1", async () => {
+  test("short-circuits an inverted from>to window before the store", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const now = Date.now();
     const body = await json(
@@ -4262,7 +4262,7 @@ describe("handleExtrinsics", () => {
     );
   });
 
-  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+  test("short-circuits an inverted block_start>block_end window before the store", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const body = await json(
       await handleExtrinsics(
@@ -4305,7 +4305,7 @@ describe("handleExtrinsics", () => {
     );
   });
 
-  test("?format=csv emits a header-only export on cold D1", async () => {
+  test("?format=csv emits a header-only export on a cold store", async () => {
     const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
       emptyEnv() as unknown as Env,
@@ -4327,7 +4327,7 @@ describe("handleExtrinsics", () => {
 });
 
 describe("handleExtrinsic", () => {
-  test("returns schema-stable extrinsic:null on cold D1", async () => {
+  test("returns schema-stable extrinsic:null on a cold store", async () => {
     const body = await assertColdSchema(
       handleExtrinsic,
       req(`/api/v1/extrinsics/${HASH}`),
@@ -4487,7 +4487,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   // #4771: neurons/neuron_daily's new Postgres tier, same shared-fallback
   // wiring as blocks/extrinsics/account_events above (METAGRAPH_NEURONS_SOURCE).
-  test("handleSubnetMetagraph: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetMetagraph: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
@@ -4513,7 +4513,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleNeuron: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleNeuron: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
@@ -4546,7 +4546,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // `dbWith({subnetHyperparams: ...})` below only proves the D1 mock's rows
   // are never touched -- a Postgres failure falls back to the same
   // schema-stable null/empty shape a cold store returns, not to D1 data.
-  test("handleSubnetHyperparams: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetHyperparams: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ subnetHyperparams: [hyperparamsRow()] });
     env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "data-api";
     env.DATA_API = dataApi(
@@ -4589,7 +4589,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.captured_at, null);
   });
 
-  test("handleSubnetHyperparamsHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetHyperparamsHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({
       subnetHyperparamsHistory: [hyperparamsHistoryRow()],
     });
@@ -4641,7 +4641,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   // #4832 gap-closure: account_identity/account_identity_history's new
   // Postgres tier, own dedicated flag (METAGRAPH_ACCOUNT_IDENTITY_SOURCE).
-  test("handleAccountIdentity: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountIdentity: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({
       accountIdentity: [accountIdentityRow()],
     });
@@ -4678,7 +4678,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.name, null);
   });
 
-  test("handleAccountIdentityHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountIdentityHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({
       accountIdentityHistory: [
         {
@@ -4746,7 +4746,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // Worker's own hourly cron (writeSubnetSnapshot), not an external GitHub
   // Actions workflow -- but served the same way as every other tier here.
   // REMOVED (#10190): "handleSubnetIdentityHistory: flag=postgres uses Postgres
-  // data, D1 never queried". Both halves are moot -- METAGRAPH_SUBNET_IDENTITY_SOURCE
+  // data, the store never queried". Both halves are moot -- METAGRAPH_SUBNET_IDENTITY_SOURCE
   // forwards nowhere, and there is no D1 left to leave unqueried.
 
   test("handleSubnetIdentityHistory: flag=postgres falls back to schema-stable empty on failure (D1 retired)", async () => {
@@ -4770,7 +4770,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(body.data.entries, []);
   });
 
-  test("handleSubnetValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetValidators: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
@@ -4796,7 +4796,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleGlobalValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleGlobalValidators: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({
       neurons: [neuronRow({ netuid: NETUID })],
     });
@@ -4823,7 +4823,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleValidatorDetail: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleValidatorDetail: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
@@ -5673,7 +5673,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.ok(captures.sql.length > 0);
   });
 
-  test("handleAccountSubnets: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountSubnets: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5694,7 +5694,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // #4832 Tier 2a: the 8 flat-`neurons` handlers (concentration, performance,
   // yield, portfolio, accounts list) across the subnet/chain/account scopes.
 
-  test("handleSubnetConcentration: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetConcentration: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5712,7 +5712,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetPerformance: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5730,7 +5730,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetYield: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetYield: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5749,7 +5749,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleChainConcentration: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleChainConcentration: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5804,7 +5804,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(body.data.subnets, []);
   });
 
-  test("handleChainPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleChainPerformance: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5820,7 +5820,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleChainYield: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleChainYield: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5891,7 +5891,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   });
 
   test("handleSelfHealth: no lane table yields an empty list, never a stale claim", async () => {
-    // D1 migrations here are applied by hand, so "the table does not exist yet" is a
+    // migrations here are applied by hand, so "the table does not exist yet" is a
     // real production state and must not read as "every lane is fine" OR as an error.
     const { env } = dbWith({ neurons: [] });
     const body = await json(
@@ -5922,7 +5922,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
   });
 
-  test("handleAccountPortfolio: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountPortfolio: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5940,7 +5940,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountPositions: flag=postgres uses Postgres data, D1 never queried (#5233)", async () => {
+  test("handleAccountPositions: flag=postgres uses Postgres data, the store never queried (#5233)", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -5960,7 +5960,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
 
   test("handleAccountPositions: flag=postgres falls through to the D1 hot leg and LABELS the empty card (#9273)", async () => {
     // The chain is Postgres -> D1 -> lakehouse -> labelled empty. This stub's
-    // D1 has no nominator_positions ledger and there is no R2 SQL token, so
+    // D1 had no nominator_positions ledger and there is no R2 SQL token, so
     // every tier declines -- and the card that comes back now SAYS so rather
     // than publishing a confident `total_stake_alpha: 0`, which is the
     // #9260/#9263 defect class this route shared.
@@ -5990,7 +5990,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
   });
 
-  test("handleAccountsList: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountsList: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6015,7 +6015,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // handler in this file -- is exercised too.
 
   // REMOVED (#10190): "handleTopHoldersList: flag=postgres uses Postgres data,
-  // D1 never queried". Same reason as the self-health one above --
+  // the store never queried". Same reason as the self-health one above --
   // METAGRAPH_TOP_HOLDERS_SOURCE is retired and absent from
   // FORWARDABLE_TIER_FLAGS. The live tier is the flow projection
   // (src/top-holders-flow-tier.ts), covered by tests/top-holders-flow-tier.test.ts
@@ -6024,7 +6024,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // #4832 Tier 2b: the 9 neuron_daily-history handlers (structural history,
   // concentration/performance/yield history, chain/subnet turnover, movers).
 
-  test("handleValidatorHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleValidatorHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6043,7 +6043,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleNeuronHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleNeuronHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6063,7 +6063,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6082,7 +6082,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetConcentrationHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetConcentrationHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6101,7 +6101,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetPerformanceHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetPerformanceHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6120,7 +6120,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetYieldHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetYieldHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6139,7 +6139,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleChainTurnover: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleChainTurnover: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6157,7 +6157,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetTurnover: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetTurnover: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6176,7 +6176,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetMovers: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetMovers: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6197,7 +6197,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // #4832 gap-closure: handleAccountPositionHistory (account_position_daily,
   // rolled from the same neurons snapshot as neuron_daily).
 
-  test("handleAccountPositionHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountPositionHistory: flag=postgres uses Postgres data, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6248,11 +6248,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  // No D1 fallback here (unlike the ~40 branches #4909 tracks separately):
+  // No store fallback here (unlike the ~40 branches #4909 tracks separately):
   // D1's own account_position_daily rollup has been permanently broken since
   // #4908 dropped D1's `neurons` table, so a Postgres failure degrades to the
-  // same schema-stable empty series a cold store returns, never a D1 read.
-  test("handleAccountPositionHistory: flag=postgres degrades to an empty schema-stable series on failure, D1 never queried", async () => {
+  // same schema-stable empty series a cold store returns, never a store read.
+  test("handleAccountPositionHistory: flag=postgres degrades to an empty schema-stable series on failure, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6298,8 +6298,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   });
 
   // D1 fully eliminated (2026-07-17): a Postgres-tier failure now falls
-  // through to the schema-stable empty shape, never a live D1 read.
-  test("handleAccountHistory: flag=postgres falls back to schema-stable empty on failure, D1 never queried", async () => {
+  // through to the schema-stable empty shape, never a live store read.
+  test("handleAccountHistory: flag=postgres falls back to schema-stable empty on failure, the store never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "data-api";
     env.DATA_API = {
@@ -6354,7 +6354,7 @@ describe("entities handler exports (#1900)", () => {
     }
   });
 
-  test("every handler returns an envelope with ok:true on cold D1 (sample)", async () => {
+  test("every handler returns an envelope with ok:true on a cold store (sample)", async () => {
     const samples = [
       () =>
         handleSubnetMetagraph(
@@ -6539,7 +6539,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
   ];
 
   for (const { name, run, assertData } of coldCases) {
-    test(`${name} never 404s on cold D1`, async () => {
+    test(`${name} never 404s on a cold store`, async () => {
       const res = await run();
       assert.equal(res.status, 200);
       const body = await jsonBody(res);

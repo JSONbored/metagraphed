@@ -189,7 +189,7 @@ describe("buildConcentration", () => {
     assert.equal(data.captured_at, "2025-06-15T15:07:40.000Z");
   });
 
-  test("converts D1 string-typed epoch-millisecond captured_at to ISO strings", () => {
+  test("converts string-typed epoch-millisecond captured_at to ISO strings", () => {
     const data = buildConcentration(
       [
         { stake_tao: 1, emission_tao: 1, captured_at: "1750000000000" },
@@ -321,7 +321,7 @@ describe("buildConcentrationHistory", () => {
 });
 
 describe("concentration loaders", () => {
-  function d1(rowsBySql: Record<string, Row[]> = {}) {
+  function runner(rowsBySql: Record<string, Row[]> = {}) {
     return async (sql: string, _params: unknown[]) => {
       for (const [pattern, rows] of Object.entries(rowsBySql)) {
         if (new RegExp(pattern).test(sql)) return rows;
@@ -330,8 +330,8 @@ describe("concentration loaders", () => {
     };
   }
 
-  test("loadSubnetConcentration returns schema-stable null on cold D1", async () => {
-    const data = await loadSubnetConcentration(d1(), 7);
+  test("loadSubnetConcentration returns schema-stable null on a cold store", async () => {
+    const data = await loadSubnetConcentration(runner(), 7);
     assert.equal(data.netuid, 7);
     assert.equal(data.neuron_count, 0);
     assert.equal(data.stake, null);
@@ -340,7 +340,7 @@ describe("concentration loaders", () => {
 
   test("loadSubnetConcentration builds scorecards from neurons rows", async () => {
     const data = await loadSubnetConcentration(
-      d1({
+      runner({
         "FROM neurons": [
           {
             stake_tao: 100,
@@ -366,8 +366,8 @@ describe("concentration loaders", () => {
     assert.equal(data.entity_stake!.total, 150);
   });
 
-  test("loadSubnetConcentrationHistory returns empty points on cold D1", async () => {
-    const data = await loadSubnetConcentrationHistory(d1(), 7, {
+  test("loadSubnetConcentrationHistory returns empty points on a cold store", async () => {
+    const data = await loadSubnetConcentrationHistory(runner(), 7, {
       windowLabel: "30d",
       windowDays: 30,
     });
@@ -379,7 +379,7 @@ describe("concentration loaders", () => {
 
   test("loadSubnetConcentrationHistory aggregates neuron_daily rows", async () => {
     const data = await loadSubnetConcentrationHistory(
-      d1({
+      runner({
         "FROM neuron_daily": [
           { snapshot_date: "2026-06-02", stake_tao: 20, emission_tao: 2 },
           { snapshot_date: "2026-06-01", stake_tao: 10, emission_tao: 1 },

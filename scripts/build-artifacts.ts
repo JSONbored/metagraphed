@@ -1389,7 +1389,7 @@ await fs.rm(r2ArtifactDir("health/badges"), {
 // single source of truth for operational status. We intentionally no longer
 // write health/latest.json, health/summary.json, or health/subnets/*.json — the
 // /api/v1/health and /api/v1/subnets/{netuid}/health routes serve live from
-// KV/D1 and report `unknown` when the live store is cold (never a baked,
+// KV and the store and report `unknown` when the live store is cold (never a baked,
 // possibly-stale value). `healthArtifacts` is still computed for build-internal
 // structural derivations (freshness demotion, endpoint classification) below.
 // health/history (daily snapshot) is retained as a historical record.
@@ -1435,7 +1435,7 @@ await mapLimit(providers, ARTIFACT_WRITE_CONCURRENCY, async (provider) => {
     endpoints: providerEndpoints,
   });
 });
-// Per-subnet current-health is live-only (served from KV/D1, not stored); see
+// Per-subnet current-health is live-only (served from KV and the store, not stored); see
 // the note above. Badges are kept: the badge route overlays live status and the
 // static badge is only an SVG-render fallback (it shows "unavailable" when cold,
 // not a stale status an agent would parse).
@@ -1503,7 +1503,7 @@ await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
     name: subnet.name,
     status: subnet.status,
     profile: profileArtifacts.byNetuid.get(subnet.netuid) || null,
-    // Live-only: health is overlaid from KV/D1 on read; `null` here means no
+    // Live-only: health is overlaid from KV and the store on read; `null` here means no
     // stored status (served as `unknown` when the live store is cold).
     health: null,
     curation: curationEntry ? curationEntry.curation : null,
@@ -1768,7 +1768,7 @@ function buildSubnetServices(netuid: unknown): Row[] {
           surface.schema_status || (schema ? "machine-readable" : null),
         schema_artifact: schema?.path || null,
         schema_source: serviceSchemaSource(schemaResolution),
-        // Live-only: status/latency/last_ok are overlaid from KV/D1 on read.
+        // Live-only: status/latency/last_ok are overlaid from KV and the store on read.
         // No build-time status is stored — cold reads report `unknown`.
         // (`classification` stays a structural input to eligibility below, but
         // is not baked into the served health object.)
@@ -1881,7 +1881,7 @@ for (const subnet of mergedSubnets) {
       service_kinds: [...new Set(services.map((s) => s.kind))].sort(),
       example_count: examples.length,
       base_url: primary?.base_url ?? null,
-      // Live-only: overlaid from KV/D1 on read; `unknown` when the store is cold.
+      // Live-only: overlaid from KV and the store on read; `unknown` when the store is cold.
       health: "unknown",
     });
   } else {

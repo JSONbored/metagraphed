@@ -220,7 +220,7 @@ function stakeMovesD1(
 describe("loadAccountStakeMoves", () => {
   test("seeks the coldkey index for StakeMoved over the window and shapes it", async () => {
     const calls: Array<{ sql: string; params: unknown[] }> = [];
-    const d1 = stakeMovesD1(
+    const runner = stakeMovesD1(
       [
         row(1, 3, 1_700_000_000_000, 1_700_000_000_000),
         row(2, 1, 1_700_400_000_000, 1_700_500_000_000),
@@ -229,7 +229,7 @@ describe("loadAccountStakeMoves", () => {
       [],
       calls,
     );
-    const { data, generatedAt } = await loadAccountStakeMoves(d1, ADDR, {
+    const { data, generatedAt } = await loadAccountStakeMoves(runner, ADDR, {
       windowLabel: "7d",
     });
     const stakeMovesCall = calls.find((c) =>
@@ -250,8 +250,8 @@ describe("loadAccountStakeMoves", () => {
 
   test("an unknown window label falls back to the default window days", async () => {
     const calls: Array<{ sql: string; params: unknown[] }> = [];
-    const d1 = stakeMovesD1([], [], calls);
-    await loadAccountStakeMoves(d1, ADDR, { windowLabel: "bogus" });
+    const runner = stakeMovesD1([], [], calls);
+    await loadAccountStakeMoves(runner, ADDR, { windowLabel: "bogus" });
     const stakeMovesCall = calls.find((c) =>
       c.sql.includes("FROM account_events"),
     )!;
@@ -273,7 +273,7 @@ describe("loadAccountStakeMoves", () => {
     assert.equal(generatedAt, null);
   });
 
-  test("a non-array D1 result degrades to a zeroed card", async () => {
+  test("a non-array store result degrades to a zeroed card", async () => {
     const { data, generatedAt } = await loadAccountStakeMoves(
       async () => null as unknown as Record<string, unknown>[],
       ADDR,
@@ -288,12 +288,12 @@ describe("loadAccountStakeMoves", () => {
     test("issues a follow-up subnet_snapshots query keyed by netuid + last-move date and threads the price through", async () => {
       const lastMs = Date.UTC(2026, 5, 20, 12, 0, 0); // 2026-06-20
       const calls: Array<{ sql: string; params: unknown[] }> = [];
-      const d1 = stakeMovesD1(
+      const runner = stakeMovesD1(
         [row(1, 3, lastMs, lastMs)],
         [{ netuid: 1, snapshot_date: "2026-06-20", alpha_price_tao: 4.5 }],
         calls,
       );
-      const { data } = await loadAccountStakeMoves(d1, ADDR, {
+      const { data } = await loadAccountStakeMoves(runner, ADDR, {
         windowLabel: "7d",
       });
       const priceCall = calls.find((c) =>
@@ -309,7 +309,7 @@ describe("loadAccountStakeMoves", () => {
       const dayOne = Date.UTC(2026, 5, 20, 0, 0, 0);
       const dayTwo = Date.UTC(2026, 5, 21, 0, 0, 0);
       const calls: Array<{ sql: string; params: unknown[] }> = [];
-      const d1 = stakeMovesD1(
+      const runner = stakeMovesD1(
         [row(1, 1, dayOne, dayOne), row(2, 1, dayTwo, dayTwo)],
         [
           { netuid: 1, snapshot_date: "2026-06-20", alpha_price_tao: 4.5 },
@@ -317,7 +317,7 @@ describe("loadAccountStakeMoves", () => {
         ],
         calls,
       );
-      await loadAccountStakeMoves(d1, ADDR, { windowLabel: "7d" });
+      await loadAccountStakeMoves(runner, ADDR, { windowLabel: "7d" });
       const priceCalls = calls.filter((c) =>
         c.sql.includes("FROM subnet_snapshots"),
       );
@@ -326,8 +326,8 @@ describe("loadAccountStakeMoves", () => {
 
     test("skips the follow-up query entirely when there are no stake-move rows (cold store)", async () => {
       const calls: Array<{ sql: string; params: unknown[] }> = [];
-      const d1 = stakeMovesD1([], [], calls);
-      await loadAccountStakeMoves(d1, ADDR, { windowLabel: "7d" });
+      const runner = stakeMovesD1([], [], calls);
+      await loadAccountStakeMoves(runner, ADDR, { windowLabel: "7d" });
       assert.equal(
         calls.some((c) => c.sql.includes("FROM subnet_snapshots")),
         false,
@@ -337,11 +337,11 @@ describe("loadAccountStakeMoves", () => {
     test("a null/blank/non-numeric alpha_price_tao cell is treated as no price, not zero", async () => {
       const lastMs = Date.UTC(2026, 5, 20, 0, 0, 0);
       for (const alpha_price_tao of [null, "", "   ", "not-a-number"]) {
-        const d1 = stakeMovesD1(
+        const runner = stakeMovesD1(
           [row(1, 1, lastMs, lastMs)],
           [{ netuid: 1, snapshot_date: "2026-06-20", alpha_price_tao }],
         );
-        const { data } = await loadAccountStakeMoves(d1, ADDR, {
+        const { data } = await loadAccountStakeMoves(runner, ADDR, {
           windowLabel: "7d",
         });
         assert.equal(
@@ -354,8 +354,8 @@ describe("loadAccountStakeMoves", () => {
 
     test("a non-array price-query result degrades to no prices found, not a throw", async () => {
       const lastMs = Date.UTC(2026, 5, 20, 0, 0, 0);
-      const d1 = stakeMovesD1([row(1, 1, lastMs, lastMs)], null);
-      const { data } = await loadAccountStakeMoves(d1, ADDR, {
+      const runner = stakeMovesD1([row(1, 1, lastMs, lastMs)], null);
+      const { data } = await loadAccountStakeMoves(runner, ADDR, {
         windowLabel: "7d",
       });
       assert.equal(data.subnets[0].price_tao_at_last_move, null);
@@ -363,11 +363,11 @@ describe("loadAccountStakeMoves", () => {
 
     test("no snapshot for that exact date leaves price_tao_at_last_move null", async () => {
       const lastMs = Date.UTC(2026, 5, 20, 0, 0, 0);
-      const d1 = stakeMovesD1(
+      const runner = stakeMovesD1(
         [row(1, 1, lastMs, lastMs)],
         [], // no matching snapshot row at all
       );
-      const { data } = await loadAccountStakeMoves(d1, ADDR, {
+      const { data } = await loadAccountStakeMoves(runner, ADDR, {
         windowLabel: "7d",
       });
       assert.equal(data.subnets[0].price_tao_at_last_move, null);

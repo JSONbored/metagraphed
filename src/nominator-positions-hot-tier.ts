@@ -23,7 +23,7 @@
 //
 // The stake leg is shared with the cold tier verbatim (neuronStakeByHotkeys,
 // src/nominator-positions-cold-tier.ts): both tiers price positions off the
-// live D1 `neurons` table, both chunk the IN-list at D1's 100-bound-parameter
+// live `neurons` table, both chunk the IN-list at the store's 100-bound-parameter
 // binding limit, and having one implementation is what keeps the two tiers
 // from drifting into two different answers for the same coldkey.
 import {
@@ -38,7 +38,7 @@ import {
 import { readStore } from "./read-store.ts";
 import type { NominatorPositions } from "../generated/db/types.ts";
 
-/** The D1 surface this module needs -- structural, so tests can hand a plain
+/** The store surface this module needs -- structural, so tests can hand a plain
  * object (same pattern as src/nominator-positions-cold-tier.ts). */
 interface StatementClientLike {
   query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;

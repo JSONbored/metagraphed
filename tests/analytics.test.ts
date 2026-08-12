@@ -69,7 +69,7 @@ describe("formatPercentiles", () => {
     assert.equal(out.surfaces[1].latency_ms.avg, 151);
     assert.equal(out.surfaces[0].latency_ms.p99, null);
   });
-  test("handles empty rows (cold D1)", () => {
+  test("handles empty rows (a cold store)", () => {
     const out = formatPercentiles({
       netuid: 1,
       window: "7d",
@@ -1703,7 +1703,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     );
   });
 
-  test("leaderboards returns most-complete from profiles even with cold D1", async () => {
+  test("leaderboards returns most-complete from profiles even with a cold store", async () => {
     const profileEnv = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: {
         get: async () => ({
@@ -2302,7 +2302,7 @@ describe("#9452 — writeSubnetSnapshot reports its verdict", () => {
   });
 
   test("a lane_health write that fails never breaks the run", async () => {
-    // D1 migrations here are applied by hand, so "no such table" is a real
+    // migrations here are applied by hand, so "no such table" is a real
     // production state. A writer whose alarm-recording broke its write would
     // be worse than the bug being fixed.
     const result = (await writeSubnetSnapshot({} as never, {

@@ -10,7 +10,7 @@
 //
 // The D1 loader (loadChainStakeMoves) was removed — account_events' D1 write path is retired and
 // the table is dropped in production (#4772 / #4909), so serving goes tryDataApiTier →
-// schema-stable empty stub, never D1.
+// schema-stable empty stub, never the store.
 
 import { median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
@@ -34,7 +34,7 @@ function round(value: number, dp = 2): number {
   return Math.round(value * factor) / factor;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);

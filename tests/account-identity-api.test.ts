@@ -96,7 +96,7 @@ test("GET /accounts/{ss58}/identity rejects an unsupported query param", async (
   assert.equal(res.status, 400);
 });
 
-test("GET /accounts/{ss58}/identity is schema-stable when D1 is cold", async () => {
+test("GET /accounts/{ss58}/identity is schema-stable when the store is cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity`),
     {} as unknown as Env,
@@ -132,7 +132,7 @@ test("GET /accounts/{ss58}/identity-history rejects an unsupported query param",
   assert.equal(res.status, 400);
 });
 
-test("GET /accounts/{ss58}/identity-history is schema-stable when D1 is cold", async () => {
+test("GET /accounts/{ss58}/identity-history is schema-stable when the store is cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity-history`),
     {} as unknown as Env,

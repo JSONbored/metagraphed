@@ -23,12 +23,12 @@
 //
 // Postgres takes 65,535 parameters per statement, so the honest form -- a plain
 // multi-row `INSERT ... VALUES` -- is both simpler and faster here. At 22
-// columns that is 2,978 rows in one statement against D1's four.
+// columns that is 2,978 rows in one statement against the store's four.
 //
-// ## Best-effort, and never in front of the D1 write
+// ## Best-effort, and never in front of the store write
 //
 // Every function here returns a result rather than throwing. During dual-write
-// the D1 write is still the one the routes read, so a Neon failure must cost a
+// the store write is still the one the routes read, so a Neon failure must cost a
 // mirror and a lane verdict -- not the pass. That inverts once a lane's read
 // moves, and the invariant that makes the inversion safe is the lane verdict
 // this records on every attempt: metagraphed#9698 reads it, so a Neon store
@@ -135,7 +135,7 @@ export function buildPgUpsert(
   // `filter` switches the row source from a bare VALUES list to a SELECT over
   // it, so a predicate can reject rows before they are inserted. The D1 side
   // has had this since #9558 -- `chunkStatements` takes the same argument --
-  // and its absence here is what let `hotkey_alpha` diverge: D1 stores only
+  // and its absence here is what let `hotkey_alpha` diverge: D1 stored only
   // pools a nominator_position references, the mirror stored everything, and
   // Neon ended up with ~29,000 rows D1 refuses on purpose (#9832).
   //
@@ -262,7 +262,7 @@ export async function writeRowsToNeon(
  * PER KEY, never batch-wide, and that is the whole contract. A full scan posts
  * in several requests, so a "delete everything older than this batch" sweep
  * would let one request delete rows another just wrote. The cutoff is therefore
- * each key's OWN max captured_at, exactly as the D1 writer computes it.
+ * each key's OWN max captured_at, exactly as the store writer computes it.
  *
  * Runs AFTER the upsert and reports its own outcome: the worst a failure here
  * can do is leave a stale row until the next tick, never delete one whose

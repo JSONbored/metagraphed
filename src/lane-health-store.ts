@@ -30,7 +30,7 @@
 // recordLaneVerdict already promises never to throw: a watchdog whose
 // alarm-recording broke its alarm would be worse than the bug it watches for.
 // This preserves that -- a failed verdict write is a dropped verdict, exactly as
-// it is on D1 today.
+// it is on the store today.
 import { Client } from "pg";
 import { toPositionalPlaceholders, type HyperdriveLike } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";

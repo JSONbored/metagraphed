@@ -14,11 +14,11 @@
 // one leg at a time without anything noticing:
 //
 //   event history (event_count/kinds/recent/first-last)  chain.account_events
-//   current registrations                                D1 `neurons`
+//   current registrations                                `neurons`
 //   signing activity                                     the extrinsics tier
 //
 // #9257 gave the first leg its lakehouse reader. This module adds the second
-// (the D1 `neurons` read the account's own /subnets route already serves from,
+// (the `neurons` read the account's own /subnets route already serves from,
 // same SELECT list, same formatRegistration) and, more importantly, makes the
 // composition a SINGLE function that REST, MCP and GraphQL all call -- because
 // the defect was not any one missing read, it was that three call sites each
@@ -45,7 +45,7 @@ import { isR2SqlConfigured } from "./r2-sql.ts";
 import { readStore } from "./read-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
 
-/** The D1 surface this module needs -- structural, so tests can hand it a
+/** The store surface this module needs -- structural, so tests can hand it a
  * plain object (the same pattern as src/blocks-cold-tier.ts). */
 interface StatementClientLike {
   query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
@@ -72,10 +72,10 @@ export const ACCOUNT_REGISTRATIONS_SQL =
   "WHERE hotkey = ? ORDER BY netuid";
 
 /**
- * This hotkey's current registrations from D1 `neurons`.
+ * This hotkey's current registrations from `neurons`.
  *
  * `[]` when there is NO binding, `null` when a bound read fails, and the
- * difference matters: a deployment without D1 has no neuron snapshot to be
+ * difference matters: a deployment without D1 had no neuron snapshot to be
  * missing, so an empty list is the honest answer there, while a database that
  * is present and erroring is a fault the card must not paper over.
  */
@@ -164,7 +164,7 @@ export async function answerAccountSummary(
     // mechanism -- timeout, scan budget, HTTP error -- to be guessed at from outside.
     const reasons = [
       ...(cold.declined ?? []),
-      ...(registrations === null ? ["registrations: D1 read failed"] : []),
+      ...(registrations === null ? ["registrations: store read failed"] : []),
     ];
     return { kind: "gap", reasons };
   }

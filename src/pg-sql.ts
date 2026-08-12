@@ -37,7 +37,7 @@ const INT8_OID = 20;
  *
  * WHY THIS IS NOT A PREFERENCE. node-postgres returns `int8` as a STRING by
  * default, because int8 spans a wider range than a JS number can hold exactly.
- * D1 returns the same columns as numbers. So without this, moving a route
+ * the store returns the same columns as numbers. So without this, moving a route
  * between the two stores changes the TYPE of every epoch-ms and counter field
  * in its response -- `created_at: 1785176950652` becomes
  * `created_at: "1785176950652"` -- with no error anywhere, and a consumer
@@ -115,7 +115,7 @@ export interface WaitUntilLike {
  * `$1, $2, ...` interleaved between the literal chunks.
  *
  * Exported because the numbering IS the contract: SQLite's placeholders
- * carried no index (D1's runner could `strings.join("?")`), and a silent
+ * carried no index (the store's runner could `strings.join("?")`), and a silent
  * off-by-one here would bind values to the wrong columns rather than failing.
  * Asserting the built text directly is cheaper than discovering that from a
  * wrong answer in production.
@@ -221,7 +221,7 @@ export function toPositionalPlaceholders(sql: string): string {
 }
 
 /** Build a SqlRunner backed by Hyperdrive. Callers pass this where they would
- * otherwise pass the D1-backed runner; the modules themselves are untouched. */
+ * otherwise pass the store-backed runner; the modules themselves are untouched. */
 export function createPgQuestionMarkRunner(
   hyperdrive: HyperdriveLike,
   ctx: WaitUntilLike,

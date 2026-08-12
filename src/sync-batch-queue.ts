@@ -187,7 +187,7 @@ export const PRUNING_LANES: readonly string[] = [
 export type SyncBatchLane = (typeof SYNC_BATCH_LANES)[number];
 
 /** Rows per message. Sized against the sink's existing per-request ceiling
- * rather than re-derived: the D1 write shape is unchanged by the transport, and
+ * rather than re-derived: the store write shape is unchanged by the transport, and
  * `json_each` already made a chunk one statement (metagraphed#9550).
  *
  * THIS IS NOT THE BINDING LIMIT and never was -- see SYNC_BATCH_MAX_BYTES.
@@ -289,7 +289,7 @@ export const MULTI_FAMILY_LANES: readonly string[] = ["chain-detail"];
  * `send()` — and the producer advances its cursor only on a POST that
  * succeeded, so the lane does not degrade, it WEDGES, retrying the same
  * oversized batch forever. The cheapest possible mistake would take out the
- * highest-cadence lane, and chain-detail is also the largest D1 writer here:
+ * highest-cadence lane, and chain-detail is also the largest store writer here:
  * ~1,245 rows every 12 seconds is ~9M rows/day, against account-balances'
  * ~1.5M. It is the lane the queue most wants, which is exactly why the
  * placeholder must fail closed.
@@ -671,7 +671,7 @@ export function classifySyncBatch(
 }
 
 /**
- * Which lanes route through the queue rather than writing D1 inline.
+ * Which lanes route through the queue rather than writing the store inline.
  *
  * ONE PLACE DECIDES, and it is a per-lane env flag rather than a constant, so a
  * cutover and its rollback are both a deploy-time setting instead of a code
@@ -705,7 +705,7 @@ export function syncLaneUsesQueue(
   return enabled.includes(lane);
 }
 
-/** The D1 surface the consumer writes through -- structural, so a test can hand
+/** The store surface the consumer writes through -- structural, so a test can hand
  * a plain object instead of standing up a binding. */
 export type SyncBatchWriter = (
   rows: Record<string, unknown>[],
@@ -720,7 +720,7 @@ export type SyncBatchFamilyWriter = (
   pass: PassTally | null,
 ) => Promise<unknown>;
 
-/** Lane -> its D1 writer. PARTIAL on purpose: a lane may be accepted by the
+/** Lane -> its store writer. PARTIAL on purpose: a lane may be accepted by the
  * validator before its writer is wired, and writeSyncBatch throws rather than
  * silently skipping so a half-migrated lane fails loudly instead of leaving a
  * pass that never completes. */

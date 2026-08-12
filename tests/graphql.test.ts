@@ -4734,13 +4734,15 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
   });
 
   // D1 fully eliminated (2026-07-17): surface_status is Postgres-only now, so
-  // the health dimension is always empty -- even a "warm" D1 mock (real rows)
+  // the health dimension is always empty -- even a "warm" store mock (real rows)
   // must not change the response.
-  test("never queries D1 even when mocked with real rows: health dimension is always null", async () => {
+  test("never queries the store even when mocked with real rows: health dimension is always null", async () => {
     const env = profilesEnv();
     env.METAGRAPH_HEALTH_DB = {
       prepare() {
-        throw new Error("D1 must not be queried -- surface_status is retired");
+        throw new Error(
+          "the retired tier must not be queried -- surface_status is retired",
+        );
       },
     };
     const { status, body } = await gql(
@@ -4753,7 +4755,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
     assert.equal(body.data.compare.subnets[0].health, null);
   });
 
-  test("a D1 result with no rows yields null health (results || [] fallback)", async () => {
+  test("a store result with no rows yields null health (results || [] fallback)", async () => {
     const env = profilesEnv();
     env.METAGRAPH_HEALTH_DB = {
       prepare: () => ({ bind: () => ({ all: async () => ({}) }) }),
@@ -5220,7 +5222,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
 
   test("extrinsic: a malformed Postgres-tier body falls back to the requested ref — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const ref = "8621331-0";
     const tier = forbiddenDataApi();
@@ -5734,7 +5736,7 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
 
   test("block: a malformed Postgres-tier body falls back to the requested ref — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_BLOCKS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const ref = "8621331";
     const tier = forbiddenDataApi();
@@ -7313,14 +7315,14 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
   });
 
   // D1 fully eliminated (2026-07-17): subnet_snapshots is Postgres-only now,
-  // so a tier miss always yields an empty trajectory -- even a "warm" D1 mock
+  // so a tier miss always yields an empty trajectory -- even a "warm" store mock
   // (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns a schema-stable empty trajectory", async () => {
+  test("no Postgres tier flag: never queries the store, returns a schema-stable empty trajectory", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
           throw new Error(
-            "D1 must not be queried -- subnet_snapshots is retired",
+            "the retired tier must not be queried -- subnet_snapshots is retired",
           );
         },
       },
@@ -7346,7 +7348,7 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
     return { fetch: async () => response };
   }
 
-  test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty timeline, never null", async () => {
+  test("cold store: no Postgres flag / no store rows returns a schema-stable empty timeline, never null", async () => {
     const { status, body } = await gql(
       `{ subnet_identity_history(netuid: 1) {
           schema_version netuid entry_count limit offset next_cursor
@@ -7375,12 +7377,12 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
   // directly from an empty row set on a tier miss now (buildSubnetIdentityHistory([], ...)),
   // so a tier miss always yields the schema-stable empty timeline -- even a
   // "warm" D1 mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns a schema-stable empty timeline", async () => {
+  test("no Postgres tier flag: never queries the store, returns a schema-stable empty timeline", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
           throw new Error(
-            "D1 must not be queried -- subnet_identity_history is retired",
+            "the retired tier must not be queried -- subnet_identity_history is retired",
           );
         },
       },
@@ -7445,7 +7447,7 @@ describe("graphql — chain_identity_history (#5878, Postgres-tier + empty-feed 
     return { fetch: async () => response };
   }
 
-  test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty feed, never null", async () => {
+  test("cold store: no Postgres flag / no store rows returns a schema-stable empty feed, never null", async () => {
     const { status, body } = await gql(
       `{ chain_identity_history {
           schema_version count subnet_count changes { netuid subnet_name identity_hash }
@@ -7825,7 +7827,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
 
   test("account: activity.modules_called_capped is published when requested (#8822) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -7874,7 +7876,7 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
 
   test("resolves the Postgres-tier footprint for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -8025,7 +8027,7 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
 
   test("resolves the Postgres-tier scorecard for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -9191,8 +9193,8 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
   });
 });
 
-describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledger)", () => {
-  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+describe("graphql — incidents (#5660, Postgres-tier + retired-store fallback ledger)", () => {
+  // #10190: METAGRAPH_HEALTH_SOURCE is deleted from every config and absent from
   // FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered.
   // loadGlobalIncidentsLedger reads `surface_checks` through readStore, and
   // formatGlobalIncidents aggregates its INCIDENT rows into the surfaces below.
@@ -9315,7 +9317,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
 });
 
 describe("graphql — global_incidents (#7643, get_global_incidents-aligned alias)", () => {
-  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // #10190: METAGRAPH_HEALTH_SOURCE is deleted from every config and absent from
   // FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered --
   // loadGlobalIncidentsLedger reads `surface_checks` through readStore. Doubled
   // there, and given INCIDENT rows rather than a finished surfaces list: the
@@ -9623,7 +9625,7 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -13771,7 +13773,7 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -13850,7 +13852,7 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
 
   test("resolves the Postgres-tier leaderboard for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -13963,7 +13965,7 @@ describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fal
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14040,7 +14042,7 @@ describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14613,7 +14615,7 @@ describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14690,7 +14692,7 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14847,7 +14849,7 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
 
   test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -14926,7 +14928,7 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
@@ -15180,7 +15182,7 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
@@ -15410,7 +15412,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
@@ -15668,7 +15670,7 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
 
   test("resolves the Postgres-tier footprint for the requested window — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(
@@ -16309,7 +16311,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("resolves the flat Postgres-tier envelope, mapping each transfer's fields", async () => {
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
@@ -16435,7 +16437,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("a transfer row with missing fields degrades each to null", async () => {
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
@@ -16528,7 +16530,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("resolves the Postgres-tier envelope, mapping each event's fields", async () => {
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
@@ -16584,7 +16586,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("hits /api/v1/accounts/{ss58}/events and forwards every filter", async () => {
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
@@ -16649,7 +16651,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("an event row with missing fields degrades each to null", async () => {
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
@@ -16799,9 +16801,9 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
 
   // The regression the issue describes predates D1 elimination (2026-07-17):
   // with a D1 tier available, a bad bound used to reach `day >= ?` and return
-  // days: [] rather than erroring. D1 is never queried at all now, so this
+  // days: [] rather than erroring. the store is never queried at all now, so this
   // just confirms validation still runs before any tier lookup.
-  test("a malformed bound is rejected before any tier lookup, D1 never queried", async () => {
+  test("a malformed bound is rejected before any tier lookup, the store never queried", async () => {
     let prepared = false;
     const env = {
       METAGRAPH_HEALTH_DB: {
@@ -16819,7 +16821,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     assert.ok(
       body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
     );
-    assert.equal(prepared, false, "must not reach D1");
+    assert.equal(prepared, false, "must not reach the store");
   });
 
   test("cold store: no Postgres flag returns a schema-stable empty series, never null", async () => {
@@ -16973,13 +16975,13 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
 
   // D1 fully eliminated (2026-07-17): loadAccountHistory (src/account-events.ts)
   // now ignores its d1 argument entirely and always returns the empty shape --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns a schema-stable empty series", async () => {
+  // even a "warm" store mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries the store, returns a schema-stable empty series", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
           throw new Error(
-            "D1 must not be queried -- account_history is retired",
+            "the retired tier must not be queried -- account_history is retired",
           );
         },
       },
@@ -17150,14 +17152,14 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
   });
 
   // D1 fully eliminated (2026-07-17): account_identity_history's D1
-  // write/read path is fully retired -- even a "warm" D1 mock (real rows)
+  // write/read path is fully retired -- even a "warm" store mock (real rows)
   // must not change the response.
-  test("no Postgres tier flag: never queries D1, returns a schema-stable empty timeline", async () => {
+  test("no Postgres tier flag: never queries the store, returns a schema-stable empty timeline", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
           throw new Error(
-            "D1 must not be queried -- account_identity_history is retired",
+            "the retired tier must not be queried -- account_identity_history is retired",
           );
         },
       },
@@ -17169,7 +17171,7 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
     assert.deepEqual(body.data.account_identity_history.entries, []);
   });
 
-  test("a D1 query error degrades to a schema-stable empty timeline (no throw)", async () => {
+  test("a store query error degrades to a schema-stable empty timeline (no throw)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
@@ -17197,7 +17199,7 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
 
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   // `dataApi` went with the two Postgres-tier tests in this describe (#10190).
-  test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty series", async () => {
+  test("cold store: no Postgres flag / no store rows returns a schema-stable empty series", async () => {
     const { status, body } = await gql(
       "{ economics_trends { schema_version window day_count days { snapshot_date } } }",
     );
@@ -17224,7 +17226,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
   // live store at the route and tool boundaries
   // (tests/request-handlers-analytics-routes.test.ts, tests/mcp-server.test.ts).
 
-  test("a malformed Postgres-tier body falls back to the D1 rollup (schema-stable empty on cold D1)", async () => {
+  test("a malformed Postgres-tier body falls back to the D1 rollup (schema-stable empty on a cold store)", async () => {
     const env = {
       DATA_API: { fetch: async () => Response.json({}) },
     };
@@ -17239,13 +17241,13 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
 
   // D1 fully eliminated (2026-07-17): loadEconomicsTrends (src/economics-trends.ts)
   // no longer takes a d1 argument and always returns the schema-stable empty
-  // shape -- even a "warm" D1 mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns a schema-stable empty series", async () => {
+  // shape -- even a "warm" store mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries the store, returns a schema-stable empty series", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
           throw new Error(
-            "D1 must not be queried -- subnet_snapshots is retired",
+            "the retired tier must not be queried -- subnet_snapshots is retired",
           );
         },
       },
@@ -17262,7 +17264,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     assert.deepEqual(body.data.economics_trends.days, []);
   });
 
-  test("a D1 query error degrades to a schema-stable empty series (no throw)", async () => {
+  test("a store query error degrades to a schema-stable empty series (no throw)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
@@ -17692,9 +17694,9 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   });
 
   // #4772 D1 retirement: the `account_events` D1 table is dropped in
-  // production, so this resolver no longer queries D1 at all -- even a
+  // production, so this resolver no longer queries the store at all -- even a
   // "warm" D1 mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns the schema-stable empty leaderboard (retired -- #4772)", async () => {
+  test("no Postgres tier flag: never queries the store, returns the schema-stable empty leaderboard (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainWeightsD1({
         network: {
@@ -17706,7 +17708,9 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
       }),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const { status, body } = await gql(weightsQuery('(window: "7d")'), env);
     assert.equal(status, 200);
@@ -17715,7 +17719,7 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
     assert.deepEqual(body.data.chain_weights.subnets, []);
   });
 
-  test("a D1 query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
+  test("a store query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
@@ -17959,7 +17963,7 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
 
   test("trims an 8-day series to the requested 7d window (#8421) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(activityQuery(`(window: "7d")`), {
@@ -18119,7 +18123,7 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
 
   test("trims an 8-day daily series to the requested 7d window (#8421) — the retired tier is not consulted (#10190)", async () => {
     // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
-    // reads "retired"/"d1" and is absent from FORWARDABLE_TIER_FLAGS, so that
+    // is deleted from every config and absent from FORWARDABLE_TIER_FLAGS, so that
     // request was never made; the retirement is what is left to prove.
     const tier = forbiddenDataApi();
     const { status, body } = await gql(feesQuery(`(window: "7d")`), {
@@ -18319,9 +18323,9 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
   });
 
   // #4909/#6013: account_events' D1 write path is retired and the table is
-  // dropped in production, so this resolver no longer queries D1 at all --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns the schema-stable empty leaderboard (retired -- #4909/#6013)", async () => {
+  // dropped in production, so this resolver no longer queries the store at all --
+  // even a "warm" store mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries the store, returns the schema-stable empty leaderboard (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainServingD1({
         network: {
@@ -18332,7 +18336,9 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
       }),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const { status, body } = await gql(servingQuery('(window: "7d")'), env);
     assert.equal(status, 200);
@@ -18547,9 +18553,9 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
   });
 
   // #4772 D1 retirement: the `account_events` D1 table is dropped in
-  // production, so this resolver no longer queries D1 at all -- even a
+  // production, so this resolver no longer queries the store at all -- even a
   // "warm" D1 mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns the schema-stable zeroed card (retired -- #4772)", async () => {
+  test("no Postgres tier flag: never queries the store, returns the schema-stable zeroed card (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainAlphaVolumeD1([
         {
@@ -18571,7 +18577,9 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
       ]),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const { status, body } = await gql(alphaVolumeQuery(), env);
     assert.equal(status, 200);
@@ -18581,7 +18589,7 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
     assert.deepEqual(card.subnets, []);
   });
 
-  test("a D1 query error degrades to a schema-stable zeroed card (no throw)", async () => {
+  test("a store query error degrades to a schema-stable zeroed card (no throw)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
@@ -18675,7 +18683,7 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   // D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only
   // now, so a tier miss always yields zeroed windows -- even a "warm" D1
   // mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns schema-stable zeroed windows", async () => {
+  test("no Postgres tier flag: never queries the store, returns schema-stable zeroed windows", async () => {
     const recentDay = new Date(Date.now() - 2 * DAY_MS)
       .toISOString()
       .slice(0, 10);
@@ -18692,7 +18700,7 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       throw new Error(
-        "D1 must not be queried -- surface_uptime_daily is retired",
+        "the retired tier must not be queried -- surface_uptime_daily is retired",
       );
     };
     const { status, body } = await gql(trendsQuery(), env);
@@ -18703,7 +18711,7 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
     assert.equal(body.data.health_trends.windows["30d"].subnet_count, 0);
   });
 
-  test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
+  test("observed_at is stamped from the health:meta KV freshness on the store-live path", async () => {
     const env = {
       METAGRAPH_CONTROL: {
         async get(key: string) {
@@ -18721,7 +18729,7 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
     );
   });
 
-  test("a D1 query error degrades to a schema-stable empty matrix (no throw)", async () => {
+  test("a store query error degrades to a schema-stable empty matrix (no throw)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
@@ -19138,7 +19146,7 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
   // D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only
   // now, so a tier miss always yields an empty surfaces card -- even a
   // "warm" D1 mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns a schema-stable empty surfaces card", async () => {
+  test("no Postgres tier flag: never queries the store, returns a schema-stable empty surfaces card", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: uptimeD1([
         {
@@ -19159,7 +19167,7 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       throw new Error(
-        "D1 must not be queried -- surface_uptime_daily is retired",
+        "the retired tier must not be queried -- surface_uptime_daily is retired",
       );
     };
     const { status, body } = await gql(uptimeQuery(), env);
@@ -19200,7 +19208,7 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     );
   });
 
-  test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
+  test("observed_at is stamped from the health:meta KV freshness on the store-live path", async () => {
     const env = {
       METAGRAPH_CONTROL: {
         async get(key: string) {
@@ -19356,7 +19364,7 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
   // D1 fully eliminated (2026-07-17): rpc_proxy_events is Postgres-only now,
   // so a tier miss always yields the schema-stable empty card -- even a
   // "warm" D1 mock (real rows) must not change the response.
-  test("no Postgres tier flag: never queries D1, returns the schema-stable zeroed card", async () => {
+  test("no Postgres tier flag: never queries the store, returns the schema-stable zeroed card", async () => {
     const env = {
       METAGRAPH_RPC_USAGE_SOURCE: "data-api",
       METAGRAPH_HEALTH_DB: rpcUsageD1({
@@ -19389,7 +19397,9 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
       }),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- rpc_proxy_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- rpc_proxy_events is retired",
+      );
     };
     const { status, body } = await gql(usageQuery('(window: "7d")'), env);
     assert.equal(status, 200);
@@ -19403,7 +19413,7 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     assert.deepEqual(usage.buckets, []);
   });
 
-  test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
+  test("observed_at is stamped from the health:meta KV freshness on the store-live path", async () => {
     const env = {
       METAGRAPH_CONTROL: {
         async get(key: string) {
@@ -19432,7 +19442,7 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     );
   });
 
-  test("a D1 query error degrades to a schema-stable zeroed card (no throw)", async () => {
+  test("a store query error degrades to a schema-stable zeroed card (no throw)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
@@ -19709,7 +19719,7 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.deepEqual(tier.paths, []);
   });
 
-  test("no Postgres tier flag: never queries D1, returns the schema-stable empty list (retired -- #4772)", async () => {
+  test("no Postgres tier flag: never queries the store, returns the schema-stable empty list (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: nominatorsD1([
         {
@@ -19722,7 +19732,9 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
       ]),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}")`),
@@ -21074,7 +21086,7 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     }
   });
 
-  // D1 reads resurrected (2026-08-03): composeLeaderboardsData reads
+  // store reads resurrected (2026-08-03): composeLeaderboardsData reads
   // surface_status again, so a warm D1 binding now RANKS the healthiest board
   // instead of returning an empty list.
   test("an explicit board returns only that board, ranked from the store", async () => {
@@ -21418,9 +21430,9 @@ describe("Query.account_identity", () => {
 
   // D1 fully eliminated (2026-07-16): account_identity's D1 write/read path
   // is fully retired, so a tier miss always resolves through
-  // buildAccountIdentity(null, ss58) -- even a "warm" D1 mock (real rows)
+  // buildAccountIdentity(null, ss58) -- even a "warm" store mock (real rows)
   // must not change the response.
-  test("never queries D1 even when mocked with real rows: has_identity is always false on a tier miss", async () => {
+  test("never queries the store even when mocked with real rows: has_identity is always false on a tier miss", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: identityD1([
         {
@@ -21437,7 +21449,9 @@ describe("Query.account_identity", () => {
       ]),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_identity is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_identity is retired",
+      );
     };
     const { status, body } = await gql(
       `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
@@ -21625,9 +21639,9 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   });
 
   // #4909/#6013: account_events' D1 write path is retired and the table is
-  // dropped in production, so this resolver no longer queries D1 at all --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  // dropped in production, so this resolver no longer queries the store at all --
+  // even a "warm" store mock (real rows) must not change the response.
+  test("never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainPrometheusD1({
         network: { distinct_exporters: 3, newest_observed: 1780000000000 },
@@ -21638,7 +21652,9 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
       }),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const { status, body } = await gql(prometheusQuery(""), env);
     assert.equal(status, 200);
@@ -21802,9 +21818,9 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   });
 
   // #4909/#6013: account_events' D1 write path is retired and the table is
-  // dropped in production, so this resolver no longer queries D1 at all --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  // dropped in production, so this resolver no longer queries the store at all --
+  // even a "warm" store mock (real rows) must not change the response.
+  test("never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainAxonRemovalsD1({
         network: { distinct_removers: 3, newest_observed: 1780000000000 },
@@ -21815,7 +21831,9 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
       }),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const { status, body } = await gql(removalsQuery(""), env);
     assert.equal(status, 200);
@@ -21979,9 +21997,9 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   });
 
   // #4909/#6013: account_events' D1 write path is retired and the table is
-  // dropped in production, so this resolver no longer queries D1 at all --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  // dropped in production, so this resolver no longer queries the store at all --
+  // even a "warm" store mock (real rows) must not change the response.
+  test("never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainRegD1({
         network: {
@@ -21995,7 +22013,9 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
       }),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const { status, body } = await gql(regQuery(""), env);
     assert.equal(status, 200);
@@ -22154,9 +22174,9 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   });
 
   // #4909/#6013: account_events' D1 write path is retired and the table is
-  // dropped in production, so this resolver no longer queries D1 at all --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  // dropped in production, so this resolver no longer queries the store at all --
+  // even a "warm" store mock (real rows) must not change the response.
+  test("never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainDeregD1({
         network: {
@@ -22170,7 +22190,9 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
       }),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const { status, body } = await gql(deregQuery(""), env);
     assert.equal(status, 200);
@@ -22315,9 +22337,9 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 
   // #4772 D1 retirement: the `extrinsics` D1 table is dropped in
-  // production, so this resolver no longer queries D1 at all -- even a
+  // production, so this resolver no longer queries the store at all -- even a
   // "warm" D1 mock (real rows) must not change the response.
-  test("never queries D1 even when mocked with real rows (retired -- #4772)", async () => {
+  test("never queries the store even when mocked with real rows (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: signersD1([
         {
@@ -22330,7 +22352,9 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
       ]),
     };
     env.METAGRAPH_HEALTH_DB.prepare = () => {
-      throw new Error("D1 must not be queried -- extrinsics is retired");
+      throw new Error(
+        "the retired tier must not be queried -- extrinsics is retired",
+      );
     };
     const { status, body } = await gql(signersQuery(""), env);
     assert.equal(status, 200);

@@ -8,7 +8,7 @@
 //
 // The D1 loader (loadAccountStakeFlow) was removed — account_events' D1 write path
 // is retired and the table is dropped in production (#4772 / #4909 / #6016), so
-// serving goes tryDataApiTier → schema-stable empty stub, never D1.
+// serving goes tryDataApiTier → schema-stable empty stub, never the store.
 //
 // This is the account-level companion of the per-subnet stake-flow route: that one
 // answers "how much capital moved through subnet N", this one answers "where did THIS
@@ -52,13 +52,13 @@ function roundConcentration(value: number): number {
   return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 
-// Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
+// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
 function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-// A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank D1 cells
+// A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank cells
 // coerce via Number("") → 0; skip those rows rather than counting phantom zero-TAO
 // stake events (mirrors buildCounterparties #3059).
 function nullableTao(value: unknown): number | null {
@@ -72,7 +72,7 @@ function nullableTao(value: unknown): number | null {
 // explicitly so a null netuid is skipped rather than coerced to subnet 0 (Number(null) === 0).
 function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
@@ -213,7 +213,7 @@ export function buildAccountStakeFlow(
   );
   // The dominant subnet is the head of that deterministic ranking (highest gross,
   // lowest netuid on a tie), so it always agrees with the subnets list order rather
-  // than depending on D1 GROUP BY row order.
+  // than depending on GROUP BY row order.
   const dominantNetuid = subnets.length > 0 ? subnets[0].netuid : null;
 
   const totalNet = totalStaked - totalUnstaked;

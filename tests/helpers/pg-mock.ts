@@ -1,4 +1,4 @@
-// A `pg` module double, for suites that used to hand a D1 binding to a route.
+// A `pg` module double, for suites that used to hand a store binding to a route.
 //
 // ## Why this exists
 //

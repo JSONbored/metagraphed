@@ -52,7 +52,7 @@ const HOTKEY_B = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
+function runner() {
   return {
     prepare(text: string) {
       return {
@@ -87,7 +87,7 @@ function d1() {
 
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: d1(),
+    METAGRAPH_HEALTH_DB: runner(),
     VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
     ...overrides,
   } as unknown as Env;
@@ -153,13 +153,13 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
     //
     // A row-count assertion would prove nothing here: the Neon write fails
     // against a fake connection string, so D1 goes unwritten either way. What
-    // only the inverted path can do is stop demanding a D1 binding.
+    // only the inverted path can do is stop demanding a store binding.
     const res = await post({ rows: [countRow()] }, SECRET, {
       METAGRAPH_HEALTH_DB: undefined,
       VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
       HYPERDRIVE: { connectionString: "postgresql://example/db" },
     } as unknown as Env);
-    assert.notEqual(res.status, 503, "still demanding a D1 binding");
+    assert.notEqual(res.status, 503, "still demanding a store binding");
   });
 
   test("rejects a body that is not JSON, or not a row array", async () => {

@@ -257,11 +257,13 @@ export function shouldFlushEarly(
 /**
  * The lanes routed through the buffer, read from the environment.
  *
- * A COMMA LIST DEFAULTING TO EMPTY, deliberately, and the same shape as
- * `NEON_DUAL_WRITE_LANES` in src/neon-write.ts. That file's header states the
- * reason and it applies unchanged here: this changes nothing until a lane is
- * named, so the deploy that introduces buffering cannot itself be the deploy
- * that buffers everything.
+ * A COMMA LIST DEFAULTING TO EMPTY, deliberately. It was the same shape as
+ * the retired NEON_DUAL_WRITE_LANES, and that flag's reason still applies to
+ * this one: naming no lane changes nothing, so the deploy that introduces
+ * buffering cannot itself be the deploy that buffers everything. The reason
+ * the cutover flags could NOT keep that property -- an empty list stopped
+ * meaning "not yet" and started meaning "do not persist" -- does not reach
+ * here: an unbuffered lane still writes, it just writes directly.
  */
 export function neonWriteBufferLanes(
   env: Record<string, unknown> | null | undefined,

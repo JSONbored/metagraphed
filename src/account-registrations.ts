@@ -1,6 +1,6 @@
 // Per-account registration footprint: which subnets one account (hotkey) registered a neuron on
 // over a recent window, broken down per subnet and rolled up into a registration scorecard. Pure
-// shaping (buildAccountRegistrations) + a thin D1 loader (loadAccountRegistrations); the Worker adds
+// shaping (buildAccountRegistrations) + a thin store loader (loadAccountRegistrations); the Worker adds
 // the REST envelope. Null-safe: a cold store or an empty window yields schema-stable zeros (never
 // throws), matching the sibling account tiers (stake-flow, counterparties).
 //
@@ -36,7 +36,7 @@ function roundConcentration(value: number): number {
   return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -45,7 +45,7 @@ function toCount(value: unknown): number {
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null explicitly so a
 // null netuid is skipped rather than coerced to subnet 0 (Number(null) === 0); a blank/whitespace
-// D1 cell (Number("") → 0) is likewise skipped.
+// cell (Number("") → 0) is likewise skipped.
 function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
@@ -146,7 +146,7 @@ export function buildAccountRegistrations(
     (a, b) => b.registrations - a.registrations || a.netuid - b.netuid,
   );
   // The dominant subnet is the head of that deterministic ranking, so it always agrees with the
-  // subnets list order rather than depending on D1 GROUP BY row order.
+  // subnets list order rather than depending on GROUP BY row order.
   const dominantNetuid = subnets.length > 0 ? subnets[0].netuid : null;
   // Herfindahl-Hirschman index of registrations across subnets: 1 = all on one subnet, -> 1/n as it
   // spreads evenly; null when the account has no registrations to concentrate.
@@ -172,9 +172,9 @@ export function buildAccountRegistrations(
 // buildAccountRegistrations. The (hotkey) prefix of idx_account_events_hotkey (migrations/0009)
 // seeks just this account's events; event_kind/observed_at are residual filters on that bounded
 // seek. Returns { data, generatedAt } where generatedAt is the newest registration's observed_at as
-// an ISO string (string|null per the envelope contract). Cold/absent D1 -> zeroed card + null.
+// an ISO string (string|null per the envelope contract). A cold or absent store -> zeroed card + null.
 export async function loadAccountRegistrations(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -185,7 +185,7 @@ export async function loadAccountRegistrations(
     REGISTRATION_WINDOWS[windowLabel] ??
     REGISTRATION_WINDOWS[DEFAULT_REGISTRATION_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT netuid, COUNT(*) AS registrations, MIN(observed_at) AS first_observed, " +
       "MAX(observed_at) AS last_observed " +
       "FROM account_events INDEXED BY idx_account_events_hotkey " +

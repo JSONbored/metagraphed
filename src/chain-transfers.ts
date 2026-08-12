@@ -24,7 +24,7 @@ function roundTao(value: unknown): number {
   return Math.round(n * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
-// Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
+// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
 function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;

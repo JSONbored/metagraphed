@@ -1,5 +1,5 @@
 // GET /api/v1/chain/performance (types-epic B batch 6, #8060). Live neurons
-// D1-tier data -- no static file. Modeled from src/chain-performance.ts's
+// store-tier data -- no static file. Modeled from src/chain-performance.ts's
 // buildChainPerformance() (which reuses computeConcentration()/
 // scoreDistribution(), the exact functions ConcentrationMetricsSchema/
 // ScoreDistributionSchema in shared.ts model, from types-epic B batch

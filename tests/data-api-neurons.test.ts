@@ -563,7 +563,7 @@ test("a failing read maps to the dispatcher's opaque 502, never a leaked DB erro
 
 // --- Per-UID metagraph tier ---------------------------------------------------
 
-test("GET /api/v1/subnets/:netuid/metagraph serves the D1 snapshot", async () => {
+test("GET /api/v1/subnets/:netuid/metagraph serves the snapshot store", async () => {
   insertNeuron({ uid: 1, stake_tao: 50, validator_permit: 0 });
   insertNeuron({ uid: 0, stake_tao: 100 });
   insertNeuron({ netuid: 8, uid: 0 });
@@ -1047,7 +1047,7 @@ test("a failing counts read degrades to null rather than failing the request", a
 
 // --- Live-neurons analytics routes -------------------------------------------
 
-test("GET /api/v1/subnets/:netuid/concentration and /performance read the D1 snapshot", async () => {
+test("GET /api/v1/subnets/:netuid/concentration and /performance read the snapshot store", async () => {
   insertNeuron({ uid: 0, stake_tao: 90, coldkey: "5C1" });
   insertNeuron({ uid: 1, stake_tao: 10, coldkey: "5C2" });
   const conc = await call(req("/api/v1/subnets/7/concentration"));
@@ -1139,7 +1139,7 @@ test("GET /api/v1/chain/yield excludes root; /subnets/:netuid/yield ranks per UI
 
 // --- Account-scoped neurons routes -------------------------------------------
 
-test("GET /api/v1/accounts/:ss58/portfolio prices cross-subnet positions from D1 snapshots", async () => {
+test("GET /api/v1/accounts/:ss58/portfolio prices cross-subnet positions from snapshot stores", async () => {
   insertNeuron({ netuid: 0, uid: 0, hotkey: "5Acct", stake_tao: 100 });
   insertNeuron({ netuid: 7, uid: 4, hotkey: "5Acct", stake_tao: 10 });
   insertPrice(7, dayAgo(0), 2);

@@ -173,7 +173,7 @@ const EVENT_KIND_CATEGORIES: Record<string, string> = {
 };
 
 function toIso(ms: unknown): string | null {
-  // D1 can return the INTEGER observed_at as a numeric string; coerce first, and
+  // the store can return the INTEGER observed_at as a numeric string; coerce first, and
   // require n > 0 so a null/blank/zero/invalid cell stays null instead of epoch
   // 1970. Mirrors the toIso guards in blocks.ts (#2708) and extrinsics.ts
   // (#2714).
@@ -188,7 +188,7 @@ function toIso(ms: unknown): string | null {
 // missing, non-finite, or negative — chain positions are never negative.
 function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
@@ -201,7 +201,7 @@ function toBlockNumber(value: unknown): number | null {
 // aggregate is null on a cold store, not 0.
 function toTaoOrNull(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
@@ -953,7 +953,7 @@ export function buildAccountTransfers(
   };
 }
 
-// ---- Account D1 read paths -------------------------------------------------
+// ---- Account store read paths -------------------------------------------------
 // One source of truth for the account SQL + pagination, shared by the REST
 // handlers and the MCP account tools. `d1` is a (sql, params) => Promise<rows[]>
 // runner; a cold/unbound DB yields [] → a schema-stable zero payload.
@@ -1023,7 +1023,7 @@ export async function loadAccountHistory(
   );
 }
 
-// loadAccountTransfers (the D1-querying account_events reader) was deleted
+// loadAccountTransfers (the account_events store reader) was deleted
 // (2026-07-17, D1 fully eliminated) -- account_events was already dropped
 // from D1 production (#4772), so it had zero live callers; every real route
 // calls buildAccountTransfers([], ...) directly.

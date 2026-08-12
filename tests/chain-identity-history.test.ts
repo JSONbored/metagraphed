@@ -252,7 +252,7 @@ describe("chain/identity-history edge cache", () => {
   });
 
   // D1 fully eliminated (2026-07-16): the bespoke readIdentityHistoryCacheStamp
-  // (D1 MAX(observed_at)) is retired alongside the D1 read it existed to bust
+  // (D1 MAX(observed_at)) is retired alongside the store read it existed to bust
   // on -- this route now busts on the same shared health-cron `last_run_at`
   // KV value every sibling Postgres-tier analytics route already uses,
   // mirroring chain-performance.test.ts's own post-#4772 edge-cache tests.

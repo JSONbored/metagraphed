@@ -576,7 +576,7 @@ function walk(
   return value;
 }
 
-/** Reconstructs indexer-rs's nested-RuntimeCall enum-tree shape into D1's
+/** Reconstructs indexer-rs's nested-RuntimeCall enum-tree shape into the store's
  * `{call_module, call_function, call_args}` shape at any nesting depth
  * (Proxy.proxy wrapping one call, Utility.batch wrapping an array of calls,
  * Multisig.as_multi/Sudo.sudo/Utility.batch_all composing three deep --

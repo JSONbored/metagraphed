@@ -11,7 +11,7 @@
 //
 // ## Why the comparison against 1 is gone (#10086)
 //
-// `surface_checks.ok` is INTEGER in D1 and BOOLEAN in Neon. That is a TYPING
+// `surface_checks.ok` is INTEGER in the store and BOOLEAN in Neon. That is a TYPING
 // difference, not a dialect one, so it survives every `?`->`$n` rewrite and
 // every portability review that reads for syntax: `ok = 1` parses fine on both
 // and only Postgres rejects it, at runtime, with `operator does not exist:

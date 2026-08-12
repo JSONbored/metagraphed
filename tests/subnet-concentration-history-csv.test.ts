@@ -48,7 +48,7 @@ describe("subnet concentration history OpenAPI CSV contract", () => {
 });
 
 describe("handleSubnetConcentrationHistory CSV export", () => {
-  test("returns header-only CSV when D1 is cold", async () => {
+  test("returns header-only CSV when the store is cold", async () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       {} as unknown as Env,

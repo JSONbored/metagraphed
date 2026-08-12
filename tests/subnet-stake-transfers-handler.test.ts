@@ -8,7 +8,7 @@
 // (#4772) and the table is dropped in production, so that query no longer
 // runs at all — handleSubnetStakeTransfers now only calls tryDataApiTier,
 // falling back to a schema-stable-empty buildSubnetStakeTransfers(null, ...)
-// literal on a miss, never D1. Only the pure cache-key coverage below
+// literal on a miss, never the store. Only the pure cache-key coverage below
 // (canonicalSubnetStakeTransfersCachePath, untouched by the retirement)
 // remains meaningful here.
 

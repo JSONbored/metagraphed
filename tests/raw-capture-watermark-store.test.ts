@@ -1,7 +1,7 @@
 // The raw-capture watermark store (src/raw-capture-sync.ts, #10107, #10179).
 //
 // THE READ MUST MOVE WITH THE WRITE. This nearly shipped inverted on the write
-// side only: the caller built a D1-backed inner store, so skipping the D1 write
+// side only: the caller built a store-backed inner store, so skipping the D1 write
 // while still reading it would have read a row nothing updates again. The
 // capture resumes FROM the watermark, so it would have re-captured the same
 // blocks every tick, forever -- with both stores looking healthy and the mirror

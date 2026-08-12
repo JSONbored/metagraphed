@@ -521,7 +521,7 @@ describe("degenerate input", () => {
     assert.equal(surface.url, "");
   });
 
-  // "a result set with no rows key" retired with the D1 envelope (#10309):
+  // "a result set with no rows key" retired with D1's envelope (#10309):
   // query() answers rows directly, so zero rows is the empty array -- the
   // empty-map case is pinned in "a read failure is null, an empty store is an
   // empty map".

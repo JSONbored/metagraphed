@@ -7,7 +7,7 @@
 >
 > **The hub now polls the chain head itself** (#204, `src/head-poller.ts`): an alarm in the
 > Durable Object reads `CHAIN_HEAD_RPC_URL` every `CHAIN_HEAD_POLL_INTERVAL_MS` (default 6s),
-> broadcasts each new block, and writes it to D1's `blocks_head`. The main Worker's
+> broadcasts each new block, and writes it to `blocks_head`. The main Worker's
 > 15-minute cron re-arms that alarm as a self-healing bootstrap. Nothing POSTs
 > `/api/v1/internal/chain-firehose-ingest` in production any more, though the endpoint
 > remains for direct testing.
@@ -35,7 +35,7 @@ TODAY (#204)
         ├→ JSON-RPC to CHAIN_HEAD_RPC_URL (public archive) → new block?
         │
         ├→ broadcast to subscribers        → SSE / WS (#4982) / GraphQL subs / MCP (#4983)
-        └→ write D1 blocks_head
+        └→ write blocks_head
 
   main Worker's 15-minute cron → POST /poll-start → re-arms the alarm if it ever stopped
 

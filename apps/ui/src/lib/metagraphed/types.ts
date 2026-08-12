@@ -3122,7 +3122,7 @@ export interface ChainCalls {
 
 // #3489: raw all-events tier (ADR 0013) pallet.method distribution from
 // GET /api/v1/chain-events/stats — the raw-tier counterpart to ChainCalls
-// (the D1 /chain/calls aggregate). No schema_version/observed_at envelope; the
+// (the /chain/calls aggregate). No schema_version/observed_at envelope; the
 // endpoint returns the block window it scanned, the distinct pallet.method
 // group count, and the count-descending activity rows.
 export interface ChainEventsStatsEntry {

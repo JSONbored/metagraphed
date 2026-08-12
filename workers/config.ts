@@ -227,7 +227,7 @@ export const FRESHNESS_WATCHDOG_CRON = "23 * * * *";
 // twenty-hour one. :48 is 31 minutes after the decode lane's own `17 * * * *`
 // cron, so a tick reads the result of that hour's run rather than racing it.
 // A Worker cron rather than an Actions job because this Worker already holds
-// R2_SQL_TOKEN, METAGRAPH_ARCHIVE and the D1 binding; the workflow form needed
+// R2_SQL_TOKEN, METAGRAPH_ARCHIVE and the store binding; the workflow form needed
 // all three duplicated repo-side. Must match a wrangler.jsonc cron entry.
 export const LAKEHOUSE_SEAM_CRON = "48 * * * *";
 
@@ -241,7 +241,7 @@ export const LAKEHOUSE_SEAM_CRON = "48 * * * *";
 export const SAFE_MODE_WATCHDOG_CRON = "41 * * * *";
 
 // The emission-gate sampler (#8748/#8750), moved off its GitHub Actions
-// schedule onto this Worker: the persistence route, the D1 state, and the
+// schedule onto this Worker: the persistence route, the store state, and the
 // differs already live here, so the Actions hop bought a third-party trigger
 // dependency and 144 runner spins a day for a job this Worker can run
 // itself. Same 10-minute cadence the box timer and the Actions schedule
@@ -369,7 +369,7 @@ export const DAILY_SERIES_COVERAGE_CRON = "35 7,19 * * *";
 export const TOP_HOLDERS_STALENESS_WATCHDOG_CRON = "22,52 * * * *";
 // #9478: the account-balances lane's alarm -- the SOURCE side of the watchdog
 // above, not a replacement for it. That one watches the served artifact; this
-// one watches the D1 table the artifact is supposed to be composed from, and
+// one watches the store table the artifact is supposed to be composed from, and
 // the two fail independently (a fresh table behind a stale artifact is a
 // publish problem; a stale table behind either is the producer). Twice hourly
 // against the same twelve-hour threshold, since one producer tick is what
@@ -477,10 +477,10 @@ export const SUBNET_DEREGISTRATION_DAILY_CRON = "17 5 * * *";
 // file and stays off the */5 raw-capture and */15 probe grids.
 //
 // Worker-native rather than an Actions job for the reason the sampler and the
-// drift check moved: the KV tier this writes, the D1 tables it aggregates and
+// drift check moved: the KV tier this writes, the store tables it aggregates and
 // the R2 artifact it reads all live in this Worker, so the Actions hop bought
 // a third-party trigger dependency and a credential (the repo
-// CLOUDFLARE_API_TOKEN, which has no D1 read permission and silently nulled
+// CLOUDFLARE_API_TOKEN, which has no store read permission and silently nulled
 // every alpha_price_change_* field, #9189) for work the Worker can do with
 // bindings it already holds. See src/live-economics-refresh.ts's header.
 // Must match a wrangler.jsonc `triggers.crons` entry.
@@ -518,7 +518,7 @@ export const TAO_USD_INDEX_CRON = "* * * * *";
  * The all-tables freshness sweep (metagraphed#9786).
  *
  * HOURLY. It reads `MAX(<timestamp>)` from every declared table, so a fast
- * cadence would spend millions of D1 row reads re-learning facts that change
+ * cadence would spend millions of store row reads re-learning facts that change
  * at most every few minutes and, for most tables, every few hours. The
  * tightest threshold it enforces is two hours, so an hourly tick cannot miss a
  * breach -- only report it one tick later.
@@ -574,7 +574,7 @@ export const INCIDENTS_PATH_PATTERN =
 export const TRAJECTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/trajectory$/;
 // Subnet hyperparameters (#4303/1.4): one row per netuid, computed live from
-// the subnet_hyperparams D1 tier, no static file.
+// the subnet_hyperparams store tier, no static file.
 export const SUBNET_HYPERPARAMS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/hyperparameters$/;
 // Historical hyperparameter change tracking (#4309/1.6): append-only timeline
@@ -587,7 +587,7 @@ export const SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN =
 export const SUBNET_LIFECYCLE_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/lifecycle$/;
 // Stake/emission concentration metrics (#2106): computed live from the neurons
-// D1 tier, no static file.
+// store tier, no static file.
 export const SUBNET_CONCENTRATION_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/concentration$/;
 // Per-day concentration history (decentralization trend) from the neuron_daily
@@ -634,7 +634,7 @@ export const SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/validator-economics\/history$/;
 // Live cumulative TAO recycled for registration on one subnet (#4339/8.4),
 // queried from the chain's own RAORecycledForRegistration storage map at
-// request time — not a D1/account_events tier, no static file.
+// request time — not a the store/account_events tier, no static file.
 // #10447: one subnet's external revenue against the TAO the network emits to
 // it. Composed live from the economics capture, the subnet's own surface
 // declarations and the tao-usd index — no static file, and never a 404 for a
@@ -652,14 +652,14 @@ export const SUBNET_RECYCLED_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/recycled$/;
 // Live current registration/burn cost for one subnet (#6321) — the dynamic
 // price between min_burn_tao/max_burn_tao's static bounds, queried from the
-// chain's own Burn storage map at request time — not a D1/account_events
+// chain's own Burn storage map at request time — not a the store/account_events
 // tier, no static file. Dispatched separately from SUBNET_RECYCLED (a
 // different storage item, different route).
 export const SUBNET_BURN_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/burn$/;
 // Live subnet-lease state (#6719) — whether a subnet is currently under a
 // lease and, if so, its terms, queried from the chain's own SubnetUidTo-
 // LeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request
-// time — not a D1/account_events tier, no static file. The companion
+// time — not a the store/account_events tier, no static file. The companion
 // /lease/history route (lease-lifecycle events, Postgres-tier via the
 // DATA_API service binding) is dispatched separately in api.ts's
 // handleRequest, matching ownership-history/conviction's own inline-regex
@@ -715,7 +715,7 @@ export const SUBNET_PERFORMANCE_PATH_PATTERN =
 export const SUBNET_IDLE_STAKE_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/idle-stake$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
-// Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
+// Per-UID metagraph routes (#1304/#1305): computed live from the neurons store.
 export const SUBNET_METAGRAPH_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/metagraph$/;
 export const SUBNET_NEURON_PATH_PATTERN =
@@ -769,7 +769,7 @@ export const SUBNET_HISTORY_PATH_PATTERN =
 export const SUBNET_IDENTITY_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/identity-history$/;
 // Account entity routes (#1347): computed live from the account_events + neurons
-// D1 tiers. SS58 addresses are base58 (no 0/O/I/l), 47-48 chars.
+// store tiers. SS58 addresses are base58 (no 0/O/I/l), 47-48 chars.
 // A bare, anchored SS58 address — the same shape the route patterns capture,
 // reused by the MCP account tools so REST and MCP validate the address identically.
 export const SS58_ADDRESS_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{47,48}$/;
@@ -885,14 +885,14 @@ export const ACCOUNT_IDENTITY_HISTORY_PATH_PATTERN =
 // Live child-hotkey delegation graph (#6723, part of epic #6721): who this
 // hotkey delegates stake-weight to (children) / who delegates to it
 // (parents), per subnet — queried from the chain's own ChildKeys/ParentKeys
-// storage maps at request time, not a D1/account_events tier, no static
+// storage maps at request time, not a the store/account_events tier, no static
 // file. Mirrors ACCOUNT_IDENTITY_PATH_PATTERN's ss58-keyed shape.
 export const ACCOUNT_CHILDREN_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/children$/;
 export const ACCOUNT_PARENTS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/parents$/;
 // Block-explorer routes (#1345): recent feed + per-block detail, computed live
-// from the `blocks` D1 tier. {ref} is a numeric block_number OR a 0x block_hash
+// from the `blocks` store tier. {ref} is a numeric block_number OR a 0x block_hash
 // (32-byte hex = 64 chars).
 export const BLOCKS_FEED_PATH_PATTERN = /^\/api\/v1\/blocks$/;
 export const BLOCK_DETAIL_PATH_PATTERN =
@@ -920,7 +920,7 @@ export const BLOCK_EVENTS_PATH_PATTERN =
 export const BLOCK_CHAIN_EVENTS_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/chain-events$/;
 // Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
-// detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
+// detail, computed live from the `extrinsics` store tier. {hash} is a 0x extrinsic_hash
 // (32-byte blake2b = 64 hex chars).
 export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
 // Sudo-call feed (#4310/2.2): the extrinsics feed hardcoded to call_module='Sudo'
@@ -929,16 +929,16 @@ export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
 export const SUDO_CALLS_PATH_PATTERN = /^\/api\/v1\/sudo$/;
 // Current Sudo::Key holder (#4310/2.4, re-scoped from the original Senate/
 // Council membership framing — see #4310's audit): a live finney RPC read,
-// not a D1 tier — distinct from SUDO_CALLS_PATH_PATTERN's extrinsic feed.
+// not a store tier — distinct from SUDO_CALLS_PATH_PATTERN's extrinsic feed.
 export const SUDO_KEY_PATH_PATTERN = /^\/api\/v1\/sudo\/key$/;
 // Live global Subtensor protocol/governance parameters (#6343) -- TaoWeight,
 // StakeThreshold, PendingChildKeyCooldown -- a live finney RPC read, same
-// shape as SUDO_KEY_PATH_PATTERN just above (no path params, no D1 tier).
+// shape as SUDO_KEY_PATH_PATTERN just above (no path params, no store tier).
 export const NETWORK_PARAMETERS_PATH_PATTERN =
   /^\/api\/v1\/network\/parameters$/;
 // Live drand randomness-beacon status (#6731) -- LastStoredRound/
 // OldestStoredRound -- a live finney RPC read, same shape as
-// NETWORK_PARAMETERS_PATH_PATTERN just above (no path params, no D1 tier).
+// NETWORK_PARAMETERS_PATH_PATTERN just above (no path params, no store tier).
 export const RANDOMNESS_PATH_PATTERN = /^\/api\/v1\/network\/randomness$/;
 // Live H160 -> SS58 address mapping (#6725/#6728), via the AddressMapping EVM
 // precompile -- a live finney RPC read keyed by h160. Captures any non-slash
@@ -950,11 +950,11 @@ export const EVM_ADDRESS_MAPPING_PATH_PATTERN =
 // AdminUtils config-change feed (#4310/2.3, re-scoped from the original
 // Council/Senate framing — see #4310's audit): the extrinsics feed hardcoded
 // to call_module='AdminUtils', subtensor's own root-origin hyperparameter/
-// network-config change pathway. Same D1 tier as EXTRINSICS_FEED_PATH_PATTERN.
+// network-config change pathway. Same store tier as EXTRINSICS_FEED_PATH_PATTERN.
 export const GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN =
   /^\/api\/v1\/governance\/config-changes$/;
 // Runtime spec-version transition timeline (#4316/3.1): the earliest known
-// block at each distinct spec_version seen on the blocks D1 tier. Same D1
+// block at each distinct spec_version seen on the blocks store tier. Same D1
 // tier as BLOCKS_FEED_PATH_PATTERN, a site-wide aggregate, not per-block.
 export const RUNTIME_VERSIONS_PATH_PATTERN = /^\/api\/v1\/runtime$/;
 // Per-extrinsic detail (#1345/#1848): ref is a 0x extrinsic_hash OR the canonical

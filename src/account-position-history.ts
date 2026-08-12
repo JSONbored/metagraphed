@@ -10,13 +10,13 @@
 // account = hotkey ss58, matching loadAccountPortfolio's own "WHERE hotkey = ?"
 // framing (src/account-portfolio.ts).
 //
-// This module previously also owned D1's OWN rollup/prune
+// This module previously also owned the store's OWN rollup/prune
 // (rollupAccountPositionDaily/pruneAccountPositionDaily, called from
 // workers/api.ts's NEURON_HISTORY_ROLLUP_CRON) as a parallel write path.
 // That D1 side is retired here: #4908 (#4772, D1 chain-data write-path
 // retirement) dropped D1's `neurons` table entirely, so a `FROM neurons`
 // D1 rollup query can no longer even run — confirmed live via `wrangler d1
-// execute` returning "no such table: neurons", and D1's own
+// execute` returning "no such table: neurons", and the store's own
 // account_position_daily table frozen at 2026-07-11 (the day #4908 merged)
 // ever since. #4839 already gave this table a fully independent, live-
 // verified Postgres write + read path, so nothing depends on the D1 side.

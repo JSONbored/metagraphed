@@ -159,7 +159,7 @@ describe("loadPipelineHistory", () => {
   });
 
   it("returns an empty list on zero rows", async () => {
-    // The "all() absent / null result" arms retired with the D1 envelope
+    // The "all() absent / null result" arms retired with D1's envelope
     // (#10309): the owned query() answers rows or throws (null, above), so
     // zero rows is the one nothing-shape left to pin.
     const empty = { query: async <T>() => [] as T[] };

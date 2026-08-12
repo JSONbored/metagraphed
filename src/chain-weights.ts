@@ -1,6 +1,6 @@
 // Network-wide validator weight-setting activity from the account_events WeightsSet stream: a
 // per-subnet leaderboard + network rollup + intensity distribution over a window. The account_events
-// kind-filtered sibling of chain-transfers / chain-stake-flow. Pure shaping + a thin D1 loader; the
+// kind-filtered sibling of chain-transfers / chain-stake-flow. Pure shaping + a thin store loader; the
 // Worker adds the envelope. See the schema/contracts for the full response contract.
 
 import { median, percentile } from "./lib/stats.ts";
@@ -25,7 +25,7 @@ function round(value: number, dp = 2): number {
   return Math.round(value * factor) / factor;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -243,5 +243,5 @@ export function buildChainWeights(
 // WeightsSet stream) was removed here -- that D1 write path is retired and the
 // `account_events` table is dropped in production, so a live D1 query would always
 // miss. Serving now goes tryDataApiTier -> buildChainWeights([...], { networkDistinct:
-// null }), never D1. See src/graphql.ts's chain_weights and src/mcp-server.ts's
+// null }), never the store. See src/graphql.ts's chain_weights and src/mcp-server.ts's
 // get_chain_weights tool for the call sites.

@@ -1,5 +1,5 @@
 // GET /api/v1/accounts/{ss58} + .../subnets (types-epic B batch 4, #8058).
-// Live account_events + neurons D1-tier data -- no static file. Modeled from
+// Live account_events + neurons store-tier data -- no static file. Modeled from
 // src/account-events.ts's buildAccountSummary()/buildAccountSubnets()/
 // formatRegistration()/formatAccountEvent()/formatAccountActivity(), cross-
 // checked against the hand-edited AccountSummaryArtifact/AccountSubnetsArtifact

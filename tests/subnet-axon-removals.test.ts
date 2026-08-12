@@ -108,7 +108,7 @@ describe("buildSubnetAxonRemovals honesty marker (#9307)", () => {
 describe("loadSubnetAxonRemovals", () => {
   test("queries account_events for the netuid + AxonInfoRemoved over the window and shapes it", async () => {
     let captured: Row | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [
         {
@@ -118,7 +118,7 @@ describe("loadSubnetAxonRemovals", () => {
         },
       ];
     };
-    const d = await loadSubnetAxonRemovals(d1, 7, {
+    const d = await loadSubnetAxonRemovals(runner, 7, {
       windowLabel: "7d",
       windowDays: 7,
     });

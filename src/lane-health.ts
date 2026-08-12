@@ -133,7 +133,7 @@ export function isRetiredLane(lane: string): boolean {
   );
 }
 
-/** The minimal D1 surface these helpers use, so callers can inject a fake. */
+/** The minimal store surface these helpers use, so callers can inject a fake. */
 /** The verdict store's surface, with OUR verbs (#10909) -- rows and change
  * counts, no D1 envelope. Structural so every watchdog test keeps handing in
  * a plain object. */

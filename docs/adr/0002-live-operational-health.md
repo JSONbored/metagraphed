@@ -1,6 +1,13 @@
 # ADR 0002 — Live operational health (15-minute cron prober → D1/KV → served live)
 
-- **Status:** Accepted — implemented (Phases 1–5, PRs #252–#257).
+- **Status:** Accepted — implemented (Phases 1–5, PRs #252–#257). **The store named
+  in the title is gone (#10910): D1 was deleted and the observation family moved to
+  Postgres.** The decision itself stands unchanged — a 15-minute cron prober writing a
+  queryable tier plus KV, served live rather than baked into the 6h artifact batch — and
+  the text below is left as written. Only the destination differs: `surface_checks` and
+  `surface_uptime_daily` are Postgres tables, and KV still holds `health:current`,
+  `health:rpc-pool` and `health:meta` exactly as described. See
+  [ADR 0014](0014-chain-data-infrastructure-and-postgres-cutover.md) for the cutover.
 - **Date:** 2026-06-10
 - **Relates to:** ADR 0001 (R2-only data artifacts, 6h scheduled publish).
 

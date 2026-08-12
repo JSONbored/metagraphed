@@ -82,7 +82,7 @@
 //
 // COST, since this trades an index seek for a scan. `COUNT(*)` plus the
 // conditional sum is one walk of the table, ~306k rows, on a `4,34 * * * *`
-// cron -- 48 ticks a day, ~15M D1 rows read a day. That sits inside the
+// cron -- 48 ticks a day, ~15M store rows read a day. That sits inside the
 // included allowance and is the price of the only signal that would have fired
 // on the case above.
 
@@ -298,7 +298,7 @@ export async function runAccountBalancesStalenessWatchdog(
   const record = deps.recordException ?? recordExceptionEvent;
   // Whichever store holds the table (#10154). The verdict WRITE moved to
   // laneHealthStore already; this read did not, so the watchdog was measuring
-  // a frozen D1 copy and would have alarmed permanently -- reporting the lane
+  // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["account_balances"]) as unknown as
     StatementClientLike | undefined;

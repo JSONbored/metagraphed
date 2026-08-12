@@ -125,11 +125,11 @@ describe("buildAccountIdentity", () => {
 describe("loadAccountIdentity", () => {
   test("queries account_identity by account and shapes the result", async () => {
     const calls: Array<{ sql: string; params: unknown[] }> = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [identityRow()];
     };
-    const data = await loadAccountIdentity(d1, "5Acc0");
+    const data = await loadAccountIdentity(runner, "5Acc0");
     assert.equal(calls.length, 1);
     assert.match(calls[0].sql, /FROM account_identity WHERE account = \?/);
     assert.deepEqual(calls[0].params, ["5Acc0"]);
@@ -138,15 +138,15 @@ describe("loadAccountIdentity", () => {
   });
 
   test("has_identity is false when the account has no row", async () => {
-    const d1 = async () => [];
-    const data = await loadAccountIdentity(d1, "5Acc0");
+    const runner = async () => [];
+    const data = await loadAccountIdentity(runner, "5Acc0");
     assert.equal(data.has_identity, false);
     assert.equal(data.account, "5Acc0");
   });
 
   test("has_identity is false when D1 returns a non-array result", async () => {
-    const d1 = async () => null as unknown as Record<string, unknown>[];
-    const data = await loadAccountIdentity(d1, "5Acc0");
+    const runner = async () => null as unknown as Record<string, unknown>[];
+    const data = await loadAccountIdentity(runner, "5Acc0");
     assert.equal(data.has_identity, false);
   });
 });

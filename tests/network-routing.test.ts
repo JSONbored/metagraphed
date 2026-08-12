@@ -331,7 +331,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
     );
     assert.equal(leaderboards.res.status, 404);
 
-    // D1-backed health trend routes are mainnet-only too.
+    // store-backed health trend routes are mainnet-only too.
     const bulkTrends = await get(env, "/api/v1/testnet/health/trends");
     assert.equal(bulkTrends.res.status, 404);
     assert.equal(bulkTrends.body.meta.network, "testnet");
@@ -347,7 +347,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(compare.body.meta.network, "testnet");
   });
 
-  test("D1-backed live routes 404 under testnet with a mainnet-only message", async () => {
+  test("store-backed live routes 404 under testnet with a mainnet-only message", async () => {
     const env = createLocalArtifactEnv();
     for (const path of [
       // NOTE: /blocks, /blocks/{ref} and /extrinsics used to be asserted here.
@@ -383,7 +383,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       `/api/v1/testnet/validators/${SS58}/history`,
       "/api/v1/testnet/subnets/7/events",
       "/api/v1/testnet/subnets/7/health",
-      // D1-backed per-subnet analytics: also mainnet-only, must not fall through
+      // store-backed per-subnet analytics: also mainnet-only, must not fall through
       // to a testnet R2 read that leaks the internal artifact key.
       "/api/v1/testnet/subnets/7/concentration",
       "/api/v1/testnet/subnets/7/concentration/history",

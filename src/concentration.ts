@@ -1,13 +1,13 @@
 // Subnet concentration / decentralization metrics (#2106): pure statistics over a
 // subnet's per-UID value distribution (stake_tao, emission_tao from the live
-// `neurons` D1 tier). Every function is pure + exported for unit tests; the Worker
-// does the D1 read + envelope. Null-safe by design: an empty / all-zero
+// `neurons` store tier). Every function is pure + exported for unit tests; the Worker
+// does the store read + envelope. Null-safe by design: an empty / all-zero
 // distribution yields a schema-stable `null` block (never throws), matching the
 // live metagraph tiers the entity handlers already own.
 
 import { DAY_MS } from "../workers/config.ts";
 
-// The neurons-tier columns the concentration handler reads — the D1 read contract
+// The neurons-tier columns the concentration handler reads — the store read contract
 // for buildConcentration (mirrors BLOCK_READ_COLUMNS / EXTRINSIC_READ_COLUMNS). Kept
 // here next to its consumer so the Worker handler stays a thin SELECT.
 export const CONCENTRATION_READ_COLUMNS =
@@ -351,7 +351,7 @@ export function buildChainConcentration(
     }
     const rawNetuid = row?.netuid;
     if (rawNetuid != null) {
-      // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+      // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
       if (typeof rawNetuid === "string" && rawNetuid.trim() === "") continue;
       const netuid = Number(rawNetuid);
       // guard the coercion: a non-numeric cell must not count as subnet 0.
@@ -380,16 +380,16 @@ export function buildChainConcentration(
   };
 }
 
-// Shared D1 loader (mirrors handleChainConcentration + loadSubnetConcentration):
+// Shared store loader (mirrors handleChainConcentration + loadSubnetConcentration):
 // read EVERY subnet's neurons in one pass, no netuid filter, and shape them into
 // the network concentration artifact.
 export async function loadChainConcentration(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
 ): Promise<ChainConcentrationResult> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${CHAIN_CONCENTRATION_READ_COLUMNS} FROM neurons`,
     [],
   );
@@ -669,7 +669,7 @@ export function buildSubnetConcentrationRanking(
     }
     const raw = row?.netuid;
     if (raw == null) continue;
-    // Blank D1 cells coerce via Number("") -> 0; a non-numeric cell must not
+    // Blank cells coerce via Number("") -> 0; a non-numeric cell must not
     // land in subnet 0's group. Same guard buildChainConcentration applies.
     if (typeof raw === "string" && raw.trim() === "") continue;
     const netuid = Number(raw);
@@ -866,13 +866,13 @@ type SqlRunner = (
   params: unknown[],
 ) => Promise<Array<Record<string, unknown>>>;
 
-// Shared D1 loaders for MCP tools — mirror handleSubnetConcentration and
+// Shared store loaders for MCP tools — mirror handleSubnetConcentration and
 // handleSubnetConcentrationHistory in workers/request-handlers/entities.ts.
 export async function loadSubnetConcentration(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: number,
 ): Promise<ConcentrationResult> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${CONCENTRATION_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
     [netuid],
   );
@@ -880,14 +880,14 @@ export async function loadSubnetConcentration(
 }
 
 export async function loadSubnetConcentrationHistory(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: number,
   { windowLabel, windowDays }: { windowLabel?: string; windowDays: number },
 ): Promise<ConcentrationHistoryResult> {
   const cutoff = new Date(Date.now() - windowDays * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const rows = await d1(
+  const rows = await runner(
     "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
     [netuid, cutoff, CONCENTRATION_HISTORY_ROW_CAP],
   );

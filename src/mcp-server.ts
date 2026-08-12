@@ -3654,7 +3654,7 @@ function requireHistoryWindow(args: Row) {
 // One subnet's per-day aggregate history — mirrors handleSubnetHistory. Tries
 // the Postgres tier first (METAGRAPH_NEURONS_SOURCE); the neuron_daily D1
 // table was retired (#4772), so buildSubnetHistory([]) yields the
-// schema-stable point_count:0 payload the same way a cold/absent D1 used to.
+// schema-stable point_count:0 payload the same way a a cold or absent store used to.
 async function loadSubnetHistory(
   ctx: McpCtx,
   netuid: number,
@@ -3705,9 +3705,9 @@ async function loadSubnetIdentityHistoryTool(
 }
 
 // One UID's per-day time series — mirrors handleNeuronHistory. Tries the
-// Postgres tier first (METAGRAPH_NEURONS_SOURCE); the neuron_daily D1 table
+// Postgres tier first (METAGRAPH_NEURONS_SOURCE); the neuron_daily table
 // was retired (#4772), so buildNeuronHistory([]) yields the schema-stable
-// point_count:0 payload the same way a cold/absent D1 used to.
+// point_count:0 payload the same way a a cold or absent store used to.
 async function loadNeuronHistory(
   ctx: McpCtx,
   netuid: number,
@@ -5899,7 +5899,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       return (
-        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadSubnetHealthTrends(netuid, {
@@ -5945,7 +5945,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const offset = Number.isFinite(row?.offset)
         ? Math.max(0, Math.floor(row.offset as number))
         : 0;
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from every wrangler config
       // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this narrowing was
       // also encoded into a query string for never answered. The loader below
       // takes the same three parameters directly, so nothing is dropped.
@@ -5981,7 +5981,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label } = parsed!;
       return (
-        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadSubnetPercentiles(netuid, {
@@ -6016,7 +6016,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label } = parsed!;
       return (
-        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadSubnetIncidents(netuid, {
@@ -7074,8 +7074,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
       );
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
+      // and the table is dropped in production, so a store query here would
+      // always miss. Postgres → schema-stable empty stub, never a live store read.
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -7122,8 +7122,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_STAKE_MOVES_LIMIT_MAX,
       );
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
+      // and the table is dropped in production, so a store query here would
+      // always miss. Postgres → schema-stable empty stub, never a live store read.
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -7169,8 +7169,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
       );
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
+      // and the table is dropped in production, so a store query here would
+      // always miss. Postgres → schema-stable empty stub, never a live store read.
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -7218,7 +7218,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_AXON_REMOVALS_LIMIT_MAX,
       );
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
@@ -7262,7 +7262,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_SERVING_LIMIT_MAX,
       );
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
@@ -7313,7 +7313,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_PROMETHEUS_LIMIT_MAX,
       );
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
@@ -7341,7 +7341,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetBlocksSummaryInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       // Mirrors REST's handleBlocksSummary: try Postgres first, fall back to
-      // the schema-stable zeroed card now that blocks' D1 write path is
+      // the schema-stable zeroed card now that blocks' store write path is
       // retired (#4772) and the table is dropped in production.
       return (
         // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
@@ -8087,7 +8087,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const minSamples = optionalNonNegativeInt(args, "min_samples");
       return (
-        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         //
@@ -8108,7 +8108,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_registry_leaderboards",
     title: "Get registry leaderboards",
     description:
-      "Fetch the live registry leaderboards that combine D1 probe health with " +
+      "Fetch the live registry leaderboards that combine probe health with " +
       "registry completeness and the economics tier: healthiest, fastest-rpc, " +
       "most-complete, most-enriched, fastest-growing, plus the economic " +
       "opportunity boards (open-slots, cheapest-registration, highest-emission, " +
@@ -8232,7 +8232,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // registry+economics-tier reads) -- mirror that exactly rather than
       // wrapping the whole tool in tryDataApiTier's usual passthrough.
       // NO TIER READ (#10190): the health dimension used to try
-      // METAGRAPH_HEALTH_SOURCE first. That flag reads "d1" in wrangler.jsonc and
+      // METAGRAPH_HEALTH_SOURCE first. That flag is deleted from every wrangler config and
       // is absent from FORWARDABLE_TIER_FLAGS, so the read resolved to null and
       // the composer below has answered every dimension all along.
       return loadCompareSubnets({
@@ -8264,7 +8264,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label, days } = parsed!;
       const data =
-        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         await loadGlobalIncidents({
@@ -11222,7 +11222,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ? rawDirection
           : undefined;
       // block_start/block_end/cursor are validated for REST-parity and forwarded to
-      // the Postgres tier below; the local D1 fallback still ignores them (like the
+      // the Postgres tier below; the local store fallback still ignores them (like the
       // D1 filters they used to bound, they have nothing left to filter now that
       // account_events' D1 write path is retired (#4772) -- buildAccountTransfers([])
       // never sees them).
@@ -11289,7 +11289,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // account_events' D1 write path is retired (#4772) -- an empty rows
         // input always yields transfer_count: 0, so this mirrors
         // loadCounterpartyRelationship's composite shape with an always-empty
-        // counterparties list, without querying D1 at all.
+        // counterparties list, without querying the store at all.
         const emptyRelationship = buildCounterpartyRelationship(
           [],
           ss58,
@@ -11342,7 +11342,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     async handler(args: z.infer<typeof ListBlocksInputSchema>, ctx: McpCtx) {
       // Every filter below is validated for REST-parity and, now that the
       // Postgres tier can be flipped on, forwarded to it below -- only the
-      // buildBlockFeed([]) D1 fallback ignores them (nothing left to filter
+      // buildBlockFeed([]) store fallback ignores them (nothing left to filter
       // now that blocks' D1 write path is retired, #4772).
       const cursor = optionalString(args, "cursor");
       // #10065: these are PUBLISHED constraints -- the tool advertises the SS58
@@ -11411,7 +11411,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     async handler(args: z.infer<typeof GetBlockInputSchema>, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       // Mirrors REST's handleBlock: try Postgres first, fall back to the
-      // schema-stable block:null shape now that blocks' D1 write path is
+      // schema-stable block:null shape now that blocks' store write path is
       // retired (#4772) and the table is dropped in production.
       return (
         // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
@@ -11577,7 +11577,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const from = optionalNonNegativeInt(args, "from");
       const to = optionalNonNegativeInt(args, "to");
       // Mirrors REST's handleExtrinsics: try Postgres first (#4694), fall back to
-      // the schema-stable empty feed now that extrinsics' D1 write path is
+      // the schema-stable empty feed now that extrinsics' store write path is
       // retired (#4772) and the table is dropped in production -- same
       // tryDataApiTier contract, same METAGRAPH_EXTRINSICS_SOURCE flag, so this
       // tool and GET /api/v1/extrinsics never diverge on which tier answered.
@@ -11631,7 +11631,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     async handler(args: z.infer<typeof GetExtrinsicInputSchema>, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall back to
-      // the schema-stable empty detail now that extrinsics' D1 write path is
+      // the schema-stable empty detail now that extrinsics' store write path is
       // retired (#4772) and the table is dropped in production.
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
       // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
@@ -11844,7 +11844,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetRuntimeInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
+      // table is dropped in production, so a store query here would always miss.
       // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every
       // deployed config and absent from FORWARDABLE_TIER_FLAGS, so the history
       // leg of this Promise.all resolved to null on every call. The lakehouse is
@@ -11952,7 +11952,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch every raw pallet.method event in one block from the Postgres-backed " +
       "all-events tier (ADR 0013), in natural read order (event_index ASC). " +
-      "Distinct from get_block_events (the curated account-attributed D1 stream). " +
+      "Distinct from get_block_events (the curated account-attributed stream). " +
       "Returns event_count:0 + events:[] when the tier is empty for that block. " +
       "Requires the all-events data Worker (tier_unavailable in preview deploys). " +
       "Mirrors GET /api/v1/blocks/{ref}/chain-events.",
@@ -12205,8 +12205,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
-      // the table is dropped in production, so a D1 query here would always
-      // miss. Postgres → schema-stable empty stub, never a live D1 read.
+      // the table is dropped in production, so a store query here would always
+      // miss. Postgres → schema-stable empty stub, never a live store read.
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
       // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
       // guarded resolved to null before it could touch DATA_API.
@@ -12257,7 +12257,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_REGISTRATIONS_LIMIT_MAX,
       );
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
@@ -12304,7 +12304,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_DEREGISTRATIONS_LIMIT_MAX,
       );
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013).
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
@@ -12446,7 +12446,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
-      // D1 read.
+      // store read.
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
       // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
       // guarded resolved to null before it could touch DATA_API.

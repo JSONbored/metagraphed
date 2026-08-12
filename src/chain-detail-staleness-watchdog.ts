@@ -147,7 +147,7 @@ export async function runChainDetailStalenessWatchdog(
   const record = deps.recordException ?? recordExceptionEvent;
   // Whichever store holds the table (#10154). The verdict WRITE moved to
   // laneHealthStore already; this read did not, so the watchdog was measuring
-  // a frozen D1 copy and would have alarmed permanently -- reporting the lane
+  // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["chain_detail_blocks"]) as unknown as
     StatementClientLike | undefined;

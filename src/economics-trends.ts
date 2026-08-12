@@ -1,7 +1,7 @@
 // Network-wide economics trends loader for REST + MCP parity (#1307).
 //
-// D1 reads resurrected (2026-08-02, box decommission): subnet_snapshots is
-// dual-written to D1 (#9036), and with a `db` binding this runs the
+// store reads resurrected (2026-08-02, box decommission): subnet_snapshots is
+// dual-written to the store (#9036), and with a `db` binding this runs the
 // pre-elimination windowed query there. Without one it keeps the
 // schema-stable empty shape every caller has served on a tier miss since
 // 2026-07-17.

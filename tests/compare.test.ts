@@ -216,7 +216,7 @@ describe("composeCompareData", () => {
     assert.equal((oddCells.subnets[0].health as Row).avg_latency_ms, 9);
   });
 
-  test("attaches tiers whose D1 row netuid comes back as a string", () => {
+  test("attaches tiers whose store row netuid comes back as a string", () => {
     // The join key is the highest-risk string cell: requested netuids are
     // numbers, so a row keyed on the raw string "1"/"2" would miss the numeric
     // lookup and silently null out a populated tier. Every tier's key is

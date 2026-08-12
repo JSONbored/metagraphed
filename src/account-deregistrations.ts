@@ -2,7 +2,7 @@
 // (#9307 -- an account's deregistrations are the slots where it was the PREVIOUS holder; see
 // src/deregistration-derivation.ts): which subnets one account (hotkey) was deregistered
 // (evicted) from over a recent window, broken down per subnet and rolled up into a deregistration
-// scorecard. Pure shaping (buildAccountDeregistrations) + a thin D1 loader
+// scorecard. Pure shaping (buildAccountDeregistrations) + a thin store loader
 // (loadAccountDeregistrations); the Worker adds the REST envelope. Null-safe: a cold store or an
 // empty window yields schema-stable zeros (never throws), matching the sibling account tiers
 // (stake-flow, registrations, serving, counterparties).
@@ -48,7 +48,7 @@ function roundConcentration(value: number): number {
   return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -57,7 +57,7 @@ function toCount(value: unknown): number {
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null explicitly so a
 // null netuid is skipped rather than coerced to subnet 0 (Number(null) === 0); a blank/whitespace
-// D1 cell (Number("") → 0) is likewise skipped.
+// cell (Number("") → 0) is likewise skipped.
 function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
@@ -163,7 +163,7 @@ export function buildAccountDeregistrations(
     (a, b) => b.deregistrations - a.deregistrations || a.netuid - b.netuid,
   );
   // The dominant subnet is the head of that deterministic ranking, so it always agrees with the
-  // subnets list order rather than depending on D1 GROUP BY row order.
+  // subnets list order rather than depending on GROUP BY row order.
   const dominantNetuid = subnets.length > 0 ? subnets[0].netuid : null;
   // Herfindahl-Hirschman index of deregistrations across subnets: 1 = all on one subnet, -> 1/n as
   // it spreads evenly; null when the account has no deregistrations to concentrate.
@@ -191,9 +191,9 @@ export function buildAccountDeregistrations(
 // buildAccountDeregistrations. The (hotkey) prefix of idx_account_events_hotkey (migrations/0009)
 // seeks just this account's events; event_kind/observed_at are residual filters on that bounded
 // seek. Returns { data, generatedAt } where generatedAt is the newest eviction's observed_at as an
-// ISO string (string|null per the envelope contract). Cold/absent D1 -> zeroed card + null.
+// ISO string (string|null per the envelope contract). A cold or absent store -> zeroed card + null.
 export async function loadAccountDeregistrations(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -209,7 +209,7 @@ export async function loadAccountDeregistrations(
     DEREGISTRATION_WINDOWS[windowLabel] ??
     DEREGISTRATION_WINDOWS[DEFAULT_DEREGISTRATION_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT netuid, COUNT(*) AS deregistrations, MIN(observed_at) AS first_observed, " +
       "MAX(observed_at) AS last_observed " +
       "FROM account_events INDEXED BY idx_account_events_hotkey " +

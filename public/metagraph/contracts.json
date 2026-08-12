@@ -388,7 +388,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends; pass ?format=csv to download the per-day series as CSV (no static file).",
+      "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends; pass ?format=csv to download the per-day series as CSV (no static file).",
       "id": "economics-trends",
       "path": "/metagraph/economics/trends.json",
       "retirement": null,
@@ -620,7 +620,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Computed 7d/30d uptime + success-only latency trends (mean, p50/p95/p99 tail, and healthy-sample count) for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
+      "description": "Computed 7d/30d uptime + success-only latency trends (mean, p50/p95/p99 tail, and healthy-sample count) for one subnet's operational surfaces. Served live at /api/v1/subnets/{netuid}/health/trends (no static file).",
       "id": "health-trends",
       "path": "/metagraph/health/trends/{netuid}.json",
       "retirement": null,
@@ -631,7 +631,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Compact all-subnet 7d/30d daily uptime + success-only latency trend matrix (mean + healthy-sample count). Served live from D1 at /api/v1/health/trends (no static file).",
+      "description": "Compact all-subnet 7d/30d daily uptime + success-only latency trend matrix (mean + healthy-sample count). Served live at /api/v1/health/trends (no static file).",
       "id": "health-trends-bulk",
       "path": "/metagraph/health/trends.json",
       "retirement": null,
@@ -642,7 +642,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Latency percentiles (p50/p95/p99 + avg/min/max) per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/percentiles (no static file).",
+      "description": "Latency percentiles (p50/p95/p99 + avg/min/max) per operational surface for one subnet, computed live from the store at /api/v1/subnets/{netuid}/health/percentiles (no static file).",
       "id": "health-percentiles",
       "path": "/metagraph/health/percentiles/{netuid}.json",
       "retirement": null,
@@ -653,7 +653,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/incidents (no static file).",
+      "description": "SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet, computed live from the store at /api/v1/subnets/{netuid}/health/incidents (no static file).",
       "id": "health-incidents",
       "path": "/metagraph/health/incidents/{netuid}.json",
       "retirement": null,
@@ -664,7 +664,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots, served live from D1 at /api/v1/subnets/{netuid}/trajectory; pass ?format=csv to download the per-day series as CSV (no static file).",
+      "description": "Week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots, served live at /api/v1/subnets/{netuid}/trajectory; pass ?format=csv to download the per-day series as CSV (no static file).",
       "id": "subnet-trajectory",
       "path": "/metagraph/subnets/{netuid}/trajectory.json",
       "retirement": null,
@@ -675,7 +675,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
+      "description": "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons store at /api/v1/subnets/{netuid}/concentration (no static file).",
       "id": "subnet-concentration",
       "path": "/metagraph/subnets/{netuid}/concentration.json",
       "retirement": null,
@@ -686,7 +686,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Reward-distribution & score-spread metrics for one subnet: concentration of the actual rewards (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores — the reward-flow companion to concentration, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/performance (no static file).",
+      "description": "Reward-distribution & score-spread metrics for one subnet: concentration of the actual rewards (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores — the reward-flow companion to concentration, served live from the neurons store at /api/v1/subnets/{netuid}/performance (no static file).",
       "id": "subnet-performance",
       "path": "/metagraph/subnets/{netuid}/performance.json",
       "retirement": null,
@@ -697,7 +697,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so a hotkey with no validator permit or a permit whose weight-setting output is currently zero pays every delegator nothing right now — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/idle-stake (no static file).",
+      "description": "Stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so a hotkey with no validator permit or a permit whose weight-setting output is currently zero pays every delegator nothing right now — served live from the neurons store at /api/v1/subnets/{netuid}/idle-stake (no static file).",
       "id": "subnet-idle-stake",
       "path": "/metagraph/subnets/{netuid}/idle-stake.json",
       "retirement": null,
@@ -708,7 +708,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-day reward-flow & trust trend (incentive/dividends Gini, Nakamoto coefficient, top-10% share, plus trust/consensus/validator_trust mean & median) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/performance/history; pass ?format=csv to download the per-day series as CSV (no static file). The reward-flow twin of /concentration/history.",
+      "description": "Per-day reward-flow & trust trend (incentive/dividends Gini, Nakamoto coefficient, top-10% share, plus trust/consensus/validator_trust mean & median) over a 7d/30d/90d window for one subnet, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/performance/history; pass ?format=csv to download the per-day series as CSV (no static file). The reward-flow twin of /concentration/history.",
       "id": "subnet-performance-history",
       "path": "/metagraph/subnets/{netuid}/performance/history.json",
       "retirement": null,
@@ -719,7 +719,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history; pass ?format=csv to download the per-day series as CSV (no static file).",
+      "description": "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/concentration/history; pass ?format=csv to download the per-day series as CSV (no static file).",
       "id": "subnet-concentration-history",
       "path": "/metagraph/subnets/{netuid}/concentration/history.json",
       "retirement": null,
@@ -730,7 +730,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + Jaccard retention, UID deregistrations, and a 0-100 stability score — served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/turnover (no static file).",
+      "description": "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + Jaccard retention, UID deregistrations, and a 0-100 stability score — served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/turnover (no static file).",
       "id": "subnet-turnover",
       "path": "/metagraph/subnets/{netuid}/turnover.json",
       "retirement": null,
@@ -884,7 +884,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Every subnet ranked by what it costs to become an EARNING validator there (#9324), computed live at /api/v1/validators/economics (no static file). One row per subnet carrying the same fields as /api/v1/subnets/{netuid}/validator-economics, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding — omitting a filter means BOTH, which is not the same as false. Every subnet the ranking drops appears in `excluded` with a reason, so an omitted subnet is distinguishable from an absent one. Derived from ONE cross-subnet neuron scan plus one economics-artifact read plus two bulk D1 reads (latest registration burn per subnet, and min_childkey_take_ratio) rather than 128 per-subnet round trips. The registration burn was formerly omitted here because it existed only as a live per-subnet chain read with no cached tier; subnet_burn_history is that tier, so registration_cost_tao and the permit_entry_cost_tao / earning_entry_cost_tao it feeds now carry their real values in the ranking too, matching the per-subnet route. The burn still does not affect the ORDER — every sort key is a floor-cost or headroom measure — it is reported because the true entry cost is worth having, not because it ranks.",
+      "description": "Every subnet ranked by what it costs to become an EARNING validator there (#9324), computed live at /api/v1/validators/economics (no static file). One row per subnet carrying the same fields as /api/v1/subnets/{netuid}/validator-economics, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding — omitting a filter means BOTH, which is not the same as false. Every subnet the ranking drops appears in `excluded` with a reason, so an omitted subnet is distinguishable from an absent one. Derived from ONE cross-subnet neuron scan plus one economics-artifact read plus two bulk store reads (latest registration burn per subnet, and min_childkey_take_ratio) rather than 128 per-subnet round trips. The registration burn was formerly omitted here because it existed only as a live per-subnet chain read with no cached tier; subnet_burn_history is that tier, so registration_cost_tao and the permit_entry_cost_tao / earning_entry_cost_tao it feeds now carry their real values in the ranking too, matching the per-subnet route. The burn still does not affect the ORDER — every sort key is a floor-cost or headroom measure — it is reported because the true entry cost is worth having, not because it ranks.",
       "id": "validator-economics-ranking",
       "path": "/metagraph/validators/economics.json",
       "retirement": null,
@@ -917,7 +917,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
+      "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily rollup at /api/v1/subnets/movers (no static file).",
       "id": "subnet-movers",
       "path": "/metagraph/subnets/movers.json",
       "retirement": null,
@@ -928,7 +928,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons store at /api/v1/validators (no static file).",
       "id": "global-validators",
       "path": "/metagraph/validators.json",
       "retirement": null,
@@ -939,7 +939,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, computed live from the neurons D1 tier at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators.",
+      "description": "Site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, computed live from the neurons store at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators.",
       "id": "accounts-list",
       "path": "/metagraph/accounts.json",
       "retirement": null,
@@ -950,7 +950,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, ranked by total TAO (free + delegated) or by cross-subnet stake flow (StakeAdded - StakeRemoved over a 7d/30d/90d window, #6886/#6887), served at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts, which is hotkey/neuron-centric. TWO TIERS (#9469/#9502): the net_flow_7d/30d/90d ranking is LIVE, recomputed daily from chain.account_events by the top-holders-flow projection lane, so captured_at advances on those sorts. The same lane also composes free_tao/delegated_tao/total_tao from D1 -- free_tao from account_balances, delegated_tao by pricing nominator_positions against the hotkey_alpha (hotkey, netuid) pool totals, total_tao as their sum ranked across the full tables. Each holdings sort is served live ONLY while its producer's most recent pass is recorded COMPLETE, because ranking over a partially-loaded ledger returns the largest values PRESENT rather than the largest that EXIST -- a well-formed leaderboard quietly missing real top holders. While an input is unproven that sort DECLINES and answers instead from a FIXED materialization taken 2026-08-02 whose captured_at/last_updated do not advance. Which sorts are live is therefore a property of the current artifact, reported per response, not a fixed list. The holdings columns are null on a flow-ranked page, never zero.",
+      "description": "Balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, ranked by total TAO (free + delegated) or by cross-subnet stake flow (StakeAdded - StakeRemoved over a 7d/30d/90d window, #6886/#6887), served at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts, which is hotkey/neuron-centric. TWO TIERS (#9469/#9502): the net_flow_7d/30d/90d ranking is LIVE, recomputed daily from chain.account_events by the top-holders-flow projection lane, so captured_at advances on those sorts. The same lane also composes free_tao/delegated_tao/total_tao from the store -- free_tao from account_balances, delegated_tao by pricing nominator_positions against the hotkey_alpha (hotkey, netuid) pool totals, total_tao as their sum ranked across the full tables. Each holdings sort is served live ONLY while its producer's most recent pass is recorded COMPLETE, because ranking over a partially-loaded ledger returns the largest values PRESENT rather than the largest that EXIST -- a well-formed leaderboard quietly missing real top holders. While an input is unproven that sort DECLINES and answers instead from a FIXED materialization taken 2026-08-02 whose captured_at/last_updated do not advance. Which sorts are live is therefore a property of the current artifact, reported per response, not a fixed list. The holdings columns are null on a flow-ranked page, never zero.",
       "id": "top-holders",
       "path": "/metagraph/top-holders.json",
       "retirement": null,
@@ -961,7 +961,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, computed live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
+      "description": "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, computed live from the neurons store at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
       "id": "validator-detail",
       "path": "/metagraph/validators/{hotkey}.json",
       "retirement": null,
@@ -983,7 +983,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per snapshot_date, summed across every subnet it operates in that day, rolled up from the neuron_daily D1 tier at /api/v1/validators/{hotkey}/history (no static file).",
+      "description": "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per snapshot_date, summed across every subnet it operates in that day, rolled up from the neuron_daily store tier at /api/v1/validators/{hotkey}/history (no static file).",
       "id": "validator-history",
       "path": "/metagraph/validators/{hotkey}/history.json",
       "retirement": null,
@@ -994,7 +994,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+      "description": "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons store at /api/v1/subnets/{netuid}/metagraph (no static file).",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "retirement": null,
@@ -1005,7 +1005,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "A single neuron's metagraph state by UID, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+      "description": "A single neuron's metagraph state by UID, served live from the neurons store at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
       "id": "subnet-neuron",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
       "retirement": null,
@@ -1016,7 +1016,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
+      "description": "One subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and served live from the subnet_hyperparams store tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
       "id": "subnet-hyperparameters",
       "path": "/metagraph/subnets/{netuid}/hyperparameters.json",
       "retirement": null,
@@ -1027,7 +1027,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Append-only hyperparameter-change timeline for one subnet (subnet_hyperparams field snapshots on change), served live from the subnet_hyperparams_history D1 tier at /api/v1/subnets/{netuid}/hyperparameters/history; pass ?format=csv to download the page as CSV (no static file). Forward-only.",
+      "description": "Append-only hyperparameter-change timeline for one subnet (subnet_hyperparams field snapshots on change), served live from the subnet_hyperparams_history store tier at /api/v1/subnets/{netuid}/hyperparameters/history; pass ?format=csv to download the page as CSV (no static file). Forward-only.",
       "id": "subnet-hyperparameters-history",
       "path": "/metagraph/subnets/{netuid}/hyperparameters/history.json",
       "retirement": null,
@@ -1060,7 +1060,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+      "description": "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons store at /api/v1/subnets/{netuid}/validators (no static file).",
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",
       "retirement": null,
@@ -1071,7 +1071,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield; pass ?format=csv to download the ranked neuron rows as CSV (no static file).",
+      "description": "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, served live from the neurons store at /api/v1/subnets/{netuid}/yield; pass ?format=csv to download the ranked neuron rows as CSV (no static file).",
       "id": "subnet-yield",
       "path": "/metagraph/subnets/{netuid}/yield.json",
       "retirement": null,
@@ -1082,7 +1082,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-day emission-yield distribution trend (subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/yield/history; pass ?format=csv to download the per-day series as CSV (no static file). The time-series companion to /yield and the return-rate twin of /concentration/history.",
+      "description": "Per-day emission-yield distribution trend (subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields) over a 7d/30d/90d window for one subnet, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/yield/history; pass ?format=csv to download the per-day series as CSV (no static file). The time-series companion to /yield and the return-rate twin of /concentration/history.",
       "id": "subnet-yield-history",
       "path": "/metagraph/subnets/{netuid}/yield/history.json",
       "retirement": null,
@@ -1093,7 +1093,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events; pass ?format=csv to download the page as CSV (no static file).",
+      "description": "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events store filtered by netuid at /api/v1/subnets/{netuid}/events; pass ?format=csv to download the page as CSV (no static file).",
       "id": "subnet-events",
       "path": "/metagraph/subnets/{netuid}/events.json",
       "retirement": null,
@@ -1104,7 +1104,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, and a small newest-first evidence slice, served live from D1 at /api/v1/subnets/{netuid}/event-summary (no static file).",
+      "description": "Windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, and a small newest-first evidence slice, served live at /api/v1/subnets/{netuid}/event-summary (no static file).",
       "id": "subnet-event-summary",
       "path": "/metagraph/subnets/{netuid}/event-summary.json",
       "retirement": null,
@@ -1115,7 +1115,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
+      "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "retirement": null,
@@ -1126,7 +1126,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+      "description": "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
       "id": "subnet-history",
       "path": "/metagraph/subnets/{netuid}/history.json",
       "retirement": null,
@@ -1137,7 +1137,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Append-only on-chain identity timeline for one subnet (SubnetIdentitiesV3 field snapshots on change), served from the frozen lakehouse export of subnet_identity_history at /api/v1/subnets/{netuid}/identity-history (no static file). The table is append-only and stops at the export -- no D1 table backs it and identity changes since are recorded nowhere -- so read observed_at on each entry as how current the answer is.",
+      "description": "Append-only on-chain identity timeline for one subnet (SubnetIdentitiesV3 field snapshots on change), served from the frozen lakehouse export of subnet_identity_history at /api/v1/subnets/{netuid}/identity-history (no static file). The table is append-only and stops at the export -- no table backs it and identity changes since are recorded nowhere -- so read observed_at on each entry as how current the answer is.",
       "id": "subnet-identity-history",
       "path": "/metagraph/subnets/{netuid}/identity-history.json",
       "retirement": null,
@@ -1148,7 +1148,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live from D1 at /api/v1/accounts/{ss58} (no static file).",
+      "description": "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live at /api/v1/accounts/{ss58} (no static file).",
       "id": "account-summary",
       "path": "/metagraph/accounts/{ss58}.json",
       "retirement": null,
@@ -1170,7 +1170,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Paginated first-party chain-event history for one account (hotkey or coldkey), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/events; pass ?format=csv to download the page as CSV (no static file).",
+      "description": "Paginated first-party chain-event history for one account (hotkey or coldkey), served live from the account_events store at /api/v1/accounts/{ss58}/events; pass ?format=csv to download the page as CSV (no static file).",
       "id": "account-events",
       "path": "/metagraph/accounts/{ss58}/events.json",
       "retirement": null,
@@ -1192,7 +1192,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics; pass ?format=csv to download the page as CSV (no static file).",
+      "description": "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics store tier at /api/v1/accounts/{ss58}/extrinsics; pass ?format=csv to download the page as CSV (no static file).",
       "id": "account-extrinsics",
       "path": "/metagraph/accounts/{ss58}/extrinsics.json",
       "retirement": null,
@@ -1203,7 +1203,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers; pass ?format=csv to download the page as CSV (no static file).",
+      "description": "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events store at /api/v1/accounts/{ss58}/transfers; pass ?format=csv to download the page as CSV (no static file).",
       "id": "account-transfers",
       "path": "/metagraph/accounts/{ss58}/transfers.json",
       "retirement": null,
@@ -1214,7 +1214,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-counterparty fund-flow rollup for one account, with optional ?counterparty=<ss58> relationship evidence — native-TAO transfers from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties; pass ?format=csv to download the list-mode rollup as CSV (no static file).",
+      "description": "Per-counterparty fund-flow rollup for one account, with optional ?counterparty=<ss58> relationship evidence — native-TAO transfers from the account_events store at /api/v1/accounts/{ss58}/counterparties; pass ?format=csv to download the list-mode rollup as CSV (no static file).",
       "id": "account-counterparties",
       "path": "/metagraph/accounts/{ss58}/counterparties.json",
       "retirement": null,
@@ -1225,7 +1225,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-flow (no static file).",
+      "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events store at /api/v1/accounts/{ss58}/stake-flow (no static file).",
       "id": "account-stake-flow",
       "path": "/metagraph/accounts/{ss58}/stake-flow.json",
       "retirement": null,
@@ -1236,7 +1236,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first/last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-moves (no static file). The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /api/v1/accounts/{ss58}/stake-flow.",
+      "description": "One account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first/last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events store at /api/v1/accounts/{ss58}/stake-moves (no static file). The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /api/v1/accounts/{ss58}/stake-flow.",
       "id": "account-stake-moves",
       "path": "/metagraph/accounts/{ss58}/stake-moves.json",
       "retirement": null,
@@ -1280,7 +1280,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/serving (no static file). Operational activity (announcing an axon endpoint) — the account-level companion to /api/v1/chain/serving, orthogonal to /api/v1/accounts/{ss58}/subnets (registration state) and /api/v1/accounts/{ss58}/registrations (registration events).",
+      "description": "One account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events store at /api/v1/accounts/{ss58}/serving (no static file). Operational activity (announcing an axon endpoint) — the account-level companion to /api/v1/chain/serving, orthogonal to /api/v1/accounts/{ss58}/subnets (registration state) and /api/v1/accounts/{ss58}/registrations (registration events).",
       "id": "account-serving",
       "path": "/metagraph/accounts/{ss58}/serving.json",
       "retirement": null,
@@ -1291,7 +1291,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first/last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/weight-setters (no static file). Keyed on the hotkey (the validator submitting weights); the account-level companion to /api/v1/chain/weights/setters and /api/v1/subnets/{netuid}/weights/setters.",
+      "description": "One account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first/last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events store at /api/v1/accounts/{ss58}/weight-setters (no static file). Keyed on the hotkey (the validator submitting weights); the account-level companion to /api/v1/chain/weights/setters and /api/v1/subnets/{netuid}/weights/setters.",
       "id": "account-weight-setters",
       "path": "/metagraph/accounts/{ss58}/weight-setters.json",
       "retirement": null,
@@ -1302,7 +1302,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first/last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/registrations (no static file). Windowed registration events (incl. re-registrations after a deregistration) — the account-level companion to /api/v1/chain/registrations, distinct from /api/v1/accounts/{ss58}/subnets (current registration state).",
+      "description": "One account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first/last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events store at /api/v1/accounts/{ss58}/registrations (no static file). Windowed registration events (incl. re-registrations after a deregistration) — the account-level companion to /api/v1/chain/registrations, distinct from /api/v1/accounts/{ss58}/subnets (current registration state).",
       "id": "account-registrations",
       "path": "/metagraph/accounts/{ss58}/registrations.json",
       "retirement": null,
@@ -1313,7 +1313,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
+      "description": "The subnets where an account's hotkey is currently registered, served live from the neurons store at /api/v1/accounts/{ss58}/subnets (no static file).",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
       "retirement": null,
@@ -1324,7 +1324,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "A wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration) — richer than the /subnets registration footprint, computed live from the neurons D1 tier at /api/v1/accounts/{ss58}/portfolio (no static file).",
+      "description": "A wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration) — richer than the /subnets registration footprint, computed live from the neurons store at /api/v1/accounts/{ss58}/portfolio (no static file).",
       "id": "account-portfolio",
       "path": "/metagraph/accounts/{ss58}/portfolio.json",
       "retirement": null,
@@ -1335,7 +1335,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from account-portfolio's hotkey-scoped view (a pure delegator shows near-zero there). Computed live from nominator_positions (a share-fraction ledger) joined against the neurons D1 tier's stake_tao, served at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is not covered -- see the artifact schema's own description.",
+      "description": "This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from account-portfolio's hotkey-scoped view (a pure delegator shows near-zero there). Computed live from nominator_positions (a share-fraction ledger) joined against the neurons store's stake_tao, served at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is not covered -- see the artifact schema's own description.",
       "id": "account-positions",
       "path": "/metagraph/accounts/{ss58}/positions.json",
       "retirement": null,
@@ -1346,7 +1346,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, served live from the account_position_daily D1 rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file).",
+      "description": "One wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, served live from the account_position_daily rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file).",
       "id": "account-subnet-position-history",
       "path": "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
       "retirement": null,
@@ -1357,7 +1357,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Personal chain identity for one account (epic #4301/5.4), the latest-only account_identity D1 row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false for the common case of an account that never called set_identity.",
+      "description": "Personal chain identity for one account (epic #4301/5.4), the latest-only account_identity store row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false for the common case of an account that never called set_identity.",
       "id": "account-identity",
       "path": "/metagraph/accounts/{ss58}/identity.json",
       "retirement": null,
@@ -1368,7 +1368,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the account_identity_history D1 tier at /api/v1/accounts/{ss58}/identity-history (no static file).",
+      "description": "Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the account_identity_history store tier at /api/v1/accounts/{ss58}/identity-history (no static file).",
       "id": "account-identity-history",
       "path": "/metagraph/accounts/{ss58}/identity-history.json",
       "retirement": null,
@@ -1533,7 +1533,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into D1 from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404.",
+      "description": "One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into the store from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404.",
       "id": "subnet-burn-history",
       "path": "/metagraph/subnets/{netuid}/burn-history.json",
       "retirement": null,
@@ -1610,7 +1610,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "How long after a block is produced it becomes queryable here (#9620). chain_detail_blocks has carried two clocks since migration 0010 -- observed_at, the chain's own timestamp as the firehose poller read it, and synced_at, the wall clock of the sync handler that wrote the row -- and nothing had ever selected the second: the writer binds it on every row and no route, watchdog or artifact read it back. Their difference is the end-to-end age of a block at the moment it became answerable, which is the headline latency question for an API over a chain. TWO DIFFERENT NUMBERS, NAMED SEPARATELY: write_latency_ms is the distribution of synced_at - observed_at -- how long each block took to land, as min/p50/p95/p99/max/mean over the retained window (nearest-rank percentiles). head_age_ms is now - the newest observed_at: how far behind the lane is RIGHT NOW. They diverge exactly when it matters, because a stalled lane keeps a perfect write-latency distribution -- every block it did write, it wrote promptly -- while its head age climbs without bound, so serving either under the other's name would report a dead lane as healthy. THE WINDOW IS PUBLISHED because the table is pruned on a rolling basis (1,862 contiguous blocks, about 6.2 hours, measured 2026-08-05): the block range and the observed_at bounds ride on every response, so this reads as the RECENT distribution it is rather than a lifetime one. A NEGATIVE LATENCY IS SERVED AS MEASURED, never clamped to zero -- the two timestamps come from two clocks, so under block-author clock skew a block can appear to have been written before it was produced, and clamping would suppress that evidence on the one route whose whole subject is the difference between those clocks. DECLINES rather than answering on an empty table: degraded.reason no_retained_blocks with NULL measurements, because a zero-millisecond lag is the most flattering thing this route could say about a dead pipeline. Mainnet-only: the D1 hot tier is written by the mainnet firehose poller and carries no network column, the same reason every off-mainnet block ref resolves against the lakehouse instead.",
+      "description": "How long after a block is produced it becomes queryable here (#9620). chain_detail_blocks has carried two clocks since migration 0010 -- observed_at, the chain's own timestamp as the firehose poller read it, and synced_at, the wall clock of the sync handler that wrote the row -- and nothing had ever selected the second: the writer binds it on every row and no route, watchdog or artifact read it back. Their difference is the end-to-end age of a block at the moment it became answerable, which is the headline latency question for an API over a chain. TWO DIFFERENT NUMBERS, NAMED SEPARATELY: write_latency_ms is the distribution of synced_at - observed_at -- how long each block took to land, as min/p50/p95/p99/max/mean over the retained window (nearest-rank percentiles). head_age_ms is now - the newest observed_at: how far behind the lane is RIGHT NOW. They diverge exactly when it matters, because a stalled lane keeps a perfect write-latency distribution -- every block it did write, it wrote promptly -- while its head age climbs without bound, so serving either under the other's name would report a dead lane as healthy. THE WINDOW IS PUBLISHED because the table is pruned on a rolling basis (1,862 contiguous blocks, about 6.2 hours, measured 2026-08-05): the block range and the observed_at bounds ride on every response, so this reads as the RECENT distribution it is rather than a lifetime one. A NEGATIVE LATENCY IS SERVED AS MEASURED, never clamped to zero -- the two timestamps come from two clocks, so under block-author clock skew a block can appear to have been written before it was produced, and clamping would suppress that evidence on the one route whose whole subject is the difference between those clocks. DECLINES rather than answering on an empty table: degraded.reason no_retained_blocks with NULL measurements, because a zero-millisecond lag is the most flattering thing this route could say about a dead pipeline. Mainnet-only: the hot tier is written by the mainnet firehose poller and carries no network column, the same reason every off-mainnet block ref resolves against the lakehouse instead.",
       "id": "indexer-lag",
       "path": "/metagraph/chain/indexer-lag.json",
       "retirement": null,
@@ -1731,7 +1731,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
+      "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks store tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "retirement": null,
@@ -1742,7 +1742,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread — computed live from the blocks D1 tier at /api/v1/blocks/summary (no static file).",
+      "description": "Block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread — computed live from the blocks store tier at /api/v1/blocks/summary (no static file).",
       "id": "blocks-summary",
       "path": "/metagraph/blocks/summary.json",
       "retirement": null,
@@ -1753,7 +1753,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
+      "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks store tier at /api/v1/blocks/{ref} (no static file).",
       "id": "block-detail",
       "path": "/metagraph/blocks/{ref}.json",
       "retirement": null,
@@ -1764,7 +1764,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+      "description": "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics store tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
       "id": "block-extrinsics",
       "path": "/metagraph/blocks/{ref}/extrinsics.json",
       "retirement": null,
@@ -1819,7 +1819,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics; pass ?format=csv to download the filtered extrinsic rows as CSV (no static file).",
+      "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics store tier at /api/v1/extrinsics; pass ?format=csv to download the filtered extrinsic rows as CSV (no static file).",
       "id": "extrinsics-feed",
       "path": "/metagraph/extrinsics.json",
       "retirement": null,
@@ -1830,7 +1830,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+      "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics store tier at /api/v1/extrinsics/{hash} (no static file).",
       "id": "extrinsic-detail",
       "path": "/metagraph/extrinsics/{hash}.json",
       "retirement": null,
@@ -1841,7 +1841,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The root-origin (Sudo pallet) call table (#4310/2.2) — subtensor has no Council/Senate, only Sudo, so this is the extrinsics feed hardcoded to call_module='Sudo'. Served live from the first-party extrinsics D1 tier at /api/v1/sudo; pass ?format=csv to download the filtered rows as CSV (no static file).",
+      "description": "The root-origin (Sudo pallet) call table (#4310/2.2) — subtensor has no Council/Senate, only Sudo, so this is the extrinsics feed hardcoded to call_module='Sudo'. Served live from the first-party extrinsics store tier at /api/v1/sudo; pass ?format=csv to download the filtered rows as CSV (no static file).",
       "id": "sudo-calls",
       "path": "/metagraph/sudo.json",
       "retirement": null,
@@ -1852,7 +1852,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Subtensor's own root-origin hyperparameter/network-config change feed (#4310/2.3, re-scoped from the original Council/Senate framing — subtensor has no such pallet) — the extrinsics feed hardcoded to call_module='AdminUtils'. Served live from the first-party extrinsics D1 tier at /api/v1/governance/config-changes; pass ?format=csv to download the filtered rows as CSV (no static file).",
+      "description": "Subtensor's own root-origin hyperparameter/network-config change feed (#4310/2.3, re-scoped from the original Council/Senate framing — subtensor has no such pallet) — the extrinsics feed hardcoded to call_module='AdminUtils'. Served live from the first-party extrinsics store tier at /api/v1/governance/config-changes; pass ?format=csv to download the filtered rows as CSV (no static file).",
       "id": "governance-config-changes",
       "path": "/metagraph/governance/config-changes.json",
       "retirement": null,
@@ -1874,7 +1874,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The spec-version transition timeline (#4316/3.1) — the earliest known block at each distinct runtime spec_version, ascending by block_number — computed live from the first-party blocks D1 tier at /api/v1/runtime (no static file).",
+      "description": "The spec-version transition timeline (#4316/3.1) — the earliest known block at each distinct runtime spec_version, ascending by block_number — computed live from the first-party blocks store tier at /api/v1/runtime (no static file).",
       "id": "runtime-versions",
       "path": "/metagraph/runtime.json",
       "retirement": null,
@@ -1885,7 +1885,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
+      "description": "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain tiers at /api/v1/chain/activity (no static file).",
       "id": "chain-activity",
       "path": "/metagraph/chain/activity.json",
       "retirement": null,
@@ -1896,7 +1896,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Extrinsic call-mix breakdown (count + share per call_module / call_function) over a 7d or 30d window for the block explorer (#1989), computed live from the first-party extrinsics D1 tier at /api/v1/chain/calls (no static file).",
+      "description": "Extrinsic call-mix breakdown (count + share per call_module / call_function) over a 7d or 30d window for the block explorer (#1989), computed live from the first-party extrinsics store tier at /api/v1/chain/calls (no static file).",
       "id": "chain-calls",
       "path": "/metagraph/chain/calls.json",
       "retirement": null,
@@ -1907,7 +1907,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Windowed most-active-account leaderboard (signers ranked by tx_count or total_fee_tao, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics D1 tier at /api/v1/chain/signers (no static file).",
+      "description": "Windowed most-active-account leaderboard (signers ranked by tx_count or total_fee_tao, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics store tier at /api/v1/chain/signers (no static file).",
       "id": "chain-signers",
       "path": "/metagraph/chain/signers.json",
       "retirement": null,
@@ -2061,7 +2061,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Fee/tip market analytics (daily totals, averages and exact medians over signed extrinsics only, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
+      "description": "Fee/tip market analytics (daily totals, averages and exact medians over signed extrinsics only, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics store tier at /api/v1/chain/fees (no static file).",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
       "retirement": null,
@@ -2072,7 +2072,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier at /api/v1/chain/concentration (no static file).",
+      "description": "Network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons store at /api/v1/chain/concentration (no static file).",
       "id": "chain-concentration",
       "path": "/metagraph/chain/concentration.json",
       "retirement": null,
@@ -2094,7 +2094,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, and the subnet_count the snapshot spans — the network-wide reward-flow companion to chain-concentration, computed live from the neurons D1 tier at /api/v1/chain/performance (no static file).",
+      "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, and the subnet_count the snapshot spans — the network-wide reward-flow companion to chain-concentration, computed live from the neurons store at /api/v1/chain/performance (no static file).",
       "id": "chain-performance",
       "path": "/metagraph/chain/performance.json",
       "retirement": null,
@@ -2105,7 +2105,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total — the idle-delegation companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/idle-stake (no static file).",
+      "description": "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total — the idle-delegation companion to chain-performance, computed live from the neurons store at /api/v1/chain/idle-stake (no static file).",
       "id": "chain-idle-stake",
       "path": "/metagraph/chain/idle-stake.json",
       "retirement": null,
@@ -2138,7 +2138,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, and the subnet_count the snapshot spans — the return-rate companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/yield (no static file).",
+      "description": "Network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, and the subnet_count the snapshot spans — the return-rate companion to chain-performance, computed live from the neurons store at /api/v1/chain/yield (no static file).",
       "id": "chain-yield",
       "path": "/metagraph/chain/yield.json",
       "retirement": null,
@@ -2149,7 +2149,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide validator-set turnover (churn) across all subnets between a window's start and end neuron_daily snapshots: each subnet's validators entered, exited, Jaccard retention, and a 0-100 stability score ranked into a leaderboard, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary of the per-subnet stability scores (count, mean, min, p25, median, p75, p90, max), computed live from the neuron_daily D1 rollup at /api/v1/chain/turnover; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
+      "description": "Network-wide validator-set turnover (churn) across all subnets between a window's start and end neuron_daily snapshots: each subnet's validators entered, exited, Jaccard retention, and a 0-100 stability score ranked into a leaderboard, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary of the per-subnet stability scores (count, mean, min, p25, median, p75, p90, max), computed live from the neuron_daily rollup at /api/v1/chain/turnover; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
       "id": "chain-turnover",
       "path": "/metagraph/chain/turnover.json",
       "retirement": null,
@@ -2160,7 +2160,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
+      "description": "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily rollup (no static file).",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "retirement": null,
@@ -2171,7 +2171,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window, served live from D1 at /api/v1/incidents (no static file).",
+      "description": "Recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window, served live at /api/v1/incidents (no static file).",
       "id": "global-incidents",
       "path": "/metagraph/incidents.json",
       "retirement": null,
@@ -2182,7 +2182,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
+      "description": "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d) — computed live from the store + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "retirement": null,
@@ -2193,7 +2193,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids in requested order — computed live from registry projections + the economics tier + D1 at /api/v1/compare (no static file).",
+      "description": "Cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids in requested order — computed live from registry projections + the economics tier + the store at /api/v1/compare (no static file).",
       "id": "compare",
       "path": "/metagraph/compare.json",
       "retirement": null,

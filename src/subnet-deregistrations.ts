@@ -5,7 +5,7 @@
 // the exit-side companion to the raw NeuronRegistered demand in /registrations, and the
 // account_events companion to the neuron_daily validator-set churn in /turnover (which measures net
 // snapshot change, NOT raw deregistration event volume), exactly the way /registrations coexists
-// with /turnover. Pure shaping (buildSubnetDeregistrations) + a thin D1 loader
+// with /turnover. Pure shaping (buildSubnetDeregistrations) + a thin store loader
 // (loadSubnetDeregistrations); the Worker adds the envelope. Null-safe: a cold store or a subnet
 // with no NeuronDeregistered events yields the zeroed card.
 
@@ -36,7 +36,7 @@ function round(value: number, dp = 2): number {
   return Math.round(value * factor) / factor;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -100,12 +100,12 @@ export function buildSubnetDeregistrations(
 // hotkey, so COUNT(DISTINCT hotkey) is exact here. The handler resolves windowLabel/windowDays from
 // the window param. Cold/absent store -> the schema-stable zeroed card.
 export async function loadSubnetDeregistrations(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
 ): Promise<Row> {
   const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT COUNT(*) AS deregistrations, COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys, " +
       "MAX(observed_at) AS newest_observed " +
       "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ?",

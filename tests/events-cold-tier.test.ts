@@ -544,7 +544,7 @@ describe("loadBlockChainEventsColdTier", () => {
   });
 
   test("decodes the opaque JSON args through the SAME formatter the hot tier feeds", async () => {
-    // Iceberg stores args as a JSON string exactly as D1 stores it as TEXT, so
+    // Iceberg stores args as a JSON string exactly as D1 stored it as TEXT, so
     // one decoder covers both tiers -- a caller cannot tell which answered.
     const q = sqlFetch([
       chainEventRow(0, JSON.stringify({ amount: 30681 })),

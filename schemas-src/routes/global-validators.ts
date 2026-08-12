@@ -1,4 +1,4 @@
-// GET /api/v1/validators (types-epic B batch 7, #8061). Live neurons D1-tier
+// GET /api/v1/validators (types-epic B batch 7, #8061). Live neurons tier
 // data -- no static file. Modeled from src/metagraph-neurons.ts's
 // buildGlobalValidators(), cross-checked against the hand-edited
 // GlobalValidatorsArtifact component it replaces.

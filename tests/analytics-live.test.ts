@@ -191,7 +191,7 @@ describe("analytics-live projections", () => {
 describe("analytics-live loaders", () => {
   // D1 fully eliminated (2026-07-17): every loader below is only ever reached
   // on a Postgres-tier miss, so each always returns its schema-stable empty
-  // shape now — there are no more D1 rows to aggregate/shape.
+  // shape now — there are no more store rows to aggregate/shape.
 
   test("loadSubnetUptime returns schema-stable empty surfaces (D1 retired)", async () => {
     const data = (await loadSubnetUptime(NETUID, {
@@ -235,7 +235,7 @@ describe("analytics-live loaders", () => {
     assert.deepEqual(data.surfaces, []);
   });
 
-  test("loadRegistryLeaderboards: no D1 binding leaves those boards empty, registry/economics still populate", async () => {
+  test("loadRegistryLeaderboards: no store binding leaves those boards empty, registry/economics still populate", async () => {
     const data = (await loadRegistryLeaderboards({
       profiles: [
         {
@@ -284,7 +284,7 @@ describe("analytics-live loaders", () => {
     assert.equal("fastest-rpc" in data.boards, false);
   });
 
-  test("loadCompareSubnets health dimension is empty without a D1 binding", async () => {
+  test("loadCompareSubnets health dimension is empty without a store binding", async () => {
     const data = (await loadCompareSubnets({
       profiles: [{ netuid: 1, slug: "apex", name: "Apex" }],
       economicsRows: [],

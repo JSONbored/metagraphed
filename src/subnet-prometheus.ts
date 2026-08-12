@@ -5,7 +5,7 @@
 // and cannot be queried by an arbitrary netuid, so this fills the same per-subnet/chain duality the
 // serving, turnover, concentration, stake-flow, yield, weights, and registrations routes already
 // have. The telemetry-endpoint sibling of /api/v1/subnets/{netuid}/serving (axon endpoints). Pure
-// shaping (buildSubnetPrometheus) + a thin D1 loader (loadSubnetPrometheus); the Worker adds the
+// shaping (buildSubnetPrometheus) + a thin store loader (loadSubnetPrometheus); the Worker adds the
 // envelope. Null-safe: a cold store or a subnet with no PrometheusServed events yields the zeroed card.
 
 import { PROMETHEUS_DEGRADED_NOT_CURATED } from "./uncurated-event-streams.ts";
@@ -32,7 +32,7 @@ function round(value: number, dp = 2): number {
   return Math.round(value * factor) / factor;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -101,12 +101,12 @@ export function buildSubnetPrometheus(
 // buildSubnetPrometheus. The handler resolves windowLabel/windowDays from the window param.
 // Cold/absent store -> the schema-stable zeroed card.
 export async function loadSubnetPrometheus(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
 ): Promise<Row> {
   const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT COUNT(*) AS announcements, COUNT(DISTINCT hotkey) AS distinct_exporters, " +
       "MAX(observed_at) AS newest_observed " +
       "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ?",

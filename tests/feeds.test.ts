@@ -494,7 +494,7 @@ describe("feeds — item builders", () => {
   });
 
   test("toIso drops an out-of-range numeric string to null", () => {
-    // Date.parse ignores bare epoch-ms strings; D1 returns them as long numeric
+    // Date.parse ignores bare epoch-ms strings; the store returns them as long numeric
     // strings (10+ digits), so coerce only after parse fails. One ms past the
     // JS Date max yields a finite Number but an invalid Date — null, not throw.
     assert.equal(toIso("8640000000000001"), null);

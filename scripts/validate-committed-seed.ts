@@ -51,7 +51,7 @@ export const SEED_FAILURE_HINT =
 
 // Paramless GET routes whose backing artifact is committed to git (DUAL tier) —
 // the only routes guaranteed to resolve from the committed seed on a clean
-// checkout, with no build and no R2/D1.
+// checkout, with no build and no R2 or the store.
 export function committedSeedRoutes(routes: Row[] = API_ROUTES): Row[] {
   return routes.filter(
     (route) =>
@@ -156,7 +156,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `✓ Committed cold-start seed valid — ${checked} DUAL-tier route(s) checked (pre-build, no R2/D1).`,
+    `✓ Committed cold-start seed valid — ${checked} DUAL-tier route(s) checked (pre-build, no R2 or the store).`,
   );
 }
 

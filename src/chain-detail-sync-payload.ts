@@ -43,7 +43,7 @@ export const CHAIN_EVENT_PHASES = new Set([
  * headroom over that without inviting a pathological body. */
 export const CHAIN_DETAIL_SYNC_MAX_BODY_BYTES = 16_000_000;
 /** The producer batches 2. A cap of 16 tolerates a catch-up burst after a
- * restart while bounding one request's write to something D1 can hold in a
+ * restart while bounding one request's write to something the store can hold in a
  * single transaction. */
 export const CHAIN_DETAIL_SYNC_MAX_BLOCKS = 16;
 /** Real blocks carry up to ~1,300 rows across the three families; 16 blocks at
@@ -83,7 +83,7 @@ function isOptionalDecimal(value: unknown): boolean {
 
 /** call_args / args: a JSON-ENCODED STRING, never an object. The contract says
  * so, and it matters -- the column is TEXT and the formatters JSON.parse it, so
- * an object here would be stored as "[object Object]" by D1's binding. */
+ * an object here would be stored as "[object Object]" by the store's binding. */
 function isOptionalJsonText(value: unknown): boolean {
   return value === null || typeof value === "string";
 }
@@ -92,7 +92,7 @@ function isPlainObject(value: unknown): value is Row {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-/** The 0/1 D1 stores for a three-valued boolean; null stays null. */
+/** The 0/1 D1 stored for a three-valued boolean; null stays null. */
 function toFlag(value: unknown): number | null {
   return value === null ? null : value ? 1 : 0;
 }

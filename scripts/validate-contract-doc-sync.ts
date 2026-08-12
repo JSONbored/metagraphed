@@ -60,7 +60,12 @@ export const CLAIM_TOKENS: { name: string; re: RegExp }[] = [
     name: "complete-pass",
     re: /\b(?:complete\s+pass|recorded\s+complete|provably\s+complete)\b/i,
   },
-  { name: "d1", re: /\bD1\b/ },
+  // `d1` was a token here until the store vocabulary sweep (#10910). It is
+  // dropped rather than kept as a harmless leftover: nothing in
+  // ARTIFACT_CATALOG_PATH can match /\bD1\b/ any more (measured: 0 hits), so it
+  // could only ever contribute the SAME empty answer to every vector -- a token
+  // that cannot fire makes a claim vector look like it is watching a dimension
+  // it has gone blind to.
   { name: "postgres", re: /\bpostgres/i },
   { name: "lakehouse", re: /\blakehouse\b/i },
   { name: "r2", re: /\bR2\b/ },

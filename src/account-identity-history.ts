@@ -128,7 +128,7 @@ export function buildAccountIdentityHistory(
 }
 
 export async function loadAccountIdentityHistory(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -159,7 +159,7 @@ export async function loadAccountIdentityHistory(
     sql += " OFFSET ?";
     params.push(off);
   }
-  const rows = await d1(sql, params);
+  const rows = await runner(sql, params);
   const last = rows.length === lim ? rows[rows.length - 1] : null;
   const nextCursor =
     last && Number.isFinite(Number(last.observed_at))

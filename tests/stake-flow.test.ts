@@ -65,7 +65,7 @@ describe("buildStakeFlow", () => {
     assert.equal(removed.net_flow_tao, -5);
   });
 
-  test("coerces numeric-string D1 cells and ignores unknown kinds", () => {
+  test("coerces numeric-string cells and ignores unknown kinds", () => {
     const rows = [
       { event_kind: STAKE_ADDED_KIND, total_tao: "12.5", event_count: "2" },
       { event_kind: "WeightsSet", total_tao: "999", event_count: "9" },

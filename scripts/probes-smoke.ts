@@ -138,7 +138,7 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
   });
   // Current-state health is local-cache-only now. build-artifacts.ts
   // intentionally stopped publishing health/latest.json, health/summary.json,
-  // and health/subnets/*.json (the live /api/v1/health routes serve from KV/D1),
+  // and health/subnets/*.json (the live /api/v1/health routes serve from KV and the store),
   // and the Worker unconditionally 410s those static paths. We only seed the
   // local fallback cache that build-artifacts.ts still reads — the retired
   // static writes below are gone.

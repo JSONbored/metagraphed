@@ -25,7 +25,7 @@ function hexToBytes(hex: string) {
 
 // Real production data (2026-07-09/10 D1-vs-Postgres shape-parity audit,
 // #4669/#4688): SubtensorModule.add_stake, block 8587451, extrinsic_index 20.
-// Independently re-confirmed live against Postgres (D1 has since rolled this
+// Independently re-confirmed live against Postgres (D1 had since rolled this
 // block out of its retention window) and cross-checked byte-for-byte against
 // the SS58 string D1 served for the same extrinsic before this fix landed.
 const ADD_STAKE_HOTKEY_BYTES = [

@@ -342,14 +342,16 @@ describe("GET /api/v1/chain/alpha-volume", () => {
     new Request(`https://api.metagraph.sh/api/v1/chain/alpha-volume${q}`);
 
   // #4909/#6013: account_events' D1 write path is retired and the table is
-  // dropped in production, so this handler no longer queries D1 at all --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  // dropped in production, so this handler no longer queries the store at all --
+  // even a "warm" store mock (real rows) must not change the response.
+  test("never queries the store even when mocked with real rows (retired -- #4909/#6013)", async () => {
     let d1Called = false;
     const env = alphaVolumeEnv(ROWS);
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       d1Called = true;
-      throw new Error("D1 must not be queried -- account_events is retired");
+      throw new Error(
+        "the retired tier must not be queried -- account_events is retired",
+      );
     };
     const res = await handleRequest(req(), env as unknown as Env, {});
     assert.equal(res.status, 200);
@@ -436,9 +438,9 @@ describe("GET /api/v1/chain/alpha-volume", () => {
     assert.equal(res.status, 400);
   });
 
-  // #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+  // #4909/#6013: even a "warm" store mock never reaches the response -- the CSV
   // export is always header-only now (account_events is retired).
-  test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
+  test("CSV export with ?format=csv is header-only even with a warm store mock", async () => {
     const res = await handleRequest(
       req("?format=csv"),
       alphaVolumeEnv(ROWS) as unknown as Env,
@@ -567,7 +569,7 @@ describe("chain/alpha-volume edge cache", () => {
     const res = await call();
     assert.equal(res.status, 200);
     const body = await res.json();
-    // #4909/#6013: account_events is retired, so even this "warm" D1 mock
+    // #4909/#6013: account_events is retired, so even this "warm" store mock
     // never reaches the response -- subnet_count stays 0.
     assert.equal(body.data.subnet_count, 0);
     await Promise.all(waits); // let the deferred cache put settle
