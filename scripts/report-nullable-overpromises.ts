@@ -42,10 +42,11 @@
 //
 // A property whose expression the checker types as `any`, or whose target this
 // walk cannot resolve (a spread of an untyped bag, a field the generated schema
-// does not declare), is counted as UNDECIDED rather than clean. That number is
-// the honest edge of this measurement: those fields are unvalidated at the
-// serving boundary, which is a different defect with its own issue (#10789),
-// not a nullability finding to be quietly called zero here.
+// does not declare), is counted as UNDECIDED rather than clean -- and since
+// #10867 an undecided SPREAD fails the validator unless it carries a
+// `DECLARED_PASSTHROUGHS` entry naming where its guarantee actually lives.
+// The honest edge of the measurement stays visible either way; it is no
+// longer allowed to be a quiet number.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -88,9 +89,77 @@ export interface Undecided {
   reason: "spread" | "undeclared-field" | "any-typed";
 }
 
+/** A declared artifact/builder passthrough the walk counts, not skips. */
+export interface Passthrough {
+  path: string;
+  file: string;
+  line: number;
+}
+
+const ARTIFACT_PASSTHROUGH =
+  "an artifact passthrough: the spread republishes a document a typed " +
+  "builder produced against the SAME Zod component this GraphQL type was " +
+  "generated from (one schema source, #10214), so the non-null guarantee is " +
+  "tsc's on the build side; graphql-js re-enforces it at execution, which " +
+  "also covers the residual this walk cannot -- a stored artifact predating " +
+  "a tightening.";
+
+/**
+ * Spreads this walk counts as DECIDED-ELSEWHERE, each with the evidence.
+ *
+ * The walker cannot type a spread of parsed JSON, and chasing it
+ * interprocedurally dead-ends at `readArtifact`'s `unknown` -- deciding the
+ * fields off the component there would judge the schema against itself
+ * (#10867). The guarantee these sites rely on is real and lives in two other
+ * compilations: the artifact BUILDER is tsc-checked against the same Zod
+ * component the GraphQL type derives from, and the executor enforces the
+ * published nullability on every request. An entry here declares exactly
+ * that, per owner type; `validate:nullable-overpromises` FAILS on a spread
+ * with no entry and on an entry with no spread, so the list can only
+ * describe what exists.
+ */
+export const DECLARED_PASSTHROUGHS: Readonly<Record<string, string>> = {
+  // subnetNode spreads the subnet row the subnets/detail artifacts carry.
+  Subnet: ARTIFACT_PASSTHROUGH,
+  // The shared list composer lifts envelope fields off the list artifact.
+  SubnetList: ARTIFACT_PASSTHROUGH,
+  // validatorNode spreads metagraph rows that deliberately carry more
+  // columns than the type exposes; the declared columns are the builder's.
+  Validator: ARTIFACT_PASSTHROUGH,
+  // providerNode spreads the ProvidersArtifact row.
+  Provider: ARTIFACT_PASSTHROUGH,
+  // Each window's delta object off the trajectory artifact's deltas record.
+  SubnetTrajectoryDelta: ARTIFACT_PASSTHROUGH,
+  // loadSurfacesList's envelope, with `surfaces` renamed to `items` beside
+  // the spread.
+  SurfaceList: ARTIFACT_PASSTHROUGH,
+  // loadChangelog's document, with the coverage_delta lift beside it.
+  Changelog: ARTIFACT_PASSTHROUGH,
+  // The evidence ledger document behind the incidents filter.
+  GlobalIncidents: ARTIFACT_PASSTHROUGH,
+  // buildGlobalHealth's rollup -- built IN THIS COMPILATION by
+  // src/global-operational-health.ts, so the guarantee is local tsc; the
+  // spread is still untypeable to the walker because `(result.global || {})`
+  // widens through the fallback arm.
+  GlobalHealth:
+    "a passthrough of buildGlobalHealth's rollup, typed in this compilation " +
+    "(src/global-operational-health.ts); the `|| {}` fallback arm widens the " +
+    "spread past what the walker can read, and the executor enforces the " +
+    "published nullability on every request either way.",
+  // The shared stake-quote calculator's quote, typed in this compilation.
+  SubnetStakeQuote:
+    "a passthrough of the shared stake-quote calculator's `quote`, typed in " +
+    "this compilation; `schema_version` is written beside the spread and the " +
+    "executor enforces the published nullability on every request.",
+};
+
 export interface NullabilityReport {
   findings: OverPromise[];
   undecided: Undecided[];
+  /** Declared passthrough spreads, counted against `DECLARED_PASSTHROUGHS`. */
+  passthroughs: Passthrough[];
+  /** Declared passthrough owners the walk never saw a spread on -- stale. */
+  stalePassthroughs: string[];
   /** Property writes compared against a declared field. */
   examined: number;
   /** Root fields reached from `rootValue`. */
@@ -207,10 +276,17 @@ function ownReturns(body: ts.Node): ts.Expression[] {
 export function findOverPromises(
   program: ts.Program,
   queryType: GraphQLObjectType,
+  // Injectable so a test can drive the ratchet with a MUTATED declaration --
+  // a gate only ever run against a passing tree proves it runs, not that it
+  // can fail (the same rule buildGeneratedSchema's declarations follow).
+  declaredPassthroughs: Readonly<
+    Record<string, string>
+  > = DECLARED_PASSTHROUGHS,
 ): NullabilityReport {
   const checker = program.getTypeChecker();
   const findings: OverPromise[] = [];
   const undecided: Undecided[] = [];
+  const passthroughs: Passthrough[] = [];
   const decided = new Set<string>();
   let examined = 0;
   let fields = 0;
@@ -300,12 +376,20 @@ export function findOverPromises(
     const file = relative(literal.getSourceFile());
     for (const member of literal.properties) {
       if (ts.isSpreadAssignment(member)) {
-        undecided.push({
-          path: owner.name,
-          file,
-          line: lineOf(member),
-          reason: "spread",
-        });
+        // A declared passthrough is COUNTED, not skipped -- the entry names
+        // where the guarantee lives (see DECLARED_PASSTHROUGHS). Anything
+        // else stays undecided, and the validator fails on it: type the
+        // source or declare it with evidence, no third state.
+        if (owner.name in declaredPassthroughs) {
+          passthroughs.push({ path: owner.name, file, line: lineOf(member) });
+        } else {
+          undecided.push({
+            path: owner.name,
+            file,
+            line: lineOf(member),
+            reason: "spread",
+          });
+        }
         continue;
       }
       const isShorthand = ts.isShorthandPropertyAssignment(member);
@@ -373,7 +457,22 @@ export function findOverPromises(
   // write is the arm that executes when the tier is sick, which is the whole
   // question. Findings win over the clean sites they share a name with.
   for (const finding of findings) decided.delete(finding.path);
-  return { findings, undecided, examined, fields, decided };
+  // An entry with no spread is stale: the passthrough it excused is gone, so
+  // the excuse must go with it -- the shrink-only rule every declared list
+  // here follows.
+  const matched = new Set(passthroughs.map((p) => p.path));
+  const stalePassthroughs = Object.keys(declaredPassthroughs).filter(
+    (name) => !matched.has(name),
+  );
+  return {
+    findings,
+    undecided,
+    passthroughs,
+    stalePassthroughs,
+    examined,
+    fields,
+    decided,
+  };
 }
 
 /** The tightened contract: the schema the Zod components build. */
@@ -394,7 +493,9 @@ function main(): void {
     `nullable-overpromises: ${report.fields} root field(s) walked, ` +
       `${report.examined} property write(s) compared against the field the ` +
       `components declare; ${report.findings.length} write null into a ` +
-      `NON-NULL field; ${report.undecided.length} could not be decided.`,
+      `NON-NULL field; ${report.undecided.length} could not be decided; ` +
+      `${report.passthroughs.length} declared passthrough(s) over ` +
+      `${Object.keys(DECLARED_PASSTHROUGHS).length} entr(ies).`,
   );
   if (report.findings.length) {
     console.log(
@@ -410,7 +511,7 @@ function main(): void {
   }
   if (byReason.size) {
     console.log(
-      `\nUNDECIDED (unvalidated at the boundary -- #10789's job, not counted clean): ` +
+      `\nUNDECIDED (not counted clean; a spread here must be typed or declared -- #10867): ` +
         [...byReason].map(([reason, n]) => `${reason} ${n}`).join(", "),
     );
   }

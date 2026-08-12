@@ -275,6 +275,53 @@ describe("findOverPromises", () => {
     assert.deepEqual(report.findings, []);
     assert.equal(report.undecided.length, 1);
     assert.equal(report.undecided[0]!.reason, "spread");
+    // No declaration covers Card, so nothing counts as a passthrough -- and
+    // every real declared owner is stale against this one-field double, which
+    // is the shrink-only rule doing its job, not noise.
+    assert.deepEqual(report.passthroughs, []);
+  });
+
+  test("a spread on a DECLARED owner is a counted passthrough, not undecided (#10867)", () => {
+    const report = findOverPromises(
+      programFor(`
+        const data: Record<string, unknown> = {};
+        const rootValue = {
+          card() {
+            return { ...data, complete: true };
+          },
+        };
+      `),
+      Query,
+      { Card: "under test: the guarantee lives in this test's assertions" },
+    );
+    assert.deepEqual(report.findings, []);
+    assert.deepEqual(
+      report.undecided,
+      [],
+      "a declared spread must not stay undecided",
+    );
+    assert.equal(report.passthroughs.length, 1);
+    assert.equal(report.passthroughs[0]!.path, "Card");
+    assert.deepEqual(report.stalePassthroughs, []);
+  });
+
+  test("a declared passthrough with no matching spread is STALE (#10867)", () => {
+    const report = findOverPromises(
+      programFor(`
+        const rootValue = {
+          card() {
+            return { total: 1, optional_total: null, complete: true };
+          },
+        };
+      `),
+      Query,
+      { Card: "the spread this excused is gone" },
+    );
+    assert.deepEqual(
+      report.stalePassthroughs,
+      ["Card"],
+      "an excuse must not outlive what it excused",
+    );
   });
 
   test("a root field `rootValue` does not answer is simply not walked", () => {
