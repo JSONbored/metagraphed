@@ -46,6 +46,7 @@ import {
 } from "../responses.ts";
 import { tryDataApiTier } from "../data-api-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
+import { recordExceptionEvent } from "../../src/usage-telemetry.ts";
 import {
   ResponseSchemaDriftError,
   validateResponseTripwire,
@@ -3300,10 +3301,10 @@ export async function handleSubnetStakeQuote(
   env: Env,
   netuid: number,
   url: URL,
-  // Kept in the signature for the caller, unused since the response tripwire
-  // stopped running under `waitUntil` -- it throws on drift now, and a throw
-  // from a background task ships the bad body anyway.
-  _ctx: { waitUntil?: (promise: Promise<unknown>) => void } = {},
+  // The tripwire itself is AWAITED (a throw from `waitUntil` ships the bad
+  // body anyway); ctx carries only the refusal's fault event (#10901), which
+  // must never block or fail the response.
+  ctx: { waitUntil?: (promise: Promise<unknown>) => void } = {},
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
@@ -3353,6 +3354,28 @@ export async function handleSubnetStakeQuote(
           "[METAGRAPH_VALIDATE_RESPONSES] subnet-stake-quote refused:",
           err.detail,
         );
+        // The dispatcher's refusal files a fault (#10897); this inline site
+        // must too (#10901), or stake-quote is the one published route that
+        // can 500 on every request while error tracking shows zero rows.
+        // Same shape as workers/api.ts's scheduleExceptionEvent: fire and
+        // forget, parked on waitUntil, never surfacing into a path that is
+        // already failing. The drift detail rides in the message -- the
+        // unrecognized keys ARE the diagnosis.
+        try {
+          const pending = Promise.resolve(
+            recordExceptionEvent(env, {
+              error: new Error(
+                "response_schema_drift: subnet-stake-quote refused: " +
+                  String(JSON.stringify(err.detail)).slice(0, 400),
+              ),
+              route: "subnet-stake-quote",
+              errorCode: "response_schema_drift",
+            }),
+          ).catch(() => false);
+          ctx?.waitUntil?.(pending);
+        } catch {
+          // Telemetry must never surface into the request path.
+        }
         return errorResponse(
           "response_schema_drift",
           "The subnet-stake-quote response did not match its published schema and was not served.",

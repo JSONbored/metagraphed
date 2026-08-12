@@ -293,6 +293,69 @@ describe("workers/api.ts fails the request on drift", () => {
     });
   });
 
+  test("flag on: subnet-stake-quote's refusal FILES A FAULT too (#10901)", async () => {
+    // #10898 alarmed the dispatcher's refusal and left this inline site
+    // silent -- the exact invisibility #10897 closed, still live for one
+    // published route. Same drill as the dispatcher's fault test: force a
+    // drift, capture the recorder, and demand the event names the route with
+    // the drift detail in the message.
+    vi.resetModules();
+    const captured: Row[] = [];
+    vi.doMock("../src/response-validation-tripwire.ts", async () => {
+      const actual = await vi.importActual<
+        typeof import("../src/response-validation-tripwire.ts")
+      >("../src/response-validation-tripwire.ts");
+      return {
+        ...actual,
+        validateResponseTripwire: async (routeId: string) => {
+          throw new actual.ResponseSchemaDriftError(routeId, [
+            { code: "unrecognized_keys", keys: ["stray_quote_field"] },
+          ]);
+        },
+      };
+    });
+    vi.doMock("../src/usage-telemetry.ts", async () => {
+      const actual = await vi.importActual<
+        typeof import("../src/usage-telemetry.ts")
+      >("../src/usage-telemetry.ts");
+      return {
+        ...actual,
+        recordExceptionEvent: async (_env: unknown, event: Row) => {
+          captured.push(event);
+          return true;
+        },
+      };
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { handleRequest: freshHandle } = await import("../workers/api.ts");
+    try {
+      const env = createLocalArtifactEnv() as Row;
+      env.METAGRAPH_VALIDATE_RESPONSES = "true";
+      const waits: Promise<unknown>[] = [];
+      const res = await (freshHandle as unknown as typeof handleRequest)(
+        req("/api/v1/subnets/1/stake-quote?amount=1&direction=stake"),
+        env as unknown as Env,
+        { waitUntil: (p: Promise<unknown>) => waits.push(p) } as never,
+      );
+      assert.equal(res.status, 500);
+      await Promise.all(waits);
+      const fault = captured.find(
+        (e) => e.errorCode === "response_schema_drift",
+      );
+      assert.ok(fault, "the refusal must file a fault, not just a 500");
+      assert.equal(fault!.route, "subnet-stake-quote");
+      assert.match(
+        String((fault!.error as Error).message),
+        /stray_quote_field/,
+        "the drift detail must reach the alarm — it is the diagnosis",
+      );
+    } finally {
+      vi.doUnmock("../src/response-validation-tripwire.ts");
+      vi.doUnmock("../src/usage-telemetry.ts");
+      vi.resetModules();
+    }
+  });
+
   test("a NON-drift throw propagates -- it is not swallowed as a drift", async () => {
     // The tripwire swallows its own faults, so only a drift should ever escape
     // it. If something else does, that is a bug in the tripwire and the call
