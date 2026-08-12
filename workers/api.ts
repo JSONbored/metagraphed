@@ -8923,17 +8923,14 @@ async function handleApiRequest(
         // rather than cross-throttling another's. The drift detail rides in
         // the message: the unrecognized keys ARE the diagnosis, and the
         // console.error above is unreachable without a tail.
-        const pending = Promise.resolve(
-          recordExceptionEvent(env, {
-            error: new Error(
-              `response_schema_drift: ${matched.id} refused: ` +
-                String(JSON.stringify(err.detail)).slice(0, 400),
-            ),
-            route: matched.id,
-            errorCode: "response_schema_drift",
-          }),
-        ).catch(() => false);
-        ctx?.waitUntil?.(pending);
+        scheduleExceptionEvent(env, ctx, recordExceptionEvent, {
+          error: new Error(
+            `response_schema_drift: ${matched.id} refused: ` +
+              String(JSON.stringify(err.detail)).slice(0, 400),
+          ),
+          route: matched.id,
+          errorCode: "response_schema_drift",
+        });
         return errorResponse(
           "response_schema_drift",
           `The ${matched.id} response did not match its published schema and was not served.`,
