@@ -47,11 +47,7 @@ import { readStore } from "./read-store.ts";
 /** The D1 surface this module needs -- structural, so tests can hand it a
  * plain object (the same pattern as src/blocks-cold-tier.ts). */
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 /**
@@ -80,11 +76,11 @@ export async function loadAccountRegistrationsFromStore(
 ): Promise<Record<string, unknown>[] | null> {
   const db = readStore(env, ["neurons"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return [];
+  if (!db?.query) return [];
   try {
-    const res = await db.prepare(ACCOUNT_REGISTRATIONS_SQL).bind(ss58).all?.();
-    const rows = res?.results;
-    return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
+    return await db.query<Record<string, unknown>>(ACCOUNT_REGISTRATIONS_SQL, [
+      ss58,
+    ]);
   } catch {
     return null;
   }

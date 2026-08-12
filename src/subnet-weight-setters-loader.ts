@@ -91,12 +91,12 @@ async function loadSubnetTempo(
   // #9389 regression #9396 fixed.
   const db = readStore(env, SUBNET_HYPERPARAMS_TEMPO_TABLES) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return null;
+  if (!db?.first) return null;
   try {
-    const res = await db
-      .prepare("SELECT tempo FROM subnet_hyperparams WHERE netuid = ?")
-      .bind(netuid)
-      .first?.();
+    const res = await db.first(
+      "SELECT tempo FROM subnet_hyperparams WHERE netuid = ?",
+      [netuid],
+    );
     return (res as { tempo?: unknown } | null)?.tempo ?? null;
   } catch {
     return null;
@@ -105,9 +105,5 @@ async function loadSubnetTempo(
 
 /** The minimal D1 surface this needs, so tests can hand it a plain object. */
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      first?(): Promise<unknown>;
-    };
-  };
+  first?(text: string, values?: unknown[]): Promise<unknown>;
 }

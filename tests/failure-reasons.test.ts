@@ -41,17 +41,10 @@ function rollupDb() {
 /** A read surface over the rollup table, for loadFailureReasons. */
 function readDb(sqlite: DatabaseSync) {
   return {
-    prepare(sql: string) {
-      const stmt = sqlite.prepare(sql);
-      return {
-        bind(...values: unknown[]) {
-          return {
-            all: async () => ({
-              results: stmt.all(...(values as Array<string | number | null>)),
-            }),
-          };
-        },
-      };
+    async query<Row>(sql: string, values: unknown[] = []) {
+      return sqlite
+        .prepare(sql)
+        .all(...(values as Array<string | number | null>)) as Row[];
     },
   };
 }
@@ -150,23 +143,17 @@ describe("loadFailureReasons", () => {
     expect(await loadFailureReasons(undefined)).toBeNull();
     expect(await loadFailureReasons({} as never)).toBeNull();
     const throwing = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => {
-            throw new Error("D1_ERROR");
-          },
-        }),
-      }),
+      query: async () => {
+        throw new Error("store read failed");
+      },
     };
     expect(await loadFailureReasons(throwing)).toBeNull();
   });
 
-  it("returns an empty list when all() is absent or answers nothing", async () => {
-    const noAll = { prepare: () => ({ bind: () => ({}) }) };
-    expect(await loadFailureReasons(noAll as never)).toEqual([]);
-    const empty = {
-      prepare: () => ({ bind: () => ({ all: async () => null }) }),
-    };
+  it("returns an empty list on zero rows", async () => {
+    // The "all() absent / null result" arms retired with the D1 envelope
+    // (#10909): query() answers rows or throws (null, above).
+    const empty = { query: async () => [] };
     expect(await loadFailureReasons(empty)).toEqual([]);
   });
 });

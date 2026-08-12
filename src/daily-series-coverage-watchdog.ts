@@ -223,11 +223,7 @@ export function coverageDetail(
 }
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query(text: string, values?: unknown[]): Promise<Record<string, unknown>[]>;
 }
 
 export interface DailyCoverageDeps {
@@ -251,21 +247,19 @@ export async function runDailySeriesCoverageWatchdog(
     env,
     DAILY_SERIES.map((s) => s.table),
   ) as unknown as StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no store bound" };
+  if (!db?.query) return { ok: false, reason: "no store bound" };
 
   const verdicts: DailySeriesVerdict[] = [];
   try {
     for (const { table, column } of DAILY_SERIES) {
       // Grouped in the store rather than pulled row by row: these tables hold
       // ~30k rows a day and the answer is one integer per date.
-      const result = await db
-        .prepare(
-          `SELECT ${column} AS date, COUNT(*) AS rows FROM ${table} ` +
-            `GROUP BY ${column} ORDER BY ${column} DESC LIMIT ?`,
-        )
-        .bind(DAILY_COVERAGE_LOOKBACK_DAYS)
-        .all();
-      const days = ((result?.results ?? []) as Record<string, unknown>[])
+      const result = await db.query(
+        `SELECT ${column} AS date, COUNT(*) AS rows FROM ${table} ` +
+          `GROUP BY ${column} ORDER BY ${column} DESC LIMIT ?`,
+        [DAILY_COVERAGE_LOOKBACK_DAYS],
+      );
+      const days = result
         .map((row) => ({
           date: String(row.date ?? ""),
           rows: Number(row.rows ?? 0),

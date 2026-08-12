@@ -56,13 +56,8 @@ type Row = Record<string, unknown>;
 
 /** The minimal D1 surface used here, so tests can inject a plain object. */
 export interface SubnetHoldersDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-      first?(): Promise<unknown>;
-    };
-    first?(): Promise<unknown>;
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 /**
@@ -179,7 +174,7 @@ export async function loadSubnetHolders(
   // Checked before the binding: root has no holder set whether or not D1 is
   // reachable, so the reason a caller gets should not depend on that.
   if (netuid === ROOT_NETUID) return declined("root_not_in_alpha_map");
-  if (!db?.prepare) return declined("unavailable");
+  if (!db?.query) return declined("unavailable");
 
   const alpha = await latestCompleteHotkeyAlphaPass(
     db as unknown as Parameters<typeof latestCompleteHotkeyAlphaPass>[0],
@@ -195,18 +190,11 @@ export async function loadSubnetHolders(
 
   try {
     const [rowsRes, aggRes] = await Promise.all([
-      db
-        .prepare(subnetHoldersRowsSql(alpha.capturedAt, limit))
-        .bind(netuid)
-        .all?.(),
-      db
-        .prepare(subnetHoldersAggregateSql(alpha.capturedAt))
-        .bind(netuid)
-        .first?.(),
+      db.query!<Row>(subnetHoldersRowsSql(alpha.capturedAt, limit), [netuid]),
+      db.first!(subnetHoldersAggregateSql(alpha.capturedAt), [netuid]),
     ]);
-    if (!Array.isArray(rowsRes?.results)) throw new Error("holders: no rows");
     return {
-      rows: rowsRes.results as Row[],
+      rows: rowsRes,
       aggregate: readAggregate(aggRes as Row | null),
       capturedAt: alpha.capturedAt,
       decline: null,

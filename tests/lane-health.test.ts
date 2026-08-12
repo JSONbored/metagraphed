@@ -40,27 +40,19 @@ function fakeDb(
   return {
     calls,
     db: {
-      prepare(sql: string) {
-        return {
-          bind(...values: unknown[]) {
-            calls.push({ sql, values });
-            return {
-              async run() {
-                if (failOnRun) {
-                  throw failOnRun instanceof Error
-                    ? failOnRun
-                    : new Error("D1_ERROR: no such table: lane_health");
-                }
-                return { success: true };
-              },
-            };
-          },
-          async all() {
-            calls.push({ sql, values: [] });
-            if (rows instanceof Error) throw rows;
-            return { results: rows };
-          },
-        };
+      async run(sql: string, values: unknown[] = []) {
+        calls.push({ sql, values });
+        if (failOnRun) {
+          throw failOnRun instanceof Error
+            ? failOnRun
+            : new Error("store: no such table: lane_health");
+        }
+        return { changes: 1 };
+      },
+      async query(sql: string, values: unknown[] = []) {
+        calls.push({ sql, values });
+        if (rows instanceof Error) throw rows;
+        return rows;
       },
     },
   };
@@ -101,16 +93,12 @@ describe("recordLaneVerdict", () => {
     // wrong-but-confident report this whole change exists to remove.
     const calls: string[] = [];
     const db = {
-      prepare: (sql: string) => ({
-        bind: () => ({
-          run: async () => {
-            calls.push(sql);
-            if (sql.startsWith("DELETE FROM"))
-              throw new Error("D1_ERROR: busy");
-            return { success: true };
-          },
-        }),
-      }),
+      query: async () => [],
+      run: async (sql: string) => {
+        calls.push(sql);
+        if (sql.startsWith("DELETE FROM")) throw new Error("store: busy");
+        return { changes: 1 };
+      },
     };
     assert.equal(
       await recordLaneVerdict(
@@ -232,7 +220,12 @@ describe("loadLatestLaneHealth", () => {
     // The injected-fake surface is deliberately narrow (`all?()`), and a D1 binding
     // that cannot answer a SELECT must degrade to "no lanes" rather than throw
     // through a watchdog tick.
-    const db = { prepare: () => ({ bind: () => ({ run: async () => ({}) }) }) };
+    const db = {
+      run: async () => ({ changes: 1 }),
+      query: async () => {
+        throw new Error("store cannot SELECT");
+      },
+    };
     assert.deepEqual(
       await loadLatestLaneHealth(
         db as unknown as Parameters<typeof loadLatestLaneHealth>[0],
@@ -241,15 +234,9 @@ describe("loadLatestLaneHealth", () => {
     );
   });
 
-  test("a row with no result set is an empty map", async () => {
-    const db = { prepare: () => ({ all: async () => null }) };
-    assert.deepEqual(
-      await loadLatestLaneHealth(
-        db as unknown as Parameters<typeof loadLatestLaneHealth>[0],
-      ),
-      {},
-    );
-  });
+  // "a row with no result set" retired with the D1 envelope (#10909): the
+  // owned query() answers rows or throws (the arm above); zero rows is the
+  // empty map, pinned elsewhere in this suite.
 
   test("null age and null checked_at are read as unmeasured and epoch", async () => {
     // age_ms null is genuinely "we could not measure how far behind"; checked_at has

@@ -55,47 +55,31 @@ describe("pgObservationsReadDb", () => {
         return [{ netuid: 1 }];
       },
     });
-    const prepared = db.prepare("SELECT netuid FROM subnet_snapshots") as {
-      all?: () => Promise<unknown>;
-    };
-    assert.equal(typeof prepared.all, "function");
-    // `{ results }` -- the envelope readStore's handle answers with, and the
-    // one D1 itself had. NOT the bare array this adapter used to return: the
-    // readers that unwrap the result themselves guard on
-    // `Array.isArray(res?.results)`, and `.results` on an array is undefined,
-    // so a read that SUCCEEDED took the failure branch.
-    assert.deepEqual(await prepared.all!(), { results: [{ netuid: 1 }] });
+    // Rows, directly. The predecessor's divergence -- one adapter answering a
+    // bare array where the other answered { results }, silently flipping a
+    // successful read into a failure branch -- is unrepresentable now that
+    // there is one verb and one shape (#10909).
+    assert.deepEqual(await db.query("SELECT netuid FROM subnet_snapshots"), [
+      { netuid: 1 },
+    ]);
     assert.deepEqual(seen, [[]]);
   });
 
-  test("first() returns one row, and null when there are none", async () => {
-    // The other half of the same divergence: this adapter had no `first()` at
-    // all, so a caller that used one got "not a function" -- caught by the
-    // try/catch these readers wrap their query in and reported as a decline
-    // rather than as a broken read. That is what sent
-    // src/validator-nominator-counts-staleness-watchdog.ts to readStore.
+  test("the rows come back in order, so a caller can take the first", async () => {
+    // The other half of the retired divergence (#10909): this adapter had no
+    // `first()` where its twin did, so a caller that used one got "not a
+    // function" -- swallowed by the try/catch these readers wrap their query
+    // in and reported as a decline rather than as a broken read. With one verb
+    // there is no second shape to be missing; a caller takes rows[0] itself,
+    // and an empty read is an empty array rather than a shape question.
     const db = pgObservationsReadDb({
       unsafe: async () => [{ captured_at: 7 }, { captured_at: 6 }],
-    }) as unknown as {
-      prepare(sql: string): {
-        first(): Promise<unknown>;
-        bind(...values: unknown[]): { first(): Promise<unknown> };
-      };
-    };
-    // Both call shapes, because D1 had both and this codebase uses both.
-    assert.deepEqual(await db.prepare("SELECT 1").first(), { captured_at: 7 });
-    assert.deepEqual(await db.prepare("SELECT 1").bind(1).first(), {
-      captured_at: 7,
     });
+    const rows = await db.query("SELECT 1", [1]);
+    assert.deepEqual(rows[0], { captured_at: 7 });
 
-    const empty = pgObservationsReadDb({
-      unsafe: async () => [],
-    }) as unknown as { prepare(sql: string): { first(): Promise<unknown> } };
-    assert.equal(
-      await empty.prepare("SELECT 1").first(),
-      null,
-      "no rows is null, not undefined -- D1's own contract",
-    );
+    const empty = pgObservationsReadDb({ unsafe: async () => [] });
+    assert.deepEqual(await empty.query("SELECT 1"), []);
   });
 
   test("a rejected read degrades to zero rows rather than throwing", async () => {
@@ -128,7 +112,7 @@ describe("observationsReadDb", () => {
     const db = observationsReadDb({ HYPERDRIVE }, ctx, {
       sql: { unsafe: async () => [] },
     });
-    assert.ok(db?.prepare, "expected the Neon-backed adapter");
+    assert.ok(db?.query, "expected the Neon-backed adapter");
   });
 
   test("no ctx refuses, so no connection can leak", () => {

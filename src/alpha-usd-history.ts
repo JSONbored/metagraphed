@@ -73,11 +73,7 @@ type Row = Record<string, unknown>;
 
 /** The minimal store surface used here, matching src/tao-usd-series.ts. */
 export interface TaoUsdBucketDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 /**
@@ -148,14 +144,9 @@ export async function loadTaoUsdBuckets(
   db: TaoUsdBucketDb | null | undefined,
   { sinceMs, bucketMs }: { sinceMs: number; bucketMs: number },
 ): Promise<Row[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
-    const res = await (
-      db.prepare(taoUsdBucketSql(bucketMs)).bind(sinceMs) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    return (res?.results ?? []) as Row[];
+    return await db.query<Row>(taoUsdBucketSql(bucketMs), [sinceMs]);
   } catch {
     return null;
   }
@@ -450,27 +441,22 @@ export async function loadTaoUsdAtInstants(
 ): Promise<Map<number, TaoUsdReading> | null> {
   const wanted = [...new Set(instants.filter((n) => Number.isFinite(n)))];
   if (wanted.length === 0) return new Map();
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
-    const res = await (
-      db
-        .prepare(
-          `SELECT e.t AS instant, r.usd_per_tao, r.observed_at,` +
-            ` r.block_number, r.price_basis` +
-            ` FROM unnest(?::bigint[]) AS e(t)` +
-            ` LEFT JOIN LATERAL (` +
-            `SELECT usd_per_tao, observed_at, block_number, price_basis` +
-            ` FROM ${TAO_USD_TABLE}` +
-            ` WHERE observed_at <= e.t AND usd_per_tao IS NOT NULL` +
-            ` ORDER BY observed_at DESC LIMIT 1` +
-            `) r ON TRUE`,
-        )
-        .bind(wanted) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
+    const rows = await db.query<Row>(
+      `SELECT e.t AS instant, r.usd_per_tao, r.observed_at,` +
+        ` r.block_number, r.price_basis` +
+        ` FROM unnest(?::bigint[]) AS e(t)` +
+        ` LEFT JOIN LATERAL (` +
+        `SELECT usd_per_tao, observed_at, block_number, price_basis` +
+        ` FROM ${TAO_USD_TABLE}` +
+        ` WHERE observed_at <= e.t AND usd_per_tao IS NOT NULL` +
+        ` ORDER BY observed_at DESC LIMIT 1` +
+        `) r ON TRUE`,
+      [wanted],
+    );
     const map = new Map<number, TaoUsdReading>();
-    for (const row of (res?.results ?? []) as Row[]) {
+    for (const row of rows) {
       const instant = int(row?.instant);
       // A row with no reading is the pre-index case: left out, not stored as
       // a null, so a caller cannot mistake "no rate existed" for "rate null".

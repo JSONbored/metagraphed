@@ -74,25 +74,17 @@ function fakeDb(rows: Record<string, unknown>[] | Error = []) {
   const calls: { sql: string; values: unknown[] }[] = [];
   const answer = () => {
     if (rows instanceof Error) throw rows;
-    return { results: rows };
+    return rows;
   };
   return {
     calls,
-    prepare(sql: string) {
-      return {
-        bind(...values: unknown[]) {
-          calls.push({ sql, values });
-          return {
-            run: async () => ({}),
-            first: async () => null,
-            all: async () => answer(),
-          };
-        },
-        all: async () => {
-          calls.push({ sql, values: [] });
-          return answer();
-        },
-      };
+    async query(sql: string, values: unknown[] = []) {
+      calls.push({ sql, values });
+      return answer();
+    },
+    async run(sql: string, values: unknown[] = []) {
+      calls.push({ sql, values });
+      return { changes: 1 };
     },
   };
 }
@@ -668,16 +660,11 @@ describe("loadLaneStaleRuns / loadLaneMaxGap", () => {
 
   test("treat a driver that answers with no rows key as empty", async () => {
     // Drivers have answered both `{}` and `null` here; a reader that trusted
-    // `.results` would throw on the first such tick.
+    // The D1 null-result premise retired with the envelope (#10909); the
+    // remaining nothing-shape is zero rows, which must read as no lanes.
     const shim = {
-      prepare: () => ({
-        bind: () => ({
-          run: async () => ({}),
-          first: async () => null,
-          all: async () => null,
-        }),
-        all: async () => ({}),
-      }),
+      query: async () => [],
+      run: async () => ({ changes: 1 }),
     };
     assert.deepEqual(await loadLaneStaleRuns(shim), {});
     assert.deepEqual(await loadLaneMaxGap(shim, 0), {});

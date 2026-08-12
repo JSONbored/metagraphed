@@ -235,9 +235,7 @@ function countOrZero(value: unknown): number {
 }
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): { first(): Promise<unknown> };
-  };
+  first(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export interface NeuronsStalenessDeps {
@@ -266,7 +264,7 @@ export async function runNeuronsStalenessWatchdog(
   // stalled while the lane was fine.
   const db = readStore(env, ["neurons"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no store bound" };
+  if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs = neuronsStalenessThresholdMs(env);
   const passWindowMs =
@@ -276,10 +274,7 @@ export async function runNeuronsStalenessWatchdog(
     NEURONS_COVERAGE_FLOOR_NETUIDS;
 
   try {
-    const row = (await db
-      .prepare(NEURONS_COVERAGE_SQL)
-      .bind(passWindowMs)
-      .first()) as {
+    const row = (await db.first(NEURONS_COVERAGE_SQL, [passWindowMs])) as {
       latest: number | null;
       covered: number | null;
       total: number | null;

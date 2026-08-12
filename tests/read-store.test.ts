@@ -52,7 +52,7 @@ describe("readStore chooses the store", () => {
       HYPERDRIVE,
     };
     const store = readStore(env, ["blocks_head", "chain_detail_blocks"]);
-    assert.equal(typeof store?.prepare, "function");
+    assert.equal(typeof store?.query, "function");
   });
 
   test("refuses when Hyperdrive is unbound, however the flag reads", () => {
@@ -72,7 +72,7 @@ describe("readStore chooses the store", () => {
   });
 
   test("an injected store wins, and a missing binding is undefined not a throw", () => {
-    const injected = { prepare: () => ({}) } as never;
+    const injected = { query: async () => [] } as never;
     assert.equal(readStore({}, ["neurons"], injected), injected);
     // Every caller already handles undefined -- an unbound store has always
     // been possible, and each one declines rather than failing the request.
@@ -82,16 +82,16 @@ describe("readStore chooses the store", () => {
 });
 
 describe("the Postgres handle", () => {
-  test("rewrites ? to $n and returns the callers' expected envelope", async () => {
+  test("rewrites ? to $n and answers rows directly", async () => {
     const client = fakeClient([{ block_number: 5 }]);
     const db = pgReadStore("postgresql://x/y", { clientFactory: () => client });
-    const res = await db
-      .prepare(
-        "SELECT block_number FROM chain_detail_blocks WHERE a = ? AND b = ?",
-      )
-      .bind(1, 2)
-      .all();
-    assert.deepEqual(res, { results: [{ block_number: 5 }] });
+    const res = await db.query(
+      "SELECT block_number FROM chain_detail_blocks WHERE a = ? AND b = ?",
+      [1, 2],
+    );
+    // Rows, not D1's { results } envelope -- that emulation retired with the
+    // store it imitated (#10909).
+    assert.deepEqual(res, [{ block_number: 5 }]);
     assert.deepEqual(client.calls, [
       "connect",
       "query:SELECT block_number FROM chain_detail_blocks WHERE a = $1 AND b = $2:[1,2]",
@@ -105,7 +105,7 @@ describe("the Postgres handle", () => {
     // read, which on a serving path is worse than the stale read it replaced.
     const client = fakeClient([], new Error("boom"));
     const db = pgReadStore("postgresql://x/y", { clientFactory: () => client });
-    await assert.rejects(() => db.prepare("SELECT 1").bind().all(), /boom/);
+    await assert.rejects(() => db.query("SELECT 1"), /boom/);
     assert.deepEqual(client.calls.at(-1), "end");
   });
 
@@ -118,33 +118,31 @@ describe("the Postgres handle", () => {
         return c;
       },
     });
-    await db.prepare("SELECT 1").bind().all();
-    await db.prepare("SELECT 2").bind().all();
+    await db.query("SELECT 1");
+    await db.query("SELECT 2");
     assert.equal(clients.length, 2);
     for (const c of clients) assert.deepEqual(c.calls.at(-1), "end");
   });
 
-  test("serves an unbound statement, which several readers use", async () => {
-    // chain-detail-hot-tier's coverage read takes no parameters, and D1 lets a
-    // caller skip .bind() entirely. Dropping that would turn the read into a
-    // TypeError caught as "hot tier unavailable" -- a silent decline.
+  test("serves a parameterless statement, which several readers use", async () => {
+    // chain-detail-hot-tier's coverage read takes no parameters. Requiring a
+    // values array would turn the read into a TypeError caught as "hot tier
+    // unavailable" -- a silent decline.
     const client = fakeClient([{ head: 9 }]);
     const db = pgReadStore("postgresql://x/y", { clientFactory: () => client });
-    assert.deepEqual(await db.prepare("SELECT MAX(x) AS head FROM t").all(), {
-      results: [{ head: 9 }],
-    });
+    assert.deepEqual(await db.query("SELECT MAX(x) AS head FROM t"), [
+      { head: 9 },
+    ]);
   });
 
   test("first() returns the row or null, never undefined", async () => {
     const withRow = pgReadStore("postgresql://x/y", {
       clientFactory: () => fakeClient([{ a: 1 }, { a: 2 }]),
     });
-    assert.deepEqual(await withRow.prepare("SELECT a FROM t").bind().first(), {
-      a: 1,
-    });
+    assert.deepEqual(await withRow.first("SELECT a FROM t"), { a: 1 });
     const empty = pgReadStore("postgresql://x/y", {
       clientFactory: () => fakeClient([]),
     });
-    assert.equal(await empty.prepare("SELECT a FROM t").bind().first(), null);
+    assert.equal(await empty.first("SELECT a FROM t"), null);
   });
 });

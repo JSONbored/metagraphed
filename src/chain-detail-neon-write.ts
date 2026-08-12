@@ -88,9 +88,7 @@ export const CHAIN_DETAIL_CONFLICT_KEYS = {
   chain_detail_account_events: ["block_number", "event_index"],
 } as const;
 
-/** The lane name this mirror answers to -- the key NEON_WRITE_BUFFER_LANES
- * and the lane_health verdicts use. (Named for NEON_DUAL_WRITE_LANES until
- * that flag was deleted with the cutover, #10892.) */
+/** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
 export const CHAIN_DETAIL_NEON_LANE = "chain-detail";
 
 type Row = Record<string, unknown>;

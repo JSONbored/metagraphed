@@ -26,7 +26,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 // One store since #10179: the ROUTE/GraphQL/MCP surfaces reach it through
 // src/read-store.ts, which builds `new Client(...)` itself -- there is no
 // binding to hand a request handler any more. The loader assertions below keep
-// passing `d1()` straight in, because `load*(db, ...)` takes a db; only the
+// passing `storeHandle()` straight in, because `load*(db, ...)` takes a db; only the
 // surface half needs the module mock. See tests/helpers/pg-mock.ts for why it
 // is a module mock and why the controller is built inside vi.hoisted.
 const { pg } = await vi.hoisted(async () => ({
@@ -78,26 +78,20 @@ const hk = (n: number) => `5Hotkey0${String(n).padStart(40, "0")}`;
 
 let db: InstanceType<typeof DatabaseSync>;
 
-/** A D1 facade over real SQLite, carrying the three shapes this module uses:
- * bind().all(), bind().first(), and a bare prepare().first(). */
-function d1() {
+/** A store facade over real SQLite, carrying the two verbs this module uses. */
+function storeHandle() {
   return {
-    prepare(text: string) {
-      const run = (values: unknown[]) => ({
-        async all() {
-          return { results: db.prepare(text).all(...(values as never[])) };
-        },
-        async first() {
-          return db.prepare(text).get(...(values as never[])) ?? null;
-        },
-      });
-      return { bind: (...values: unknown[]) => run(values), ...run([]) };
+    async query<Row>(text: string, values: unknown[] = []) {
+      return db.prepare(text).all(...(values as never[])) as Row[];
+    },
+    async first(text: string, values: unknown[] = []) {
+      return db.prepare(text).get(...(values as never[])) ?? null;
     },
   };
 }
 
 /** The surface's env: a connection string for readStore to find, every table
- * declared Neon's, and the SAME in-memory engine `d1()` reads answering behind
+ * declared Neon's, and the SAME in-memory engine `storeHandle()` reads answering behind
  * the `pg` double -- so a surface assertion and a loader assertion are looking
  * at one set of rows. */
 function env(overrides: Record<string, unknown> = {}): Env {
@@ -198,7 +192,7 @@ beforeEach(() => {
 describe("loadSubnetHolders against real SQLite", () => {
   test("ranks coldkeys by alpha, valued against the proven pool pass", async () => {
     fiveHolders();
-    const read = await loadSubnetHolders(d1(), NETUID, { limit: 3 });
+    const read = await loadSubnetHolders(storeHandle(), NETUID, { limit: 3 });
     assert.equal(read.decline, null);
     assert.equal(read.capturedAt, PASS);
     assert.deepEqual(
@@ -219,7 +213,7 @@ describe("loadSubnetHolders against real SQLite", () => {
     fiveHolders();
     // Two rows back, five holders ranked. top5 must be the whole 750, not the
     // 450 the page carries -- the defect a page-local aggregate would produce.
-    const read = await loadSubnetHolders(d1(), NETUID, { limit: 2 });
+    const read = await loadSubnetHolders(storeHandle(), NETUID, { limit: 2 });
     assert.equal(read.rows.length, 2);
     assert.equal(read.aggregate?.topAlpha.get(5), 750);
     assert.equal(read.aggregate?.topAlpha.get(10), 750);
@@ -234,7 +228,7 @@ describe("loadSubnetHolders against real SQLite", () => {
     pool(hk(2), 100);
     position(ck(1), hk(1), 0.5);
     position(ck(1), hk(2), 0.25);
-    const read = await loadSubnetHolders(d1(), NETUID);
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
     assert.deepEqual(
       read.rows.map((r) => [r.coldkey, r.alpha, r.hotkey_count]),
       [[ck(1), 75, 2]],
@@ -246,7 +240,7 @@ describe("loadSubnetHolders against real SQLite", () => {
     pool(hk(1), 1000);
     position(ck(1), hk(1), 0.25);
     position(ck(2), hk(1), 0.5, NETUID + 1);
-    const read = await loadSubnetHolders(d1(), NETUID);
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
     assert.deepEqual(
       read.rows.map((r) => r.coldkey),
       [ck(1)],
@@ -262,7 +256,7 @@ describe("loadSubnetHolders against real SQLite", () => {
     pool(hk(2), 500, PASS + 5000);
     position(ck(1), hk(1), 0.25);
     position(ck(2), hk(2), 0.5);
-    const read = await loadSubnetHolders(d1(), NETUID);
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
     assert.deepEqual(
       read.rows.map((r) => [r.coldkey, r.alpha]),
       [[ck(1), 250]],
@@ -271,7 +265,7 @@ describe("loadSubnetHolders against real SQLite", () => {
 
   test("a subnet with a complete pass but no positions is a real empty ranking", async () => {
     completePass();
-    const read = await loadSubnetHolders(d1(), NETUID);
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
     assert.equal(read.decline, null);
     assert.deepEqual(read.rows, []);
     // Measured: the pass completed and the count is a genuine zero.
@@ -291,7 +285,7 @@ describe("loadSubnetHolders declines", () => {
 
   test("root declines with the same reason when D1 is healthy", async () => {
     completePass();
-    const read = await loadSubnetHolders(d1(), ROOT_NETUID);
+    const read = await loadSubnetHolders(storeHandle(), ROOT_NETUID);
     assert.equal(read.decline, "root_not_in_alpha_map");
   });
 
@@ -310,7 +304,7 @@ describe("loadSubnetHolders declines", () => {
     // Rows exist and would rank perfectly well -- that is exactly the danger.
     pool(hk(1), 1000);
     position(ck(1), hk(1), 0.25);
-    const read = await loadSubnetHolders(d1(), NETUID);
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
     assert.equal(read.decline, "pool_totals_unproven");
     assert.deepEqual(read.rows, []);
   });
@@ -324,7 +318,7 @@ describe("loadSubnetHolders declines", () => {
     pool(hk(1), 1000);
     position(ck(1), hk(1), 0.25);
     assert.equal(
-      (await loadSubnetHolders(d1(), NETUID)).decline,
+      (await loadSubnetHolders(storeHandle(), NETUID)).decline,
       "pool_totals_unproven",
     );
   });
@@ -332,7 +326,7 @@ describe("loadSubnetHolders declines", () => {
   test("a missing passes table is unavailable, not a silent zero", async () => {
     db.exec("DROP TABLE hotkey_alpha_passes");
     assert.equal(
-      (await loadSubnetHolders(d1(), NETUID)).decline,
+      (await loadSubnetHolders(storeHandle(), NETUID)).decline,
       "unavailable",
     );
   });
@@ -341,24 +335,20 @@ describe("loadSubnetHolders declines", () => {
     completePass();
     db.exec("DROP TABLE nominator_positions");
     assert.equal(
-      (await loadSubnetHolders(d1(), NETUID)).decline,
+      (await loadSubnetHolders(storeHandle(), NETUID)).decline,
       "unavailable",
     );
   });
 
-  test("a non-array row result declines", async () => {
+  test("a failing row read declines", async () => {
+    // Was "a non-array row result": the D1 envelope could answer without a
+    // `results` array, and that shape retired with it (#10909).
     completePass();
     const broken = {
-      prepare(text: string) {
-        const real = d1().prepare(text);
-        return {
-          bind: (...values: unknown[]) => ({
-            all: async () => ({ results: undefined }),
-            first: real.bind(...values).first,
-          }),
-          first: real.first,
-        };
+      query: async () => {
+        throw new Error("store read failed");
       },
+      first: storeHandle().first,
     };
     assert.equal(
       (await loadSubnetHolders(broken as never, NETUID)).decline,

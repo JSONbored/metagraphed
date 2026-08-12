@@ -107,7 +107,7 @@ describe("the bucketing SQL", () => {
 
 describe("loading rates", () => {
   const db = (results: unknown[]) => ({
-    prepare: () => ({ bind: () => ({ all: async () => ({ results }) }) }),
+    query: async <Row>() => results as Row[],
   });
 
   test("a missing store is a FAILED read, not an empty one", async () => {
@@ -125,13 +125,9 @@ describe("loading rates", () => {
 
   test("a throwing store yields null rather than propagating", async () => {
     const boom = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => {
-            throw new Error("connection reset");
-          },
-        }),
-      }),
+      query: async () => {
+        throw new Error("connection reset");
+      },
     };
     assert.equal(
       await loadTaoUsdBuckets(boom, { sinceMs: 0, bucketMs: HOUR }),
@@ -466,10 +462,11 @@ describe("pricing trend days", () => {
 });
 
 describe("shapes the store actually returns", () => {
-  test("a result object with no `results` key reads as empty, not as a failure", async () => {
+  test("zero rows reads as empty, not as a failure", async () => {
     // A store that answers but has nothing to say is an EMPTY series; only a
-    // throw or a missing binding is a failed read.
-    const db = { prepare: () => ({ bind: () => ({ all: async () => ({}) }) }) };
+    // throw or a missing binding is a failed read. (The D1 "no results key"
+    // premise retired with the envelope, #10909.)
+    const db = { query: async () => [] };
     assert.deepEqual(
       await loadTaoUsdBuckets(db, { sinceMs: 0, bucketMs: HOUR }),
       [],

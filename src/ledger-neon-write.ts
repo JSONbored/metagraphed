@@ -114,8 +114,7 @@ interface LedgerPlan {
 }
 
 /**
- * One plan per lane, keyed by the lane name NEON_WRITE_BUFFER_LANES and
- * the lane_health verdicts use (formerly NEON_DUAL_WRITE_LANES's key, #10892).
+ * One plan per lane, keyed by the name used in NEON_DUAL_WRITE_LANES.
  *
  * The conflict keys match each table's PRIMARY KEY in Neon, created 2026-08-07
  * from D1's own DDL. An ON CONFLICT naming columns with no unique index behind

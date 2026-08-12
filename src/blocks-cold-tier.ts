@@ -112,11 +112,7 @@ const STORE_FROM =
   "ON c.block_number = b.block_number";
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 /** The one binding this module still reads directly, independent of the full
@@ -244,7 +240,7 @@ async function storeHeadRows(
 ): Promise<Record<string, unknown>[] | null> {
   const db = readStore(env, BLOCKS_SEAM_TABLES) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare || want <= 0) return null;
+  if (!db?.query || want <= 0) return null;
 
   // Every predicate is qualified to `b`: block_number, observed_at and
   // extrinsic_count all exist on BOTH sides of the join, so an unqualified
@@ -274,15 +270,12 @@ async function storeHeadRows(
   }
 
   try {
-    const res = await db
-      .prepare(
-        `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${where.join(" AND ")}
-         ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
-      )
-      .bind(...params, want)
-      .all?.();
-    const rows = res?.results;
-    return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
+    if (!db.query) return null;
+    return (await db.query(
+      `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${where.join(" AND ")}
+       ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
+      [...params, want],
+    )) as Record<string, unknown>[];
   } catch {
     // A cold or unbound D1 must not fail the request: the lakehouse leg below
     // still has every block up to the seam.
@@ -423,18 +416,18 @@ export async function loadBlockColdTier(
   // a source switch, so the same 0 meant the right thing there.
   const aboveSeam =
     network === DEFAULT_CHAIN_NETWORK && asNumber !== null && asNumber > seam;
-  if (db?.prepare && (aboveSeam || asHash !== null)) {
+  if (db?.query && (aboveSeam || asHash !== null)) {
     try {
       const predicate =
         asNumber !== null ? "b.block_number = ?" : "lower(b.block_hash) = ?";
       const value = asNumber !== null ? asNumber : asHash!;
-      const res = await db
-        .prepare(
-          `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
-        )
-        .bind(value)
-        .all?.();
-      const row = (res?.results as Record<string, unknown>[] | undefined)?.[0];
+      const rows = db.query
+        ? await db.query<Record<string, unknown>>(
+            `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${predicate} LIMIT 1`,
+            [value],
+          )
+        : [];
+      const row = rows[0];
       if (row) return buildBlock(row as never, ref);
     } catch {
       // Fall through to the lakehouse rather than failing the request.

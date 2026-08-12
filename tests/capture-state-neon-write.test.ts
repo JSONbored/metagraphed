@@ -264,16 +264,12 @@ describe("a buffered lane writes no enqueue-time verdict (#10690)", () => {
     return {
       rows,
       db: {
-        prepare(sql: string) {
-          return {
-            bind(...values: unknown[]) {
-              return {
-                async run() {
-                  if (sql.startsWith("INSERT")) rows.push(values);
-                },
-              };
-            },
-          };
+        async query() {
+          return [];
+        },
+        async run(sql: string, values: unknown[] = []) {
+          if (sql.startsWith("INSERT")) rows.push(values);
+          return { changes: 1 };
         },
       },
     };

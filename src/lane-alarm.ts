@@ -332,10 +332,12 @@ export async function loadLaneMaxGap(
   db: StatementClientLike | null | undefined,
   sinceMs: number,
 ): Promise<Record<string, number | null>> {
-  if (!db?.prepare) return {};
+  if (!db?.query) return {};
   try {
-    const result = await db.prepare(LANE_MAX_GAP_SQL).bind(sinceMs).all?.();
-    const rows = (result?.results ?? []) as Record<string, unknown>[];
+    const rows = (await db.query(LANE_MAX_GAP_SQL, [sinceMs])) as Record<
+      string,
+      unknown
+    >[];
     const out: Record<string, number | null> = {};
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);
@@ -634,16 +636,10 @@ export function laneAlarmRecoveryComment(
   );
 }
 
-interface StatementClientLike extends LaneHealthDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      run(): Promise<unknown>;
-      first(): Promise<unknown>;
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-    all?(): Promise<{ results?: unknown[] } | null>;
-  };
-}
+// The verdict store's surface is the whole surface these readers need
+// (#10909): they SELECT through query() and record through run(), which is
+// exactly LaneHealthDb.
+type StatementClientLike = LaneHealthDb;
 
 function toInt(value: unknown): number {
   const n = Number(value);
@@ -668,10 +664,9 @@ async function loadLaneRuns(
   db: StatementClientLike | null | undefined,
   sql: string,
 ): Promise<LaneVerdictRuns> {
-  if (!db?.prepare) return {};
+  if (!db?.query) return {};
   try {
-    const result = await db.prepare(sql).all?.();
-    const rows = (result?.results ?? []) as Record<string, unknown>[];
+    const rows = (await db.query(sql)) as Record<string, unknown>[];
     const out: LaneVerdictRuns = {};
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);
@@ -785,7 +780,7 @@ export async function runLaneAlarm(
   // writes any more would replay stale verdicts forever -- filing issues for
   // lanes that recovered, and none for lanes that broke.
   const db = laneHealthStore(env) as unknown as StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no lane_health store bound" };
+  if (!db?.query) return { ok: false, reason: "no lane_health store bound" };
 
   const token = typeof env?.GITHUB_TOKEN === "string" ? env.GITHUB_TOKEN : "";
   const repo =

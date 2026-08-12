@@ -92,12 +92,8 @@ export interface HoldingsLeg {
 }
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-    all?(): Promise<{ results?: unknown[] } | null>;
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 /**
@@ -256,7 +252,7 @@ export async function topHoldersHoldings(
   // as a broken read.
   const db = readStore(env, TOP_HOLDERS_HOLDINGS_TABLES) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
 
   // The two readers describe the same binding with different minimal shapes --
   // this module's StatementClientLike names bind()/all(), the completeness readers name
@@ -281,9 +277,7 @@ export async function topHoldersHoldings(
       { free, delegated, alphaCapturedAt: alpha.capturedAt },
       cap,
     );
-    const res = await db.prepare(sql).all?.();
-    if (!Array.isArray(res?.results)) throw new Error("holdings: no rows");
-    results = res.results;
+    results = await db.query(sql);
   } catch {
     // A missing table, an unbound DB and a failed read are one outcome: no
     // holdings leg ran, so the artifact must not claim any of these sorts.

@@ -115,24 +115,11 @@ function readDb(): ObservationsReadDb {
   });
 }
 
-/**
- * The same runner presenting rows as a BARE ARRAY rather than `{ results }`.
- *
- * `storeAll` accepts both and the loaders reach it through a structural type, so
- * the unwrap branch is not covered by the shape production happens to send.
- * The predecessor covered it, and dropping it while changing engines would
- * confuse "no longer tested" with "no longer true".
- */
-function readDbBareArray(): ObservationsReadDb {
-  return {
-    prepare(text: string) {
-      const all = async (values: unknown[]) =>
-        (await pg.query(toPositionalPlaceholders(text), values as never[]))
-          .rows as unknown;
-      return { bind: (...v: unknown[]) => ({ all: () => all(v) }) };
-    },
-  };
-}
+// The bare-array double retired with the dual-envelope acceptance (#10909):
+// `storeAll` used to take either a bare array or `{ results }` because two
+// adapters disagreed, and this double covered the branch production did not
+// send. There is one shape now -- rows -- so the branch and its double are
+// both gone.
 
 const exec = (sql: string, values: unknown[]) =>
   pg.query(sql, values as never[]);
@@ -419,13 +406,9 @@ describe("the gap-island window functions", () => {
 describe("declines", () => {
   test("a throwing or absent db degrades every loader to the empty shape", async () => {
     const exploding: ObservationsReadDb = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => {
-            throw new Error("neon down");
-          },
-        }),
-      }),
+      query: async () => {
+        throw new Error("neon down");
+      },
     };
     const uptime = (await loadSubnetUptime(8, { db: exploding })) as {
       surfaces: unknown[];
@@ -438,23 +421,15 @@ describe("declines", () => {
     assert.deepEqual(await loadGlobalIncidentRows(null, 7), []);
   });
 
-  test("an all() result that is neither an array nor { results } yields zero rows", async () => {
-    const weird: ObservationsReadDb = {
-      prepare: () => ({ bind: () => ({ all: async () => ({}) }) }),
-    };
-    const data = (await loadSubnetUptime(8, { db: weird })) as {
+  test("zero rows yields the empty shape", async () => {
+    // The "neither an array nor { results }" arm retired with the dual-envelope
+    // acceptance (#10909): query() answers rows or throws (above), so zero
+    // rows is the one remaining nothing-shape.
+    const empty: ObservationsReadDb = { query: async () => [] };
+    const data = (await loadSubnetUptime(8, { db: empty })) as {
       surfaces: unknown[];
     };
     assert.deepEqual(data.surfaces, []);
-  });
-
-  test("a bare-array envelope reads the same as { results }", async () => {
-    await seedUptimeDay();
-    const data = (await loadSubnetUptime(8, { db: readDbBareArray() })) as {
-      surfaces: { days: unknown[] }[];
-    };
-    assert.equal(data.surfaces.length, 1);
-    assert.equal(data.surfaces[0]!.days.length, 1);
   });
 });
 
@@ -587,14 +562,9 @@ describe("registry leaderboards and compare", () => {
     const bound: unknown[][] = [];
     const inner = readDb();
     const spy: ObservationsReadDb = {
-      prepare(sql: string) {
-        const stmt = inner.prepare(sql);
-        return {
-          bind(...values: unknown[]) {
-            bound.push(values);
-            return stmt.bind!(...values);
-          },
-        };
+      query(sql: string, values: unknown[] = []) {
+        bound.push(values);
+        return inner.query(sql, values);
       },
     };
     const data = (await loadCompareSubnets({
@@ -617,9 +587,9 @@ describe("registry leaderboards and compare", () => {
     let prepared = 0;
     const inner = readDb();
     const spy: ObservationsReadDb = {
-      prepare(sql: string) {
+      query(sql: string, values: unknown[] = []) {
         prepared += 1;
-        return inner.prepare(sql);
+        return inner.query(sql, values);
       },
     };
     await loadCompareSubnets({

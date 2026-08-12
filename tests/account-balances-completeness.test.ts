@@ -28,15 +28,11 @@ const SCHEMA = fs.readFileSync(
 
 let db: InstanceType<typeof DatabaseSync>;
 
-/** The D1 shim shape this reader uses: prepare().first(). */
-function d1() {
+/** The store shape this reader uses: first(). */
+function storeHandle() {
   return {
-    prepare(sql: string) {
-      return {
-        async first() {
-          return db.prepare(sql).get() ?? null;
-        },
-      };
+    async first(sql: string) {
+      return db.prepare(sql).get() ?? null;
     },
   };
 }
@@ -61,7 +57,7 @@ beforeEach(() => {
 
 describe("latestCompleteAccountBalancesPass", () => {
   test("declines while no pass has completed", async () => {
-    const result = await latestCompleteAccountBalancesPass(d1());
+    const result = await latestCompleteAccountBalancesPass(storeHandle());
     assert.equal(result.capturedAt, null);
     assert.equal(result.reason, "no_complete_pass");
     assert.equal(mayRankAccountBalances(result), false);
@@ -71,7 +67,7 @@ describe("latestCompleteAccountBalancesPass", () => {
     // The exact production failure: rows landed, they are correct, and ranking
     // over them drops real top holders. 147,000 of a declared 364,266.
     insertPass(1_785_907_636_083, 364_266, 147_000, null);
-    const result = await latestCompleteAccountBalancesPass(d1());
+    const result = await latestCompleteAccountBalancesPass(storeHandle());
     assert.equal(result.capturedAt, null, "an unfinished pass is not rankable");
     assert.equal(result.reason, "no_complete_pass");
     assert.equal(mayRankAccountBalances(result), false);
@@ -79,7 +75,7 @@ describe("latestCompleteAccountBalancesPass", () => {
 
   test("returns the newest COMPLETE pass and permits ranking", async () => {
     insertPass(1_785_900_000_000, 360_000, 360_000, 1_785_900_100_000);
-    const result = await latestCompleteAccountBalancesPass(d1());
+    const result = await latestCompleteAccountBalancesPass(storeHandle());
     assert.equal(result.capturedAt, 1_785_900_000_000);
     assert.equal(result.expectedRows, 360_000);
     assert.equal(result.receivedRows, 360_000);
@@ -92,7 +88,7 @@ describe("latestCompleteAccountBalancesPass", () => {
     // died halfway. Ranking must fall back to yesterday, not to the fragment.
     insertPass(1_785_900_000_000, 360_000, 360_000, 1_785_900_100_000);
     insertPass(1_785_990_000_000, 364_266, 12_000, null);
-    const result = await latestCompleteAccountBalancesPass(d1());
+    const result = await latestCompleteAccountBalancesPass(storeHandle());
     assert.equal(
       result.capturedAt,
       1_785_900_000_000,
@@ -106,7 +102,7 @@ describe("latestCompleteAccountBalancesPass", () => {
     // equality check would call a finished pass unfinished; the stamp decides.
     insertPass(1_785_900_000_000, 360_000, 360_000, 1_785_900_100_000);
     insertPass(1_785_990_000_000, 364_266, 389_266, 1_785_990_500_000);
-    const result = await latestCompleteAccountBalancesPass(d1());
+    const result = await latestCompleteAccountBalancesPass(storeHandle());
     assert.equal(result.capturedAt, 1_785_990_000_000);
     assert.equal(result.receivedRows, 389_266);
     assert.equal(mayRankAccountBalances(result), true);
@@ -124,19 +120,17 @@ describe("latestCompleteAccountBalancesPass", () => {
     // The migrations here are applied by hand, so "the table does not exist
     // yet" is a real state and means the same thing as "do not rank".
     db.exec("DROP TABLE account_balances_passes");
-    const result = await latestCompleteAccountBalancesPass(d1());
+    const result = await latestCompleteAccountBalancesPass(storeHandle());
     assert.equal(result.reason, "unavailable");
     assert.equal(mayRankAccountBalances(result), false);
   });
 
   test("an unusable captured_at is treated as no pass at all", async () => {
     const broken = {
-      prepare: () => ({
-        first: async () => ({
-          captured_at: null,
-          expected_rows: 1,
-          received_rows: 1,
-        }),
+      first: async () => ({
+        captured_at: null,
+        expected_rows: 1,
+        received_rows: 1,
       }),
     };
     assert.equal(
@@ -144,12 +138,10 @@ describe("latestCompleteAccountBalancesPass", () => {
       "no_complete_pass",
     );
     const zero = {
-      prepare: () => ({
-        first: async () => ({
-          captured_at: 0,
-          expected_rows: 1,
-          received_rows: 1,
-        }),
+      first: async () => ({
+        captured_at: 0,
+        expected_rows: 1,
+        received_rows: 1,
       }),
     };
     assert.equal(
@@ -160,12 +152,10 @@ describe("latestCompleteAccountBalancesPass", () => {
 
   test("null counts on a usable stamp degrade to null, not NaN", async () => {
     const partial = {
-      prepare: () => ({
-        first: async () => ({
-          captured_at: 1_785_900_000_000,
-          expected_rows: null,
-          received_rows: null,
-        }),
+      first: async () => ({
+        captured_at: 1_785_900_000_000,
+        expected_rows: null,
+        received_rows: null,
       }),
     };
     const result = await latestCompleteAccountBalancesPass(partial);

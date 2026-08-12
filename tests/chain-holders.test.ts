@@ -26,7 +26,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 // One store since #10179: the ROUTE/GraphQL/MCP surfaces reach it through
 // src/read-store.ts, which builds `new Client(...)` itself -- there is no
 // binding to hand a request handler any more. The loader assertions below keep
-// passing `d1()` straight in, because `load*(db, ...)` takes a db; only the
+// passing `storeHandle()` straight in, because `load*(db, ...)` takes a db; only the
 // surface half needs the module mock. See tests/helpers/pg-mock.ts for why it
 // is a module mock and why the controller is built inside vi.hoisted.
 const { pg } = await vi.hoisted(async () => ({
@@ -70,24 +70,19 @@ const hk = (n: number) => `5Hotkey0${String(n).padStart(40, "0")}`;
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
+function storeHandle() {
   return {
-    prepare(text: string) {
-      const run = (values: unknown[]) => ({
-        async all() {
-          return { results: db.prepare(text).all(...(values as never[])) };
-        },
-        async first() {
-          return db.prepare(text).get(...(values as never[])) ?? null;
-        },
-      });
-      return { bind: (...v: unknown[]) => run(v), ...run([]) };
+    async query<Row>(text: string, values: unknown[] = []) {
+      return db.prepare(text).all(...(values as never[])) as Row[];
+    },
+    async first(text: string, values: unknown[] = []) {
+      return db.prepare(text).get(...(values as never[])) ?? null;
     },
   };
 }
 
 /** The surface's env: a connection string for readStore to find, every table
- * declared Neon's, and the SAME in-memory engine `d1()` reads answering behind
+ * declared Neon's, and the SAME in-memory engine `storeHandle()` reads answering behind
  * the `pg` double -- so a surface assertion and a loader assertion are looking
  * at one set of rows. */
 const env = () => ({ ...pgMockEnv() }) as unknown as Env;
@@ -148,7 +143,7 @@ beforeEach(() => {
 describe("loadChainHolders against real SQLite", () => {
   test("ranks every subnet in one statement, window function and all", async () => {
     threeSubnets();
-    const read = await loadChainHolders(d1());
+    const read = await loadChainHolders(storeHandle());
     assert.equal(read.decline, null);
     assert.equal(read.capturedAt, PASS);
     const byNetuid = Object.fromEntries(
@@ -171,7 +166,7 @@ describe("loadChainHolders against real SQLite", () => {
     pool(hk(2), 2, 500, PASS + 5000);
     position(ck(1), hk(1), 1, 1.0);
     position(ck(2), hk(2), 2, 1.0);
-    const read = await loadChainHolders(d1());
+    const read = await loadChainHolders(storeHandle());
     assert.deepEqual(
       read.rows.map((r) => r.netuid),
       [1],
@@ -189,33 +184,38 @@ describe("loadChainHolders declines", () => {
     pool(hk(1), 1, 1000);
     position(ck(1), hk(1), 1, 1.0);
     assert.equal(
-      (await loadChainHolders(d1())).decline,
+      (await loadChainHolders(storeHandle())).decline,
       "pool_totals_unproven",
     );
   });
 
   test("a missing passes table is unavailable", async () => {
     db.exec("DROP TABLE hotkey_alpha_passes");
-    assert.equal((await loadChainHolders(d1())).decline, "unavailable");
+    assert.equal(
+      (await loadChainHolders(storeHandle())).decline,
+      "unavailable",
+    );
   });
 
   test("a failed read declines rather than throwing", async () => {
     completePass();
     db.exec("DROP TABLE nominator_positions");
-    assert.equal((await loadChainHolders(d1())).decline, "unavailable");
+    assert.equal(
+      (await loadChainHolders(storeHandle())).decline,
+      "unavailable",
+    );
   });
 
-  test("a non-array result declines", async () => {
+  test("a failing read declines", async () => {
+    // Was "a non-array result declines": the D1 envelope could answer without
+    // a `results` array, and that shape retired with it (#10909). A throw is
+    // the failure the decline now stands for.
     completePass();
     const broken = {
-      prepare(text: string) {
-        const real = d1().prepare(text);
-        return {
-          all: async () => ({ results: undefined }),
-          first: real.first,
-          bind: (...v: unknown[]) => real.bind(...v),
-        };
+      query: async () => {
+        throw new Error("store read failed");
       },
+      first: storeHandle().first,
     };
     assert.equal(
       (await loadChainHolders(broken as never)).decline,

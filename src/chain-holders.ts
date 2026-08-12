@@ -64,13 +64,8 @@ export const DEFAULT_CHAIN_HOLDERS_SORT = "top1_share";
 export const MAJORITY_SHARE = 0.5;
 
 export interface ChainHoldersDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-    all?(): Promise<{ results?: unknown[] } | null>;
-    first?(): Promise<unknown>;
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
+  first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export type ChainHoldersDecline = "pool_totals_unproven" | "unavailable";
@@ -128,7 +123,7 @@ export async function loadChainHolders(
     capturedAt: null,
     decline,
   });
-  if (!db?.prepare) return declined("unavailable");
+  if (!db?.query) return declined("unavailable");
 
   const alpha = await latestCompleteHotkeyAlphaPass(
     db as unknown as Parameters<typeof latestCompleteHotkeyAlphaPass>[0],
@@ -139,10 +134,9 @@ export async function loadChainHolders(
     );
   }
   try {
-    const res = await db.prepare(chainHoldersSql(alpha.capturedAt)).all?.();
-    if (!Array.isArray(res?.results)) throw new Error("chain-holders: no rows");
+    const rows = await db.query<Row>(chainHoldersSql(alpha.capturedAt));
     return {
-      rows: res.results as Row[],
+      rows,
       capturedAt: alpha.capturedAt,
       decline: null,
     };

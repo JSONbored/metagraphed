@@ -217,9 +217,7 @@ function countOrZero(value: unknown): number {
 }
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): { first(): Promise<unknown> };
-  };
+  first(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export interface HotkeyAlphaStalenessDeps {
@@ -250,7 +248,7 @@ export async function runHotkeyAlphaStalenessWatchdog(
     "hotkey_alpha",
     "nominator_positions",
   ]) as unknown as StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no store bound" };
+  if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
     Number(env?.HOTKEY_ALPHA_STALENESS_THRESHOLD_MS) ||
@@ -262,10 +260,7 @@ export async function runHotkeyAlphaStalenessWatchdog(
     HOTKEY_ALPHA_COVERAGE_FLOOR_RATIO;
 
   try {
-    const row = (await db
-      .prepare(HOTKEY_ALPHA_COVERAGE_SQL)
-      .bind(passWindowMs)
-      .first()) as {
+    const row = (await db.first(HOTKEY_ALPHA_COVERAGE_SQL, [passWindowMs])) as {
       latest: number | null;
       covered: number | null;
       total: number | null;

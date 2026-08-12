@@ -92,7 +92,7 @@ export function evaluateChainDetailStaleness(input: {
 }
 
 interface StatementClientLike {
-  prepare(sql: string): { first(): Promise<unknown> };
+  first(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 /**
@@ -108,13 +108,11 @@ export async function readChainDetailHead(
 ): Promise<{ latestObservedAtMs: number | null; headBlock: number | null }> {
   const db = readStore(env, ["chain_detail_blocks"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return { latestObservedAtMs: null, headBlock: null };
-  const row = (await db
-    .prepare(
-      "SELECT MAX(observed_at) AS latest, MAX(block_number) AS head " +
-        "FROM chain_detail_blocks",
-    )
-    .first()) as { latest?: unknown; head?: unknown } | null;
+  if (!db?.first) return { latestObservedAtMs: null, headBlock: null };
+  const row = (await db.first(
+    "SELECT MAX(observed_at) AS latest, MAX(block_number) AS head " +
+      "FROM chain_detail_blocks",
+  )) as { latest?: unknown; head?: unknown } | null;
   return {
     latestObservedAtMs: toInt(row?.latest),
     headBlock: toInt(row?.head),
@@ -153,7 +151,7 @@ export async function runChainDetailStalenessWatchdog(
   // stalled while the lane was fine.
   const db = readStore(env, ["chain_detail_blocks"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no store bound" };
+  if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
     Number(env?.CHAIN_DETAIL_STALENESS_THRESHOLD_MS) ||

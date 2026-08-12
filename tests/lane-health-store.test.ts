@@ -62,7 +62,7 @@ describe("laneHealthStore", () => {
     const db = laneHealthStore({
       HYPERDRIVE,
     });
-    assert.ok(db?.prepare);
+    assert.ok(db?.query && db?.run);
   });
 
   test("no store available is undefined, never a stub", () => {

@@ -215,9 +215,7 @@ function countOrZero(value: unknown): number {
 }
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): { first(): Promise<unknown> };
-  };
+  first(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 export interface ValidatorNominatorCountsStalenessDeps {
@@ -260,7 +258,7 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
   // reporting, and an absent verdict reads as health.
   const db = readStore(env, ["validator_nominator_counts"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no store bound" };
+  if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
     Number(env?.VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS) ||
@@ -273,10 +271,9 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
     VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_ROWS;
 
   try {
-    const row = (await db
-      .prepare(VALIDATOR_NOMINATOR_COUNTS_COVERAGE_SQL)
-      .bind(passWindowMs)
-      .first()) as {
+    const row = (await db.first(VALIDATOR_NOMINATOR_COUNTS_COVERAGE_SQL, [
+      passWindowMs,
+    ])) as {
       latest: number | null;
       covered: number | null;
       total: number | null;

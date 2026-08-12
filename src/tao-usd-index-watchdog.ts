@@ -60,11 +60,7 @@ export const TAO_USD_WATCHDOG_LANE = "watchdog:tao-usd-index";
 
 /** The minimal store surface, so tests can inject a plain object. */
 export interface TaoUsdWatchdogDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 type Row = Record<string, unknown>;
@@ -342,18 +338,14 @@ export async function runTaoUsdIndexWatchdog(
 
   let rows: Row[] | null;
   try {
-    const res = await (
-      db
-        ?.prepare(
+    rows = db?.query
+      ? ((await db.query<Row>(
           `SELECT observed_at, price_basis, usd_per_tao, pool_count, pools` +
             ` FROM ${TAO_USD_TABLE} WHERE observed_at >= ?` +
             ` ORDER BY observed_at DESC LIMIT 240`,
-        )
-        .bind(nowMs - TAO_USD_WATCHDOG_WINDOW_MS) as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    rows = (res?.results ?? []) as Row[];
+          [nowMs - TAO_USD_WATCHDOG_WINDOW_MS],
+        )) as Row[])
+      : null;
   } catch {
     // A read failure is NOT an empty window: reporting "the lane wrote nothing"
     // when we could not ask would send someone to the producer for a fault in

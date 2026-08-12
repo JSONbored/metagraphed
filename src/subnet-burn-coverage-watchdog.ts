@@ -196,10 +196,10 @@ export async function runSubnetBurnCoverageWatchdog(
   if (!db) return null;
   let row: SubnetBurnCoverageRow | undefined;
   try {
-    const result = await db
-      .prepare(SUBNET_BURN_COVERAGE_SQL)
-      .all<SubnetBurnCoverageRow>();
-    row = result?.results?.[0];
+    const rows = await db.query<SubnetBurnCoverageRow>(
+      SUBNET_BURN_COVERAGE_SQL,
+    );
+    row = rows[0];
   } catch {
     // An unreadable store is not a verdict about the producer.
     return null;

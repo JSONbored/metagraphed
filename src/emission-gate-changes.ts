@@ -46,11 +46,7 @@ export { EMISSION_CHANGES_LIMIT_DEFAULT, EMISSION_CHANGES_LIMIT_MAX };
 type Row = Record<string, unknown>;
 
 export interface EmissionChangesDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-  };
+  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
 /** The three change kinds, which are also the `?kind=` filter's vocabulary. */
@@ -112,14 +108,9 @@ export async function loadEmissionChanges(
     kind,
   }: { limit?: number; kind?: string } = {},
 ): Promise<Row[] | null> {
-  if (!db?.prepare) return null;
+  if (!db?.query) return null;
   try {
-    const res = await (
-      db.prepare(emissionChangesSql(limit, kind)).bind() as {
-        all?(): Promise<{ results?: unknown[] } | null>;
-      }
-    ).all?.();
-    return (res?.results ?? []) as Row[];
+    return await db.query<Row>(emissionChangesSql(limit, kind));
   } catch {
     return null;
   }

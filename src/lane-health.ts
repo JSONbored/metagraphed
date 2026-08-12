@@ -134,14 +134,12 @@ export function isRetiredLane(lane: string): boolean {
 }
 
 /** The minimal D1 surface these helpers use, so callers can inject a fake. */
+/** The verdict store's surface, with OUR verbs (#10909) -- rows and change
+ * counts, no D1 envelope. Structural so every watchdog test keeps handing in
+ * a plain object. */
 export interface LaneHealthDb {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      run(): Promise<unknown>;
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-    all?(): Promise<{ results?: unknown[] } | null>;
-  };
+  query(text: string, values?: unknown[]): Promise<unknown[]>;
+  run(text: string, values?: unknown[]): Promise<{ changes: number }>;
 }
 
 /** A tick's outcome. `unknown` is for a watchdog that could not evaluate at all —
@@ -171,21 +169,19 @@ export async function recordLaneVerdict(
   db: LaneHealthDb | null | undefined,
   record: LaneHealthRecord,
 ): Promise<boolean> {
-  if (!db?.prepare) return false;
+  if (!db?.run) return false;
   try {
-    await db
-      .prepare(
-        "INSERT INTO lane_health (lane, verdict, age_ms, detail, checked_at) " +
-          "VALUES (?, ?, ?, ?, ?)",
-      )
-      .bind(
+    await db.run(
+      "INSERT INTO lane_health (lane, verdict, age_ms, detail, checked_at) " +
+        "VALUES (?, ?, ?, ?, ?)",
+      [
         record.lane,
         record.verdict,
         record.age_ms,
         record.detail,
         record.checked_at,
-      )
-      .run();
+      ],
+    );
   } catch {
     // The insert is what this function promises. A missing binding, an unapplied
     // migration, or any D1 error means the verdict was NOT recorded, and the caller
@@ -196,10 +192,10 @@ export async function recordLaneVerdict(
     // Prune this lane's own expired rows on the way through, rather than from a
     // separate cron that would be one more thing to wire and to notice breaking.
     // Bounded and indexed: it touches one lane, by (lane, checked_at).
-    await db
-      .prepare("DELETE FROM lane_health WHERE lane = ? AND checked_at < ?")
-      .bind(record.lane, record.checked_at - LANE_HEALTH_RETENTION_MS)
-      .run();
+    await db.run("DELETE FROM lane_health WHERE lane = ? AND checked_at < ?", [
+      record.lane,
+      record.checked_at - LANE_HEALTH_RETENTION_MS,
+    ]);
   } catch {
     // Deliberately swallowed, and deliberately NOT folded into the try above: the
     // verdict is already committed, so a failed prune must not report the alarm as
@@ -212,18 +208,16 @@ export async function recordLaneVerdict(
 export async function loadLatestLaneHealth(
   db: LaneHealthDb | null | undefined,
 ): Promise<Record<string, LaneHealthRecord>> {
-  if (!db?.prepare) return {};
+  if (!db?.query) return {};
   try {
     // One row per lane via a correlated MAX, rather than pulling the whole table and
     // reducing in the Worker: the table grows by one row per lane per tick forever, so
     // a full scan here would get slower every day this runs.
-    const statement = db.prepare(
+    const rows = (await db.query(
       "SELECT lane, verdict, age_ms, detail, checked_at FROM lane_health " +
         "WHERE (lane, checked_at) IN " +
         "(SELECT lane, MAX(checked_at) FROM lane_health GROUP BY lane)",
-    );
-    const result = await statement.all?.();
-    const rows = (result?.results ?? []) as Record<string, unknown>[];
+    )) as Record<string, unknown>[];
     const out: Record<string, LaneHealthRecord> = {};
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);

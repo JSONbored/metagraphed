@@ -131,13 +131,10 @@ export function lifecycleDetail(
 }
 
 interface StatementClientLike {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all(): Promise<{ results?: unknown[] } | null>;
-      run(): Promise<unknown>;
-    };
-    all(): Promise<{ results?: unknown[] } | null>;
-  };
+  query<Row = Record<string, unknown>>(
+    text: string,
+    values?: unknown[],
+  ): Promise<Row[]>;
 }
 
 export interface SubnetLifecycleDeps {
@@ -161,7 +158,7 @@ export async function runSubnetLifecycleLane(
   const floor = deps.coverageFloor ?? NEURONS_COVERAGE_FLOOR_NETUIDS;
   const db = readStore(env, ["neurons", "subnet_lifecycle"]) as unknown as
     StatementClientLike | undefined;
-  if (!db?.prepare) return { ok: false, reason: "no store bound" };
+  if (!db?.query) return { ok: false, reason: "no store bound" };
 
   const record = async (
     verdict: "ok" | "stale",
@@ -180,16 +177,12 @@ export async function runSubnetLifecycleLane(
     // The netuid set at the newest stamp, plus that pass's block for
     // attribution. One statement: the window is the same 5 minutes
     // neurons-staleness uses to mean "the newest pass".
-    const observedRows = ((
-      await db
-        .prepare(
-          "SELECT DISTINCT netuid, MAX(block_number) AS block_number FROM neurons " +
-            "WHERE captured_at >= (SELECT MAX(captured_at) FROM neurons) - ? " +
-            "GROUP BY netuid",
-        )
-        .bind(NEURONS_PASS_WINDOW_MS)
-        .all()
-    )?.results ?? []) as Record<string, unknown>[];
+    const observedRows = await db.query(
+      "SELECT DISTINCT netuid, MAX(block_number) AS block_number FROM neurons " +
+        "WHERE captured_at >= (SELECT MAX(captured_at) FROM neurons) - ? " +
+        "GROUP BY netuid",
+      [NEURONS_PASS_WINDOW_MS],
+    );
 
     const observed = new Set<number>();
     let blockNumber: number | null = null;
@@ -220,14 +213,10 @@ export async function runSubnetLifecycleLane(
 
     // What the table currently believes: netuids whose NEWEST event is a
     // registration. DISTINCT ON is the same shape loadLatestLaneHealth uses.
-    const knownRows = ((
-      await db
-        .prepare(
-          "SELECT DISTINCT ON (netuid) netuid, event FROM subnet_lifecycle " +
-            "ORDER BY netuid, observed_at DESC, id DESC",
-        )
-        .all()
-    )?.results ?? []) as Record<string, unknown>[];
+    const knownRows = await db.query(
+      "SELECT DISTINCT ON (netuid) netuid, event FROM subnet_lifecycle " +
+        "ORDER BY netuid, observed_at DESC, id DESC",
+    );
     const known = new Set<number>();
     for (const row of knownRows) {
       if (String(row.event) !== "registered") continue;

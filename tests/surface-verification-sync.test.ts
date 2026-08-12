@@ -500,7 +500,7 @@ describe("runSurfaceVerificationSync", () => {
     // and that handle really is the one talking to the store.
     assert.equal(calls[1][1].db, calls[0][1].db, "one store for the sweep");
     const before = pg.control.queries.length;
-    await calls[0][1].db.prepare("SELECT 1 FROM surface_uptime_daily").all();
+    await calls[0][1].db.query("SELECT 1 FROM surface_uptime_daily");
     assert.equal(
       pg.control.queries.length,
       before + 1,
@@ -524,13 +524,9 @@ describe("runSurfaceVerificationSync", () => {
         return loadSubnetUptime(netuid, {
           ...options,
           db: {
-            prepare: () => ({
-              bind: () => ({
-                all: async () => {
-                  throw new Error("D1 unavailable");
-                },
-              }),
-            }),
+            query: async () => {
+              throw new Error("store unavailable");
+            },
           },
         } as Parameters<typeof loadSubnetUptime>[1]);
       },
