@@ -621,6 +621,112 @@ describe("recordSubnetIdentityChanges", () => {
   //
   // Exercised indirectly through recordSubnetIdentityChanges's own
   // `block_number` field, same style the retired tier tests used.
+  describe("the identity baseline reads subnet_identity_history (#10700)", () => {
+    // WAS AN EMPTY MAP, so every subnet diffed as changed on every tick and
+    // the prober published that count (~129 phantom changes an hour). These
+    // pin that the default baseline is a real read now, and that its failure
+    // modes stay the degrades they were rather than becoming false "changed".
+    const profiles = [
+      { netuid: 7, native_identity: { subnet_name: "Same" } },
+      { netuid: 9, native_identity: { subnet_name: "Different" } },
+    ];
+
+    beforeEach(() => {
+      pg.control.queries.length = 0;
+      pg.control.answers = [];
+      pg.control.rows = null;
+      pg.control.failNext = null;
+    });
+
+    test("an UNCHANGED subnet is skipped, using the stored hash as the baseline", async () => {
+      // The whole point of #10700: with a real baseline, a subnet whose
+      // identity did not move must not be reported as changed.
+      // AWAITED: identityHash is async, and an unawaited Promise would never
+      // equal the diff's own string -- the test would pass for the wrong reason.
+      const unchanged = await identityHash(
+        identitySnapshotFromProfile(profiles[0] as Row) as Row,
+      );
+      pg.control.answers = [
+        {
+          match: "FROM subnet_identity_history",
+          rows: [{ netuid: 7, identity_hash: unchanged }],
+        },
+        { match: "FROM blocks_head", rows: [{ block_number: 1 }] },
+      ];
+      const result = await recordSubnetIdentityChanges(
+        pgMockEnv() as unknown as Env,
+        { profiles: [profiles[0]] },
+      );
+      assert.equal(result.rows, 0, JSON.stringify(result));
+      // DISTINCT ON (netuid), newest first -- one row per subnet, the shape
+      // the deleted internal endpoint used to return.
+      assert.match(pg.control.queries[0].text, /DISTINCT ON \(netuid\)/);
+      assert.match(pg.control.queries[0].text, /observed_at DESC/);
+    });
+
+    test("a subnet whose hash MOVED is still reported changed", async () => {
+      pg.control.answers = [
+        {
+          match: "FROM subnet_identity_history",
+          rows: [{ netuid: 7, identity_hash: "stale-hash" }],
+        },
+        { match: "FROM blocks_head", rows: [{ block_number: 1 }] },
+      ];
+      const result = await recordSubnetIdentityChanges(
+        pgMockEnv() as unknown as Env,
+        { profiles: [profiles[0]] },
+      );
+      assert.equal(result.rows, 1);
+    });
+
+    test("a row with no hash of its own is a null baseline, not a skip", async () => {
+      // `identity_hash ?? null` -- a stored row whose hash column is absent
+      // still HAS a baseline entry (null), which no profile hash equals, so
+      // the subnet reports changed. Skipping it instead would be the same
+      // empty-map bug one row at a time.
+      pg.control.answers = [
+        {
+          match: "FROM subnet_identity_history",
+          rows: [{ netuid: 7 }],
+        },
+        { match: "FROM blocks_head", rows: [{ block_number: 1 }] },
+      ];
+      const result = await recordSubnetIdentityChanges(
+        pgMockEnv() as unknown as Env,
+        { profiles: [profiles[0]] },
+      );
+      assert.equal(result.rows, 1);
+    });
+
+    test("an unusable netuid is skipped rather than seeded under NaN", async () => {
+      pg.control.answers = [
+        {
+          match: "FROM subnet_identity_history",
+          rows: [
+            { netuid: "not-a-number", identity_hash: "x" },
+            { netuid: 7, identity_hash: "y" },
+          ],
+        },
+        { match: "FROM blocks_head", rows: [{ block_number: 1 }] },
+      ];
+      // The good row still lands: a bad row must not poison the map.
+      const result = await recordSubnetIdentityChanges(
+        pgMockEnv() as unknown as Env,
+        { profiles: [profiles[0]] },
+      );
+      assert.equal(result.rows, 1);
+    });
+
+    test("an unbound store degrades to an empty baseline, never a throw", async () => {
+      const result = await recordSubnetIdentityChanges({} as unknown as Env, {
+        profiles: [profiles[0]],
+      });
+      // No baseline this tick: the pre-#10700 behaviour, kept deliberately.
+      assert.equal(result.rows, 1);
+      assert.deepEqual(pg.control.queries, []);
+    });
+  });
+
   describe("latestBlockNumber reads blocks_head", () => {
     const profiles = [{ netuid: 7, native_identity: { subnet_name: "First" } }];
 
@@ -640,7 +746,12 @@ describe("recordSubnetIdentityChanges", () => {
         { profiles },
       );
       assert.equal(result.block_number, 8_404_076);
-      assert.match(pg.control.queries[0].text, /MAX\(block_number\)/);
+      // NOT queries[0] any more: the #10700 baseline read runs first now.
+      assert.ok(
+        pg.control.queries.some((q: { text: string }) =>
+          /MAX\(block_number\)/.test(q.text),
+        ),
+      );
     });
 
     test("degrades to null when the store is unbound", async () => {
