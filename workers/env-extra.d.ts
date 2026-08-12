@@ -180,6 +180,19 @@ interface Env {
   SUBNET_SNAPSHOT_SYNC_SECRET?: string;
   TELEGRAM_BOT_TOKEN?: string;
   UNKEY_ROOT_KEY?: string;
+  /**
+   * #10606: salt for the anonymous REST caller's usage-event distinct_id.
+   *
+   * An ops-managed `wrangler secret put` value that never lives in this repo,
+   * for the same reason the VAPID keys below do not: it is the only thing
+   * standing between a hashed client IP and a recoverable one (IPv4 is 2^32,
+   * so an unsalted digest is an encoding, not a pseudonym).
+   *
+   * Absent is a SUPPORTED state and degrades to the shared fallback id --
+   * see resolveUsageDistinctId in workers/api.ts for why a missing salt must
+   * never fall through to hashing without one.
+   */
+  USAGE_DISTINCT_ID_SALT?: string;
   // #8385 web-push (VAPID, RFC 8292). Ops-managed Worker secrets — the KEY
   // VALUES never live in this repo. All three are required together; the
   // webpush channel degrades to a recorded delivery failure when any is

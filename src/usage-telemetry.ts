@@ -42,8 +42,69 @@ export const POSTHOG_HOST_ENV = "POSTHOG_HOST";
 
 const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
 
-/** Stable distinct_id for anonymous Worker-side product events. */
+/**
+ * Fallback distinct_id for a Worker-side product event with no resolved caller.
+ *
+ * ONE ID FOR EVERY CALLER, which is what it was for two surfaces and is now
+ * only a fallback. Measured 2026-08-12: 3,962 REST events across 142 routes in
+ * six hours, all on this string -- so `uniq(distinct_id)` answered 1 no matter
+ * how many clients were behind it, and every person-level REST question
+ * ("how many callers", "is this one client looping or a hundred") was
+ * unanswerable by construction. It surfaced while diagnosing #10606, where
+ * 1,044 /chain/stream refusals could not be attributed to one browser or a
+ * farm, and the geoip fallback (37.751/-97.822, MaxMind's US centroid) could
+ * not separate them either.
+ *
+ * The MCP surface has always resolved a real caller (`github:` / `mcp-session:`);
+ * REST never did. See resolveUsageDistinctId in workers/api.ts.
+ */
 export const USAGE_EVENT_DISTINCT_ID = "metagraphed-worker";
+
+/**
+ * The namespace an API-key-authenticated REST caller is counted under.
+ *
+ * A real, already-known identity -- the account the key belongs to -- so this
+ * is the one REST namespace that mints a person profile, the same way
+ * `github:` does on the MCP side.
+ */
+export const USAGE_ACCOUNT_NAMESPACE = "account:";
+
+/**
+ * The namespace an anonymous REST caller is counted under.
+ *
+ * A SALTED HASH OF THE CLIENT IP, never the IP. Unsalted would not be
+ * pseudonymous at all: the IPv4 space is 2^32, so a rainbow table over it is
+ * minutes of work and the "hash" would be a reversible encoding of an address.
+ * The salt lives in a Worker secret (USAGE_DISTINCT_ID_SALT_ENV) and never
+ * leaves the edge.
+ *
+ * Counts CALLERS, not people: everyone behind one NAT counts once, and one
+ * caller that changes address counts twice. That is the honest resolution of
+ * an IP and the reason this namespace is named for the address rather than
+ * for a user.
+ */
+export const USAGE_ANONYMOUS_NAMESPACE = "ip:";
+
+/**
+ * Worker secret holding the salt for the anonymous-caller hash.
+ *
+ * UNSET IS A SUPPORTED STATE, and it degrades to the pre-#10606 behaviour:
+ * every anonymous caller collapses back onto USAGE_EVENT_DISTINCT_ID. A
+ * missing secret must never be allowed to emit an UNSALTED hash, which is the
+ * one outcome worse than the status quo -- so the absence is checked, not
+ * defaulted.
+ */
+export const USAGE_DISTINCT_ID_SALT_ENV = "USAGE_DISTINCT_ID_SALT";
+
+/**
+ * How many hex characters of the salted digest ride in the distinct_id.
+ *
+ * 16 hex chars = 64 bits. At even a million distinct callers the birthday
+ * bound puts a single collision at ~3e-8, so two callers sharing an id is not
+ * a rate that can move a count -- and a shorter id keeps the property small on
+ * an event this project emits ~1.1M times a day.
+ */
+export const USAGE_ANONYMOUS_ID_HEX_LENGTH = 16;
 
 /** PostHog event name owned by this wrapper — do not emit it elsewhere. */
 export const USAGE_EVENT_NAME = "usage_event";
@@ -534,6 +595,34 @@ export function statusClassOf(status: unknown): string | undefined {
 }
 
 /**
+ * Stamp `$process_person_profile` for a usage event.
+ *
+ * ## THIS IS A COST GATE, NOT A LABEL
+ *
+ * A distinct_id and a person profile are separable, and conflating them is how
+ * this project already spent $650 once (the free-tier volume crisis). PostHog
+ * counts `uniq(distinct_id)` straight off the events table with no profile
+ * involved -- so giving anonymous callers real ids buys accurate caller counts
+ * for nothing, while ALSO minting a profile per id would bill for one person
+ * per address seen. The first is the point; the second is the bill.
+ *
+ * So: an account-namespaced caller is a person (a known account, few of them,
+ * and the profile is what makes retention and funnels work). Everything else
+ * -- an anonymous `ip:` caller and the `metagraphed-worker` fallback -- is
+ * explicitly NOT, and `false` is written rather than omitted so an event's
+ * person handling is readable off the event itself. Same discipline, and the
+ * same reasoning, as assignMcpPersonProcessing above.
+ */
+export function assignUsagePersonProcessing(
+  properties: Record<string, unknown>,
+  distinctId?: string,
+): void {
+  properties["$process_person_profile"] = (
+    distinctId ?? USAGE_EVENT_DISTINCT_ID
+  ).startsWith(USAGE_ACCOUNT_NAMESPACE);
+}
+
+/**
  * Record one product-usage event. Resolves without throwing; returns whether
  * an event was handed to PostHog. Callers that need Workers flush semantics
  * should schedule the returned promise via `ctx.waitUntil(...)`.
@@ -565,6 +654,10 @@ export async function recordUsageEvent(
     // outside usageEventProperties so that function stays a pure projection of
     // its UsageEvent argument (it is exported and asserted as one).
     assignDeployment(properties, env);
+    // After sampling for the same reason as assignDeployment, and before the
+    // capture because the flag has to ride the event that would create the
+    // profile -- a later correction cannot un-bill one.
+    assignUsagePersonProcessing(properties, deps.distinctId);
 
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(

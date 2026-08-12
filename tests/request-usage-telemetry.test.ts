@@ -35,8 +35,11 @@ function recorder({ result = true as boolean | (() => unknown) } = {}) {
   return {
     events,
     exceptions,
-    recordUsageEvent(env: unknown, event: unknown) {
-      events.push({ env, event });
+    // `deps` captured since #10606: the caller's distinct_id rides there, not
+    // on the event, so a spy that dropped the third argument could not see who
+    // an event was attributed to.
+    recordUsageEvent(env: unknown, event: unknown, deps: unknown) {
+      events.push({ env, event, deps });
       return typeof result === "function" ? result() : result;
     },
     recordExceptionEvent(env: unknown, event: unknown) {
@@ -1024,5 +1027,170 @@ describe("withUsageTelemetry — auth_tier", () => {
     );
     assert.equal(spy.events[0].event.ok, false);
     assert.equal(spy.events[0].event.authTier, "free");
+  });
+});
+
+// ── distinct_id: who a REST usage event is attributed to (#10606) ───────────
+//
+// Every REST usage event carried the literal `metagraphed-worker`, so
+// `uniq(distinct_id)` answered 1 across 142 routes and ~99% of this project's
+// traffic. It surfaced while trying to establish whether 1,044 /chain/stream
+// 503s were one browser reconnect-looping or a farm — a question the data
+// could not answer, and still could not once geoip resolved both the refused
+// and the served requests to MaxMind's US centroid.
+describe("withUsageTelemetry — distinct_id", () => {
+  const SALTED_ENV = {
+    ...CONFIGURED_ENV,
+    USAGE_DISTINCT_ID_SALT: "test-salt-not-a-real-secret",
+  };
+
+  /**
+   * Run one request and return the distinct_id it was attributed to.
+   *
+   * AWAITS THE SCHEDULED WORK. The id is resolved inside `waitUntil` so the
+   * hash never lands in front of a response, which means the recorder has not
+   * necessarily been called by the time `withUsageTelemetry` resolves. The
+   * unsalted path happens to settle in one microtask; the salted one does a
+   * real SubtleCrypto digest and does not. A test that asserted immediately
+   * would pass on the branch that does nothing and fail on the branch under
+   * test.
+   */
+  async function attributedTo(
+    env: Row,
+    request: Request,
+    inHandler: () => void = () => {},
+  ) {
+    const spy = recorder();
+    const ctx = fakeCtx();
+    await withUsageTelemetry(
+      request,
+      env as unknown as Env,
+      ctx,
+      async () => {
+        inHandler();
+        return new Response("ok");
+      },
+      spy,
+    );
+    await Promise.all(ctx.scheduled);
+    return (spy.events[0]?.deps as { distinctId?: string } | undefined)
+      ?.distinctId;
+  }
+
+  function fromIp(ip: string) {
+    return req("/api/v1/subnets", { headers: { "cf-connecting-ip": ip } });
+  }
+
+  test("an anonymous caller is counted under a salted hash of its address", async () => {
+    const id = await attributedTo(SALTED_ENV, fromIp("203.0.113.7"));
+    assert.match(
+      String(id),
+      /^ip:[0-9a-f]{16}$/,
+      "an anonymous caller must be counted under the ip: namespace",
+    );
+  });
+
+  test("the same address is the same caller across requests", async () => {
+    // The whole point: a count is only a count if the id is stable.
+    const first = await attributedTo(SALTED_ENV, fromIp("203.0.113.7"));
+    const second = await attributedTo(SALTED_ENV, fromIp("203.0.113.7"));
+    assert.equal(first, second);
+  });
+
+  test("two addresses are two callers", async () => {
+    // Guards the guard: a hash that ignored its input would satisfy the
+    // stability test above and still answer 1 to every question this exists
+    // to answer.
+    const first = await attributedTo(SALTED_ENV, fromIp("203.0.113.7"));
+    const second = await attributedTo(SALTED_ENV, fromIp("198.51.100.9"));
+    assert.notEqual(first, second);
+  });
+
+  test("the address never appears in the id", async () => {
+    const ip = "203.0.113.7";
+    const id = String(await attributedTo(SALTED_ENV, fromIp(ip)));
+    assert.equal(
+      id.includes(ip),
+      false,
+      "the raw address must never reach the event store",
+    );
+  });
+
+  test("the salt is what makes the hash a pseudonym", async () => {
+    // IPv4 is 2^32, so an unsalted digest is a reversible encoding of the
+    // address rather than a pseudonym. If the salt stopped being mixed in,
+    // two deployments with different salts would agree on the id — and this
+    // is the only assertion that would notice.
+    const other = await attributedTo(
+      { ...CONFIGURED_ENV, USAGE_DISTINCT_ID_SALT: "a-different-salt" },
+      fromIp("203.0.113.7"),
+    );
+    const mine = await attributedTo(SALTED_ENV, fromIp("203.0.113.7"));
+    assert.notEqual(mine, other);
+  });
+
+  test("no salt falls back to the shared id rather than hashing without one", async () => {
+    // The one outcome worse than the status quo is an UNSALTED hash, which
+    // would put a recoverable address in a third party's store. Absent salt
+    // is a supported state and degrades to what it did before.
+    const id = await attributedTo(CONFIGURED_ENV, fromIp("203.0.113.7"));
+    assert.equal(id, undefined);
+  });
+
+  test("an unresolved address is not minted into a confident id", async () => {
+    // resolveClientIp collapses a missing cf-connecting-ip to one fixed
+    // bucket — right for a rate limiter, wrong here: hashing it would give
+    // every unresolvable caller ONE specific-looking id, which reads as "one
+    // caller" exactly like the shared fallback except that it looks precise.
+    const id = await attributedTo(SALTED_ENV, req("/api/v1/subnets"));
+    assert.equal(id, undefined);
+  });
+
+  test("a key-authenticated caller is counted as its account", async () => {
+    const request = fromIp("203.0.113.7");
+    const id = await attributedTo(SALTED_ENV, request, () => {
+      markRequestAuthTier(request, "paid", "acct_123");
+    });
+    assert.equal(id, "account:acct_123");
+  });
+
+  test("a presented identity outranks an observed address", async () => {
+    // An account is what the caller PROVED; an address is what we noticed.
+    // The first is the better answer whenever both exist — and it is also the
+    // only one that becomes a person profile.
+    const request = fromIp("203.0.113.7");
+    const anonymous = await attributedTo(SALTED_ENV, fromIp("203.0.113.7"));
+    const identified = await attributedTo(SALTED_ENV, request, () => {
+      markRequestAuthTier(request, "paid", "acct_123");
+    });
+    assert.notEqual(identified, anonymous);
+    assert.equal(identified, "account:acct_123");
+  });
+
+  test("a blank or non-string account is not recorded as one", async () => {
+    const request = fromIp("203.0.113.7");
+    const id = await attributedTo(SALTED_ENV, request, () => {
+      markRequestAuthTier(request, "anonymous", "");
+      markRequestAuthTier(request, "anonymous", undefined);
+      markRequestAuthTier(request, "anonymous", 7);
+    });
+    assert.match(
+      String(id),
+      /^ip:/,
+      "a gate that resolved no account must leave the caller anonymous, " +
+        "never attributed to an account it did not present",
+    );
+  });
+
+  test("one request's account is never read by another", async () => {
+    const keyed = fromIp("203.0.113.7");
+    const identified = await attributedTo(SALTED_ENV, keyed, () => {
+      markRequestAuthTier(keyed, "paid", "acct_123");
+    });
+    // A DIFFERENT Request object from the same address, so the WeakMap has no
+    // entry for it and the account must not leak across.
+    const next = await attributedTo(SALTED_ENV, fromIp("203.0.113.7"));
+    assert.equal(identified, "account:acct_123");
+    assert.match(String(next), /^ip:/);
   });
 });

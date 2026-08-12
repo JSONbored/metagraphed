@@ -150,6 +150,9 @@ import {
   recordUsageEvent,
   parseUserAgentClient,
   statusClassOf,
+  USAGE_ACCOUNT_NAMESPACE,
+  USAGE_ANONYMOUS_ID_HEX_LENGTH,
+  USAGE_ANONYMOUS_NAMESPACE,
   type UsageEvent,
 } from "../src/usage-telemetry.ts";
 import {
@@ -669,6 +672,7 @@ import {
   MAX_WEBHOOK_BODY_BYTES,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
+  ANONYMOUS_CLIENT_KEY,
   resolveClientIp,
   RUNTIME_VERSIONS_PATH_PATTERN,
   SUBNET_BURN_HISTORY_PATH_PATTERN,
@@ -1543,13 +1547,99 @@ function maskUsageRouteParams(pathname: string) {
 const requestAuthTier = new WeakMap<Request, string>();
 
 /**
+ * The account a request authenticated as, for its usage-event distinct_id.
+ *
+ * A SECOND WeakMap rather than widening the one above to an object: the tier
+ * is set by every gate and the account only by a key-verified one, so a single
+ * entry would have to encode "tier known, account not" as a partial object at
+ * every call site. Two maps say that by which one has an entry, and both stay
+ * collectable with the request for the reasons the tier map already documents.
+ */
+const requestAccountId = new WeakMap<Request, string>();
+
+/**
  * Record the tier a request authenticated on, for its usage event.
  *
  * Called from the tiered-rate-limit gates, which are the only places that
  * verify a key. Exported for tests.
+ *
+ * `accountId` is optional so the pre-#10606 two-argument form still compiles
+ * and still means what it did -- a gate that resolves no account passes
+ * nothing, and the caller stays anonymous rather than being attributed to an
+ * account it never presented.
  */
-export function markRequestAuthTier(request: Request, tier: unknown): void {
+export function markRequestAuthTier(
+  request: Request,
+  tier: unknown,
+  accountId?: unknown,
+): void {
   if (typeof tier === "string" && tier) requestAuthTier.set(request, tier);
+  if (typeof accountId === "string" && accountId) {
+    requestAccountId.set(request, accountId);
+  }
+}
+
+/**
+ * Who to count this request under, for the usage event's distinct_id.
+ *
+ * ## WHY REST HAD NO ANSWER TO THIS
+ *
+ * Every REST usage event carried the same literal id, so `uniq(distinct_id)`
+ * was 1 across 142 routes and the surface with ~99% of this project's traffic
+ * could not say how many callers it had. See USAGE_EVENT_DISTINCT_ID's own
+ * header for the measurement and for how it surfaced.
+ *
+ * ## THE TWO NAMESPACES, AND WHY THEY ARE DIFFERENT KINDS OF THING
+ *
+ * An `account:` id is an identity the caller PRESENTED -- it authenticated
+ * with a key belonging to that account. An `ip:` id is an observation we made
+ * about the connection. Naming them apart keeps that distinction queryable,
+ * and it is what `assignUsagePersonProcessing` reads to decide which callers
+ * become person profiles (only the first: see its header for why that is a
+ * cost gate and not a label).
+ *
+ * ## THE HASH IS SALTED, AND UNSALTED IS NOT AN OPTION
+ *
+ * IPv4 is 2^32 addresses -- small enough that an unsalted digest is a
+ * reversible encoding of the address rather than a pseudonym, and it would put
+ * a recoverable client IP in a third party's event store. So a missing salt
+ * degrades to the old shared id instead of hashing without one: no salt, no
+ * anonymous identity, and the count stays as uninformative as it was rather
+ * than becoming informative and leaky.
+ *
+ * Resolved through `resolveClientIp` -- the same cf-connecting-ip-only path
+ * the rate limiters use, not a second IP-extraction scheme that could disagree
+ * with the thing enforcing the per-IP quotas this was written to diagnose.
+ */
+async function resolveUsageDistinctId(
+  request: Request,
+  env: Env,
+): Promise<string | undefined> {
+  const accountId = requestAccountId.get(request);
+  if (accountId) return `${USAGE_ACCOUNT_NAMESPACE}${accountId}`;
+  // Read off the declared field rather than by index, so the access is typed
+  // against Env. The name is documented once as USAGE_DISTINCT_ID_SALT_ENV in
+  // src/usage-telemetry.ts, for the ops side that has to set it.
+  const salt: string | undefined = env.USAGE_DISTINCT_ID_SALT;
+  if (!salt) return undefined;
+  const ip = resolveClientIp(request);
+  // `resolveClientIp` NEVER returns falsy -- absent `cf-connecting-ip` collapses
+  // to ANONYMOUS_CLIENT_KEY, one fixed bucket, which is the right failure mode
+  // for a rate limiter and the wrong one here. Hashing it would mint a single
+  // confident-looking `ip:` id shared by every caller we could not resolve, and
+  // a count built on that reads as "one caller" exactly the way the shared
+  // fallback already did -- except now it looks specific. So an unresolved
+  // address falls back to the shared id, which at least says so.
+  if (ip === ANONYMOUS_CLIENT_KEY) return undefined;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${salt}:${ip}`),
+  );
+  const hex = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, USAGE_ANONYMOUS_ID_HEX_LENGTH);
+  return `${USAGE_ANONYMOUS_NAMESPACE}${hex}`;
 }
 
 /**
@@ -1692,16 +1782,22 @@ export async function withUsageTelemetry(
     // request never actually made. Same omitted-not-defaulted contract every
     // other optional dimension here follows.
     const authTier = requestAuthTier.get(request);
-    scheduleUsageEvent(env, ctx, record, {
-      route,
-      ok,
-      durationMs: endedAt - startedAt,
-      method,
-      ...(statusClass ? { statusClass } : {}),
-      ...(client ? { client } : {}),
-      ...(errorCode ? { errorCode } : {}),
-      ...(authTier ? { authTier } : {}),
-    });
+    scheduleUsageEvent(
+      env,
+      ctx,
+      record,
+      {
+        route,
+        ok,
+        durationMs: endedAt - startedAt,
+        method,
+        ...(statusClass ? { statusClass } : {}),
+        ...(client ? { client } : {}),
+        ...(errorCode ? { errorCode } : {}),
+        ...(authTier ? { authTier } : {}),
+      },
+      () => resolveUsageDistinctId(request, env),
+    );
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
     // per request -- replaces @sentry/cloudflare's automatic withSentry() HTTP
     // instrumentation. Off by default (POSTHOG_TRACES_SAMPLE_RATE unset --
@@ -1782,9 +1878,26 @@ function scheduleUsageEvent(
   ctx: Ctx,
   record: typeof recordUsageEvent,
   event: UsageEvent,
+  /**
+   * Resolves the caller's distinct_id, INSIDE the scheduled work.
+   *
+   * A thunk rather than a resolved string because resolving it hashes, and
+   * `withUsageTelemetry` awaits its telemetry in a `finally` -- an await there
+   * happens before the function returns, so computing this eagerly would put a
+   * SubtleCrypto digest in front of every response on a Worker serving ~1.1M
+   * requests a day. Deferring it into the waitUntil keeps the request path
+   * exactly as long as it was.
+   */
+  resolveDistinctId?: () => Promise<string | undefined>,
 ) {
   try {
-    const pending = Promise.resolve(record(env, event)).catch(() => false);
+    const pending = Promise.resolve(
+      resolveDistinctId
+        ? resolveDistinctId().then((distinctId) =>
+            record(env, event, distinctId ? { distinctId } : {}),
+          )
+        : record(env, event),
+    ).catch(() => false);
     if (typeof ctx?.waitUntil === "function") {
       ctx.waitUntil(pending);
     }
@@ -3628,7 +3741,7 @@ export async function handleChainEventsFamily(
     env,
     DATA_TIERED_RATE_LIMIT,
   );
-  markRequestAuthTier(request, rateLimit.tier);
+  markRequestAuthTier(request, rateLimit.tier, rateLimit.accountId);
   // #8609: recorded for BOTH outcomes, BEFORE the rejection return, with the
   // flag derived from the gate's own verdict -- so a 429 lands in
   // rejected_count instead of request_count. Recording after the return would
@@ -7635,7 +7748,7 @@ async function chainDetailRateLimit(
     env,
     DATA_TIERED_RATE_LIMIT,
   );
-  markRequestAuthTier(request, rateLimit.tier);
+  markRequestAuthTier(request, rateLimit.tier, rateLimit.accountId);
   // Both outcomes, BEFORE the rejection return -- the ordering #8609 established
   // for chain-events, so a 429 lands in rejected_count rather than going
   // uncounted entirely.
@@ -9213,7 +9326,7 @@ async function webhookSubscriptionRateLimited(
     env,
     WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
   );
-  markRequestAuthTier(request, rateLimit.tier);
+  markRequestAuthTier(request, rateLimit.tier, rateLimit.accountId);
   // #8609: recorded before the rejection return so a throttled request is
   // counted as a rejection rather than not counted at all.
   if (rateLimit.accountId) {
@@ -9639,7 +9752,7 @@ async function handleSemanticSearchRequest(
     env,
     AI_TIERED_RATE_LIMIT,
   );
-  markRequestAuthTier(request, rateLimit.tier);
+  markRequestAuthTier(request, rateLimit.tier, rateLimit.accountId);
   if (!rateLimit.allowed) {
     return aiRateLimitedResponse(rateLimit);
   }
@@ -9691,7 +9804,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
     env,
     AI_TIERED_RATE_LIMIT,
   );
-  markRequestAuthTier(request, rateLimit.tier);
+  markRequestAuthTier(request, rateLimit.tier, rateLimit.accountId);
   if (!rateLimit.allowed) {
     return aiRateLimitedResponse(rateLimit);
   }

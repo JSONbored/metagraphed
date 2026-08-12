@@ -285,6 +285,12 @@ describe("recordUsageEvent — configured", () => {
         // as development with no release. The production shape is asserted in
         // the resolveDeployment block below.
         environment: "development",
+        // #10606: written on EVERY usage event, including this one with no
+        // resolved caller. Absent, PostHog defaults to processing a person
+        // profile — so the fallback id was quietly minting one, and an
+        // anonymous `ip:` caller would have minted one PER ADDRESS. Stated,
+        // not omitted, because the default is the expensive direction.
+        $process_person_profile: false,
       },
     });
   });
@@ -3798,5 +3804,87 @@ describe("the resource/prompt poster's optional fields", () => {
       { fetch: fakeFetch({ throws: true }) },
     );
     assert.equal(emitted, false);
+  });
+});
+
+// ── The distinct_id cost gate (#10606) ─────────────────────────────────────
+//
+// A distinct_id and a person profile are separable, and conflating them is how
+// this project already spent $650 once. `uniq(distinct_id)` is computed off the
+// events table with no profile involved — so giving anonymous REST callers real
+// ids buys accurate caller counts for free, while ALSO minting a profile per id
+// would bill one person per address ever seen.
+//
+// This block is the thing standing between those two outcomes.
+describe("recordUsageEvent — person processing", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" } as Row;
+
+  async function personProcessingFor(distinctId?: string) {
+    const calls: Row[] = [];
+    await recordUsageEvent(
+      CONFIGURED as unknown as Env,
+      { route: "subnets", ok: true, durationMs: 1 },
+      {
+        ...(distinctId ? { distinctId } : {}),
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+      },
+    );
+    return {
+      distinctId: (calls[0].body as Row).distinct_id,
+      person: ((calls[0].body as Row).properties as Row)
+        .$process_person_profile,
+    };
+  }
+
+  test("an anonymous caller gets an id but never a person profile", async () => {
+    // THE WHOLE POINT. The id is what makes the caller countable; the profile
+    // is what would make it billable. One without the other.
+    const { distinctId, person } = await personProcessingFor(
+      "ip:0123456789abcdef",
+    );
+    assert.equal(distinctId, "ip:0123456789abcdef");
+    assert.equal(person, false);
+  });
+
+  test("the shared fallback is not a person either", async () => {
+    // It was one before this landed — absent the property, PostHog defaults to
+    // processing a profile, so `metagraphed-worker` has been a maintained
+    // person for as long as the constant has existed.
+    const { distinctId, person } = await personProcessingFor();
+    assert.equal(distinctId, USAGE_EVENT_DISTINCT_ID);
+    assert.equal(person, false);
+  });
+
+  test("an account-authenticated caller is a person", async () => {
+    // A known account, few of them, and the profile is what makes retention
+    // and per-customer questions answerable at all.
+    const { person } = await personProcessingFor("account:acct_123");
+    assert.equal(person, true);
+  });
+
+  test("the account namespace cannot be smuggled into from elsewhere", async () => {
+    // The prefix is load-bearing, exactly as mcp-session: is on the MCP side:
+    // an id that merely CONTAINS the namespace must not be billed as a person.
+    const { person } = await personProcessingFor("ip:account:acct_123");
+    assert.equal(person, false);
+  });
+
+  test("every namespace is decided, none fall through to the default", async () => {
+    // Set EQUALITY over the namespaces this project can emit, so a namespace
+    // added later cannot inherit PostHog's default (process a profile) simply
+    // by not being mentioned here — which is the direction that costs money.
+    const decided = new Map<string, boolean>();
+    for (const id of [
+      "ip:0123456789abcdef",
+      "account:acct_123",
+      USAGE_EVENT_DISTINCT_ID,
+    ]) {
+      decided.set(id, (await personProcessingFor(id)).person as boolean);
+    }
+    assert.deepEqual(
+      [...decided.values()],
+      [false, true, false],
+      "exactly one namespace may mint person profiles",
+    );
   });
 });
