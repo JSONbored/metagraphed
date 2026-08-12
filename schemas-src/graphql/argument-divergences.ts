@@ -243,6 +243,33 @@ export const DECLARED_UNPUBLISHED_ARGUMENTS: Readonly<Record<string, string>> =
       "String here would add the one spelling GraphQL exists to avoid.",
   };
 
+/**
+ * WHY THIS IS A DATA TABLE AND NOT `.transform()` CLOSURES (#10869).
+ *
+ * #10780's checklist prescribed building the codec layer on Zod's own
+ * mechanism -- `.transform()` with `z.input<>`/`z.output<>` -- and the answer,
+ * decided by tracing where each half actually lives, is that the prescription
+ * was half-right and this table is the other half:
+ *
+ * THE CONVERSIONS ALREADY ARE ZOD-NATIVE. Transport form -> canonical is
+ * `z.preprocess` (the input-side transform), applied in ONE place per kind --
+ * `src/contracts.ts`'s `wireField`/`graphqlSchema` derive each surface's
+ * schema from the route's declared base type (number coercion, boolean-word
+ * mapping, enum vocabulary), and `resolveRouteArgs` (src/route-query.ts)
+ * parses through the result. Nothing converts by hand beside a schema that
+ * already describes the conversion. The epic's "`.transform()`: 0 uses"
+ * measured the method name, not the mechanism.
+ *
+ * THE SPELLINGS CANNOT BE CLOSURES. What this table holds is not conversion
+ * logic but DECLARATIONS -- the GraphQL spelling of an argument, why it
+ * diverges, who owns it -- read symmetrically by the generator
+ * (deriveQueryArguments), two gates (route-parity, query-arguments) and the
+ * runtime ownership test (`codecOwnsArgument`). A `.transform()` closure is
+ * opaque to every one of those readers: the generator cannot ask a function
+ * what SDL type to print, and a gate that cannot read the declaration is the
+ * two-list failure (#10772) with extra steps. Data stays data; the machinery
+ * that ACTS on it is the Zod pipeline above.
+ */
 export const ARGUMENT_CODECS: Readonly<Record<string, ArgumentCodec>> = {
   // ── an epoch-ms bound cannot be an Int ────────────────────────────────────
   "blocks.from": { graphql: "String", reason: EPOCH_MS_BOUND },
