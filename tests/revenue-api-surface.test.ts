@@ -16,10 +16,72 @@
 // A test that only walks the happy path here would prove nothing: the happy
 // path is the rare one.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { DatabaseSync } from "node:sqlite";
+import fs from "node:fs";
+import path from "node:path";
+import { beforeEach, describe, test, vi } from "vitest";
+
+// The price now comes from `tao_usd_index` through readStore, which builds its
+// own client -- there is no binding a route caller can inject. Mocking the
+// module is the seam; see tests/helpers/pg-mock.ts for why the controller has
+// to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { handleRequest } from "../workers/api.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { TAO_USD_MAX_AGE_MS } from "../src/alpha-usd.ts";
+
+// The real DDL, so the CHECK pairing a null price with `insufficient_pools` is
+// enforced here too -- a fixture that could store a null price under
+// `wrapped_onchain_median` would be testing a state production cannot reach.
+const TAO_USD_SCHEMA = (() => {
+  const sql = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0004_user_state.sql",
+    ),
+    "utf8",
+  );
+  const start = sql.indexOf("CREATE TABLE IF NOT EXISTS tao_usd_index");
+  const end = sql.indexOf(
+    "CREATE INDEX IF NOT EXISTS idx_tao_usd_index_observed",
+  );
+  return sql.slice(start, sql.indexOf(";", end) + 1);
+})();
+
+let taoUsdDb: InstanceType<typeof DatabaseSync>;
+
+beforeEach(() => {
+  taoUsdDb = new DatabaseSync(":memory:");
+  taoUsdDb.exec(TAO_USD_SCHEMA);
+  pg.control.db = taoUsdDb;
+  pg.control.queries.length = 0;
+});
+
+/** One reading in the index, `ageMs` old. A null price stores itself as the
+ * `insufficient_pools` decline the CHECK constraint requires. */
+function seedTaoUsd(usd: number | null, ageMs = 60_000) {
+  taoUsdDb
+    .prepare(
+      `INSERT INTO tao_usd_index
+         (block_number, observed_at, usd_per_tao, price_basis, eth_usd, pool_count, pools)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      25_692_599,
+      Date.now() - ageMs,
+      usd,
+      usd === null ? "insufficient_pools" : "wrapped_onchain_median",
+      1906.04,
+      usd === null ? 0 : 2,
+      "[]",
+    );
+}
 
 const ECONOMICS_PATH = "/metagraph/economics.json";
 const TAO_USD_PATH = "/metagraph/network/tao-usd.json";
@@ -95,10 +157,23 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
+/** artifactEnv plus the Hyperdrive binding the price read resolves its store
+ * from, so a route test can exercise the priced path as well as the declining
+ * one. */
+function pricedEnv(artifacts: ArtifactMap, throwOn?: string) {
+  return {
+    ...(artifactEnv(artifacts, throwOn) as unknown as Record<string, unknown>),
+    ...pgMockEnv(),
+  } as never;
+}
+
 /** An MCP context whose artifact reads are the map given. */
 function mcpCtx(artifacts: ArtifactMap, throwOn?: string) {
   return {
-    env: mockEnv(),
+    env: {
+      ...(mockEnv() as unknown as Record<string, unknown>),
+      ...pgMockEnv(),
+    },
     readArtifact: async (_env: unknown, path: string) => {
       if (throwOn && path === throwOn)
         throw new Error("artifact read exploded");
@@ -181,56 +256,118 @@ describe("GET /api/v1/subnets/{netuid}/revenue", () => {
   });
 });
 
+// The price comes from `tao_usd_index`, NOT from
+// /metagraph/network/tao-usd.json -- that artifact is never published, so the
+// old read returned null on every request and every USD leg went with it.
+// These tests drive the real source, and assert null rather than the 0 they
+// used to pin.
 describe("the TAO/USD read is allowed to come back empty", () => {
-  test("a price artifact that is absent prices the emission at no USD", async () => {
+  test("no store bound declines every USD leg, and zeroes none", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/64/revenue"),
       artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
     );
     assert.equal(res.status, 200);
-    const revenue = (await jsonBody(res)).data as Row;
-    assert.equal(((revenue.revenue as Row).emission as Row).usd, 0);
+    const emission = (((await jsonBody(res)).data as Row).revenue as Row)
+      .emission as Row;
+    assert.ok((emission.tao as number) > 0, "the TAO leg is measured anyway");
+    assert.equal(emission.usd, null, "no rate declines, never zeroes");
+    const alternates = emission.alternates as Row;
+    assert.equal((alternates.owner_take as Row).usd, null);
+    assert.equal((alternates.alpha_out_priced as Row).usd, null);
   });
 
-  test("a non-numeric usd_per_tao is refused rather than coerced", async () => {
-    // A string here would multiply into NaN and publish it. Null is the only
-    // honest reading of a price that is not a number.
+  test("an unpriced newest reading declines rather than publishing a 0 rate", async () => {
+    // `price_basis: insufficient_pools` with a null price is ADR 0025's
+    // published decline. Multiplying by it would say TAO is worthless.
+    seedTaoUsd(null);
     const res = await handleRequest(
       req("/api/v1/subnets/64/revenue"),
-      artifactEnv({
-        [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] },
-        [TAO_USD_PATH]: { latest: { usd_per_tao: "204.03" } },
-      }),
+      pricedEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
     );
     assert.equal(res.status, 200);
-    const revenue = (await jsonBody(res)).data as Row;
-    assert.equal(((revenue.revenue as Row).emission as Row).usd, 0);
+    const emission = (((await jsonBody(res)).data as Row).revenue as Row)
+      .emission as Row;
+    assert.equal(emission.usd, null);
   });
 
-  test("a price artifact with no latest block is likewise not a failure", async () => {
+  test("a reading past the freshness bound declines too", async () => {
+    seedTaoUsd(204.03, TAO_USD_MAX_AGE_MS + 60_000);
     const res = await handleRequest(
       req("/api/v1/subnets/64/revenue"),
-      artifactEnv({
-        [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] },
-        [TAO_USD_PATH]: { schema_version: 1 },
-      }),
+      pricedEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
     );
-    assert.equal(res.status, 200);
+    const emission = (((await jsonBody(res)).data as Row).revenue as Row)
+      .emission as Row;
+    assert.equal(emission.usd, null, "a frozen rate must not keep serving");
   });
 
   test("a price read that THROWS is caught, not propagated to the caller", async () => {
     // The whole route must not 500 because the price lane is broken: the
     // revenue answer does not depend on it.
+    const env = pricedEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } });
+    pg.control.db = {
+      prepare() {
+        throw new Error("store exploded");
+      },
+    } as never;
+    const res = await handleRequest(req("/api/v1/subnets/64/revenue"), env);
+    assert.equal(res.status, 200);
+    const emission = (((await jsonBody(res)).data as Row).revenue as Row)
+      .emission as Row;
+    assert.equal(emission.usd, null);
+  });
+});
+
+// The requirement the whole fix exists for: a live price must reach the
+// payload as a real number. Nothing asserted this before -- the happy-path
+// test above checks the ratio and never looks at `emission.usd`, which is how
+// a hard 0 shipped to all 129 subnets unnoticed.
+describe("a live price reaches every USD leg", () => {
+  test("non-zero TAO emission with a live rate never serialises usd: 0", async () => {
+    seedTaoUsd(204.03);
     const res = await handleRequest(
       req("/api/v1/subnets/64/revenue"),
-      artifactEnv(
-        { [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } },
-        TAO_USD_PATH,
-      ),
+      pricedEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
     );
     assert.equal(res.status, 200);
-    const revenue = (await jsonBody(res)).data as Row;
-    assert.equal(((revenue.revenue as Row).emission as Row).usd, 0);
+    const emission = (((await jsonBody(res)).data as Row).revenue as Row)
+      .emission as Row;
+    const alternates = emission.alternates as Row;
+    for (const [name, usd] of [
+      ["emission.usd", emission.usd],
+      ["owner_take.usd", (alternates.owner_take as Row).usd],
+      ["alpha_out_priced.usd", (alternates.alpha_out_priced as Row).usd],
+    ] as const) {
+      assert.notEqual(
+        usd,
+        0,
+        `${name} serialised a zero against real emission`,
+      );
+      assert.equal(typeof usd, "number", `${name} must be priced`);
+      assert.ok((usd as number) > 0, `${name} must be positive`);
+    }
+    // 458.03 TAO/day x $204.03 -- the conversion, not merely "non-zero".
+    assert.ok(
+      Math.abs((emission.usd as number) - 93452) < 5,
+      `${emission.usd}`,
+    );
+  });
+
+  test("the cross-subnet sweep prices every row the same way", async () => {
+    seedTaoUsd(204.03);
+    const res = await handleRequest(
+      req("/api/v1/chain/revenue-coverage"),
+      pricedEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+    );
+    assert.equal(res.status, 200);
+    const subnets = ((await jsonBody(res)).data as Row).subnets as Row[];
+    assert.ok(subnets.length > 0);
+    for (const row of subnets) {
+      const emission = row.emission as Row;
+      assert.notEqual(emission.usd, 0, `netuid ${row.netuid} zeroed`);
+      assert.ok((emission.usd as number) > 0);
+    }
   });
 });
 
@@ -346,23 +483,29 @@ describe("the get_subnet_revenue MCP tool", () => {
     assert.equal(((out.revenue as Row).emission as Row).tao, 0);
   });
 
-  test("a non-numeric TAO price is read as no price", async () => {
+  test("no readable price declines the USD legs rather than zeroing them", async () => {
     const out = (await tool("get_subnet_revenue").handler(
       { netuid: 64 },
-      mcpCtx({
-        [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] },
-        [TAO_USD_PATH]: { latest: { usd_per_tao: null } },
-      }),
+      mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
     )) as Row;
-    assert.equal(((out.revenue as Row).emission as Row).usd, 0);
+    const emission = (out.revenue as Row).emission as Row;
+    assert.ok((emission.tao as number) > 0);
+    assert.equal(emission.usd, null);
+    assert.equal(((emission.alternates as Row).owner_take as Row).usd, null);
   });
 
-  test("a TAO price read that throws is caught", async () => {
+  test("a price read that throws is caught, not propagated", async () => {
+    const ctx = mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } });
+    pg.control.db = {
+      prepare() {
+        throw new Error("store exploded");
+      },
+    } as never;
     const out = (await tool("get_subnet_revenue").handler(
       { netuid: 64 },
-      mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }, TAO_USD_PATH),
+      ctx,
     )) as Row;
-    assert.equal(((out.revenue as Row).emission as Row).usd, 0);
+    assert.equal(((out.revenue as Row).emission as Row).usd, null);
   });
 });
 

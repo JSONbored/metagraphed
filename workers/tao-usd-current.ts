@@ -15,6 +15,7 @@
 import { readHealthKv } from "./storage.ts";
 import { KV_TAO_USD_CURRENT } from "../src/kv-keys.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import type { TaoUsdReading } from "../src/alpha-usd.ts";
 
 type Row = Record<string, unknown>;
 
@@ -34,7 +35,37 @@ let memo: { env: unknown; value: unknown; expiresAt: number } = {
 };
 
 /**
+ * `observed_at` as an ISO string, whatever the stored value looks like.
+ *
+ * The producer wrote `observed_at` as the raw epoch-ms integer it holds
+ * in `tao_usd_index`, while `TaoUsdReading` declares a string and
+ * `taoUsdUsable` grades it with `Date.parse`. `Date.parse(1786564800000)`
+ * stringifies the number and fails to parse it -- NaN -- and an unparseable
+ * stamp is deliberately graded `index_stale` rather than fresh. So a cache
+ * rewritten EVERY MINUTE was read as hours old on every request, and
+ * /economics, /subnets/{netuid}/volume and /chain/alpha-volume served
+ * `tao_usd_unavailable: "index_stale"` permanently.
+ *
+ * Accepts both forms rather than only the fixed one: values written before the
+ * producer fix are still in KV, and a reader that only understood the new shape
+ * would keep declining until the next tick overwrote them.
+ */
+function observedAtIso(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+/**
  * The newest TAO/USD reading from KV, or null.
+ *
+ * Returns a NORMALISED `TaoUsdReading` rather than the raw blob. Every caller
+ * used to cast the bag with `as TaoUsdReading`, which is what let the
+ * epoch-ms/ISO mismatch above typecheck for as long as it did: an unchecked
+ * cast asserts a shape instead of establishing one.
  *
  * A NULL IS NOT MEMOISED. A cold or unbound store stays re-queried rather than
  * being cached as absent for a minute -- otherwise the first request after a
@@ -45,18 +76,30 @@ let memo: { env: unknown; value: unknown; expiresAt: number } = {
 export async function readTaoUsdCurrentKv(
   env: unknown,
   now: number = Date.now(),
-): Promise<Row | null> {
+): Promise<TaoUsdReading | null> {
   if (memo.env === env && now < memo.expiresAt) {
-    return memo.value as Row | null;
+    return memo.value as TaoUsdReading | null;
   }
   const value = await readHealthKv(
     env as Parameters<typeof readHealthKv>[0],
     KV_TAO_USD_CURRENT,
   );
-  if (value !== null) {
-    memo = { env, value, expiresAt: now + TAO_USD_CURRENT_KV_TTL_MS };
-  }
-  return value as Row | null;
+  if (value === null) return null;
+  const row = value as Row;
+  const reading: TaoUsdReading = {
+    usd_per_tao:
+      typeof row.usd_per_tao === "number" && Number.isFinite(row.usd_per_tao)
+        ? row.usd_per_tao
+        : null,
+    observed_at: observedAtIso(row.observed_at),
+    block_number:
+      typeof row.block_number === "number" && Number.isInteger(row.block_number)
+        ? row.block_number
+        : null,
+    price_basis: typeof row.price_basis === "string" ? row.price_basis : null,
+  };
+  memo = { env, value: reading, expiresAt: now + TAO_USD_CURRENT_KV_TTL_MS };
+  return reading;
 }
 
 registerModuleStateReset("workers/tao-usd-current.ts", () => {

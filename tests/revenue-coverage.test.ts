@@ -27,7 +27,7 @@ describe("the published SN64 numbers", () => {
     const r = computeCoverage(SN64);
     assert.equal(r.emission.basis, "tao_total");
     assert.ok(Math.abs(r.emission.tao - 458.03) < 0.01, `${r.emission.tao}`);
-    assert.ok(Math.abs(r.emission.usd - 93452) < 5, `${r.emission.usd}`);
+    assert.ok(Math.abs((r.emission.usd ?? 0) - 93452) < 5, `${r.emission.usd}`);
     assert.ok(Math.abs((r.subsidy_multiple ?? 0) - 8.0) < 0.05);
     assert.ok(Math.abs((r.coverage_ratio ?? 0) - 0.125) < 0.001);
     assert.equal(r.verification.verified, true);
@@ -143,6 +143,113 @@ describe("bad input throws instead of yielding NaN", () => {
       () => computeCoverage({ ...SN64, revenue_usd: -1 }),
       /revenue_usd/,
     );
+  });
+});
+
+// The price-side twin of "absent revenue is null, never zero". Every
+// USD field on this route published a literal 0 for all 129 subnets while
+// `emission.tao` carried a real figure, because `usd_per_tao` reached
+// computeCoverage already coalesced from null.
+describe("an unpriceable window is null, never zero", () => {
+  /** Every USD leg the payload publishes, so a fix that reaches `emission.usd`
+   * and forgets an `alternates` branch fails here rather than in production. */
+  const usdLegs = (r: ReturnType<typeof computeCoverage>) => [
+    ["emission.usd", r.emission.usd],
+    ["alternates.owner_take.usd", r.emission.alternates.owner_take.usd],
+    [
+      "alternates.alpha_out_priced.usd",
+      r.emission.alternates.alpha_out_priced?.usd,
+    ],
+  ];
+
+  test("a live price never serialises usd: 0 against non-zero emission", () => {
+    const r = computeCoverage({ ...SN64, usd_per_tao: 200.25489144597697 });
+    assert.ok(r.emission.tao > 0, "fixture must have real emission");
+    for (const [name, usd] of usdLegs(r)) {
+      assert.notEqual(
+        usd,
+        0,
+        `${name} serialised a zero against real emission`,
+      );
+      assert.equal(typeof usd, "number", `${name} should be priced`);
+      assert.ok((usd as number) > 0, `${name} should be positive`);
+    }
+    // The exact conversion, not just "non-zero": 458.03 TAO x $200.25.
+    assert.ok(
+      Math.abs((r.emission.usd as number) - 91723) < 5,
+      `${r.emission.usd}`,
+    );
+  });
+
+  test("no rate serialises every usd leg as null, and none as 0", () => {
+    const r = computeCoverage({ ...SN64, usd_per_tao: null });
+    assert.ok(r.emission.tao > 0, "the TAO leg is unaffected by the price");
+    for (const [name, usd] of usdLegs(r)) {
+      assert.equal(usd, null, `${name} must decline, not zero`);
+    }
+  });
+
+  test("an unpriceable window has no ratios either", () => {
+    const r = computeCoverage({ ...SN64, usd_per_tao: null });
+    // Revenue IS observed here -- the nulls come from the price alone, so this
+    // cannot pass by accidentally reproducing the absent-revenue path.
+    assert.equal(r.revenue_usd, 11668);
+    assert.equal(r.coverage_ratio, null);
+    assert.equal(r.subsidy_multiple, null);
+  });
+
+  test("the verification block states which side declined", () => {
+    const named = (r: ReturnType<typeof computeCoverage>, name: string) =>
+      r.verification.checks.find((c) => c.name === name);
+
+    const priced = computeCoverage(SN64);
+    assert.equal(
+      named(priced, "unpriceable_emission_is_null_not_zero")?.ok,
+      true,
+    );
+    assert.match(
+      named(priced, "unpriceable_emission_is_null_not_zero")?.detail ?? "",
+      /priced through/,
+    );
+
+    const unpriced = computeCoverage({ ...SN64, usd_per_tao: null });
+    assert.equal(
+      named(unpriced, "unpriceable_emission_is_null_not_zero")?.ok,
+      true,
+      "declining every leg together is the CORRECT outcome, not a failure",
+    );
+    assert.match(
+      named(unpriced, "unpriceable_emission_is_null_not_zero")?.detail ?? "",
+      /no TAO\/USD rate/,
+    );
+  });
+
+  test("emission_is_positive grades the TAO leg, not the price", () => {
+    const named = (r: ReturnType<typeof computeCoverage>) =>
+      r.verification.checks.find((c) => c.name === "emission_is_positive");
+    // Real emission, no rate: the check used to read `emissionUsd > 0` and so
+    // reported a subnet with 458 TAO of emission as having none.
+    assert.equal(
+      named(computeCoverage({ ...SN64, usd_per_tao: null }))?.ok,
+      true,
+    );
+    // And it still fails when the emission is genuinely absent.
+    assert.equal(
+      named(computeCoverage({ ...SN64, tao_total_per_block: 0 }))?.ok,
+      false,
+    );
+  });
+
+  test("null is the only accepted absence -- NaN still throws", () => {
+    // A NaN rate would multiply through to NaN, which serialises to null: the
+    // SAME payload as an honest decline, with no way to tell them apart.
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -0.5]) {
+      assert.throws(
+        () => computeCoverage({ ...SN64, usd_per_tao: bad }),
+        /usd_per_tao/,
+      );
+    }
+    assert.doesNotThrow(() => computeCoverage({ ...SN64, usd_per_tao: null }));
   });
 });
 

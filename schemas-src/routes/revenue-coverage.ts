@@ -27,7 +27,13 @@ export const REVENUE_PROVENANCE_VALUES = [
 export const RevenueProvenanceSchema = z.enum(REVENUE_PROVENANCE_VALUES);
 
 export const CoverageBasisSchema = z
-  .object({ tao: z.number(), usd: z.number() })
+  .object({
+    tao: z.number(),
+    usd: z.number().nullable().meta({
+      description:
+        "The TAO leg priced through the TAO/USD index, or NULL when that moment is not priceable — an index below its two-pool quorum, a reading past its two-hour freshness bound, or no reading at all. NEVER 0: a zero here next to a positive `tao` claims the emission is worthless rather than unpriced, which is what this field published for all 129 subnets until the TAO/USD wiring was fixed.",
+    }),
+  })
   .strict();
 
 export const RevenueEmissionSchema = z
@@ -37,7 +43,10 @@ export const RevenueEmissionSchema = z
         "SubnetTaoInEmission + SubnetExcessTao, the TAO the network directs into this subnet. Fully measured rather than reconstructed. The alternates are published beside it and never silently substituted.",
     }),
     tao: z.number(),
-    usd: z.number(),
+    usd: z.number().nullable().meta({
+      description:
+        "The measured TAO denominator priced in USD, or NULL when the TAO/USD index could not price this moment. NEVER 0 — `emission.tao` carries a real figure, so a zero here reads as 'the network directs this much TAO into the subnet and it is worth nothing', which is what shipped for all 129 subnets until the TAO/USD wiring was fixed.",
+    }),
     alternates: z
       .object({
         alpha_out_priced: CoverageBasisSchema.nullable(),

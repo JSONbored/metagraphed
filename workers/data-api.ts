@@ -8540,7 +8540,13 @@ async function writeTaoUsdCurrentKv(env: Env, row: TaoUsdIndexRow) {
       KV_TAO_USD_CURRENT,
       JSON.stringify({
         usd_per_tao: row.usd_per_tao,
-        observed_at: row.observed_at,
+        // ISO, NOT the raw epoch-ms this row carries. `TaoUsdReading`
+        // declares a string and `taoUsdUsable` grades it with `Date.parse`,
+        // which returns NaN for a stringified integer -- and an unparseable
+        // stamp is graded `index_stale` by design. Writing the number here made
+        // a once-a-minute cache read as permanently stale, so every USD field
+        // on /economics and the volume routes declined.
+        observed_at: new Date(row.observed_at).toISOString(),
         block_number: row.block_number,
         price_basis: row.price_basis,
       }),

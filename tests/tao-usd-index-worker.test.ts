@@ -239,6 +239,57 @@ describe("writeTaoUsdIndexRow", () => {
 });
 
 describe("the ingestion tick", () => {
+  // The KV mirror had NO test, which is how it shipped `observed_at`
+  // as the raw epoch-ms integer while every reader grades that stamp with
+  // `Date.parse`. A once-a-minute cache read as permanently `index_stale`, and
+  // /economics, /subnets/{netuid}/volume and /chain/alpha-volume served no USD
+  // at all -- a dead cache that looked exactly like a healthy decline.
+  it("mirrors the reading into KV with an ISO stamp the readers can parse", async () => {
+    stubRpc([{ result: LIVE_HEADER }, LIVE_BATCH]);
+    const puts: Array<{ key: string; value: string }> = [];
+    const kvEnv = {
+      ...(env as unknown as Record<string, unknown>),
+      METAGRAPH_CONTROL: {
+        put: async (key: string, value: string) => {
+          puts.push({ key, value });
+        },
+      },
+    } as unknown as typeof env;
+
+    const result = await ingestTaoUsdIndex(kvEnv, ctx);
+    expect(result.ok).toBe(true);
+    expect(puts).toHaveLength(1);
+    expect(puts[0].key).toBe("tao-usd:current");
+    const blob = JSON.parse(puts[0].value) as Record<string, unknown>;
+
+    expect(typeof blob.observed_at).toBe("string");
+    // The property that actually matters: the stamp survives the round trip
+    // through the grader the serving side uses. `Date.parse` of a stringified
+    // integer is NaN, and an unparseable stamp is graded stale by design.
+    expect(Number.isFinite(Date.parse(String(blob.observed_at)))).toBe(true);
+    expect(blob.usd_per_tao).toBe(result.usd_per_tao);
+    expect(blob.block_number).toBe(result.block_number);
+    expect(blob.price_basis).toBe(result.price_basis);
+  });
+
+  it("a KV that refuses leaves the tick reporting its durable write", async () => {
+    // Best-effort by design: the series is already durable by this point, and
+    // a consumer with no cached reading declines rather than inventing a rate.
+    stubRpc([{ result: LIVE_HEADER }, LIVE_BATCH]);
+    const kvEnv = {
+      ...(env as unknown as Record<string, unknown>),
+      METAGRAPH_CONTROL: {
+        put: async () => {
+          throw new Error("KV unavailable");
+        },
+      },
+    } as unknown as typeof env;
+    await expect(ingestTaoUsdIndex(kvEnv, ctx)).resolves.toMatchObject({
+      ok: true,
+      written: true,
+    });
+  });
+
   it("is a recorded no-op with no endpoint configured", async () => {
     // Unset must not silently fall back to somebody's public node: which
     // endpoint we accept terms with is an ops decision.

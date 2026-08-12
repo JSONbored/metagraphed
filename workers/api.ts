@@ -762,7 +762,6 @@ import type { UsageObservation } from "../src/usage-rollup.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { withAlphaUsdEconomics } from "../src/alpha-usd-overlay.ts";
 import { readTaoUsdCurrentKv } from "./tao-usd-current.ts";
-import type { TaoUsdReading } from "../src/alpha-usd.ts";
 import { runLakehouseSeamWatchdog } from "../src/lakehouse-seam-watchdog.ts";
 import { runSafeModeWatchdog } from "../src/safe-mode-watchdog.ts";
 import {
@@ -8635,7 +8634,7 @@ async function handleApiRequest(
     // this route otherwise touches no database -- see KV_TAO_USD_CURRENT.
     baseData = withAlphaUsdEconomics(
       baseData as Row,
-      (await readTaoUsdCurrentKv(env)) as TaoUsdReading | null,
+      await readTaoUsdCurrentKv(env),
       Date.now(),
     ) as typeof baseData;
   }

@@ -127,7 +127,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
     assert.equal(r.provenance, "probe-derived");
     // The emission side is fully real even with no revenue.
     assert.ok(Math.abs(r.emission.tao - 458.03) < 0.01);
-    assert.ok(r.emission.usd > 0);
+    assert.ok((r.emission.usd ?? 0) > 0);
   });
 
   test("with an observation it produces the published ratio", () => {
@@ -191,8 +191,28 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
         ],
       ]),
     });
-    assert.equal(r.emission.usd, 0);
+    // This asserted `0`, and that assertion is what kept the bug
+    // pinned -- the ratios were null as the test name says, but the USD legs
+    // beside them published a hard zero against a real TAO denominator.
+    assert.equal(r.emission.usd, null, "a missing rate declines, never zeroes");
+    assert.equal(r.emission.alternates.owner_take.usd, null);
+    assert.equal(r.emission.alternates.alpha_out_priced?.usd, null);
     assert.equal(r.coverage_ratio, null, "no rate means no USD comparison");
     assert.ok(r.emission.tao > 0, "the TAO denominator is still real");
+  });
+
+  // The `?? 0` that produced the zero above lived in loadSubnetRevenue, not in
+  // computeCoverage, so the unit test on the pure function could not see it.
+  test("a live rate reaches every USD leg through the loader", () => {
+    const r = loadSubnetRevenue({
+      netuid: 64,
+      window_days: 1,
+      economics: ECONOMICS,
+      surfaces: SURFACES,
+      usd_per_tao: 200.25489144597697,
+    });
+    assert.ok((r.emission.usd ?? 0) > 0, `${r.emission.usd}`);
+    assert.ok((r.emission.alternates.owner_take.usd ?? 0) > 0);
+    assert.ok((r.emission.alternates.alpha_out_priced?.usd ?? 0) > 0);
   });
 });

@@ -24848,7 +24848,14 @@ describe("revenue coverage over GraphQL (#10476)", () => {
       [],
       "a non-array surfaces key declares nothing",
     );
-    assert.equal((r.emission as Row).usd, 0, "no usable rate prices it at 0");
+    // Was `0`. A rate we do not have is null, never a price of zero -- the
+    // GraphQL mirror has to decline in the same shape the route does, or a
+    // consumer reading the SDL type gets a different answer to the same fact.
+    assert.equal(
+      (r.emission as Row).usd,
+      null,
+      "no usable rate declines, never zeroes",
+    );
     assert.equal(r.coverage_ratio, null);
 
     const table = await gql(
