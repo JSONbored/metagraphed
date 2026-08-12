@@ -138,7 +138,10 @@ async function main(): Promise<void> {
   const openapi = await readJson(
     path.join(repoRoot, "public/metagraph/openapi.json"),
   );
-  const env = createLocalArtifactEnv();
+  // The COMMITTED tree is this gate's subject: it reads what a cold start
+  // would serve before any build, so an unbuilt tree is the state under test
+  // rather than a mistake (#10919).
+  const env = createLocalArtifactEnv({}, { requireBuiltArtifacts: false });
   const { checked, errors } = await runCommittedSeedGate({ env, openapi });
 
   if (errors.length > 0) {
