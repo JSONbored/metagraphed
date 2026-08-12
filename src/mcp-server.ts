@@ -211,6 +211,7 @@ import {
   recordMcpToolsListEvent,
   recordUsageEvent,
   parseUserAgentClient,
+  MCP_PERSON_NAMESPACE,
 } from "./usage-telemetry.ts";
 import { maskRouteParams } from "./route-label.ts";
 import {
@@ -4093,15 +4094,16 @@ export function validateToolArguments(
       );
     }
   }
-  // #9642: the intent argument is analytics metadata, never tool input, so it
-  // is removed before any handler sees it -- the same contract @posthog/mcp's
-  // SDK documents ("It strips that argument before your handler runs"). Not
-  // merely a courtesy: several handlers forward their whole argument object
-  // into a query builder or an upstream call, where an unexpected key becomes
-  // a filter, a cache-key difference, or a 400 from someone else's API.
+  // #9642: the analytics arguments are metadata, never tool input, so they
+  // are removed before any handler sees them -- the same contract
+  // @posthog/mcp's SDK documents ("It strips that argument before your
+  // handler runs"). Not merely a courtesy: several handlers forward their
+  // whole argument object into a query builder or an upstream call, where an
+  // unexpected key becomes a filter, a cache-key difference, or a 400 from
+  // someone else's API.
   return applyPublishedDefaults(
     tool,
-    clampServingBounds(tool, splitMcpIntent(args).rest),
+    clampServingBounds(tool, splitMcpAnalyticsArguments(args).rest),
   );
 }
 
@@ -4260,31 +4262,48 @@ function clampServingBounds(tool: ToolArgumentSource, args: Row): Row {
 }
 
 /**
- * Separate the intent argument from the real tool arguments.
+ * Separate the analytics arguments — intent (`context`) and
+ * `conversation_id` — from the real tool arguments.
  *
- * ONE splitter for both readers -- the dispatch path (which must not hand it
- * to a handler) and the telemetry path (which must not duplicate it inside
- * `$mcp_parameters`, where it would be a second copy of free-form agent text
- * on an event that is never sampled). Two implementations of "which key is the
- * intent" is exactly the drift this avoids.
+ * ONE splitter for both readers -- the dispatch path (which must not hand
+ * them to a handler) and the telemetry path (which must not duplicate them
+ * inside `$mcp_parameters`, where each would be a second copy of
+ * caller-controlled text on an event that is never sampled). Two
+ * implementations of "which keys are analytics" is exactly the drift this
+ * avoids.
  *
  * Returns the ORIGINAL object when there is nothing to strip, so the
  * overwhelmingly common case allocates nothing.
  */
-export function splitMcpIntent(args: Row | null | undefined): {
+export function splitMcpAnalyticsArguments(args: Row | null | undefined): {
   intent?: string;
+  conversationId?: string;
   rest: Row;
 } {
   // The nullable is in the SIGNATURE now: the body has always handled a
   // missing argument object by returning it unchanged, and the dispatch
   // caller reached it through `params?.arguments as Row` -- a cast whose only
   // job was to hide that this is exactly the case being handled (#10782).
-  if (!args || typeof args !== "object" || !Object.hasOwn(args, MCP_INTENT_ARG))
+  if (
+    !args ||
+    typeof args !== "object" ||
+    (!Object.hasOwn(args, MCP_INTENT_ARG) &&
+      !Object.hasOwn(args, MCP_CONVERSATION_ARG))
+  ) {
     return { rest: args ?? {} };
-  const { [MCP_INTENT_ARG]: intent, ...rest } = args;
+  }
+  const {
+    [MCP_INTENT_ARG]: intent,
+    [MCP_CONVERSATION_ARG]: conversationId,
+    ...rest
+  } = args;
   return {
-    // A non-string, or a caller sending only whitespace, is not an intent.
+    // A non-string, or a caller sending only whitespace, is not an intent --
+    // and the same reading applies to a conversation id.
     ...(typeof intent === "string" && intent.trim() ? { intent } : {}),
+    ...(typeof conversationId === "string" && conversationId.trim()
+      ? { conversationId }
+      : {}),
     rest,
   };
 }
@@ -5294,11 +5313,12 @@ const MCP_INTENT_ARG = "context";
 const MCP_INTENT_ARG_SCHEMA = {
   type: "string",
   // CARRIED BY ALL 224 TOOLS, so every character here is paid 224 times
-  // (#9696). At 136 characters the description alone cost 30,464 bytes, 4.2%
-  // of tools/list. This says the same three things -- what to write, that it
-  // is optional, that it changes nothing -- in half the bytes.
+  // (#9696). Says what to write and that it changes nothing, in the fewest
+  // bytes. No "Optional:" prefix any more -- the advertised schema marks it
+  // required (withAdvertisedRequiredIntent), and a description contradicting
+  // the schema teaches the model to distrust both.
   description:
-    "Optional: the user's goal, briefly. Analytics only; does not affect the result.",
+    "The user's goal, briefly. Analytics only; does not affect the result.",
   // A worked example, because "describe the user's goal" is exactly the kind
   // of instruction a model satisfies with one vague word. It shows the shape
   // that is useful in the intent view: the user's actual objective, not a
@@ -5309,11 +5329,43 @@ const MCP_INTENT_ARG_SCHEMA = {
 } as const;
 
 /**
- * Add the intent argument to one tool's published schema.
+ * The argument an agent uses to stitch calls into one logical conversation,
+ * and the property PostHog reads it as ($mcp_conversation_id).
  *
- * OPTIONAL, WHERE THE SDK MAKES IT REQUIRED. That divergence is deliberate and
- * is the whole reason this is hand-rolled rather than delegated: every one of
- * these tools declares `additionalProperties: false` and is already serving
+ * `conversation_id` is @posthog/mcp's own name for it (enableConversationId),
+ * kept verbatim for the same reason `context` was. Verified against every
+ * published schema before choosing it: none declares `conversation_id`.
+ *
+ * Deliberately only HALF of the SDK's feature: the argument is accepted and
+ * recorded, but the SDK's other half — minting an id server-side and
+ * appending a "[SERVER]: Reuse conversation_id=…" text block to every tool
+ * response — is not implemented. That prompt-back rides the response's
+ * content array, which consumers surface to end users verbatim (the SDK's
+ * own docs call the leak out), and it taxes every response to benefit only
+ * the calls where the agent would not cooperate anyway. An agent that wants
+ * stitching sends the id; one that does not costs nothing.
+ */
+const MCP_CONVERSATION_ARG = "conversation_id";
+const MCP_CONVERSATION_ARG_SCHEMA = {
+  type: "string",
+  // Paid once per tool on every tools/list, same budget discipline as the
+  // intent description above (#9696): what to send, that it is optional,
+  // that it changes nothing.
+  description:
+    "Optional: stable id for this conversation, same value on every call. Analytics only; does not affect the result.",
+  // The examples gate (tests/mcp-input-schema.test.ts) is right to apply
+  // here too: the useful shape -- opaque, stable, reused -- is easier shown
+  // than described.
+  examples: ["chat-8f3d"],
+} as const;
+
+/**
+ * Add the analytics arguments — intent (`context`) and `conversation_id` —
+ * to one tool's published schema.
+ *
+ * OPTIONAL, WHERE THE SDK MAKES INTENT REQUIRED. That divergence is deliberate
+ * and is the whole reason this is hand-rolled rather than delegated: every one
+ * of these tools declares `additionalProperties: false` and is already serving
  * live traffic, so a required argument would make the next deploy reject every
  * call from every existing client, on every tool at once. Coverage is worth
  * less than not breaking the public surface.
@@ -5328,17 +5380,20 @@ const MCP_INTENT_ARG_SCHEMA = {
  * JsonSchemaLike, and a defensive branch nobody can exercise is one nobody can
  * trust. Tested directly rather than annotated away.
  */
-export function withIntentArgument(tool: McpToolDefinition): McpToolDefinition {
+export function withAnalyticsArguments(
+  tool: McpToolDefinition,
+): McpToolDefinition {
   const schema = tool.inputSchema;
-  const withIntent: JsonSchemaLike = {
+  const withAnalytics: JsonSchemaLike = {
     ...schema,
     type: schema?.type ?? "object",
     properties: {
       ...(schema?.properties ?? {}),
       [MCP_INTENT_ARG]: MCP_INTENT_ARG_SCHEMA,
+      [MCP_CONVERSATION_ARG]: MCP_CONVERSATION_ARG_SCHEMA,
     },
   };
-  return { ...tool, inputSchema: withIntent };
+  return { ...tool, inputSchema: withAnalytics };
 }
 
 // Applied ONCE, here, rather than in listToolDefinitions() -- and that is the
@@ -5366,7 +5421,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     // one signal that names a gap in the catalogue in the agent's own words,
     // which is why PostHog treats it as the most actionable event an MCP
     // server owner can collect. The reasoning rides on the standard `context`
-    // argument (withIntentArgument puts it on every tool) so it lands in
+    // argument (withAnalyticsArguments puts it on every tool) so it lands in
     // $mcp_intent, which is the field their missing-capability views read.
     //
     // Deliberately NOT annotated open-world: it reads nothing at all.
@@ -14643,8 +14698,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
 ];
 
-export const MCP_TOOLS: McpToolDefinition[] =
-  MCP_TOOLS_BASE.map(withIntentArgument);
+export const MCP_TOOLS: McpToolDefinition[] = MCP_TOOLS_BASE.map(
+  withAnalyticsArguments,
+);
 
 const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
 
@@ -14969,6 +15025,33 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   ),
 };
 
+/**
+ * Advertise the intent argument as REQUIRED, on the advertised schema only.
+ *
+ * This is @posthog/mcp's own design, adopted deliberately: their SDK marks
+ * `context` required in the published JSON Schema while never enforcing it at
+ * validation ("advertised as required … but isn't enforced"), because a
+ * schema-following agent then supplies intent on every call while a
+ * schema-blind caller loses nothing. Measured before this shipped: roughly
+ * half of tool calls carried no intent at all.
+ *
+ * The SAFE direction of the two-tool-objects divergence: dispatch validates
+ * against the raw TOOLS_BY_NAME entry, where `context` stays optional, so a
+ * call without it can never be rejected — the advertise-then-reject trap this
+ * mount avoided for the argument itself cannot re-open here. Only `context`
+ * is promoted; `conversation_id` stays visibly optional, matching the SDK.
+ *
+ * Exported for tests, like withAnalyticsArguments above.
+ */
+export function withAdvertisedRequiredIntent(
+  schema: JsonSchemaLike,
+): JsonSchemaLike {
+  if (!schema || typeof schema !== "object") return schema;
+  const required = Array.isArray(schema.required) ? schema.required : [];
+  if (required.includes(MCP_INTENT_ARG)) return schema;
+  return { ...schema, required: [...required, MCP_INTENT_ARG] };
+}
+
 export function listToolDefinitions() {
   return MCP_TOOLS.map((tool) => {
     // NORMALISED HERE, not at the spread below (#9654). The sentinel is a Zod
@@ -14993,7 +15076,9 @@ export function listToolDefinitions() {
       // drop Zod's implicit safe-integer bounds. They are not constraints
       // anyone chose, and while they were emitted a real `maximum` could not be told
       // apart from `z.int()`'s default — see src/mcp-input-schema.ts.
-      inputSchema: stripSentinelIntegerBounds(tool.inputSchema),
+      inputSchema: withAdvertisedRequiredIntent(
+        stripSentinelIntegerBounds(tool.inputSchema),
+      ),
       // outputSchema (optional) lets a client validate the structuredContent the
       // tool returns; included only when the tool declares one.
       //
@@ -15756,12 +15841,16 @@ async function callTool(params: Row | null, ctx: McpCtx) {
     ...(result.isError ? { errorCode } : {}),
   });
   // #9642: `context` is the argument an agent uses to say WHY it called, and
-  // PostHog records it as $mcp_intent. Split here rather than read in place so
-  // `parameters` below carries the real arguments only -- the intent travels
-  // as its own property, not as a second copy inside the parameter blob.
-  const { intent, rest: toolParameters } = splitMcpIntent(
-    rowOf(params?.arguments),
-  );
+  // PostHog records it as $mcp_intent; `conversation_id` is the one it uses
+  // to stitch calls together, recorded as $mcp_conversation_id. Split here
+  // rather than read in place so `parameters` below carries the real
+  // arguments only -- each travels as its own property, not as a second copy
+  // inside the parameter blob.
+  const {
+    intent,
+    conversationId,
+    rest: toolParameters,
+  } = splitMcpAnalyticsArguments(rowOf(params?.arguments));
   scheduleMcpToolCallEvent(ctx, {
     toolName: toolLabel,
     // $mcp_tool_description: the description the agent actually chose from,
@@ -15781,9 +15870,21 @@ async function callTool(params: Row | null, ctx: McpCtx) {
     sessionId: ctx?.sessionId,
     parameters: toolParameters,
     response: result?.structuredContent,
-    // Omitted entirely when the agent said nothing, so "did not explain" stays
-    // distinguishable from "explained with an empty string".
-    ...(intent ? { intent } : {}),
+    // The agent's own words when it gave any; otherwise the intentFallback
+    // pattern from @posthog/mcp's docs — deterministic, no LLM, no argument
+    // inspection — labelled "inferred" so the intent views can always
+    // separate agent speech from this mechanical floor. What the fallback
+    // buys: an intent-coverage read that means "who is not cooperating"
+    // rather than mixing that with "we did not record".
+    ...(intent
+      ? { intent }
+      : {
+          intent: `Invoking ${toolLabel}`,
+          intentSource: "inferred" as const,
+        }),
+    // Only a caller that actually sent one — there is nothing honest to infer
+    // for a conversation label.
+    ...(conversationId ? { conversationId } : {}),
     // #8963: the same structuredContent.error.code usage_event already
     // threads above, projected onto PostHog's $mcp_error_type by
     // classifyMcpErrorType inside the recorder. Omitted on success.
@@ -16596,6 +16697,10 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         // event exists to make visible.
         scheduleMcpToolsListEvent(ctx, {
           toolCount: tools.length,
+          // The names themselves, per the wire contract: joined against
+          // $mcp_tool_call on $session_id they answer "advertised but never
+          // called", which the count alone cannot.
+          listedToolNames: tools.map((tool) => tool.name),
           sessionId: ctx?.sessionId,
           ...mcpAttributionFor(ctx),
         });
@@ -16804,7 +16909,10 @@ export function mcpDistinctId(
   sessionId: string | null | undefined,
 ): string | undefined {
   if (typeof githubLogin === "string" && githubLogin) {
-    return `github:${githubLogin}`;
+    // MCP_PERSON_NAMESPACE rather than a literal: recordMcp*'s
+    // $process_person_profile decision keys on this prefix, and sharing the
+    // constant is what keeps "who is a person" a single decision.
+    return `${MCP_PERSON_NAMESPACE}${githubLogin}`;
   }
   if (typeof sessionId === "string" && sessionId) {
     return `mcp-session:${sessionId}`;
@@ -17458,6 +17566,12 @@ export function alertTriggerErrorCode(status: number): string {
   if (status === 404) return "not_found";
   if (status === 401) return "auth_required";
   if (status === 403) return "forbidden";
+  // The tier's 400s ("malformed trigger id", a non-object body) are the
+  // caller's request, refused -- the same reading bad_request already carries
+  // for the pre-dispatch gate. #10810 left this one out, so the nightly
+  // conformance probe's malformed id was the only caller fault still filed
+  // as `internal`.
+  if (status === 400) return "bad_request";
   // Somebody else's 5xx, from the caller's side -- the same reading
   // provider_error already carries for an adapter's upstream.
   if (status >= 500) return "provider_error";
@@ -17560,13 +17674,22 @@ export function scheduleMcpRefusalEvent(
         {
           isError: true,
           errorCode: reason,
+          // The refusal's own status, verbatim -- the one place in the tool
+          // family where an HTTP status genuinely exists to report. It is what
+          // separates a HEAD-probing scanner's 405 from a client's 400 without
+          // decoding the reason vocabulary.
+          errorStatus: response.status,
           // Unmeasurable rather than instant: the gate rejected before any
           // handler ran, so there is no duration to report. The recorder omits
           // a zero for exactly this reason.
           durationMs: 0,
-          clientName: parseUserAgentClient(
-            request.headers.get("user-agent") ?? undefined,
-          ),
+          // SPREAD, not assigned: parseUserAgentClient returns a
+          // {clientName, clientVersion} bag. Assigning the bag itself to
+          // clientName handed sanitizeLabel an object, which it drops -- so
+          // every refusal since #10810 shipped with no client at all, and the
+          // scanner-vs-real-client split this field exists for was
+          // unanswerable.
+          ...parseUserAgentClient(request.headers.get("user-agent")),
           clientNameSource: "user_agent",
           sessionId: request.headers.get("mcp-session-id"),
           // WHAT was refused (#10810). The usage_event above has carried the

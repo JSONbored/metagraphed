@@ -42,6 +42,7 @@ import type {
   AiGenerationEvent,
   ExceptionEvent,
   McpToolCallEvent,
+  McpToolsListEvent,
   RecordUsageEventDeps,
   UsageEvent,
 } from "../src/usage-telemetry.ts";
@@ -402,6 +403,10 @@ describe("recordMcpToolCallEvent", () => {
       $mcp_is_error: false,
       $mcp_duration_ms: 12,
       $mcp_tool_name: "get_subnet",
+      // The family envelope: the SDK's source marker, and no person profile
+      // for a caller with no github: identity.
+      $mcp_source: "posthog_mcp_analytics",
+      $process_person_profile: false,
       $session_id: "sess-1",
       // #9446: the deployment dimension every capture now carries.
       // No CF_VERSION_METADATA binding in this env, so it reads as a
@@ -705,6 +710,10 @@ describe("recordMcpInitializeEvent", () => {
       // User-Agent guess a tool call has to fall back on.
       $mcp_client_name_source: "client_info",
       $mcp_client_version: "1.2.3",
+      // The family envelope: the SDK's source marker, and no person profile
+      // for a caller with no github: identity.
+      $mcp_source: "posthog_mcp_analytics",
+      $process_person_profile: false,
       $session_id: "sess-1",
       // #9446: the deployment dimension every capture now carries.
       // No CF_VERSION_METADATA binding in this env, so it reads as a
@@ -724,8 +733,11 @@ describe("recordMcpInitializeEvent", () => {
     // #9446: `environment` is the deployment dimension every capture now
     // carries; no CF_VERSION_METADATA binding here, so it reads as a
     // local/undeployed isolate. Everything the caller omitted is still
-    // absent, which is what this test is actually about.
+    // absent, which is what this test is actually about — the envelope pair
+    // is stamped by the recorder itself, never by the caller.
     assert.deepEqual(calls[0].body.properties, {
+      $mcp_source: "posthog_mcp_analytics",
+      $process_person_profile: false,
       environment: "development",
     });
   });
@@ -1949,6 +1961,10 @@ describe("recordMcpToolsListEvent", () => {
       $mcp_client_name_source: "user_agent",
       $mcp_server_name: "metagraphed",
       $mcp_server_version: "1.78.12",
+      // The family envelope: the SDK's source marker, and no person profile
+      // for a caller with no github: identity.
+      $mcp_source: "posthog_mcp_analytics",
+      $process_person_profile: false,
       $session_id: "sess-9",
       // #9446: the deployment dimension every capture now carries.
       // No CF_VERSION_METADATA binding in this env, so it reads as a
@@ -3069,6 +3085,325 @@ describe("every recorder stamps the deployment dimensions", () => {
       recorders.length,
       `recorders covered: ${recorders.length}, exported: ${exported.join(", ")}`,
     );
+  });
+});
+
+// ─── The $mcp_* family envelope: $mcp_source + person processing ────────────
+//
+// PostHog's own SDK stamps both on every event it emits, and its docs
+// designate $mcp_source as THE filter for MCP analytics in a mixed project —
+// an event without it is invisible to a $mcp_source-scoped query. Asserted
+// across every $mcp_* recorder for the same reason the deployment block
+// above loops: a recorder outside the envelope is a query gap, not a bug
+// anyone would notice locally.
+describe("every $mcp_* recorder carries the family envelope", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  const mcpRecorders: Array<
+    [string, (env: Env, deps: RecordUsageEventDeps) => Promise<unknown>]
+  > = [
+    [
+      "$mcp_tool_call",
+      (env, deps) =>
+        recordMcpToolCallEvent(
+          env,
+          { toolName: "get_subnet", isError: false, durationMs: 5 },
+          deps,
+        ),
+    ],
+    [
+      "$mcp_initialize",
+      (env, deps) => recordMcpInitializeEvent(env, { clientName: "c" }, deps),
+    ],
+    [
+      "$mcp_tools_list",
+      (env, deps) => recordMcpToolsListEvent(env, { toolCount: 3 }, deps),
+    ],
+    [
+      "$mcp_resources_list",
+      (env, deps) => recordMcpResourcesListEvent(env, {}, deps),
+    ],
+    [
+      "$mcp_resource_read",
+      (env, deps) =>
+        recordMcpResourceReadEvent(
+          env,
+          { resourceName: "metagraph://registry/summary" },
+          deps,
+        ),
+    ],
+    [
+      "$mcp_prompts_list",
+      (env, deps) => recordMcpPromptsListEvent(env, {}, deps),
+    ],
+    [
+      "$mcp_prompt_get",
+      (env, deps) =>
+        recordMcpPromptGetEvent(
+          env,
+          { resourceName: "integrate_with_subnet" },
+          deps,
+        ),
+    ],
+    [
+      "$mcp_missing_capability",
+      (env, deps) =>
+        recordMcpMissingCapabilityEvent(
+          env,
+          { intent: "needed per-validator slippage, no tool has it" },
+          deps,
+        ),
+    ],
+  ];
+
+  for (const [eventName, invoke] of mcpRecorders) {
+    test(`${eventName} carries $mcp_source and anonymous person processing`, async () => {
+      const calls: Row[] = [];
+      await invoke(mockEnv(CONFIGURED), {
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+      });
+      assert.equal(calls.length, 1, "the recorder posted nothing");
+      const properties = (calls[0].body as Row).properties as Row;
+      assert.equal(properties.$mcp_source, "posthog_mcp_analytics");
+      // No distinctId override → the shared anonymous constant → no person.
+      assert.equal(properties.$process_person_profile, false);
+    });
+  }
+
+  test("a github:-verified caller keeps person processing on", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      mockEnv(CONFIGURED),
+      { toolName: "get_subnet", isError: false, durationMs: 5 },
+      {
+        distinctId: "github:someone",
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+      },
+    );
+    assert.equal(calls[0].body.properties.$process_person_profile, true);
+  });
+
+  test("a session identity is a transport artifact, not a person", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      mockEnv(CONFIGURED),
+      { toolName: "get_subnet", isError: false, durationMs: 5 },
+      {
+        // The namespacing is the load-bearing part: a session id that
+        // CONTAINS "github:" must not smuggle itself into the person
+        // namespace, which is exactly why mcpDistinctId prefixes it.
+        distinctId: "mcp-session:github:someone",
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+      },
+    );
+    assert.equal(calls[0].body.properties.$process_person_profile, false);
+  });
+
+  test("an identified caller's tier rides as a person property", async () => {
+    // The identify() feature without its extra event: $set on the capture
+    // itself, so the person profile learns the tier at zero added volume.
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      mockEnv(CONFIGURED),
+      {
+        toolName: "get_subnet",
+        isError: false,
+        durationMs: 5,
+        authTier: "community",
+      },
+      {
+        distinctId: "github:someone",
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+      },
+    );
+    assert.deepEqual(calls[0].body.properties.$set, {
+      mcp_auth_tier: "community",
+    });
+  });
+
+  test("an anonymous caller's tier sets no person property", async () => {
+    // $set on an event whose person processing is off is dead weight — the
+    // profile it would write to is deliberately never created.
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      mockEnv(CONFIGURED),
+      {
+        toolName: "get_subnet",
+        isError: false,
+        durationMs: 5,
+        authTier: "anonymous",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.ok(!("$set" in calls[0].body.properties));
+  });
+});
+
+// ─── $mcp_error_status: the failure's HTTP status, where one exists ─────────
+describe("recordMcpToolCallEvent $mcp_error_status", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  async function capture(event: McpToolCallEvent) {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(mockEnv(CONFIGURED), event, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    });
+    return (calls[0].body as Row).properties as Row;
+  }
+
+  test("a failed call carries its HTTP status", async () => {
+    const properties = await capture({
+      isError: true,
+      durationMs: 0,
+      errorCode: "method_not_allowed",
+      errorStatus: 405,
+    });
+    assert.equal(properties.$mcp_error_status, 405);
+  });
+
+  test("a successful call never carries one, even if handed a status", async () => {
+    // Same rule as $mcp_error_type: an error dimension on a success would
+    // poison every breakdown that does not also filter on $mcp_is_error.
+    const properties = await capture({
+      isError: false,
+      durationMs: 5,
+      errorStatus: 405,
+    });
+    assert.ok(!("$mcp_error_status" in properties));
+  });
+
+  test("a value outside 100-599, or a non-integer, is dropped", async () => {
+    for (const status of [0, 99, 600, 404.5, Number.NaN]) {
+      const properties = await capture({
+        isError: true,
+        durationMs: 0,
+        errorCode: "bad_request",
+        errorStatus: status,
+      });
+      assert.ok(
+        !("$mcp_error_status" in properties),
+        `status ${status} should be dropped`,
+      );
+    }
+  });
+});
+
+// ─── $mcp_intent_source: agent speech vs the inferred floor ─────────────────
+describe("recordMcpToolCallEvent $mcp_intent_source", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  async function capture(event: McpToolCallEvent) {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(mockEnv(CONFIGURED), event, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    });
+    return (calls[0].body as Row).properties as Row;
+  }
+
+  test("an inferred intent is labelled inferred on the wire", async () => {
+    const properties = await capture({
+      toolName: "get_subnet",
+      isError: false,
+      durationMs: 5,
+      intent: "Invoking get_subnet",
+      intentSource: "inferred",
+    });
+    assert.equal(properties.$mcp_intent, "Invoking get_subnet");
+    assert.equal(properties.$mcp_intent_source, "inferred");
+  });
+
+  test("no source field still means agent speech — the pre-fallback default", async () => {
+    const properties = await capture({
+      toolName: "get_subnet",
+      isError: false,
+      durationMs: 5,
+      intent: "checking SN64 health for a user",
+    });
+    assert.equal(properties.$mcp_intent_source, "context_parameter");
+  });
+});
+
+// ─── $mcp_conversation_id: the agent's stitching label ──────────────────────
+describe("recordMcpToolCallEvent $mcp_conversation_id", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  async function capture(event: McpToolCallEvent) {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(mockEnv(CONFIGURED), event, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    });
+    return (calls[0].body as Row).properties as Row;
+  }
+
+  test("a supplied conversation id is carried, trimmed", async () => {
+    const properties = await capture({
+      toolName: "get_subnet",
+      isError: false,
+      durationMs: 5,
+      conversationId: " conv-1 ",
+    });
+    assert.equal(properties.$mcp_conversation_id, "conv-1");
+  });
+
+  test("absent means absent — no key, not an empty string", async () => {
+    const properties = await capture({
+      toolName: "get_subnet",
+      isError: false,
+      durationMs: 5,
+    });
+    assert.ok(!("$mcp_conversation_id" in properties));
+  });
+});
+
+// ─── $mcp_listed_tool_names: the advertised catalogue, bounded ──────────────
+describe("recordMcpToolsListEvent $mcp_listed_tool_names", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  async function capture(event: Row) {
+    const calls: Row[] = [];
+    await recordMcpToolsListEvent(
+      mockEnv(CONFIGURED),
+      event as McpToolsListEvent,
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    return (calls[0].body as Row).properties as Row;
+  }
+
+  test("carries the advertised names", async () => {
+    const properties = await capture({
+      toolCount: 2,
+      listedToolNames: ["get_subnet", "list_subnets"],
+    });
+    assert.deepEqual(properties.$mcp_listed_tool_names, [
+      "get_subnet",
+      "list_subnets",
+    ]);
+  });
+
+  test("drops non-string entries rather than stringifying them", async () => {
+    const properties = await capture({
+      toolCount: 3,
+      listedToolNames: ["get_subnet", 42, null],
+    });
+    assert.deepEqual(properties.$mcp_listed_tool_names, ["get_subnet"]);
+  });
+
+  test("an empty or absent list sets no key at all", async () => {
+    assert.ok(
+      !(
+        "$mcp_listed_tool_names" in
+        (await capture({ toolCount: 0, listedToolNames: [] }))
+      ),
+    );
+    assert.ok(!("$mcp_listed_tool_names" in (await capture({ toolCount: 0 }))));
+  });
+
+  test("caps a pathological list instead of shipping it", async () => {
+    const properties = await capture({
+      toolCount: 1000,
+      listedToolNames: Array.from({ length: 1000 }, (_, i) => `tool_${i}`),
+    });
+    assert.equal((properties.$mcp_listed_tool_names as string[]).length, 512);
   });
 });
 

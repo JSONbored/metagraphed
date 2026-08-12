@@ -223,6 +223,16 @@ describe("published MCP enums are enforced at runtime (#8942)", () => {
       if (!(await isRunnable(tool))) continue;
 
       for (const key of required) {
+        // `context` is the ONE advertised-required argument that is
+        // deliberately unenforced — @posthog/mcp's own intent design, adopted
+        // by withAdvertisedRequiredIntent: a schema-following agent supplies
+        // intent on every call, and a caller that omits it must never be
+        // rejected (it is analytics metadata, not tool input). The safe
+        // direction of the divergence this gate exists to catch: the server
+        // accepts MORE than it advertises, so no caller is ever harmed. Both
+        // halves are pinned in tests/mcp-usage-telemetry.test.ts ("context is
+        // advertised required" / "a call without context is still accepted").
+        if (key === "context") continue;
         checked++;
         const code = await errorCode(
           tool.name as string,
