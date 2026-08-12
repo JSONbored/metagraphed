@@ -4,8 +4,9 @@
 //
 // WHY A COMPOSER AND NOT SIX CASCADES. #9153 added the lakehouse leg to
 // workers/request-handlers/entities.ts alone. METAGRAPH_SUBNET_IDENTITY_SOURCE
-// is retired, so tryPostgresTier declines unconditionally and the other two
-// surfaces fell straight to the empty builder: REST served the frozen verified
+// has no reader (#10190 deleted the call sites; #10893 keeps the config at
+// "retired" until a reader exists), so the tier declined unconditionally and
+// the other two surfaces fell straight to the empty builder: REST served the frozen verified
 // timeline while get_subnet_identity_history / get_chain_identity_history and
 // their GraphQL twins reported entry_count 0 and count 0.
 //
