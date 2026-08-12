@@ -228,7 +228,9 @@ export function neuronSnapshotWrite(
   };
 }
 
-/** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
+/** The lane name this mirror answers to -- the key NEON_WRITE_BUFFER_LANES
+ * and the lane_health verdicts use. (Named for NEON_DUAL_WRITE_LANES until
+ * that flag was deleted with the cutover, #10892.) */
 export const NEURONS_NEON_LANE = "neurons";
 
 type Row = Record<string, unknown>;
