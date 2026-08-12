@@ -4,6 +4,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import { POSTHOG_TRACES_SAMPLE_RATE_ENV } from "../src/tracing.ts";
 import worker, {
+  handleRequest,
   markRequestAuthTier,
   usageRouteLabel,
   withUsageTelemetry,
@@ -1192,5 +1193,91 @@ describe("withUsageTelemetry — distinct_id", () => {
     const next = await attributedTo(SALTED_ENV, fromIp("203.0.113.7"));
     assert.equal(identified, "account:acct_123");
     assert.match(String(next), /^ip:/);
+  });
+});
+
+// ── A refusal the response is not allowed to explain (#10606) ──────────────
+//
+// /api/v1/chain/stream ran at 95% 5xx for days while every refusal was an
+// unsampled usage_event carrying error_code: null — so the volume was paid
+// for and the diagnosis was not bought. The cap kind rides an internal header
+// the edge deletes: the Worker learns which limit refused, the caller does
+// not (#10744 keeps every cap's response identical so a scraper cannot learn
+// whether rotating addresses would help).
+describe("withUsageTelemetry — chain-firehose cap attribution", () => {
+  function hubEnv(capHeader: string | null) {
+    return {
+      ...CONFIGURED_ENV,
+      CHAIN_FIREHOSE_HUB: {
+        idFromName: () => "id",
+        get: () => ({
+          fetch: async () =>
+            new Response("too many connections", {
+              status: 503,
+              ...(capHeader
+                ? { headers: { "x-metagraph-cap": capHeader } }
+                : {}),
+            }),
+        }),
+      },
+    };
+  }
+
+  async function streamRefusal(capHeader: string | null) {
+    const spy = recorder();
+    const ctx = fakeCtx();
+    const env = hubEnv(capHeader) as unknown as Env;
+    // ONE Request object through both. The cap code is carried on a WeakMap
+    // keyed by request identity (the response is deliberately not allowed to
+    // carry it), so handing the wrapper a different-but-equal Request would
+    // look exactly like the code never being recorded.
+    const request = req("/api/v1/chain/stream");
+    const response = await withUsageTelemetry(
+      request,
+      env,
+      ctx,
+      () => handleRequest(request, env, ctx as unknown as WTCtx),
+      spy,
+    );
+    await Promise.all(ctx.scheduled);
+    return { response, spy };
+  }
+
+  test("the cap kind reaches telemetry as the error code", async () => {
+    const { spy } = await streamRefusal("sse-per-ip");
+    assert.equal(
+      spy.events.at(-1)?.event.errorCode,
+      "chain_firehose_cap_sse_per_ip",
+    );
+  });
+
+  test("an unattributable per-IP cap is a distinguishable code", async () => {
+    // The one that matters most: "one client contained" and "every caller we
+    // could not identify sharing a single 20-slot bucket" are opposite
+    // diagnoses and used to be the same event.
+    const { spy } = await streamRefusal("sse-per-ip:unattributed");
+    assert.equal(
+      spy.events.at(-1)?.event.errorCode,
+      "chain_firehose_cap_sse_per_ip_unattributed",
+    );
+  });
+
+  test("the caller never receives the header", async () => {
+    // Guards the half a scraper would exploit. If this stops holding, the
+    // response starts telling a client which limit it hit and therefore
+    // whether rotating addresses would help.
+    const { response } = await streamRefusal("sse-per-ip");
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("x-metagraph-cap"), null);
+    assert.equal(await response.text(), "too many connections");
+  });
+
+  test("a response with no cap header is passed through untouched", async () => {
+    // The overwhelming majority of responses. Reconstructing every one of
+    // them to delete a header that is not there would put a copy in front of
+    // every streaming body on the route.
+    const { response, spy } = await streamRefusal(null);
+    assert.equal(response.status, 503);
+    assert.equal("errorCode" in (spy.events.at(-1)?.event ?? {}), false);
   });
 });

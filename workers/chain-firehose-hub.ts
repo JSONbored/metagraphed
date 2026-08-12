@@ -54,7 +54,7 @@ import {
   recordExceptionEvent,
   recordUsageEvent,
 } from "../src/usage-telemetry.ts";
-import { resolveClientIp } from "./config.ts";
+import { ANONYMOUS_CLIENT_KEY, resolveClientIp } from "./config.ts";
 import {
   CHAIN_FIREHOSE_PUBLISHED_TABLES,
   CHAIN_FIREHOSE_TABLES,
@@ -208,17 +208,63 @@ export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
 export type ChainFirehoseCapKind =
   "ws-global" | "ws-per-ip" | "sse-global" | "sse-per-ip";
 
+/**
+ * Header carrying the cap kind back to the Worker. STRIPPED AT THE EDGE.
+ *
+ * The tail was the only place the kind could be read (#10744), and a tail is
+ * not a record: /api/v1/chain/stream ran at 95% 5xx for days and no query
+ * could say which of two operationally OPPOSITE conditions it was -- a global
+ * cap (every subscriber refused: an outage) or a per-IP cap (one client
+ * contained: the design working). Every refusal was an unsampled
+ * `usage_event` with `error_code: null`, so the volume was paid for and the
+ * diagnosis was not bought.
+ *
+ * A HEADER THE EDGE REMOVES, rather than a distinct body or error code,
+ * because #10744's reason for one uniform response still holds: a scraper
+ * that learns WHICH limit it hit learns whether to rotate addresses. So
+ * `handleChainFirehoseStream` reads this, records it, and deletes it before
+ * the response continues -- the Worker learns, the caller does not.
+ */
+export const CHAIN_FIREHOSE_CAP_HEADER = "x-metagraph-cap";
+
+/**
+ * Whether the refusal could be attributed to a caller at all.
+ *
+ * A per-IP cap is only "one client contained" if the IP is a real client. When
+ * `cf-connecting-ip` is absent, `resolveClientIp` collapses to ONE fixed
+ * bucket by design -- correct for a rate limiter, but it means every
+ * unattributable caller shares a single 20-slot quota, and the 21st is refused
+ * because of the 20 before it that may be nothing to do with it. That reads
+ * identically to a real per-IP cap from outside, so the two are named apart
+ * here and the suffix is what tells them apart in a query.
+ */
+export const CHAIN_FIREHOSE_CAP_UNATTRIBUTED = "unattributed";
+
 /** The 503 every cap answers with, and the one line that tells them apart. */
 export function chainFirehoseCapRefusal(
   kind: ChainFirehoseCapKind,
   observed: number,
   limit: number,
+  /**
+   * The client key the cap was counted against, when the cap is per-IP. Only
+   * ever compared against the anonymous fallback -- the address itself never
+   * leaves this function, and never rides the header.
+   */
+  clientKey?: string,
 ): Response {
+  const unattributed =
+    clientKey !== undefined && clientKey === ANONYMOUS_CLIENT_KEY;
+  const label = unattributed
+    ? `${kind}:${CHAIN_FIREHOSE_CAP_UNATTRIBUTED}`
+    : kind;
   // Same labelled shape src/r2-sql.ts gives its suppressed queries, for the same
   // reason: the tail is where every occurrence can be read, and the response
   // deliberately will not carry it.
-  console.error("[chain-firehose] cap", kind, `${observed}/${limit}`);
-  return new Response("too many connections", { status: 503 });
+  console.error("[chain-firehose] cap", label, `${observed}/${limit}`);
+  return new Response("too many connections", {
+    status: 503,
+    headers: { [CHAIN_FIREHOSE_CAP_HEADER]: label },
+  });
 }
 
 export const CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS = 1000;
@@ -1294,6 +1340,7 @@ export class ChainFirehoseHub implements DurableObject {
           "ws-per-ip",
           this.wsClientsByIp.get(clientIp) ?? 0,
           CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP,
+          clientIp,
         );
       }
       const requestedProtocols = (
@@ -1391,6 +1438,7 @@ export class ChainFirehoseHub implements DurableObject {
         "sse-per-ip",
         sseForIp,
         CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP,
+        clientIp,
       );
     }
 

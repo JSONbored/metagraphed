@@ -11,7 +11,7 @@
 // equivalent) is out of reach here -- see that branch's own /* v8 ignore */
 // comment in the source and #4982's issue body.
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
+import { describe, test, vi } from "vitest";
 import {
   ALERTER_HUB_EVALUATE_TIMEOUT_MS,
   CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK,
@@ -49,7 +49,10 @@ import {
   formatChainFirehoseTopicNoticeFrame,
   unpublishedChainFirehoseTopics,
   chainFirehoseCapRefusal,
+  CHAIN_FIREHOSE_CAP_HEADER,
+  CHAIN_FIREHOSE_CAP_UNATTRIBUTED,
 } from "../workers/chain-firehose-hub.ts";
+import { ANONYMOUS_CLIENT_KEY } from "../workers/config.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 import { schema as chainEventsGraphqlSchema } from "../src/graphql.ts";
@@ -2539,6 +2542,91 @@ test("the observed count rides along, so a near-miss is visible too", () => {
     assert.ok(
       lines[0]!.includes("1000/1000"),
       "observed/limit, not just the fact of a refusal",
+    );
+  });
+});
+
+// ── Which cap refused, and who is allowed to know (#10606) ─────────────────
+//
+// /api/v1/chain/stream ran at 95% 5xx for days while nothing could say which
+// of two OPPOSITE conditions it was: a global cap (every subscriber refused —
+// an outage) or a per-IP cap (one client contained — the design working).
+// #10744 wrote the answer to the tail, and a tail is not a record: every
+// refusal was an unsampled usage_event carrying error_code: null.
+describe("chain-firehose cap attribution", () => {
+  test("each cap names itself on the internal header", async () => {
+    const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+    const opened = [];
+    for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
+      opened.push(await hub.fetch(subscribeRequest("203.0.113.7")));
+    }
+    const capped = await hub.fetch(subscribeRequest("203.0.113.7"));
+    assert.equal(capped.status, 503);
+    assert.equal(capped.headers.get(CHAIN_FIREHOSE_CAP_HEADER), "sse-per-ip");
+    await Promise.all(opened.map((res) => res.body!.cancel()));
+  });
+
+  test("an unattributable caller is named apart from a real per-IP cap", async () => {
+    // THE DISTINCTION THAT WAS MISSING. With no cf-connecting-ip,
+    // resolveClientIp collapses every caller into ONE fixed bucket — correct
+    // for a rate limiter, but it means the 21st unattributable connection is
+    // refused because of 20 that may have nothing to do with it. From outside
+    // that is indistinguishable from one client being contained, and the two
+    // call for opposite responses.
+    const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+    const opened = [];
+    for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
+      opened.push(await hub.fetch(subscribeRequest(null)));
+    }
+    const capped = await hub.fetch(subscribeRequest(null));
+    assert.equal(capped.status, 503);
+    assert.equal(
+      capped.headers.get(CHAIN_FIREHOSE_CAP_HEADER),
+      `sse-per-ip:${CHAIN_FIREHOSE_CAP_UNATTRIBUTED}`,
+    );
+    await Promise.all(opened.map((res) => res.body!.cancel()));
+  });
+
+  test("the global cap is never labelled unattributed", async () => {
+    // It is not counted per address at all, so the suffix would be a claim
+    // about a dimension that does not apply — and would make a global outage
+    // read as an addressing problem.
+    const refusal = chainFirehoseCapRefusal("sse-global", 1000, 1000);
+    assert.equal(refusal.headers.get(CHAIN_FIREHOSE_CAP_HEADER), "sse-global");
+  });
+
+  test("the body stays identical across every cap", async () => {
+    // #10744's decision, still standing: a distinct body would tell a scraper
+    // which limit it hit and therefore whether rotating addresses helps. The
+    // header is what carries the difference, and the edge deletes it.
+    const bodies = await Promise.all(
+      (
+        [
+          chainFirehoseCapRefusal("sse-global", 1000, 1000),
+          chainFirehoseCapRefusal("ws-global", 1000, 1000),
+          chainFirehoseCapRefusal("sse-per-ip", 20, 20, "203.0.113.7"),
+          chainFirehoseCapRefusal("ws-per-ip", 20, 20, ANONYMOUS_CLIENT_KEY),
+        ] as Response[]
+      ).map((res) => res.text()),
+    );
+    assert.equal(
+      new Set(bodies).size,
+      1,
+      "the caller must not be able to tell the caps apart",
+    );
+    assert.equal(bodies[0], "too many connections");
+  });
+
+  test("the address itself never rides the header", async () => {
+    const refusal = chainFirehoseCapRefusal(
+      "sse-per-ip",
+      20,
+      20,
+      "203.0.113.7",
+    );
+    assert.equal(
+      refusal.headers.get(CHAIN_FIREHOSE_CAP_HEADER)?.includes("203.0.113.7"),
+      false,
     );
   });
 });
