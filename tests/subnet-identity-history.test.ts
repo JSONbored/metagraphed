@@ -679,6 +679,25 @@ describe("recordSubnetIdentityChanges", () => {
       assert.equal(result.rows, 1);
     });
 
+    test("a row with no hash of its own is a null baseline, not a skip", async () => {
+      // `identity_hash ?? null` -- a stored row whose hash column is absent
+      // still HAS a baseline entry (null), which no profile hash equals, so
+      // the subnet reports changed. Skipping it instead would be the same
+      // empty-map bug one row at a time.
+      pg.control.answers = [
+        {
+          match: "FROM subnet_identity_history",
+          rows: [{ netuid: 7 }],
+        },
+        { match: "FROM blocks_head", rows: [{ block_number: 1 }] },
+      ];
+      const result = await recordSubnetIdentityChanges(
+        pgMockEnv() as unknown as Env,
+        { profiles: [profiles[0]] },
+      );
+      assert.equal(result.rows, 1);
+    });
+
     test("an unusable netuid is skipped rather than seeded under NaN", async () => {
       pg.control.answers = [
         {
