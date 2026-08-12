@@ -4046,6 +4046,56 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
       "2026-08-12T00:00:00.000Z",
     );
   });
+  test("economics: the serve-time USD overlay stays inside the contract (#10381)", async () => {
+    // The ROW half of the overlay was undeclared while these schemas were
+    // .passthrough(); #10853's flip to .strict() turned that into
+    // /api/v1/economics 500ing on every request with response_schema_drift
+    // naming alpha_market_cap_basis / alpha_price_usd / alpha_market_cap_usd
+    // / alpha_fdv_usd. Driven through the REAL overlay over the REAL artifact
+    // -- a hand-built row would only re-specify the schema and would miss the
+    // required fields the committed data actually carries.
+    const { withAlphaUsdEconomics } = await import(
+      "../src/alpha-usd-overlay.ts"
+    );
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/economics"),
+      env as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const served = ((await res.json()) as { data: Record<string, unknown> }).data;
+    const overlaid = withAlphaUsdEconomics(
+      served,
+      {
+        usd_per_tao: 200,
+        block_number: 1,
+        // FRESH, deliberately: taoUsdUsable declines a stale reading, and a
+        // declined reading leaves the rows untouched -- which would make this
+        // test pass while proving nothing.
+        observed_at: new Date().toISOString(),
+        price_basis: "wrapped_onchain_median",
+        pools: 9,
+      } as never,
+      Date.now(),
+    ) as Record<string, unknown>;
+    // The overlay must actually have applied, or this passes vacuously --
+    // and it is CONDITIONAL: the basis rides only on a row carrying an
+    // alpha_market_cap_tao to describe (root does not), so assert on a row
+    // that qualifies rather than on index 0.
+    const rows = overlaid.subnets as Record<string, unknown>[];
+    const priced = rows.find((r) => r.alpha_market_cap_tao != null);
+    assert.ok(priced, "the fixture must carry at least one priced subnet");
+    assert.equal(priced!.alpha_market_cap_basis, "total_stake_alpha");
+    assert.equal(typeof priced!.alpha_price_usd, "number");
+    const parsed = EconomicsArtifactSchema.safeParse(overlaid);
+    assert.equal(
+      parsed.success,
+      true,
+      parsed.success ? "" : JSON.stringify(parsed.error.issues.slice(0, 4)),
+    );
+  });
+
   test("agent-catalog: AgentCatalogArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = AgentCatalogArtifactSchema.safeParse({});
     assert.equal(result.success, false);

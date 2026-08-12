@@ -1090,6 +1090,19 @@ type SubnetHealth {
 }
 
 type SubnetEconomics {
+  """
+  What alpha_market_cap_tao multiplies -- published rather than documented, because a market cap without its basis is not a number anyone can reconcile (#10381).
+  """
+  alpha_market_cap_basis: String
+
+  """alpha_price_tao converted at the blob's tao_usd reading."""
+  alpha_price_usd: Float
+
+  """alpha_market_cap_tao converted at the blob's tao_usd reading."""
+  alpha_market_cap_usd: Float
+
+  """alpha_fdv_tao converted at the blob's tao_usd reading."""
+  alpha_fdv_usd: Float
   alpha_fdv_tao: Float
   alpha_in_emission: Float
   alpha_out_emission: Float
@@ -4486,6 +4499,20 @@ type OpportunityBoards {
 }
 
 type OpportunityEntry {
+  """
+  What alpha_market_cap_tao multiplies -- published rather than documented, because a market cap without its basis is not a number anyone can reconcile (#10381).
+  """
+  alpha_market_cap_basis: String
+
+  """alpha_price_tao converted at the blob's tao_usd reading."""
+  alpha_price_usd: Float
+
+  """alpha_market_cap_tao converted at the blob's tao_usd reading."""
+  alpha_market_cap_usd: Float
+
+  """alpha_fdv_tao converted at the blob's tao_usd reading."""
+  alpha_fdv_usd: Float
+
   """
   Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227).
   """

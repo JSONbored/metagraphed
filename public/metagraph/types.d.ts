@@ -10844,9 +10844,18 @@ export interface components {
         };
         SubnetEconomics: {
             alpha_fdv_tao: number | null;
+            /** @description alpha_fdv_tao converted at the blob's tao_usd reading. */
+            alpha_fdv_usd?: number;
             alpha_in_emission?: number | null;
             alpha_in_pool: number | null;
+            /**
+             * @description What alpha_market_cap_tao multiplies -- published rather than documented, because a market cap without its basis is not a number anyone can reconcile (#10381).
+             * @constant
+             */
+            alpha_market_cap_basis?: "total_stake_alpha";
             alpha_market_cap_tao: number | null;
+            /** @description alpha_market_cap_tao converted at the blob's tao_usd reading. */
+            alpha_market_cap_usd?: number;
             alpha_out_emission?: number | null;
             alpha_out_pool: number | null;
             /** @description Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227). */
@@ -10859,6 +10868,8 @@ export interface components {
             alpha_price_change_7d?: number | null;
             /** @description The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
             alpha_price_tao: number | null;
+            /** @description alpha_price_tao converted at the blob's tao_usd reading. */
+            alpha_price_usd?: number;
             block?: number | null;
             emission_enabled?: boolean | null;
             emission_share: number | null;
@@ -18270,9 +18281,12 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "economics": {
                      *           "alpha_fdv_tao": 0.5,
+                     *           "alpha_fdv_usd": 0.5,
                      *           "alpha_in_emission": 0.5,
                      *           "alpha_in_pool": 0.5,
+                     *           "alpha_market_cap_basis": "total_stake_alpha",
                      *           "alpha_market_cap_tao": 0.5,
+                     *           "alpha_market_cap_usd": 0.5,
                      *           "alpha_out_emission": 0.5,
                      *           "alpha_out_pool": 0.5,
                      *           "alpha_price_change_1d": 0.5,
@@ -18280,6 +18294,7 @@ export interface operations {
                      *           "alpha_price_change_1m": 0.5,
                      *           "alpha_price_change_7d": 0.5,
                      *           "alpha_price_tao": 0.5,
+                     *           "alpha_price_usd": 0.5,
                      *           "block": 5000000,
                      *           "emission_enabled": false,
                      *           "emission_share": 0.5,
@@ -39702,9 +39717,12 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "economics": {
                      *           "alpha_fdv_tao": 0.5,
+                     *           "alpha_fdv_usd": 0.5,
                      *           "alpha_in_emission": 0.5,
                      *           "alpha_in_pool": 0.5,
+                     *           "alpha_market_cap_basis": "total_stake_alpha",
                      *           "alpha_market_cap_tao": 0.5,
+                     *           "alpha_market_cap_usd": 0.5,
                      *           "alpha_out_emission": 0.5,
                      *           "alpha_out_pool": 0.5,
                      *           "alpha_price_change_1d": 0.5,
@@ -39712,6 +39730,7 @@ export interface operations {
                      *           "alpha_price_change_1m": 0.5,
                      *           "alpha_price_change_7d": 0.5,
                      *           "alpha_price_tao": 0.5,
+                     *           "alpha_price_usd": 0.5,
                      *           "block": 5000000,
                      *           "emission_enabled": false,
                      *           "emission_share": 0.5,

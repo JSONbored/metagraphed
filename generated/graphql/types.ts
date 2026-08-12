@@ -3232,12 +3232,20 @@ export type OpportunityBoards = {
 
 export type OpportunityEntry = {
   __typename?: 'OpportunityEntry';
+  /** alpha_fdv_tao converted at the blob's tao_usd reading. */
+  alpha_fdv_usd?: Maybe<Scalars['Float']['output']>;
+  /** What alpha_market_cap_tao multiplies -- published rather than documented, because a market cap without its basis is not a number anyone can reconcile (#10381). */
+  alpha_market_cap_basis?: Maybe<Scalars['String']['output']>;
+  /** alpha_market_cap_tao converted at the blob's tao_usd reading. */
+  alpha_market_cap_usd?: Maybe<Scalars['Float']['output']>;
   /** Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227). */
   alpha_price_change_1d?: Maybe<Scalars['Float']['output']>;
   /** Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227). */
   alpha_price_change_7d?: Maybe<Scalars['Float']['output']>;
   /** The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
   alpha_price_tao?: Maybe<Scalars['Float']['output']>;
+  /** alpha_price_tao converted at the blob's tao_usd reading. */
+  alpha_price_usd?: Maybe<Scalars['Float']['output']>;
   emission_share?: Maybe<Scalars['Float']['output']>;
   max_uids?: Maybe<Scalars['Int']['output']>;
   max_validators?: Maybe<Scalars['Int']['output']>;
@@ -6139,9 +6147,15 @@ export type SubnetDeregistrations = {
 export type SubnetEconomics = {
   __typename?: 'SubnetEconomics';
   alpha_fdv_tao?: Maybe<Scalars['Float']['output']>;
+  /** alpha_fdv_tao converted at the blob's tao_usd reading. */
+  alpha_fdv_usd?: Maybe<Scalars['Float']['output']>;
   alpha_in_emission?: Maybe<Scalars['Float']['output']>;
   alpha_in_pool?: Maybe<Scalars['Float']['output']>;
+  /** What alpha_market_cap_tao multiplies -- published rather than documented, because a market cap without its basis is not a number anyone can reconcile (#10381). */
+  alpha_market_cap_basis?: Maybe<Scalars['String']['output']>;
   alpha_market_cap_tao?: Maybe<Scalars['Float']['output']>;
+  /** alpha_market_cap_tao converted at the blob's tao_usd reading. */
+  alpha_market_cap_usd?: Maybe<Scalars['Float']['output']>;
   alpha_out_emission?: Maybe<Scalars['Float']['output']>;
   alpha_out_pool?: Maybe<Scalars['Float']['output']>;
   /** Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227). */
@@ -6154,6 +6168,8 @@ export type SubnetEconomics = {
   alpha_price_change_7d?: Maybe<Scalars['Float']['output']>;
   /** The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
   alpha_price_tao?: Maybe<Scalars['Float']['output']>;
+  /** alpha_price_tao converted at the blob's tao_usd reading. */
+  alpha_price_usd?: Maybe<Scalars['Float']['output']>;
   block?: Maybe<Scalars['Int']['output']>;
   emission_enabled?: Maybe<Scalars['Boolean']['output']>;
   emission_share?: Maybe<Scalars['Float']['output']>;
@@ -11261,9 +11277,13 @@ export type OpportunityBoardsResolvers<ContextType = GqlContext, ParentType exte
 }>;
 
 export type OpportunityEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['OpportunityEntry'] = ResolversParentTypes['OpportunityEntry']> = ResolversObject<{
+  alpha_fdv_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_market_cap_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  alpha_market_cap_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_price_change_1d?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_price_change_7d?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_price_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   max_uids?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   max_validators?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -12300,9 +12320,12 @@ export type SubnetDeregistrationsResolvers<ContextType = GqlContext, ParentType 
 
 export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEconomics'] = ResolversParentTypes['SubnetEconomics']> = ResolversObject<{
   alpha_fdv_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_fdv_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_in_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_in_pool?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_market_cap_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   alpha_market_cap_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_market_cap_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_out_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_out_pool?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_price_change_1d?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -12310,6 +12333,7 @@ export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extend
   alpha_price_change_1m?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_price_change_7d?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_price_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   emission_enabled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   emission_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
