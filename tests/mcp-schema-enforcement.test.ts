@@ -171,6 +171,35 @@ describe("published MCP enums are enforced at runtime (#8942)", () => {
     }
   }, 60_000);
 
+  // The dispatch clamp is MARKER-driven now (`x-serving-bound`), not
+  // name-keyed to `limit` -- the same declaration the GraphQL dispatch reads.
+  // Both directions have to hold: a marked bound clamps at dispatch (an
+  // over-ceiling `offset` answers with the ceiling applied, one mechanism
+  // earlier than the handler clamp that always caught it), and an UNMARKED
+  // `maximum` -- `netuid`'s validity bound -- must never clamp, because
+  // subnet 65535 is not the subnet the caller asked about.
+  test("the dispatch clamp reads the serving-bound marker, both directions", async () => {
+    const clamped = await errorCode("list_blocks", {
+      limit: 2,
+      offset: 99_999_999,
+    });
+    assert.notEqual(
+      clamped,
+      "invalid_params",
+      "a marked serving bound must clamp at dispatch, not reject",
+    );
+    // The property is REJECTION, not a particular code (the enum test's own
+    // doctrine above): what must never happen is the unmarked bound clamping
+    // into a successful answer about subnet 65535.
+    const rejected = await errorCode("get_subnet", { netuid: 99_999 });
+    assert.notEqual(
+      rejected,
+      null,
+      "an unmarked validity bound must reject -- clamping answers a question " +
+        "the caller did not ask",
+    );
+  }, 60_000);
+
   // The third constraint class, and the last one without a gate. #8942's audit
   // covered enums (zero gaps) and numeric bounds (all 101 "gaps" were the
   // deliberate pagination clamping pinned above). `required` was never probed.
