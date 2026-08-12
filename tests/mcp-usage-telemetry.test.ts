@@ -12,8 +12,9 @@ import {
   mcpDistinctId,
   mcpRefusalReason,
   scheduleMcpRefusalEvent,
-  splitMcpIntent,
-  withIntentArgument,
+  splitMcpAnalyticsArguments,
+  withAdvertisedRequiredIntent,
+  withAnalyticsArguments,
 } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
@@ -1565,36 +1566,104 @@ describe("MCP agent intent capture (#9642)", () => {
     assert.deepEqual(missing, [], "these tools cannot carry agent intent");
   });
 
-  // THE COMPATIBILITY CONSTRAINT, pinned. PostHog's own SDK makes `context`
-  // required; doing that here would reject every call from every existing
-  // client on the next deploy, on all 224 tools at once. If someone ever
-  // "fixes" this to match the SDK, this test is what says why not.
-  test("context is optional on every tool -- never required", () => {
-    const required = tools()
-      .filter((t) =>
-        (((t.inputSchema as Row)?.required as string[]) ?? []).includes(
-          "context",
-        ),
+  // THE COMPATIBILITY CONSTRAINT, pinned — in its two-sided form. PostHog's
+  // own SDK advertises `context` as required while never enforcing it at
+  // validation, and that split is exactly what this server now does: a
+  // schema-following agent supplies intent on every call, and a caller that
+  // omits it is never rejected (dispatch validates the RAW tool entry, where
+  // context stays optional). What must never change is the ENFORCEMENT half
+  // — a validator that starts reading the advertised schema would reject
+  // every existing client on all ~230 tools at once.
+  test("context is advertised required on every tool", () => {
+    const missing = tools()
+      .filter(
+        (t) =>
+          !(((t.inputSchema as Row)?.required as string[]) ?? []).includes(
+            "context",
+          ),
       )
       .map((t) => t.name);
     assert.deepEqual(
-      required,
+      missing,
       [],
-      "a required context would break every existing client",
+      "these tools do not ask the agent for intent",
     );
+  });
+
+  test("...and a call without context is still accepted", async () => {
+    const payload = await callMcp(
+      {
+        ...toolCall(TOOL),
+        params: { name: TOOL, arguments: {} },
+      },
+      CONFIGURED_ENV,
+      { executionCtx: fakeExecutionCtx() },
+    );
+    assert.equal((payload.result as Row).isError, false);
+  });
+
+  test("a call without context gets the inferred fallback, labelled as such", async () => {
+    // The intentFallback half of PostHog's intent design: deterministic, no
+    // argument inspection, and NEVER presented as agent speech — the
+    // intentSource label is the entire protection.
+    const events: Row[] = [];
+    await callMcp(
+      {
+        ...toolCall(TOOL),
+        params: { name: TOOL, arguments: {} },
+      },
+      CONFIGURED_ENV,
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordMcpToolCallEvent: (_env: unknown, event: Row) => {
+          events.push(event);
+          return true;
+        },
+      },
+    );
+    assert.equal(events.length, 1);
+    assert.equal(events[0]!.intent, `Invoking ${TOOL}`);
+    assert.equal(events[0]!.intentSource, "inferred");
+  });
+
+  test("an agent's own context wins over the fallback", async () => {
+    const events: Row[] = [];
+    await callMcp(
+      {
+        ...toolCall(TOOL),
+        params: { name: TOOL, arguments: { context: "the user's words" } },
+      },
+      CONFIGURED_ENV,
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordMcpToolCallEvent: (_env: unknown, event: Row) => {
+          events.push(event);
+          return true;
+        },
+      },
+    );
+    assert.equal(events[0]!.intent, "the user's words");
+    assert.equal(events[0]!.intentSource, undefined);
   });
 
   test("the advertised schema describes what to write", () => {
     const schema = (tools()[0]!.inputSchema as Row).properties.context as Row;
     assert.equal(schema.type, "string");
     // Asserted on CONTENT, not wording (#9696). This description is carried by
-    // all 224 tools, so its length is paid 224 times and shortening it is a
-    // legitimate size change -- a gate pinned to one phrasing turns that into
-    // a failure. What must survive is that it tells the caller what to write,
-    // that it is optional, and that it changes nothing about the result.
+    // all ~230 tools, so its length is paid that many times and shortening it
+    // is a legitimate size change -- a gate pinned to one phrasing turns that
+    // into a failure. What must survive is that it tells the caller what to
+    // write and that it changes nothing about the result. It must NOT call
+    // itself optional any more: the advertised schema now marks it required,
+    // and a description contradicting the schema teaches the model to
+    // distrust both.
     const described = String(schema.description);
     assert.match(described, /goal/i, "says what to write");
-    assert.match(described, /optional/i, "says it is optional");
+    assert.doesNotMatch(
+      described,
+      /optional/i,
+      "must not contradict the advertised required",
+    );
     assert.match(
       described,
       /does not affect|analytics only/i,
@@ -1611,6 +1680,21 @@ describe("MCP agent intent capture (#9642)", () => {
       {
         ...toolCall(TOOL),
         params: { name: TOOL, arguments: { context: "why" } },
+      },
+      CONFIGURED_ENV,
+      { executionCtx: fakeExecutionCtx() },
+    );
+    assert.equal((payload.result as Row).isError, false);
+  });
+
+  test("a call carrying conversation_id is accepted, not rejected as an unknown key", async () => {
+    // Same both-sides guarantee as `context` above: injected upstream of the
+    // advertise AND validate paths, so publishing the argument and rejecting
+    // its use cannot diverge.
+    const payload = await callMcp(
+      {
+        ...toolCall(TOOL),
+        params: { name: TOOL, arguments: { conversation_id: "conv-1" } },
       },
       CONFIGURED_ENV,
       { executionCtx: fakeExecutionCtx() },
@@ -1647,7 +1731,10 @@ describe("MCP agent intent capture (#9642)", () => {
   });
 
   test("the handler never receives context", () => {
-    const { intent, rest } = splitMcpIntent({ netuid: 64, context: "why" });
+    const { intent, rest } = splitMcpAnalyticsArguments({
+      netuid: 64,
+      context: "why",
+    });
     assert.equal(intent, "why");
     assert.deepEqual(rest, { netuid: 64 });
     assert.equal("context" in rest, false);
@@ -1656,14 +1743,23 @@ describe("MCP agent intent capture (#9642)", () => {
   // "Did not explain" must stay distinguishable from "explained with nothing",
   // and a non-string is not an explanation.
   test("an empty, whitespace or non-string context yields no intent", () => {
-    assert.equal(splitMcpIntent({ context: "" }).intent, undefined);
-    assert.equal(splitMcpIntent({ context: "   " }).intent, undefined);
-    assert.equal(splitMcpIntent({ context: 42 }).intent, undefined);
-    assert.equal(splitMcpIntent({ context: null }).intent, undefined);
+    assert.equal(splitMcpAnalyticsArguments({ context: "" }).intent, undefined);
+    assert.equal(
+      splitMcpAnalyticsArguments({ context: "   " }).intent,
+      undefined,
+    );
+    assert.equal(splitMcpAnalyticsArguments({ context: 42 }).intent, undefined);
+    assert.equal(
+      splitMcpAnalyticsArguments({ context: null }).intent,
+      undefined,
+    );
     // Still stripped from the arguments even when it is not usable as intent.
-    assert.deepEqual(splitMcpIntent({ netuid: 1, context: 42 }).rest, {
-      netuid: 1,
-    });
+    assert.deepEqual(
+      splitMcpAnalyticsArguments({ netuid: 1, context: 42 }).rest,
+      {
+        netuid: 1,
+      },
+    );
   });
 
   // A schema that declares neither `type` nor `properties` is legal under
@@ -1671,7 +1767,7 @@ describe("MCP agent intent capture (#9642)", () => {
   // registered tool is shaped that way today. The fallbacks exist for that
   // tool; exercised here so they are known to work rather than assumed.
   test("a schema missing type/properties still gets a well-formed one", () => {
-    const injected = withIntentArgument({
+    const injected = withAnalyticsArguments({
       name: "hypothetical",
       title: "Hypothetical",
       description: "d",
@@ -1680,11 +1776,14 @@ describe("MCP agent intent capture (#9642)", () => {
     });
     const schema = injected.inputSchema as Row;
     assert.equal(schema.type, "object");
-    assert.deepEqual(Object.keys(schema.properties as Row), ["context"]);
+    assert.deepEqual(Object.keys(schema.properties as Row), [
+      "context",
+      "conversation_id",
+    ]);
   });
 
   test("an existing schema keeps its own type and every real property", () => {
-    const injected = withIntentArgument({
+    const injected = withAnalyticsArguments({
       name: "hypothetical",
       title: "Hypothetical",
       description: "d",
@@ -1702,16 +1801,134 @@ describe("MCP agent intent capture (#9642)", () => {
     assert.equal(schema.additionalProperties, false);
     assert.deepEqual(Object.keys(schema.properties as Row).sort(), [
       "context",
+      "conversation_id",
       "netuid",
     ]);
+  });
+
+  // The advertise-only required promotion, on its own: the guards exist for
+  // hand-written literals JsonSchemaLike still permits, so they are proven
+  // here rather than assumed unreachable.
+  test("withAdvertisedRequiredIntent appends, preserves, and passes through", () => {
+    // Appends to an existing required list without touching it.
+    assert.deepEqual(
+      withAdvertisedRequiredIntent({ type: "object", required: ["netuid"] })
+        .required,
+      ["netuid", "context"],
+    );
+    // A schema with no required list at all gets one.
+    assert.deepEqual(
+      withAdvertisedRequiredIntent({ type: "object" }).required,
+      ["context"],
+    );
+    // Already-required is returned unchanged — the same object, no copy.
+    const already = { type: "object", required: ["context"] };
+    assert.equal(withAdvertisedRequiredIntent(already), already);
+    // A non-object passes straight through, mirroring
+    // stripSentinelIntegerBounds' own contract for the hand-written case.
+    const notASchema = null as unknown as Parameters<
+      typeof withAdvertisedRequiredIntent
+    >[0];
+    assert.equal(withAdvertisedRequiredIntent(notASchema), notASchema);
   });
 
   // The common case is a call with no context at all, so it must not pay for
   // the feature.
   test("arguments without context are passed through untouched", () => {
     const args = { netuid: 64 };
-    const split = splitMcpIntent(args);
+    const split = splitMcpAnalyticsArguments(args);
     assert.equal(split.rest, args, "same object, no copy");
     assert.equal(split.intent, undefined);
+    assert.equal(split.conversationId, undefined);
+    // The nullable signature: a missing argument object is an empty rest,
+    // never a throw.
+    assert.deepEqual(splitMcpAnalyticsArguments(null).rest, {});
+    assert.deepEqual(splitMcpAnalyticsArguments(undefined).rest, {});
+  });
+
+  test("tools/list reports the advertised names alongside the count", async () => {
+    const events: Row[] = [];
+    await callMcp(
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      CONFIGURED_ENV,
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordMcpToolsListEvent: (_env: unknown, event: Row) => {
+          events.push(event);
+          return true;
+        },
+      },
+    );
+    assert.equal(events.length, 1);
+    const names = events[0]!.listedToolNames as string[];
+    // The names ARE the advertised catalogue — same length as the count the
+    // event has always carried, so the two cannot tell different stories.
+    assert.equal(names.length, events[0]!.toolCount);
+    assert.ok(names.includes("get_subnet"));
+  });
+
+  // ── conversation_id: the stitching label, same lifecycle as the intent ──
+
+  test("the handler never receives conversation_id, and telemetry does", () => {
+    const { intent, conversationId, rest } = splitMcpAnalyticsArguments({
+      netuid: 64,
+      context: "why",
+      conversation_id: "conv-1",
+    });
+    assert.equal(intent, "why");
+    assert.equal(conversationId, "conv-1");
+    assert.deepEqual(rest, { netuid: 64 });
+  });
+
+  test("conversation_id alone is split too, without an intent", () => {
+    // The splitter's early return keys on EITHER argument being present;
+    // a caller sending only the id must not fall through it.
+    const split = splitMcpAnalyticsArguments({
+      netuid: 64,
+      conversation_id: "conv-1",
+    });
+    assert.equal(split.intent, undefined);
+    assert.equal(split.conversationId, "conv-1");
+    assert.deepEqual(split.rest, { netuid: 64 });
+  });
+
+  test("an empty, whitespace or non-string conversation_id yields none", () => {
+    for (const bad of ["", "   ", 42, null]) {
+      const split = splitMcpAnalyticsArguments({
+        netuid: 1,
+        conversation_id: bad,
+      });
+      assert.equal(split.conversationId, undefined, String(bad));
+      // Still stripped from the arguments even when unusable as a label.
+      assert.deepEqual(split.rest, { netuid: 1 });
+    }
+  });
+
+  test("a dispatched call carries conversationId end to end", async () => {
+    const events: Row[] = [];
+    await callMcp(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "get_subnet",
+          arguments: { netuid: 64, conversation_id: "conv-9" },
+        },
+      },
+      CONFIGURED_ENV,
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordMcpToolCallEvent: (_env: unknown, event: Row) => {
+          events.push(event);
+          return true;
+        },
+      },
+    );
+    assert.equal(events.length, 1);
+    assert.equal(events[0]!.conversationId, "conv-9");
+    // Not duplicated inside the parameter blob, and never handed to the
+    // handler -- the same lifecycle context already has.
+    assert.deepEqual(events[0]!.parameters, { netuid: 64 });
   });
 });

@@ -82,6 +82,12 @@ async function rpc(method: string, params: Row): Promise<Row> {
         headers: {
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
+          // Name this runner in the server's client analytics. Without it the
+          // sweep arrives as Node's default UA and was the single largest
+          // "unidentified client" in the MCP dashboard -- every probe it
+          // makes, including the deliberate error-path ones, showed up as an
+          // anonymous agent failing rather than as our own nightly check.
+          "user-agent": "metagraphed-conformance/1",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",

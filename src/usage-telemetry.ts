@@ -252,6 +252,11 @@ const MAX_LABEL_CHARS = 256;
 // pasting an entire system prompt into it cannot ship that on every call.
 const MAX_MCP_INTENT_CHARS = 1024;
 
+// Ceiling on $mcp_listed_tool_names entries. The catalogue is ~240 tools and
+// grows by ones; 512 leaves headroom for years of additions while bounding
+// what a misplumbed caller could ship on an unsampled event.
+const MAX_MCP_LISTED_TOOL_NAMES = 512;
+
 /**
  * A trimmed string capped at `max`, or undefined when there is nothing to say.
  *
@@ -748,9 +753,56 @@ export function classifyMcpErrorType(code: unknown): McpErrorType {
 }
 
 /**
+ * The `$mcp_source` marker @posthog/mcp stamps on every event it emits.
+ * PostHog's own docs designate it the filter for separating MCP analytics
+ * from everything else in a mixed project, so this hand-rolled emitter must
+ * carry it too or a `$mcp_source`-scoped query silently excludes this server.
+ */
+export const MCP_ANALYTICS_SOURCE = "posthog_mcp_analytics";
+
+/**
+ * The distinct_id namespace that names a real person.
+ *
+ * Owned here rather than in mcp-server.ts because the person-processing
+ * decision below has to agree with mcpDistinctId's namespacing forever, and a
+ * shared constant is what makes disagreement impossible. `mcp-session:<id>`
+ * and the anonymous fallback are transport artifacts, not people.
+ */
+export const MCP_PERSON_NAMESPACE = "github:";
+
+/**
+ * Stamp `$process_person_profile` per the SDK's own contract: false for
+ * sessions with no resolved identity, so anonymous MCP traffic does not mint
+ * (and bill as) a person profile per event -- only a `github:`-verified
+ * caller is a person. Explicit `true` for those rather than omitted, so an
+ * event's person handling is always readable off the event itself.
+ */
+function assignMcpPersonProcessing(
+  properties: Record<string, unknown>,
+  deps: RecordUsageEventDeps,
+  authTier?: string,
+): void {
+  const isPerson = (deps.distinctId ?? USAGE_EVENT_DISTINCT_ID).startsWith(
+    MCP_PERSON_NAMESPACE,
+  );
+  properties["$process_person_profile"] = isPerson;
+  // Person properties ride the event itself ($set on capture) rather than a
+  // separate $identify — the SDK's identify() feature without its extra
+  // event per session, which matters on a project already paying for volume.
+  // Only for a real person: $set on an anonymous event is dead weight.
+  if (isPerson && typeof authTier === "string" && authTier) {
+    properties["$set"] = { mcp_auth_tier: authTier };
+  }
+}
+
+/**
  * Stamp client + server attribution onto an outgoing $mcp_* property bag
  * (#8963). Shared by every event in the family so a breakdown by client or by
  * deploy version behaves identically whichever event it starts from.
+ *
+ * Also stamps `$mcp_source`, because this is the one function every `$mcp_*`
+ * recorder already calls -- the family marker must not depend on which event
+ * a query starts from.
  */
 function assignMcpAttribution(
   properties: Record<string, unknown>,
@@ -761,6 +813,7 @@ function assignMcpAttribution(
     authTier?: string;
   } & McpServerIdentity,
 ): void {
+  properties["$mcp_source"] = MCP_ANALYTICS_SOURCE;
   // #8967: "anonymous", or the tier of the verified mg_ key. This is the one
   // dimension that makes the MCP access model measurable -- authentication
   // currently buys throughput only, and without this there is no way to ask
@@ -912,6 +965,17 @@ export interface McpToolCallEvent extends McpServerIdentity {
    */
   errorCode?: string;
   /**
+   * The HTTP status behind the failure, emitted as `$mcp_error_status` — the
+   * documented member of this event's property set that PostHog's own
+   * failure-breakdown tooling groups by alongside $mcp_error_type. Passed only
+   * where a status genuinely exists: today that is the refusal path, whose
+   * Response carries it directly. A handler-thrown toolError has no status of
+   * its own, and inventing one from the error code would put fabricated
+   * numbers in a property dashboards treat as ground truth. Only meaningful
+   * when isError is true.
+   */
+  errorStatus?: number;
+  /**
    * The agent's own statement of WHY it made this call, taken from the
    * `context` argument (#9642). Emitted as $mcp_intent, which is what
    * PostHog's MCP Analytics intent view and clustering read.
@@ -922,6 +986,24 @@ export interface McpToolCallEvent extends McpServerIdentity {
    * verbatim on every call.
    */
   intent?: string;
+  /**
+   * Where `intent` came from, per PostHog's own vocabulary:
+   * "context_parameter" is the agent's stated reason, "inferred" is the
+   * server's intentFallback filling a call that stated none. The label is the
+   * entire protection — it is what stops server-derived text from being read
+   * as agent speech in the intent views. Defaults to context_parameter, the
+   * only value this field carried before the fallback existed.
+   */
+  intentSource?: "context_parameter" | "inferred";
+  /**
+   * The agent-supplied `conversation_id` argument, emitted as
+   * `$mcp_conversation_id` — PostHog's opt-in property for stitching calls
+   * into one logical conversation across reconnects, which a stateless
+   * transport's rotating $session_id cannot do. Caller-controlled, so the
+   * recorder caps it like every other identifier; it is a grouping label,
+   * never a security boundary.
+   */
+  conversationId?: string;
   clientName?: string;
   clientVersion?: string;
   clientNameSource?: McpClientNameSource;
@@ -990,6 +1072,13 @@ export interface McpInitializeEvent extends McpServerIdentity {
 export interface McpToolsListEvent extends McpServerIdentity {
   /** How many tools the response advertised. */
   toolCount?: number;
+  /**
+   * The advertised tool names, emitted as `$mcp_listed_tool_names` — the
+   * documented member of this event's property set. What it buys over the
+   * count alone: joined against $mcp_tool_call via $session_id, it answers
+   * "which tools are advertised but never called", which the count cannot.
+   */
+  listedToolNames?: string[];
   clientName?: string;
   clientVersion?: string;
   clientNameSource?: McpClientNameSource;
@@ -1053,12 +1142,13 @@ export async function recordMcpToolCallEvent(
     // $mcp_intent_source is part of the wire contract rather than decoration:
     // PostHog distinguishes an intent the agent actually stated
     // ("context_parameter") from one a server inferred on its behalf
-    // ("inferred"). We only ever emit the former, and saying so explicitly is
-    // what stops a future inference fallback from being read as agent speech.
+    // ("inferred"). The label travels with the text always, so the fallback's
+    // mechanical strings can never be read as agent speech.
     const intent = trimToLength(event.intent, MAX_MCP_INTENT_CHARS);
     if (intent !== undefined) {
       properties["$mcp_intent"] = intent;
-      properties["$mcp_intent_source"] = "context_parameter";
+      properties["$mcp_intent_source"] =
+        event.intentSource === "inferred" ? "inferred" : "context_parameter";
     }
 
     // What a refusal arrived on (#10810). Only set by scheduleMcpRefusalEvent,
@@ -1079,12 +1169,35 @@ export async function recordMcpToolCallEvent(
       const errorCode = sanitizeLabel(event.errorCode);
       if (errorCode !== undefined) properties["$mcp_error_code"] = errorCode;
       properties["$mcp_error_type"] = classifyMcpErrorType(event.errorCode);
+      // Bounded to real HTTP statuses: this recorder's callers are trusted,
+      // but a number outside 100-599 could only be a plumbing mistake, and a
+      // dashboard grouping by status must never have to explain a 0 or a NaN.
+      if (
+        typeof event.errorStatus === "number" &&
+        Number.isInteger(event.errorStatus) &&
+        event.errorStatus >= 100 &&
+        event.errorStatus <= 599
+      ) {
+        properties["$mcp_error_status"] = event.errorStatus;
+      }
     }
 
     assignMcpAttribution(properties, event);
+    // The tool call is the one event whose volume makes the $set rider stick:
+    // an identified caller must call tools to matter, so their person profile
+    // picks the tier up here without a separate $identify per session.
+    assignMcpPersonProcessing(properties, deps, event.authTier);
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
       properties["$session_id"] = event.sessionId.trim();
+    }
+
+    // The logical-conversation label, distinct from $session_id above:
+    // sanitizeLabel's identifier cap is the bound, because this is the one
+    // property here whose value the caller invents outright.
+    const conversationId = sanitizeLabel(event.conversationId);
+    if (conversationId !== undefined) {
+      properties["$mcp_conversation_id"] = conversationId;
     }
 
     const parameters = boundedMcpPayload(event.parameters);
@@ -1142,6 +1255,7 @@ export async function recordMcpInitializeEvent(
         event.clientNameSource ??
         (event.clientName ? "client_info" : undefined),
     });
+    assignMcpPersonProcessing(properties, deps);
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
       properties["$session_id"] = event.sessionId.trim();
@@ -1193,7 +1307,21 @@ export async function recordMcpToolsListEvent(
       properties["$mcp_tools_count"] = Math.round(event.toolCount);
     }
 
+    // Names, not just the count: each entry passes the same label cap every
+    // identifier here gets, and non-strings are dropped rather than
+    // stringified — a malformed entry is a caller bug, not data. The array
+    // itself is capped so a pathological caller cannot balloon the payload
+    // past the catalogue's own size.
+    if (Array.isArray(event.listedToolNames)) {
+      const names = event.listedToolNames
+        .map((name) => sanitizeLabel(name))
+        .filter((name): name is string => name !== undefined)
+        .slice(0, MAX_MCP_LISTED_TOOL_NAMES);
+      if (names.length > 0) properties["$mcp_listed_tool_names"] = names;
+    }
+
     assignMcpAttribution(properties, event);
+    assignMcpPersonProcessing(properties, deps);
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
       properties["$session_id"] = event.sessionId.trim();
@@ -1287,6 +1415,7 @@ async function postMcpResourceEvent(
     }
 
     assignMcpAttribution(properties, event);
+    assignMcpPersonProcessing(properties, deps);
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
       properties["$session_id"] = event.sessionId.trim();
@@ -1403,6 +1532,7 @@ export async function recordMcpMissingCapabilityEvent(
     }
 
     assignMcpAttribution(properties, event);
+    assignMcpPersonProcessing(properties, deps);
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
       properties["$session_id"] = event.sessionId.trim();

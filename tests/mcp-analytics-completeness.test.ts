@@ -159,6 +159,15 @@ describe("pre-dispatch refusals reach the $mcp_* family", () => {
       assert.equal(events[0].toolName, undefined);
       assert.equal(events[0].sessionId, "sess-1");
       assert.equal(events[0].clientNameSource, "user_agent");
+      // The NAME, not just the source label. parseUserAgentClient returns a
+      // {clientName, clientVersion} bag, and assigning the bag itself to
+      // clientName type-checked (the field is on a loose Row) while shipping
+      // every refusal clientless — the source label alone passed throughout.
+      assert.equal(events[0].clientName, "probe");
+      assert.equal(events[0].clientVersion, "1.0");
+      // The refusal's own status rides as $mcp_error_status: the one place in
+      // the family where an HTTP status genuinely exists.
+      assert.equal(events[0].errorStatus, status);
       // Both events go through waitUntil, never awaited in the MCP path.
       assert.equal(scheduled.length, 2);
     });

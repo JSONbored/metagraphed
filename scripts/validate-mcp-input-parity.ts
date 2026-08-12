@@ -25,12 +25,19 @@ type Row = Record<string, unknown>;
  * Arguments every tool may carry that no route publishes.
  *
  * These are transport-level, not data-level: `context` is agent-intent
- * telemetry (#9642), `cursor` is the MCP pagination idiom where REST uses the
- * same name but does not always publish it, `network` is a path PREFIX on the
- * REST side (`/api/v1/testnet/...`) rather than a parameter, and `fields` is
- * the projection contract (#9884).
+ * telemetry (#9642) and `conversation_id` its conversation-stitching sibling
+ * (both stripped before any handler runs), `cursor` is the MCP pagination
+ * idiom where REST uses the same name but does not always publish it,
+ * `network` is a path PREFIX on the REST side (`/api/v1/testnet/...`) rather
+ * than a parameter, and `fields` is the projection contract (#9884).
  */
-const MCP_TRANSPORT_ARGS = new Set(["context", "cursor", "network", "fields"]);
+const MCP_TRANSPORT_ARGS = new Set([
+  "context",
+  "conversation_id",
+  "cursor",
+  "network",
+  "fields",
+]);
 
 /** Query parameters a tool has no use for. `format` selects CSV; a tool
  * returns structuredContent. */
