@@ -49,6 +49,24 @@ import {
 } from "../src/usage-telemetry.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
+/**
+ * This Worker's OWN bindings, kept hand-written on purpose (#10861).
+ *
+ * `workers/wss-lb.worker-configuration.d.ts` is now generated from this
+ * Worker's config and gated by validate-worker-types-parity, but it is not what
+ * this interface should become. Every generated file declares a global `Env`
+ * and tsconfig includes `workers/**`, so all four MERGE into one interface that
+ * claims every binding of every Worker. Typing this entrypoint as `Env` would
+ * assert bindings this Worker does not have -- the trap #10186 documented, where
+ * `env.METAGRAPH_HEALTH_SOURCE` types cleanly inside data-api and is `undefined`
+ * at runtime.
+ *
+ * So the generated file is the DRIFT GATE's business and this interface is the
+ * entrypoint's. What the generator is good for here is telling us when the two
+ * disagree: it found `CF_VERSION_METADATA` and
+ * `POSTHOG_EXCEPTION_STORM_WINDOW_MS` bound in the config and absent below,
+ * which is why they now appear.
+ */
 export interface WssLbEnv {
   // Where the pools artifact is read from. Not hardcoded so a staging
   // deployment can point at a staging API without a code change.
@@ -63,6 +81,12 @@ export interface WssLbEnv {
   // main Workers.
   POSTHOG_PROJECT_TOKEN?: string;
   POSTHOG_HOST?: string;
+  // Read by src/usage-telemetry.ts through the `env as unknown as Env` casts
+  // below, never by this file directly -- which is exactly how it stayed
+  // undeclared here while being bound in the config all along.
+  POSTHOG_EXCEPTION_STORM_WINDOW_MS?: string;
+  // Same: bound in the config, consumed by shared helpers rather than here.
+  CF_VERSION_METADATA?: { id: string; tag?: string };
   // Optional. Absent => no per-IP limiting (fail open, see header).
   WSS_CONNECT_RATE_LIMITER?: {
     limit(o: { key: string }): Promise<{ success: boolean }>;

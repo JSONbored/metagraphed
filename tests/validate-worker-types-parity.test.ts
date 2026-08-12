@@ -14,13 +14,14 @@
 // validator silently skipped every durable-object and rate-limiter binding
 // (they key on `name`, not `binding`) until a deletion test caught it.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   declaredBindings,
   workerTypesParityErrors,
   WORKERS,
+  findUnlistedConfigs,
 } from "../scripts/validate-worker-types-parity.ts";
 import { repoRoot, stripJsonComments } from "../scripts/lib.ts";
 
@@ -168,7 +169,7 @@ describe("config parsing (scripts/lib.ts's shared stripJsonComments)", () => {
     expect(parse('{"a": "{x:1,}"}')).toEqual({ a: "{x:1,}" });
   });
 
-  it("parses all three real wrangler configs", () => {
+  it("parses every real wrangler config", () => {
     for (const worker of WORKERS) {
       expect(() =>
         parse(readFileSync(path.join(repoRoot, worker.config), "utf8")),
@@ -178,11 +179,27 @@ describe("config parsing (scripts/lib.ts's shared stripJsonComments)", () => {
 });
 
 describe("the worker list", () => {
-  it("covers all three wrangler configs", () => {
-    expect(WORKERS.map((w) => w.config).sort()).toEqual([
-      "wrangler.data.jsonc",
-      "wrangler.jsonc",
-      "wrangler.registry.jsonc",
-    ]);
+  // DERIVED FROM THE TREE, not restated (#10861). This assertion used to name
+  // the three configs literally, which made it a copy of WORKERS rather than a
+  // check on it: adding a fourth Worker failed this test and the fix was to
+  // type the new name in a second place. That is the wrong direction -- the
+  // whole point is to notice a config nobody wired up.
+  it("covers EVERY wrangler config in the repo", () => {
+    const onDisk = readdirSync(repoRoot)
+      .filter((f) => /^wrangler(\..+)?\.jsonc$/.test(f))
+      .sort();
+    expect(WORKERS.map((w) => w.config).sort()).toEqual(onDisk);
+  });
+
+  it("names the unlisted config, so the failure says what to do", () => {
+    // The gate's own escape hatch, exercised: a config on disk and absent from
+    // WORKERS has to be reported by name. Without this the roster check is a
+    // function nobody proves can fire.
+    expect(
+      findUnlistedConfigs(["wrangler.jsonc", "wrangler.brand-new.jsonc"]),
+    ).toEqual(["wrangler.brand-new.jsonc"]);
+    expect(findUnlistedConfigs(WORKERS.map((w) => w.config))).toEqual([]);
+    // Not every .jsonc is a wrangler config.
+    expect(findUnlistedConfigs(["tsconfig.jsonc", "knip.jsonc"])).toEqual([]);
   });
 });
