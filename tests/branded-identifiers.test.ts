@@ -13,12 +13,18 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   accountKeySchema,
+  blockEventCursorSchema,
+  keysetCursorSchema,
   providerSlugSchema,
   ss58Schema,
+  surfaceIdSchema,
+  type BlockEventCursor,
   type Coldkey,
   type Hotkey,
+  type KeysetCursor,
   type ProviderSlug,
   type Ss58Address,
+  type SurfaceId,
 } from "../schemas-src/query-params.ts";
 
 const ADDRESS = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
@@ -61,6 +67,26 @@ describe("branded identifiers", () => {
     assert.deepEqual(
       [wrongRole, wrongRoleBack, unproved, slugAsAddress, bare],
       [ADDRESS, ADDRESS, ADDRESS, "opentensor", ADDRESS],
+    );
+  });
+  test("the id and cursor families refuse each other too (#10866 sweep)", () => {
+    const surface: SurfaceId = surfaceIdSchema().parse(
+      "sn-64-chutes-subnet-api",
+    );
+    const keyset: KeysetCursor =
+      keysetCursorSchema().parse("eyJiIjo4NzgzMDAwfQ");
+    const dotted: BlockEventCursor =
+      blockEventCursorSchema().parse("8783000.4");
+
+    // @ts-expect-error a surface id is not a provider slug
+    const idAsSlug: ProviderSlug = surface;
+    // @ts-expect-error one feed's cursor is not the other's -- both are strings
+    const wrongCursor: KeysetCursor = dotted;
+    // @ts-expect-error and the other direction
+    const wrongCursorBack: BlockEventCursor = keyset;
+    assert.deepEqual(
+      [idAsSlug, wrongCursor, wrongCursorBack],
+      ["sn-64-chutes-subnet-api", "8783000.4", "eyJiIjo4NzgzMDAwfQ"],
     );
   });
 });

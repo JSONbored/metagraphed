@@ -83,7 +83,7 @@ export const SubnetIndexEntrySchema = z
     netuid: z.int().min(0),
     official_surface_count: z.int().min(0).optional(),
     participant_count: z.int().min(0).optional(),
-    partnership: z.union([PartnershipMetadataSchema, z.null()]).optional(),
+    partnership: PartnershipMetadataSchema.nullable().optional(),
     probed_surface_count: z.int().min(0).optional(),
     registered_at_block: z.int().min(0).optional(),
     registry_observed_count: z.int().min(0).optional(),

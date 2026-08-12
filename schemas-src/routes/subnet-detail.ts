@@ -239,7 +239,7 @@ export const CandidateSurfaceSchema = z
     subnet_name: z.string().nullable().optional(),
     superseded_by: z.string().nullable().optional(),
     url: z.url(),
-    verification: z.union([VerificationResultSchema, z.null()]).optional(),
+    verification: VerificationResultSchema.nullable().optional(),
   })
   .strict();
 export type CandidateSurface = z.infer<typeof CandidateSurfaceSchema>;
@@ -535,7 +535,7 @@ export const SubnetDetailSchema = z
     revenue_search: RevenueSearchSchema.optional(),
     wallet_search: WalletSearchSchema.optional(),
     participant_count: z.int().min(0).optional(),
-    partnership: z.union([PartnershipMetadataSchema, z.null()]).optional(),
+    partnership: PartnershipMetadataSchema.nullable().optional(),
     previously_known_as: z.array(z.string()).optional(),
     probed_surface_count: z.int().min(0).optional(),
     // Same open-shape carve-out as `links` above.
