@@ -28,8 +28,12 @@ import { NEURONS_NEON_LANE } from "../src/neurons-neon-write.ts";
 // The lane constant lives with its cron in the data-api Worker.
 import { TAO_USD_INDEX_NEON_LANE } from "../workers/data-api.ts";
 
-/** Each retired lane, and the producer whose deletion justifies retiring it. */
-const PRODUCERS: Record<string, string> = {
+/** Each retired lane, and the producer whose deletion justifies retiring it.
+ * `null` marks the one entry whose producer was a KEY SPELLING rather than a
+ * file -- the pre-#10851 buffer flush wrote per-lane verdicts under the bare
+ * statement tag -- justified below by a code assertion instead: the live
+ * writer provably files under the `neon:` prefix. */
+const PRODUCERS: Record<string, string | null> = {
   "neon-parity": "src/neon-parity.ts",
   "neon-mirror-lag": "src/neon-mirror-lag.ts",
   "neon:backfill:": "src/neon-backfill.ts",
@@ -60,8 +64,12 @@ describe("retired lanes (#10222)", () => {
     const names = [...RETIRED_LANES, ...RETIRED_LANE_PREFIXES];
     assert.ok(names.length > 0, "the list is not empty -- otherwise vacuous");
     for (const name of names) {
+      assert.ok(
+        name in PRODUCERS,
+        `${name} names the producer it retires (or null with a code assertion)`,
+      );
       const producer = PRODUCERS[name];
-      assert.ok(producer, `${name} names the producer it retires`);
+      if (producer === null) continue; // justified by its own test below
       assert.equal(
         existsSync(new URL(`../${producer}`, import.meta.url)),
         false,

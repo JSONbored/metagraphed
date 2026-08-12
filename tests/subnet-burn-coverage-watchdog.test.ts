@@ -7,7 +7,17 @@
 // than written. So the assertions below are mostly about that one state --
 // everything else is boundary work around it.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+
+// The store is reached through `new Client()` inside src/read-store.ts, which a
+// caller cannot inject into -- so the pg MODULE is doubled, exactly as the
+// sibling coverage watchdog's suite does it.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 import {
   SUBNET_BURN_COVERAGE_FLOOR_RATIO,
   SUBNET_BURN_COVERAGE_LANE,
@@ -98,17 +108,24 @@ describe("the ladder's order", () => {
 });
 
 describe("the lane record", () => {
+  beforeEach(() => {
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.failNext = null;
+  });
+
   function fakeEnv(row: Record<string, unknown> | undefined) {
     const recorded: unknown[] = [];
-    const db = {
-      prepare: () => ({ all: async () => ({ results: row ? [row] : [] }) }),
-    };
+    // The coverage SELECT answers `row`; the lane_health insert and its prune
+    // answer empty.
+    pg.control.answers.push({
+      match: /FROM subnet_burn_history/,
+      rows: row ? [row] : [],
+    });
+    pg.control.answers.push({ match: /.*/, rows: [] });
     return {
       recorded,
-      env: {
-        HYPERDRIVE: { connectionString: "postgres://x" },
-        __db: db,
-      } as unknown as Env,
+      env: pgMockEnv() as unknown as Env,
       record: async (_db: unknown, r: unknown) => {
         recorded.push(r);
         return true;
@@ -120,16 +137,14 @@ describe("the lane record", () => {
     // "stale" alone sends an operator looking for a dead lane; "3 of 129
     // netuids (partial)" is the finding itself.
     const f = fakeEnv({ latest: NOW - 60_000, covered: 3, expected: 129 });
-    // readStore resolves from env; when it declines the watchdog returns null,
-    // which is a legitimate outcome this test does not exercise.
     const out = await runSubnetBurnCoverageWatchdog(f.env, {
       now: () => NOW,
       recordVerdict: f.record as never,
     });
-    if (out === null) {
-      assert.equal(f.recorded.length, 0, "a declined read records nothing");
-      return;
-    }
+    // NOT tolerated as null any more (#10909): the store is doubled now, so a
+    // decline means the read broke rather than that the fixture could not
+    // reach one -- and a test that accepts either answer asserts neither.
+    assert.ok(out, "the doubled store must answer, not decline");
     assert.equal(out.reason, "partial");
     const rec = f.recorded[0] as {
       lane: string;
