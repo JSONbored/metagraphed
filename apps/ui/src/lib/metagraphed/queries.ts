@@ -297,6 +297,8 @@ import type {
   SubnetYield,
   SubnetYieldNeuron,
   YieldHistoryPoint,
+  SubnetEmissionSplitHistory,
+  EmissionSplitPoint,
   SubnetYieldHistory,
   SubnetProfile,
   SubnetOverview,
@@ -8725,6 +8727,67 @@ export const subnetYieldQuery = (netuid: number) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetYield>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeEmissionSplitPoint(raw: unknown): EmissionSplitPoint | null {
+  if (!isRecord(raw)) return null;
+  const date = coerceString(raw.snapshot_date);
+  if (!date) return null;
+  return {
+    snapshot_date: date,
+    validator_count: coerceFiniteNumber(raw.validator_count),
+    miner_count: coerceFiniteNumber(raw.miner_count),
+    earning_validator_count: coerceFiniteNumber(raw.earning_validator_count),
+    earning_miner_count: coerceFiniteNumber(raw.earning_miner_count),
+    // `?? null`, not `?? 0`: an unpriceable or un-emitted day publishes null,
+    // and a zero here would read as "validators received none of it".
+    validator_share_of_uid: coerceFiniteNumber(raw.validator_share_of_uid) ?? null,
+    miner_share_of_uid: coerceFiniteNumber(raw.miner_share_of_uid) ?? null,
+    owner_share: coerceFiniteNumber(raw.owner_share) ?? null,
+    validator_share: coerceFiniteNumber(raw.validator_share) ?? null,
+    miner_share: coerceFiniteNumber(raw.miner_share) ?? null,
+    total_alpha: coerceFiniteNumber(raw.total_alpha) ?? null,
+  };
+}
+
+function normalizeSubnetEmissionSplitHistory(
+  netuid: number,
+  raw: unknown,
+): SubnetEmissionSplitHistory {
+  const d = isRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_HISTORY_POINTS).flatMap((point) => {
+        const normalized = normalizeEmissionSplitPoint(point);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    window: coerceString(d.window),
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    points,
+  };
+}
+
+/** Per-day emission split by recipient class — owner / validator / miner. */
+export const subnetEmissionSplitHistoryQuery = (
+  netuid: number,
+  window: "7d" | "30d" | "90d" = "30d",
+) =>
+  queryOptions({
+    queryKey: k("subnet-emission-split-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetEmissionSplitHistory>>(
+        `/api/v1/subnets/${netuid}/emission-split/history`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetEmissionSplitHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetEmissionSplitHistory>;
     },
     staleTime: STALE_MED,
   });

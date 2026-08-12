@@ -60,6 +60,7 @@ import { SearchInput } from "@/components/metagraphed/table-controls";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { SubnetEmissionPanel } from "@/components/metagraphed/subnet-emission-panel";
+import { SubnetEmissionSplitPanel } from "@/components/metagraphed/subnet-emission-split-panel";
 import { SubnetRevenuePanel } from "@/components/metagraphed/subnet-revenue-panel";
 import { SubnetMoneyMapPanel } from "@/components/metagraphed/subnet-money-map-panel";
 import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-snippet";
@@ -676,6 +677,7 @@ function EconomicsTabPanel({ netuid }: { netuid: number }) {
       >
         <QueryErrorBoundary>
           <SubnetEmissionPanel netuid={netuid} />
+          <SubnetEmissionSplitPanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 
