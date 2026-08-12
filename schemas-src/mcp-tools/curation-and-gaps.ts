@@ -14,13 +14,10 @@ import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListArtifactStamp,
   McpListPageFields,
-  fieldsSchema,
   kindSchema,
-  limitSchema,
-  numericCursorSchema,
-  orderSchema,
   projectableRows,
   sortSchema,
+  McpSortableListPage,
 } from "./shared.ts";
 import { CurationArtifactSchema } from "../routes/curation-gaps.ts";
 import { GapsArtifactSchema } from "../routes/curation-gaps.ts";
@@ -40,10 +37,7 @@ export const ListCurationInputSchema = z
       .meta({ examples: [COVERAGE_LEVELS[0]] }),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.curation.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListCurationInput = z.infer<typeof ListCurationInputSchema>;
@@ -68,10 +62,7 @@ export const ListGapsInputSchema = z
       .meta({ examples: [COVERAGE_LEVELS[0]] }),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.gaps.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListGapsInput = z.infer<typeof ListGapsInputSchema>;

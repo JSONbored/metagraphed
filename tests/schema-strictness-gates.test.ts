@@ -117,6 +117,39 @@ describe("schema-shape-duplicates", () => {
     );
   });
 
+  test("a DERIVED field is not a second declaration", () => {
+    // The #10064 idiom: an MCP input built field by field off its route's
+    // schema. The constraint still has one home and a rename there is still a
+    // compile error here, so counting these as duplicates reported the fix as
+    // the disease (#10790).
+    const derived = [
+      "  a: Route.shape.a,",
+      "  b: Route.shape.b.optional(),",
+      "  c: Route.shape.c,",
+      "  d: Route.shape.d,",
+    ].join("\n");
+    assert.deepEqual(
+      findDuplicates(findObjectShapes(twoFiles(FOUR, derived))),
+      [],
+    );
+  });
+
+  test("but a literal that only PARTLY derives is still reported", () => {
+    // The negative that keeps the exemption honest: three borrowed fields and
+    // one hand-written is still a hand-written vocabulary, and if the threshold
+    // were "any derivation exempts the literal" this would pass silently.
+    const mostly = [
+      "  a: Route.shape.a,",
+      "  b: z.string(),",
+      "  c: z.string(),",
+      "  d: z.string(),",
+      "  e: z.string(),",
+    ].join("\n");
+    const other = `${FOUR}\n  e: z.string(),`;
+    const found = findDuplicates(findObjectShapes(twoFiles(other, mostly)));
+    assert.equal(found.length, 1, "four declared keys still meet the bar");
+  });
+
   test("is silent for two literals in ONE file", () => {
     // A schema and its history variant sharing a point shape, declared side by
     // side where a reader sees both. The failure this gate exists for is the

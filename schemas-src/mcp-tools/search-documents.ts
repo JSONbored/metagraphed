@@ -16,13 +16,10 @@ import {
   McpListArtifactStamp,
   McpListPageFields,
   NotesFieldSchema,
-  fieldsSchema,
-  limitSchema,
-  numericCursorSchema,
-  orderSchema,
   projectableRows,
   querySchema,
   sortSchema,
+  McpSortableListPage,
 } from "./shared.ts";
 import { SearchIndexArtifactSchema } from "../routes/evidence-search.ts";
 import { SearchArtifactSchema } from "../routes/evidence-search.ts";
@@ -37,10 +34,7 @@ export const ListSearchIndexInputSchema = z
       .meta({ examples: [SEARCH_DOCUMENT_TYPE_VALUES[0]] }),
     netuid: API_QUERY_COLLECTIONS.documents.filter_schemas.netuid.optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.documents.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListSearchIndexInput = z.infer<typeof ListSearchIndexInputSchema>;
@@ -63,10 +57,7 @@ export const ListSearchInputSchema = z
       .meta({ examples: [SEARCH_DOCUMENT_TYPE_VALUES[0]] }),
     netuid: API_QUERY_COLLECTIONS.documents.filter_schemas.netuid.optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.documents.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListSearchInput = z.infer<typeof ListSearchInputSchema>;

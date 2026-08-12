@@ -12,6 +12,15 @@ import { z } from "zod";
 import { distributionStatsSchema } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
+import {
+  fieldsSchema,
+  limitSchema,
+  numericCursorSchema,
+  offsetSchema,
+  orderSchema,
+} from "../query-params.ts";
+import { MAX_LIMIT } from "../../workers/request-params.ts";
+import { MCP_LIST_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 
 // The query-parameter vocabulary now lives in schemas-src/query-params.ts so the
 // REST route schemas can use it too (#9986). Re-exported here because ~100 MCP
@@ -358,3 +367,44 @@ export function projectableRows<Row extends z.ZodObject<z.ZodRawShape>>(
 ) {
   return z.array(rows.element.partial());
 }
+
+/**
+ * The offset page every document-collection tool takes -- ONE declaration
+ * (#10790).
+ *
+ * Six tools carried this pair, each under the same twelve-line comment copied
+ * verbatim. Both numbers come from the constants that actually decide them:
+ * `MAX_LIMIT` is the ceiling `listQuerySchema` gives every list route, and
+ * `MCP_LIST_LIMIT_DEFAULT` is the default `applyMcpQueryFilters` really
+ * applies -- published rather than hidden, because #10101 found 83 tools whose
+ * schema left a caller unable to tell what an omitted `limit` returns.
+ * Publishing the ceiling while hiding the default would recreate that gap.
+ *
+ * `cursor` is an integer OFFSET, which is what these routes publish
+ * (`{minimum: 0, type: integer}`), NOT the keyset cursor. Conflating the two is
+ * the mistake `query-params.ts` calls out by name.
+ */
+export const McpOffsetPageInput = {
+  limit: limitSchema(MAX_LIMIT, MCP_LIST_LIMIT_DEFAULT).optional(),
+  cursor: offsetSchema().optional(),
+};
+
+/**
+ * The projection + keyset page every SORTABLE list tool takes -- ONE
+ * declaration (#10790).
+ *
+ * `order`, `fields`, `limit` and `cursor` are identical on every one of them;
+ * only `sort` differs, because its allowed values are the collection's own
+ * sort fields. So `sort` stays declared per site, beside the collection it
+ * belongs to, and the four that never vary come from here.
+ *
+ * The `limit` ceiling is the tools' 100, not the route's 1000: MCP caps pages
+ * for the context window, deliberately (#9981). That is a declaration, not
+ * drift, and `validate:mcp-input-parity` records it as one.
+ */
+export const McpSortableListPage = {
+  order: orderSchema().optional(),
+  fields: fieldsSchema().optional(),
+  limit: limitSchema(100, 20).optional(),
+  cursor: numericCursorSchema().optional(),
+};

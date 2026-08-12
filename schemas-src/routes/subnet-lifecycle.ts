@@ -9,6 +9,7 @@
 // Backed by `subnet_lifecycle` in Neon, appended by the detection folded into
 // the neurons-staleness tick (#10262).
 import { z } from "zod";
+import { subnetEntryListSchema } from "../shared.ts";
 
 /**
  * The two transitions.
@@ -50,17 +51,9 @@ export const SubnetLifecycleEntrySchema = z
   );
 export type SubnetLifecycleEntry = z.infer<typeof SubnetLifecycleEntrySchema>;
 
-export const SubnetLifecycleArtifactSchema = z
-  .object({
-    schema_version: z.int(),
-    netuid: z.int().min(0),
-    entry_count: z.int().min(0),
-    limit: z.int().min(1).max(1000).nullable().optional(),
-    offset: z.int().min(0).nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    entries: z.array(SubnetLifecycleEntrySchema),
-  })
-  .strict();
+export const SubnetLifecycleArtifactSchema = subnetEntryListSchema(
+  SubnetLifecycleEntrySchema,
+);
 export type SubnetLifecycleArtifact = z.infer<
   typeof SubnetLifecycleArtifactSchema
 >;

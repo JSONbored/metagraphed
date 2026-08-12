@@ -32,6 +32,11 @@ import { z } from "zod";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import { netuidSchema } from "./shared.ts";
 import { ReviewGapPrioritySchema } from "../routes/review-gaps-profile.ts";
+// The route's OWN curation block (#10790). The copy typed `level` and
+// `review_state` as bare strings where the route publishes the two enums that
+// say what the values MEAN -- so an agent reading this tool's contract could
+// not learn that `review_state` is one of four states.
+import { CurationMetadataSchema } from "../routes/subnet-detail.ts";
 
 export const GetSubnetInputSchema = z
   .object({
@@ -69,18 +74,6 @@ const SubnetOverviewCountsSchema = z
   })
   .strict();
 
-/** The human-governance axis: who reviewed this record and when. */
-const SubnetOverviewCurationSchema = z
-  .object({
-    level: z.string().nullable().optional(),
-    review_state: z.string().nullable().optional(),
-    reviewed_at: z.string().nullable().optional(),
-    verified_at: z.string().nullable().optional(),
-    source_count: z.int().nullable().optional(),
-    gap_notes: z.array(z.string()).optional(),
-  })
-  .strict();
-
 /** One ranked enrichment opportunity. Was `z.array(z.unknown())`, which says
  * strictly less than an open object: not merely "shape unknown" but "nothing is
  * known about this value at all". */
@@ -94,7 +87,7 @@ export const GetSubnetOutputSchema = z
     // The profile surface's own shape, not a restatement of it.
     profile: SubnetProfileArtifactSchema.shape.profile.nullable().optional(),
     counts: SubnetOverviewCountsSchema.optional(),
-    curation: SubnetOverviewCurationSchema.nullable().optional(),
+    curation: CurationMetadataSchema.nullable().optional(),
     gaps: SubnetProfileArtifactSchema.shape.gaps.nullable().optional(),
     // The REVIEW ROUTE'S OWN ROW, not a copy of it (#10790). This was a
     // hand-written six-field restatement of an eleven-field producer, so

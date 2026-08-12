@@ -15,14 +15,11 @@ import {
   reviewStateSchema,
   McpListArtifactStamp,
   McpListPageFields,
-  fieldsSchema,
   kindSchema,
-  limitSchema,
-  numericCursorSchema,
-  orderSchema,
   projectableRows,
   querySchema,
   sortSchema,
+  McpSortableListPage,
 } from "./shared.ts";
 import {
   REVIEW_ENRICHMENT_LANE_VALUES,
@@ -77,10 +74,7 @@ export const ListEnrichmentEvidenceInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["enrichment-evidence"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListEnrichmentEvidenceInput = z.infer<
@@ -101,24 +95,34 @@ export type ListEnrichmentEvidenceOutput = z.infer<
   typeof ListEnrichmentEvidenceOutputSchema
 >;
 
-const CURATION_LEVELS = CURATION_LEVEL_VALUES;
+/**
+ * The gap-review FILTERS, declared once for both callers (#10790).
+ *
+ * `list_review_gaps` and `list_subnet_gaps` share all three. What they do not
+ * share is `netuid` -- an optional FILTER on the network-wide feed, the
+ * required SUBJECT of the per-subnet one -- or their sort fields, which name
+ * different collections (`gaps` against `review-gap-priorities`). Same key set,
+ * genuinely different arguments, so those two stay declared per site where the
+ * difference is visible.
+ */
+export const GAP_REVIEW_FILTERS = {
+  curation_level: kindSchema(CURATION_LEVEL_VALUES).optional(),
+  missing_kinds: z
+    .enum(SURFACE_KIND_VALUES)
+    .optional()
+    .describe(
+      "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
+    )
+    .meta({ examples: [SURFACE_KIND_VALUES[0]] }),
+  review_state: reviewStateSchema().optional(),
+};
+
 export const ListReviewGapsInputSchema = z
   .object({
     netuid: API_QUERY_COLLECTIONS.gaps.filter_schemas.netuid.optional(),
-    curation_level: kindSchema(CURATION_LEVELS).optional(),
-    missing_kinds: z
-      .enum(SURFACE_KINDS)
-      .optional()
-      .describe(
-        "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
-      )
-      .meta({ examples: [SURFACE_KINDS[0]] }),
-    review_state: reviewStateSchema().optional(),
+    ...GAP_REVIEW_FILTERS,
     sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListReviewGapsInput = z.infer<typeof ListReviewGapsInputSchema>;
@@ -212,10 +216,7 @@ export const ListReviewEnrichmentTargetsInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["enrichment-targets"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListReviewEnrichmentTargetsInput = z.infer<

@@ -14,14 +14,11 @@ import {
   reviewStateSchema,
   McpListArtifactStamp,
   McpListPageFields,
-  fieldsSchema,
   kindSchema,
-  limitSchema,
-  numericCursorSchema,
-  orderSchema,
   projectableRows,
   querySchema,
   sortSchema,
+  McpSortableListPage,
 } from "./shared.ts";
 import {
   REVIEW_ENRICHMENT_LANE_VALUES,
@@ -96,10 +93,7 @@ export const ListEnrichmentQueueInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["enrichment-queue"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListEnrichmentQueueInput = z.infer<
@@ -149,10 +143,7 @@ export const ListAdapterCandidatesInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["adapter-candidates"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListAdapterCandidatesInput = z.infer<

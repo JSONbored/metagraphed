@@ -5235,19 +5235,19 @@ export interface components {
             extrinsic_count: number;
             extrinsics: {
                 block_number: number | null;
-                /** @description JSON-encoded decoded call arguments. */
-                call_args?: unknown | null;
-                call_function?: string | null;
-                call_module?: string | null;
-                extrinsic_hash?: string | null;
+                call_args: ({
+                    [key: string]: unknown;
+                } | unknown[]) | null;
+                call_function: string | null;
+                call_module: string | null;
+                extrinsic_hash: string | null;
                 extrinsic_index: number | null;
-                fee_tao?: number | null;
-                observed_at?: string | null;
-                signer?: string | null;
-                success?: boolean | null;
-                /** @description Deterministic human-readable action sentence for this extrinsic's call, or null when no template matches call_module.call_function (#8525). */
-                summary?: string | null;
-                tip_tao?: number | null;
+                fee_tao: number | null;
+                observed_at: string | null;
+                signer: string | null;
+                success: boolean | null;
+                summary: string | null;
+                tip_tao: number | null;
             }[];
             limit: number | null;
             next_cursor?: string | null;
@@ -7508,12 +7508,12 @@ export interface components {
             source: {
                 candidates: string;
                 native: string | {
-                    identity_storage?: string | null;
-                    kind?: string | null;
-                    method?: string | null;
-                    package?: string | null;
-                    rpc_family?: string | null;
-                    version?: string | null;
+                    identity_storage?: string;
+                    kind?: string;
+                    method?: string;
+                    package?: string;
+                    rpc_family?: string;
+                    version?: string;
                 };
                 overlays: string;
             };
@@ -10241,12 +10241,8 @@ export interface components {
             }[];
             source: string;
             summary?: {
-                by_drift_status: {
-                    [key: string]: number;
-                };
-                by_status: {
-                    [key: string]: number;
-                };
+                by_drift_status: components["schemas"]["CountMap"];
+                by_status: components["schemas"]["CountMap"];
                 schema_count: number;
                 surface_count: number;
             };
@@ -20203,7 +20199,17 @@ export interface operations {
                      *         "extrinsics": [
                      *           {
                      *             "block_number": 5000000,
-                     *             "extrinsic_index": 1
+                     *             "call_args": {},
+                     *             "call_function": "example",
+                     *             "call_module": "example",
+                     *             "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "extrinsic_index": 1,
+                     *             "fee_tao": 0.5,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "signer": "example",
+                     *             "success": false,
+                     *             "summary": "Example description.",
+                     *             "tip_tao": 0.5
                      *           }
                      *         ],
                      *         "limit": 1,
