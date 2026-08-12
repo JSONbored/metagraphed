@@ -912,6 +912,7 @@
         "currency": "USD",
         "grain": "cumulative",
         "shape": "flat-array",
+        "rows": "items",
         "fields": {
           "date": "timestamp",
           "amount": "usd_amount"
@@ -919,7 +920,7 @@
         "circularity": "external",
         "source_url": "https://api.chutes.ai/openapi.json"
       },
-      "notes": "Public no-auth GET /payments on api.chutes.ai, returning a list of TAO payment transactions with taostats.io transaction/account links. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. Distinct from the already-tracked /payments/summary/tao aggregate totals.",
+      "notes": "Public no-auth GET /payments on api.chutes.ai, returning a paginated envelope ({total, page, limit, items}) of TAO payment transactions with taostats.io transaction/account links. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. Distinct from the already-tracked /payments/summary/tao aggregate totals.",
       "probe": {
         "enabled": true,
         "expect": "json",

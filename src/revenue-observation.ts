@@ -24,6 +24,15 @@ export interface RevenueDeclaration {
   currency?: string;
   fields?: Record<string, string>;
   excludes?: string[];
+  /**
+   * WHERE the rows live (#10855): the envelope key holding the payload the
+   * shape describes. `shape` says how rows are arranged; it could never say
+   * that they sit under `items` in a pagination envelope, so a surface whose
+   * rows genuinely are a flat array — api.chutes.ai/payments — failed
+   * "expected an array payload" deterministically, every hour, forever.
+   * Absent means the payload IS the rows, which is every other declaration.
+   */
+  rows?: string;
 }
 
 export interface RevenueObservation {
@@ -102,6 +111,21 @@ export function extractRevenue(
   }
   if (!currency) return fail("no currency declared");
   const fields = declaration.fields ?? {};
+
+  // Unwrap the declared envelope BEFORE any shape dispatch, so `rows` means
+  // the same thing for every shape. Both failure modes name the key: "the
+  // envelope was not an object" and "the key was not there" are different
+  // upstream changes, and the dead-letter summary is where the distinction
+  // is read.
+  if (declaration.rows !== undefined) {
+    if (!isRecord(payload)) {
+      return fail(`rows "${declaration.rows}": payload is not an object`);
+    }
+    if (!(declaration.rows in payload)) {
+      return fail(`rows "${declaration.rows}": key missing from payload`);
+    }
+    payload = payload[declaration.rows];
+  }
 
   if (shape === "flat-array") {
     if (!Array.isArray(payload)) return fail("expected an array payload");
