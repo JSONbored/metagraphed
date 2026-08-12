@@ -464,7 +464,15 @@ export const blockEventCursorSchema = () =>
         "`next_cursor` from the previous response. Both parts are " +
         "non-negative safe integers.",
     )
-    .meta({ examples: ["8783000.4"] });
+    .meta({ examples: ["8783000.4"] })
+    // Branded (#10866): a caller round-trips this and the opaque keyset token
+    // both as strings, and handing one feed's cursor to the other compiled.
+    .brand<"BlockEventCursor">();
+
+/** A parsed block-event cursor, nominally distinct from the opaque keyset. */
+export type BlockEventCursor = z.infer<
+  ReturnType<typeof blockEventCursorSchema>
+>;
 
 /**
  * An opaque pagination token, published with NO length or shape claim.
@@ -520,7 +528,13 @@ export const keysetCursorSchema = () =>
         "response verbatim. Its contents are not stable and must not be parsed " +
         "or constructed. Stable across inserts, unlike a row offset.",
     )
-    .meta({ examples: ["eyJiIjo4NzgzMDAwLCJpIjo0fQ"] });
+    .meta({ examples: ["eyJiIjo4NzgzMDAwLCJpIjo0fQ"] })
+    // Branded (#10866): this and the block-event cursor are both strings a
+    // caller round-trips, and handing one feed's token to the other compiled.
+    .brand<"KeysetCursor">();
+
+/** A parsed opaque keyset token, nominally distinct from the dotted cursor. */
+export type KeysetCursor = z.infer<ReturnType<typeof keysetCursorSchema>>;
 
 /**
  * The accepted `fields` syntax, which was documented NOWHERE a caller could see it:
@@ -783,7 +797,14 @@ export const surfaceIdSchema = () =>
       "The surface's stable id (`sn-64-chutes-subnet-api`), as returned by " +
         "the surface-listing tools. Stable across renames, unlike the name.",
     )
-    .meta({ examples: ["sn-64-chutes-subnet-api"] });
+    .meta({ examples: ["sn-64-chutes-subnet-api"] })
+    // Branded with the other identifier families (#10866): a surface id and a
+    // provider slug are both short hyphenated strings, and the registry keys
+    // both. Type-level only; the wire format does not move.
+    .brand<"SurfaceId">();
+
+/** A parsed surface id, nominally distinct from the slug families. */
+export type SurfaceId = z.infer<ReturnType<typeof surfaceIdSchema>>;
 
 /**
  * A hotkey or coldkey the caller must pick. Distinct from `ss58Schema()` only

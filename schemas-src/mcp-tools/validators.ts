@@ -240,7 +240,7 @@ export const GetValidatorNominatorsOutputSchema = z
     // Carried by both builders, on every path including the decline.
     schema_version: z.int(),
     hotkey: z.unknown(),
-    limit: z.union([z.int().min(0), z.null()]),
+    limit: z.int().min(0).nullable(),
     offset: z.int().min(0),
     nominator_count: z.int().min(0).nullable(),
     // The item shape follows the basis: TAO totals over a window, or standing
