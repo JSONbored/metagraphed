@@ -546,7 +546,6 @@ async function neuronSlots(
   if (!db?.query) return null;
   let results: unknown[];
   try {
-    if (!db.query) return null;
     results = await db.query(
       "SELECT netuid, uid FROM neurons WHERE hotkey = ?",
       [addr],

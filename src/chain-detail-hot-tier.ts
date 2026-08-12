@@ -78,9 +78,8 @@ async function query(
   params: unknown[],
 ): Promise<Row[] | null> {
   const binding = db(env);
-  if (!binding) return null;
+  if (!binding?.query) return null;
   try {
-    if (!binding.query) return null;
     return (await binding.query(sql, params)) as Row[];
   } catch {
     return null;
