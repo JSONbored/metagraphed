@@ -25,7 +25,15 @@
 //   2. genuinely new module-scope work — move it behind first use.
 import { pathToFileURL } from "node:url";
 
-const BUDGET_MS = 600;
+// A GROSS backstop, not the primary signal — wall time varies with the
+// hardware running it (the fixed graph measured 321ms on an M-series laptop
+// and 607ms on a CI runner in the same hour; the broken graph ~737ms locally,
+// so ~1.4s on that runner). The hardware-independent signal is the deferred
+// check below: whether the heavy module was already evaluated does not depend
+// on how fast the machine evaluated it. This threshold exists only to catch
+// a regression so large the lazy check alone might not name it (a NEW heavy
+// module that never had a deferral to assert).
+const BUDGET_MS = 1500;
 
 const startedAt = Date.now();
 await import(pathToFileURL("workers/api.ts").href);
