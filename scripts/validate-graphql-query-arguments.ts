@@ -15,6 +15,7 @@
 // shrinks: closing one and leaving its entry fails.
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
+import ts from "typescript";
 import { parse, print } from "graphql";
 import type { ObjectTypeDefinitionNode } from "graphql";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
@@ -28,6 +29,98 @@ import {
 } from "../schemas-src/graphql/published-names.ts";
 
 export { DECLARED_MISSING_NETWORK };
+
+/**
+ * Re-read the fact every `DECLARED_MISSING_NETWORK` entry cites (#10870).
+ *
+ * Each entry's reason is a claim about a RESOLVER -- "it destructures `{ ref }`
+ * and nothing else, so publishing `network` would let a caller ask for testnet
+ * and silently receive mainnet" -- and a reason nothing re-reads expires
+ * silently: #10863 caught three expired `fields` justifications whose cited
+ * JSON member had left the projection, and this list is one resolver edit away
+ * from the same fate. So the claim is checked on every run, over the AST
+ * rather than by regex (a source-regex gate goes blind the moment a formatter
+ * rewraps what it matched).
+ *
+ * The rule per entry: the named `rootValue` resolver's first parameter must be
+ * an object destructuring that does NOT bind `network`. A resolver that starts
+ * binding it has outgrown the entry -- delete it and publish the argument. One
+ * that stops destructuring (an identifier parameter can read anything) makes
+ * the cited fact unverifiable, which is the same failure: rewrite the reason
+ * into something this check can read, or forward the argument.
+ */
+export function expiredMissingNetworkReasons(
+  resolverSource: string,
+  missingNetwork: readonly string[] = DECLARED_MISSING_NETWORK,
+): string[] {
+  const source = ts.createSourceFile(
+    "src/graphql.ts",
+    resolverSource,
+    ts.ScriptTarget.ES2022,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let root: ts.ObjectLiteralExpression | null = null;
+  const findRoot = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "rootValue" &&
+      node.initializer &&
+      ts.isObjectLiteralExpression(node.initializer)
+    ) {
+      root = node.initializer;
+      return;
+    }
+    ts.forEachChild(node, findRoot);
+  };
+  findRoot(source);
+  if (!root) {
+    // No rootValue at all: every entry's cited fact is unverifiable.
+    return [...missingNetwork];
+  }
+  const expired: string[] = [];
+  for (const field of missingNetwork) {
+    const member = (root as ts.ObjectLiteralExpression).properties.find(
+      (property) =>
+        property.name !== undefined &&
+        (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+        property.name.text === field,
+    );
+    const fn =
+      member && ts.isMethodDeclaration(member)
+        ? member
+        : member &&
+            ts.isPropertyAssignment(member) &&
+            (ts.isArrowFunction(member.initializer) ||
+              ts.isFunctionExpression(member.initializer))
+          ? member.initializer
+          : null;
+    if (!fn) {
+      expired.push(field);
+      continue;
+    }
+    const first = fn.parameters[0];
+    // No parameter reads nothing; a destructure is checkable binding by
+    // binding; an identifier parameter can reach anything, so the cited
+    // "reads no network" is no longer a fact this gate can verify.
+    if (!first) continue;
+    if (!ts.isObjectBindingPattern(first.name)) {
+      expired.push(field);
+      continue;
+    }
+    const bindsNetwork = first.name.elements.some(
+      (element) =>
+        ts.isBindingElement(element) &&
+        ((ts.isIdentifier(element.name) && element.name.text === "network") ||
+          (element.propertyName !== undefined &&
+            ts.isIdentifier(element.propertyName) &&
+            element.propertyName.text === "network")),
+    );
+    if (bindsNetwork) expired.push(field);
+  }
+  return expired;
+}
 import {
   deriveQueryArguments,
   fieldsArgumentApplies,
@@ -220,11 +313,24 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     sdl,
     JSON.parse(readFileSync(OPENAPI_PATH, "utf8")) as OpenApiParameters,
   );
+  const expired = expiredMissingNetworkReasons(
+    readFileSync("src/graphql.ts", "utf8"),
+  );
   console.log(
     `graphql-query-arguments: ${report.exact} field(s) reproduce their route's ` +
       `parameters exactly, ${report.skipped} skipped, ` +
-      `${DECLARED_MISSING_NETWORK.length} missing \`network\` (#10394).`,
+      `${DECLARED_MISSING_NETWORK.length} missing \`network\` ` +
+      `(reason re-checked, #10870).`,
   );
+  if (expired.length) {
+    console.error(
+      `\n${expired.length} DECLARED_MISSING_NETWORK reason(s) no longer hold: ` +
+        `the resolver the entry cites now binds \`network\`, or stopped ` +
+        `destructuring so the cited fact cannot be read. Publish the argument ` +
+        `and delete the entry, or restore a checkable reason:`,
+    );
+    for (const field of expired) console.error(`  - ${field}`);
+  }
   if (report.violations.length) {
     console.error(
       `\n${report.violations.length} argument(s) the routes do not derive:`,
@@ -241,6 +347,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     );
     for (const key of report.stale) console.error(`  - ${key}`);
   }
-  if (report.violations.length || report.stale.length) process.exit(1);
+  if (report.violations.length || report.stale.length || expired.length) {
+    process.exit(1);
+  }
   console.log("graphql-query-arguments: OK");
 }

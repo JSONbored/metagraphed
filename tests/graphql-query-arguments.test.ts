@@ -10,6 +10,7 @@ import { describe, test } from "vitest";
 import {
   DECLARED_MISSING_NETWORK,
   checkQueryArguments,
+  expiredMissingNetworkReasons,
 } from "../scripts/validate-graphql-query-arguments.ts";
 import { extractSdl } from "../scripts/validate-graphql-component-parity.ts";
 import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.ts";
@@ -149,6 +150,61 @@ describe("checkQueryArguments", () => {
         v.endsWith("network: the route publishes it, the SDL does not"),
       ).length,
       DECLARED_MISSING_NETWORK.length,
+    );
+  });
+});
+
+// ── the DECLARED_MISSING_NETWORK reason, re-read on every run (#10870) ───────
+//
+// Each entry cites a resolver fact ("destructures { ref } and nothing else"),
+// and a reason nothing re-reads expires silently -- #10863 caught three
+// expired `fields` justifications the same day. These drive the checker with
+// synthetic resolvers and assert every arm: holds, outgrown, unverifiable.
+describe("expiredMissingNetworkReasons", () => {
+  test("a resolver that binds only `ref` keeps its entry", () => {
+    assert.deepEqual(
+      expiredMissingNetworkReasons(
+        `const rootValue = { async extrinsic({ ref }: Args) { return ref; } };`,
+        ["extrinsic"],
+      ),
+      [],
+    );
+  });
+
+  test("FAILS when the resolver starts binding `network` -- the entry is outgrown", () => {
+    assert.deepEqual(
+      expiredMissingNetworkReasons(
+        `const rootValue = { async extrinsic({ ref, network }: Args) { return ref; } };`,
+        ["extrinsic"],
+      ),
+      ["extrinsic"],
+    );
+  });
+
+  test("FAILS when the resolver stops destructuring -- the cited fact is unreadable", () => {
+    assert.deepEqual(
+      expiredMissingNetworkReasons(
+        `const rootValue = { async extrinsic(args: Args) { return args; } };`,
+        ["extrinsic"],
+      ),
+      ["extrinsic"],
+    );
+  });
+
+  test("a renamed binding of `network` is still `network`", () => {
+    assert.deepEqual(
+      expiredMissingNetworkReasons(
+        `const rootValue = { async extrinsic({ ref, network: net }: Args) { return net; } };`,
+        ["extrinsic"],
+      ),
+      ["extrinsic"],
+    );
+  });
+
+  test("the committed resolver still satisfies the committed list", () => {
+    assert.deepEqual(
+      expiredMissingNetworkReasons(readFileSync("src/graphql.ts", "utf8")),
+      [],
     );
   });
 });
