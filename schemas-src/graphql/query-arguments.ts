@@ -117,7 +117,7 @@ export function scalarFor(parameter: Parameter): string {
 export interface DeriveOptions {
   /** Does the route have a `/api/v1/{network}/…` twin? */
   hasNetworkTwin: boolean;
-  /** Is the field's return type fully typed (no `JSON` member)? */
+  /** Is the field's return type projectable by a selection set? Answer with `fieldsArgumentApplies` — see its header for the rule. */
   returnsProjectable: boolean;
   /**
    * Is this a NESTED field, whose parent already supplies the path parameters?
@@ -129,6 +129,31 @@ export interface DeriveOptions {
    * parameters as required arguments, because a GraphQL field has no path.
    */
   nested?: boolean;
+}
+
+/**
+ * Does REST's `fields` parameter still have work to do on a field returning
+ * this type — i.e. should GraphQL publish it as an argument?
+ *
+ * `fields` projects row columns and top-level keys, which is exactly the
+ * granularity a GraphQL selection set already covers on any NAMED object type
+ * — including one that carries a `JSON` member, because `fields` cannot reach
+ * inside a blob either; a caller selects the member or does not, with or
+ * without the argument. So on an object return the argument is at best a no-op
+ * and at worst a contradiction: project out a column the selection set asks
+ * for and a non-null row field has nothing to answer with, which graphql-js
+ * turns into a nulled parent plus an error (#10214 hit exactly this on
+ * `endpoints(fields: ["id","status"]) { items { kind } }`).
+ *
+ * The one place `fields` earns its argument is a return the selection set
+ * cannot project AT ALL: the opaque `JSON` scalar. Measured across the
+ * generated schema: no object return carries `[JSON!]` rows, so the scalar
+ * test is the whole rule — and both the generator and the route-parity gate
+ * read it HERE, because a predicate two components encode separately is the
+ * two-list failure #10772 already shipped once.
+ */
+export function fieldsArgumentApplies(returnType: string): boolean {
+  return returnType.replace(/[![\]]/g, "") === "JSON";
 }
 
 /**

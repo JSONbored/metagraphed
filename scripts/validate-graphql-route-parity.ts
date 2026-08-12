@@ -1,13 +1,15 @@
 // Compare the GraphQL SDL's own types against the routes the SDL says it
 // mirrors (#9889).
 //
-// `src/graphql-sdl.ts` is a THIRD hand-maintained mirror of the route contract,
-// alongside the MCP tool schemas and the routes themselves. 271 of its
-// descriptions carry a `Mirrors GET /api/v1/…` annotation, and until this gate
-// that annotation was prose: `validate:graphql-types-drift` regenerates
-// `generated/graphql/types.ts` and diffs it against the committed copy, which
-// proves SDL→TypeScript codegen is current and nothing else. Nothing compared
-// the SDL to what the routes actually publish.
+// Written when `src/graphql-sdl.ts` was a THIRD hand-maintained mirror of the
+// route contract, alongside the MCP tool schemas and the routes themselves —
+// 271 of its descriptions carried a `Mirrors GET /api/v1/…` annotation, and
+// until this gate that annotation was prose nothing compared to what the
+// routes actually publish. #10214 replaced the hand-written module with a
+// print of the Zod-built schema, which changes what a finding here MEANS —
+// no longer "the copy drifted" but "the generator's rules do not say what we
+// think they say" — and not whether the gate runs: it is the proof the
+// generator is right, not the substitute for it.
 //
 // What that cost: `DomainSummary.emission_concentration` was declared `Float`
 // while the route served a 12-key scorecard, so GraphQL raised a coercion error
@@ -18,11 +20,14 @@
 // This runs entirely offline against the committed `openapi.json`; it needs no
 // production traffic and covers every field rather than a sample.
 import { readFileSync } from "node:fs";
+import { Kind, parse, print } from "graphql";
 import {
   DECLARED_MISSING_NETWORK,
   DECLARED_UNPUBLISHED_ARGUMENTS,
   hasArgumentCodec,
 } from "../schemas-src/graphql/argument-divergences.ts";
+import { fieldsArgumentApplies } from "../schemas-src/graphql/query-arguments.ts";
+import { extractSdl } from "./validate-graphql-component-parity.ts";
 
 type Json = Record<string, unknown>;
 
@@ -30,7 +35,7 @@ type Json = Record<string, unknown>;
 // watch it reject. A gate only ever run against a passing tree proves it runs,
 // not that it can fail -- and the failure mode of a schema comparison is
 // silence, which is exactly what this file's header warns about.
-const SDL_PATH = process.env.GRAPHQL_SDL_PATH || "src/graphql-sdl.ts";
+const SDL_PATH = process.env.GRAPHQL_SDL_PATH || "generated/graphql/schema.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
 
 /**
@@ -111,7 +116,12 @@ function routeDataSchema(route: string): Json | null {
 
 // --- SDL parsing -----------------------------------------------------------
 
-const sdl = readFileSync(SDL_PATH, "utf8");
+const sdlModule = readFileSync(SDL_PATH, "utf8");
+const sdl = extractSdl(sdlModule);
+if (!sdl) {
+  console.error(`Could not extract the SDL template literal from ${SDL_PATH}.`);
+  process.exit(1);
+}
 
 type SdlArgument = { name: string; type: string };
 type SdlField = {
@@ -123,95 +133,42 @@ type SdlField = {
 type SdlType = { name: string; fields: SdlField[] };
 
 /**
- * Parse `type X { … }` blocks, including fields whose argument list spans
- * several lines.
+ * Parse the SDL with graphql-js rather than by regex.
  *
- * The first version of this parser tried to "skip argument lines of a
- * multi-line field signature" with a single-line regex, and did the opposite:
- * `sort: String` sitting inside `subnets( … )` matches the field pattern
- * exactly, so every argument was recorded as a field of `Query` and the field
- * it belonged to was never recorded at all. Because a Query field's `Mirrors
- * GET …` doc landed on its FIRST argument, whose type is a scalar rather than
- * an SDL object type, `byName.get(...)` missed and the pair was skipped in
- * silence — 55 of 160 type/route pairs, a third of the surface, and exactly
- * the paginated/filterable half most likely to drift.
+ * TWO hand-rolled text parsers preceded this one, and each was blinded by the
+ * formatting it assumed. The first tried to "skip argument lines of a
+ * multi-line field signature" with a single-line regex and recorded every
+ * argument as a field of `Query` -- 55 of 160 type/route pairs skipped in
+ * silence, with two real divergences hiding among them (SourceSnapshotList
+ * and EvidenceList declared `schema_version: String` over a route publishing
+ * `{const: 1, type: number}`). The second tracked paren depth by hand and was
+ * correct -- for exactly the two-space-indented, single-line-description
+ * layout the hand-written module used, and no other. The #10214 cutover to
+ * `printSchema` output (column-0 types, block descriptions) took it from 174
+ * compared pairs to zero.
  *
- * Two real divergences were hiding in that third: SourceSnapshotList and
- * EvidenceList both declared `schema_version: String` where the route
- * publishes `{const: 1, type: number}`. GraphQL's String scalar coerces an
- * integer rather than erroring, so the two surfaces served `"1"` and `1` for
- * the same field, and nothing anywhere said so.
- *
- * So it tracks paren depth instead: a line opening `name(` starts an argument
- * list, `): Type` closes it, and everything between is an argument.
+ * A text parser over SDL is a worse copy of a parser this repo already ships.
+ * graphql-js's `parse` reads any layout the language allows, so the gate's
+ * coverage can no longer vary with the printer's formatting choices.
  */
 function parseTypes(source: string): SdlType[] {
   const types: SdlType[] = [];
-  const blocks = source.matchAll(/^ {2}type (\w+) \{\n([\s\S]*?)^ {2}\}/gm);
-  for (const block of blocks) {
-    const fields: SdlField[] = [];
-    let doc = "";
-    let open: { name: string; doc: string; args: SdlArgument[] } | null = null;
-    for (const raw of block[2].split("\n")) {
-      const line = raw.trim();
-      if (!line) continue;
-      if (open) {
-        const close = /^\):\s*(.+)$/.exec(line);
-        if (close) {
-          fields.push({
-            name: open.name,
-            type: close[1].replace(/,$/, ""),
-            doc: open.doc,
-            args: open.args,
-          });
-          open = null;
-          continue;
-        }
-        const argument = /^(\w+):\s*([\w![\]]+),?$/.exec(line);
-        if (argument) open.args.push({ name: argument[1], type: argument[2] });
-        continue;
-      }
-      if (line.startsWith('"')) {
-        doc = line.replace(/^"+|"+$/g, "");
-        continue;
-      }
-      const inline = /^(\w+)\(([^)]*)\):\s*([\w![\]]+)$/.exec(line);
-      if (inline) {
-        fields.push({
-          name: inline[1],
-          type: inline[3],
-          doc,
-          args: parseInlineArguments(inline[2]),
-        });
-        doc = "";
-        continue;
-      }
-      const plain = /^(\w+):\s*([\w![\]]+)$/.exec(line);
-      if (plain) {
-        fields.push({ name: plain[1], type: plain[2], doc, args: [] });
-        doc = "";
-        continue;
-      }
-      const opening = /^(\w+)\($/.exec(line);
-      if (opening) {
-        open = { name: opening[1], doc, args: [] };
-        doc = "";
-        continue;
-      }
-      doc = "";
-    }
-    types.push({ name: block[1], fields });
+  for (const definition of parse(source).definitions) {
+    if (definition.kind !== Kind.OBJECT_TYPE_DEFINITION) continue;
+    types.push({
+      name: definition.name.value,
+      fields: (definition.fields ?? []).map((field) => ({
+        name: field.name.value,
+        type: print(field.type),
+        doc: field.description?.value ?? "",
+        args: (field.arguments ?? []).map((argument) => ({
+          name: argument.name.value,
+          type: print(argument.type),
+        })),
+      })),
+    });
   }
   return types;
-}
-
-function parseInlineArguments(source: string): SdlArgument[] {
-  const args: SdlArgument[] = [];
-  for (const part of source.split(",")) {
-    const match = /^\s*(\w+):\s*([\w![\]]+)\s*$/.exec(part);
-    if (match) args.push({ name: match[1], type: match[2] });
-  }
-  return args;
 }
 
 const types = parseTypes(sdl);
@@ -413,13 +370,13 @@ function hasNetworkTwin(route: string): boolean {
 }
 
 /**
- * True when the field's return type is fully typed, so a selection set can
- * already project it and REST's `fields` parameter has no work left to do.
+ * True when a selection set can already project the field's return, so REST's
+ * `fields` parameter has no work left to do. The rule lives with the
+ * derivation (`fieldsArgumentApplies`) so the generator and this gate cannot
+ * encode it differently — the two-list failure #10772 shipped once (#10214).
  */
 function returnsProjectableType(fieldType: string): boolean {
-  const named = byName.get(bareType(fieldType));
-  if (!named) return false;
-  return !named.fields.some((f) => bareType(f.type) === "JSON");
+  return !fieldsArgumentApplies(fieldType);
 }
 
 /** True when the published parameter is a string enum of `true`/`false`. */

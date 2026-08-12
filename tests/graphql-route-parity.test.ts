@@ -71,22 +71,13 @@ describe("graphql route parity gate", () => {
     assert.ok(args && Number(args[1]) >= 600, `arguments: ${args?.[1]}`);
   });
 
-  test("multi-line argument lists are parsed, not read as fields", () => {
-    // The specific parse bug the floors above are a proxy for. `subnets(` opens
-    // an argument list spanning 30 lines; if those lines are read as fields of
-    // Query, `Query.sort`, `Query.order` and friends appear as phantom fields
-    // and the field they belong to vanishes. Assert the shape directly so a
-    // reader can see what the floor is protecting.
-    const sdl = readFileSync("src/graphql-sdl.ts", "utf8");
-    const query = /^ {2}type Query \{\n([\s\S]*?)^ {2}\}/m.exec(sdl);
-    assert.ok(query, "the SDL must still declare `type Query`");
-    const multiLine = [...query[1].matchAll(/^ {4}(\w+)\($/gm)];
-    assert.ok(
-      multiLine.length >= 60,
-      `only ${multiLine.length} multi-line-argument Query fields found — if this ` +
-        "collapsed, the gate's coverage claim rests on a shape that no longer exists",
-    );
-  });
+  // "multi-line argument lists are parsed, not read as fields" lived here
+  // until #10214. It pinned the failure mode of a hand-rolled TEXT parser --
+  // two of which each mis-read multi-line argument lists -- and the gate now
+  // parses with graphql-js, which reads any layout the language allows. The
+  // printed schema does not even carry the shape any more (`printSchema`
+  // keeps argument lists on one line unless an argument has a description),
+  // so the floors above are the coverage claim, and they are format-blind.
 
   test("every declared divergence carries a written reason", () => {
     // A bare marker would let an entry be added without saying why, which is
@@ -162,7 +153,7 @@ describe("graphql route parity gate", () => {
     // The whole mapping hangs off `Mirrors GET /api/v1/…` in the doc comments.
     // If those were dropped in a reformat the gate would silently compare
     // nothing, so pin that the annotation is still widespread.
-    const sdl = readFileSync("src/graphql-sdl.ts", "utf8");
+    const sdl = readFileSync("generated/graphql/schema.ts", "utf8");
     const annotations = [...sdl.matchAll(/Mirrors GET \/api\/v1\//g)].length;
     assert.ok(annotations > 200, `only ${annotations} route annotations left`);
   });
@@ -178,15 +169,15 @@ describe("graphql route parity gate", () => {
 // unreachable over GraphQL, and the gate reporting zero divergences.
 describe("the network twin's reverse check", () => {
   test("FAILS when a field drops the network argument its route twins", () => {
-    const sdl = readFileSync("src/graphql-sdl.ts", "utf8");
+    const sdl = readFileSync("generated/graphql/schema.ts", "utf8");
     // `blocks` mirrors /api/v1/blocks, which has a /api/v1/{network}/blocks
     // twin. Removing its argument must be reported, not passed over.
     const broken = sdl.replace(
-      "\n      network: Network\n    ): BlockList!",
-      "\n    ): BlockList!",
+      ", network: Network): BlockList!",
+      "): BlockList!",
     );
     assert.notEqual(broken, sdl, "the fixture argument must exist to remove");
-    const path = join(mkdtempSync(join(tmpdir(), "sdl-")), "graphql-sdl.ts");
+    const path = join(mkdtempSync(join(tmpdir(), "sdl-")), "schema.ts");
     writeFileSync(path, broken);
     assert.throws(
       () =>

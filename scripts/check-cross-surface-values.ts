@@ -22,7 +22,7 @@
 // production data, and a check that cannot run on a pull request should not
 // pretend to.
 import { buildSchema } from "graphql";
-import { SDL } from "../src/graphql-sdl.ts";
+import { SDL } from "../generated/graphql/schema.ts";
 import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
 import { planAll, type FieldPlan } from "./check-graphql-conformance.ts";
 import { concreteRoute, toolArguments } from "./conformance-subjects.ts";

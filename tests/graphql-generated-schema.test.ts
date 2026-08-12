@@ -13,8 +13,7 @@ import {
   assertEnumVocabularies,
   enumFieldSites,
 } from "../schemas-src/graphql/enums.ts";
-import { diffSchemas } from "../scripts/report-graphql-schema-diff.ts";
-import { SDL } from "../src/graphql-sdl.ts";
+import { SDL } from "../generated/graphql/schema.ts";
 import {
   PROJECTED_TYPES,
   RETYPED_FIELDS,
@@ -85,7 +84,10 @@ describe("the generated schema", () => {
     const published = buildSchema(sdl);
     const type = published.getType("EndpointIncident");
     assert.ok(isObjectType(type));
-    assert.equal(String(type.getFields().source?.type), "String");
+    // `String!` since the cutover: the route serves it on every row, the
+    // producer cannot write null (compiler-checked), so the published promise
+    // carries the Zod's non-null spelling (#10214).
+    assert.equal(String(type.getFields().source?.type), "String!");
     assert.match(
       type.getFields().source?.description ?? "",
       /probe-derived/,
@@ -353,57 +355,17 @@ describe("the published enums", () => {
   });
 });
 
-describe("the schema diff", () => {
-  test("reports the three classes separately", () => {
-    // Collapsing them into one number would hide the one that matters: a
-    // TIGHTENING hardens the served contract, where a newly-named type fixes an
-    // opaque blob. They are not the same kind of difference.
-    const report = diffSchemas(sdl, openapi);
-    assert.ok(report.identical > 200, `only ${report.identical} identical`);
-    assert.ok(report.tightened.length > 0, "no tightenings found");
-    // ZERO as of #10214, and measured rather than asserted away: this class is
-    // exactly "a type the generator builds that the schema publishes as an
-    // opaque JSON", which is the debt that issue closed. The class stays
-    // reported -- the fixture below proves it still populates -- because the
-    // number going back up is the regression it exists to name.
-    assert.deepEqual(report.newlyNamed, []);
-    for (const line of report.tightened) {
-      assert.match(line, / -- .+ becomes .+!$/);
-    }
-  });
-
-  test("a type the schema under-types as JSON is reported newly-named", () => {
-    // Put `Adapter.snapshot` back the way it was before #10214 -- JSON over a
-    // component with a shape, and the named type deleted from the schema. A
-    // class that only ever reads zero is a class nobody would notice breaking.
-    const withoutType = sdl
-      .replace(/^ {2}type AdapterArtifactSnapshot \{[^}]*\}\n\n/m, "")
-      .replace(
-        /^ {4}snapshot: AdapterArtifactSnapshot$/m,
-        "    snapshot: JSON",
-      );
-    assert.notEqual(withoutType, sdl, "the fixture type must exist");
-    const report = diffSchemas(withoutType, openapi);
-    assert.ok(
-      report.newlyNamed.includes("AdapterArtifactSnapshot"),
-      `expected the under-typed type to be reported, got: ${report.newlyNamed.join("; ")}`,
-    );
-  });
-
-  test("a field the generator cannot build is reported, not silently equal", () => {
-    const withExtra = sdl.replace(
-      "  type DeregistrationTenure {\n",
-      "  type DeregistrationTenure {\n    invented_by_a_test: String\n",
-    );
-    assert.notEqual(withExtra, sdl, "the fixture type must exist");
-    const report = diffSchemas(withExtra, openapi);
-    assert.ok(
-      report.otherDifferences.some((line) =>
-        line.startsWith(
-          "DeregistrationTenure.invented_by_a_test -- published, the generator does not build it",
-        ),
-      ),
-      `expected the unbuildable field to be reported, got: ${report.otherDifferences.slice(0, 5).join("; ")}`,
-    );
+describe("the committed schema module", () => {
+  // `report:graphql-schema-diff` and its classed comparison were migration
+  // instruments: they measured the distance between the hand-written SDL and
+  // the generated one, and #10214 closed that distance and deleted both the
+  // SDL and the reports. What remains to pin is the cutover itself -- the
+  // committed artifact IS a print of the generated schema (the drift gate
+  // holds them byte-identical), so a mutated declaration that changes the
+  // schema is caught by the byte comparison, which is stricter than any
+  // classed diff was.
+  test("is a print of the generated schema, not a survivor of the hand-written one", () => {
+    const { schema } = buildGeneratedSchema(openapi);
+    assert.equal(`\n${printSchema(schema)}`, sdl);
   });
 });

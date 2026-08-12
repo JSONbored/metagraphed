@@ -45,7 +45,7 @@ import type {
   GraphQLOutputType,
   GraphQLSchema,
 } from "graphql";
-import { SDL } from "../src/graphql-sdl.ts";
+import { SDL } from "../generated/graphql/schema.ts";
 
 // Live GraphQL payloads, read for reporting. Same `Row` precedent as
 // scripts/check-mcp-conformance.ts: an unexpected shape is what this exists to

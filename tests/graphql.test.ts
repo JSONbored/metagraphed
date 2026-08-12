@@ -1914,21 +1914,29 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     assert.equal(body.data.endpoints.items[0].id, "a");
   });
 
-  test("endpoints projects rows with the fields argument (#7887)", async () => {
+  test("endpoints rejects the fields argument at validation (#10214)", async () => {
+    // `fields` row-projection was published here until #10214, justified by a
+    // JSON member `EndpointList` had already dropped. Under the generated
+    // schema's non-null rows the combination could only error at execution --
+    // project out a column the selection set asks for and `Endpoint.kind` has
+    // nothing to answer with -- so the argument is gone: the selection set IS
+    // the projection on a typed return (`fieldsArgumentApplies`).
     const env = fixtureEnv({
       "/metagraph/endpoints.json": {
         endpoints: [{ id: "a", netuid: 1, status: "ok", kind: "openapi" }],
       },
     });
-    const { body } = await gql(
+    const { status, body } = await gql(
       '{ endpoints(fields: ["id", "status"]) { items { id status kind } } }',
       env as unknown as Env,
     );
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.endpoints.items[0].id, "a");
-    assert.equal(body.data.endpoints.items[0].status, "ok");
-    // kind was projected out of the row, so it resolves to null.
-    assert.equal(body.data.endpoints.items[0].kind, null);
+    assert.equal(status, 400);
+    assert.ok(
+      body.errors?.some((e: Row) =>
+        String(e.message).includes('Unknown argument "fields"'),
+      ),
+      `expected an unknown-argument validation error, got ${JSON.stringify(body.errors)}`,
+    );
   });
 
   test("endpoints maps an unsupported filter to BAD_USER_INPUT (#7887)", async () => {
@@ -4426,7 +4434,10 @@ describe("graphql — resolver branch coverage", () => {
     assert.match(body.errors[0].message, /kind/i);
   });
 
-  test("providers forwards authority/sort/order/fields through the shared loader (#7888)", async () => {
+  test("providers forwards authority/sort/order through the shared loader (#7888)", async () => {
+    // `fields` rode along here until #10214 -- `ProviderList` is a named
+    // object type, so the selection set is its projection and the argument is
+    // no longer published (`fieldsArgumentApplies`).
     const env = fixtureEnv({
       "/metagraph/providers.json": {
         providers: [
@@ -4447,33 +4458,31 @@ describe("graphql — resolver branch coverage", () => {
         ],
       },
     });
-    // fields without id → resolver prefixes id for keyset stability.
-    const withoutId = await gql(
+    const filtered = await gql(
       `{ providers(
           authority: "official",
           sort: "id",
           order: "asc",
-          fields: "kind,authority",
           limit: 10
         ) { items { id kind authority } total next_cursor } }`,
       env as unknown as Env,
     );
-    assert.equal(withoutId.status, 200);
-    assert.equal(withoutId.body.errors, undefined);
-    assert.equal(withoutId.body.data.providers.total, 1);
-    assert.equal(withoutId.body.data.providers.items[0].id, "datura");
-    assert.equal(withoutId.body.data.providers.items[0].authority, "official");
-    assert.equal(withoutId.body.data.providers.next_cursor, null);
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.errors, undefined);
+    assert.equal(filtered.body.data.providers.total, 1);
+    assert.equal(filtered.body.data.providers.items[0].id, "datura");
+    assert.equal(filtered.body.data.providers.items[0].authority, "official");
+    assert.equal(filtered.body.data.providers.next_cursor, null);
 
-    // fields already listing id → keep the projection as-is (other branch).
-    const withId = await gql(
-      `{ providers(fields: "id,kind", limit: 1) { items { id kind } total next_cursor } }`,
+    // limit narrower than the list → the keyset cursor names the last row.
+    const paged = await gql(
+      `{ providers(limit: 1) { items { id kind } total next_cursor } }`,
       env as unknown as Env,
     );
-    assert.equal(withId.status, 200);
-    assert.equal(withId.body.errors, undefined);
-    assert.equal(withId.body.data.providers.items.length, 1);
-    assert.equal(withId.body.data.providers.next_cursor, "datura");
+    assert.equal(paged.status, 200);
+    assert.equal(paged.body.errors, undefined);
+    assert.equal(paged.body.data.providers.items.length, 1);
+    assert.equal(paged.body.data.providers.next_cursor, "datura");
   });
 
   test("providers maps invalid_params to BAD_USER_INPUT (#7888)", async () => {
@@ -4493,13 +4502,16 @@ describe("graphql — resolver branch coverage", () => {
         (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
       ),
     );
+    // `fields` is no longer a published argument (#10214), so a caller
+    // reaching for it fails at validation rather than in the loader.
     const badFields = await gql(
       '{ providers(fields: "   ") { total } }',
       env as unknown as Env,
     );
+    assert.equal(badFields.status, 400);
     assert.ok(
-      badFields.body.errors?.find(
-        (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
+      badFields.body.errors?.some((e: Row) =>
+        String(e.message).includes('Unknown argument "fields"'),
       ),
     );
   });

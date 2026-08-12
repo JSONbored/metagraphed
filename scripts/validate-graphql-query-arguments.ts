@@ -30,12 +30,13 @@ import {
 export { DECLARED_MISSING_NETWORK };
 import {
   deriveQueryArguments,
+  fieldsArgumentApplies,
   type OpenApiParameters,
   type QueryArgument,
 } from "../schemas-src/graphql/query-arguments.ts";
 import { extractSdl } from "./validate-graphql-component-parity.ts";
 
-const SDL_PATH = "src/graphql-sdl.ts";
+const SDL_PATH = "generated/graphql/schema.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
 
 /**
@@ -102,14 +103,14 @@ export function checkQueryArguments(
     }
   }
 
-  /** A return type with no `JSON` member can be projected by a selection set. */
-  const returnsProjectable = (returns: string): boolean => {
-    const named = types.get(returns.replace(/[![\]]/g, ""));
-    if (!named) return false;
-    return !(named.fields ?? []).some((field) =>
-      print(field.type).includes("JSON"),
-    );
-  };
+  /**
+   * A selection set already projects any named object type, so `fields` is
+   * published only on an opaque `JSON` return. The rule lives with the
+   * derivation (`fieldsArgumentApplies`) so this gate cannot encode it
+   * differently from the generator it checks (#10214).
+   */
+  const returnsProjectable = (returns: string): boolean =>
+    !fieldsArgumentApplies(returns);
 
   const violations: string[] = [];
   const usedNetwork = new Set<string>();

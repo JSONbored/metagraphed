@@ -55,7 +55,7 @@ import {
   type OperationDefinitionNode,
 } from "graphql";
 import { API_ROUTES } from "../src/contracts.ts";
-import { SDL } from "../src/graphql-sdl.ts";
+import { SDL } from "../generated/graphql/schema.ts";
 import { planAll } from "./check-graphql-conformance.ts";
 import { concreteRoute } from "./conformance-subjects.ts";
 

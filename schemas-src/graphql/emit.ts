@@ -24,10 +24,12 @@
 //
 // SCOPE. This module owns the type system: the object types every mirror is
 // checked against by scripts/validate-graphql-component-parity.ts. The Query
-// root and the resolver-built pagination views stay in src/graphql-sdl.ts --
-// no rule derives the field name `subnet_health` from the path
+// root and the pagination views are DECLARED rather than derived -- no rule
+// derives the field name `subnet_health` from the path
 // `/api/v1/subnets/{netuid}/health`, and a list view is a resolver's shape
-// rather than a component's.
+// rather than a component's -- so those live in published-names.ts
+// (QUERY_BINDINGS / PROJECTED_TYPES) and build-schema.ts assembles the whole
+// schema from both.
 import { z } from "zod";
 import {
   GraphQLBoolean,
