@@ -45,7 +45,7 @@ import {
   type BlockFeedQuery,
 } from "./r2-sql-blocks.ts";
 import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
-import type { BlocksHead } from "../generated/db/types.ts";
+import type { BlocksHead, ChainDetailBlocks } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { readStore } from "./read-store.ts";
@@ -108,18 +108,29 @@ const STORE_SELECT =
   // between a block being seen and being decoded -- the window that used to
   // publish null and render "Events 0".
   "COALESCE(c.chain_event_count, b.event_count) AS event_count";
-/** What STORE_SELECT returns: blocks_head's own columns, plus the two joined
- * from chain_detail_blocks. Named rather than left untyped so a column rename
- * on either side of the join is a compile error (#10261). */
-type BlockSeamRow = Pick<
-  BlocksHead,
-  | "block_number"
-  | "block_hash"
-  | "parent_hash"
-  | "extrinsic_count"
-  | "observed_at"
-  | "author"
-> & { spec_version: number | null; event_count: number | null };
+/**
+ * What STORE_SELECT returns: a JOIN projection, not either table.
+ *
+ * Every field takes its type by INDEXED ACCESS from the generated table it
+ * actually comes from, so a renamed or retyped column on either side of the
+ * join is a compile error here (#10261). Written as its own interface rather
+ * than `Pick<BlocksHead, ...> & { ... }` deliberately: an alias-and-widen of a
+ * generated type is what validate:type-duplicates exists to refuse, and it is
+ * right to -- a field a PRODUCER adds belongs in the schema. This adds none:
+ * it is the shape of a query over two tables, which is a third thing.
+ */
+interface BlockSeamRow {
+  block_number: BlocksHead["block_number"];
+  block_hash: BlocksHead["block_hash"];
+  parent_hash: BlocksHead["parent_hash"];
+  extrinsic_count: BlocksHead["extrinsic_count"];
+  observed_at: BlocksHead["observed_at"];
+  author: BlocksHead["author"];
+  /** COALESCE(c.chain_event_count, b.event_count) -- either side answers. */
+  event_count:
+    ChainDetailBlocks["chain_event_count"] | BlocksHead["event_count"];
+  spec_version: ChainDetailBlocks["spec_version"];
+}
 
 const STORE_FROM =
   "blocks_head b LEFT JOIN chain_detail_blocks c " +
