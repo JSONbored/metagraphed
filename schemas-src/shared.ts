@@ -299,8 +299,49 @@ export type PartnershipMetadata = z.infer<typeof PartnershipMetadataSchema>;
 // Per-subnet validator/economic metrics (src/contracts.ts's SubnetEconomics
 // component) — the /api/v1/economics list item AND the optional `economics`
 // field nested inside /api/v1/subnets/{netuid}'s SubnetDetailArtifact.
+/**
+ * The USD twins `withAlphaUsd` stamps on EACH economics row (#10381), as
+ * opposed to the blob-level reading in ALPHA_USD_OVERLAY below.
+ *
+ * DECLARED HERE BECAUSE THE ROW HALF WAS NOT. #10790 declared the blob half
+ * and the row half went with it undeclared, which was invisible while these
+ * schemas were `.passthrough()`. #10853's flip to `.strict()` turned that
+ * into a hard refusal, and `/api/v1/economics` began 500ing on every request
+ * with `response_schema_drift` naming these four keys (2026-08-12) -- the
+ * same shape as #10897's three routes, found the same way.
+ *
+ * ALL OPTIONAL, because emission is conditional by design: a `_usd` field is
+ * written only when the reading priced it (an explicit null would be
+ * indistinguishable from a genuine zero once it reached a chart), and the
+ * basis rides only on a row that has an `alpha_market_cap_tao` to describe.
+ * The blob's `tao_usd_unavailable` is what says why they are absent.
+ */
+export const ALPHA_USD_ROW_OVERLAY = {
+  alpha_market_cap_basis: z
+    .literal("total_stake_alpha")
+    .optional()
+    .describe(
+      "What alpha_market_cap_tao multiplies -- published rather than documented, because a market cap without its basis is not a number anyone can reconcile (#10381).",
+    ),
+  alpha_price_usd: z
+    .number()
+    .optional()
+    .describe("alpha_price_tao converted at the blob's tao_usd reading."),
+  alpha_market_cap_usd: z
+    .number()
+    .optional()
+    .describe("alpha_market_cap_tao converted at the blob's tao_usd reading."),
+  alpha_fdv_usd: z
+    .number()
+    .optional()
+    .describe("alpha_fdv_tao converted at the blob's tao_usd reading."),
+} as const;
+
 export const SubnetEconomicsSchema = z
   .object({
+    // The serve-time USD twins (#10381), declared with the schema they are
+    // stamped onto rather than restated here -- see ALPHA_USD_ROW_OVERLAY.
+    ...ALPHA_USD_ROW_OVERLAY,
     alpha_fdv_tao: z.number().nullable(),
     // --- v440 emission pipeline (#8743) ---------------------------------
     // Optional, not required: a refresh whose node could not serve
