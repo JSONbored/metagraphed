@@ -503,8 +503,11 @@ export async function agentToolsResponse(
   env: Env,
   kind: string,
 ): Promise<Response> {
-  // Deferred for the same reason as mcpServerCardResponse above (#10424).
-  const { listToolDefinitions } = await import("../../src/mcp-server.ts");
+  // Deferred for the same reason as mcpServerCardResponse above (#10424) —
+  // and since #10900 the spec builders take everything they need as
+  // arguments, so this lazy import is the ONLY road to the tool registry.
+  const { listToolDefinitions, MCP_SERVER_INFO } =
+    await import("../../src/mcp-server.ts");
   const tools = listToolDefinitions();
   const data =
     kind === "openai"
@@ -513,6 +516,7 @@ export async function agentToolsResponse(
         ? buildAnthropicToolSpecs(tools)
         : buildAgentToolsIndex(tools, {
             contractVersion: contractVersion(env),
+            serverTitle: MCP_SERVER_INFO.title,
           });
   const body = `${JSON.stringify(data, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");

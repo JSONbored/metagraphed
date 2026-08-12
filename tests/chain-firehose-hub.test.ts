@@ -52,6 +52,7 @@ import {
 } from "../workers/chain-firehose-hub.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
+import { schema as chainEventsGraphqlSchema } from "../src/graphql.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 // SseClientEntry/ChainEventSubscriberEntry aren't exported from the source
@@ -62,6 +63,12 @@ type SseEntryLike = Parameters<ChainFirehoseHub["addSseClient"]>[0];
 
 // --- validateChainEventsSubscribePayload (#4983 security fix) -------------------
 //
+// The schema is a PARAMETER since #10900 (the hub imports it lazily so the
+// graphql module stays off Worker startup); tests bind the real one once.
+const validatePayload = (payload: unknown) =>
+  validateChainEventsSubscribePayload(payload, chainEventsGraphqlSchema);
+
+//
 // graphql-ws's wire protocol accepts query/mutation operations over the same
 // `subscribe` message as subscriptions -- unchecked, a WS client could
 // execute the full read API, bypassing both the POST endpoint's rate
@@ -70,14 +77,14 @@ type SseEntryLike = Parameters<ChainFirehoseHub["addSseClient"]>[0];
 // to subscription operations only, validated with the SAME rules POST uses.
 
 test("validateChainEventsSubscribePayload: accepts a well-formed subscription operation", () => {
-  const errors = validateChainEventsSubscribePayload({
+  const errors = validatePayload({
     query: "subscription { chainEvents { table block_number } }",
   });
   assert.equal(errors, null);
 });
 
 test("validateChainEventsSubscribePayload: rejects a query operation (the actual security fix)", () => {
-  const errors = validateChainEventsSubscribePayload({
+  const errors = validatePayload({
     query: "query { subnets { total } }",
   });
   assert.ok(errors?.length);
@@ -85,7 +92,7 @@ test("validateChainEventsSubscribePayload: rejects a query operation (the actual
 });
 
 test("validateChainEventsSubscribePayload: rejects a mutation operation", () => {
-  const errors = validateChainEventsSubscribePayload({
+  const errors = validatePayload({
     query: "mutation { __typename }",
   });
   assert.ok(errors?.length);
@@ -94,17 +101,17 @@ test("validateChainEventsSubscribePayload: rejects a mutation operation", () => 
 
 test("validateChainEventsSubscribePayload: rejects a missing/empty query", () => {
   assert.match(
-    validateChainEventsSubscribePayload({})![0].message,
+    validatePayload({})![0].message,
     /Missing required field: query/,
   );
   assert.match(
-    validateChainEventsSubscribePayload({ query: "   " })![0].message,
+    validatePayload({ query: "   " })![0].message,
     /Missing required field: query/,
   );
 });
 
 test("validateChainEventsSubscribePayload: rejects invalid GraphQL syntax", () => {
-  const errors = validateChainEventsSubscribePayload({
+  const errors = validatePayload({
     query: "subscription { not valid (",
   });
   assert.ok(errors?.length);
@@ -112,7 +119,7 @@ test("validateChainEventsSubscribePayload: rejects invalid GraphQL syntax", () =
 });
 
 test("validateChainEventsSubscribePayload: rejects an oversized query", () => {
-  const errors = validateChainEventsSubscribePayload({
+  const errors = validatePayload({
     query: `subscription { chainEvents { table } } # ${"x".repeat(20_000)}`,
   });
   assert.ok(errors?.length);
@@ -120,7 +127,7 @@ test("validateChainEventsSubscribePayload: rejects an oversized query", () => {
 });
 
 test("validateChainEventsSubscribePayload: runs full schema validation (specifiedRules), rejecting an unknown field", () => {
-  const errors = validateChainEventsSubscribePayload({
+  const errors = validatePayload({
     query: "subscription { chainEvents { doesNotExist } }",
   });
   assert.ok(errors?.length);

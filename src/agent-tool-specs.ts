@@ -11,7 +11,14 @@
 // Execution is uniform: every tool is run by forwarding the model's tool call
 // to the MCP endpoint as a JSON-RPC `tools/call` (see buildAgentToolsIndex).
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.ts";
-import { MCP_SERVER_INFO, listToolDefinitions } from "./mcp-server.ts";
+// NO import from mcp-server.ts (#10900). This module rides in
+// workers/request-handlers/discovery.ts's STATIC import graph, and one
+// static edge to the ~12.5k-line MCP server put the whole tool registry --
+// and, through it, src/graphql.ts -- back on Worker startup, defeating
+// #10424's lazy import and holding startup at the 400ms platform limit.
+// Callers pass the tool list (they already lazily import
+// listToolDefinitions at their request paths), and the index takes the
+// server title the same way.
 
 const ORIGIN = `https://${PRIMARY_DOMAIN}`;
 const MCP_ENDPOINT = `${ORIGIN}/mcp`;
@@ -26,9 +33,7 @@ export interface ToolDefinition {
 
 // OpenAI Chat Completions / Responses `tools[]` entries: a bare, paste-ready
 // array of `{ type: "function", function: { name, description, parameters } }`.
-export function buildOpenAIToolSpecs(
-  tools: ToolDefinition[] = listToolDefinitions(),
-): Array<{
+export function buildOpenAIToolSpecs(tools: ToolDefinition[]): Array<{
   type: "function";
   function: { name: string; description: string; parameters: unknown };
 }> {
@@ -44,7 +49,7 @@ export function buildOpenAIToolSpecs(
 
 // Anthropic Messages `tools[]` entries: `{ name, description, input_schema }`.
 export function buildAnthropicToolSpecs(
-  tools: ToolDefinition[] = listToolDefinitions(),
+  tools: ToolDefinition[],
 ): Array<{ name: string; description: string; input_schema: unknown }> {
   return tools.map((tool) => ({
     name: tool.name,
@@ -57,8 +62,11 @@ export function buildAnthropicToolSpecs(
 // single uniform executor (the MCP endpoint). Keeps the executor mapping out of
 // the spec arrays themselves (which must stay valid for their target SDK).
 export function buildAgentToolsIndex(
-  tools: ToolDefinition[] = listToolDefinitions(),
-  { contractVersion = CONTRACT_VERSION }: { contractVersion?: string } = {},
+  tools: ToolDefinition[],
+  {
+    contractVersion = CONTRACT_VERSION,
+    serverTitle,
+  }: { contractVersion?: string; serverTitle: string },
 ): {
   schema_version: 1;
   title: string;
@@ -74,7 +82,7 @@ export function buildAgentToolsIndex(
 } {
   return {
     schema_version: 1,
-    title: `${MCP_SERVER_INFO.title} — agent tool specs`,
+    title: `${serverTitle} — agent tool specs`,
     description:
       "Paste-ready OpenAI + Anthropic tool specs derived from the metagraphed " +
       "MCP tools. Execute any tool by forwarding the model's tool call to the " +

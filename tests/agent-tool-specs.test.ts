@@ -48,8 +48,12 @@ describe("agent tool spec builders", () => {
   });
 
   test("buildAgentToolsIndex describes the spec files, tool names, and executor", () => {
-    const idx = buildAgentToolsIndex(TOOLS);
+    // serverTitle is a parameter since #10900: the builder must not import
+    // the MCP server, whose static edge here put the whole tool registry
+    // (and graphql) back on Worker startup.
+    const idx = buildAgentToolsIndex(TOOLS, { serverTitle: "metagraphed" });
     assert.equal(idx.schema_version, 1);
+    assert.match(idx.title, /^metagraphed — agent tool specs$/);
     // specs point at the published .well-known JSON, not inline spec arrays.
     assert.match(idx.specs.openai, /\/agent-tools\/openai\.json$/);
     assert.match(idx.specs.anthropic, /\/agent-tools\/anthropic\.json$/);
