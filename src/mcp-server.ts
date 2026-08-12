@@ -212,6 +212,8 @@ import {
   recordUsageEvent,
   parseUserAgentClient,
   MCP_PERSON_NAMESPACE,
+  USAGE_ACCOUNT_NAMESPACE,
+  anonymousUsageDistinctId,
 } from "./usage-telemetry.ts";
 import { maskRouteParams } from "./route-label.ts";
 import {
@@ -220,7 +222,7 @@ import {
   recordTraceSpan,
   shouldRecordTraceSpan,
 } from "./tracing.ts";
-import { resolveClientIp } from "../workers/config.ts";
+import { ANONYMOUS_CLIENT_KEY, resolveClientIp } from "../workers/config.ts";
 import {
   applyTieredRateLimit,
   spendDeferredDailyQuota,
@@ -16908,6 +16910,12 @@ function rpcError(id: unknown, code: number, message: string) {
 export function mcpDistinctId(
   githubLogin: unknown,
   sessionId: string | null | undefined,
+  /**
+   * A verified account (a key-authenticated caller) and the caller's already
+   * resolved `ip:` id. Both optional so the two-argument form still means what
+   * it did -- a caller with neither falls through to the session as before.
+   */
+  extra: { accountId?: unknown; anonymousId?: string } = {},
 ): string | undefined {
   if (typeof githubLogin === "string" && githubLogin) {
     // MCP_PERSON_NAMESPACE rather than a literal: recordMcp*'s
@@ -16915,13 +16923,39 @@ export function mcpDistinctId(
     // constant is what keeps "who is a person" a single decision.
     return `${MCP_PERSON_NAMESPACE}${githubLogin}`;
   }
+  // A verified key is an identity the caller PRESENTED, so it outranks
+  // anything we merely observed -- the same precedence REST applies.
+  if (typeof extra.accountId === "string" && extra.accountId) {
+    return `${USAGE_ACCOUNT_NAMESPACE}${extra.accountId}`;
+  }
+  // #10606: ABOVE the session, and that is the whole change.
+  //
+  // A session id is minted per CONNECTION, not per caller, so a client that
+  // reconnects is a new one every time -- and MCP clients reconnect
+  // constantly. Measured 2026-08-12: 462 distinct `mcp-session:` ids in a day
+  // against 4 authenticated users and 51 distinct client names, so "unique
+  // callers" read ~462 and the truth was nowhere near it. Every reconnect also
+  // minted a person profile, which is the cost half of the same fact.
+  //
+  // #7153 chose the session deliberately and said why: keying on an address
+  // "would mean fingerprinting, which is a real privacy tradeoff and is
+  // deliberately not made here". That tradeoff has since been made explicitly,
+  // for REST, and it is made the same way here -- a SALTED hash of the
+  // address, never the address, never the User-Agent. What it buys is the
+  // question #7153 was trying to answer actually being answerable: an address
+  // is stable across the reconnects a session id is destroyed by.
+  //
+  // The session is not lost. It still rides every event as `$session_id`, so
+  // per-run analysis is unchanged; it stops being the thing a CALLER count is
+  // computed from, which it was never able to be.
+  if (extra.anonymousId) return extra.anonymousId;
   if (typeof sessionId === "string" && sessionId) {
     return `mcp-session:${sessionId}`;
   }
   return undefined;
 }
 
-function buildContext(
+async function buildContext(
   request: Request,
   env: Env,
   deps: McpDeps,
@@ -16949,7 +16983,20 @@ function buildContext(
   // decision lives, not duplicated here.
   const githubLogin = deps.executionCtx?.props?.githubLogin;
   const sessionId = isValidMcpSessionId(rawSessionId) ? rawSessionId : null;
-  const distinctId = mcpDistinctId(githubLogin, sessionId);
+  // #10606: resolved the same way REST resolves it, through the same helper,
+  // so one client calling both surfaces is ONE caller rather than two. An
+  // unresolvable address (no cf-connecting-ip, which resolveClientIp collapses
+  // to a single fixed bucket) yields undefined rather than one shared
+  // confident-looking id, and the session below takes over.
+  const clientIp = resolveClientIp(request);
+  const anonymousId = await anonymousUsageDistinctId(
+    env.USAGE_DISTINCT_ID_SALT,
+    clientIp === ANONYMOUS_CLIENT_KEY ? undefined : clientIp,
+  );
+  const distinctId = mcpDistinctId(githubLogin, sessionId, {
+    accountId,
+    ...(anonymousId ? { anonymousId } : {}),
+  });
   const { clientName, clientVersion } = parseUserAgentClient(
     request.headers.get("user-agent"),
   );
@@ -17889,7 +17936,7 @@ async function dispatchMcpRequest(
   const versionError = validateMcpProtocolVersionHeader(request);
   if (versionError) return versionError;
 
-  const ctx = buildContext(request, env, deps, authTier, accountId);
+  const ctx = await buildContext(request, env, deps, authTier, accountId);
   // Generated here, not inside dispatchMessage: mintMcpSessionHeaderIfNeeded
   // below needs the SAME value the initialize event reported, or the header and
   // the telemetry would disagree about which session was created.

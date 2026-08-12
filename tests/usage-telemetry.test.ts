@@ -30,6 +30,7 @@ import {
   recordMcpResourcesListEvent,
   recordMcpToolsListEvent,
   recordUsageEvent,
+  MCP_PERSON_NAMESPACE,
   resolvePostHogHost,
   resolveUsageSampleRate,
   POSTHOG_USAGE_SAMPLE_RATE_ENV,
@@ -3886,5 +3887,40 @@ describe("recordUsageEvent — person processing", () => {
       [false, true, false],
       "exactly one namespace may mint person profiles",
     );
+  });
+});
+
+// Both person namespaces, because ONE request emits on both paths (#10606).
+// An authenticated MCP call produces `$mcp_*` events keyed on
+// MCP_PERSON_NAMESPACE and a `usage_event` carrying that same `github:` id. If
+// the two files disagreed about whether that caller is a person, the flag
+// would mean nothing — PostHog creates the profile when ANY event on the id
+// asks for one.
+describe("recordUsageEvent — the two person namespaces agree", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" } as Row;
+
+  async function personFor(distinctId: string) {
+    const calls: Row[] = [];
+    await recordUsageEvent(
+      CONFIGURED as unknown as Env,
+      { route: "subnets", ok: true, durationMs: 1 },
+      {
+        distinctId,
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+      },
+    );
+    return ((calls[0].body as Row).properties as Row).$process_person_profile;
+  }
+
+  test("a github: caller is a person here too, not only on $mcp_*", async () => {
+    assert.equal(await personFor(`${MCP_PERSON_NAMESPACE}someone`), true);
+  });
+
+  test("a session id containing a person namespace is still not a person", async () => {
+    // The prefix is load-bearing in both directions: `mcp-session:github:x`
+    // must not smuggle itself into the person namespace, which is the reason
+    // mcpDistinctId prefixes at all.
+    assert.equal(await personFor("mcp-session:github:someone"), false);
+    assert.equal(await personFor("ip:account:acct_1"), false);
   });
 });

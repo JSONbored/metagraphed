@@ -150,9 +150,8 @@ import {
   recordUsageEvent,
   parseUserAgentClient,
   statusClassOf,
+  anonymousUsageDistinctId,
   USAGE_ACCOUNT_NAMESPACE,
-  USAGE_ANONYMOUS_ID_HEX_LENGTH,
-  USAGE_ANONYMOUS_NAMESPACE,
   type UsageEvent,
 } from "../src/usage-telemetry.ts";
 import {
@@ -1631,15 +1630,7 @@ async function resolveUsageDistinctId(
   // fallback already did -- except now it looks specific. So an unresolved
   // address falls back to the shared id, which at least says so.
   if (ip === ANONYMOUS_CLIENT_KEY) return undefined;
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(`${salt}:${ip}`),
-  );
-  const hex = [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, USAGE_ANONYMOUS_ID_HEX_LENGTH);
-  return `${USAGE_ANONYMOUS_NAMESPACE}${hex}`;
+  return anonymousUsageDistinctId(salt, ip);
 }
 
 /**
