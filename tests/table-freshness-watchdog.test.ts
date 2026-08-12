@@ -15,6 +15,7 @@ import path from "node:path";
 import { describe, test } from "vitest";
 import {
   crossCheckSql,
+  confirmRedirectedStale,
   crossCheckStamps,
   describeStaleTables,
   FRESHNESS_BATCH,
@@ -413,6 +414,28 @@ describe("stampDivergences", () => {
     );
   });
 
+  test("the LAG direction is expected, not a divergence (#10656)", () => {
+    // The pass row lands after the rows it counts, so a cheap stamp that
+    // trails is the writes being ordered. Demanding equality made that
+    // indistinguishable from a fault and pinned the lane at `unknown` --
+    // measured at 75 minutes on 2026-08-11. `confirmRedirectedStale` is what
+    // stops the lag costing a false alarm instead.
+    assert.deepEqual(
+      stampDivergences([{ t: "big", cheap: 1000, actual: 2000 }], spec),
+      [],
+    );
+  });
+
+  test("a cheap stamp RUNNING AHEAD is still reported -- that is #9530", () => {
+    // The genuinely alarming direction: the pass row claims data the table
+    // does not hold, which is a freshness signal advancing over data that has
+    // not arrived.
+    assert.deepEqual(
+      stampDivergences([{ t: "big", cheap: 2000, actual: 1999 }], spec),
+      [{ table: "big", stampFrom: "big_passes", cheap: 2000, actual: 1999 }],
+    );
+  });
+
   test("an empty pass table beside a populated one IS a divergence", () => {
     // This is the redirect reading nothing at all -- the failure the
     // cross-check exists for. Skipping nulls would make it look healthy.
@@ -522,6 +545,211 @@ describe("crossCheckStamps", () => {
       await crossCheckStamps(null, { db: db as never }, redirected),
       { divergences: [], failed: true },
     );
+  });
+});
+
+describe("confirmRedirectedStale (#10656)", () => {
+  const NOW = 10 * HOUR;
+  const spec: Record<string, FreshnessExpectation> = {
+    big: {
+      column: "captured_at",
+      kind: "ms",
+      maxAgeMs: HOUR,
+      reason: "x",
+      stampFrom: "big_passes",
+    },
+    plain: { column: "captured_at", kind: "ms", maxAgeMs: HOUR, reason: "y" },
+  };
+  const staleBig = {
+    table: "big",
+    ageMs: 2 * HOUR,
+    maxAgeMs: HOUR,
+    reason: "x",
+  };
+  const stalePlain = {
+    table: "plain",
+    ageMs: 2 * HOUR,
+    maxAgeMs: HOUR,
+    reason: "y",
+  };
+
+  /** Answers the confirm's own `{t, mx}` shape. */
+  function confirmDb(byTable: Record<string, number | null>, fail = false) {
+    return {
+      prepare(sql: string) {
+        return {
+          async all() {
+            if (fail) throw new Error("D1_ERROR: overloaded");
+            const names = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
+              (m) => m[1],
+            );
+            return {
+              results: names.map((t) => ({
+                t,
+                mx: byTable[t as string] ?? null,
+              })),
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("a redirected table whose OWN stamp is fresh is dropped", async () => {
+    // The whole point: the pass table trails the data table, so a cheap stamp
+    // can read late while the table itself is current. Measured at 75 minutes
+    // against a 120-minute bound on 2026-08-11.
+    const out = await confirmRedirectedStale(
+      [staleBig],
+      null,
+      { db: confirmDb({ big: NOW - HOUR / 2 }) as never },
+      () => NOW,
+      spec,
+    );
+    assert.deepEqual(out, []);
+  });
+
+  test("a redirected table that is REALLY stale still reports", async () => {
+    // The confirm must not become a way to lose a real outage on the estate's
+    // largest tables.
+    const out = await confirmRedirectedStale(
+      [staleBig],
+      null,
+      { db: confirmDb({ big: NOW - 5 * HOUR }) as never },
+      () => NOW,
+      spec,
+    );
+    assert.deepEqual(out, [staleBig]);
+  });
+
+  test("a NON-redirected table is never re-asked", async () => {
+    // It measured itself; re-asking would be the scan this exists to avoid.
+    let asked = 0;
+    const db = {
+      prepare(sql: string) {
+        asked += 1;
+        return {
+          async all() {
+            return {
+              results: [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map((m) => ({
+                t: m[1],
+                mx: NOW,
+              })),
+            };
+          },
+        };
+      },
+    };
+    const out = await confirmRedirectedStale(
+      [stalePlain],
+      null,
+      { db: db as never },
+      () => NOW,
+      spec,
+    );
+    assert.deepEqual(out, [stalePlain]);
+    assert.equal(asked, 0, "no confirm query for a table that measured itself");
+  });
+
+  test("a FAILED confirm keeps the stale finding", async () => {
+    // Nothing refuted the cheap stamp, so dropping it here would be the one
+    // way this could hide a real outage.
+    const out = await confirmRedirectedStale(
+      [staleBig],
+      null,
+      { db: confirmDb({}, true) as never },
+      () => NOW,
+      spec,
+    );
+    assert.deepEqual(out, [staleBig]);
+  });
+
+  test("no reachable store keeps the finding, resolving its own db", async () => {
+    // No injected db and no env: readStore has nothing to open, so the
+    // confirm asks nothing and cannot refute the cheap stamp. Same rule as a
+    // failed query -- an unproven staleness is still reported.
+    const out = await confirmRedirectedStale(
+      [staleBig],
+      null,
+      {},
+      () => NOW,
+      spec,
+    );
+    assert.deepEqual(out, [staleBig]);
+  });
+
+  test("a table with no stamp of its own keeps the finding", async () => {
+    // An absence establishes nothing either way.
+    const out = await confirmRedirectedStale(
+      [staleBig],
+      null,
+      { db: confirmDb({ big: null }) as never },
+      () => NOW,
+      spec,
+    );
+    assert.deepEqual(out, [staleBig]);
+  });
+
+  test("a mixed list keeps the direct finding while clearing the confirmed one", async () => {
+    // The filter runs over the WHOLE list, not just the suspects: a
+    // non-redirected table measured itself and must survive a confirm that
+    // clears its neighbour.
+    const out = await confirmRedirectedStale(
+      [staleBig, stalePlain],
+      null,
+      { db: confirmDb({ big: NOW - HOUR / 2 }) as never },
+      () => NOW,
+      spec,
+    );
+    assert.deepEqual(out, [stalePlain]);
+  });
+
+  test("a result carrying no rows key keeps the finding", async () => {
+    // `result.results ?? []` -- a store that answers with no `results` key at
+    // all is not a refutation, and must not be read as an empty confirm that
+    // clears the finding.
+    const db = {
+      prepare() {
+        return {
+          async all() {
+            return {};
+          },
+        };
+      },
+    };
+    const out = await confirmRedirectedStale(
+      [staleBig],
+      null,
+      { db: db as never },
+      () => NOW,
+      spec,
+    );
+    assert.deepEqual(out, [staleBig]);
+  });
+
+  test("nothing stale asks nothing at all", async () => {
+    let asked = 0;
+    const db = {
+      prepare() {
+        asked += 1;
+        return {
+          async all() {
+            return { results: [] };
+          },
+        };
+      },
+    };
+    assert.deepEqual(
+      await confirmRedirectedStale(
+        [],
+        null,
+        { db: db as never },
+        () => NOW,
+        spec,
+      ),
+      [],
+    );
+    assert.equal(asked, 0);
   });
 });
 

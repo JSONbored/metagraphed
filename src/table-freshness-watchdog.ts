@@ -724,9 +724,26 @@ export function freshnessSql(
  * redirect is not to scan these tables every time, and a cross-check that ran
  * as often as the sweep would give the saving straight back.
  *
- * EQUALITY, NOT "CLOSE ENOUGH". Both sides are written by the same producer
- * pass from the same clock read, so they are equal or something is wrong; a
- * tolerance here would only be a way to not notice.
+ * ORDER, NOT EQUALITY (#10656). The two sides carry the SAME quantity --
+ * `passTallyFromRows` (workers/data-api.ts) takes the pass row's `captured_at`
+ * from the posted rows' own, and refuses a request whose rows disagree -- but
+ * not at the same TIME: the tally lands after the tables it counts, and only
+ * once a pass declares its total, so the pass table trails between those
+ * writes. Measured 2026-08-11: 75 minutes. Demanding equality made that
+ * expected lag indistinguishable from a fault, and a divergence forces
+ * `unknown`, so the lane could not publish a green for as long as the lag
+ * persisted.
+ *
+ * What remains genuinely alarming is the OTHER direction. A cheap stamp NEWER
+ * than the table's own would mean the pass row claims data the table does not
+ * hold -- a freshness signal advancing over data that has not arrived, which
+ * is #9530 exactly, and the failure the redirect could reintroduce. That is
+ * what this now reports.
+ *
+ * The lag direction is not merely tolerated, it is CONFIRMED: a redirected
+ * table that reads stale is re-asked of itself before it alarms
+ * (`confirmRedirectedStale`), so an under-reporting stamp costs one scan on
+ * the alarming path instead of a false alarm.
  */
 export function crossCheckSql(
   spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
@@ -780,6 +797,12 @@ export function stampDivergences(
     const actual = row.actual == null ? null : Number(row.actual);
     if (cheap == null && actual == null) continue;
     if (cheap === actual) continue;
+    // THE LAG DIRECTION IS EXPECTED (#10656): the pass row lands after the
+    // rows it counts, so `cheap < actual` is the writes being ordered, not a
+    // fault -- and `confirmRedirectedStale` is what stops it costing a false
+    // alarm. Only a cheap stamp that RUNS AHEAD is reported: that one claims
+    // data the table does not hold.
+    if (cheap != null && actual != null && cheap < actual) continue;
     out.push({ table, stampFrom: entry.stampFrom, cheap, actual });
   }
   return out;
@@ -875,6 +898,66 @@ export interface FreshnessDeps {
  * reach one produces `failed` rather than a crash: no store means the redirect
  * went unverified this tick, which is a thing to report, not a thing to throw.
  */
+/**
+ * Re-ask the table itself before reporting a REDIRECTED table stale (#10656).
+ *
+ * Only redirected entries are re-asked, and only when they already read stale:
+ * a direct entry measured itself, and a fresh redirected entry cannot be
+ * hiding staleness (its real stamp is at least as new as the cheap one it
+ * answered from). So the expensive scan this redirect exists to avoid happens
+ * on the alarming path only.
+ *
+ * A FAILED CONFIRM KEEPS THE STALE. The cheap stamp said late and nothing
+ * refuted it, so reporting it is the honest outcome -- dropping a stale
+ * finding because the confirming read broke would be the one way this could
+ * hide a real outage.
+ */
+export async function confirmRedirectedStale(
+  stale: readonly StaleTable[],
+  env: Record<string, unknown> | null | undefined,
+  deps: FreshnessDeps = {},
+  now: () => number = Date.now,
+  spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
+): Promise<StaleTable[]> {
+  const redirected = new Set(redirectedTables(spec).map(([table]) => table));
+  const suspect = stale.filter((s) => redirected.has(s.table));
+  if (suspect.length === 0) return [...stale];
+  const tables = suspect.map((s) => s.table);
+  const db = deps.db ?? (readStore(env, tables) as FreshnessDb | undefined);
+  let confirmed: Map<string, number>;
+  try {
+    // The tables' OWN stamps, which is what `freshnessSql` would have read had
+    // these entries never been redirected -- so the confirm asks exactly the
+    // question the redirect deferred.
+    const result = await db
+      ?.prepare(
+        tables
+          .map(
+            (table) =>
+              `SELECT '${table}' AS t, MAX(${spec[table].column}) AS mx FROM ${table}`,
+          )
+          .join(" UNION ALL "),
+      )
+      .all();
+    if (!result) throw new Error("no result");
+    // The SPEC is passed: parseFreshnessRows drops any table its spec does
+    // not know, and defaulting to TABLE_FRESHNESS would silently discard
+    // every row when a caller (a test, another spec) asks about its own.
+    confirmed = parseFreshnessRows(result.results ?? [], spec);
+  } catch {
+    return [...stale];
+  }
+  const nowMs = now();
+  return stale.filter((entry) => {
+    if (!redirected.has(entry.table)) return true;
+    const at = confirmed.get(entry.table);
+    // No stamp of its own means the confirm established nothing -- keep the
+    // finding rather than clearing it on an absence.
+    if (at == null) return true;
+    return nowMs - at > entry.maxAgeMs;
+  });
+}
+
 export async function crossCheckStamps(
   env: Record<string, unknown> | null | undefined,
   deps: FreshnessDeps = {},
@@ -1004,7 +1087,30 @@ export async function runTableFreshnessWatchdog(
     return { attempted: true, reason: "all batches failed" };
   }
 
-  const stale = staleTables(newest, now(), spec);
+  // THE CHEAP STAMP CAN ONLY BE OLDER, so it can only ever manufacture a FALSE
+  // STALE -- never a false green (#10656). `neurons_passes.captured_at` is not
+  // a different quantity from `neurons.captured_at`: `passTallyFromRows`
+  // (workers/data-api.ts) derives it from the posted rows' own `captured_at`
+  // and refuses a request whose rows disagree. What differs is WHEN the row
+  // lands: the tally is written after the tables it counts, and only once a
+  // pass declares its total, so `MAX(captured_at)` over the pass table trails
+  // the data table between those writes. Measured 2026-08-11: 75 minutes,
+  // against a 120-minute bound -- 62% of the budget spent before the data was
+  // even late.
+  //
+  // So the redirect is confirmed only in the direction where being wrong
+  // costs something. A cheap stamp that reads FRESH is fresh a fortiori
+  // (`actual >= cheap`), and that is the 99% path the redirect exists to keep
+  // cheap. A cheap stamp that reads STALE is re-asked of the table itself
+  // before it alarms -- the one scan the saving can afford, because it happens
+  // only when the alternative is a false alarm on the estate's largest tables.
+  const stale = await confirmRedirectedStale(
+    staleTables(newest, now(), spec),
+    env,
+    deps,
+    now,
+    spec,
+  );
 
   // THE OTHER HALF OF `stampFrom`. Every redirected table above answered from
   // its pass companion instead of itself, which is only sound while the two
