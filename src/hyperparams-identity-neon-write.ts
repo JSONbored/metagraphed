@@ -13,12 +13,11 @@
 // while simultaneously removing the D1 copy -- which is how a migration loses
 // rows rather than moving them.
 //
-// TRANSITIONAL, AND TRACKED AS SUCH (#10051). This is a rung, not the
-// destination: once these tables are in NEON_SOLE_STORE_TABLES the D1 write
-// goes, and once every table has crossed, NEON_DUAL_WRITE_LANES and every
-// mirror call site including this one get deleted. A reconciler or mirror that
-// outlives the inversion is worse than dead code -- it would copy a frozen D1
-// over live Neon rows, because it cannot tell the direction reversed.
+// FORMERLY TRANSITIONAL (#10051): the rung this stood on -- dual-write behind
+// NEON_SOLE_STORE_TABLES / NEON_DUAL_WRITE_LANES -- is gone with D1 and both
+// flags (#10892). What remains is the sole write to the only store, keeping
+// the era's two survivals: it cannot throw, and it files a lane verdict on
+// every attempt.
 import { laneHealthStore } from "./lane-health-store.ts";
 import { SUBNET_HYPERPARAMS_INSERT_COLUMNS } from "./subnet-hyperparams.ts";
 import {

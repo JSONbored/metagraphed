@@ -835,17 +835,15 @@ async function handleNeuronsSync(
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
-  // THE NEON MIRROR (metagraphed-infra#336), and it runs AFTER the D1 write
-  // returns, never instead of it and never in front of it.
-  //
-  // That ordering is the whole lesson of how the pilot broke: a read moved to
-  // Neon while nothing wrote to it, so a public route served a two-day-old
-  // snapshot. During dual-write, D1 is still the store every route reads, so a
-  // Neon failure must cost a mirror and a lane verdict -- not the pass. It
-  // reports its own outcome and cannot throw.
-  //
-  // Off unless NEON_DUAL_WRITE_LANES names the lane, so the deploy that
-  // introduces this changes nothing.
+  // THE NEON WRITE (metagraphed-infra#336, dual-write era; sole store since
+  // D1 was deleted). Two of that era's properties survive it, on purpose:
+  // it reports its own outcome and cannot throw, and it files a lane verdict
+  // on EVERY attempt -- a store that stops accepting writes turns into an
+  // alarm, not a frozen snapshot quietly served (the pilot's failure). The
+  // dual-write gate that stood in front of it ("off unless
+  // NEON_DUAL_WRITE_LANES names the lane") went with the flag (#10892): a
+  // gate whose no-arm means "do not persist" is not a cutover control once
+  // there is one store, it is an off switch nothing should be holding.
   const neon = await mirrorNeuronSnapshotToNeon(
     env as unknown as Record<string, unknown>,
     ctx,

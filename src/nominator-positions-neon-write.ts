@@ -44,7 +44,9 @@ import {
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
-/** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
+/** The lane name this mirror answers to -- the key NEON_WRITE_BUFFER_LANES
+ * and the lane_health verdicts use. (Named for NEON_DUAL_WRITE_LANES until
+ * that flag was deleted with the cutover, #10892.) */
 export const NOMINATOR_POSITIONS_NEON_LANE = "nominator-positions";
 
 /** The lane `self-stake` reports under -- its own, not this one's. */
