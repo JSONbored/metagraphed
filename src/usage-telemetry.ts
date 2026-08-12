@@ -2360,6 +2360,7 @@ export async function recordAiDegradedEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
+    assignUsagePersonProcessing(properties, deps.distinctId);
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
@@ -2470,6 +2471,8 @@ export async function recordAiEmbeddingEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
+    assignUsagePersonProcessing(properties, deps.distinctId);
+
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
@@ -2562,6 +2565,8 @@ export async function recordAiGenerationEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
+    assignUsagePersonProcessing(properties, deps.distinctId);
+
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,

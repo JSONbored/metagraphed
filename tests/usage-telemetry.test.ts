@@ -2289,6 +2289,11 @@ describe("recordAiDegradedEvent", () => {
       // local/undeployed isolate -- the production shape is asserted in
       // the resolveDeployment block.
       environment: "development",
+      // #10606: every capture decides person processing rather than
+      // inheriting PostHog's default, which is to create a profile. Asserted
+      // on all thirteen recorders in tests/posthog-capture-invariants.test.ts;
+      // stated here too because this is a deepEqual of the whole payload.
+      $process_person_profile: false,
     });
   });
 
@@ -2306,6 +2311,8 @@ describe("recordAiDegradedEvent", () => {
     assert.deepEqual(calls[0].body.properties, {
       reason: "ai_disabled",
       environment: "development",
+      // #10606: see the sibling test above — decided, never inherited.
+      $process_person_profile: false,
     });
   });
 
