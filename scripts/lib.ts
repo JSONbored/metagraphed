@@ -640,8 +640,14 @@ export async function latestArtifactDate(
  * `public/metagraph/` is not empty in a fresh checkout -- openapi.json,
  * contracts.json and a few other publish-owned files are committed -- so the
  * root existing proves nothing. These per-entity directories are build output.
+ *
+ * ALL of them, not any (#10919). `some()` passed on a HALF-built tree, which
+ * degrades exactly like an unbuilt one at every reader whose own directory is
+ * the missing half -- and reports itself as a confident zero rather than as a
+ * missing build. The message names which are absent so the answer is one line
+ * rather than a bisect.
  */
-const BUILT_ARTIFACT_MARKERS = ["subnets", "health"];
+const BUILT_ARTIFACT_MARKERS = ["subnets", "health", "economics.json"];
 
 /**
  * Fail loudly when the artifact tree has not been built (#10174).
@@ -662,24 +668,64 @@ const BUILT_ARTIFACT_MARKERS = ["subnets", "health"];
  * Checks only for the absence of the whole tree: a single missing artifact
  * stays a `null`, because that is a real condition readers must handle.
  */
-export function assertArtifactsBuilt(): void {
-  const built = BUILT_ARTIFACT_MARKERS.some(
-    (marker) =>
-      existsSync(path.join(r2StagingRoot, marker)) ||
-      existsSync(path.join(publicMetagraphRoot, marker)),
+export function assertArtifactsBuilt(
+  // The roots are a parameter so the guard is testable in BOTH directions
+  // without a filesystem mock: a test can point it at an empty directory and
+  // watch it refuse, which is the half that cannot be observed from a repo
+  // whose tree is built (as CI's always is).
+  roots: readonly string[] = [publicMetagraphRoot, r2StagingRoot],
+): void {
+  const missing = BUILT_ARTIFACT_MARKERS.filter((marker) =>
+    roots.every((root) => !existsSync(path.join(root, marker))),
   );
-  if (built) return;
+  if (missing.length === 0) return;
   throw new Error(
-    "createLocalArtifactEnv(): the artifact tree is not built, so every read " +
-      "would return null and every reader would degrade to an empty card -- " +
-      "which is indistinguishable from a real empty result.\n" +
-      `Looked for ${BUILT_ARTIFACT_MARKERS.map((m) => `${m}/`).join(" or ")} ` +
-      `under ${publicMetagraphRoot} and ${r2StagingRoot}.\n` +
-      "Run `npm run build` first (CI does this before the suite).",
+    "createLocalArtifactEnv(): the artifact tree is not built, so reads " +
+      "return null and every reader degrades to an empty card -- which is " +
+      "indistinguishable from a real empty result.\n" +
+      `Missing: ${missing.join(", ")} (looked under ${roots.join(" and ")}).\n` +
+      "Run `npm run build` first (CI does this before the suite), or pass " +
+      "`{ requireBuiltArtifacts: false }` if an unbuilt tree is the subject.",
   );
 }
 
-export function createLocalArtifactEnv(overrides: Row = {}): Row {
+/**
+ * Options that are the FACTORY's, not the Worker env's.
+ *
+ * Kept as a second parameter rather than a magic key inside `overrides`,
+ * because everything in `overrides` is handed to the code under test as if it
+ * were a real binding, and a factory flag leaking into an Env is exactly the
+ * kind of thing that reads as a binding nobody declared.
+ */
+export interface LocalArtifactEnvOptions {
+  /**
+   * Assert a built artifact tree first (default true, #10919).
+   *
+   * INVERTED from #10174's opt-in. That version left the assert to the
+   * caller so `validate:committed-seed` -- whose SUBJECT is the committed,
+   * unbuilt tree -- would not fail on its own premise. But only 3 of ~90
+   * callers ever opted in, so every other artifact-dependent failure in a
+   * fresh worktree arrived as `true !== false` with no mention of the build.
+   * Default-on puts the loud message on every caller, including ones written
+   * later, and the one legitimate exception says so at its call site.
+   */
+  requireBuiltArtifacts?: boolean;
+  /**
+   * Where to look for the build markers (defaults to this repo's roots).
+   *
+   * Same parameterization `assertArtifactsBuilt` carries, and for the same
+   * reason: CI's tree is always built, so REFUSAL -- the direction this whole
+   * change is about -- cannot be observed from the repo's own roots. Not a
+   * test-only hook: a caller reading a staged tree elsewhere passes it too.
+   */
+  artifactRoots?: readonly string[];
+}
+
+export function createLocalArtifactEnv(
+  overrides: Row = {},
+  { requireBuiltArtifacts = true, artifactRoots }: LocalArtifactEnvOptions = {},
+): Row {
+  if (requireBuiltArtifacts) assertArtifactsBuilt(artifactRoots);
   return {
     ASSETS: {
       async fetch(request: Request) {

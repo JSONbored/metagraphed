@@ -47,6 +47,8 @@ import {
   dirtyTrackedPaths,
   isProductionPublishBuild,
   revertDeployOwnedArtifactsIfDirty,
+  assertArtifactsBuilt,
+  createLocalArtifactEnv,
 } from "../scripts/lib.ts";
 import { execFileSync } from "node:child_process";
 import type { Row } from "./row-type.ts";
@@ -2385,5 +2387,84 @@ describe("flattenSurfaces subnet_name (#9909)", () => {
   test("a netuid missing from the map falls back to the overlay", () => {
     const [row] = flattenSurfaces([overlay], {}, new Map<unknown, Row>());
     assert.equal(row.subnet_name, "Eirel");
+  });
+});
+
+describe("the built-tree guard (#10919)", () => {
+  // THE FAILURE THIS EXISTS TO STOP. With `public/metagraph/` unbuilt, every
+  // METAGRAPH_ARCHIVE.get() answers null, every reader degrades to a
+  // schema-stable empty card, and an assertion reads `openSlots.length > 0` as
+  // `true !== false` -- with nothing anywhere saying "run the build". #10174
+  // built the guard and left it opt-in; 3 of ~90 callers ever opted in, so the
+  // other 87 kept failing as mysteries. The default is ON now.
+  //
+  // Driven through an EMPTY ROOT rather than the repo's own tree, because CI
+  // builds before the suite: a test that read the real root would assert
+  // nothing there, which is exactly the direction that matters.
+  test("an unbuilt root is refused, naming what is missing and what to run", () => {
+    const empty = mkdtempSync(path.join(tmpdir(), "no-artifacts-"));
+    try {
+      assertArtifactsBuilt([empty]);
+      assert.fail("expected the unbuilt tree to be refused");
+    } catch (error) {
+      const message = String((error as Error).message);
+      assert.match(message, /artifact tree is not built/);
+      assert.match(message, /Missing: /, "it must name which are absent");
+      assert.match(message, /subnets/, "and list them");
+      assert.match(message, /npm run build/, "and say what to run");
+    }
+  });
+
+  test("a HALF-built tree is refused too, not accepted as built", () => {
+    // The `some()` this replaced accepted any one marker, so a tree with
+    // `subnets/` and no `health/` passed the guard and then degraded exactly
+    // like an unbuilt one -- at the readers whose own half was missing.
+    const half = mkdtempSync(path.join(tmpdir(), "half-artifacts-"));
+    mkdirSync(path.join(half, "subnets"));
+    try {
+      assertArtifactsBuilt([half]);
+      assert.fail("expected the half-built tree to be refused");
+    } catch (error) {
+      const message = String((error as Error).message);
+      assert.match(message, /health/, "the missing half must be named");
+      assert.doesNotMatch(
+        message,
+        /Missing: subnets/,
+        "and the present half must not be",
+      );
+    }
+  });
+
+  test("a complete tree passes", () => {
+    const built = mkdtempSync(path.join(tmpdir(), "built-artifacts-"));
+    mkdirSync(path.join(built, "subnets"));
+    mkdirSync(path.join(built, "health"));
+    writeFileSync(path.join(built, "economics.json"), "{}");
+    assertArtifactsBuilt([built]);
+  });
+
+  test("the factory asserts by DEFAULT -- that is the whole change", () => {
+    // The 87 callers that never opted in are what this reaches. Driven at an
+    // empty root rather than the repo's own, so it asserts the same thing in a
+    // built checkout and an unbuilt one -- a test whose verdict depends on
+    // whether somebody ran the build is the very failure being fixed here.
+    const empty = mkdtempSync(path.join(tmpdir(), "factory-default-"));
+    assert.throws(
+      () => createLocalArtifactEnv({}, { artifactRoots: [empty] }),
+      /artifact tree is not built/,
+    );
+  });
+
+  test("a caller whose SUBJECT is the unbuilt tree can opt out", () => {
+    // validate:committed-seed reads what a cold start would serve BEFORE any
+    // build. Refusing it would fail a gate on its own premise -- which is why
+    // #10174 made the guard opt-in in the first place, and why the escape
+    // hatch has to survive the inversion.
+    const empty = mkdtempSync(path.join(tmpdir(), "factory-optout-"));
+    const env = createLocalArtifactEnv(
+      {},
+      { requireBuiltArtifacts: false, artifactRoots: [empty] },
+    );
+    assert.ok(env.METAGRAPH_ARCHIVE, "the env is built, not refused");
   });
 });
