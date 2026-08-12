@@ -544,21 +544,12 @@ describe("confirmRedirectedStale (#10656)", () => {
   /** Answers the confirm's own `{t, mx}` shape. */
   function confirmDb(byTable: Record<string, number | null>, fail = false) {
     return {
-      prepare(sql: string) {
-        return {
-          async all() {
-            if (fail) throw new Error("D1_ERROR: overloaded");
-            const names = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
-              (m) => m[1],
-            );
-            return {
-              results: names.map((t) => ({
-                t,
-                mx: byTable[t as string] ?? null,
-              })),
-            };
-          },
-        };
+      async query(sql: string) {
+        if (fail) throw new Error("store: overloaded");
+        const names = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
+          (m) => m[1],
+        );
+        return names.map((t) => ({ t, mx: byTable[t as string] ?? null }));
       },
     };
   }

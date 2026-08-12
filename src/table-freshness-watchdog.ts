@@ -929,21 +929,19 @@ export async function confirmRedirectedStale(
     // The tables' OWN stamps, which is what `freshnessSql` would have read had
     // these entries never been redirected -- so the confirm asks exactly the
     // question the redirect deferred.
-    const result = await db
-      ?.prepare(
-        tables
-          .map(
-            (table) =>
-              `SELECT '${table}' AS t, MAX(${spec[table].column}) AS mx FROM ${table}`,
-          )
-          .join(" UNION ALL "),
-      )
-      .all();
-    if (!result) throw new Error("no result");
+    if (!db?.query) throw new Error("no store");
+    const rows = await db.query(
+      tables
+        .map(
+          (table) =>
+            `SELECT '${table}' AS t, MAX(${spec[table].column}) AS mx FROM ${table}`,
+        )
+        .join(" UNION ALL "),
+    );
     // The SPEC is passed: parseFreshnessRows drops any table its spec does
     // not know, and defaulting to TABLE_FRESHNESS would silently discard
     // every row when a caller (a test, another spec) asks about its own.
-    confirmed = parseFreshnessRows(result.results ?? [], spec);
+    confirmed = parseFreshnessRows(rows, spec);
   } catch {
     return [...stale];
   }
