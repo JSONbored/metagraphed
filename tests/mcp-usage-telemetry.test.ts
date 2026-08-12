@@ -2018,3 +2018,87 @@ describe("mcpDistinctId — an address outranks a connection", () => {
     );
   });
 });
+
+// The two branches buildContext added, driven end to end (#10606). The unit
+// tests above pin mcpDistinctId's precedence; these prove the dispatch
+// actually resolves an address and hands it over — a precedence rule nothing
+// feeds is a rule about nothing.
+describe("MCP dispatch resolves the caller's address", () => {
+  const SALTED_ENV = {
+    ...CONFIGURED_ENV,
+    USAGE_DISTINCT_ID_SALT: "test-salt-not-a-real-secret",
+  };
+
+  async function postedWith(env: Row, headers: Row) {
+    const original = globalThis.fetch;
+    const posted: Row[] = [];
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      posted.push(JSON.parse(init!.body as string));
+      return { ok: true };
+    }) as typeof fetch;
+    const executionCtx = fakeExecutionCtx();
+    try {
+      await handleMcpRequest(
+        new Request("https://api.metagraph.sh/mcp", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            ...headers,
+          },
+          body: JSON.stringify(toolCall(TOOL)),
+        }),
+        env as never,
+        makeDeps({ executionCtx }),
+      );
+      await Promise.all(executionCtx.scheduled);
+    } finally {
+      globalThis.fetch = original;
+    }
+    return posted;
+  }
+
+  const SESSION = "3f1c2b90-0a4d-4c7e-9a11-2b7d6e5f4c31";
+
+  test("a resolved address outranks the session, end to end", async () => {
+    const posted = await postedWith(SALTED_ENV, {
+      "mcp-session-id": SESSION,
+      "cf-connecting-ip": "203.0.113.7",
+    });
+    const call = posted.find((p) => p.event === "$mcp_tool_call");
+    assert.match(String(call?.distinct_id), /^ip:[0-9a-f]{16}$/);
+  });
+
+  test("two reconnects from one address are one caller", async () => {
+    // THE DEFECT, end to end: 462 session ids in a day against 4 known users,
+    // because every reconnect minted a new one.
+    const ids = new Set<string>();
+    for (const session of ["session-a", "session-b"]) {
+      const posted = await postedWith(SALTED_ENV, {
+        "mcp-session-id": session,
+        "cf-connecting-ip": "203.0.113.7",
+      });
+      ids.add(
+        String(posted.find((p) => p.event === "$mcp_tool_call")?.distinct_id),
+      );
+    }
+    assert.equal(ids.size, 1);
+  });
+
+  test("no cf-connecting-ip still falls back to the session", async () => {
+    // The false side of the branch: resolveClientIp's fixed bucket is not a
+    // caller, so the session remains the honest answer.
+    const posted = await postedWith(SALTED_ENV, { "mcp-session-id": SESSION });
+    const call = posted.find((p) => p.event === "$mcp_tool_call");
+    assert.equal(call?.distinct_id, `mcp-session:${SESSION}`);
+  });
+
+  test("no salt still falls back to the session", async () => {
+    const posted = await postedWith(CONFIGURED_ENV, {
+      "mcp-session-id": SESSION,
+      "cf-connecting-ip": "203.0.113.7",
+    });
+    const call = posted.find((p) => p.event === "$mcp_tool_call");
+    assert.equal(call?.distinct_id, `mcp-session:${SESSION}`);
+  });
+});
