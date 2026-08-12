@@ -624,6 +624,74 @@ export function statusClassOf(status: unknown): string | undefined {
 }
 
 /**
+ * Is this caller a person PostHog should keep a profile for?
+ *
+ * THE SINGLE PREDICATE, because there were two and they disagreed. The MCP
+ * gate keyed only on `github:` while the usage gate keyed on `github:` OR
+ * `account:`, so a key-authenticated MCP caller was a person on one capture
+ * and not on the other -- and PostHog creates the profile when ANY event on an
+ * id asks for one, which makes a disagreement resolve to the expensive answer
+ * silently.
+ */
+function isUsagePerson(distinctId?: string): boolean {
+  const id = distinctId ?? USAGE_EVENT_DISTINCT_ID;
+  return (
+    id.startsWith(USAGE_ACCOUNT_NAMESPACE) ||
+    id.startsWith(MCP_PERSON_NAMESPACE)
+  );
+}
+
+/**
+ * The one place an event reaches PostHog.
+ *
+ * ## WHY THIS EXISTS
+ *
+ * This body was written TEN TIMES -- ten copies of `api_key` / `event` /
+ * `distinct_id` / `properties`, differing only in the event name. Ten copies
+ * of one decision is not a style problem, it is a coverage problem: a rule
+ * that must hold on every capture was enforced by remembering to write it ten
+ * times, and remembering is what failed.
+ *
+ * It failed measurably. `$process_person_profile` was written on six of the
+ * ten, so PostHog kept minting a person profile per MCP session at ~25-31/hour
+ * straight through the flag's own deploy (measured 2026-08-12) while every
+ * `$mcp_*` event politely said `false` -- because ONE unflagged event on an id
+ * is enough. Two more surfaced as soon as a derived sweep asked all ten
+ * (#10949), and three `$ai_*` recorders after that.
+ *
+ * So the flag is stamped HERE. Omitting it stops being possible rather than
+ * being remembered, which is the only version of this that holds.
+ */
+async function capturePostHogEvent(
+  env: Env | null | undefined,
+  eventName: string,
+  properties: Record<string, unknown>,
+  deps: RecordUsageEventDeps,
+): Promise<boolean> {
+  // Every invariant that must hold on EVERY capture belongs above the fetch,
+  // never at a call site. tests/posthog-capture-invariants.test.ts asserts
+  // them against all thirteen recorders.
+  properties["$process_person_profile"] = isUsagePerson(deps.distinctId);
+  const doFetch = deps.fetch ?? globalThis.fetch;
+  const response = await doFetch(
+    `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+        event: eventName,
+        distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+        properties,
+      }),
+    },
+  );
+  // A rejected capture is PostHog's problem, not the caller's -- reported as
+  // not-recorded rather than thrown, exactly as each copy did.
+  return response?.ok === true;
+}
+
+/**
  * Stamp `$process_person_profile` for a usage event.
  *
  * ## THIS IS A COST GATE, NOT A LABEL
@@ -692,29 +760,8 @@ export async function recordUsageEvent(
     // outside usageEventProperties so that function stays a pure projection of
     // its UsageEvent argument (it is exported and asserted as one).
     assignDeployment(properties, env);
-    // After sampling for the same reason as assignDeployment, and before the
-    // capture because the flag has to ride the event that would create the
-    // profile -- a later correction cannot un-bill one.
-    assignUsagePersonProcessing(properties, deps.distinctId);
 
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: USAGE_EVENT_NAME,
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    // A rejected capture is PostHog's problem, not the request's — report it
-    // as not-recorded rather than throwing.
-    return response?.ok === true;
+    return await capturePostHogEvent(env, USAGE_EVENT_NAME, properties, deps);
   } catch {
     // Telemetry must never surface into the request/tool path.
     return false;
@@ -913,15 +960,25 @@ function assignMcpPersonProcessing(
   deps: RecordUsageEventDeps,
   authTier?: string,
 ): void {
-  const isPerson = (deps.distinctId ?? USAGE_EVENT_DISTINCT_ID).startsWith(
-    MCP_PERSON_NAMESPACE,
-  );
-  properties["$process_person_profile"] = isPerson;
+  // NO LONGER STAMPS $process_person_profile -- capturePostHogEvent does, for
+  // every capture, which is what stops six of ten setting it and four not.
+  // This keeps only the part that is genuinely MCP's: the person PROPERTY.
+  //
+  // It also silently fixed a disagreement. This gate keyed on `github:` alone
+  // while the usage gate keyed on `github:` OR `account:`, so a
+  // key-authenticated MCP caller was a person on one capture and not on the
+  // other -- and PostHog resolves that to the expensive answer without
+  // saying so. One predicate now, `isUsagePerson`.
+  //
   // Person properties ride the event itself ($set on capture) rather than a
   // separate $identify — the SDK's identify() feature without its extra
   // event per session, which matters on a project already paying for volume.
   // Only for a real person: $set on an anonymous event is dead weight.
-  if (isPerson && typeof authTier === "string" && authTier) {
+  if (
+    isUsagePerson(deps.distinctId) &&
+    typeof authTier === "string" &&
+    authTier
+  ) {
     properties["$set"] = { mcp_auth_tier: authTier };
   }
 }
@@ -1340,22 +1397,7 @@ export async function recordMcpToolCallEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: "$mcp_tool_call",
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    return response?.ok === true;
+    return await capturePostHogEvent(env, "$mcp_tool_call", properties, deps);
   } catch {
     return false;
   }
@@ -1395,22 +1437,7 @@ export async function recordMcpInitializeEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: "$mcp_initialize",
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    return response?.ok === true;
+    return await capturePostHogEvent(env, "$mcp_initialize", properties, deps);
   } catch {
     return false;
   }
@@ -1461,22 +1488,7 @@ export async function recordMcpToolsListEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: "$mcp_tools_list",
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    return response?.ok === true;
+    return await capturePostHogEvent(env, "$mcp_tools_list", properties, deps);
   } catch {
     return false;
   }
@@ -1561,22 +1573,7 @@ async function postMcpResourceEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: eventName,
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    return response?.ok === true;
+    return await capturePostHogEvent(env, eventName, properties, deps);
   } catch {
     return false;
   }
@@ -1670,22 +1667,12 @@ export async function recordMcpMissingCapabilityEvent(
     }
 
     assignDeployment(properties, env);
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: "$mcp_missing_capability",
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
+    return await capturePostHogEvent(
+      env,
+      "$mcp_missing_capability",
+      properties,
+      deps,
     );
-
-    return response?.ok === true;
   } catch {
     return false;
   }
@@ -2246,29 +2233,8 @@ export async function recordExceptionEvent(
     const queryShape = sanitizeLabel(event.queryShape);
     if (queryShape !== undefined) properties.query_shape = queryShape;
     assignDeployment(properties, env);
-    // #10606: a fault carries the SAME distinct_id as the request that
-    // produced it, so leaving the flag off here would have re-opened the leak
-    // the other captures close -- one unflagged event on an id is enough to
-    // mint the profile, which is exactly how usage_event kept minting one per
-    // MCP session while all six $mcp_* events said false.
-    assignUsagePersonProcessing(properties, deps.distinctId);
 
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: "$exception",
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    return response?.ok === true;
+    return await capturePostHogEvent(env, "$exception", properties, deps);
   } catch {
     return false;
   }
@@ -2360,23 +2326,7 @@ export async function recordAiDegradedEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
-    assignUsagePersonProcessing(properties, deps.distinctId);
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: "ai_degraded",
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    return response?.ok === true;
+    return await capturePostHogEvent(env, "ai_degraded", properties, deps);
   } catch {
     return false;
   }
@@ -2471,24 +2421,8 @@ export async function recordAiEmbeddingEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
-    assignUsagePersonProcessing(properties, deps.distinctId);
 
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: "$ai_embedding",
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    return response?.ok === true;
+    return await capturePostHogEvent(env, "$ai_embedding", properties, deps);
   } catch {
     return false;
   }
@@ -2565,24 +2499,8 @@ export async function recordAiGenerationEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
-    assignUsagePersonProcessing(properties, deps.distinctId);
 
-    const doFetch = deps.fetch ?? globalThis.fetch;
-    const response = await doFetch(
-      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
-          event: "$ai_generation",
-          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-          properties,
-        }),
-      },
-    );
-
-    return response?.ok === true;
+    return await capturePostHogEvent(env, "$ai_generation", properties, deps);
   } catch {
     return false;
   }
