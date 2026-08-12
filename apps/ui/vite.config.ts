@@ -26,9 +26,7 @@ import { createRequire } from "node:module";
 const requireOptional = createRequire(import.meta.url);
 // Returns a Vite/Rollup plugin -- typed as the plugin array's own element
 // so `withTolerantSourcemapUpload` still type-checks its argument.
-type PosthogRollupPlugin = (
-  options: Record<string, unknown>,
-) => Plugin;
+type PosthogRollupPlugin = (options: Record<string, unknown>) => Plugin;
 let posthogRollupPlugin: PosthogRollupPlugin | null = null;
 try {
   const loaded = requireOptional("@posthog/rollup-plugin") as
