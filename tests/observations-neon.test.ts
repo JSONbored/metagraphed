@@ -35,41 +35,20 @@ function recordingSql(fail?: string) {
 const DAYS = [{ date: "2026-08-08", start: 1000, end: 2000 }];
 
 describe("neonOwnsObservations is all-or-nothing", () => {
-  const owns =
-    (owned: string[]) =>
-    (_e: unknown, table: string): boolean =>
-      owned.includes(table);
   const bound = { HYPERDRIVE: { connectionString: "postgresql://x" } };
 
-  test("every table owned and Hyperdrive bound", () => {
-    assert.equal(
-      neonOwnsObservations(bound, owns([...OBSERVATION_TABLES])),
-      true,
-    );
-  });
-
-  test("ONE table left out keeps the whole family on D1", () => {
-    // Two of these writes are INSERT ... SELECT FROM surface_checks. A
-    // half-listed group would leave a rollup aggregating a D1 that no longer
-    // receives probes -- and that is a schema-stable empty, not an error, so
-    // the daily series would just quietly go to zero.
-    for (const missing of OBSERVATION_TABLES) {
-      const partial = OBSERVATION_TABLES.filter((t) => t !== missing);
-      assert.equal(
-        neonOwnsObservations(bound, owns([...partial])),
-        false,
-        `${missing} missing should pin the family to D1`,
-      );
-    }
+  // The per-table ownership tests retired with the injected predicate
+  // (#10051): Neon is the only store, so the family cannot be pinned to a
+  // deleted D1 by a half-listed group any more. What remains decidable is
+  // the binding.
+  test("bound Hyperdrive answers yes", () => {
+    assert.equal(neonOwnsObservations(bound), true);
   });
 
   test("owned but no Hyperdrive stays on D1", () => {
     // Skipping the D1 write with nowhere to put the rows drops a probe sweep,
     // and a probe not stored is gone -- there is no chain to replay it from.
-    assert.equal(
-      neonOwnsObservations({}, owns([...OBSERVATION_TABLES])),
-      false,
-    );
+    assert.equal(neonOwnsObservations({}), false);
   });
 
   test("the declared group is exactly what this module writes", () => {

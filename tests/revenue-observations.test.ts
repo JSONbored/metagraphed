@@ -671,22 +671,9 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
     // producerStore and readStore both refuse a table they were not told
     // about, so an undeclared table yields no db — and the lane would write
     // nothing, silently, which is the failure it was built to end.
-    for (const file of [
-      "wrangler.jsonc",
-      "wrangler.data.jsonc",
-      "wrangler.registry.jsonc",
-    ]) {
-      const text = await fs.readFile(path.join(repoRoot, file), "utf8");
-      const list =
-        /"NEON_SOLE_STORE_TABLES":\s*"([^"]*)"/.exec(text)?.[1] ?? "";
-      const tables = list.split(",");
-      for (const table of REVENUE_OBSERVATION_TABLES) {
-        assert.ok(
-          tables.includes(table),
-          `${table} missing from NEON_SOLE_STORE_TABLES in ${file}`,
-        );
-      }
-    }
+    // The flag-parity loop retired with NEON_SOLE_STORE_TABLES (#10051);
+    // "a reader names a table no migration creates" is owned by
+    // tests/neon-sole-store-tables-exist.test.ts, derived from the code.
   });
 
   test("the migration that creates both tables exists", async () => {

@@ -230,12 +230,10 @@ describe("pruneChainDetail", () => {
       ok: false,
       reason: "no store bound",
     });
-    assert.deepEqual(
-      await pruneChainDetail({
-        NEON_SOLE_STORE_TABLES: PRUNE_TABLES.join(","),
-      }),
-      { ok: false, reason: "no store bound" },
-    );
+    assert.deepEqual(await pruneChainDetail({}), {
+      ok: false,
+      reason: "no store bound",
+    });
 
     const result = await pruneChainDetail(owned(), CTX, {
       readDb: throwingReader(new Error("bounds query failed")),
@@ -296,25 +294,9 @@ describe("the bound the four tables share (#10017)", () => {
     assert.ok((result.deleted_below ?? 0) > 1);
   });
 
-  test("ONE table missing from the sole-store list declines the WHOLE prune", async () => {
-    // All four or none. They are pruned to a single watermark, so a
-    // partially-listed set would leave one table holding blocks its siblings
-    // dropped -- a join across the seam then finds a block header with no
-    // events, which reads as corruption rather than as retention.
-    //
-    // readStore enforces this now, and it enforces it one step earlier than the
-    // old gate did: the bounds read itself declines, so the run reports "no
-    // store bound" instead of pruning three tables and reporting success.
-    const del = recorder();
-    const result = await pruneChainDetail(
-      owned(PRUNE_TABLES.slice(0, 3)),
-      CTX,
-      { sql: del.sql },
-    );
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, "no store bound");
-    assert.deepEqual(del.seen, []);
-  });
+  // "ONE table missing from the sole-store list declines the WHOLE prune" retired with NEON_SOLE_STORE_TABLES (#10051): Neon is the only
+  // store, so the undeclared/partial state cannot exist; the binding pins
+  // survive in this suite.
 
   test("a SOLE-STORE table is pruned with nothing reconciling it", async () => {
     // The landmine the old gate was carrying (#10084). #10078 established that

@@ -81,11 +81,10 @@ const WATCHDOGS: {
 ];
 
 describe("with Neon owning its tables and no D1 bound", () => {
-  for (const { name, run, tables, refusal } of WATCHDOGS) {
+  for (const { name, run, refusal } of WATCHDOGS) {
     test(`${name} reaches a store`, async () => {
       const result = await run({
         HYPERDRIVE,
-        NEON_SOLE_STORE_TABLES: tables.join(","),
       });
       assert.notEqual(
         result.reason,
@@ -98,12 +97,12 @@ describe("with Neon owning its tables and no D1 bound", () => {
 });
 
 describe("with nothing bound at all", () => {
-  for (const { name, run, tables, refusal } of WATCHDOGS) {
+  for (const { name, run, refusal } of WATCHDOGS) {
     test(`${name} still refuses`, async () => {
       // Without this, every assertion above would also pass if the store check
       // had simply been deleted -- a watchdog that runs against no store at all
       // and reports whatever a missing database returns.
-      const result = await run({ NEON_SOLE_STORE_TABLES: tables.join(",") });
+      const result = await run({});
       assert.equal(result.reason, refusal, name);
     });
   }

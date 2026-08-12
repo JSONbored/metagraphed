@@ -25,11 +25,7 @@ import {
   neonWriteBufferEnabled,
   neonWriteRunner,
 } from "./neon-write-buffer.ts";
-import {
-  neonDualWriteEnabled,
-  recordNeonWriteVerdict,
-  type NeonWriteResult,
-} from "./neon-write.ts";
+import { recordNeonWriteVerdict, type NeonWriteResult } from "./neon-write.ts";
 import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
@@ -62,9 +58,10 @@ async function runner(
 }> {
   const now = deps.now ?? Date.now;
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
-  if (!neonDualWriteEnabled(env, lane)) {
-    return { sql: null, laneDb, now, attempted: false, buffered: false };
-  }
+  // The dual-write gate stood here until #10051: with D1 deleted this is the
+  // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
+  // no-arm means "do not persist" is not a cutover control any more, it is an
+  // off switch nothing should be holding.
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.

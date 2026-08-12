@@ -37,7 +37,6 @@ function recordingSql(fail?: RegExp) {
 
 describe("validator-nominator-counts", () => {
   const env = {
-    NEON_DUAL_WRITE_LANES: "validator-nominator-counts",
     HYPERDRIVE: { connectionString: "postgresql://x" },
   };
   const rows = [{ hotkey: "h", captured_at: 1 }];
@@ -96,7 +95,7 @@ describe("validator-nominator-counts", () => {
     assert.equal(PASS_TABLES["hotkey-alpha"], "hotkey_alpha_passes");
     const { calls, sql } = recordingSql();
     await mirrorLedgerToNeon(
-      { ...env, NEON_DUAL_WRITE_LANES: "hotkey-alpha" },
+      env,
       ctx,
       "hotkey-alpha",
       [{ hotkey: "h", netuid: 1, captured_at: 1 }],
@@ -115,7 +114,7 @@ describe("validator-nominator-counts", () => {
     // impossible, and it is never revisited.
     const { calls, sql } = recordingSql(/INSERT INTO hotkey_alpha /);
     await mirrorLedgerToNeon(
-      { ...env, NEON_DUAL_WRITE_LANES: "hotkey-alpha" },
+      env,
       ctx,
       "hotkey-alpha",
       [{ hotkey: "h", netuid: 1, captured_at: 1 }],
@@ -132,7 +131,6 @@ describe("validator-nominator-counts", () => {
 
 describe("nominator-positions", () => {
   const env = {
-    NEON_DUAL_WRITE_LANES: "nominator-positions",
     HYPERDRIVE: { connectionString: "postgresql://x" },
   };
   const input = {

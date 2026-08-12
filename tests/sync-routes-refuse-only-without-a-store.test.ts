@@ -49,12 +49,11 @@ const CHAIN_DETAIL_TABLES =
 
 const ctx = { waitUntil() {} } as unknown as ExecutionContext;
 
-/** An env with NO D1 binding: `owned` decides whether Neon is the store. */
-function env(owned: string): Record<string, unknown> {
+/** An env with NO D1 binding. (`owned` used to feed the sole-store flag;
+ * kept in the signature so the many call sites stay unchanged, #10051.) */
+function env(_owned: string): Record<string, unknown> {
   return {
     HYPERDRIVE,
-    NEON_SOLE_STORE_TABLES: owned,
-    NEON_DUAL_WRITE_LANES: "neurons,chain-detail",
     NEURONS_SYNC_SECRET,
     NEURON_DAILY_BACKFILL_SECRET,
     CHAIN_DETAIL_SYNC_SECRET,
@@ -129,18 +128,7 @@ async function assertReachedTheStore(res: Response, label: string) {
   );
 }
 
-async function assertStillRefuses(res: Response, label: string) {
-  assert.equal(
-    res.status,
-    503,
-    `${label}: the all-or-nothing family gate was removed outright`,
-  );
-  assert.deepEqual(
-    await res.json(),
-    { error: "no store bound for this route" },
-    label,
-  );
-}
+// assertStillRefuses left with the partial-family tests (#10051).
 
 describe("neurons-sync", () => {
   const send = (owned: string) =>
@@ -156,15 +144,9 @@ describe("neurons-sync", () => {
     await assertReachedTheStore(await send(NEURON_TABLES), "neurons-sync");
   });
 
-  test("still refuses when Neon owns only part of the family", async () => {
-    // Two of three. neonOwnsNeuronsSnapshot is all-or-nothing, so this is the
-    // "not owned" case -- and the D1 write it would fall back to has no
-    // binding, which is exactly what the 503 is for.
-    await assertStillRefuses(
-      await send("neurons,neuron_daily"),
-      "neurons-sync (partial)",
-    );
-  });
+  // The partial-family arm retired with NEON_SOLE_STORE_TABLES (#10051):
+  // Neon is the only store, so a family split across stores cannot exist.
+  // The no-store refusals this suite is named for stand above.
 });
 
 describe("backfill-neuron-daily", () => {
@@ -191,12 +173,9 @@ describe("backfill-neuron-daily", () => {
     assert.equal(res.status, 502);
   });
 
-  test("still refuses when Neon owns only part of the family", async () => {
-    await assertStillRefuses(
-      await send("neuron_daily,account_position_daily"),
-      "backfill-neuron-daily (partial)",
-    );
-  });
+  // The partial-family arm retired with NEON_SOLE_STORE_TABLES (#10051):
+  // Neon is the only store, so a family split across stores cannot exist.
+  // The no-store refusals this suite is named for stand above.
 });
 
 describe("chain-detail-sync", () => {
@@ -256,12 +235,9 @@ describe("chain-detail-sync", () => {
     );
   });
 
-  test("still refuses when Neon owns only part of the families", async () => {
-    await assertStillRefuses(
-      await send("chain_detail_blocks,chain_detail_extrinsics"),
-      "chain-detail-sync (partial)",
-    );
-  });
+  // The partial-family arm retired with NEON_SOLE_STORE_TABLES (#10051):
+  // Neon is the only store, so a family split across stores cannot exist.
+  // The no-store refusals this suite is named for stand above.
 });
 
 describe("poller-lane-health-sync", () => {

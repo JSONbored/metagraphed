@@ -26,24 +26,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 
-import {
-  BLOCKS_HEAD_NEON_LANE,
-  RAW_CAPTURE_STATE_NEON_LANE,
-} from "../src/capture-state-neon-write.ts";
-import { CHAIN_DETAIL_NEON_LANE } from "../src/chain-detail-neon-write.ts";
-import {
-  ACCOUNT_IDENTITY_NEON_LANE,
-  SUBNET_IDENTITY_NEON_LANE,
-  SUBNET_OWNERSHIP_NEON_LANE,
-  SUBNET_HYPERPARAMS_NEON_LANE,
-} from "../src/hyperparams-identity-neon-write.ts";
-import { LEDGER_MIRROR_PLANS } from "../src/ledger-neon-write.ts";
-import { NEURONS_NEON_LANE } from "../src/neurons-neon-write.ts";
-import {
-  NOMINATOR_POSITIONS_NEON_LANE,
-  SELF_STAKE_NEON_LANE,
-} from "../src/nominator-positions-neon-write.ts";
-
 /** Every config whose Worker reaches a Neon-flag gate. Hand-listed, because
  * "which Workers have gated paths" is the thing being asserted -- deriving it
  * from which files happen to contain the flags would make a config that
@@ -66,9 +48,16 @@ const GATED_CONFIGS = [
  *  declared-and-empty: an empty flag reads as "no tables need this" rather than
  *  "this question no longer exists", and two prune gates had already inverted
  *  under exactly that ambiguity (#10152, #10164). */
+/** NEON_DUAL_WRITE_LANES is gone too (#10051): with D1 deleted it gated the
+ *  SOLE writes to the ONLY store, so its no-arm meant "do not persist" -- an
+ *  off switch, not a cutover control. The writes are unconditional now, which
+ *  retires this suite's coverage test with the hazard it guarded: a lane can
+ *  no longer be stopped by a config omission. Same not-declared-and-empty
+ *  rule as NEON_BACKFILL_LANES above. */
+/** NEON_SOLE_STORE_TABLES followed in the same change (#10051): it answered
+ *  "is D1 behind this table?" about a deleted database, so every caller now
+ *  states the constant inline and the flag is gone -- same rule as above. */
 const FLAGS = [
-  "NEON_DUAL_WRITE_LANES",
-  "NEON_SOLE_STORE_TABLES",
   // #10659: which lanes defer their writes through the write-behind buffer.
   // Same agreement rule and the same reason -- a Worker whose config omits it
   // reads "no lane buffers" and writes straight through, which looks exactly
@@ -109,65 +98,8 @@ describe("the Neon migration flags", () => {
     });
   }
 
-  test("NEON_DUAL_WRITE_LANES names every lane that has a writer", () => {
-    // AGREEMENT IS NOT COVERAGE, and this flag is the one where the difference
-    // costs the most. Since D1 was deleted (#10179) the six *-neon-write.ts
-    // modules are the ONLY writers for their tables, and each one early-returns
-    // `{ attempted: false }` when its lane is absent from this flag. So a lane
-    // dropped from the list is not a slower path or a fallback -- it is that
-    // table's writes stopping, silently, with every config still agreeing and
-    // every test above still passing.
-    //
-    // Derived from the lane constants the writers themselves export, so a new
-    // producer cannot be added without this list forcing the decision. Hard-
-    // coding the names here would assert the flag against a copy of itself.
-    const writers = new Set<string>([
-      BLOCKS_HEAD_NEON_LANE,
-      RAW_CAPTURE_STATE_NEON_LANE,
-      CHAIN_DETAIL_NEON_LANE,
-      SUBNET_HYPERPARAMS_NEON_LANE,
-      ACCOUNT_IDENTITY_NEON_LANE,
-      SUBNET_IDENTITY_NEON_LANE,
-      SUBNET_OWNERSHIP_NEON_LANE,
-      NEURONS_NEON_LANE,
-      NOMINATOR_POSITIONS_NEON_LANE,
-      SELF_STAKE_NEON_LANE,
-      ...Object.keys(LEDGER_MIRROR_PLANS),
-    ]);
-    assert.ok(
-      writers.size > 0,
-      "the writer set is not empty -- otherwise vacuous",
-    );
-
-    for (const config of GATED_CONFIGS) {
-      const value = declared(config, "NEON_DUAL_WRITE_LANES");
-      assert.notEqual(
-        value,
-        null,
-        `${config} declares no NEON_DUAL_WRITE_LANES`,
-      );
-      const enabled = new Set(
-        value!
-          .split(",")
-          .map((lane) => lane.trim())
-          .filter(Boolean),
-      );
-      const missing = [...writers].filter((lane) => !enabled.has(lane)).sort();
-      assert.deepEqual(
-        missing,
-        [],
-        `${config} omits these lanes, so their ONLY writer is off there`,
-      );
-      // The other direction catches a typo: a name in the flag matching no
-      // writer is a lane someone believes is enabled and that nothing reads.
-      const unknown = [...enabled].filter((lane) => !writers.has(lane)).sort();
-      assert.deepEqual(
-        unknown,
-        [],
-        `${config} names lanes no writer answers to -- a typo here reads as enabled`,
-      );
-    }
-  });
+  // The dual-write coverage test retired with the flag (#10051) -- see the
+  // FLAGS note above. The writers it enumerated write unconditionally now.
 
   test("the flag list itself has not outgrown this test", () => {
     // A fifth flag added to the data config and not to this list would go

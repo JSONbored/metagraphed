@@ -43,31 +43,13 @@ function fakeClient(rows: unknown[] = [], failWith?: Error) {
 }
 
 describe("readStore chooses the store", () => {
-  test("refuses until Neon is declared owner of every table it was handed", () => {
-    const env = {
-      HYPERDRIVE,
-      // Two of the three. A reader split across stores would run its JOIN
-      // against a store missing one side, and that comes back as an empty
-      // result set rather than an error -- a wrong answer with a valid shape.
-      //
-      // There is only one store now, so "not all of them" answers UNDEFINED
-      // rather than handing back a second binding. The rule survives the
-      // collapse because what it protects against is unchanged: reading a table
-      // from a store that was never declared to hold it.
-      NEON_SOLE_STORE_TABLES: "chain_detail_blocks,chain_detail_extrinsics",
-    };
-    const tables = [
-      "chain_detail_blocks",
-      "chain_detail_extrinsics",
-      "chain_detail_chain_events",
-    ];
-    assert.equal(readStore(env, tables), undefined);
-  });
+  // "refuses until Neon is declared owner of every table it was handed"
+  // retired with NEON_SOLE_STORE_TABLES (#10051): ownership is constant,
+  // and the binding + the empty-list rule below are what remain decidable.
 
   test("goes to Neon when it owns all of them and Hyperdrive is bound", () => {
     const env = {
       HYPERDRIVE,
-      NEON_SOLE_STORE_TABLES: "blocks_head,chain_detail_blocks",
     };
     const store = readStore(env, ["blocks_head", "chain_detail_blocks"]);
     assert.equal(typeof store?.prepare, "function");
@@ -77,7 +59,7 @@ describe("readStore chooses the store", () => {
     // The flag can say Neon owns the table while the binding to reach it is
     // missing -- a config half-applied, or a Worker whose wrangler file was not
     // updated. Sole-store is a claim about the data, not about this isolate.
-    const env = { NEON_SOLE_STORE_TABLES: "neurons" };
+    const env = {};
     assert.equal(readStore(env, ["neurons"]), undefined);
   });
 
@@ -85,7 +67,7 @@ describe("readStore chooses the store", () => {
     // `every` on an empty array is true, so the natural implementation sends a
     // caller who forgot to declare its tables to Postgres unconditionally --
     // the one case where the all-or-nothing rule inverts into its opposite.
-    const env = { HYPERDRIVE, NEON_SOLE_STORE_TABLES: "neurons" };
+    const env = { HYPERDRIVE };
     assert.equal(readStore(env, []), undefined);
   });
 

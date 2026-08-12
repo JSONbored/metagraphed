@@ -39,7 +39,6 @@ function sqlSpy(failOn?: string) {
 }
 
 const ENV = {
-  NEON_DUAL_WRITE_LANES: "subnet-hyperparams,account-identity",
   HYPERDRIVE: { connectionString: "postgresql://example/db" },
 };
 const ctx = { waitUntil: () => undefined };
@@ -101,22 +100,11 @@ describe("every plan's history guard", () => {
 });
 
 describe("the lane gate", () => {
-  test("an unnamed lane writes nothing", async () => {
-    const spy = sqlSpy();
-    const out = await mirrorFamilyToNeon(
-      { ...ENV, NEON_DUAL_WRITE_LANES: "" },
-      ctx,
-      SUBNET_HYPERPARAMS_NEON_LANE,
-      { rows: [HP_ROW], historyRows: [HP_HIST] },
-      { sql: spy.sql },
-    );
-    assert.equal(out.attempted, false);
-    assert.deepEqual(spy.statements, []);
-  });
-
+  // The off-arm test lived here until #10051: with D1 deleted the write is
+  // unconditional, and the behaviour it pinned is gone.
   test("an unknown lane is a no-op, not a throw", async () => {
-    // The flag is free text. A typo must not take down the D1 write this runs
-    // behind.
+    // Callers name lanes in code now (#10051); a name this table lacks is a
+    // config defect to surface, not a reason to crash the pass around it.
     const out = await mirrorFamilyToNeon(ENV, ctx, "typo-lane", {
       rows: [HP_ROW],
       historyRows: [],
@@ -124,17 +112,8 @@ describe("the lane gate", () => {
     assert.equal(out.attempted, false);
   });
 
-  test("the two families move independently", async () => {
-    const spy = sqlSpy();
-    const out = await mirrorFamilyToNeon(
-      { ...ENV, NEON_DUAL_WRITE_LANES: "account-identity" },
-      ctx,
-      SUBNET_HYPERPARAMS_NEON_LANE,
-      { rows: [HP_ROW], historyRows: [] },
-      { sql: spy.sql },
-    );
-    assert.equal(out.attempted, false);
-  });
+  // "the two families move independently" also retired with the flag: the
+  // per-lane independence it pinned was a property of the free-text list.
 });
 
 describe("what it writes", () => {
@@ -239,12 +218,22 @@ describe("failure is reported, never thrown", () => {
     // Somebody named the lane and the binding is missing. That deserves a
     // recorded failure rather than a quiet no-op.
     const out = await mirrorFamilyToNeon(
-      { NEON_DUAL_WRITE_LANES: "subnet-hyperparams" },
+      {},
       ctx,
       SUBNET_HYPERPARAMS_NEON_LANE,
       { rows: [HP_ROW], historyRows: [] },
     );
     assert.equal(out.attempted, true);
-    assert.deepEqual(out.results, {});
+    // The miss is IN-BAND since #10051: empty results let a sync route ack a
+    // write nothing held, so every table reports the unbound failure.
+    assert.ok(Object.keys(out.results).length > 0, "the miss must be in-band");
+    for (const r of Object.values(out.results)) {
+      assert.deepEqual(r, {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: "hyperdrive unbound",
+      });
+    }
   });
 });

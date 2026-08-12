@@ -61,7 +61,6 @@ import {
   type HyperdriveLike,
   type WaitUntilLike,
 } from "./pg-sql.ts";
-import { neonOwnsTable } from "./neon-write.ts";
 import { readStore, type ReadStoreDb } from "./read-store.ts";
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
@@ -288,7 +287,7 @@ async function pruneChainDetailNeon(
   // events, which reads as corruption rather than as retention.
   // Ownership alone since #10166 deleted the reconciler: the second arm was
   // "or it is being backfilled", and there is no backfill any more.
-  if (!PRUNE_TABLES.every((table) => neonOwnsTable(bag, table))) return {};
+  // the ownership check collapsed with the flag (#10051): Neon is the only store, so the question answered itself.
   try {
     const sql = injected ?? createPgSql(hyperdrive!, ctx!);
     for (const table of PRUNE_TABLES) {

@@ -16,7 +16,6 @@ import worker, {
   sweepableSubnets,
 } from "../workers/api.ts";
 import { LANE_HEARTBEAT_CRON } from "../workers/config.ts";
-import { ATTRIBUTION_SWEEP_TABLES } from "../src/read-store-tables.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 import {
@@ -382,24 +381,10 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
     assert.equal(result.reason, "no_queue_binding");
   });
 
-  test("both tables are declared Neon sole-store in every config", async () => {
-    // producerStore and readStore both refuse a table they were not told
-    // about, so an undeclared table yields no db -- and the lane would write
-    // nowhere while reporting a binding problem it cannot explain.
-    for (const config of [
-      "wrangler.jsonc",
-      "wrangler.data.jsonc",
-      "wrangler.registry.jsonc",
-    ]) {
-      const text = await fs.readFile(path.join(repoRoot, config), "utf8");
-      for (const table of ATTRIBUTION_SWEEP_TABLES) {
-        assert.ok(
-          text.includes(table),
-          `${table} is not declared sole-store in ${config}`,
-        );
-      }
-    }
-  });
+  // This test's flag-declared premise retired with NEON_SOLE_STORE_TABLES
+  // (#10051): Neon is the only store, so an undeclared/partial state cannot
+  // exist. "A reader names a table no migration creates" is owned by
+  // tests/neon-sole-store-tables-exist.test.ts, derived from the code.
 
   test("the migration declares both tables and their verdict vocabulary", async () => {
     const sql = await fs.readFile(

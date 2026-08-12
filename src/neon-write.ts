@@ -671,34 +671,14 @@ export async function recordNeonWriteVerdict(
   return written;
 }
 
-/**
- * Which lanes dual-write into Neon, read from the environment.
- *
- * A COMMA LIST, DEFAULTING TO EMPTY, so this file changes nothing until a lane
- * is named. That matters more than usual here: the pilot's failure was a store
- * being used before it was ready, and a flag that defaults ON would repeat it
- * on the deploy that introduced the flag.
- *
- * Same shape as SYNC_QUEUE_LANES, so the two cutovers are read the same way.
- */
-export function neonDualWriteLanes(
-  env: Record<string, unknown> | null | undefined,
-): Set<string> {
-  return parseLaneList(env?.NEON_DUAL_WRITE_LANES);
-}
+// NEON_DUAL_WRITE_LANES lived here: which lanes ALSO wrote Neon while D1 was
+// the original. With D1 deleted, its no-arm stopped meaning "not yet" and
+// started meaning "do not persist" -- a flag whose absence turns off the sole
+// write to the only store is an off switch, not a cutover control. Deleted in
+// #10051; the six write modules run unconditionally now.
 
-/** A comma list, empty on anything that is not one. Shared by all three Neon
- * flags so "unset", "empty string" and "trailing comma" cannot mean different
- * things depending on which stage of the cutover is reading them. */
-function parseLaneList(raw: unknown): Set<string> {
-  if (typeof raw !== "string" || raw.trim() === "") return new Set();
-  return new Set(
-    raw
-      .split(",")
-      .map((lane) => lane.trim())
-      .filter((lane) => lane.length > 0),
-  );
-}
+// parseLaneList lived here for the cutover flags; the last reader left
+// with them (#10051).
 
 // NEON_READ_LANES lived here: which lanes READ from Neon, as opposed to the
 // write list above. It existed to keep two questions apart -- "is HYPERDRIVE
@@ -710,49 +690,11 @@ function parseLaneList(raw: unknown): Set<string> {
 // could only ever refuse a read, never redirect it. Deleted in #10051 with
 // the route map and the gate in workers/data-api.ts that consulted it.
 
-/** Whether `lane` should mirror into Neon on this deployment. */
-export function neonDualWriteEnabled(
-  env: Record<string, unknown> | null | undefined,
-  lane: string,
-): boolean {
-  return neonDualWriteLanes(env).has(lane);
-}
-
-/**
- * Tables whose ONLY home is Neon -- no D1 copy, no mirror, no reconciler.
- *
- * A FOURTH flag, and the one the other three are converging on. The existing
- * vocabulary all describes a table that lives in D1 and is being shadowed:
- * NEON_DUAL_WRITE_LANES said new writes also reach Neon, NEON_BACKFILL_LANES
- * that older ones do too, NEON_READ_LANES that reads are served from the copy.
- * Every one of them presumed a D1 original still exists, which is why the last
- * two are already gone.
- *
- * That vocabulary does not fit the tables that move by having their WRITER
- * repointed. The user-state tier is the worked example: ten tables, ~1,200
- * rows, every one of them written by a request handler rather than a lane, all
- * reached through a single runner-acquiring helper. There is nothing to
- * reconcile because there is no second producer, and mirroring them would mean
- * running two stores for a table whose entire content one statement can copy.
- * They move by copying once, flipping the runner, and never writing D1 again.
- *
- * So this flag means something the others cannot express: D1 is not behind
- * this table any more. It starts empty, gains a table when that table's copy
- * is verified, and when it holds every name D1 has, D1 is unbound.
- */
-export function neonSoleStoreTables(
-  env: Record<string, unknown> | null | undefined,
-): Set<string> {
-  return parseLaneList(env?.NEON_SOLE_STORE_TABLES);
-}
-
-/** Whether Neon is the only store behind `table` on this deployment. */
-export function neonOwnsTable(
-  env: Record<string, unknown> | null | undefined,
-  table: string,
-): boolean {
-  return neonSoleStoreTables(env).has(table);
-}
+// NEON_SOLE_STORE_TABLES lived here last of the four Neon cutover flags:
+// it answered "is D1 behind this table?", and D1 is deleted, so the answer
+// became a constant every caller now states inline (#10051). The binding
+// question -- is HYPERDRIVE bound -- is the one that remains, asked where
+// it matters.
 
 /**
  * `name`, if it is a bare SQL identifier -- otherwise a throw.

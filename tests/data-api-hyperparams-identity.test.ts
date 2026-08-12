@@ -75,7 +75,6 @@ function env(overrides: Record<string, unknown> = {}): Env {
     // Both writes run through mirrorFamilyToNeon, which is a no-op unless the
     // lane is named here -- so a suite that left this out would assert an empty
     // table and call it a passing write.
-    NEON_DUAL_WRITE_LANES: "subnet-hyperparams,account-identity",
     SUBNET_HYPERPARAMS_SYNC_SECRET: HYPERPARAMS_SECRET,
     ACCOUNT_IDENTITY_SYNC_SECRET: IDENTITY_SECRET,
     ...overrides,
@@ -592,56 +591,10 @@ test("identity history: cold table 503s; a populated table's empty page serves",
 
 // --- the family moves as a PAIR, or not at all (#10094) --------------------
 //
-// The gate these routes answer 503 on is neonOwnsFamily: the latest-only table
-// AND its history, both named in NEON_SOLE_STORE_TABLES. It survived the D1
-// teardown because it was never really about which store -- it is about the
-// sync deriving its history rows by reading the CURRENT latest hash out of the
-// history table. A family split across stores would diff against the wrong
-// one and append revisions that already exist, or miss ones that do not.
-//
-// The three tests this replaces asserted the same property from the other
-// side, in the era when the alternative to Neon was a D1 write: "owning only
-// one table still writes D1" is now "owning only one table is refused", which
-// is the same rule with the fallback removed.
-
-test("hyperparams: a family not declared Neon's has no store, and says so", async () => {
-  const res = await postHyperparams(
-    [hyperparamsSyncRow({ netuid: 7 })],
-    env({ NEON_SOLE_STORE_TABLES: "" }),
-  );
-  assert.equal(res.status, 503);
-  assert.equal(
-    ((await res.json()) as Row).error,
-    "no store bound for this route",
-  );
-});
-
-test("hyperparams: declaring only ONE table of the family is refused, not half-written", async () => {
-  const res = await postHyperparams(
-    [hyperparamsSyncRow({ netuid: 8, tempo: 42 })],
-    env({ NEON_SOLE_STORE_TABLES: "subnet_hyperparams" }),
-  );
-  assert.equal(res.status, 503);
-  assert.equal(
-    await count("subnet_hyperparams"),
-    0,
-    "refused before the write, so the card cannot outrun its own history",
-  );
-});
-
-test("identity: a family not declared Neon's has no store, and says so", async () => {
-  const res = await postIdentity(
-    [identitySyncRow({ account: "5Inversion" })],
-    env({ NEON_SOLE_STORE_TABLES: "" }),
-  );
-  assert.equal(res.status, 503);
-});
-
-test("identity: declaring only ONE table of the family is refused, not half-written", async () => {
-  const res = await postIdentity(
-    [identitySyncRow({ account: "5Partial", name: "y" })],
-    env({ NEON_SOLE_STORE_TABLES: "account_identity" }),
-  );
-  assert.equal(res.status, 503);
-  assert.equal(await count("account_identity"), 0);
-});
+// Four tests pinned the flag arms here: an undeclared or half-declared
+// family answered 503. They retired with NEON_SOLE_STORE_TABLES (#10051) --
+// Neon is the only store, so a family split across stores cannot exist and
+// the gate collapsed to the binding. What survives of the property: one
+// runner writes both tables of the family in one plan (the write module's
+// own suite), and no binding still refuses rather than half-writing (the
+// unbound tests above).

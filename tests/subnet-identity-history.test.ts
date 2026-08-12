@@ -653,14 +653,8 @@ describe("recordSubnetIdentityChanges", () => {
       assert.deepEqual(pg.control.queries, []);
     });
 
-    test("degrades to null when blocks_head is not declared Neon's", async () => {
-      // readStore is all-or-nothing: an undeclared table means no store at all,
-      // not a store that answers the other tables.
-      const env = pgMockEnv(["subnets"]) as unknown as Env;
-      const result = await recordSubnetIdentityChanges(env, { profiles });
-      assert.equal(result.block_number, null);
-      assert.deepEqual(pg.control.queries, []);
-    });
+    // The under-declared arm retired with NEON_SOLE_STORE_TABLES (#10051);
+    // the unbound and query-failure arms beside it pin what remains.
 
     test("degrades to null when the query fails", async () => {
       pg.control.failNext = new Error("connection reset");

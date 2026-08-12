@@ -63,8 +63,6 @@ let db: PGlite;
 function env(overrides: Record<string, unknown> = {}) {
   return {
     HYPERDRIVE: { connectionString: "postgres://stub" },
-    NEON_DUAL_WRITE_LANES: "self-stake,nominator-positions",
-    NEON_SOLE_STORE_TABLES: "nominator_positions",
     SELF_STAKE_SYNC_SECRET: SECRET,
     NOMINATOR_POSITIONS_SYNC_SECRET: POSITIONS_SECRET,
     ...overrides,
@@ -282,8 +280,7 @@ test("a write failure is the request's failure", async () => {
   assert.equal((await call(req([row()]))).status, 502);
 });
 
-test("a lane absent from NEON_DUAL_WRITE_LANES fails rather than no-oping", async () => {
-  const res = await call(req([row()]), env({ NEON_DUAL_WRITE_LANES: "" }));
-  assert.equal(res.status, 502);
-  assert.equal((await rowsOf()).length, 0);
-});
+// "a lane absent from NEON_DUAL_WRITE_LANES fails rather than silently
+// no-ops" lived here until #10051: the flag is gone, the write is
+// unconditional, and the mirrors report an unbound store IN-BAND --
+// this route's other failure pins stand below.

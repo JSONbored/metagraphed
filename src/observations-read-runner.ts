@@ -33,7 +33,6 @@
 // src/observations-neon.ts -- a probe not stored is gone.
 import type { ObservationsReadDb } from "./analytics-live.ts";
 import { neonOwnsObservations } from "./observations-neon.ts";
-import { neonOwnsTable } from "./neon-write.ts";
 import {
   createPgSql,
   type HyperdriveLike,
@@ -119,7 +118,7 @@ export function observationsReadDb(
   ctx?: Partial<WaitUntilLike> | null,
   deps: ObservationsReadDeps = {},
 ): ObservationsReadDb | undefined {
-  if (!neonOwnsObservations(env, neonOwnsTable)) return undefined;
+  if (!neonOwnsObservations(env)) return undefined;
   const injected = deps.sql;
   if (injected) return pgObservationsReadDb(injected);
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;

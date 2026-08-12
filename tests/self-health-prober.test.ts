@@ -18,8 +18,6 @@ import {
 } from "../src/self-health-prober.ts";
 import { SELF_HEALTH_COMPONENTS } from "../src/self-health.ts";
 
-const OWNED = "self_health_checks,self_health_daily";
-
 /** A Postgres runner that records every statement. */
 function recorder(failOn?: RegExp) {
   const seen: { text: string; values: unknown[] }[] = [];
@@ -122,7 +120,7 @@ describe("runSelfHealthProbe", () => {
     const pg = recorder();
     const lane = laneSpy();
     const out = await runSelfHealthProbe(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: OWNED },
+      { HYPERDRIVE: {} },
       { waitUntil: () => undefined },
       {
         sql: pg.sql,
@@ -149,7 +147,7 @@ describe("runSelfHealthProbe", () => {
     // history to the tick retention the first time anything was pruned.
     const pg = recorder();
     await runSelfHealthProbe(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: OWNED },
+      { HYPERDRIVE: {} },
       { waitUntil: () => undefined },
       { sql: pg.sql, laneHealthDb: laneSpy().db, fetch: okFetch },
     );
@@ -168,7 +166,7 @@ describe("runSelfHealthProbe", () => {
     // endpoint exists to resolve.
     const pg = recorder();
     const out = await runSelfHealthProbe(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: OWNED },
+      { HYPERDRIVE: {} },
       { waitUntil: () => undefined },
       {
         sql: pg.sql,
@@ -189,7 +187,7 @@ describe("runSelfHealthProbe", () => {
     // outage is already reported -- by the data this lane just stored.
     const lane = laneSpy();
     await runSelfHealthProbe(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: OWNED },
+      { HYPERDRIVE: {} },
       { waitUntil: () => undefined },
       {
         sql: recorder().sql,
@@ -209,7 +207,7 @@ describe("runSelfHealthProbe", () => {
     // measure, whatever the probe returned.
     const lane = laneSpy();
     await runSelfHealthProbe(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: OWNED },
+      { HYPERDRIVE: {} },
       { waitUntil: () => undefined },
       {
         sql: recorder(/self_health_checks/).sql,
@@ -221,33 +219,15 @@ describe("runSelfHealthProbe", () => {
     assert.ok(values.includes("stale"), JSON.stringify(values));
   });
 
-  test("declines, and says so, when Neon does not own both tables", async () => {
-    // All-or-nothing: a tick written without its rollup row makes the day's
-    // count disagree with its own evidence.
-    const lane = laneSpy();
-    const out = await runSelfHealthProbe(
-      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "self_health_checks" },
-      { waitUntil: () => undefined },
-      { sql: recorder().sql, laneHealthDb: lane.db, fetch: okFetch },
-    );
-    assert.equal(out.attempted, false);
-    assert.match(String(out.reason), /not owned/);
-    // recordLaneVerdict issues more than one statement per verdict, so this
-    // asserts the CONTENT rather than a count: a decline that recorded nothing
-    // would be a lane that goes quiet exactly when it stops working.
-    const recorded = lane.written.flatMap((w) => w.values as unknown[]);
-    assert.ok(
-      recorded.includes(SELF_HEALTH_PROBE_LANE) && recorded.includes("stale"),
-      `no stale verdict recorded: ${JSON.stringify(lane.written)}`,
-    );
-  });
+  // "declines, and says so, when Neon does not own both tables" retired with NEON_SOLE_STORE_TABLES (#10051): Neon is the only
+  // store, so the undeclared/partial state cannot exist; the binding pins
+  // survive in this suite.
 
   test("declines without a runner rather than probing into the void", async () => {
-    const out = await runSelfHealthProbe(
-      { NEON_SOLE_STORE_TABLES: OWNED },
-      null,
-      { laneHealthDb: laneSpy().db, fetch: okFetch },
-    );
+    const out = await runSelfHealthProbe({}, null, {
+      laneHealthDb: laneSpy().db,
+      fetch: okFetch,
+    });
     assert.equal(out.attempted, false);
     assert.equal(SELF_HEALTH_PROBE_LANE, "self-health-probe");
   });

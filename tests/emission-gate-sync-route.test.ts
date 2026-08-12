@@ -522,23 +522,6 @@ test("the flag columns are bound as real booleans, never as 0/1", async () => {
   assert.equal(row.previous_enabled, null);
 });
 
-test("owning only SOME of the three tables refuses the whole lane", async () => {
-  // One sync derives all three change sets from ONE observation and writes
-  // them in ONE batch, so a family split across stores would put a param
-  // change and the enabled change it was derived alongside into different
-  // databases. With one store left, "split" is unreachable and a partial
-  // declaration is simply a misconfiguration -- so producerStore hands back
-  // nothing and the route says so, rather than writing two of three tables.
-  const before = count("emission_gate_param_history");
-  const res = await post(
-    baseBody(),
-    env({ NEON_SOLE_STORE_TABLES: "emission_gate_param_history" }),
-  );
-  assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "emission_gate_sync_unavailable");
-  assert.equal(
-    count("emission_gate_param_history"),
-    before,
-    "a half-declared family must write nothing at all",
-  );
-});
+// "owning only SOME of the three tables refuses the whole lane" retired with NEON_SOLE_STORE_TABLES (#10051): Neon is the only
+// store, so the undeclared/partial state cannot exist; the binding pins
+// survive in this suite.

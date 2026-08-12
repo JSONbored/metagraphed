@@ -93,13 +93,11 @@ describe("mirrorLedgerToNeon", () => {
   test("upserts on the plan's key, guarded against an out-of-order retry", async () => {
     const sql = fakeSql();
     const spy = laneSpy();
-    const out = await mirrorLedgerToNeon(
-      { NEON_DUAL_WRITE_LANES: "account-balances" },
-      ctx,
-      "account-balances",
-      rows,
-      { sql, laneHealthDb: spy.db, now: () => NOW },
-    );
+    const out = await mirrorLedgerToNeon({}, ctx, "account-balances", rows, {
+      sql,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+    });
     assert.equal(out.result?.ok, true);
     assert.match(sql.calls[0].text, /INSERT INTO account_balances/);
     assert.match(sql.calls[0].text, /ON CONFLICT \(ss58\) DO UPDATE/);
@@ -116,33 +114,15 @@ describe("mirrorLedgerToNeon", () => {
     ]);
   });
 
-  test("a lane the flag does not name writes nothing", async () => {
-    const sql = fakeSql();
-    assert.deepEqual(
-      await mirrorLedgerToNeon(
-        { NEON_DUAL_WRITE_LANES: "hotkey-alpha" },
-        ctx,
-        "account-balances",
-        rows,
-        { sql },
-      ),
-      { attempted: false },
-    );
-    assert.equal(sql.calls.length, 0);
-  });
+  // "a lane the flag does not name writes nothing" retired with the flag
+  // (#10051): the write is unconditional now, and the off-arm is gone.
 
   test("an UNKNOWN lane is a no-op, not a throw", async () => {
-    // The flag is a free-text list. A typo must not take down the D1 write this
-    // runs behind.
+    // Callers name lanes in code now (#10051); a name this table lacks is a
+    // config defect to surface, not a reason to crash the pass around it.
     const sql = fakeSql();
     assert.deepEqual(
-      await mirrorLedgerToNeon(
-        { NEON_DUAL_WRITE_LANES: "acount-balances" },
-        ctx,
-        "acount-balances",
-        rows,
-        { sql },
-      ),
+      await mirrorLedgerToNeon({}, ctx, "acount-balances", rows, { sql }),
       { attempted: false },
     );
     assert.equal(sql.calls.length, 0);
@@ -151,7 +131,7 @@ describe("mirrorLedgerToNeon", () => {
   test("a failing write is reported, never thrown", async () => {
     const spy = laneSpy();
     const out = await mirrorLedgerToNeon(
-      { NEON_DUAL_WRITE_LANES: "hotkey-alpha" },
+      {},
       ctx,
       "hotkey-alpha",
       [{ hotkey: "5H", netuid: 1, total_alpha: 2, captured_at: 9 }],
@@ -164,7 +144,7 @@ describe("mirrorLedgerToNeon", () => {
   test("enabled with no binding records the misconfiguration", async () => {
     const spy = laneSpy();
     const out = await mirrorLedgerToNeon(
-      { NEON_DUAL_WRITE_LANES: "validator-nominator-counts" },
+      {},
       ctx,
       "validator-nominator-counts",
       [{ hotkey: "5H", nominator_count: 3, captured_at: 9 }],
@@ -179,7 +159,6 @@ describe("mirrorLedgerToNeon", () => {
     const spy = laneSpy();
     const out = await mirrorLedgerToNeon(
       {
-        NEON_DUAL_WRITE_LANES: "account-balances",
         HYPERDRIVE: { connectionString: "postgresql://u:p@127.0.0.1:1/none" },
         METAGRAPH_HEALTH_DB: spy.db,
       },
@@ -195,7 +174,6 @@ describe("mirrorLedgerToNeon", () => {
     const spy = laneSpy();
     const out = await mirrorLedgerToNeon(
       {
-        NEON_DUAL_WRITE_LANES: "account-balances",
         HYPERDRIVE: { connectionString: "postgres://x" },
       },
       null,
@@ -340,7 +318,7 @@ test("account-balances writes its tally, like the other three lanes", async () =
   // D1's filled normally, and this lane was about to become its only writer.
   const sql = fakeSql();
   await mirrorLedgerToNeon(
-    { NEON_DUAL_WRITE_LANES: "account-balances" },
+    {},
     { waitUntil: () => undefined },
     "account-balances",
     [{ ss58: "5A", free: 1, reserved: 0, captured_at: 9 }],

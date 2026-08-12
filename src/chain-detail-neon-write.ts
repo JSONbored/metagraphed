@@ -14,7 +14,6 @@
 // and a lane verdict and nothing else.
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
-  neonDualWriteEnabled,
   recordNeonWriteVerdict,
   writeRowsToNeon,
   type NeonWriteResult,
@@ -194,10 +193,10 @@ export async function mirrorChainDetailToNeon(
   input: ChainDetailMirrorInput,
   deps: ChainDetailMirrorDeps = {},
 ): Promise<ChainDetailMirrorOutcome> {
-  if (!neonDualWriteEnabled(env, CHAIN_DETAIL_NEON_LANE)) {
-    return { attempted: false, results: {} };
-  }
-
+  // The dual-write gate stood here until #10051: with D1 deleted this is the
+  // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
+  // no-arm means "do not persist" is not a cutover control any more, it is an
+  // off switch nothing should be holding.
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
@@ -221,7 +220,20 @@ export async function mirrorChainDetailToNeon(
       now(),
       buffered,
     );
-    return { attempted: true, results: {} };
+    // ... and the miss is IN-BAND now (#10051): with the dual-write gate gone
+    // this arm is the only "not durable" left, and empty results let a sync
+    // route ack a write nothing held. Every table this write serves reports
+    // the failure instead.
+    const results: Record<string, NeonWriteResult> = {};
+    for (const table of chainDetailTables()) {
+      results[table] = {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: "hyperdrive unbound",
+      };
+    }
+    return { attempted: true, results };
   }
 
   const byTable: Record<string, Row[]> = {

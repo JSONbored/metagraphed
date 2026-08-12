@@ -138,7 +138,6 @@ describe("writePassTallyToNeon", () => {
 
 describe("the tally travels with the rows (the #10056 invariant)", () => {
   const env = {
-    NEON_DUAL_WRITE_LANES: "neurons",
     HYPERDRIVE: { connectionString: "postgresql://example/db" },
   };
   const ctx = { waitUntil: () => undefined } as never;

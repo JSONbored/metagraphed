@@ -33,7 +33,6 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
-import { neonOwnsTable } from "./neon-write.ts";
 import { missedTicksMs, type ProducerLane } from "./producer-cadence.ts";
 
 /** This watchdog's own lane. */
@@ -945,12 +944,11 @@ export async function runTableFreshnessWatchdog(
   // halves keep the same batch size: D1 caps a compound SELECT at 5 terms, and
   // matching it on the Neon side keeps one number to reason about rather than
   // two that happen to differ.
-  const partitions: string[][] = deps.db
-    ? [tables]
-    : [
-        tables.filter((t) => neonOwnsTable(env, t)),
-        tables.filter((t) => !neonOwnsTable(env, t)),
-      ].filter((group) => group.length > 0);
+  // The owned/unowned partition collapsed with the flag (#10051): every
+  // table lives in the one store, so the census reads as one set -- which
+  // also brings the two live-but-undeclared names (schema_migrations,
+  // subnet_deregistration_daily) under the same read as everything else.
+  const partitions: string[][] = [tables];
 
   const newest = new Map<string, number>();
   const readBatch = async (

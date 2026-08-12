@@ -91,7 +91,6 @@ function env(overrides: Record<string, unknown> = {}): Env {
     // The inline write runs through mirrorLedgerToNeon, which is a no-op unless
     // the lane is named here -- so a suite that left this out would assert an
     // empty table and call it a passing write.
-    NEON_DUAL_WRITE_LANES: "hotkey-alpha",
     HOTKEY_ALPHA_SYNC_SECRET: SECRET,
     ...overrides,
   } as unknown as Env;
@@ -315,17 +314,10 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     );
   });
 
-  test("503s when the pass ledger is not declared Neon's, not just the table", async () => {
-    // The gate is neonOwnsLedger: hotkey_alpha AND hotkey_alpha_passes. A
-    // half-declared lane would write pools into Neon and the tally into
-    // nothing, which is the one combination that makes completeness
-    // unanswerable -- absence in this table is ambiguous by design, so the
-    // declaration is the only thing that can say a pass was whole.
-    const halfDeclared = env({ NEON_SOLE_STORE_TABLES: "hotkey_alpha" });
-    const response = await post({ rows: [alphaRow()] }, SECRET, halfDeclared);
-    assert.equal(response.status, 503);
-    assert.equal((await rows()).length, 0);
-  });
+  // This test's flag-declared premise retired with NEON_SOLE_STORE_TABLES
+  // (#10051): Neon is the only store, so an undeclared/partial state cannot
+  // exist. "A reader names a table no migration creates" is owned by
+  // tests/neon-sole-store-tables-exist.test.ts, derived from the code.
 
   test("502s when the write throws", async () => {
     pg.control.failNext = new Error("neon exploded");

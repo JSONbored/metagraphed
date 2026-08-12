@@ -34,11 +34,7 @@
 // explain. Every plan below points at the constant its D1 prune already uses.
 
 import { laneHealthStore } from "./lane-health-store.ts";
-import {
-  assertIdentifier,
-  neonOwnsTable,
-  type PgUnsafe,
-} from "./neon-write.ts";
+import { assertIdentifier, type PgUnsafe } from "./neon-write.ts";
 import {
   createPgSql,
   type HyperdriveLike,
@@ -220,7 +216,7 @@ export async function runNeonPrune(
   // Only tables Neon actually owns. See NEON_PRUNE_PLANS' header for why this
   // is ownership and no longer the backfill flag.
   const plans = Object.entries(NEON_PRUNE_PLANS)
-    .filter(([table]) => neonOwnsTable(env, table))
+    // the ownership check collapsed with the flag (#10051): Neon is the only store, so the question answered itself.
     .map(([, plan]) => plan);
 
   const outcomes: PruneTableOutcome[] = [];

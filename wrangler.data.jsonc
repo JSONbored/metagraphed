@@ -124,8 +124,9 @@
     // buffer and flushed every ten minutes, so the compute does fewer, larger
     // writes and autoscaling sits nearer the 0.25 CU floor.
     //
-    // THE SAME VALUE IN EVERY GATED CONFIG, like NEON_DUAL_WRITE_LANES beside
-    // it. Each Worker simply ignores the lanes it does not run, and
+    // THE SAME VALUE IN EVERY GATED CONFIG (the dual-write flag that sat beside
+    // it followed D1 out in #10051). Each Worker ignores the lanes it does
+    // not run, and
     // tests/neon-flag-config-parity.test.ts enforces the agreement -- a per-
     // config subset would be exactly the drift that made two Neon gates fail
     // silently (#10152, #10164), because a flag absent from the Worker actually
@@ -179,7 +180,6 @@
     // same PRIMARY KEY (netuid, uid, snapshot_date) the mirror's ON CONFLICT
     // names. An ON CONFLICT with no unique index behind it is a runtime error,
     // not a slower query.
-    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,subnet-identity,chain-detail,blocks-head,raw-capture-state,subnet-ownership,self-stake",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above
@@ -239,7 +239,6 @@
     // writing and ignoring it, and the Neon write becomes authoritative -- any
     // table's failure is now the request's failure. A pass that did not reach
     // the store did not happen.
-    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_snapshots,subnet_hyperparams,subnet_hyperparams_history,account_identity,account_identity_history,subnet_identity,subnet_identity_history,validator_nominator_counts,chain_concentration_daily,subnet_burn_history,tao_usd_index,nominator_positions,nominator_positions_passes,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events,neurons_passes,validator_nominator_counts_passes,emission_gate_param_history,subnet_emission_enabled_history,subnet_lifecycle,emission_flow_watch,lane_health,account_balances,account_balances_passes,hotkey_alpha,hotkey_alpha_passes,self_health_checks,self_health_daily,subnets,surfaces,providers,surface_history,revenue_observations,revenue_probe_failures,attribution_sweeps,attribution_candidates,origin_reachability,subnet_ownership,subnet_ownership_history",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
@@ -596,9 +595,10 @@
   // `env.HYPERDRIVE && ...`, so a connection provisioned for a WRITE pilot
   // silently moved a public route's read. "This Worker can reach Neon" and
   // "this route should read Neon" were different questions, and a separate
-  // NEON_READ_LANES flag answered the second one: a lane was named in
-  // NEON_DUAL_WRITE_LANES first, its `neon:` verdict in lane_health watched
-  // green across several producer ticks, and only then named for reading.
+  // NEON_READ_LANES flag answered the second one: a lane was named in the
+  // dual-write flag first (also gone, #10051), its `neon:` verdict in
+  // lane_health watched green across several producer ticks, and only then
+  // named for reading.
   //
   // That ordering mattered while D1 held the other copy. It does not now
   // (#10051). With one store the two questions have collapsed back into one,

@@ -72,7 +72,6 @@ function env(overrides: Record<string, unknown> = {}): Env {
     // The consumer's write runs through mirrorLedgerToNeon, which is a no-op
     // unless the lane is named here -- so a suite that left this out would
     // assert an empty table and call it a passing write.
-    NEON_DUAL_WRITE_LANES: "account-balances",
     ACCOUNT_BALANCES_SYNC_SECRET: SECRET,
     SYNC_BATCHES: {
       send: async (m: unknown) => {

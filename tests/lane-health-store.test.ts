@@ -44,42 +44,23 @@ function fakeClient() {
 describe("laneHealthStore", () => {
   test("an injected db wins outright, so tests keep their fake", () => {
     const injected = { prepare: () => ({}) } as never;
-    assert.equal(
-      laneHealthStore(
-        { HYPERDRIVE, NEON_SOLE_STORE_TABLES: "lane_health" },
-        injected,
-      ),
-      injected,
-    );
+    assert.equal(laneHealthStore({ HYPERDRIVE }, injected), injected);
   });
 
-  test("declines until the flag names lane_health", () => {
-    // The flag is still the gate, even with nowhere else to go: a store handed
-    // out before the table is declared Neon's would write verdicts into a
-    // database that is not yet the one the readers query.
-    for (const env of [
-      {},
-      { HYPERDRIVE },
-      { HYPERDRIVE, NEON_SOLE_STORE_TABLES: "neurons" },
-    ]) {
-      assert.equal(laneHealthStore(env), undefined, JSON.stringify(env));
-    }
-  });
+  // "declines until the flag names lane_health" retired with NEON_SOLE_STORE_TABLES (#10051): Neon is the only
+  // store, so the undeclared/partial state cannot exist; the binding pins
+  // survive in this suite.
 
   test("the flag alone is not enough -- Hyperdrive has to be bound too", () => {
     // Declaring the table without binding the store is a config half-done, and
     // it must read as "no store" rather than as a client with no connection
     // string, which would throw on the first verdict instead of dropping it.
-    assert.equal(
-      laneHealthStore({ NEON_SOLE_STORE_TABLES: "lane_health" }),
-      undefined,
-    );
+    assert.equal(laneHealthStore({}), undefined);
   });
 
   test("returns a store once the flag names it AND Hyperdrive is bound", () => {
     const db = laneHealthStore({
       HYPERDRIVE,
-      NEON_SOLE_STORE_TABLES: "lane_health",
     });
     assert.ok(db?.prepare);
   });

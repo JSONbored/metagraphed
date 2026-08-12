@@ -13,15 +13,9 @@ import {
   pgObservationsReadDb,
 } from "../src/observations-read-runner.ts";
 import { d1All } from "../src/analytics-live.ts";
-import { OBSERVATION_TABLES } from "../src/observations-neon.ts";
 
 const HYPERDRIVE = { connectionString: "postgresql://example/db" };
 const ctx = { waitUntil() {} };
-
-/** Every observation table named as Neon's, which is what the family gate
- * requires -- built FROM the exported list so a table added there cannot leave
- * this suite testing a smaller family than production runs. */
-const ALL_OWNED = [...OBSERVATION_TABLES].join(",");
 
 describe("pgObservationsReadDb", () => {
   test("passes the statement through verbatim, with its params", async () => {
@@ -122,39 +116,18 @@ describe("observationsReadDb", () => {
   // must produce NO store rather than a second one, because the read helpers
   // treat undefined as zero rows and every caller declines on it. The
   // distinction each case protects is unchanged; only the negative value is.
-  test("refuses while the family is not declared Neon's", () => {
-    for (const env of [
-      {},
-      { HYPERDRIVE },
-      { HYPERDRIVE, NEON_SOLE_STORE_TABLES: "" },
-    ]) {
-      assert.equal(observationsReadDb(env, ctx), undefined);
-    }
-  });
+  // "refuses while the family is not declared Neon's" retired with NEON_SOLE_STORE_TABLES (#10051): Neon is the only
+  // store, so the undeclared/partial state cannot exist; the binding pins
+  // survive in this suite.
 
-  test("a PARTIAL family refuses, every table short of the whole", () => {
-    // Two of the writes are INSERT ... SELECT FROM surface_checks -- they
-    // aggregate inside the store. A family read as partial would have a rollup
-    // aggregating over rows the declaration does not cover.
-    for (const table of OBSERVATION_TABLES) {
-      const partial = OBSERVATION_TABLES.filter((t) => t !== table).join(",");
-      assert.equal(
-        observationsReadDb(
-          { HYPERDRIVE, NEON_SOLE_STORE_TABLES: partial },
-          ctx,
-        ),
-        undefined,
-        `${table} missing should have refused the whole family`,
-      );
-    }
-  });
+  // "a PARTIAL family refuses, every table short of the whole" retired with NEON_SOLE_STORE_TABLES (#10051): Neon is the only
+  // store, so the undeclared/partial state cannot exist; the binding pins
+  // survive in this suite.
 
   test("moves to Neon once it owns the WHOLE family", () => {
-    const db = observationsReadDb(
-      { HYPERDRIVE, NEON_SOLE_STORE_TABLES: ALL_OWNED },
-      ctx,
-      { sql: { unsafe: async () => [] } },
-    );
+    const db = observationsReadDb({ HYPERDRIVE }, ctx, {
+      sql: { unsafe: async () => [] },
+    });
     assert.ok(db?.prepare, "expected the Neon-backed adapter");
   });
 
@@ -162,13 +135,7 @@ describe("observationsReadDb", () => {
     // createPgSql returns its connection via waitUntil; with nowhere to park
     // the teardown it would leak one per call. Declining to read is the cheaper
     // failure.
-    assert.equal(
-      observationsReadDb(
-        { HYPERDRIVE, NEON_SOLE_STORE_TABLES: ALL_OWNED },
-        null,
-      ),
-      undefined,
-    );
+    assert.equal(observationsReadDb({ HYPERDRIVE }, null), undefined);
   });
 
   test("a ctx with NO waitUntil refuses too", () => {
@@ -180,7 +147,7 @@ describe("observationsReadDb", () => {
     for (const bad of [{}, { waitUntil: undefined }]) {
       assert.equal(
         observationsReadDb(
-          { HYPERDRIVE, NEON_SOLE_STORE_TABLES: ALL_OWNED },
+          { HYPERDRIVE },
           bad as { waitUntil?: (p: Promise<unknown>) => void },
         ),
         undefined,
@@ -191,10 +158,7 @@ describe("observationsReadDb", () => {
   test("no Hyperdrive refuses even with every table named", () => {
     // Sole-store is a claim about the DATA, not about this isolate: the flag
     // can say Neon owns the table while the binding to reach it is missing.
-    assert.equal(
-      observationsReadDb({ NEON_SOLE_STORE_TABLES: ALL_OWNED }, ctx),
-      undefined,
-    );
+    assert.equal(observationsReadDb({}, ctx), undefined);
   });
 
   test("an empty env is undefined, not an empty stub", () => {

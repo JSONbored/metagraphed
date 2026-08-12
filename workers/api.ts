@@ -7,7 +7,6 @@ import {
   createPgStatementClient,
   storeBoolean,
 } from "../src/pg-statement-client.ts";
-import { neonOwnsTable } from "../src/neon-write.ts";
 import {
   API_ROUTES,
   PUBLIC_ARTIFACTS,
@@ -2460,13 +2459,15 @@ function producerStore(
   // no waitUntil through, and the connection would leak per tick).
   env: Env,
   ctx: { waitUntil?: (promise: Promise<unknown>) => void } | undefined,
-  tables: readonly string[],
+  // Kept for call-site clarity about which tables ride the store; the
+  // per-table ownership question collapsed with the flag (#10051).
+  _tables: readonly string[],
 ): { db: unknown; close: () => void } {
-  const bag = env as unknown as Record<string, unknown>;
-  const owned =
-    Boolean(env.HYPERDRIVE?.connectionString) &&
-    tables.every((table) => neonOwnsTable(bag, table));
-  if (!owned) return { db: undefined, close: () => undefined };
+  // the per-table ownership term collapsed with the flag (#10051): Neon is
+  // the only store, so the binding is the whole question.
+  if (!env.HYPERDRIVE?.connectionString) {
+    return { db: undefined, close: () => undefined };
+  }
   const pg = createPgStatementClient(env.HYPERDRIVE!.connectionString);
   return {
     db: pg,

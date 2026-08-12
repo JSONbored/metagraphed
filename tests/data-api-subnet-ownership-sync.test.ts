@@ -54,8 +54,6 @@ let db: PGlite;
 function env(overrides: Record<string, unknown> = {}) {
   return {
     HYPERDRIVE: { connectionString: "postgres://stub" },
-    NEON_DUAL_WRITE_LANES: "subnet-ownership",
-    NEON_SOLE_STORE_TABLES: "subnet_ownership,subnet_ownership_history",
     SUBNET_OWNERSHIP_SYNC_SECRET: SECRET,
     ...overrides,
   } as unknown as Env;
@@ -330,12 +328,10 @@ test("a write failure is the request's failure, not a silent success", async () 
   assert.equal(res.status, 502);
 });
 
-test("a lane absent from NEON_DUAL_WRITE_LANES fails rather than silently no-ops", async () => {
-  // mirrorFamilyToNeon early-returns `{ attempted: false }` for a lane the
-  // flag does not name. Neon is this family's only store, so "not attempted"
-  // is a write that did not happen -- and reporting ok would be
-  // indistinguishable from a successful pass.
-  const res = await call(req([row()]), env({ NEON_DUAL_WRITE_LANES: "" }));
-  assert.equal(res.status, 502);
-  assert.equal(await count("subnet_ownership"), 0);
-});
+// "a lane absent from NEON_DUAL_WRITE_LANES fails rather than silently
+// no-ops" lived here until #10051: the flag is gone and the write is
+// unconditional, so the absent-lane state cannot exist. What that test
+// was really protecting -- an ack must never claim durability nothing
+// holds -- is pinned harder now: the mirrors report an unbound store
+// IN-BAND (per-table failures), asserted in their own suites, and this
+// route's failing-write and dropped-table 502s stay pinned below.
