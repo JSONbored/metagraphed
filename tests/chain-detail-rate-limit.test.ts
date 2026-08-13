@@ -226,3 +226,122 @@ describe("chain-detail lookup rate limit", () => {
     }
   });
 });
+
+// #11017. The account family reached production with no ceiling at all: every
+// call to applyTieredRateLimit was per-family, and handleRequest dispatches
+// straight into dispatchRequest with nothing in front of it. Same cost shape as
+// the four above -- unbounded key space, lakehouse-backed, uncached -- and one
+// of them OOMed an isolate at limit=25 (#11019).
+//
+// The placement assertion above (`dataCalls === 0`) is deliberately NOT reused
+// here: these routes read the lakehouse over global fetch, not DATA_API, so
+// that counter would be 0 whether or not the gate ran, and a check that cannot
+// fail is worse than no check. What is asserted instead is the rate-limiter
+// call itself, which is the thing that was missing.
+const ACCOUNT = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+describe("account family rate limit (#11017)", () => {
+  const gated = [
+    `/api/v1/accounts/${ACCOUNT}`,
+    `/api/v1/accounts/${ACCOUNT}/transfers`,
+    `/api/v1/accounts/${ACCOUNT}/events`,
+    `/api/v1/accounts/${ACCOUNT}/extrinsics`,
+    `/api/v1/accounts/${ACCOUNT}/stake-flow`,
+  ];
+
+  for (const path of gated) {
+    test(`${path.replace(ACCOUNT, "{ss58}")} rejects an over-limit anonymous caller`, async () => {
+      const { env: testEnv, counters } = envWithLimiter(false);
+      const response = await handleRequest(
+        new Request(`https://metagraph.sh${path}`, {
+          headers: { "cf-connecting-ip": CLIENT_IP },
+        }),
+        testEnv,
+        {},
+      );
+      assert.equal(response.status, 429);
+      assert.equal((await jsonBody(response)).error.code, "data_rate_limited");
+      // Same bucket as the chain-detail four: one `data:` prefix across the
+      // whole policy, so a caller cannot mint a fresh allowance by switching
+      // families.
+      assert.deepEqual(counters.keys, [`data:${CLIENT_IP}`]);
+      // Gated exactly once -- a second call would halve the real ceiling.
+      assert.equal(counters.rateCalls, 1);
+    });
+  }
+
+  test("an under-limit caller is let through", async () => {
+    const { env: testEnv, counters } = envWithLimiter(true);
+    const response = await handleRequest(
+      new Request(`https://metagraph.sh/api/v1/accounts/${ACCOUNT}/transfers`, {
+        headers: { "cf-connecting-ip": CLIENT_IP },
+      }),
+      testEnv,
+      {},
+    );
+    assert.notEqual(response.status, 429);
+    assert.equal(counters.rateCalls, 1);
+  });
+
+  test("a bad-checksum address still 400s WITHOUT spending the caller's budget", async () => {
+    // The ordering decision, pinned: the checksum guard runs first. A bad
+    // address costs nothing to detect, and charging for it would make the
+    // limiter punish the one mistake it has no reason to.
+    //
+    // ADDRESS-SHAPED but wrong -- one character changed, same length. That is
+    // the case the guard exists for (#10036): a one-character typo used to
+    // answer with a confident empty result. An UNSHAPED segment takes a
+    // different path entirely, asserted below.
+    const badChecksum = `${ACCOUNT.slice(0, -1)}Z`;
+    const { env: testEnv, counters } = envWithLimiter(false);
+    const response = await handleRequest(
+      new Request(
+        `https://metagraph.sh/api/v1/accounts/${badChecksum}/transfers`,
+        {
+          headers: { "cf-connecting-ip": CLIENT_IP },
+        },
+      ),
+      testEnv,
+      {},
+    );
+    assert.equal(response.status, 400);
+    assert.equal((await jsonBody(response)).error.code, "invalid_ss58");
+    assert.equal(counters.rateCalls, 0);
+  });
+
+  test("an unshaped segment 404s at the router, also without spending budget", async () => {
+    const { env: testEnv, counters } = envWithLimiter(false);
+    const response = await handleRequest(
+      new Request(
+        `https://metagraph.sh/api/v1/accounts/${ACCOUNT}X/transfers`,
+        {
+          headers: { "cf-connecting-ip": CLIENT_IP },
+        },
+      ),
+      testEnv,
+      {},
+    );
+    // Matches no account route at all -- the honest answer for a path that
+    // identifies nothing, and it must not reach the limiter either.
+    assert.equal(response.status, 404);
+    assert.equal(counters.rateCalls, 0);
+  });
+
+  test("the account COLLECTION routes are deliberately NOT gated", async () => {
+    // Bounded reads over a fixed key space, same reasoning as the block and
+    // extrinsic feeds above. If a future change gates these it should update
+    // this test, not happen as a side effect of touching the dispatcher.
+    for (const path of ["/api/v1/accounts", "/api/v1/accounts/top-holders"]) {
+      const { env: testEnv, counters } = envWithLimiter(false);
+      const response = await handleRequest(
+        new Request(`https://metagraph.sh${path}?limit=1`, {
+          headers: { "cf-connecting-ip": CLIENT_IP },
+        }),
+        testEnv,
+        {},
+      );
+      assert.notEqual(response.status, 429);
+      assert.equal(counters.rateCalls, 0);
+    }
+  });
+});
