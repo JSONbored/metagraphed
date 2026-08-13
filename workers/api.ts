@@ -7038,6 +7038,25 @@ async function dispatchRequest(
         400,
       );
     }
+    // ...and one rate-limit gate for the same 25 routes (#11017), placed here
+    // for the reason stated above: the family is dispatched from this one
+    // function, so a single call covers every member and an account route added
+    // tomorrow inherits the ceiling instead of having to remember it.
+    //
+    // AFTER the checksum guard on purpose. A malformed address is a 400 that
+    // costs nothing to determine, and spending a caller's budget to tell them
+    // they typed their own address wrong would make the limiter punish the one
+    // mistake it has no reason to.
+    //
+    // Deliberately scoped to the ADDRESS-SHAPED routes. The collection routes
+    // (`/api/v1/accounts`, `/api/v1/accounts/top-holders`) are bounded list
+    // reads over a fixed key space -- the same reasoning that leaves `/blocks`
+    // and `/extrinsics` ungated above -- and gating them would spend the
+    // limiter's budget on the part of the family that behaves.
+    if (accountSs58Match) {
+      const limited = await dataRouteRateLimit(request, env, ctx, "account");
+      if (limited) return limited;
+    }
     // Account entity routes (#1347): computed live from the account_events +
     // neurons store tiers. More-specific paths first (each pattern is anchored).
     const accountHistoryMatch = ACCOUNT_HISTORY_PATH_PATTERN.exec(
@@ -8012,11 +8031,28 @@ const PROJECTION_ROUTE_HANDLERS: Record<
  * or "summary" parses as a block reference.
  */
 /**
- * The tiered gate on the four chain-detail LOOKUP routes.
+ * The tiered gate on the per-entity LOOKUP routes: the four chain-detail ones,
+ * and the account family (#11017).
  *
- * WHY THESE FOUR. `/blocks/{ref}`, its `/events` and `/extrinsics`
- * sub-resources, and `/extrinsics/{hash}` were the only Postgres-backed routes
- * on this Worker carrying no limiter at all. Their sibling `/chain-events`
+ * Named for the POLICY it applies (`DATA_TIERED_RATE_LIMIT`), not for one
+ * caller — it was `chainDetailRateLimit` until the account routes were found to
+ * be reaching production with no ceiling at all, and a name that claims a
+ * narrower scope than the function has is how the next unmetered family gets
+ * missed.
+ *
+ * WHY THE ACCOUNTS. The 25 `/api/v1/accounts/{ss58}/*` routes are the same cost
+ * shape as the chain-detail four and had none of the protection: unbounded key
+ * space (every ss58 that has ever touched the chain), lakehouse-backed and
+ * billed per byte scanned, no edge cache, and — until this — no limiter, because
+ * `applyTieredRateLimit` was only ever called per-family and `handleRequest`
+ * dispatches straight into `dispatchRequest` with nothing in front of it. One of
+ * them OOMed an isolate at `limit=25` (#11019), which is what a route with no
+ * ceiling in front of an uncapped read eventually does.
+ *
+ * WHY THESE FOUR (the original set). `/blocks/{ref}`, its `/events` and
+ * `/extrinsics` sub-resources, and `/extrinsics/{hash}` were the only
+ * Postgres-backed routes on this Worker carrying no limiter at all. Their
+ * sibling `/chain-events`
  * family has gated itself since #8386 (handleChainEventsFamily above), so this
  * closes a gap in an existing policy rather than inventing a second one: the
  * same DATA_TIERED_RATE_LIMIT, the same rejection shape, the same
@@ -8050,7 +8086,7 @@ const PROJECTION_ROUTE_HANDLERS: Record<
  *
  * Returns the rejection to serve, or null when the caller may proceed.
  */
-async function chainDetailRateLimit(
+async function dataRouteRateLimit(
   request: Request,
   env: Env,
   ctx: Ctx,
@@ -8098,7 +8134,7 @@ async function dispatchChainHistoryRoute(
   // Sub-resource (#1845) before detail before the feed; each pattern is anchored.
   const blockExtrinsicsMatch = BLOCK_EXTRINSICS_PATH_PATTERN.exec(pathname);
   if (blockExtrinsicsMatch) {
-    const limited = await chainDetailRateLimit(
+    const limited = await dataRouteRateLimit(
       request,
       env,
       ctx,
@@ -8115,18 +8151,13 @@ async function dispatchChainHistoryRoute(
   }
   const blockEventsMatch = BLOCK_EVENTS_PATH_PATTERN.exec(pathname);
   if (blockEventsMatch) {
-    const limited = await chainDetailRateLimit(
-      request,
-      env,
-      ctx,
-      "block-events",
-    );
+    const limited = await dataRouteRateLimit(request, env, ctx, "block-events");
     if (limited) return limited;
     return handleBlockEvents(request, env, blockEventsMatch[1], url, chain);
   }
   const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(pathname);
   if (blockDetailMatch) {
-    const limited = await chainDetailRateLimit(request, env, ctx, "block");
+    const limited = await dataRouteRateLimit(request, env, ctx, "block");
     if (limited) return limited;
     return withChainDetailEdgeCache(request, env, url, chain, ctx, () =>
       handleBlock(request, env, blockDetailMatch[1], chain),
@@ -8138,7 +8169,7 @@ async function dispatchChainHistoryRoute(
   // Detail (more specific) before the feed; each pattern is anchored.
   const extrinsicDetailMatch = EXTRINSIC_DETAIL_PATH_PATTERN.exec(pathname);
   if (extrinsicDetailMatch) {
-    const limited = await chainDetailRateLimit(request, env, ctx, "extrinsic");
+    const limited = await dataRouteRateLimit(request, env, ctx, "extrinsic");
     if (limited) return limited;
     return withChainDetailEdgeCache(request, env, url, chain, ctx, () =>
       handleExtrinsic(request, env, extrinsicDetailMatch[1], chain),
