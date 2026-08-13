@@ -9,6 +9,7 @@
 
 import { median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
+import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
 
 // The two account_events kinds that move stake: StakeAdded is capital entering a subnet,
 // StakeRemoved is capital leaving. Both carry a positive amount_tao, so net = staked - unstaked.
@@ -27,18 +28,10 @@ export const DEFAULT_CHAIN_STAKE_FLOW_WINDOW = "7d";
 // 1 TAO = 1e9 rao. Summing many REAL amount_tao values accumulates IEEE-754 noise below the
 // rao floor; round every TAO output to rao precision (the same rounding the sibling scorecards
 // apply). A non-finite sum can only arise from a malformed direct call — coerce it to 0.
-const RAO_PER_TAO = 1e9;
 function roundTao(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
-}
-
-// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite number,
-// defaulting to 0.
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
 }
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric.
@@ -200,10 +193,10 @@ export function buildChainStakeFlow(
     };
     if (kind === STAKE_ADDED_KIND) {
       bucket.staked += tao;
-      bucket.stakeEvents += toNumber(row?.event_count);
+      bucket.stakeEvents += numberOrZero(row?.event_count);
     } else {
       bucket.unstaked += tao;
-      bucket.unstakeEvents += toNumber(row?.event_count);
+      bucket.unstakeEvents += numberOrZero(row?.event_count);
     }
     perNetuid.set(netuid, bucket);
     const observed = coerceEpochMs(row?.last_observed);

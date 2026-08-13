@@ -1,3 +1,4 @@
+import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
 // Per-account stake flow: how one account's capital moved in (StakeAdded) vs out
 // (StakeRemoved) over a recent window, broken down per subnet and rolled up into a
 // staking-behavior scorecard. Pure shaping (buildAccountStakeFlow); the Worker /
@@ -35,11 +36,10 @@ const DIRECTIONAL_RATIO = 0.2;
 
 // 1 TAO = 1e9 rao. Round every TAO output to rao precision to shed IEEE-754 noise
 // below the rao floor (the same rounding the per-subnet stake-flow scorecard applies).
-const RAO_PER_TAO = 1e9;
 function roundTao(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
+  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
 }
 
 // Round the HHI concentration ratio to 4 decimals WITHOUT letting a sub-perfect
@@ -50,12 +50,6 @@ function roundTao(value: number): number {
 function roundConcentration(value: number): number {
   const rounded = Math.round(value * 10000) / 10000;
   return rounded >= 1 && value < 1 ? 0.9999 : rounded;
-}
-
-// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank cells
@@ -170,7 +164,7 @@ export function buildAccountStakeFlow(
     };
     // Counts are integer (the schema requires it); truncate defensively so a non-D1
     // caller passing a float cannot emit a fractional event count.
-    const count = Math.max(0, Math.trunc(toNumber(row?.event_count)));
+    const count = Math.max(0, Math.trunc(numberOrZero(row?.event_count)));
     if (kind === STAKE_ADDED_KIND) {
       bucket.staked += tao;
       bucket.stakeEvents += count;

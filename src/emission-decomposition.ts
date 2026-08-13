@@ -30,10 +30,9 @@ import {
 } from "./emission-pipeline.ts";
 import { blockEmissionForIssuance } from "./block-emission.ts";
 import type { FieldSources } from "./field-provenance.ts";
+import { RAO_PER_TAO } from "./lib/rao.ts";
 
 /** Rao per TAO. */
-const RAO_PER_TAO = 1_000_000_000n;
-
 /**
  * TAO (as a JSON number or an exact decimal string) to exact rao.
  *

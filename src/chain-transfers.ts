@@ -1,3 +1,4 @@
+import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
 // Network-wide native-TAO transfer analytics: over a recent window, how much TAO moved
 // via Balances.Transfer across the whole chain, who moved the most out (top senders) and
 // in (top receivers), and how concentrated that flow is among the top accounts. Pure
@@ -18,21 +19,14 @@ export const CHAIN_TRANSFER_LIMIT_MAX = 100;
 
 // 1 TAO = 1e9 rao; round every TAO output to that precision to shed IEEE-754 noise from
 // summing many REAL amount_tao values (the same rounding the chain/fees market applies).
-const RAO_PER_TAO = 1e9;
 function roundTao(value: unknown): number {
-  const n = toNumber(value);
-  return Math.round(n * RAO_PER_TAO) / RAO_PER_TAO;
-}
-
-// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  const n = numberOrZero(value);
+  return Math.round(n * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
 }
 
 // A whole non-negative count (D1 COUNT is integer; truncate defensively for direct callers).
 function toCount(value: unknown): number {
-  return Math.max(0, Math.trunc(toNumber(value)));
+  return Math.max(0, Math.trunc(numberOrZero(value)));
 }
 
 // Round a 0..1 concentration ratio to a stable precision WITHOUT letting a

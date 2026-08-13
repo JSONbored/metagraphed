@@ -63,3 +63,106 @@ export function toRaoBig(taoValue: unknown): bigint {
 export function raoBigToTao(rao: bigint): number {
   return Number(rao / RAO_PER_TAO) + Number(rao % RAO_PER_TAO) / 1e9;
 }
+
+/**
+ * 1 TAO in rao, as a NUMBER.
+ *
+ * The same constant as `RAO_PER_TAO` above in a different type, because both
+ * are genuinely needed: bigint for exact accumulation, number for the 9-decimal
+ * rounding below and for the many `value / 1e9` conversions that never enter
+ * rao space at all. Fourteen modules declared one or the other privately and
+ * `src/movers.ts` declared BOTH, four lines apart.
+ */
+export const RAO_PER_TAO_NUMBER = 1e9;
+
+/**
+ * Round to 9 decimal places -- rao precision, the finest TAO can express.
+ *
+ * ## THREE FUNCTIONS, NOT ONE, AND THAT IS THE POINT
+ *
+ * Six modules declared `round9`, described in their own comments as matching
+ * each other ("Matches src/chain-yield.ts / src/subnet-yield.ts's own round9
+ * exactly"). They did not match. On the same non-finite input they returned
+ * three different answers:
+ *
+ *   - `NaN` / `Infinity`  chain-yield        (bare `Number()`, unguarded)
+ *   - `0`                 subnet-yield       (via a local `toNumber()`)
+ *   - `null`              metagraph-neurons  (explicit non-finite check)
+ *
+ * That is not hypothetical. Both yield modules compute `round9(emission /
+ * stake)`, so a subnet with zero stake produces `Infinity` on one surface and
+ * `0` on the other, from the same arithmetic.
+ *
+ * Collapsing them onto whichever is most common would hand some call site the
+ * other's behaviour silently, which is the failure this refactor exists to
+ * remove rather than repeat. So each behaviour keeps a name that says what it
+ * does, and each caller keeps the one it had. Choosing BETWEEN them is a
+ * separate decision about what a zero-stake subnet should report, and it wants
+ * its own change and its own issue.
+ */
+export function round9(value: number): number {
+  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
+}
+
+/**
+ * `round9`, but a non-finite input reads as 0 rather than propagating.
+ *
+ * Replaces subnet-yield's `round9(toNumber(value))`. Note that 0 is a CLAIM --
+ * "this yield is zero" -- where the input was actually unusable; preserved
+ * because changing it is a product decision, not a refactor.
+ */
+export function round9OrZero(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? round9(n) : 0;
+}
+
+/**
+ * `round9`, but a non-finite or absent input reads as null.
+ *
+ * Replaces metagraph-neurons' variant. The honest one of the three: it says
+ * "not computable" instead of asserting a number nobody measured.
+ */
+export function round9OrNull(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? round9(n) : null;
+}
+
+/**
+ * A value as a finite number, or 0.
+ *
+ * Nine modules declared this privately and all nine were behaviourally
+ * identical -- the only difference between them was whether the local was
+ * called `n` or `parsed`, which is what a "deliberate byte-for-byte copy"
+ * convention produces when it is actually followed. (`round9` above is what it
+ * produces when it is not.)
+ *
+ * ZERO IS A CLAIM, and callers should know they are making it: this reports an
+ * unusable input as the number zero, which is right for an accumulator and
+ * wrong for anything a reader will interpret as a measurement. `round9OrNull`
+ * exists for the other case.
+ */
+export function numberOrZero(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * A value as a finite NON-NEGATIVE number, or 0.
+ *
+ * A different function from `numberOrZero`, and it was hiding under the same
+ * name: `accounts-list` and `metagraph-neurons` each declared a private
+ * `numberOrZero` that also clamped negatives, while nine other modules
+ * declared a `toNumber` that did not. Collapsing them onto one name turned a
+ * negative stake cell into a real negative on two surfaces that had been
+ * treating it as zero, and both modules' existing suites failed -- which is
+ * how this is a separate export rather than a footnote.
+ *
+ * Use where the quantity CANNOT be negative in the domain (a stake, a balance,
+ * a count) and a negative therefore means the cell is junk. Where a negative is
+ * meaningful (a net flow, a delta), `numberOrZero` is the one that says so.
+ */
+export function nonNegativeOrZero(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}

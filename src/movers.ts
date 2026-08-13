@@ -2,7 +2,12 @@
 // published `maximum` and this route's enforcement cannot drift (#9127).
 import { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX } from "./route-limits.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
-import { toRaoBig } from "./lib/rao.ts";
+import {
+  RAO_PER_TAO,
+  RAO_PER_TAO_NUMBER,
+  numberOrZero,
+  toRaoBig,
+} from "./lib/rao.ts";
 export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
 // Cross-subnet momentum ("movers"): rank every subnet by how much its stake, emission,
 // and validator set changed between a window's start and end neuron_daily snapshots.
@@ -31,12 +36,11 @@ export const DEFAULT_MOVERS_SORT = "stake";
 
 // 1 TAO = 1e9 rao. Round every TAO output to rao precision; IEEE-754 noise below the rao
 // floor is artifact (mirrors the rounding the turnover/history scorecards apply).
-const RAO_PER_TAO = 1e9;
 function roundTao(value: unknown): number {
-  return Math.round(toNumber(value) * RAO_PER_TAO) / RAO_PER_TAO;
+  return (
+    Math.round(numberOrZero(value) * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER
+  );
 }
-
-const RAO_PER_TAO_BIG = 1_000_000_000n;
 
 // Exact rao-integer BigInt for one subnet's TAO value, for summation across every subnet
 // (#5290, mirrors toRaoBig/raoBigToTao in chain-yield.ts and stake_sum_rao in
@@ -48,7 +52,7 @@ const RAO_PER_TAO_BIG = 1_000_000_000n;
 // relative error from Number(bigint) is immaterial there, unlike the lossless string totals
 // raoToTaoString produces, which must stay exact.
 function raoToTaoNumber(rao: bigint): number {
-  return Number(rao) / RAO_PER_TAO;
+  return Number(rao) / RAO_PER_TAO_NUMBER;
 }
 
 // Lossless fixed 9-decimal (rao-precision) TAO string -- a JSON number (double) is only
@@ -61,16 +65,9 @@ function raoToTaoNumber(rao: bigint): number {
 function raoToTaoString(rao: bigint): string {
   const negative = rao < 0n;
   const abs = negative ? -rao : rao;
-  const whole = abs / RAO_PER_TAO_BIG;
-  const frac = abs % RAO_PER_TAO_BIG;
+  const whole = abs / RAO_PER_TAO;
+  const frac = abs % RAO_PER_TAO;
   return `${negative ? "-" : ""}${whole}.${frac.toString().padStart(9, "0")}`;
-}
-
-// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite number,
-// defaulting to 0.
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 // A finite aggregate cell, or null when absent/blank/non-numeric. Blank cells coerce

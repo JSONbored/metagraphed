@@ -1,3 +1,4 @@
+import { numberOrZero, round9 } from "./lib/rao.ts";
 // Per-account daily position HISTORY (block-explorer Tier-1, epic #4329/6.1).
 //
 // The refresh-metagraph cron lands the LATEST per-UID snapshot in Postgres's
@@ -51,19 +52,6 @@
 // netuid every row shares) — only `uid` and `coldkey` can legitimately vary
 // day-to-day for one (account, netuid) pair (a hotkey re-registering at a new
 // UID slot, or a coldkey key-rotation), so those travel with each point.
-
-// 1 TAO = 1e9 rao; round tao + yield outputs to that precision (matches
-// account-portfolio.ts's round9 — each module owns its own copy, this
-// codebase's established convention for these small numeric coercions).
-const SCALE = 1e9;
-function round9(value: number): number {
-  return Math.round(value * SCALE) / SCALE;
-}
-
-function toNumber(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
 
 function nullableScore(value: unknown): number | null {
   if (value == null) return null;
@@ -120,8 +108,8 @@ export function formatAccountPosition(
   row: Record<string, unknown> | null | undefined,
 ): AccountPositionEntry | null {
   if (!row || typeof row !== "object") return null;
-  const stake = toNumber(row.stake_tao);
-  const emission = toNumber(row.emission_tao);
+  const stake = numberOrZero(row.stake_tao);
+  const emission = numberOrZero(row.emission_tao);
   const isValidator = Number(row.validator_permit) === 1;
   return {
     uid: toInt(row.uid),

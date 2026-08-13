@@ -9,23 +9,12 @@
 
 import { computeConcentration } from "./concentration.ts";
 import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
+import { numberOrZero, round9 } from "./lib/rao.ts";
 
 // The neurons-tier columns the portfolio reads for one hotkey.
 export const ACCOUNT_PORTFOLIO_READ_COLUMNS =
   "netuid, uid, stake_tao, emission_tao, rank, trust, incentive, " +
   "dividends, validator_permit, active, captured_at";
-
-// 1 TAO = 1e9 rao; round tao + yield outputs to that precision.
-const SCALE = 1e9;
-function round9(value: number): number {
-  return Math.round(value * SCALE) / SCALE;
-}
-
-// Coerce a D1 numeric cell (number, numeric string, or null) to a finite number.
-function toNumber(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
 
 // A nullable 0..1 score cell -> rounded number, or null when absent/non-finite.
 function nullableScore(value: unknown): number | null {
@@ -135,8 +124,8 @@ export function buildAccountPortfolio(
     if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
       capturedAt = captured;
     }
-    const stake = toNumber(row?.stake_tao);
-    const emission = toNumber(row?.emission_tao);
+    const stake = numberOrZero(row?.stake_tao);
+    const emission = numberOrZero(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     if (isValidator) validatorCount += 1;
     const rowPrice = priceByNetuid.get(netuid);

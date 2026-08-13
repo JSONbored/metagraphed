@@ -9,7 +9,17 @@
 // the drift cannot come back.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { RAO_PER_TAO, raoBigToTao, toRaoBig } from "../src/lib/rao.ts";
+import {
+  RAO_PER_TAO,
+  RAO_PER_TAO_NUMBER,
+  nonNegativeOrZero,
+  numberOrZero,
+  raoBigToTao,
+  round9,
+  round9OrNull,
+  round9OrZero,
+  toRaoBig,
+} from "../src/lib/rao.ts";
 
 describe("toRaoBig", () => {
   test("converts TAO to exact rao", () => {
@@ -102,4 +112,89 @@ describe("raoBigToTao", () => {
 test("RAO_PER_TAO is 1e9 as a BigInt", () => {
   assert.equal(RAO_PER_TAO, 1_000_000_000n);
   assert.equal(typeof RAO_PER_TAO, "bigint");
+});
+
+// ── The rounding family (#10948) ────────────────────────────────────────────
+//
+// Six modules declared `round9`, and their own comments said they matched:
+// metagraph-neurons' read "Matches src/chain-yield.ts / src/subnet-yield.ts's
+// own round9 exactly". It did not match either of them, and they did not match
+// each other. On the same non-finite input the three returned three different
+// answers.
+//
+// These pin that the three behaviours are still three, because collapsing them
+// onto whichever was most common is the failure this refactor exists to remove
+// rather than repeat.
+describe("round9 / round9OrZero / round9OrNull", () => {
+  test("all three agree on an ordinary value", () => {
+    assert.equal(round9(1.2345678901), 1.23456789);
+    assert.equal(round9OrZero(1.2345678901), 1.23456789);
+    assert.equal(round9OrNull(1.2345678901), 1.23456789);
+  });
+
+  test("and disagree on a non-finite one, deliberately", () => {
+    // THE DIVERGENCE, stated. Not hypothetical: both yield modules compute
+    // `round9(emission / stake)`, so a subnet with zero stake produces
+    // Infinity on one surface and 0 on the other, from the same arithmetic.
+    assert.equal(Number.isNaN(round9(Number.NaN)), true);
+    assert.equal(round9(Number.POSITIVE_INFINITY), Number.POSITIVE_INFINITY);
+    assert.equal(round9OrZero(Number.NaN), 0);
+    assert.equal(round9OrZero(Number.POSITIVE_INFINITY), 0);
+    assert.equal(round9OrNull(Number.NaN), null);
+    assert.equal(round9OrNull(Number.POSITIVE_INFINITY), null);
+  });
+
+  test("the zero-stake case each yield surface actually hits", () => {
+    // 1 TAO of emission over 0 stake. This is the input that made the two
+    // "identical" implementations answer differently in production.
+    const emission = 1;
+    const stake = 0;
+    assert.equal(round9(emission / stake), Number.POSITIVE_INFINITY);
+    assert.equal(round9OrZero(emission / stake), 0);
+    assert.equal(round9OrNull(emission / stake), null);
+  });
+
+  test("null and undefined are absent, not zero, for the nullable one", () => {
+    assert.equal(round9OrNull(null), null);
+    assert.equal(round9OrNull(undefined), null);
+  });
+
+  test("a non-numeric string is not a number on either coercing variant", () => {
+    assert.equal(round9OrZero("nope"), 0);
+    assert.equal(round9OrNull("nope"), null);
+    // ...but a numeric string is, which is why these take `unknown`: several
+    // callers hand a raw store cell straight in.
+    assert.equal(round9OrZero("1.5"), 1.5);
+    assert.equal(round9OrNull("1.5"), 1.5);
+  });
+
+  test("negatives round toward the same rao grid", () => {
+    assert.equal(round9(-1.2345678904), -1.23456789);
+    assert.equal(round9OrZero(-1.2345678904), -1.23456789);
+    assert.equal(round9OrNull(-1.2345678904), -1.23456789);
+  });
+
+  test("numberOrZero and nonNegativeOrZero are different functions", () => {
+    // They were hiding under ONE name. Nine modules' `toNumber` passed a
+    // negative through; `accounts-list` and `metagraph-neurons` declared a
+    // `numberOrZero` that clamped it. Collapsing them onto one export turned a
+    // negative stake cell into a real negative on two surfaces that had been
+    // reading it as zero, and both suites failed -- which is the only reason
+    // this is two exports instead of a footnote.
+    assert.equal(numberOrZero(-5), -5, "a negative net flow is a real value");
+    assert.equal(nonNegativeOrZero(-5), 0, "a negative stake cell is junk");
+    // They agree everywhere else, which is what made the divergence invisible.
+    for (const v of [0, 1.5, "2.25", null, undefined, "nope", Number.NaN]) {
+      assert.equal(
+        numberOrZero(v),
+        nonNegativeOrZero(v),
+        `disagreed on ${String(v)}`,
+      );
+    }
+  });
+
+  test("the two constants are the same quantity in two types", () => {
+    // src/movers.ts declared BOTH privately, four lines apart.
+    assert.equal(BigInt(RAO_PER_TAO_NUMBER), RAO_PER_TAO);
+  });
 });

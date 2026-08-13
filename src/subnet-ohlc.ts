@@ -80,11 +80,17 @@ export const MAX_OHLC_WINDOW_DAYS = 365;
 // an unrelated ranking, not a chronological series).
 export const MAX_CANDLES = 2000;
 
-// 1 TAO/alpha = 1e9 rao. Copied verbatim from alpha-volume.ts's/
-// chain-alpha-volume.ts's own roundUnit -- every rao-precision rounding
-// helper in this codebase is a deliberate byte-for-byte copy, not a shared
-// import, so each module stays independently reviewable (see those modules'
-// own header comments for the same note).
+// 1 TAO/alpha = 1e9 rao.
+//
+// The comment that used to sit here said "every rao-precision rounding helper
+// in this codebase is a deliberate byte-for-byte copy, not a shared import, so
+// each module stays independently reviewable". That convention is what let six
+// `round9` copies drift into three different answers for a non-finite input
+// (#10948), and it is no longer true: `src/lib/rao.ts` owns the family. This
+// one is still local because `roundUnit` is named for a UNIT (alpha or TAO,
+// whichever the row is denominated in) rather than for rao, and collapsing it
+// on the strength of a matching body is the mistake this note is about --
+// see #10948 for the remaining named variants.
 const RAO_PER_UNIT = 1e9;
 function roundUnit(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite accumulator sums */

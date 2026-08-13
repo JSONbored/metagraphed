@@ -29,7 +29,12 @@
 
 import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
-import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
+import {
+  RAO_PER_TAO_NUMBER,
+  nonNegativeOrZero,
+  raoBigToTao,
+  toRaoBig,
+} from "./lib/rao.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -38,8 +43,6 @@ import {
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "./route-limits.ts";
 export { ACCOUNTS_LIST_LIMIT_DEFAULT, ACCOUNTS_LIST_LIMIT_MAX };
-const RAO_PER_TAO = 1e9;
-
 export const ACCOUNTS_LIST_SORTS = [
   "total_stake",
   "total_emission",
@@ -67,11 +70,6 @@ function toIso(ms: number | null): string | null {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function numberOrZero(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-}
-
 function nonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
@@ -80,7 +78,10 @@ function nonNegativeInt(value: unknown): number | null {
 }
 
 function roundTao(value: unknown): number {
-  return Math.round(numberOrZero(value) * RAO_PER_TAO) / RAO_PER_TAO;
+  return (
+    Math.round(nonNegativeOrZero(value) * RAO_PER_TAO_NUMBER) /
+    RAO_PER_TAO_NUMBER
+  );
 }
 
 // Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
@@ -89,7 +90,7 @@ function roundTao(value: unknown): number {
 
 function round(value: number | null, dp = 6): number | null {
   /* v8 ignore next -- defensive: this module's one caller (applyStakeDominance)
-     only ever divides a numberOrZero() result by an already-Number.isFinite-
+     only ever divides a nonNegativeOrZero() result by an already-Number.isFinite-
      and->0-checked denominator, so this branch is provably unreachable today. */
   if (value == null || !Number.isFinite(value)) return null;
   const factor = 10 ** dp;
@@ -196,7 +197,7 @@ function applyStakeDominance(
   return accounts.map((entry) => ({
     ...entry,
     stake_dominance: round(
-      numberOrZero(entry.total_stake_tao) / networkStakeTotal,
+      nonNegativeOrZero(entry.total_stake_tao) / networkStakeTotal,
     ),
   }));
 }
@@ -267,8 +268,8 @@ export function buildAccountsList(
     const uid = nonNegativeInt(row?.uid);
     if (!hotkey || netuid == null || uid == null) continue;
 
-    const stake = numberOrZero(row?.stake_tao);
-    const emission = numberOrZero(row?.emission_tao);
+    const stake = nonNegativeOrZero(row?.stake_tao);
+    const emission = nonNegativeOrZero(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     const capturedAt =
       row?.captured_at == null ? null : Number(row.captured_at);

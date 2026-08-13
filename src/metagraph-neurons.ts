@@ -20,7 +20,13 @@ import {
   type FieldProjectionResult,
 } from "./field-projection.ts";
 import type { Neurons } from "../generated/db/types.ts";
-import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
+import {
+  RAO_PER_TAO_NUMBER,
+  nonNegativeOrZero,
+  raoBigToTao,
+  round9OrNull,
+  toRaoBig,
+} from "./lib/rao.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -281,8 +287,6 @@ export const GLOBAL_VALIDATOR_SORTS = [
 ];
 export const DEFAULT_GLOBAL_VALIDATOR_SORT = "subnet_count";
 const GLOBAL_VALIDATOR_SUBNET_LIMIT = 10;
-const RAO_PER_TAO = 1e9;
-
 // Bittensor's network-wide block time is a long-stable EXTERNAL protocol
 // parameter (~12s) that this repo does not measure per-request -- distinct
 // from any live-computed block-time distribution elsewhere in this repo
@@ -312,11 +316,6 @@ function toIso(ms: unknown): string | null {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function numberOrZero(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-}
-
 function nullableNumber(value: unknown): number | null {
   if (value == null) return null;
   // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
@@ -337,7 +336,10 @@ function nonNegativeInt(value: unknown): number | null {
 }
 
 function roundTao(value: unknown): number {
-  return Math.round(numberOrZero(value) * RAO_PER_TAO) / RAO_PER_TAO;
+  return (
+    Math.round(nonNegativeOrZero(value) * RAO_PER_TAO_NUMBER) /
+    RAO_PER_TAO_NUMBER
+  );
 }
 
 // Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
@@ -348,16 +350,6 @@ function round(value: unknown, dp = 6): number | null {
   if (value == null || !Number.isFinite(value as number)) return null;
   const factor = 10 ** dp;
   return Math.round((value as number) * factor) / factor;
-}
-
-// 1 TAO = 1e9 rao; round yield-shaped outputs to that precision to shed
-// IEEE-754 noise below the rao floor while keeping small ratios meaningful.
-// Matches src/chain-yield.ts / src/subnet-yield.ts's own round9 exactly
-// (apy_estimate is a sibling yield-shaped field, not a trust/take value, so
-// it uses this precision convention rather than round()'s 6dp default).
-function round9(value: unknown): number | null {
-  if (value == null || !Number.isFinite(value as number)) return null;
-  return Math.round(Number(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
 /**
@@ -395,7 +387,7 @@ interface ImmunityWindow {
 // guards preserve the previous null-on-missing contract: Number(null) is
 // 0 (not NaN), so nonNegativeInt(null) / nullableNumber(null) / roundTao(null)
 // would otherwise serialize as 0 instead of null. roundTao itself falls
-// back to numberOrZero(0) for null/non-finite, so the wrapping guards here
+// back to nonNegativeOrZero(0) for null/non-finite, so the wrapping guards here
 // are what keep "missing cell" cells flowing through as null. Mirrors the
 // proven toBlockNumber / toTaoOrNull null-guards in account-events.ts
 // (#2487).
@@ -661,7 +653,7 @@ function priceForNetuid(
 // the numerator and denominator -- never defaulted to an assumed tempo,
 // mirroring this codebase's null-never-fabricated convention (see
 // nominator_count above). stake/emission are already-coerced
-// numberOrZero() results, matching every other call site in this file.
+// nonNegativeOrZero() results, matching every other call site in this file.
 //
 // Each eligible row's emission_tao (a single most-recently-captured
 // per-epoch reading, see NEURON_COLUMNS) is annualized using that row's own
@@ -698,7 +690,7 @@ function finalizeApy(acc: ApyAccumulator): Row {
   const apy =
     raoBigToTao(acc.apyNumeratorRao) / raoBigToTao(acc.apyDenominatorRao);
   return {
-    apy_estimate: round9(apy),
+    apy_estimate: round9OrNull(apy),
     apy_estimate_eligible_subnet_count: acc.apyEligibleCount,
   };
 }
@@ -736,7 +728,7 @@ function realizedReturn(
   if (baselineStakeTao == null) return null;
   const baselineRao = toRaoBig(baselineStakeTao);
   if (baselineRao <= 0n) return null;
-  return round9(
+  return round9OrNull(
     raoBigToTao(currentStakeRao - baselineRao) / raoBigToTao(baselineRao),
   );
 }
@@ -877,7 +869,7 @@ function applyStakeDominance(validators: Row[]): Row[] {
   return validators.map((entry) => ({
     ...entry,
     stake_dominance: round(
-      numberOrZero(entry.total_stake_tao) / networkStakeTotal,
+      nonNegativeOrZero(entry.total_stake_tao) / networkStakeTotal,
     ),
   }));
 }
@@ -959,8 +951,8 @@ export function buildGlobalValidators(
     const uid = nonNegativeInt(row?.uid);
     if (!hotkey || netuid == null || uid == null) continue;
 
-    const stake = numberOrZero(row?.stake_tao);
-    const emission = numberOrZero(row?.emission_tao);
+    const stake = nonNegativeOrZero(row?.stake_tao);
+    const emission = nonNegativeOrZero(row?.emission_tao);
     const trust = nullableNumber(row?.validator_trust);
     const capturedAt = nullableNumber(row?.captured_at);
     const blockNumber = nonNegativeInt(row?.block_number);
@@ -1341,8 +1333,8 @@ export function buildValidatorDetail(
       const rowTake = nullableNumber(row?.take);
       if (rowTake != null) take = rowTake;
     }
-    const stake = numberOrZero(row?.stake_tao);
-    const emission = numberOrZero(row?.emission_tao);
+    const stake = nonNegativeOrZero(row?.stake_tao);
+    const emission = nonNegativeOrZero(row?.emission_tao);
     // TAO-priced accumulation (#9051), mirroring buildGlobalValidators: each
     // membership converts through its own subnet's alpha price; an
     // unpriceable one lands in the residuals. Root prices at exactly 1, so

@@ -1,3 +1,4 @@
+import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
 // Net stake flow (capital in vs out) for one subnet over a recent window: how much
 // TAO entered (StakeAdded) vs left (StakeRemoved), summed from the first-party
 // account_events stream. Pure shaping (buildStakeFlow); the Worker / data-api
@@ -39,18 +40,10 @@ export const DEFAULT_STAKE_FLOW_DIRECTION = "all";
 // 1 TAO = 1e9 rao. Summing many REAL amount_tao values accumulates IEEE-754 noise
 // below the rao floor; round every TAO output to rao precision, the smallest real
 // unit (the same rounding the turnover/account-summary scorecards apply).
-const RAO_PER_TAO = 1e9;
 function roundTao(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
-}
-
-// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite
-// number, defaulting to 0.
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
 }
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric.
@@ -83,10 +76,10 @@ export function buildStakeFlow(
     if (tao == null) continue;
     if (kind === STAKE_ADDED_KIND) {
       stakedTao += tao;
-      stakeEvents += toNumber(row?.event_count);
+      stakeEvents += numberOrZero(row?.event_count);
     } else if (kind === STAKE_REMOVED_KIND) {
       unstakedTao += tao;
-      unstakeEvents += toNumber(row?.event_count);
+      unstakeEvents += numberOrZero(row?.event_count);
     }
   }
   return {

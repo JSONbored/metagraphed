@@ -21,6 +21,7 @@ type Row = Record<string, unknown>;
 export { DEFAULT_HISTORY_WINDOW, HISTORY_WINDOW_DAYS } from "./route-limits.ts";
 import { HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW } from "./route-limits.ts";
 import type { NeuronDaily } from "../generated/db/types.ts";
+import { RAO_PER_TAO } from "./lib/rao.ts";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;
 
@@ -292,9 +293,6 @@ function toFiniteOrNull(v: unknown): number | null {
 function roundTao(v: number): number {
   return Math.round(v * 1e6) / 1e6;
 }
-
-const RAO_PER_TAO = 1_000_000_000n;
-
 // Exact rao-precision decimal string, never a JS number (#2924): a network-
 // wide daily total_stake_tao sum is already well past 2^53-1's exact-double
 // ceiling (~9,007,199 TAO at rao precision) -- confirmed live 2026-07-14 at
