@@ -2630,3 +2630,53 @@ describe("chain-firehose cap attribution", () => {
     );
   });
 });
+
+// #11021: the alarm's `finally` re-arms the poll chain, and `setAlarm` rejects
+// like everything else once the object is reset. These pin the two arms of that
+// guard -- swallowing a deploy is only acceptable because /poll-start's cron
+// re-arms an alarm that is missing OR OVERDUE; swallowing anything else would
+// hide a hub that has genuinely stopped scheduling.
+function alarmState(setAlarmImpl: () => Promise<void>): DurableObjectState {
+  return {
+    getWebSockets: () => [],
+    storage: {
+      get: async () => null,
+      put: async () => {},
+      setAlarm: setAlarmImpl,
+    },
+  } as unknown as DurableObjectState;
+}
+
+test("alarm: a DO reset during setAlarm does not escape (#11021)", async () => {
+  const hub = new ChainFirehoseHub(
+    alarmState(async () => {
+      throw new Error("Durable Object reset because its code was updated.");
+    }),
+    mockEnv({ CHAIN_HEAD_POLL_ENABLED: "false" }),
+  );
+  // Must not reject: the poll chain is restarted by the 15-minute /poll-start
+  // bootstrap, and letting this escape is what made every deploy an uncaught
+  // exception on ChainFirehoseHub.alarm.
+  await hub.alarm();
+});
+
+test("alarm: any OTHER setAlarm failure is still reported (#11021)", async () => {
+  const errors: unknown[] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => void errors.push(args);
+  try {
+    const hub = new ChainFirehoseHub(
+      alarmState(async () => {
+        throw new Error("storage quota exceeded");
+      }),
+      mockEnv({ CHAIN_HEAD_POLL_ENABLED: "false" }),
+    );
+    await hub.alarm();
+  } finally {
+    console.error = original;
+  }
+  // Recorded rather than rethrown -- a throw out of a `finally` masks what the
+  // `try` was propagating -- but it MUST still reach the error channel, or a
+  // hub that has stopped scheduling looks exactly like a deploy.
+  assert.match(JSON.stringify(errors), /storage quota exceeded/);
+});
