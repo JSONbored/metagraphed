@@ -9,6 +9,43 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [1.0.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.19.0...ui-v1.0.0) (2026-08-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** one name for the 50th percentile across the contract ([#10989](https://github.com/JSONbored/metagraphed/issues/10989))
+
+### Features
+
+* **economics:** cost to participate — what a subnet declares, and what entry actually costs ([#11041](https://github.com/JSONbored/metagraphed/issues/11041)) ([1ab4bb4](https://github.com/JSONbored/metagraphed/commit/1ab4bb412727cf3bac0bd94292d9f6df4d7b210f))
+* **economics:** miner fairness — do a subnet's registered miners actually earn ([#10997](https://github.com/JSONbored/metagraphed/issues/10997)) ([97261c1](https://github.com/JSONbored/metagraphed/commit/97261c13a2d79887961466d78eff5c8cfd6c5597)), closes [#10931](https://github.com/JSONbored/metagraphed/issues/10931)
+* **economics:** split subnet emission by recipient class, and give the rao helpers one implementation ([#10947](https://github.com/JSONbored/metagraphed/issues/10947)) ([edf8c26](https://github.com/JSONbored/metagraphed/commit/edf8c268488805d4bbde040014a3679f81fa5968))
+* **registry:** treasury readings — what a subnet's own source declares ([#11025](https://github.com/JSONbored/metagraphed/issues/11025)) ([7cd0ab7](https://github.com/JSONbored/metagraphed/commit/7cd0ab76902a7598590f51a342da89d42205d7f4)), closes [#10933](https://github.com/JSONbored/metagraphed/issues/10933)
+
+
+### Bug Fixes
+
+* **ci:** make the posthog CLI's CDN download unable to fail an install ([#10922](https://github.com/JSONbored/metagraphed/issues/10922)) ([bb88884](https://github.com/JSONbored/metagraphed/commit/bb88884af48559ea84ae2bff1bae9d692a9cd70d))
+* **e2e:** re-record the fixtures the p50 rename left behind ([#11035](https://github.com/JSONbored/metagraphed/issues/11035)) ([0f3d824](https://github.com/JSONbored/metagraphed/commit/0f3d8244d2c8a7ecf9ca1aba23e41ce840c4ef95)), closes [#11034](https://github.com/JSONbored/metagraphed/issues/11034)
+* **e2e:** the overflow sweep stops reading live production ([#10968](https://github.com/JSONbored/metagraphed/issues/10968)) ([f639887](https://github.com/JSONbored/metagraphed/commit/f639887161d9a2eeee5ad02c67ec1f9231e719d6))
+* **seo:** withhold the three unbounded per-entity spaces from crawlers, on both hosts ([#11005](https://github.com/JSONbored/metagraphed/issues/11005)) ([8787848](https://github.com/JSONbored/metagraphed/commit/8787848f90d3c8506ee6f5473f5b4eb9e87a8e0a)), closes [#11002](https://github.com/JSONbored/metagraphed/issues/11002)
+* **ui:** /revenue was in the sitemap and nowhere else ([#10977](https://github.com/JSONbored/metagraphed/issues/10977)) ([f9ecad2](https://github.com/JSONbored/metagraphed/commit/f9ecad2fdbab9ae7896e0e6e4e49baa1a7f3af59)), closes [#10927](https://github.com/JSONbored/metagraphed/issues/10927)
+* **ui:** a rate-limited read is throttled, not broken ([#11012](https://github.com/JSONbored/metagraphed/issues/11012)) ([ffa5f9a](https://github.com/JSONbored/metagraphed/commit/ffa5f9a7629469f68911cb168ae8828eea261fbe)), closes [#11000](https://github.com/JSONbored/metagraphed/issues/11000)
+* **ui:** one chain-stream socket per tab, with a grow-only topic union ([#10961](https://github.com/JSONbored/metagraphed/issues/10961)) ([2e2b512](https://github.com/JSONbored/metagraphed/commit/2e2b512af7f46a37ab734f50124446eedce3f3c9)), closes [#10606](https://github.com/JSONbored/metagraphed/issues/10606)
+* **ui:** one chain-stream socket per topic set, not one per call site ([#10952](https://github.com/JSONbored/metagraphed/issues/10952)) ([4ab50f4](https://github.com/JSONbored/metagraphed/commit/4ab50f4adc3d90557e327788b8aa9a15d9e0b7d7)), closes [#10606](https://github.com/JSONbored/metagraphed/issues/10606)
+* **ui:** stop telling users their data comes from a database we deleted ([#10934](https://github.com/JSONbored/metagraphed/issues/10934)) ([d079c84](https://github.com/JSONbored/metagraphed/commit/d079c84e02fd7edc3679c874833185194b74b03b)), closes [#10911](https://github.com/JSONbored/metagraphed/issues/10911)
+
+
+### Documentation
+
+* **method:** publish the attribution rules, and make the schema enforce them ([#10962](https://github.com/JSONbored/metagraphed/issues/10962)) ([be364d3](https://github.com/JSONbored/metagraphed/commit/be364d38aae0e7b4c962a23a38071ceb7b214c6c))
+
+
+### Refactors
+
+* **api:** one name for the 50th percentile across the contract ([#10989](https://github.com/JSONbored/metagraphed/issues/10989)) ([8d4271a](https://github.com/JSONbored/metagraphed/commit/8d4271ab1887c2b0f0641c6c04f5093721a00a13))
+
 ## [0.19.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.18.0...ui-v0.19.0) (2026-08-11)
 
 
