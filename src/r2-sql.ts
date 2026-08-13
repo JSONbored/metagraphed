@@ -38,7 +38,8 @@
 import { z } from "zod";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
-import { LAKEHOUSE_ROW_SCHEMAS } from "../generated/lakehouse/schemas.ts";
+import { LAKEHOUSE_ROW_SCHEMAS } from "../schemas-src/lakehouse.ts";
+import { R2SqlBodySchema } from "../schemas-src/r2-sql-envelope.ts";
 
 /** Personal/API token with R2 SQL read access (wrangler secret). */
 export const R2_SQL_TOKEN_ENV = "R2_SQL_TOKEN";
@@ -326,35 +327,9 @@ export interface R2SqlDeps {
   now?: () => number;
 }
 
-/**
- * The engine's response envelope, PARSED rather than asserted.
- *
- * This used to be a hand-written interface behind a `JSON.parse(...) as
- * R2SqlBody` cast -- a shape this repo declared about somebody else's API and
- * then never checked. A cast is not a check: a body that had drifted, or an
- * HTML error page from a proxy, satisfied the compiler and reached the row
- * reader as `undefined` fields, which is how "no rows" and "we could not tell"
- * became the same answer.
- *
- * Loose on purpose -- unknown keys pass, because this is Cloudflare's envelope
- * and gaining a field is their business, not a fault here. What it pins is the
- * three fields this module actually reads, so a body that cannot answer them
- * is a classified decline instead of a silent empty.
- */
-const R2SqlBodySchema = z.object({
-  result: z
-    .object({
-      rows: z.unknown().optional(),
-      metrics: z.record(z.string(), z.unknown()).optional(),
-    })
-    .nullish(),
-  success: z.boolean().optional(),
-  errors: z
-    .array(
-      z.object({ code: z.number().optional(), message: z.string().optional() }),
-    )
-    .optional(),
-});
+// The engine's response envelope lives with every other schema, in
+// schemas-src/r2-sql-envelope.ts -- see that file for why it is parsed rather
+// than asserted.
 type R2SqlBody = z.infer<typeof R2SqlBodySchema>;
 
 /** True when this deployment can talk to R2 SQL at all. */

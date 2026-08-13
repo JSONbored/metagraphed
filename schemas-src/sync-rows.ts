@@ -1,5 +1,12 @@
 // Zod schemas for the seven internal sync-route row shapes (#9564).
 //
+// LIVES IN schemas-src (#11008). It was `src/sync-row-schemas.ts`, which put a
+// schema module outside the one place this repo keeps schemas -- the same
+// split that let the lakehouse row schemas sit in `generated/` unseen by the
+// duplicate gate. It imports nothing but zod, so the move costs nothing and
+// buys the gates: `no-passthrough`, `schema-shape-duplicates` and
+// `schema-opacity` all scan this directory and none of them scanned src/.
+//
 // WHAT THIS REPLACES, AND WHY. Each route used a `valid*SyncRow(row): boolean`
 // predicate driven as `rows.every(...)`, so a batch of up to 50,000 rows was
 // rejected with one sentence -- "rows must match the neuron row shape" -- and

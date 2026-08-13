@@ -34,7 +34,18 @@ import { repoRoot } from "./lib.ts";
 export const SNAPSHOT_PATH = "generated/lakehouse/schema.json";
 export const TYPES_PATH = "generated/lakehouse/types.ts";
 export const RUST_PATH = "generated/lakehouse/types.rs";
-export const ZOD_PATH = "generated/lakehouse/schemas.ts";
+/**
+ * The Zod lands in `schemas-src/`, with every other schema in this repo.
+ *
+ * Its siblings from this generator (types.ts, types.rs) are TYPES and belong
+ * beside the snapshot they describe. A Zod schema is a SCHEMA, and this repo
+ * has one place for those -- #9830's rule is that a schema has a single
+ * source, and a second home for lakehouse shapes is exactly the split that
+ * rule exists to prevent. Generated rather than hand-written, so the "do not
+ * edit" header and the drift gate still apply: it is single-sourced from the
+ * catalog snapshot AND single-homed with the rest of the contract.
+ */
+export const ZOD_PATH = "schemas-src/lakehouse.ts";
 
 export interface LakehouseColumn {
   table: string;
@@ -261,7 +272,14 @@ export function emitZodSchemas(columns: LakehouseColumn[]): string {
       );
     }
     out.push(
-      `/** \`chain.${table}\` -- every column optional, unknown keys kept. */`,
+      `/**`,
+      ` * \`chain.${table}\` as the catalog declares it.`,
+      ` *`,
+      ` * OPEN (\`.catchall\`) on purpose: a read selects a projection, and often`,
+      ` * an aggregate alias that is not a column at all. Closed would delete it.`,
+      ` * PARTIAL on purpose: a projection carries a subset of the columns.`,
+      ` * What stays pinned is the TYPE of any declared column that IS present.`,
+      ` */`,
     );
     out.push(`export const ${pascal(table)}RowSchema = z`);
     out.push("  .object({");
@@ -272,14 +290,21 @@ export function emitZodSchemas(columns: LakehouseColumn[]): string {
       );
     }
     out.push("  })");
-    // `.partial()` because a query selects a SUBSET; `.loose()` because it also
-    // selects things that are not columns at all -- `COUNT(*) AS n`,
-    // `SUM(amount_tao) AS total_tao`. Zod STRIPS unknown keys by default, so a
-    // plain object schema would have silently deleted the aggregate from every
-    // rollup that reads one, which is most of them. Verified against a real
-    // aggregate projection rather than reasoned about.
+    // `.partial()` because a query selects a SUBSET of the columns.
+    //
+    // `.catchall(z.unknown())`, NOT `.loose()`, and the spelling is the point:
+    // #10790 banned the unreasoned open object precisely because
+    // `.passthrough()` said both "this is genuinely open" and "nobody thought
+    // about it" in one word. `.loose()` is Zod 4's spelling of the same thing.
+    // The reason here is written above the schema rather than left implied.
+    //
+    // Open because a read selects things that are NOT columns:
+    // `COUNT(*) AS n`, `SUM(amount_tao) AS total_tao`. Zod strips unknown keys
+    // by default, so a closed schema silently DELETED the aggregate from every
+    // rollup that reads one -- which is most of them. Found by parsing a real
+    // aggregate projection, not by reasoning about it.
     out.push("  .partial()");
-    out.push("  .loose();");
+    out.push("  .catchall(z.unknown());");
     out.push("");
   }
   out.push("/** Every table's row schema, by table name. */");

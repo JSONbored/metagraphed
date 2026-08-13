@@ -62,7 +62,7 @@ import {
   AccountEventsRowSchema,
   BlocksRowSchema,
   ExtrinsicsRowSchema,
-} from "../generated/lakehouse/schemas.ts";
+} from "../schemas-src/lakehouse.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */

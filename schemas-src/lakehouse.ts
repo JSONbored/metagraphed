@@ -8,7 +8,14 @@
 
 import { z } from "zod";
 
-/** `chain.blocks` -- every column optional, unknown keys kept. */
+/**
+ * `chain.blocks` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const BlocksRowSchema = z
   .object({
     block_number: z.int().nullable(),
@@ -21,9 +28,16 @@ export const BlocksRowSchema = z
     observed_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.extrinsics` -- every column optional, unknown keys kept. */
+/**
+ * `chain.extrinsics` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const ExtrinsicsRowSchema = z
   .object({
     block_number: z.int().nullable(),
@@ -39,9 +53,16 @@ export const ExtrinsicsRowSchema = z
     observed_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.chain_events` -- every column optional, unknown keys kept. */
+/**
+ * `chain.chain_events` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const ChainEventsRowSchema = z
   .object({
     block_number: z.int().nullable(),
@@ -54,9 +75,16 @@ export const ChainEventsRowSchema = z
     observed_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.account_events` -- every column optional, unknown keys kept. */
+/**
+ * `chain.account_events` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const AccountEventsRowSchema = z
   .object({
     block_number: z.int().nullable(),
@@ -72,9 +100,16 @@ export const AccountEventsRowSchema = z
     observed_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.account_identity` -- every column optional, unknown keys kept. */
+/**
+ * `chain.account_identity` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const AccountIdentityRowSchema = z
   .object({
     account: z.string().nullable(),
@@ -88,9 +123,16 @@ export const AccountIdentityRowSchema = z
     captured_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.account_identity_history` -- every column optional, unknown keys kept. */
+/**
+ * `chain.account_identity_history` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const AccountIdentityHistoryRowSchema = z
   .object({
     id: z.int().nullable(),
@@ -106,9 +148,16 @@ export const AccountIdentityHistoryRowSchema = z
     identity_hash: z.string().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.nominator_positions` -- every column optional, unknown keys kept. */
+/**
+ * `chain.nominator_positions` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const NominatorPositionsRowSchema = z
   .object({
     coldkey: z.string().nullable(),
@@ -118,9 +167,16 @@ export const NominatorPositionsRowSchema = z
     captured_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.rpc_proxy_events` -- every column optional, unknown keys kept. */
+/**
+ * `chain.rpc_proxy_events` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const RpcProxyEventsRowSchema = z
   .object({
     id: z.int().nullable(),
@@ -135,9 +191,16 @@ export const RpcProxyEventsRowSchema = z
     cache: z.string().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.self_health_daily` -- every column optional, unknown keys kept. */
+/**
+ * `chain.self_health_daily` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const SelfHealthDailyRowSchema = z
   .object({
     day: z.iso.date().nullable(),
@@ -146,9 +209,16 @@ export const SelfHealthDailyRowSchema = z
     ok_count: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.subnet_hyperparams` -- every column optional, unknown keys kept. */
+/**
+ * `chain.subnet_hyperparams` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const SubnetHyperparamsRowSchema = z
   .object({
     netuid: z.int().nullable(),
@@ -189,9 +259,16 @@ export const SubnetHyperparamsRowSchema = z
     captured_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.subnet_hyperparams_history` -- every column optional, unknown keys kept. */
+/**
+ * `chain.subnet_hyperparams_history` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const SubnetHyperparamsHistoryRowSchema = z
   .object({
     id: z.int().nullable(),
@@ -234,9 +311,16 @@ export const SubnetHyperparamsHistoryRowSchema = z
     hyperparams_hash: z.string().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.subnet_identity_history` -- every column optional, unknown keys kept. */
+/**
+ * `chain.subnet_identity_history` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const SubnetIdentityHistoryRowSchema = z
   .object({
     id: z.int().nullable(),
@@ -253,9 +337,16 @@ export const SubnetIdentityHistoryRowSchema = z
     identity_hash: z.string().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.subnet_ownership_history` -- every column optional, unknown keys kept. */
+/**
+ * `chain.subnet_ownership_history` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const SubnetOwnershipHistoryRowSchema = z
   .object({
     id: z.int().nullable(),
@@ -265,9 +356,16 @@ export const SubnetOwnershipHistoryRowSchema = z
     captured_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.neuron_daily` -- every column optional, unknown keys kept. */
+/**
+ * `chain.neuron_daily` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const NeuronDailyRowSchema = z
   .object({
     netuid: z.int().nullable(),
@@ -294,9 +392,16 @@ export const NeuronDailyRowSchema = z
     take: z.number().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
-/** `chain.account_position_daily` -- every column optional, unknown keys kept. */
+/**
+ * `chain.account_position_daily` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
 export const AccountPositionDailyRowSchema = z
   .object({
     account: z.string().nullable(),
@@ -316,7 +421,7 @@ export const AccountPositionDailyRowSchema = z
     updated_at: z.int().nullable(),
   })
   .partial()
-  .loose();
+  .catchall(z.unknown());
 
 /** Every table's row schema, by table name. */
 export const LAKEHOUSE_ROW_SCHEMAS = {

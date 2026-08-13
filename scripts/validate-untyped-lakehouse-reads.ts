@@ -45,7 +45,7 @@ import { sourceFiles } from "./validate-untyped-db-reads.ts";
  *
  * 30 (#11000). The extrinsics feed -- the read that produced `Memory limit
  * exceeded before EOF` -- now carries both halves: the generated row TYPE and
- * the generated row SCHEMA from generated/lakehouse/schemas.ts, so the claim
+ * the generated row SCHEMA from schemas-src/lakehouse.ts, so the claim
  * is checked at runtime rather than asserted at compile time.
  */
 // Annotated `number` rather than left as the literal so the "none left" branch

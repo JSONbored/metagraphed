@@ -31,7 +31,7 @@ import { mockEnv } from "./row-type.ts";
 import {
   AccountEventsRowSchema,
   BlocksRowSchema,
-} from "../generated/lakehouse/schemas.ts";
+} from "../schemas-src/lakehouse.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 
