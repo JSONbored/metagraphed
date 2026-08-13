@@ -999,3 +999,85 @@ test("a transient failure is recorded as transient, and expires on its own windo
     "an expired transient tombstone must re-resolve",
   );
 });
+
+test("a tombstone write that throws still returns the 404", async () => {
+  // Best-effort, exactly like the positive put above it: failing to CACHE a
+  // negative must never turn a 404 into a 500.
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async () => null,
+      put: async () => {
+        throw new Error("r2 unavailable");
+      },
+    },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => new Response("nope", { status: 404 }),
+  });
+  assert.equal(res.status, 404);
+});
+
+test("a tombstone with no usable timestamp is treated as expired", async () => {
+  // Fail OPEN, not closed. A record we cannot date is a record we cannot trust
+  // to still be valid, and blackholing a subject forever on a malformed stamp
+  // is strictly worse than re-resolving it once.
+  let upstreamCalls = 0;
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async () => ({
+        body: { cancel: async () => {} },
+        customMetadata: { negative: "stable", negative_at: "not-a-number" },
+        httpMetadata: {},
+      }),
+      put: async () => {},
+    },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => {
+      upstreamCalls += 1;
+      return new Response("nope", { status: 404 });
+    },
+  });
+  assert.equal(res.status, 404);
+  assert.ok(upstreamCalls > 0, "an undateable tombstone must re-resolve");
+});
+
+test("no bucket at all still resolves and 404s", async () => {
+  const res = await call("?host=example.com", {
+    env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
+    fetchImpl: async () => new Response("nope", { status: 404 }),
+  });
+  assert.equal(res.status, 404);
+});
+
+test("a tombstone with NO timestamp field is treated as expired too", async () => {
+  // Distinct branch from the malformed case above: `negative_at` absent
+  // entirely, which falls to the `?? 0` default. Same fail-open outcome, and
+  // worth its own case because it is the shape an older tombstone written
+  // before this field existed would have.
+  let upstreamCalls = 0;
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async () => ({
+        body: { cancel: async () => {} },
+        customMetadata: { negative: "stable" },
+        httpMetadata: {},
+      }),
+      put: async () => {},
+    },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => {
+      upstreamCalls += 1;
+      return new Response("nope", { status: 404 });
+    },
+  });
+  assert.equal(res.status, 404);
+  assert.ok(upstreamCalls > 0, "an undated tombstone must re-resolve");
+});
