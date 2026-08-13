@@ -1,0 +1,345 @@
+// Did every lakehouse table receive a snapshot recently enough? (#11048)
+//
+// ## What this is for
+//
+// `src/table-freshness-watchdog.ts` watches every NEON table, and its own
+// header records why: per-lane watchdogs cover only the lanes somebody
+// remembered, so on 2026-08-07 four registry tables sat frozen for five days
+// and nothing reported it.
+//
+// The lakehouse had no counterpart, and it cost the same way, larger: measured
+// 2026-08-13, NINETEEN of the 26 tables in `chain` last received a snapshot on
+// 2026-08-02 -- eleven days, unreported. The routes over them looked healthy
+// the whole time, because the hot tier answers first and a frozen table
+// returns rows perfectly happily. There is no decline to notice.
+//
+// ## Why the CATALOG and not the data
+//
+// Freshness here is "did anything arrive", which Iceberg already records: each
+// table's metadata carries `snapshots[].timestamp-ms`, so the newest write is
+// one metadata read per table. Asking the DATA the same question
+// (`SELECT MAX(observed_at)`) is a full scan against a budget this repo has
+// already been rate-limited on (#9465), for an answer the catalog hands over
+// for free.
+//
+// ## Every table must be CLASSIFIED
+//
+// A table absent from `EXPECTED` fails, exactly as it does on the Neon side.
+// Absent means nobody has thought about it; `maxAgeMs: null` with a reason
+// means somebody decided it cannot go stale. The two are different facts and
+// only one of them is safe.
+import { fileURLToPath } from "node:url";
+
+const BASE =
+  process.env.R2_CATALOG_URI ??
+  "https://catalog.cloudflarestorage.com/918f0f0e2eb26709d1cf4fb76085c8fb/metagraphed-lakehouse";
+const WAREHOUSE =
+  process.env.R2_WAREHOUSE ??
+  "918f0f0e2eb26709d1cf4fb76085c8fb_metagraphed-lakehouse";
+
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
+export interface FreshnessRule {
+  /** How old the newest snapshot may be, or null when staleness is meaningless. */
+  maxAgeMs: number | null;
+  /** Why this bound, in the producer's own terms. */
+  reason: string;
+}
+
+/**
+ * Every table in `chain`, and how stale each may be.
+ *
+ * The bounds are the PRODUCER's cadence plus room for a missed pass, the same
+ * shape `missedTicksMs` gives the Neon watchdogs. A decode lane that appends
+ * continuously is bounded in hours; a daily rollup in days.
+ *
+ * The nineteen frozen ones are declared at the cadence they are SUPPOSED to
+ * run at, not at their current age -- a watchdog calibrated to the outage it
+ * is watching would report success forever. They fail today, and that is
+ * correct: JSONbored/metagraphed-infra#510 restores the producers, and this is
+ * what proves each restore stayed alive.
+ */
+export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
+  // The four the decoder appends to, continuously.
+  blocks: { maxAgeMs: 6 * HOUR, reason: "decoder appends per block batch" },
+  extrinsics: { maxAgeMs: 6 * HOUR, reason: "decoder appends per block batch" },
+  chain_events: {
+    maxAgeMs: 6 * HOUR,
+    reason: "decoder appends per block batch",
+  },
+  account_events: {
+    maxAgeMs: 6 * HOUR,
+    reason: "decoder appends per block batch",
+  },
+  // The daily rollup's three.
+  neuron_daily: {
+    maxAgeMs: 2 * DAY,
+    reason: "daily_rollup_r2.py, one pass a day",
+  },
+  account_position_daily: {
+    maxAgeMs: 2 * DAY,
+    reason: "daily_rollup_r2.py, one pass a day",
+  },
+  subnet_snapshots: {
+    maxAgeMs: 2 * DAY,
+    reason: "daily_rollup_r2.py, one pass a day",
+  },
+  // Frozen since the 2026-08-02 exodus. Bounds are what the producer SHOULD
+  // hold once restored -- see the note above on not calibrating to the outage.
+  account_balances: {
+    maxAgeMs: 2 * DAY,
+    reason: "balance poller, restore pending",
+  },
+  account_events_daily: {
+    maxAgeMs: 2 * DAY,
+    reason: "daily rollup, restore pending",
+  },
+  account_identity: {
+    maxAgeMs: 2 * DAY,
+    reason: "identity poller, restore pending",
+  },
+  account_identity_history: {
+    maxAgeMs: 2 * DAY,
+    reason: "identity poller, restore pending",
+  },
+  featured_validators: {
+    maxAgeMs: 7 * DAY,
+    reason: "registry projection, restore pending",
+  },
+  neurons: { maxAgeMs: 2 * DAY, reason: "metagraph poller, restore pending" },
+  nominator_positions: {
+    maxAgeMs: 2 * DAY,
+    reason: "validator_nominators poller, restore pending",
+  },
+  providers: {
+    maxAgeMs: 7 * DAY,
+    reason: "registry projection, restore pending",
+  },
+  rpc_proxy_events: {
+    maxAgeMs: 2 * DAY,
+    reason: "rpc proxy sink, restore pending",
+  },
+  self_health_daily: {
+    maxAgeMs: 2 * DAY,
+    reason: "self-health rollup, restore pending",
+  },
+  subnet_hyperparams: {
+    maxAgeMs: 2 * DAY,
+    reason: "hyperparams poller, restore pending",
+  },
+  subnet_hyperparams_history: {
+    maxAgeMs: 2 * DAY,
+    reason: "hyperparams poller, restore pending",
+  },
+  subnet_identity_history: {
+    maxAgeMs: 2 * DAY,
+    reason: "identity poller, restore pending",
+  },
+  subnet_ownership: {
+    maxAgeMs: 2 * DAY,
+    reason: "ownership poller, restore pending",
+  },
+  subnet_ownership_history: {
+    maxAgeMs: 2 * DAY,
+    reason: "ownership poller, restore pending",
+  },
+  subnets: {
+    maxAgeMs: 7 * DAY,
+    reason: "registry projection, restore pending",
+  },
+  surfaces: {
+    maxAgeMs: 7 * DAY,
+    reason: "registry projection, restore pending",
+  },
+  validator_nominator_counts: {
+    maxAgeMs: 2 * DAY,
+    reason: "validator_nominators poller, restore pending",
+  },
+  // Staleness is meaningless here, and saying so is a classification.
+  rehearsal: {
+    maxAgeMs: null,
+    reason: "a migration rehearsal fixture: written once, by hand, on purpose",
+  },
+};
+
+/**
+ * The tables known frozen by the 2026-08-02 exodus, and the ONLY ones allowed
+ * to be stale. THE SET ONLY SHRINKS.
+ *
+ * Shipping this simply red -- eighteen failures every morning until the
+ * restores land -- would make it noise, and a watchdog nobody reads is the
+ * failure mode that let eleven days pass. So the known outage is a BASELINE
+ * rather than a pass: a table NOT on this list going stale fails immediately,
+ * which is the regression case, and a table on this list that comes BACK fails
+ * too, because a stale entry means the baseline is lying about the outage's
+ * size.
+ *
+ * Same shape as this repo's other ratchets (`unreferenced-exports`,
+ * `untyped-lakehouse-reads`): the number only falls, and the epic's progress is
+ * measured by it falling. JSONbored/metagraphed-infra#510 restores the
+ * producers; each restore deletes a line here.
+ *
+ * `rehearsal` is NOT here -- it is exempt in EXPECTED, which is a different
+ * claim: "this cannot go stale" rather than "this is stale and we know".
+ */
+export const KNOWN_FROZEN: ReadonlySet<string> = new Set([
+  "account_balances",
+  "account_events_daily",
+  "account_identity",
+  "account_identity_history",
+  "featured_validators",
+  "neurons",
+  "nominator_positions",
+  "providers",
+  "rpc_proxy_events",
+  "self_health_daily",
+  "subnet_hyperparams",
+  "subnet_hyperparams_history",
+  "subnet_identity_history",
+  "subnet_ownership",
+  "subnet_ownership_history",
+  "subnets",
+  "surfaces",
+  "validator_nominator_counts",
+]);
+
+export interface TableAge {
+  table: string;
+  newestMs: number | null;
+  ageMs: number | null;
+}
+
+/** The verdict for one table, as a pure function so the rule is testable. */
+export function evaluate(
+  age: TableAge,
+  rule: FreshnessRule | undefined,
+): { ok: boolean; detail: string } {
+  if (!rule) {
+    return {
+      ok: false,
+      detail: `${age.table} is not classified in EXPECTED -- add a bound or an explicit null with a reason`,
+    };
+  }
+  if (rule.maxAgeMs === null)
+    return { ok: true, detail: `${age.table}: exempt (${rule.reason})` };
+  if (age.newestMs === null) {
+    return {
+      ok: false,
+      detail: `${age.table} has NO snapshots at all (${rule.reason})`,
+    };
+  }
+  const days = (age.ageMs ?? 0) / DAY;
+  if ((age.ageMs ?? 0) > rule.maxAgeMs) {
+    return {
+      ok: false,
+      detail: `${age.table} last written ${days.toFixed(1)}d ago, over its ${(rule.maxAgeMs / DAY).toFixed(1)}d bound (${rule.reason})`,
+    };
+  }
+  return { ok: true, detail: `${age.table}: ${days.toFixed(1)}d` };
+}
+
+async function main(): Promise<void> {
+  const token = process.env.R2_CATALOG_TOKEN ?? "";
+  if (!token) {
+    // Loud, not skipped: a freshness check that quietly passes without a token
+    // is the "gate that cannot fail" this repo has been bitten by before.
+    process.stderr.write(
+      "R2_CATALOG_TOKEN is required -- this reads the live catalog.\n",
+    );
+    process.exit(1);
+  }
+  const auth = { authorization: `Bearer ${token}` };
+  const config = (await (
+    await fetch(
+      `${BASE}/v1/config?warehouse=${encodeURIComponent(WAREHOUSE)}`,
+      { headers: auth },
+    )
+  ).json()) as { overrides?: { prefix?: string } };
+  const prefix = config.overrides?.prefix;
+  if (!prefix) {
+    process.stderr.write("catalog /v1/config returned no prefix\n");
+    process.exit(1);
+  }
+  const listed = (await (
+    await fetch(`${BASE}/v1/${prefix}/namespaces/chain/tables`, {
+      headers: auth,
+    })
+  ).json()) as { identifiers?: { name: string }[] };
+  const tables = (listed.identifiers ?? []).map((i) => i.name).sort();
+
+  const now = Date.now();
+  const failures: string[] = [];
+  const lines: string[] = [];
+  for (const table of tables) {
+    const meta = (await (
+      await fetch(`${BASE}/v1/${prefix}/namespaces/chain/tables/${table}`, {
+        headers: auth,
+      })
+    ).json()) as { metadata?: { snapshots?: { "timestamp-ms"?: number }[] } };
+    const snapshots = meta.metadata?.snapshots ?? [];
+    const newestMs = snapshots.length
+      ? Math.max(...snapshots.map((s) => s["timestamp-ms"] ?? 0))
+      : null;
+    const verdict = evaluate(
+      { table, newestMs, ageMs: newestMs === null ? null : now - newestMs },
+      EXPECTED[table],
+    );
+    lines.push(`${verdict.ok ? "ok  " : "STALE"} ${verdict.detail}`);
+    if (!verdict.ok) failures.push(verdict.detail);
+  }
+  process.stdout.write(lines.join("\n") + "\n");
+
+  const staleNames = new Set(failures.map((f) => f.split(" ")[0] ?? ""));
+  // A table that has COME BACK must leave the baseline, or the baseline stops
+  // describing the outage. Computed, never asserted.
+  const recovered = [...KNOWN_FROZEN].filter(
+    (t) => tables.includes(t) && !staleNames.has(t),
+  );
+  const regressions = failures.filter(
+    (f) => !KNOWN_FROZEN.has(f.split(" ")[0] ?? ""),
+  );
+  process.stdout.write(
+    `\nlakehouse-freshness: ${failures.length} stale of ${tables.length} -- ` +
+      `${failures.length - regressions.length} known (baseline ${KNOWN_FROZEN.size}), ` +
+      `${regressions.length} NEW, ${recovered.length} recovered.\n`,
+  );
+  if (recovered.length > 0) {
+    process.stderr.write(
+      "\nRECOVERED -- delete these from KNOWN_FROZEN so the baseline keeps shrinking:\n" +
+        recovered.map((t) => `  ${t}`).join("\n") +
+        "\n",
+    );
+  }
+  if (regressions.length === 0 && recovered.length === 0) return;
+  const failures_ = regressions;
+  const webhook = process.env.LIVE_ALERT_WEBHOOK_URL;
+  if (webhook) {
+    try {
+      await fetch(webhook, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(15_000),
+        body: JSON.stringify({
+          content:
+            `⚠️ metagraphed: ${failures_.length} lakehouse table(s) NEWLY past their freshness bound.\n` +
+            failures_
+              .slice(0, 10)
+              .map((f) => `• ${f}`)
+              .join("\n") +
+            `\nA frozen table still RETURNS ROWS -- the cold tier serves them with no decline (#11048).`,
+        }),
+      });
+    } catch (err) {
+      process.stderr.write(
+        `alert webhook failed: ${err instanceof Error ? err.message : err}\n`,
+      );
+    }
+  }
+  process.stderr.write(
+    `\nlakehouse-freshness: ${failures.length} of ${tables.length} table(s) STALE.\n`,
+  );
+  process.exit(1);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

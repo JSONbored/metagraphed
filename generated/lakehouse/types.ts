@@ -536,6 +536,68 @@ export const ACCOUNT_POSITION_DAILY_COLUMNS = [
   "updated_at",
 ] as const;
 
+/** `chain.subnet_snapshots` */
+export type SubnetSnapshotsRow = {
+  netuid: number | null;
+  snapshot_date: string | null;
+  completeness_score: number | null;
+  surface_count: number | null;
+  endpoint_count: number | null;
+  monitored_count: number | null;
+  candidate_count: number | null;
+  captured_at: number | null;
+  validator_count: number | null;
+  miner_count: number | null;
+  total_stake_tao: number | null;
+  alpha_price_tao: number | null;
+  emission_share: number | null;
+  tao_in_pool_tao: number | null;
+  alpha_in_pool: number | null;
+  alpha_out_pool: number | null;
+  subnet_volume_tao: number | null;
+  tao_in_emission_tao: number | null;
+  excess_tao: number | null;
+  alpha_in_emission: number | null;
+  alpha_out_emission: number | null;
+  miner_burned_fraction: number | null;
+  emission_enabled: boolean | null;
+  subtoken_enabled: boolean | null;
+  first_emission_block: number | null;
+  pipeline_block: number | null;
+  pipeline_block_hash: string | null;
+};
+
+/** `chain.subnet_snapshots` columns, in field-id order. */
+export const SUBNET_SNAPSHOTS_COLUMNS = [
+  "netuid",
+  "snapshot_date",
+  "completeness_score",
+  "surface_count",
+  "endpoint_count",
+  "monitored_count",
+  "candidate_count",
+  "captured_at",
+  "validator_count",
+  "miner_count",
+  "total_stake_tao",
+  "alpha_price_tao",
+  "emission_share",
+  "tao_in_pool_tao",
+  "alpha_in_pool",
+  "alpha_out_pool",
+  "subnet_volume_tao",
+  "tao_in_emission_tao",
+  "excess_tao",
+  "alpha_in_emission",
+  "alpha_out_emission",
+  "miner_burned_fraction",
+  "emission_enabled",
+  "subtoken_enabled",
+  "first_emission_block",
+  "pipeline_block",
+  "pipeline_block_hash",
+] as const;
+
 /** Every Iceberg table this repo reads, by name. */
 export const LAKEHOUSE_TABLES = [
   "blocks",
@@ -553,4 +615,5 @@ export const LAKEHOUSE_TABLES = [
   "subnet_ownership_history",
   "neuron_daily",
   "account_position_daily",
+  "subnet_snapshots",
 ] as const;
