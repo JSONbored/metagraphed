@@ -104,7 +104,7 @@ describe("buildAlphaVolume", () => {
     assert.equal(sells.total_volume_alpha, 5);
   });
 
-  test("coerces numeric-string D1 cells and ignores unknown kinds", () => {
+  test("coerces numeric-string cells and ignores unknown kinds", () => {
     const rows = [
       {
         event_kind: STAKE_ADDED_KIND,
@@ -349,7 +349,7 @@ describe("loadSubnetAlphaVolume", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
     const calls: Array<{ sql: string; params: unknown[] }> = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [
         {
@@ -368,7 +368,7 @@ describe("loadSubnetAlphaVolume", () => {
         },
       ];
     };
-    const { data, generatedAt } = await loadSubnetAlphaVolume(d1, 7);
+    const { data, generatedAt } = await loadSubnetAlphaVolume(runner, 7);
     assert.equal(calls.length, 1);
     const { sql, params } = calls[0];
     assert.match(sql, /FROM account_events/);
@@ -387,7 +387,7 @@ describe("loadSubnetAlphaVolume", () => {
   });
 
   test("passes marketCapTao through to buildAlphaVolume", async () => {
-    const d1 = async () => [
+    const runner = async () => [
       {
         event_kind: STAKE_ADDED_KIND,
         alpha_volume: 1,
@@ -395,29 +395,29 @@ describe("loadSubnetAlphaVolume", () => {
         event_count: 1,
       },
     ];
-    const { data } = await loadSubnetAlphaVolume(d1, 7, {
+    const { data } = await loadSubnetAlphaVolume(runner, 7, {
       marketCapTao: 480,
     });
     assert.equal(data.vol_mcap_ratio, 0.05);
   });
 
-  test("cold D1 (no rows) yields zeroed totals and a null generated_at", async () => {
-    const d1 = async () => [];
-    const { data, generatedAt } = await loadSubnetAlphaVolume(d1, 99);
+  test("a cold store (no rows) yields zeroed totals and a null generated_at", async () => {
+    const runner = async () => [];
+    const { data, generatedAt } = await loadSubnetAlphaVolume(runner, 99);
     assert.equal(data.total_volume_alpha, 0);
     assert.equal(data.total_volume_tao, 0);
     assert.equal(generatedAt, null);
   });
 
   test("a non-array D1 result degrades to zeroed totals and null generated_at", async () => {
-    const d1 = async () => null as unknown as Record<string, unknown>[];
-    const { data, generatedAt } = await loadSubnetAlphaVolume(d1, 7);
+    const runner = async () => null as unknown as Record<string, unknown>[];
+    const { data, generatedAt } = await loadSubnetAlphaVolume(runner, 7);
     assert.equal(data.total_volume_alpha, 0);
     assert.equal(generatedAt, null);
   });
 
   test("a row without a finite observed_at leaves generated_at null", async () => {
-    const d1 = async () => [
+    const runner = async () => [
       {
         event_kind: STAKE_ADDED_KIND,
         alpha_volume: 5,
@@ -425,13 +425,13 @@ describe("loadSubnetAlphaVolume", () => {
         event_count: 1,
       },
     ];
-    const { data, generatedAt } = await loadSubnetAlphaVolume(d1, 7);
+    const { data, generatedAt } = await loadSubnetAlphaVolume(runner, 7);
     assert.equal(data.buy_volume_alpha, 5);
     assert.equal(generatedAt, null);
   });
 
   test("generatedAt coerces string-typed last_observed cells to ISO timestamps", async () => {
-    const d1 = async () => [
+    const runner = async () => [
       {
         event_kind: STAKE_ADDED_KIND,
         alpha_volume: 10,
@@ -447,7 +447,7 @@ describe("loadSubnetAlphaVolume", () => {
         last_observed: "1717900000000",
       },
     ];
-    const { generatedAt } = await loadSubnetAlphaVolume(d1, 7);
+    const { generatedAt } = await loadSubnetAlphaVolume(runner, 7);
     assert.equal(generatedAt, new Date(1717900000000).toISOString());
   });
 
@@ -459,7 +459,7 @@ describe("loadSubnetAlphaVolume", () => {
       "8640000000000001",
       null,
     ]) {
-      const d1 = async () => [
+      const runner = async () => [
         {
           event_kind: STAKE_ADDED_KIND,
           alpha_volume: 10,
@@ -468,7 +468,7 @@ describe("loadSubnetAlphaVolume", () => {
           last_observed,
         },
       ];
-      const { generatedAt } = await loadSubnetAlphaVolume(d1, 7);
+      const { generatedAt } = await loadSubnetAlphaVolume(runner, 7);
       assert.equal(
         generatedAt,
         null,
@@ -505,7 +505,7 @@ function volumeEnv(rows: Row[], captured: Row = {}): Row {
 }
 
 describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
-  test("is schema-stable when D1 is cold (never 404)", async () => {
+  test("is schema-stable when the store is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
       volumeEnv([]) as unknown as Env,

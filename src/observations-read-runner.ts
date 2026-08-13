@@ -8,7 +8,7 @@
 // those loaders a different `db`, and not one query has to be written twice.
 //
 // That is only safe because the SQL is genuinely portable now. It was not
-// until #10086: `surface_checks.ok` is INTEGER in D1 and BOOLEAN in Neon, and
+// until #10086: `surface_checks.ok` is INTEGER in the store and BOOLEAN in Neon, and
 // six spellings compared it to a number. An adapter alone would have moved the
 // reads onto a store that rejects them.
 //
@@ -29,7 +29,7 @@
 // A read against the wrong store returns stale or empty rows; `storeAll` already
 // degrades any read failure to zero rows and bumps the fallback generation so
 // the payload is not edge-cached as fresh. So this selector is allowed to fall
-// back to D1 silently, which is NOT true of the write path in
+// back to the store silently, which is NOT true of the write path in
 // src/observations-neon.ts -- a probe not stored is gone.
 import type { ObservationsReadDb } from "./analytics-live.ts";
 import { neonOwnsObservations } from "./observations-neon.ts";

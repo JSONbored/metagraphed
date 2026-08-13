@@ -2,7 +2,7 @@
 //
 // THE BUG THIS EXISTED TO STOP. Every one of these handlers already skipped its
 // D1 write once Neon owned the tables -- but the BINDING CHECK above the write
-// did not know that. So with the tables sole-store on Neon and D1 unbound, the
+// did not know that. So with the tables sole-store on Neon and the store unbound, the
 // route answered 503 and never reached the Neon write that would have
 // succeeded. Nothing failed while D1 stayed bound, which is why it survived the
 // inversions: the check was dead code that only woke up on the day the database
@@ -119,7 +119,7 @@ async function assertReachedTheStore(res: Response, label: string) {
   assert.notEqual(
     body.error,
     "d1 binding unavailable",
-    `${label}: refused before the write with D1 unbound while Neon owns the tables`,
+    `${label}: refused before the write with the store unbound while Neon owns the tables`,
   );
   assert.notEqual(
     res.status,
@@ -257,7 +257,7 @@ describe("poller-lane-health-sync", () => {
       owned,
     );
 
-  test("writes through the lane_health store rather than the D1 binding", async () => {
+  test("writes through the lane_health store rather than the store binding", async () => {
     // Every other verdict writer in the repo already goes through
     // laneHealthStore. This route reached for METAGRAPH_HEALTH_DB by name, so
     // the poller's job outcomes were the one class of verdict that would have

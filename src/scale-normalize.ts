@@ -18,7 +18,7 @@
 //   Drand/MevShield/LimitOrders' `Sr25519`, i.e. `{name, values}` where
 //   `values.length === 1` and the single element is itself an
 //   object/array/struct) is left as-is at this level -- only its CONTENTS
-//   are recursed into. Producing D1's single-key shorthand (`{EIP1559: {...}}`)
+//   are recursed into. Producing the store's single-key shorthand (`{EIP1559: {...}}`)
 //   for that case is #4692's job, which reuses this same `{name, values}`
 //   detection for its own final-step transform.
 // - The nested-`RuntimeCall` reconstruction (`{name: "PalletName", values:
@@ -28,13 +28,13 @@
 //   single element is itself an object) until #4691 recognizes it.
 //
 // #4724 CORRECTION: this module was originally documented (and tested) as an
-// unconditional no-op on D1's own `{name, type, value}` call_args descriptor
+// unconditional no-op on the store's own `{name, type, value}` call_args descriptor
 // shape -- that claim was FALSE. D1's `value` field for a genuinely
 // collection-typed field (Vec<T>/BTreeSet<T>/BoundedVec<T>/BTreeMap<K,V>) is
 // a bare array of however many elements the call actually carried, and when
 // that array happens to hold exactly one element, it is INDISTINGUISHABLE
 // from the newtype-scalar wrap above by shape alone. Confirmed live in
-// production (direct D1 query, blocks 8560000-8589000):
+// production (direct store query, blocks 8560000-8589000):
 // SubtensorModule.set_mechanism_weights' dests/weights (10,129 occurrences
 // EACH in just that window), set_weights' dests/weights (2,337 each),
 // reveal_weights/reveal_mechanism_weights's uids/values (35-155 each),
@@ -44,7 +44,7 @@
 // e.g. `[0]` to a bare `0`, or `["5F..."]` to a bare `"5F..."`, silently
 // changing the field's JSON type from array to scalar for consumers.
 //
-// The fix: D1's descriptor shape carries a sibling `type` string the
+// The fix: the store's descriptor shape carries a sibling `type` string the
 // Postgres/indexer-rs shapes never have -- isTypedFieldDescriptor +
 // COLLECTION_TYPE_RE below use it to skip the newtype-scalar collapse
 // specifically when `type` names a collection, regardless of element count.
@@ -65,7 +65,7 @@ function isPlainScalar(
   );
 }
 
-/** True when `value` is D1's per-field call_args descriptor shape: `{name,
+/** True when `value` is the store's per-field call_args descriptor shape: `{name,
  * type, value}`, where `type` is the Substrate/SCALE type string (e.g.
  * "Vec<u16>", "NetUid", "BTreeSet<NetUid>"). Distinguished from
  * isEnumTreeNode's `{name, values}` shape by key count/name (3 keys incl.
@@ -202,7 +202,7 @@ function normalize(value: unknown): unknown {
 
 /** Recursively applies the Option<T>/unit-enum/newtype-scalar normalization
  * rules described above. Safe to run unconditionally regardless of which tier
- * produced the row: on D1's own call_args shape (an array of `{name, type,
+ * produced the row: on the store's own call_args shape (an array of `{name, type,
  * value}` descriptors), the isTypedFieldDescriptor branch reads each
  * descriptor's `type` string and only ever touches `value` in ways that
  * respect it -- a collection-typed field's `value` always stays an array

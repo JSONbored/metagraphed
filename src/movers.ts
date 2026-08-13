@@ -5,7 +5,7 @@ import { clampRowLimit } from "../workers/request-params.ts";
 export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
 // Cross-subnet momentum ("movers"): rank every subnet by how much its stake, emission,
 // and validator set changed between a window's start and end neuron_daily snapshots.
-// Pure shaping (computeMovers/buildMovers) + a thin D1 loader (loadSubnetMovers); the
+// Pure shaping (computeMovers/buildMovers) + a thin store loader (loadSubnetMovers); the
 // Worker adds the REST envelope. Null-safe: a cold store or a single snapshot yields an
 // empty movers list (never throws), matching the sibling live tiers (turnover, history).
 //
@@ -68,14 +68,14 @@ function raoToTaoString(rao: bigint): string {
   return `${negative ? "-" : ""}${whole}.${frac.toString().padStart(9, "0")}`;
 }
 
-// Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number,
+// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite number,
 // defaulting to 0.
 function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-// A finite aggregate cell, or null when absent/blank/non-numeric. Blank D1 cells coerce
+// A finite aggregate cell, or null when absent/blank/non-numeric. Blank cells coerce
 // via Number("") → 0; trim rejects "" / whitespace-only (mirrors counterparties #3059).
 function nullableNumber(value: unknown): number | null {
   if (value == null) return null;
@@ -345,7 +345,7 @@ export function buildMovers(
 // covers both the boundary scan and this aggregate), shape with buildMovers. Cold/absent
 // or single-snapshot D1 -> empty movers.
 export async function loadSubnetMovers(
-  d1: SqlRunner,
+  runner: SqlRunner,
   {
     windowLabel = DEFAULT_MOVERS_WINDOW,
     sort = DEFAULT_MOVERS_SORT,
@@ -357,7 +357,7 @@ export async function loadSubnetMovers(
   // Anchor the window to the newest STORED snapshot (date() relative to MAX(snapshot_date)),
   // not the worker's wall clock, so a lagging, restored, or historical D1 store still compares
   // its real boundary snapshots instead of returning empty when the data trails "now".
-  const bounds = await d1(
+  const bounds = await runner(
     "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date " +
       "FROM neuron_daily " +
       "WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)",
@@ -368,7 +368,7 @@ export async function loadSubnetMovers(
   let startRows: Row[] = [];
   let endRows: Row[] = [];
   if (startDate != null && endDate != null && startDate !== endDate) {
-    const rows = await d1(
+    const rows = await runner(
       "SELECT netuid, snapshot_date, COUNT(*) AS neuron_count, " +
         "SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count, " +
         "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +

@@ -914,7 +914,7 @@ assert.ok(
   "get_subnet_profile must return subnet profile detail for netuid 7",
 );
 
-// The trajectory/metagraph/validators/neuron tiers are D1-backed; this cold env
+// The trajectory/metagraph/validators/neuron tiers are store-backed; this cold env
 // has no neurons DB, so each tool must degrade to its schema-stable empty
 // payload (validated against the declared outputSchema), never an error.
 const traj = await callOk("get_subnet_trajectory", { netuid: 7 });
@@ -1184,7 +1184,7 @@ assert.equal(stakeFlowCold.netuid, 7, "get_subnet_stake_flow must echo netuid");
 assert.equal(
   stakeFlowCold.net_flow_tao,
   0,
-  "get_subnet_stake_flow must degrade to zeros on cold D1",
+  "get_subnet_stake_flow must degrade to zeros on a cold store",
 );
 const stakeFlowIn = await callOk("get_subnet_stake_flow", {
   netuid: 7,
@@ -1207,7 +1207,7 @@ assert.ok(
 const neuron = await callOk("get_neuron", { netuid: 7, uid: 0 });
 assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
 
-// Account tools are D1-backed too; the cold env degrades each to its
+// Account tools are store-backed too; the cold env degrades each to its
 // schema-stable empty payload (validated against the declared outputSchema).
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const account = await callOk("get_account", { ss58: SS58 });
@@ -1429,7 +1429,7 @@ const signersCold = await callOk("get_chain_signers", {
 });
 assert.ok(
   Array.isArray(signersCold.signers) && signersCold.window === "7d",
-  "get_chain_signers must return window + signers[] on cold D1",
+  "get_chain_signers must return window + signers[] on a cold store",
 );
 const feesCold = await callOk("get_chain_fees", {
   window: "7d",
@@ -1439,7 +1439,7 @@ assert.ok(
   Array.isArray(feesCold.daily) &&
     Array.isArray(feesCold.top_fee_payers) &&
     feesCold.window === "7d",
-  "get_chain_fees must return window + daily[] + top_fee_payers[] on cold D1",
+  "get_chain_fees must return window + daily[] + top_fee_payers[] on a cold store",
 );
 const transfersCold = await callOk("get_chain_transfers", {
   window: "7d",
@@ -1449,7 +1449,7 @@ assert.ok(
   transfersCold.window === "7d" &&
     Array.isArray(transfersCold.top_senders) &&
     Array.isArray(transfersCold.top_receivers),
-  "get_chain_transfers must return window + top_senders[] + top_receivers[] on cold D1",
+  "get_chain_transfers must return window + top_senders[] + top_receivers[] on a cold store",
 );
 const networkActivityCold = await callOk("get_network_activity", {
   window: "7d",
@@ -1457,20 +1457,20 @@ const networkActivityCold = await callOk("get_network_activity", {
 assert.ok(
   networkActivityCold.window === "7d" &&
     Array.isArray(networkActivityCold.days),
-  "get_network_activity must return window + days[] on cold D1",
+  "get_network_activity must return window + days[] on a cold store",
 );
 const rpcUsageCold = await callOk("get_rpc_usage", { window: "7d" });
 assert.ok(
   rpcUsageCold.window === "7d" &&
     Array.isArray(rpcUsageCold.endpoints) &&
     Array.isArray(rpcUsageCold.buckets),
-  "get_rpc_usage must return window + endpoints[] + buckets[] on cold D1",
+  "get_rpc_usage must return window + endpoints[] + buckets[] on a cold store",
 );
 const healthTrendsCold = await callOk("get_health_trends", {});
 assert.ok(
   healthTrendsCold.windows?.["7d"] &&
     Array.isArray(healthTrendsCold.windows["7d"].subnets),
-  "get_health_trends must return windows.7d.subnets[] on cold D1",
+  "get_health_trends must return windows.7d.subnets[] on a cold store",
 );
 const networkHealthCold = await callOk("get_network_health", {});
 assert.ok(
@@ -1501,14 +1501,14 @@ assert.ok(
   blockExtrinsicsCold.ref === "4200000" &&
     blockExtrinsicsCold.block_number == null &&
     Array.isArray(blockExtrinsicsCold.extrinsics),
-  "list_block_extrinsics must return ref + block_number:null + extrinsics[] on cold D1",
+  "list_block_extrinsics must return ref + block_number:null + extrinsics[] on a cold store",
 );
 const blockEventsCold = await callOk("get_block_events", { ref: "4200000" });
 assert.ok(
   blockEventsCold.ref === "4200000" &&
     blockEventsCold.block_number == null &&
     Array.isArray(blockEventsCold.events),
-  "get_block_events must return ref + block_number:null + events[] on cold D1",
+  "get_block_events must return ref + block_number:null + events[] on a cold store",
 );
 
 // Curated saved-query library (#6755/#6757): one call per seed template,
@@ -2112,7 +2112,7 @@ console.log(
 // published contract is not being checked against a real response, so it has to
 // carry a reason a reviewer can weigh.
 // The one cause behind most of this list, stated once rather than reworded 74
-// times. These are live and chain-backed tiers -- D1, the lakehouse, the
+// times. These are live and chain-backed tiers -- the store, the lakehouse, the
 // chain-events store -- which the hermetic harness does not stand up, so each
 // answers with a schema-stable zeroed payload. Item-shape conformance for them
 // is real work that a hermetic harness structurally cannot do; #9801 covers it

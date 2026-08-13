@@ -1,5 +1,5 @@
 // GET /api/v1/chain/yield (types-epic B batch 6, #8060). Live neurons
-// D1-tier data -- no static file. Modeled from src/chain-yield.ts's
+// store-tier data -- no static file. Modeled from src/chain-yield.ts's
 // buildChainYield()/yieldDistribution(), cross-checked against the
 // hand-edited ChainYieldArtifact component it replaces.
 //

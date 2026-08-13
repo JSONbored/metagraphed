@@ -1,6 +1,6 @@
 // GET /api/v1/subnets/{netuid}/hyperparameters + .../hyperparameters/history
 // (types-epic B batch 3, #8057). Live subnet_hyperparams/subnet_hyperparams_
-// history D1-tier data -- no static file. Modeled from src/subnet-hyperparams.ts
+// history store-tier data -- no static file. Modeled from src/subnet-hyperparams.ts
 // / src/subnet-hyperparams-history.ts's column lists and SUBNET_HYPERPARAMS_
 // INSERT_COLUMNS, cross-checked against the hand-edited SubnetHyperparametersArtifact
 // / SubnetHyperparamsHistoryArtifact components they replace, and against a

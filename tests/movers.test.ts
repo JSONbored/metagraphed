@@ -525,7 +525,7 @@ describe("loadSubnetMovers", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
     const calls: { sql: string; params: unknown[] }[] = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       if (/MIN\(snapshot_date\)/.test(sql)) {
         return [{ start_date: "2026-05-31", end_date: "2026-06-30" }];
@@ -545,7 +545,7 @@ describe("loadSubnetMovers", () => {
         }),
       ];
     };
-    const data = (await loadSubnetMovers(d1, {
+    const data = (await loadSubnetMovers(runner, {
       windowLabel: "30d",
       sort: "stake",
     })) as Row;
@@ -564,7 +564,7 @@ describe("loadSubnetMovers", () => {
   });
 
   test("sort=neurons ranks by neuron-count delta through the public loader path", async () => {
-    const d1 = async (sql: string) => {
+    const runner = async (sql: string) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         return [{ start_date: "2026-05-31", end_date: "2026-06-30" }];
       }
@@ -595,7 +595,7 @@ describe("loadSubnetMovers", () => {
         }),
       ];
     };
-    const data = (await loadSubnetMovers(d1, {
+    const data = (await loadSubnetMovers(runner, {
       windowLabel: "30d",
       sort: "neurons",
     })) as Row;
@@ -613,14 +613,14 @@ describe("loadSubnetMovers", () => {
 
   test("defaults to the 30d window + stake sort", async () => {
     let boundsCutoff;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         boundsCutoff = params[0];
         return [{ start_date: null, end_date: null }];
       }
       return [];
     };
-    const data = await loadSubnetMovers(d1, {});
+    const data = await loadSubnetMovers(runner, {});
     assert.equal(data.window, DEFAULT_MOVERS_WINDOW);
     assert.equal(data.sort, DEFAULT_MOVERS_SORT);
     assert.equal(typeof boundsCutoff, "string");
@@ -629,14 +629,14 @@ describe("loadSubnetMovers", () => {
 
   test("a single available snapshot (start === end) skips the read and returns empty", async () => {
     const calls: string[] = [];
-    const d1 = async (sql: string) => {
+    const runner = async (sql: string) => {
       calls.push(sql);
       if (/MIN\(snapshot_date\)/.test(sql)) {
         return [{ start_date: "2026-06-30", end_date: "2026-06-30" }];
       }
       return [];
     };
-    const data = await loadSubnetMovers(d1, { windowLabel: "7d" });
+    const data = await loadSubnetMovers(runner, { windowLabel: "7d" });
     assert.equal(calls.length, 1); // no second (aggregate) query
     assert.deepEqual(data.movers, []);
     assert.equal(data.start_date, "2026-06-30");
@@ -648,7 +648,7 @@ describe("loadSubnetMovers", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T12:00:00.000Z"));
     let boundsParam;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         boundsParam = params[0];
         return [{ start_date: "2026-01-01", end_date: "2026-01-31" }];
@@ -668,7 +668,7 @@ describe("loadSubnetMovers", () => {
         }),
       ];
     };
-    const data = (await loadSubnetMovers(d1, { windowLabel: "7d" })) as Row;
+    const data = (await loadSubnetMovers(runner, { windowLabel: "7d" })) as Row;
     assert.equal(boundsParam, "-7 days"); // cutoff computed in SQL relative to MAX(snapshot_date)
     assert.equal(data.start_date, "2026-01-01");
     assert.equal(data.end_date, "2026-01-31");
@@ -679,25 +679,25 @@ describe("loadSubnetMovers", () => {
 
   test("an unknown window label falls back to the 30d window", async () => {
     let boundsParam;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         boundsParam = params[0];
         return [{ start_date: null, end_date: null }];
       }
       return [];
     };
-    await loadSubnetMovers(d1, { windowLabel: "bogus" });
+    await loadSubnetMovers(runner, { windowLabel: "bogus" });
     assert.equal(boundsParam, "-30 days");
   });
 
   test("a non-array aggregate result degrades to an empty leaderboard", async () => {
-    const d1 = (async (sql: string) => {
+    const runner = (async (sql: string) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         return [{ start_date: "2026-05-31", end_date: "2026-06-30" }];
       }
       return null; // malformed aggregate read
     }) as unknown as Parameters<typeof loadSubnetMovers>[0];
-    const data = await loadSubnetMovers(d1, { windowLabel: "30d" });
+    const data = await loadSubnetMovers(runner, { windowLabel: "30d" });
     assert.deepEqual(data.movers, []);
     assert.equal(data.subnet_count, 0);
   });

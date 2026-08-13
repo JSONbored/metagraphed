@@ -1,5 +1,5 @@
 // Opaque-by-convention keyset (seek) cursor for the head-growing chain feeds
-// (#1851): blocks, extrinsics, account events. These are PK-ordered D1 reads where
+// (#1851): blocks, extrinsics, account events. These are PK-ordered store reads where
 // pure OFFSET pagination corrupts under head-of-chain inserts (new finalized blocks
 // shift the window, producing duplicates/skips) and degrades at depth. A keyset
 // cursor encodes the composite sort key of the last row (e.g. [block_number,

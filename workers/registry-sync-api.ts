@@ -1,16 +1,16 @@
 // metagraphed registry-sync Worker — the ONLY write path into the registry
-// database, now D1 (`metagraphed`, schema in tests/fixtures/sqlite-schema/0001_registry.sql).
+// database (`metagraphed`, schema in tests/fixtures/sqlite-schema/0001_registry.sql).
 //
 // MOVED OFF THE SELF-HOSTED POSTGRES. The registry lived on a dedicated
 // Postgres on the indexer box, reached through Hyperdrive. That box is being
 // decommissioned, so the whole tier moved: 9,157 rows across four tables, which
-// is roughly 450x under D1's ceiling. The Hyperdrive binding and the postgres.js
+// is roughly 450x under the store's ceiling. The Hyperdrive binding and the postgres.js
 // driver are gone from this Worker entirely.
 //
 // WHAT CHANGED SEMANTICALLY. Three things, each documented where it happens
 // rather than only here: the jsonb `overlay` columns are TEXT, so anything
 // reading inside them must use json_extract(); `now()` becomes an epoch-ms
-// integer; and D1 has no interactive transactions, which reshapes the write
+// integer; and D1 had no interactive transactions, which reshapes the write
 // path into a read phase and one atomic batch (see applyRegistrySyncToStore).
 //
 // Kept SEPARATE from the main api.ts Worker for the same reason ADR 0013 split
@@ -128,7 +128,7 @@ function isValidRow(row: unknown): row is Record<string, unknown> {
  *
  * The handler's payload handling -- required-field validation, the prune's
  * authority scoping, the defaults -- is store-independent and was covered by
- * twelve tests that drove it through a fake D1. Deleting the D1 writer took
+ * twelve tests that drove it through a fake D1. Deleting the store writer took
  * their seam with it, and re-pointing them at a real connection string turned
  * them into DNS lookups.
  *

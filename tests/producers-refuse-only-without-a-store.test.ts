@@ -1,4 +1,4 @@
-// The last lanes that hard-refused without a D1 binding (#10158).
+// The last lanes that hard-refused without a store binding (#10158).
 //
 // Each of these READS from a table Neon owns, and each answered a refusal
 // before it got there -- `d1_binding_missing`, `watermark_unavailable`,

@@ -739,7 +739,7 @@ describe("batch 2 (#8056) DATA_API-proxied route artifact schemas parse real bui
 // (reused from that builder's own tests/*.test.ts fixtures) and asserts the
 // Zod artifact schema against its actual non-empty output.
 describe("batch 3 (#8057) route artifact schemas parse real builder output", () => {
-  // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO
+  // A `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO
   // floats) -- same shape tests/metagraph-neurons.test.ts's ROW/MINER use.
   const NEURON_ROW = {
     uid: 0,
@@ -1780,7 +1780,7 @@ describe("batch 5 (#8059) route artifact schemas parse real builder output", () 
 });
 
 // Batch 6 (#8060) -- chain/* network-wide aggregates: extrinsics/blocks/
-// account_events/neurons D1-tier data (no static file), driven directly
+// account_events/neurons store-tier data (no static file), driven directly
 // against each route's own pure builder with fixture rows reused verbatim
 // from that builder's own tests/*.test.ts. The two Postgres-proxy-only
 // routes (chain-events, chain-events/stats) have no local pure builder to

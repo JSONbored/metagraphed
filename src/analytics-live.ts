@@ -40,9 +40,9 @@ export { composeCompareData };
 export const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
 
-// --- D1 read tier (box decommission, the read half of #9036's dual-write) ----
+// --- store read tier (box decommission, the read half of #9036's dual-write) ----
 //
-// D1 reads resurrected 2026-08-02: the 2026-07-17 elimination that emptied
+// store reads resurrected 2026-08-02: the 2026-07-17 elimination that emptied
 // these loaders assumed the self-hosted Postgres would keep serving; that box
 // is now gone, and the observation tables live in D1 again (backfilled to
 // exact parity + dual-written since #9036). Each health loader takes an
@@ -50,7 +50,7 @@ const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
 // pre-elimination SQL against it; with no binding (tests, self-hosters) the
 // loader keeps its schema-stable empty behavior, byte-identical to before
 // this change. The Postgres tier stays first in every route for now; when
-// it misses (or its flag is off), the D1 read replaces what used to be a
+// it misses (or its flag is off), the store read replaces what used to be a
 // guaranteed-empty payload.
 //
 // The read slice these loaders use -- the owned query() verb (#10909),
@@ -62,7 +62,7 @@ export interface ObservationsReadDb {
   ): Promise<Row[]>;
 }
 
-// A failed D1 read degrades to zero rows, and the payload built from those
+// A failed store read degrades to zero rows, and the payload built from those
 // zero rows must never be edge-cached as fresh — the same contract the
 // Postgres tier enforces via its own fallback generation
 // (workers/data-api-tier.ts). Handlers snapshot this before a loader call
@@ -77,7 +77,7 @@ export function currentStoreReadFailureGeneration(): number {
   return storeReadFailureGeneration;
 }
 
-// Contained D1 read: any failure (no binding, bad SQL against a drifted
+// Contained store read: any failure (no binding, bad SQL against a drifted
 // schema, a D1 outage) degrades to zero rows — these are serving paths, and
 // the schema-stable empty payload has been their floor since 2026-07-17.
 // console.error keeps the failure diagnosable in the tail without making a
@@ -135,7 +135,7 @@ export function growthRowsFromSamples(
 ): Array<{ netuid: number; delta: number | null }> {
   const growthByNetuid = new Map<number, { first: unknown; last: unknown }>();
   for (const row of growthSamples || []) {
-    // D1 can hand the INTEGER netuid back as a numeric string on this GROUP BY
+    // the store can hand the INTEGER netuid back as a numeric string on this GROUP BY
     // read path; the emitted netuid keys the integer-keyed subnetMeta map in
     // formatLeaderboards, so a raw string netuid drops the fastest-growing entry's
     // slug/name metadata. Accept only a real number or an all-digits string so a
@@ -284,7 +284,7 @@ function compareDimensionsFromTokens(tokens: unknown[]): string[] | null {
   return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
 }
 
-// D1 reads resurrected (2026-08-02, box decommission): surface_uptime_daily
+// store reads resurrected (2026-08-02, box decommission): surface_uptime_daily
 // is dual-written to D1, and this loader reads it there when a `db` binding
 // is supplied — the pre-elimination query, unchanged. Without a binding it
 // keeps the schema-stable empty shape a Postgres-tier miss has served since
@@ -365,7 +365,7 @@ export async function loadSubnetUptime(
 // ranked-dedup CTE shared with the percentiles/incidents routes. The windows are
 // independent reads, so they run in parallel rather than serializing an
 // await-in-loop — same shape as REST's handleHealthTrends, which this mirrors.
-// D1 reads resurrected (2026-08-02): surface_checks is dual-written to D1;
+// store reads resurrected (2026-08-02): surface_checks is dual-written to D1;
 // with a `db` binding each window runs the pre-elimination query there,
 // without one every window stays empty (the 2026-07-17 floor).
 export async function loadSubnetHealthTrends(
@@ -408,7 +408,7 @@ export async function loadSubnetHealthTrends(
 // the get_subnet_health_percentiles MCP tool share one read path (mirrors
 // loadSubnetHealthTrends, #2335). Defensively defaults an unknown window to 7d;
 // cold/empty D1 → a schema-stable surfaces:[] payload.
-// D1 reads resurrected (2026-08-02): with a `db` binding this runs the
+// store reads resurrected (2026-08-02): with a `db` binding this runs the
 // pre-elimination surface_checks percentile query; without one, rows stay
 // empty (the 2026-07-17 floor).
 export async function loadSubnetPercentiles(
@@ -453,7 +453,7 @@ export async function loadSubnetPercentiles(
 // formatting live here so the REST handler (handleHealthIncidents) and the
 // get_subnet_health_incidents MCP tool share one read path (mirrors
 // loadSubnetPercentiles). Unknown window → 7d; cold/empty D1 → surfaces:[].
-// D1 reads resurrected (2026-08-02): with a `db` binding both row sets run
+// store reads resurrected (2026-08-02): with a `db` binding both row sets run
 // the pre-elimination surface_checks queries (SLA rollup + gap-island
 // incident grouping); without one both stay empty (the 2026-07-17 floor).
 export async function loadSubnetIncidents(
@@ -552,7 +552,7 @@ export async function loadSubnetIncidents(
   });
 }
 
-// D1 reads resurrected (2026-08-02): with a `db` binding this runs the
+// store reads resurrected (2026-08-02): with a `db` binding this runs the
 // pre-elimination cross-subnet incident query over surface_checks; without
 // one incidentRows stays empty (the 2026-07-17 floor).
 export async function loadGlobalIncidents({
@@ -656,7 +656,7 @@ export async function loadSubnetTrajectory(
 }
 
 /**
- * The four D1 row sets behind the operational leaderboards, read together.
+ * The four store row sets behind the operational leaderboards, read together.
  *
  * Exported because two callers need exactly these reads:
  * loadRegistryLeaderboards below (MCP) and composeLeaderboardsData in
@@ -728,10 +728,10 @@ export async function loadLeaderboardStoreRows(
   return { healthRows, rpcRows, growthSamples, reliabilityRows };
 }
 
-// D1 reads resurrected (2026-08-03, box decommission) -- the same move #9061
+// store reads resurrected (2026-08-03, box decommission) -- the same move #9061
 // made for the health analytics loaders, which this one and loadCompareSubnets
 // below were left out of. surface_status, subnet_snapshots and
-// surface_uptime_daily are all written to D1 and populated there (635 /
+// surface_uptime_daily are all written to the store and populated there (635 /
 // 50,375 / 12,028 rows verified live), so four of the six operational boards
 // no longer have to be empty. `profiles`/`economicsRows` were never D1 -- they
 // come from the registry artifact and the economics tier -- so those inputs
@@ -829,7 +829,7 @@ export async function loadCompareSubnets({
 // retired and the tables are dropped in production, so a live D1 query would
 // always miss. Serving now goes tryDataApiTier -> buildChainCalls([...]) /
 // buildChainFees([...]) / buildChainActivity([...]) (all still exported from
-// ./chain-analytics.ts), never D1. See workers/request-handlers/analytics.ts's
+// ./chain-analytics.ts), never the store. See workers/request-handlers/analytics.ts's
 // handleChainCalls / handleChainFees / handleChainActivity and
 // src/mcp-server.ts's get_chain_calls tool for the call sites.
 

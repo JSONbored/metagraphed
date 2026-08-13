@@ -33,8 +33,8 @@ _openapi:
           (#9469/#9502). The net_flow_* sorts are LIVE: the top-holders-flow
           projection lane recomputes all three windows daily from
           chain.account_events, so captured_at advances and the ranking is a
-          real one. The same lane composes the three holdings sorts from D1 --
-          free_tao from account_balances, delegated_tao by valuing each
+          real one. The same lane composes the three holdings sorts from the
+          store -- free_tao from account_balances, delegated_tao by valuing each
           nominator_positions row as share_fraction x hotkey_alpha.total_alpha x
           that netuid's alpha_price_tao (#9502 captured the pool totals;
           neurons.stake_tao covers only hotkeys holding a UID on that exact

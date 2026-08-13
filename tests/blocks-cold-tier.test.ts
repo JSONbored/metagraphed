@@ -2,7 +2,7 @@
 //   1. THE SEAM IS EXACT — every block comes from exactly one source, so a
 //      stitched page can neither duplicate nor drop a block at the boundary.
 //   2. NO SILENT WIDENING — a filter over a column blocks_head lacks must not
-//      be answered with D1 rows that ignore it.
+//      be answered with store rows that ignore it.
 //   3. ONE FORMATTING PASS — rows from both sources go through the shared
 //      formatter together, never formatted twice.
 import assert from "node:assert/strict";
@@ -44,7 +44,10 @@ beforeEach(() => resetDecodeWatermarkCache());
  * `sql` and `params` are LIVE views over the mock's log rather than copies, so
  * the existing assertions -- several of which read them after the loader has
  * run -- keep working unchanged. */
-function d1(rows: Record<string, unknown>[], opts: { throws?: boolean } = {}) {
+function runner(
+  rows: Record<string, unknown>[],
+  opts: { throws?: boolean } = {},
+) {
   const sql: string[] = [];
   const params: unknown[][] = [];
   pg.control.queries.length = 0;
@@ -183,7 +186,7 @@ describe("the resolved seam actually routes the request", () => {
     // The production bug, as a test: block SEAM+3264 was served from D1 with
     // null author/spec_version/event_count while the lakehouse held it.
     const above = SEAM + 3_264;
-    const { db, sql } = d1([headRow(above)]);
+    const { db, sql } = runner([headRow(above)]);
     const queries = lakeFetch([lakeRow(above)]);
     const data = await loadBlockColdTier(
       {
@@ -199,7 +202,7 @@ describe("the resolved seam actually routes the request", () => {
   });
 
   test("the D1 leg's floor moves with the watermark, not with the constant", async () => {
-    const { db, params } = d1([headRow(SEAM + 5_000)]);
+    const { db, params } = runner([headRow(SEAM + 5_000)]);
     lakeFetch([]);
     await loadBlockFeedColdTier(
       {
@@ -235,7 +238,7 @@ describe("storeCanServe", () => {
 
 describe("loadBlockFeedColdTier", () => {
   test("serves entirely from D1 when the page fits above the seam", async () => {
-    const { db, sql, params } = d1([headRow(SEAM + 3), headRow(SEAM + 2)]);
+    const { db, sql, params } = runner([headRow(SEAM + 3), headRow(SEAM + 2)]);
     const queries = lakeFetch([]);
     const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
       limit: 2,
@@ -251,8 +254,8 @@ describe("loadBlockFeedColdTier", () => {
     assert.equal(queries.length, 0, "no lakehouse query needed");
   });
 
-  test("stitches D1 then the lakehouse, strictly below the last D1 row", async () => {
-    const { db } = d1([headRow(SEAM + 1)]);
+  test("stitches D1 then the lakehouse, strictly below the last store row", async () => {
+    const { db } = runner([headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(SEAM), lakeRow(SEAM - 1)]);
     const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
       limit: 3,
@@ -268,23 +271,23 @@ describe("loadBlockFeedColdTier", () => {
       new RegExp(
         `\\(observed_at, block_number\\) < \\(${1_700_000_000_000 + SEAM + 1}, ${SEAM + 1}\\)`,
       ),
-      "continues via the last D1 row's own cursor token",
+      "continues via the last store row's own cursor token",
     );
   });
 
-  test("with no D1 rows the lakehouse leg starts at the seam itself", async () => {
-    const { db } = d1([]);
+  test("with no store rows the lakehouse leg starts at the seam itself", async () => {
+    const { db } = runner([]);
     const queries = lakeFetch([lakeRow(SEAM)]);
     await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
       limit: 1,
       offset: 0,
     });
-    // No D1 rows -> an exclusive block ceiling at the seam, not a tuple seek.
+    // No store rows -> an exclusive block ceiling at the seam, not a tuple seek.
     assert.match(queries[0]!, new RegExp(`block_number < ${SEAM + 1}`));
   });
 
   test("a filter D1 cannot express skips the D1 leg entirely", async () => {
-    const { db, sql } = d1([headRow(SEAM + 1)]);
+    const { db, sql } = runner([headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(10)]);
     const data = await loadBlockFeedColdTier(
       { ...TOKEN, ...db } as never,
@@ -304,7 +307,7 @@ describe("loadBlockFeedColdTier", () => {
   });
 
   test("offset is applied once, after both legs are concatenated", async () => {
-    const { db } = d1([headRow(SEAM + 2), headRow(SEAM + 1)]);
+    const { db } = runner([headRow(SEAM + 2), headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(SEAM), lakeRow(SEAM - 1)]);
     const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
       limit: 2,
@@ -313,13 +316,13 @@ describe("loadBlockFeedColdTier", () => {
     assert.deepEqual(
       data!.blocks.map((b) => b.block_number),
       [SEAM, SEAM - 1],
-      "skipped the two D1 rows, not two rows of each source",
+      "skipped the two store rows, not two rows of each source",
     );
     assert.equal(queries.length, 1);
   });
 
-  test("D1 rows are formatted ONCE, by the shared formatter", async () => {
-    const { db } = d1([headRow(SEAM + 1)]);
+  test("store rows are formatted ONCE, by the shared formatter", async () => {
+    const { db } = runner([headRow(SEAM + 1)]);
     lakeFetch([]);
     const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
       limit: 1,
@@ -335,8 +338,8 @@ describe("loadBlockFeedColdTier", () => {
     );
   });
 
-  test("a cold D1 degrades to the lakehouse rather than failing", async () => {
-    const { db } = d1([], { throws: true });
+  test("a a cold store degrades to the lakehouse rather than failing", async () => {
+    const { db } = runner([], { throws: true });
     lakeFetch([lakeRow(SEAM)]);
     const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
       limit: 1,
@@ -370,7 +373,7 @@ describe("loadBlockFeedColdTier", () => {
   });
 
   test("a full page carries a next cursor, a short page does not", async () => {
-    const { db } = d1([headRow(SEAM + 2), headRow(SEAM + 1)]);
+    const { db } = runner([headRow(SEAM + 2), headRow(SEAM + 1)]);
     lakeFetch([]);
     const full = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
       limit: 2,
@@ -382,7 +385,7 @@ describe("loadBlockFeedColdTier", () => {
       `${1_700_000_000_000 + SEAM + 1}.${SEAM + 1}`,
     );
 
-    const { db: db2 } = d1([headRow(SEAM + 1)]);
+    const { db: db2 } = runner([headRow(SEAM + 1)]);
     lakeFetch([]);
     const short = await loadBlockFeedColdTier(
       { ...TOKEN, METAGRAPH_HEALTH_DB: db2 } as never,
@@ -403,8 +406,8 @@ describe("loadBlockFeedColdTier", () => {
     assert.equal(data!.blocks.length, 1);
   });
 
-  test("range and count filters reach D1 as bound parameters", async () => {
-    const { db, sql, params } = d1([headRow(SEAM + 5)]);
+  test("range and count filters reach the store as bound parameters", async () => {
+    const { db, sql, params } = runner([headRow(SEAM + 5)]);
     lakeFetch([]);
     await loadBlockFeedColdTier(
       { ...TOKEN, ...db } as never,
@@ -448,7 +451,7 @@ describe("loadBlockFeedColdTier", () => {
       { blockEnd: -2 },
       { minExtrinsics: "x" },
     ]) {
-      const { db } = d1([headRow(SEAM + 1)]);
+      const { db } = runner([headRow(SEAM + 1)]);
       lakeFetch([lakeRow(1)]);
       const data = await loadBlockFeedColdTier(
         { ...TOKEN, ...db } as never,
@@ -458,7 +461,7 @@ describe("loadBlockFeedColdTier", () => {
     }
   });
 
-  test("a non-array D1 result is treated as empty, not as rows", async () => {
+  test("a non-array store result is treated as empty, not as rows", async () => {
     const db = {
       prepare: () => ({
         bind: () => ({ all: async () => ({ results: "not-an-array" }) }),
@@ -478,7 +481,7 @@ describe("loadBlockFeedColdTier", () => {
   });
 
   test("an omitted offset defaults to zero; a malformed one declines", async () => {
-    const { db } = d1([headRow(SEAM + 1)]);
+    const { db } = runner([headRow(SEAM + 1)]);
     lakeFetch([]);
     const ok = await loadBlockFeedColdTier(
       { ...TOKEN, ...db } as never,
@@ -499,8 +502,8 @@ describe("loadBlockFeedColdTier", () => {
     );
   });
 
-  test("with no D1 rows the caller's cursor token reaches the lakehouse leg", async () => {
-    const { db } = d1([]);
+  test("with no store rows the caller's cursor token reaches the lakehouse leg", async () => {
+    const { db } = runner([]);
     const queries = lakeFetch([lakeRow(500)]);
     await loadBlockFeedColdTier(
       { ...TOKEN, ...db } as never,
@@ -518,7 +521,7 @@ describe("loadBlockFeedColdTier", () => {
   });
 
   test("D1 rows survive a lakehouse failure rather than being discarded", async () => {
-    const { db } = d1([headRow(SEAM + 1)]);
+    const { db } = runner([headRow(SEAM + 1)]);
     globalThis.fetch = (async () => {
       throw new Error("lakehouse down");
     }) as unknown as typeof fetch;
@@ -531,7 +534,9 @@ describe("loadBlockFeedColdTier", () => {
   });
 
   test("a full page whose last row has no usable height carries no cursor", async () => {
-    const { db } = d1([{ ...headRow(SEAM + 1), block_number: "not-a-height" }]);
+    const { db } = runner([
+      { ...headRow(SEAM + 1), block_number: "not-a-height" },
+    ]);
     lakeFetch([]);
     const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
       limit: 1,
@@ -545,7 +550,7 @@ describe("loadBlockFeedColdTier", () => {
   });
 
   test("an inverted range answers zero WITHOUT querying either source", async () => {
-    const { db, sql } = d1([headRow(SEAM + 1)]);
+    const { db, sql } = runner([headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(5)]);
     const data = await loadBlockFeedColdTier(
       { ...TOKEN, ...db } as never,
@@ -561,7 +566,7 @@ describe("loadBlockFeedColdTier", () => {
     // decodeCursor(junk) -> null -> no cursor, identical to the Postgres
     // tier. Parity means the SAME page for the SAME request on either tier,
     // malformed tokens included, so this must not decline.
-    const { db, params } = d1([headRow(SEAM + 1)]);
+    const { db, params } = runner([headRow(SEAM + 1)]);
     lakeFetch([]);
     const data = await loadBlockFeedColdTier(
       { ...TOKEN, ...db } as never,
@@ -578,7 +583,7 @@ describe("loadBlockFeedColdTier", () => {
 
 describe("loadBlockColdTier", () => {
   test("a height above the seam resolves from D1", async () => {
-    const { db, params } = d1([headRow(SEAM + 5)]);
+    const { db, params } = runner([headRow(SEAM + 5)]);
     const queries = lakeFetch([]);
     const data = await loadBlockColdTier(
       { ...TOKEN, ...db } as never,
@@ -590,7 +595,7 @@ describe("loadBlockColdTier", () => {
   });
 
   test("a height at or below the seam goes straight to the lakehouse", async () => {
-    const { db, sql } = d1([]);
+    const { db, sql } = runner([]);
     const queries = lakeFetch([lakeRow(SEAM)]);
     const data = await loadBlockColdTier(
       { ...TOKEN, ...db } as never,
@@ -602,7 +607,7 @@ describe("loadBlockColdTier", () => {
   });
 
   test("a height above the seam that D1 lacks is a real absence, not a scan", async () => {
-    const { db } = d1([]);
+    const { db } = runner([]);
     const queries = lakeFetch([]);
     const data = await loadBlockColdTier(
       { ...TOKEN, ...db } as never,
@@ -618,7 +623,7 @@ describe("loadBlockColdTier", () => {
   });
 
   test("a hash is asked of D1 first, then the lakehouse", async () => {
-    const { db, sql } = d1([]);
+    const { db, sql } = runner([]);
     const queries = lakeFetch([lakeRow(42)]);
     const data = await loadBlockColdTier(
       { ...TOKEN, ...db } as never,
@@ -634,7 +639,7 @@ describe("loadBlockColdTier", () => {
   // published `event_count: null`, which the explorer rendered as "Events 0" --
   // on block 8,771,446 the same page's pallet breakdown said 320.
   test("a block the hot tier covers reports its event_count and spec_version", async () => {
-    const { db } = d1([
+    const { db } = runner([
       { ...headRow(SEAM + 4), spec_version: 442, event_count: 320 },
     ]);
     const queries = lakeFetch([]);
@@ -652,7 +657,7 @@ describe("loadBlockColdTier", () => {
   // it has pruned past still resolves -- with an honest null, never a zero. A
   // count we do not have is not a count of zero.
   test("a block the hot tier has pruned past keeps a null count, not a zero", async () => {
-    const { db } = d1([
+    const { db } = runner([
       { ...headRow(SEAM + 4), spec_version: null, event_count: null },
     ]);
     lakeFetch([]);
@@ -666,7 +671,7 @@ describe("loadBlockColdTier", () => {
   });
 
   test("a hash D1 knows is served without touching the lakehouse", async () => {
-    const { db } = d1([headRow(SEAM + 7)]);
+    const { db } = runner([headRow(SEAM + 7)]);
     const queries = lakeFetch([]);
     const data = await loadBlockColdTier(
       { ...TOKEN, ...db } as never,
@@ -677,7 +682,7 @@ describe("loadBlockColdTier", () => {
   });
 
   test("refuses a ref that is neither a height nor a hash", async () => {
-    const { db, sql } = d1([]);
+    const { db, sql } = runner([]);
     const queries = lakeFetch([]);
     assert.equal(
       await loadBlockColdTier({ ...TOKEN, ...db } as never, "'; DROP TABLE --"),
@@ -688,7 +693,7 @@ describe("loadBlockColdTier", () => {
   });
 
   test("a throwing D1 falls through to the lakehouse", async () => {
-    const { db } = d1([], { throws: true });
+    const { db } = runner([], { throws: true });
     lakeFetch([lakeRow(SEAM)]);
     const data = await loadBlockColdTier(
       { ...TOKEN, ...db } as never,

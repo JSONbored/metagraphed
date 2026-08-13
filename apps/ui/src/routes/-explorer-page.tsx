@@ -517,7 +517,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
 
 // #3489: raw all-events tier (ADR 0013) pallet.method distribution from
 // /api/v1/chain-events/stats — the raw-tier sibling of the curated CallMixSection
-// above (D1 /chain/calls). Same ranked-list-with-proportional-bar idiom, capped
+// above (/chain/calls). Same ranked-list-with-proportional-bar idiom, capped
 // to the busiest 10 rows; the header reports the distinct group count and the
 // block window scanned. Empty until the all-events backfill runs.
 function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {

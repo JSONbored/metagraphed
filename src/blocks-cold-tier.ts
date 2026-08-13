@@ -2,7 +2,7 @@
 //
 // TWO COLD SOURCES, ONE SEAM. The verified history lives in the R2 lakehouse
 // (Iceberg, row-count-verified against the box before it was wiped) and stops
-// at a known height. Everything after that height exists only in D1's
+// at a known height. Everything after that height exists only in the store's
 // `blocks_head`, written by the firehose head poller. The seam between them is
 // that height -- a constant, not a guess:
 //
@@ -11,7 +11,7 @@
 //
 // A SEAM RATHER THAN A MERGE is the important choice. The two sources overlap
 // in range (the poller was running before the export was cut), so stitching by
-// "whatever D1 has" would serve observer-copied rows in a range where verified
+// "whatever D1 had" would serve observer-copied rows in a range where verified
 // rows exist, silently downgrading columns for blocks we hold good data for.
 // Routing on a single height makes each block come from exactly one source, so
 // the boundary is reproducible instead of depending on what the poller
@@ -33,7 +33,7 @@
 // poller itself; `spec_version` arrives via the chain_detail_blocks join below.
 // Those three are READABLE above the seam but still not FILTERABLE, so a FILTER
 // on them cannot be honoured here.
-// Rather than answer such a filter with rows that ignore it, the D1 leg is
+// Rather than answer such a filter with rows that ignore it, the store leg is
 // skipped entirely for those queries and only the lakehouse range is served --
 // an incomplete answer is recoverable, a wrong one is not. See
 // `storeCanServe` for the exact predicate.
@@ -181,7 +181,7 @@ export async function resolveBlocksSeam(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<number> {
   // Off mainnet the seam is not a boundary between two sources -- there is only
-  // one. `blocks_head` and the whole D1 hot tier are written by the mainnet
+  // one. `blocks_head` and the whole hot tier are written by the mainnet
   // firehose poller and carry no network column, so a non-mainnet request has
   // no hot rows to reach and every block must come from the lakehouse. Zero
   // says exactly that: nothing is above the seam.
@@ -229,7 +229,7 @@ export async function lakehouseHeadBlock(
 }
 
 /**
- * Whether the D1 leg can honour this query at all. Filters over columns the
+ * Whether the store leg can honour this query at all. Filters over columns the
  * leg cannot evaluate for EVERY row in its range must NOT be silently
  * dropped, so their presence disqualifies the leg rather than being ignored.
  *
@@ -254,7 +254,7 @@ export function storeCanServe(query: BlockFeedQuery): boolean {
   );
 }
 
-/** Rows above the seam, newest first. Bound parameters throughout — D1 has
+/** Rows above the seam, newest first. Bound parameters throughout — D1 had
  * them, so unlike the R2 SQL leg there is no literal-building here. */
 async function storeHeadRows(
   env: Env | null | undefined,
@@ -314,7 +314,7 @@ async function storeHeadRows(
 export async function loadBlockFeedColdTier(
   env: Env | null | undefined,
   query: BlockFeedQuery,
-  /** Which chain to read (#8700). Off mainnet there is no D1 hot tier, so the
+  /** Which chain to read (#8700). Off mainnet there is no hot tier, so the
    * whole feed comes from that network's lakehouse namespace. */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildBlockFeed> | null> {
@@ -361,7 +361,7 @@ export async function loadBlockFeedColdTier(
     // Continue strictly BELOW whatever the head leg returned so a block cannot
     // appear twice. With head rows, the continuation is the last row's OWN
     // cursor token -- the exact mechanism a client would use, already tighter
-    // than any cursor the caller sent (the D1 leg consumed it). With none,
+    // than any cursor the caller sent (the store leg consumed it). With none,
     // an exclusive block ceiling at the seam bounds the lake leg instead.
     const lastHead = rows.length ? rows[rows.length - 1]! : null;
     const continuation = lastHead
@@ -371,7 +371,7 @@ export async function loadBlockFeedColdTier(
         ])
       : null;
     // RAW rows, deliberately: they are formatted once below, together with the
-    // D1 rows, so both sources go through the formatter exactly the same way.
+    // store rows, so both sources go through the formatter exactly the same way.
     const lake = await fetchBlockRowsFromR2Sql(
       env,
       {
@@ -379,7 +379,7 @@ export async function loadBlockFeedColdTier(
         limit: want - rows.length,
         offset: 0,
         cursor: continuation ?? query.cursor,
-        // The ceiling exists only to stop the lake leg re-serving rows the D1 leg
+        // The ceiling exists only to stop the lake leg re-serving rows the store leg
         // already covered. Off mainnet there IS no D1 leg, so there is nothing to
         // exclude and a ceiling would be actively wrong: the seam is 0 there, so
         // `block_number < seam + 1` would cap the whole feed at block 0.
@@ -407,7 +407,7 @@ export async function loadBlockFeedColdTier(
 
 /**
  * One block by height or hash, from whichever cold source owns it. A height
- * above the seam is D1's; at or below it is the lakehouse's. A hash could be
+ * above the seam is the store's; at or below it is the lakehouse's. A hash could be
  * either, so D1 is asked first and the lakehouse answers if it misses.
  */
 export async function loadBlockColdTier(
@@ -429,7 +429,7 @@ export async function loadBlockColdTier(
       : undefined;
   // "Above the seam" means "too new for the lakehouse, so D1 is the only
   // source" — a statement that is only true on mainnet, because only mainnet
-  // HAS a D1 tier. Off mainnet the lakehouse is the sole source at every
+  // HAS a store tier. Off mainnet the lakehouse is the sole source at every
   // height, so nothing is ever above the seam.
   //
   // Guarding on the network rather than on the seam VALUE, because the value
@@ -456,7 +456,7 @@ export async function loadBlockColdTier(
     }
   }
 
-  // A height above the seam that D1 does not have is a genuine miss, not a
+  // A height above the seam that D1 did not have is a genuine miss, not a
   // reason to scan the lakehouse for a block it cannot contain.
   if (aboveSeam) return buildBlock(undefined as never, ref);
   return loadBlockFromR2Sql(env, ref, network);

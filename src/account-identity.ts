@@ -117,10 +117,13 @@ export function buildAccountIdentity(
 }
 
 export async function loadAccountIdentity(
-  d1: (sql: string, params: unknown[]) => Promise<Record<string, unknown>[]>,
+  runner: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Record<string, unknown>[]>,
   account: string,
 ): Promise<AccountIdentityResult> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${ACCOUNT_IDENTITY_INSERT_COLUMNS.join(", ")} FROM account_identity WHERE account = ?`,
     [account],
   );
@@ -131,7 +134,7 @@ export async function loadAccountIdentity(
  * Every identity row keyed by account, for the bulk coldkey_identity join on
  * the /validators leaderboard and detail. The whole table is read on purpose:
  * it holds one row per account that ever called set_identity (a few hundred),
- * so an unfiltered SELECT beats a per-coldkey IN list that would trip D1's
+ * so an unfiltered SELECT beats a per-coldkey IN list that would trip the store's
  * 100-parameter bind cap on a full leaderboard.
  *
  * Never throws: the join is an enhancement, and a failed read degrades every
@@ -139,11 +142,14 @@ export async function loadAccountIdentity(
  * served while the join was missing — not a dead route.
  */
 export async function loadIdentityByColdkeyMap(
-  d1: (sql: string, params: unknown[]) => Promise<Record<string, unknown>[]>,
+  runner: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Record<string, unknown>[]>,
 ): Promise<Map<string, Record<string, unknown>>> {
   const map = new Map<string, Record<string, unknown>>();
   try {
-    const rows = await d1(
+    const rows = await runner(
       `SELECT ${ACCOUNT_IDENTITY_INSERT_COLUMNS.join(", ")} FROM account_identity`,
       [],
     );

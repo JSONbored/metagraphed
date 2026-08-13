@@ -11,6 +11,8 @@ import {
   composeValidatorComparison as composeValidatorComparisonRaw,
   overlayFeaturedValidators as overlayFeaturedValidatorsRaw,
   loadSubnetValidators as loadSubnetValidatorsRaw,
+  loadSubnetMetagraph as loadSubnetMetagraphRaw,
+  loadNeuron as loadNeuronRaw,
   loadGlobalValidators as loadGlobalValidatorsRaw,
   loadValidatorDetail as loadValidatorDetailRaw,
 } from "../src/metagraph-neurons.ts";
@@ -106,25 +108,39 @@ function overlayFeaturedValidators(data: unknown): Row {
   return overlayFeaturedValidatorsRaw(data as Row | null | undefined) as Row;
 }
 async function loadSubnetValidators(
-  d1: Parameters<typeof loadSubnetValidatorsRaw>[0],
+  runner: Parameters<typeof loadSubnetValidatorsRaw>[0],
   netuid: unknown,
 ): Promise<Row> {
-  return (await loadSubnetValidatorsRaw(d1, netuid)) as Row;
+  return (await loadSubnetValidatorsRaw(runner, netuid)) as Row;
+}
+async function loadSubnetMetagraph(
+  runner: Parameters<typeof loadSubnetMetagraphRaw>[0],
+  netuid: unknown,
+  options?: Parameters<typeof loadSubnetMetagraphRaw>[2],
+): Promise<Row> {
+  return (await loadSubnetMetagraphRaw(runner, netuid, options)) as Row;
+}
+async function loadNeuron(
+  runner: Parameters<typeof loadNeuronRaw>[0],
+  netuid: unknown,
+  uid: unknown,
+): Promise<Row> {
+  return (await loadNeuronRaw(runner, netuid, uid)) as Row;
 }
 async function loadGlobalValidators(
-  d1: Parameters<typeof loadGlobalValidatorsRaw>[0],
+  runner: Parameters<typeof loadGlobalValidatorsRaw>[0],
   options?: Parameters<typeof loadGlobalValidatorsRaw>[1],
 ): Promise<Row> {
-  return (await loadGlobalValidatorsRaw(d1, options)) as Row;
+  return (await loadGlobalValidatorsRaw(runner, options)) as Row;
 }
 async function loadValidatorDetail(
-  d1: Parameters<typeof loadValidatorDetailRaw>[0],
+  runner: Parameters<typeof loadValidatorDetailRaw>[0],
   hotkey: unknown,
 ): Promise<Row> {
-  return (await loadValidatorDetailRaw(d1, hotkey)) as Row;
+  return (await loadValidatorDetailRaw(runner, hotkey)) as Row;
 }
 
-// A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats).
+// A `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats).
 const ROW = {
   uid: 0,
   hotkey: "5Hk1",
@@ -328,7 +344,7 @@ describe("metagraph-neurons builders", () => {
   test("formatNeuron rounds stake_tao / emission_tao to rao precision (no IEEE-754 leak)", () => {
     // Regression for the Gittensory Orb follow-up blocker on #2503: stake_tao /
     // emission_tao must be rounded to 1e-9 (rao) precision so a noisy REAL
-    // D1 cell (e.g. 22.1234567894) does not leak accumulated IEEE-754 noise
+    // cell (e.g. 22.1234567894) does not leak accumulated IEEE-754 noise
     // into the API payload. Mirrors toTaoOrNull in account-events.ts and
     // roundTao in chain-analytics.ts.
     const n = formatNeuron({
@@ -347,7 +363,7 @@ describe("metagraph-neurons builders", () => {
     // Regression for the Gittensory Orb blocker on #2503: the upstream
     // nonNegativeInt / nullableNumber helpers added in #2493 do not have
     // explicit `value == null` guards, so Number(null) === 0 leaks as 0
-    // instead of falling through to null. A real D1 row with explicit null
+    // instead of falling through to null. A real store row with explicit null
     // cells must serialize as null (matches the missing-key behavior proven
     // by the existing `defaults every missing field to null/false` test).
     const n = formatNeuron({
@@ -1002,7 +1018,7 @@ describe("metagraph-neurons builders", () => {
     assert.equal(entry.realized_return_1d, null);
   });
 
-  test("buildGlobalValidators defaults every realized_return_* to null when no baseline map is passed (D1 fallback) (#7228)", () => {
+  test("buildGlobalValidators defaults every realized_return_* to null when no baseline map is passed (store fallback) (#7228)", () => {
     const data = buildGlobalValidators([
       { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 },
     ]);
@@ -1027,7 +1043,7 @@ describe("metagraph-neurons builders", () => {
     assert.equal(detail.realized_return_1m, 0);
   });
 
-  test("buildValidatorDetail defaults realized_return_* to null with no baseline (D1 fallback) (#7228)", () => {
+  test("buildValidatorDetail defaults realized_return_* to null with no baseline (store fallback) (#7228)", () => {
     const detail = buildValidatorDetail(
       [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
       "hk-a",
@@ -1888,10 +1904,10 @@ describe("overlayFeaturedValidators (#5166)", () => {
 });
 
 describe("metagraph-neurons loaders", () => {
-  // A d1 runner that filters by validator_permit and APPLIES the SQL's ORDER BY
+  // A runner that filters by validator_permit and APPLIES the SQL's ORDER BY
   // (parsing the real clause), so a missing tie-break would actually reorder the
   // result — not a circular check that passes regardless.
-  function orderingD1(rows: Row[]) {
+  function orderingRunner(rows: Row[]) {
     return async (sql: string) => {
       let r = rows.filter((x: Row) => x.validator_permit === 1);
       const order = /ORDER BY (.+?)(?:$|\bLIMIT\b)/.exec(sql);
@@ -1912,19 +1928,80 @@ describe("metagraph-neurons loaders", () => {
   }
 
   test("loadSubnetValidators ranks by stake, breaking equal-stake ties by uid", async () => {
-    const d1 = orderingD1([
+    const runner = orderingRunner([
       { uid: 9, validator_permit: 1, stake_tao: 100 },
       { uid: 2, validator_permit: 1, stake_tao: 100 }, // tie with uid 9
       { uid: 5, validator_permit: 1, stake_tao: 250 },
       { uid: 4, validator_permit: 0, stake_tao: 999 }, // not a validator
     ]);
-    const data = await loadSubnetValidators(d1, 7);
+    const data = await loadSubnetValidators(runner, 7);
     // 250 first; the two 100-stake validators tie → uid ascending (2 before 9).
     assert.deepEqual(
       data.validators.map((v: Row) => v.uid),
       [5, 2, 9],
     );
     assert.equal(data.validator_count, 3); // the miner is excluded
+  });
+
+  // loadSubnetMetagraph and loadNeuron below had no direct test: every
+  // assertion about them went through a route or an MCP tool, so the two
+  // things they own -- which SQL they emit, and what a miss answers -- were
+  // only ever implied. Both are the shared read path for the REST handler AND
+  // the MCP tool, so a change here moves two surfaces at once.
+  function capturing(rows: Row[]) {
+    const seen: { sql: string; params: unknown[] }[] = [];
+    return {
+      seen,
+      runner: async (sql: string, params: unknown[] = []) => {
+        seen.push({ sql, params });
+        return rows;
+      },
+    };
+  }
+
+  test("loadSubnetMetagraph binds the netuid and leaves miners in by default", async () => {
+    const { runner, seen } = capturing([
+      { uid: 0, validator_permit: 1, stake_tao: 5 },
+      { uid: 1, validator_permit: 0, stake_tao: 2 },
+    ]);
+    const data = await loadSubnetMetagraph(runner, 7);
+    // Bound, never interpolated: a netuid spliced into the text would make
+    // this loader the one place a caller-supplied value reaches the SQL.
+    assert.deepEqual(seen[0].params, [7]);
+    assert.ok(!seen[0].sql.includes("validator_permit = TRUE"));
+    assert.equal(data.netuid, 7);
+    assert.equal((data.neurons as Row[]).length, 2, "the miner is present");
+  });
+
+  test("loadSubnetMetagraph's validatorsOnly narrows the query, not the result", async () => {
+    // The filter belongs in SQL so a 128-row subnet does not cross the wire to
+    // be discarded in JS. Asserting on the emitted clause is the only way to
+    // tell those two implementations apart -- both return the same rows here.
+    const { runner, seen } = capturing([{ uid: 0, validator_permit: 1 }]);
+    await loadSubnetMetagraph(runner, 7, { validatorsOnly: true });
+    assert.match(seen[0].sql, /AND validator_permit = TRUE/);
+    assert.match(seen[0].sql, /ORDER BY uid/);
+  });
+
+  test("loadNeuron asks for one row by (netuid, uid)", async () => {
+    const { runner, seen } = capturing([{ uid: 3, netuid: 7, stake_tao: 1 }]);
+    const data = await loadNeuron(runner, 7, 3);
+    assert.deepEqual(seen[0].params, [7, 3]);
+    assert.match(seen[0].sql, /LIMIT 1/);
+    assert.equal(data.netuid, 7);
+    assert.ok(data.neuron);
+  });
+
+  test("loadNeuron answers a miss with the schema-stable empty shape", async () => {
+    // `rows[0] ?? null` rather than a throw or a bare undefined: a uid that is
+    // not registered is a normal answer, and the caller still needs the
+    // envelope's shape to be the same one a hit produces.
+    const { runner } = capturing([]);
+    const data = await loadNeuron(runner, 7, 999);
+    assert.equal(data.netuid, 7);
+    assert.equal(data.schema_version, 1);
+    assert.equal(data.captured_at, null);
+    assert.equal(data.block_number, null);
   });
 
   test("loadGlobalValidators reads validator rows and applies requested ranking", async () => {

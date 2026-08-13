@@ -1,5 +1,5 @@
 // GET /api/v1/chain/concentration (types-epic B batch 6, #8060). Live
-// neurons D1-tier data -- no static file. Modeled from src/concentration.ts's
+// neurons store-tier data -- no static file. Modeled from src/concentration.ts's
 // buildChainConcentration() (which reuses computeConcentration(), the exact
 // function ConcentrationMetricsSchema in shared.ts models, from types-epic B
 // batch 3/#8057), cross-checked against the hand-edited

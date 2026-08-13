@@ -1156,7 +1156,7 @@ test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_S
 // (#10131)" was DELETED here. Its subject was that a LEFTOVER D1 write path
 // would take the rows and report them written while no reader ever consulted
 // that store -- it asserted no statement naming nominator_positions reached
-// the bound D1 double. There is no D1 binding in the code or in either
+// the bound D1 double. There is no store binding in the code or in either
 // wrangler config any more, so the fallback it guarded against cannot exist
 // and the only assertions that survive ("an unreachable store is a 502, never
 // an ok") are the ones the validator-nominator-counts case above already

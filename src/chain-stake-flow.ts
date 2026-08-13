@@ -34,7 +34,7 @@ function roundTao(value: number): number {
   return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
-// Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number,
+// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite number,
 // defaulting to 0.
 function toNumber(value: unknown): number {
   const parsed = Number(value);
@@ -281,5 +281,5 @@ export function buildChainStakeFlow(
 // #4772 D1 retirement: loadChainStakeFlow (the D1 loader that read the
 // account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
 // path is retired and the `account_events` table is dropped in production, so a live
-// D1 query would always miss. Serving now goes tryDataApiTier -> buildChainStakeFlow([...]),
-// never D1. See src/mcp-server.ts's get_chain_stake_flow tool for the call site.
+// a store query would always miss. Serving now goes tryDataApiTier -> buildChainStakeFlow([...]),
+// never the store. See src/mcp-server.ts's get_chain_stake_flow tool for the call site.

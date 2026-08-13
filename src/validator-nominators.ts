@@ -302,6 +302,6 @@ export function buildValidatorNominators(
 // #4772 D1 retirement: loadValidatorNominators (the D1 loader that read the
 // account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
 // path is retired and the `account_events` table is dropped in production, so a live
-// D1 query would always miss. Serving now goes tryDataApiTier -> buildValidatorNominators([...
-// ], hotkey, {...}), never D1. See src/graphql.ts's validator_nominators resolver and
+// a store query would always miss. Serving now goes tryDataApiTier -> buildValidatorNominators([...
+// ], hotkey, {...}), never the store. See src/graphql.ts's validator_nominators resolver and
 // src/mcp-server.ts's get_validator_nominators tool for the call sites.

@@ -34,7 +34,7 @@
 //     hotkey NULL/'', the first requires hotkey = X, a non-empty value), so a
 //     single OR of both predicates yields the identical multiset -- which
 //     matters, because R2 SQL has no UNION at all. The slot list itself still
-//     comes from D1 `neurons`, the same source data-api reads it from.
+//     comes from `neurons`, the same source data-api reads it from.
 //   - counterparties: data-api's UNION ALL of two per-leg-capped ordered scans
 //     re-sorted and capped again equals the top-CAP of the single OR predicate
 //     under the same total order (each leg is a subset of the OR set, so any
@@ -532,7 +532,7 @@ interface StatementClientLike {
   query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }
 
-/** The hotkey's registered (netuid, uid) slots from D1 `neurons` -- the same
+/** The hotkey's registered (netuid, uid) slots from `neurons` -- the same
  * decomposition data-api runs now that neurons is off Postgres. null when the
  * slots cannot be read (no binding, D1 failure, or an unusable cell), because
  * without them the hotkey-less WeightsSet rows would be silently dropped --

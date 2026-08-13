@@ -1,5 +1,5 @@
 // Chain analytics builders (#1987, epic #1986): pure row→API shapers for the
-// network-activity aggregates served live from the first-party chain D1 tiers
+// network-activity aggregates served live from the first-party chain store tiers
 // (blocks / extrinsics / account_events). Kept pure + exported so the Worker does
 // the D1 I/O and these stay unit-testable and schema-stable on a cold store.
 
@@ -38,7 +38,7 @@ function toNullableTao(value: unknown): number | null {
 // missing, non-finite, or negative — block numbers are never negative on-chain.
 function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;

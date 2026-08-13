@@ -1,4 +1,4 @@
-// GET /api/v1/chain/concentration/subnets (#9717). Live neurons D1-tier data --
+// GET /api/v1/chain/concentration/subnets (#9717). Live neurons store-tier data --
 // no static file, the same read its /chain/concentration sibling performs, kept
 // grouped by netuid instead of collapsed into one aggregate.
 //

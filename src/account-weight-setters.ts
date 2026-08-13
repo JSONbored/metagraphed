@@ -1,6 +1,6 @@
 // Per-account weight-setting footprint: which subnets one account (hotkey/validator) set weights
 // on over a recent window, broken down per subnet and rolled up into a weight-setting scorecard.
-// Pure shaping (buildAccountWeightSetters) + a thin D1 loader (loadAccountWeightSetters); the
+// Pure shaping (buildAccountWeightSetters) + a thin store loader (loadAccountWeightSetters); the
 // Worker adds the REST envelope. Null-safe: a cold store or an empty window yields schema-stable
 // zeros (never throws), matching the sibling account tiers (registrations, stake-moves).
 //
@@ -152,9 +152,9 @@ export function buildAccountWeightSetters(
 // the uid fallback pinned to (netuid, uid, event_kind, observed_at); a single OR across account_events
 // and neurons makes SQLite scan the whole recent WeightsSet window for each public account lookup.
 // Returns { data, generatedAt } where generatedAt is the newest weight-set's observed_at as an ISO
-// string (string|null per the envelope contract). Cold/absent D1 -> zeroed card + null.
+// string (string|null per the envelope contract). A cold or absent store -> zeroed card + null.
 export async function loadAccountWeightSetters(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -170,7 +170,7 @@ export async function loadAccountWeightSetters(
     ACCOUNT_WEIGHT_SETTERS_WINDOWS[windowLabel] ??
     ACCOUNT_WEIGHT_SETTERS_WINDOWS[DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed, " +
       "MAX(observed_at) AS last_observed FROM (" +
       "SELECT netuid, observed_at " +

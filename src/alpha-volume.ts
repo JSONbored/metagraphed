@@ -3,7 +3,7 @@
 // lean, no new capture or query): how much subnet alpha was bought
 // (StakeAdded) vs sold (StakeRemoved) in the last 24 hours, summed from the
 // first-party account_events stream. Pure shaping (buildAlphaVolume) + a thin
-// D1 loader (loadSubnetAlphaVolume); the Worker adds the REST envelope.
+// store loader (loadSubnetAlphaVolume); the Worker adds the REST envelope.
 // Null-safe: a cold store or an empty window yields schema-stable zeros
 // (never throws), matching the sibling live tiers (stake-flow, turnover).
 //
@@ -21,7 +21,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const STAKE_ADDED_KIND = "StakeAdded";
 export const STAKE_REMOVED_KIND = "StakeRemoved";
 
-// Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite
+// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite
 // number, defaulting to 0.
 function toNumber(value: unknown): number {
   const parsed = Number(value);
@@ -174,7 +174,7 @@ export function buildAlphaVolume(
   // doesn't mean the row (and its event_count) carries no information — the
   // count and the other unit's sum are still real. In production this branch
   // is unreachable anyway: both queries wrap every SUM in COALESCE(..., 0), so
-  // D1 can never actually hand either shaper a null/blank amount cell.
+  // the store can never actually hand either shaper a null/blank amount cell.
   for (const row of list) {
     const kind = row?.event_kind;
     const alpha = nullableAmount(row?.alpha_volume) ?? 0;
@@ -223,11 +223,11 @@ export function buildAlphaVolume(
 // (migrations/0024) stake-flow.ts seeks; observed_at is a residual filter.
 // Returns { data, generatedAt } where generatedAt is the newest event's
 // observed_at as an ISO string (string|null), matching stake-flow's contract.
-// Cold/absent D1 -> zeroed totals + generatedAt null. The 3-day account_events
+// A cold or absent store -> zeroed totals + generatedAt null. The 3-day account_events
 // retention (EVENT_RETENTION_MS, src/account-events.ts) comfortably covers a
 // 24h window.
 export async function loadSubnetAlphaVolume(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -235,7 +235,7 @@ export async function loadSubnetAlphaVolume(
   { marketCapTao }: { marketCapTao?: number | null } = {},
 ): Promise<{ data: AlphaVolumeResult; generatedAt: string | null }> {
   const cutoff = Date.now() - DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT event_kind, COALESCE(SUM(alpha_amount), 0) AS alpha_volume, " +
       "COALESCE(SUM(amount_tao), 0) AS tao_volume, COUNT(*) AS event_count, " +
       "MAX(observed_at) AS last_observed " +

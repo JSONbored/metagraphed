@@ -37,7 +37,7 @@
 // accounts. Coldkeys are what the scan iterates and what the prune is keyed on,
 // so they are what a partial pass is partial IN.
 //
-// MEASURED 2026-08-05, production D1: 124,817 rows over three vintages --
+// MEASURED 2026-08-05, production: 124,817 rows over three vintages --
 // 122,836 rows / 23,668 coldkeys at the newest stamp, then 1,815/401 and 166/52
 // older. Those 453 straggler coldkeys are the prune working as designed, and
 // they are why coverage is counted over a WINDOW against an absolute floor
@@ -50,7 +50,7 @@
 // watchdog's are.
 //
 // COST: one walk of ~125k rows on an `8,38 * * * *` cron, 48 ticks a day, so
-// ~6M D1 rows read a day.
+// ~6M store rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
@@ -92,7 +92,7 @@ export const NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS = missedTicksMs(
 /**
  * How many coldkeys a COMPLETE pass is expected to cover.
  *
- * 23,668, read off production D1 on 2026-08-05 as `COUNT(DISTINCT coldkey)` at
+ * 23,668, read off production on 2026-08-05 as `COUNT(DISTINCT coldkey)` at
  * the newest `captured_at` -- every coldkey the SubtensorModule::Alpha scan
  * found holding at least one position.
  */
@@ -251,7 +251,7 @@ export async function runNominatorPositionsStalenessWatchdog(
   const record = deps.recordException ?? recordExceptionEvent;
   // Whichever store holds the table (#10154). The verdict WRITE moved to
   // laneHealthStore already; this read did not, so the watchdog was measuring
-  // a frozen D1 copy and would have alarmed permanently -- reporting the lane
+  // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["nominator_positions"]) as unknown as
     StatementClientLike | undefined;

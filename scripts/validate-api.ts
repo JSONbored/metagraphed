@@ -367,7 +367,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     (body) => {
       assert.equal(body.data.netuid, 7);
       assert.equal(typeof body.data.neuron_count, "number");
-      // Cold D1 → schema-stable null blocks; with rows → metric objects.
+      // A cold store → schema-stable null blocks; with rows → metric objects.
       assert.ok(
         body.data.stake === null || typeof body.data.stake === "object",
       );
@@ -381,7 +381,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     (body) => {
       assert.equal(body.data.netuid, 7);
       assert.equal(typeof body.data.neuron_count, "number");
-      // Cold D1 → schema-stable null blocks; with rows → metric objects.
+      // A cold store → schema-stable null blocks; with rows → metric objects.
       assert.ok(
         body.data.incentive === null || typeof body.data.incentive === "object",
       );
@@ -760,7 +760,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     "/api/v1/subnets/7/neurons/0",
     (body) => {
       assert.equal(body.data.netuid, 7);
-      // Cold harness (no D1) → neuron present but null; never 404.
+      // Cold harness (no store) → neuron present but null; never 404.
       assert.equal("neuron" in body.data, true);
     },
   ],
@@ -768,7 +768,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     "/api/v1/subnets/7/hyperparameters",
     (body) => {
       assert.equal(body.data.netuid, 7);
-      // Cold harness (no D1) → hyperparameters present but null; never 404.
+      // Cold harness (no store) → hyperparameters present but null; never 404.
       assert.equal("hyperparameters" in body.data, true);
     },
   ],
@@ -872,7 +872,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         body.data.hotkey,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
-      // Cold harness (no D1) → zeroed aggregate, never 404.
+      // Cold harness (no store) → zeroed aggregate, never 404.
       assert.equal(Array.isArray(body.data.subnets), true);
       assert.equal(typeof body.data.subnet_count, "number");
     },
@@ -884,7 +884,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         body.data.hotkey,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
-      // Cold harness (no D1) → empty list, never 404.
+      // Cold harness (no store) → empty list, never 404.
       assert.equal(Array.isArray(body.data.nominators), true);
       assert.equal(typeof body.data.nominator_count, "number");
     },
@@ -896,7 +896,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         body.data.hotkey,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
-      // Cold harness (no D1) → empty points, never 404.
+      // Cold harness (no store) → empty points, never 404.
       assert.equal(Array.isArray(body.data.points), true);
       assert.equal(typeof body.data.point_count, "number");
     },
@@ -2315,7 +2315,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         body.data.validators[0].hotkey,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
-      // Cold harness (no D1/Postgres) → zeroed detail, never 404.
+      // Cold harness (no store) → zeroed detail, never 404.
       assert.equal(body.data.validators[0].subnet_count, 0);
       assert.equal(body.data.netuid, null);
       assert.equal(typeof body.data.validator_count, "number");

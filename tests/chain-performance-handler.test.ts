@@ -58,7 +58,7 @@ async function assertValidComponent(componentName: string, data: Row) {
 }
 
 describe("handleChainPerformance happy path", () => {
-  test("returns schema-stable null blocks on cold D1", async () => {
+  test("returns schema-stable null blocks on a cold store", async () => {
     const body = await json(
       await handleChainPerformance(
         req("/api/v1/chain/performance"),

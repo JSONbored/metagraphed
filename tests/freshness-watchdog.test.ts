@@ -432,7 +432,7 @@ test("records `unknown` when the tick throws outright", async () => {
 });
 
 test("a lane_health write that fails never breaks the tick", async () => {
-  // D1 migrations here are applied by hand, so an unapplied migration means
+  // migrations here are applied by hand, so an unapplied migration means
   // "no such table" on a live deployment. A watchdog whose alarm-recording
   // broke its alarm would be worse than the bug being fixed.
   const res = (await runFreshnessWatchdog(envWith(undefined), undefined, {

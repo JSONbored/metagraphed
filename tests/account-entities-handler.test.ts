@@ -66,7 +66,7 @@ function entitiesArchiveEnv(entities: Row[]): Row {
 }
 
 describe("handleAccountEntities", () => {
-  test("returns a schema-stable empty result on cold D1/R2", async () => {
+  test("returns a schema-stable empty result on a cold store/R2", async () => {
     const body = await json(
       await handleAccountEntities(
         req(`/api/v1/accounts/${SS58}/entities`),

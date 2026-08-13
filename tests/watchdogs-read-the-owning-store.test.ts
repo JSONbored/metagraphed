@@ -16,7 +16,7 @@
 // Postgres here, so a watchdog that reaches the store fails at the query and
 // degrades to a summary -- which is what these are built to do. What separates
 // the two outcomes is the REASON: "no store bound" means it never tried, and
-// anything else means it got as far as a store. With D1 unbound and Neon
+// anything else means it got as far as a store. With the store unbound and Neon
 // owning the tables, "never tried" is exactly the bug.
 //
 // The second case in each pair is what stops that from passing vacuously: with
@@ -89,7 +89,7 @@ describe("with Neon owning its tables and no D1 bound", () => {
       assert.notEqual(
         result.reason,
         refusal,
-        `${name} refused to run: its read is still keyed to the D1 binding, ` +
+        `${name} refused to run: its read is still keyed to the store binding, ` +
           `so it measures a table that stopped advancing when the lane inverted`,
       );
     });

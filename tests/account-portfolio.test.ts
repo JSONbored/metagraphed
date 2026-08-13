@@ -238,14 +238,14 @@ describe("buildAccountPortfolio", () => {
 
   test("loadAccountPortfolio filters by hotkey and shapes the rows", async () => {
     let seen: { sql: string; params: unknown[] } | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       // #9051: answer the loader's new subnet_snapshots price read separately
       // so the assertions below still pin the neurons query.
       if (sql.includes("subnet_snapshots")) return [];
       seen = { sql, params };
       return ROWS;
     };
-    const out = await loadAccountPortfolio(d1, SS58);
+    const out = await loadAccountPortfolio(runner, SS58);
     assert.match(seen!.sql, /FROM neurons WHERE hotkey = \? ORDER BY netuid/);
     assert.deepEqual(seen!.params, [SS58]);
     assert.equal(out.position_count, 3);

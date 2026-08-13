@@ -87,7 +87,7 @@ describe("buildSubnetRegistrations", () => {
 describe("loadSubnetRegistrations", () => {
   test("queries account_events for the netuid + NeuronRegistered over the window and shapes it", async () => {
     let captured: Row | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [
         {
@@ -97,7 +97,7 @@ describe("loadSubnetRegistrations", () => {
         },
       ];
     };
-    const d = await loadSubnetRegistrations(d1, 7, {
+    const d = await loadSubnetRegistrations(runner, 7, {
       windowLabel: "7d",
       windowDays: 7,
     });

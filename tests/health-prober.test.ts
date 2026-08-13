@@ -2023,7 +2023,7 @@ describe("rollupDailyUptime (durable daily history)", () => {
 // "rollupDailyUptime (durable daily history)" describe block above (the
 // success/unavailable/status/fetch-failed cases are now the SAME cases this
 // block used to exercise "via" rollupDailyUptime -- there is no longer a
-// separate D1 outcome to vary independently of the Postgres one).
+// separate store outcome to vary independently of the Postgres one).
 
 // #8744: provenance stamping for the v440 emission-pipeline columns. The
 // column's contract is "non-null iff there is a pinned read behind THIS row's

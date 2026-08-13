@@ -3,7 +3,7 @@
 // + schema-stable-empty-payload pattern. D1 fully eliminated (2026-07-17):
 // every D1 read here is gone -- a Postgres-tier miss (or, for leaderboards,
 // which never had tier plumbing) always falls through to the empty shape,
-// marked via the D1-fallback WeakSet contract owned by analytics.ts so it's
+// marked via the store-fallback WeakSet contract owned by analytics.ts so it's
 // never edge-cached as fresh.
 //
 // Dependency wiring mirrors configureAnalytics: the in-isolate memoized KV reads
@@ -274,7 +274,7 @@ export async function handleTrajectory(
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, flipped to
   // "postgres" in wrangler.jsonc (D1 retirement, 2026-07-16). D1 fully
   // eliminated (2026-07-17): a tier miss now always falls through to the
-  // schema-stable empty payload (never a live D1 query).
+  // schema-stable empty payload (never a live store query).
   // NO TIER READ (#10190). METAGRAPH_SUBNET_SNAPSHOTS_SOURCE reads "retired" in
   // every deployed config and is absent from FORWARDABLE_TIER_FLAGS, so the tier
   // resolved to null on every request and this branch was the only path.
@@ -329,7 +329,7 @@ export async function handleEconomicsTrends(
 ): Promise<Response> {
   const { label, days } = historyWindow(url);
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
-  // and same flip as handleTrajectory above. D1 reads resurrected 2026-08-02.
+  // and same flip as handleTrajectory above. store reads resurrected 2026-08-02.
   // NO TIER READ (#10190), same as handleTrajectory above: the flag is retired
   // and absent from FORWARDABLE_TIER_FLAGS, so this branch was the only path.
   const readFailureGeneration = currentStoreReadFailureGeneration();
@@ -403,15 +403,15 @@ export async function handleUptime(
   // #4832 gap-closure follow-up: reuses METAGRAPH_HEALTH_SOURCE (same table
   // as the bulk-trends/trends/percentiles/incidents routes in analytics.ts,
   // flipped to "postgres" in wrangler.jsonc -- see that flag's own header
-  // comment there). D1 reads resurrected (2026-08-02, box decommission): a
+  // comment there). store reads resurrected (2026-08-02, box decommission): a
   // tier miss now reads the dual-written surface_uptime_daily copy in D1
   // through loadSubnetUptime; with no binding that loader degrades to the
   // same schema-stable empty payload this served since 2026-07-17.
-  // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
+  // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from every wrangler config and is
   // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
   // initialise `data` resolved to null on every request -- which made the
   // branch below the only path, not the fallback.
-  // Cacheable when D1-served — only an empty payload (no binding, or a D1
+  // Cacheable when store-served — only an empty payload (no binding, or a D1
   // read failure mid-load) is barred from the edge cache (see
   // handleHealthTrends in analytics.ts).
   const storeGeneration = currentStoreReadFailureGeneration();
@@ -579,7 +579,7 @@ async function resolveEconomicsRows(env: Env): Promise<unknown[]> {
  * economics tier, and the D1 operational reads, folded through
  * formatLeaderboards.
  *
- * D1 reads resurrected (2026-08-03): the health/rpc/growth/reliability boards
+ * store reads resurrected (2026-08-03): the health/rpc/growth/reliability boards
  * come from surface_status / subnet_snapshots / surface_uptime_daily, all of
  * which are written to D1 and populated there. Those four row sets used to be
  * inlined as `[]`, so four of the six operational boards were permanently
@@ -663,8 +663,8 @@ export async function handleLeaderboards(
     },
     "standard",
   );
-  // Cacheable when D1-served: only a payload whose operational boards are
-  // genuinely empty (no binding, or a D1 read failure mid-compose) is barred
+  // Cacheable when store-served: only a payload whose operational boards are
+  // genuinely empty (no binding, or a store read failure mid-compose) is barred
   // from the edge cache.
   return isFallback ? markDataApiTierFallbackResponse(response) : response;
 }
@@ -848,7 +848,7 @@ export async function handleCompare(
   // syncXToPostgres write helper builds one, rather than forwarding the
   // caller's netuids=/dimensions= request unchanged (tryDataApiTier's usual
   // contract). D1 fully eliminated (2026-07-17): a tier miss now always
-  // falls through to an empty row set (never a live D1 query).
+  // falls through to an empty row set (never a live store query).
   // NO TIER READ (#10190), AND IT HAD NO RUNG. This synthesized an internal
   // /api/v1/internal/compare-health request for METAGRAPH_HEALTH_SOURCE, a flag
   // that reads "d1" and is absent from FORWARDABLE_TIER_FLAGS -- so the read

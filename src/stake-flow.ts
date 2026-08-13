@@ -7,7 +7,7 @@
 //
 // The D1 loader (loadSubnetStakeFlow) was removed — account_events' D1 write path
 // is retired and the table is dropped in production (#4772 / #4909 / #6016), so
-// serving goes tryDataApiTier → schema-stable empty stub, never D1.
+// serving goes tryDataApiTier → schema-stable empty stub, never the store.
 //
 // The 7d/30d/90d windows match the set the concentration/history route already uses,
 // keeping the per-subnet analytics windows consistent for the recent-capital-movement
@@ -46,7 +46,7 @@ function roundTao(value: number): number {
   return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
-// Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite
+// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite
 // number, defaulting to 0.
 function toNumber(value: unknown): number {
   const parsed = Number(value);

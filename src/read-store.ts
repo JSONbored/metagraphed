@@ -50,7 +50,7 @@ export interface ReadStoreClient {
 /** A row with no claimed shape.
  *
  * The DEFAULT for `all`/`first`, rather than `unknown`, because that is what
- * D1's own typing gave these call sites: several read a named column straight
+ * the store's own typing gave these call sites: several read a named column straight
  * off an untyped `first()`, and `unknown` would break them for no benefit --
  * neither store validates the shape, so the default is about what the caller is
  * allowed to write, not about safety. */

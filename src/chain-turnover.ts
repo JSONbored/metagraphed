@@ -3,7 +3,7 @@
 // ranked into a leaderboard, plus a network rollup over the union of every subnet's
 // validator hotkeys. The network companion to /api/v1/subnets/{netuid}/turnover, mirroring
 // how /chain/concentration companions the per-subnet concentration route. Pure + exported
-// for unit tests; the Worker does the D1 reads + envelope. Scoped to validator_permit rows
+// for unit tests; the Worker does the store reads + envelope. Scoped to validator_permit rows
 // so the two-snapshot read stays bounded (validators, not every neuron across the network).
 
 import { median, percentile } from "./lib/stats.ts";
@@ -17,7 +17,7 @@ import {
 } from "./route-limits.ts";
 export { CHAIN_TURNOVER_LIMIT_DEFAULT, CHAIN_TURNOVER_LIMIT_MAX };
 
-// The neuron_daily columns the handler reads — its D1 read contract. `hotkey` is public
+// The neuron_daily columns the handler reads — its store read contract. `hotkey` is public
 // metagraph vocabulary, not a secret; kept next to its consumer so the handler stays a thin SELECT.
 export const CHAIN_TURNOVER_READ_COLUMNS =
   "snapshot_date, netuid, hotkey, validator_permit";
@@ -316,7 +316,7 @@ export function buildChainTurnover(
 // validator_permit = TRUE; the date-first idx_neuron_daily_date_netuid_agg covers the boundary
 // scan), shape with buildChainTurnover. Cold/absent or single-snapshot D1 → comparable:false.
 export async function loadChainTurnover(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -332,7 +332,7 @@ export async function loadChainTurnover(
     ? windowLabel
     : DEFAULT_CHAIN_TURNOVER_WINDOW;
   const days = CHAIN_TURNOVER_WINDOWS[normalizedLabel];
-  const bounds = await d1(
+  const bounds = await runner(
     "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date " +
       "FROM neuron_daily " +
       "WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)",
@@ -342,7 +342,7 @@ export async function loadChainTurnover(
   const endDate = (bounds?.[0]?.end_date as string | null) ?? null;
   let rows: Array<Record<string, unknown>> = [];
   if (startDate != null && endDate != null && startDate !== endDate) {
-    rows = await d1(
+    rows = await runner(
       `SELECT ${CHAIN_TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE validator_permit = TRUE AND snapshot_date IN (?, ?)`,
       [startDate, endDate],
     );

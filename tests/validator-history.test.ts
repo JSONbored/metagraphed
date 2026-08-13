@@ -217,7 +217,7 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
     assert.equal(res.status, 400);
   });
 
-  test("is schema-stable when D1 is cold (never 404)", async () => {
+  test("is schema-stable when the store is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request(
         `https://api.metagraph.sh/api/v1/validators/${HOTKEY}/history`,

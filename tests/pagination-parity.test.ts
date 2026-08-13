@@ -50,7 +50,7 @@ function url(path: string) {
 // production. account_events_daily (the source behind /accounts/{ss58}/history)
 // has since (2026-07-17) had its D1 copy fully eliminated too -- the route now
 // reads the METAGRAPH_ACCOUNT_EVENTS_SOURCE Postgres tier only, via
-// tryDataApiTier, and D1 is never queried at all. clampLimit/clampOffset still
+// tryDataApiTier, and the store is never queried at all. clampLimit/clampOffset still
 // run BEFORE the tier check though (parsePagination happens ahead of
 // tryDataApiTier in handleAccountHistory), and the clamped values thread
 // straight through to the schema-stable payload on a tier miss

@@ -1,4 +1,4 @@
-// GET /api/v1/accounts (types-epic B batch 4, #8058). Live neurons D1-tier
+// GET /api/v1/accounts (types-epic B batch 4, #8058). Live neurons tier
 // data -- no static file. Modeled from src/accounts-list.ts's
 // buildAccountsList(), cross-checked against the hand-edited
 // AccountsListArtifact component it replaces.

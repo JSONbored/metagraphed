@@ -1,6 +1,6 @@
 // Site-wide accounts leaderboard (#4324/5.3): every hotkey currently
 // registered somewhere on the network, aggregated cross-subnet from the
-// `neurons` D1 tier. Follows buildGlobalValidators (src/metagraph-neurons.ts)
+// `neurons` store tier. Follows buildGlobalValidators (src/metagraph-neurons.ts)
 // as its explicit precedent — the collection-level counterpart to
 // /api/v1/validators — but is NOT validator-scoped: every registered hotkey
 // appears here, miners included, with a role breakdown per entry.
@@ -365,11 +365,11 @@ export function buildAccountsList(
   };
 }
 
-// D1 read path shared by the REST handler and (future) MCP tool — same
+// store read path shared by the REST handler and (future) MCP tool — same
 // pattern as loadGlobalValidators. `d1` is a (sql, params) => Promise<rows[]>
 // runner; a cold/unbound DB returns [] -> a schema-stable empty leaderboard.
 export async function loadAccountsList(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -382,15 +382,15 @@ export async function loadAccountsList(
   } = {},
 ): Promise<AccountsListResult> {
   const [rows, priceByNetuid] = await Promise.all([
-    d1(
+    runner(
       "SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, " +
         "stake_tao, block_number, captured_at FROM neurons " +
         "WHERE hotkey IS NOT NULL " +
         "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
       [],
     ),
-    // #9051: TAO-price the cross-subnet totals from the D1 snapshots mirror.
-    loadStoreAlphaPricesByNetuid(d1),
+    // #9051: TAO-price the cross-subnet totals from the snapshot stores mirror.
+    loadStoreAlphaPricesByNetuid(runner),
   ]);
   return buildAccountsList(rows, { sort, limit, priceByNetuid });
 }

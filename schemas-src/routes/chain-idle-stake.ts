@@ -1,5 +1,5 @@
 // GET /api/v1/chain/idle-stake (types-epic B batch 6, #8060). Live neurons
-// D1-tier data -- no static file. Modeled from src/subnet-idle-stake.ts's
+// store-tier data -- no static file. Modeled from src/subnet-idle-stake.ts's
 // buildChainIdleStake(), cross-checked against the hand-edited
 // ChainIdleStakeArtifact component it replaces.
 import { z } from "zod";

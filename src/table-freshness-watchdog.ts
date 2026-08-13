@@ -685,7 +685,7 @@ export interface FreshnessDb {
 /**
  * Tables asked about in one statement.
  *
- * D1 rejects a compound SELECT past roughly five terms
+ * D1 rejected a compound SELECT past roughly five terms
  * (`too many terms in compound SELECT`), so the sweep is batched rather than
  * issued as one 40-way UNION. Four keeps a margin under that.
  */
@@ -1013,7 +1013,7 @@ export async function runTableFreshnessWatchdog(
   // This is the one reader that spans the whole estate -- ~47 tables, and they
   // do not all live in the same place. readStore is all-or-nothing per call for
   // good reason, so a batch mixing an owned table with an unowned one falls
-  // back to D1 and every Neon-only table in it throws "relation does not
+  // back to the store and every Neon-only table in it throws "relation does not
   // exist". That is not a small loss: the sweep is a single UNION per batch, so
   // one wrong store condemns the batch, and the retry below then walks it a
   // table at a time only to fail on each.

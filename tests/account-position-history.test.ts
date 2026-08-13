@@ -221,7 +221,7 @@ describe("buildAccountPositionHistory", () => {
 // (#4839 shipped the write path + this read route; #4910's "no Postgres read
 // route" premise was stale, and D1's own rollup has been permanently broken
 // since #4908 dropped D1's `neurons` table). This stub throws if `prepare()`
-// is ever called, so any regression back to a D1 fallback fails the test
+// is ever called, so any regression back to a store fallback fails the test
 // loudly instead of silently passing on stale/empty D1 data.
 function positionHistoryEnv(overrides = {}) {
   return {
@@ -229,7 +229,7 @@ function positionHistoryEnv(overrides = {}) {
     METAGRAPH_HEALTH_DB: {
       prepare() {
         throw new Error(
-          "D1 must not be queried by the Postgres-only account-position-history route",
+          "the retired tier must not be queried by the Postgres-only account-position-history route",
         );
       },
     },
@@ -300,7 +300,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
     assert.equal(body.data.window, "all");
   });
 
-  test("Postgres tier unavailable → 200 with empty points, never 404 or a D1 read", async () => {
+  test("Postgres tier unavailable → 200 with empty points, never 404 or a store read", async () => {
     const res = await handleRequest(
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history`,

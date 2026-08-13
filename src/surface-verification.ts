@@ -28,7 +28,7 @@
 // `GET /api/v1/subnets/{netuid}/uptime` serves. #9096 moved the SCHEDULED
 // snapshot of that evidence off a GitHub Actions bot-PR lane and onto the
 // daily Worker cron in src/surface-verification-sync.ts, which reads the same
-// window straight from D1 and writes the `generated/surface-health.json` R2
+// window straight from the store and writes the `generated/surface-health.json` R2
 // store; `scripts/sync-surface-verification.ts` remains the way to refresh the
 // committed `registry/verification/surface-health.json` seed by hand. Both
 // writers share the extractor and assembler at the bottom of this file, and
@@ -265,7 +265,7 @@ type UptimeRow = Record<string, unknown>;
  * Extract per-surface probe records from ONE subnet's uptime payload — the
  * exact shape `formatUptime` (src/health-serving.ts) returns, which is what
  * both `GET /api/v1/subnets/{netuid}/uptime` serves and what `loadSubnetUptime`
- * returns directly from D1.
+ * returns directly from the store.
  *
  * Field-for-field the mapping the retired lane's script performed:
  *   - `samples` / `uptime_ratio` fall back to the surface's `reliability` block

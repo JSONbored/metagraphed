@@ -84,7 +84,7 @@ export interface ChainHoldersRead {
  * prefix sums possible in a single pass -- the per-subnet route uses nested
  * LIMIT subqueries instead, which is correct for ONE subnet and would need 129
  * of them here. Verified against production D1 before this shipped; SQLite has
- * had window functions since 3.25 and D1 supports them.
+ * had window functions since 3.25 and D1 supported them.
  *
  * Exported because the scoping, the partitioning and the prefix boundaries are
  * the whole contract and all three are decidable from the string.

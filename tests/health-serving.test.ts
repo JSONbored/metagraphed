@@ -1658,7 +1658,7 @@ describe("worker live health serving", () => {
     assert.equal(body.data.source, "live-cron-prober");
   });
 
-  test("/api/v1/health/trends rejects unsupported query parameters before D1", async () => {
+  test("/api/v1/health/trends rejects unsupported query parameters before the store", async () => {
     let queried = false;
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: {
@@ -1830,7 +1830,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
   // D1 fully eliminated (2026-07-16, item 5 of the D1->Postgres cleanup): the
   // KV-cold fallback now reads Postgres ONLY via
   // tryDataApiTier(METAGRAPH_HEALTH_SOURCE) against
-  // /api/v1/internal/health-status-live -- no D1 fallback remains (surface_
+  // /api/v1/internal/health-status-live -- no store fallback remains (surface_
   // status's own D1 write is retired too, see runHealthProber's own header
   // comment in src/health-prober.ts).
   describe("Postgres tier (item 5)", () => {
@@ -3107,7 +3107,7 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
     assert.equal(body.meta.generated_at, UPTIME_RUN);
   });
 
-  test("defaults to 90d and returns an empty series when D1 is cold", async () => {
+  test("defaults to 90d and returns an empty series when the store is cold", async () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       req("/api/v1/subnets/7/uptime"),
@@ -3587,7 +3587,7 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
 });
 
 describe("global incidents route", () => {
-  test("serves a schema-stable empty ledger when D1 is cold", async () => {
+  test("serves a schema-stable empty ledger when the store is cold", async () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       req("/api/v1/incidents"),

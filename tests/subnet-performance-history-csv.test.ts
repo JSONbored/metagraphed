@@ -50,7 +50,7 @@ describe("subnet performance history OpenAPI CSV contract", () => {
 });
 
 describe("handleSubnetPerformanceHistory CSV export", () => {
-  test("returns header-only CSV when D1 is cold", async () => {
+  test("returns header-only CSV when the store is cold", async () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       {} as unknown as Env,

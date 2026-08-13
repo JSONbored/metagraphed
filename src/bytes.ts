@@ -40,7 +40,7 @@ export function unwrapByteArray(value: unknown): number[] | null {
   return isIntArray(current) ? current : null;
 }
 
-/** Canonical lowercase `0x`-prefixed hex, matching D1's existing convention
+/** Canonical lowercase `0x`-prefixed hex, matching the store's existing convention
  * for opaque byte blobs. */
 export function bytesToHex(bytes: number[]): string {
   return "0x" + bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -59,7 +59,7 @@ const TEXTUAL_FIELDS = new Set([
 /** Decodes a byte-blob call-arg field to its canonical representation: UTF-8
  * text for the small, verified allowlist of genuinely textual fields above,
  * hex for everything else (the safe default for opaque payloads, and the
- * same fix for D1's own Ethereum.transact.input mojibake bug that field is
+ * same fix for the store's own Ethereum.transact.input mojibake bug that field is
  * deliberately NOT in the allowlist). */
 export function decodeBytesField(
   callModule: string | null | undefined,

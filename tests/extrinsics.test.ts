@@ -18,7 +18,7 @@ import type { Row } from "./row-type.ts";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
-test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)", () => {
+test("formatExtrinsic maps a store row to an API extrinsic (ISO time, bool success)", () => {
   const out = formatExtrinsic({
     block_number: 1000,
     extrinsic_index: 4,
@@ -131,7 +131,7 @@ test("formatExtrinsic rejects blank fee_tao/tip_tao cells that coerce to 0", () 
 });
 
 test("formatExtrinsic coerces a string-typed observed_at cell to an ISO timestamp", () => {
-  // D1 can return the INTEGER observed_at as a numeric string; the old
+  // the store can return the INTEGER observed_at as a numeric string; the old
   // Number.isFinite(string) guard dropped a real timestamp to null. Mirrors #2708.
   const out = formatExtrinsic({
     block_number: 10,
@@ -484,7 +484,7 @@ test("formatExtrinsic is null-safe on junk + sparse rows", () => {
 });
 
 test("formatExtrinsic coerces string-typed chain-position cells to Numbers", () => {
-  // D1 can return an INTEGER column as a numeric string ("1" not 1); the bare
+  // the store can return an INTEGER column as a numeric string ("1" not 1); the bare
   // `?? null` pass-through this replaced would have leaked strings into the API
   // payload and broken downstream arithmetic/comparisons.
   const out = formatExtrinsic({
@@ -607,7 +607,7 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-// A D1 mock that routes by SQL shape so the extrinsic handlers get realistic rows.
+// A store mock that routes by SQL shape so the extrinsic handlers get realistic rows.
 function dbWith({
   feed,
   detail,
@@ -757,7 +757,7 @@ for (const badRef of [
 
 // A well-formed composite ref still resolves (the strict matcher must not
 // over-reject the canonical "<block>-<index>" form).
-test("GET /extrinsics is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /extrinsics is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req("/api/v1/extrinsics"),
     {} as unknown as Env,
@@ -780,10 +780,10 @@ function recordingExtrinsicsD1(capture: Row[] = []) {
 
 test("loadExtrinsics applies the conjunctive filter set (#1846)", async () => {
   const capture: Row[] = [];
-  const d1 = recordingExtrinsicsD1(capture);
+  const runner = recordingExtrinsicsD1(capture);
   const toMs = 1_800_000_000_000;
   const fromMs = toMs - 60_000;
-  await loadExtrinsics(d1, {
+  await loadExtrinsics(runner, {
     block: 1234,
     signer: "5Signer",
     callModule: "SubtensorModule",
@@ -809,13 +809,13 @@ test("loadExtrinsics applies the conjunctive filter set (#1846)", async () => {
   assert.ok(params.includes("5Signer"));
 });
 
-test("loadExtrinsics short-circuits impossible time ranges before D1", async () => {
+test("loadExtrinsics short-circuits impossible time ranges before the store", async () => {
   const capture: Row[] = [];
-  const d1 = recordingExtrinsicsD1(capture);
+  const runner = recordingExtrinsicsD1(capture);
   const nowMs = 1_800_000_000_000;
   assert.equal(typeof EXTRINSIC_RETENTION_MS, "number");
   const floor = nowMs - EXTRINSIC_RETENTION_MS;
-  const empty = await loadExtrinsics(d1, {
+  const empty = await loadExtrinsics(runner, {
     from: nowMs + DAY_MS + 1,
     nowMs,
   });
@@ -823,17 +823,17 @@ test("loadExtrinsics short-circuits impossible time ranges before D1", async () 
   assert.equal(capture.length, 0);
 
   capture.length = 0;
-  const expired = await loadExtrinsics(d1, { to: floor - 1, nowMs });
+  const expired = await loadExtrinsics(runner, { to: floor - 1, nowMs });
   assert.equal(expired.extrinsic_count, 0);
   assert.equal(capture.length, 0);
 
   capture.length = 0;
-  const inverted = await loadExtrinsics(d1, { from: 200, to: 100, nowMs });
+  const inverted = await loadExtrinsics(runner, { from: 200, to: 100, nowMs });
   assert.equal(inverted.extrinsic_count, 0);
   assert.equal(capture.length, 0);
 
   capture.length = 0;
-  const invertedBlockRange = await loadExtrinsics(d1, {
+  const invertedBlockRange = await loadExtrinsics(runner, {
     blockStart: 200,
     blockEnd: 100,
     nowMs,
@@ -844,36 +844,36 @@ test("loadExtrinsics short-circuits impossible time ranges before D1", async () 
 
 test("loadExtrinsics binds success=true as 1 and omits success when unset", async () => {
   const capture: Row[] = [];
-  const d1 = recordingExtrinsicsD1(capture);
-  await loadExtrinsics(d1, { success: true });
+  const runner = recordingExtrinsicsD1(capture);
+  await loadExtrinsics(runner, { success: true });
   assert.ok(/success = \?/.test(capture[0].sql));
   assert.ok(capture[0].params.includes(1));
 
   capture.length = 0;
-  await loadExtrinsics(d1, {});
+  await loadExtrinsics(runner, {});
   assert.ok(!/success = \?/.test(capture[0].sql));
 });
 
 test("loadExtrinsics forces observed_at index for a narrow time-only window", async () => {
   const capture: Row[] = [];
-  const d1 = recordingExtrinsicsD1(capture);
+  const runner = recordingExtrinsicsD1(capture);
   const nowMs = 1_800_000_000_000;
   const fromMs = nowMs - 60_000;
-  await loadExtrinsics(d1, { from: fromMs, to: nowMs, nowMs });
+  await loadExtrinsics(runner, { from: fromMs, to: nowMs, nowMs });
   assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(capture[0].sql));
 });
 
 test("loadExtrinsics forces module index for a call_module-only scan", async () => {
   const capture: Row[] = [];
-  const d1 = recordingExtrinsicsD1(capture);
-  await loadExtrinsics(d1, { callModule: "SubtensorModule" });
+  const runner = recordingExtrinsicsD1(capture);
+  await loadExtrinsics(runner, { callModule: "SubtensorModule" });
   assert.ok(/INDEXED BY idx_extrinsics_module_block/.test(capture[0].sql));
 });
 
 test("loadExtrinsics ANDs keyset cursor with filters and drops OFFSET", async () => {
   const capture: Row[] = [];
-  const d1 = recordingExtrinsicsD1(capture);
-  await loadExtrinsics(d1, {
+  const runner = recordingExtrinsicsD1(capture);
+  await loadExtrinsics(runner, {
     signer: "5Signer",
     cursor: encodeCursor([4200000, 3]),
   });
@@ -888,21 +888,21 @@ test("loadExtrinsics ANDs keyset cursor with filters and drops OFFSET", async ()
 // #4322 — Multisig approval-chain linking: call_hash filter.
 test("loadExtrinsics binds callHash as a quoted LIKE match and omits it when unset", async () => {
   const capture: Row[] = [];
-  const d1 = recordingExtrinsicsD1(capture);
+  const runner = recordingExtrinsicsD1(capture);
   const hash = `0x${"a".repeat(64)}`;
-  await loadExtrinsics(d1, { callModule: "Multisig", callHash: hash });
+  await loadExtrinsics(runner, { callModule: "Multisig", callHash: hash });
   assert.ok(/call_args LIKE \?/.test(capture[0].sql));
   assert.ok(capture[0].params.includes(`%"${hash}"%`));
 
   capture.length = 0;
-  await loadExtrinsics(d1, {});
+  await loadExtrinsics(runner, {});
   assert.ok(!/call_args LIKE \?/.test(capture[0].sql));
 });
 
 test("loadExtrinsics does not force the module index when callHash is also set", async () => {
   const capture: Row[] = [];
-  const d1 = recordingExtrinsicsD1(capture);
+  const runner = recordingExtrinsicsD1(capture);
   const hash = `0x${"b".repeat(64)}`;
-  await loadExtrinsics(d1, { callModule: "Multisig", callHash: hash });
+  await loadExtrinsics(runner, { callModule: "Multisig", callHash: hash });
   assert.ok(!/INDEXED BY idx_extrinsics_module_block/.test(capture[0].sql));
 });

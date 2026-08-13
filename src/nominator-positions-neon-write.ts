@@ -44,7 +44,7 @@ import {
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
-/** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
+/** The lane name this writer files its `lane_health` verdict under (`neon:<lane>`). */
 export const NOMINATOR_POSITIONS_NEON_LANE = "nominator-positions";
 
 /** The lane `self-stake` reports under -- its own, not this one's. */
@@ -98,8 +98,9 @@ export interface NominatorPositionsMirrorDeps {
 /**
  * Mirror one nominator-positions batch into Neon. Never throws.
  *
- * Called from BOTH writers. While dual-writing, D1 is the store every route
- * reads, so a Neon failure costs a mirror and a lane verdict and nothing else.
+ * Called from BOTH writers. Neon is the store every route reads, so a batch
+ * that did not land here did not land at all -- the failure is returned, not
+ * raised, and both callers turn it into the request's failure.
  */
 export async function mirrorNominatorPositionsToNeon(
   env: Record<string, unknown> | null | undefined,

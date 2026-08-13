@@ -151,7 +151,7 @@ describe("buildChainPerformance", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
   });
 
-  test("converts D1 string-typed epoch-millisecond captured_at to ISO strings", () => {
+  test("converts string-typed epoch-millisecond captured_at to ISO strings", () => {
     const out = buildChainPerformance([
       { incentive: 0.2, captured_at: "1750000000000" },
       { incentive: 0.3, captured_at: "1750000060000" },
@@ -197,11 +197,11 @@ describe("buildChainPerformance", () => {
 
   test("loadChainPerformance issues one un-filtered SELECT and shapes it", async () => {
     let seen: Row | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
       return ROWS;
     };
-    const out = await loadChainPerformance(d1);
+    const out = await loadChainPerformance(runner);
     assert.match(seen!.sql, /FROM neurons/);
     assert.doesNotMatch(seen!.sql, /WHERE netuid/); // network-wide: no filter
     assert.deepEqual(seen!.params, []);
@@ -258,7 +258,7 @@ describe("chain/performance edge cache", () => {
 
   // #5358: chain/performance no longer reads D1 for its edge-cache stamp — the
   // neurons-tier captured_at stamp it used to bust on (readNeuronsCacheStamp) was
-  // removed, since the D1 `neurons` table it read was fully dropped in #4772 (it
+  // removed, since the `neurons` table it read was fully dropped in #4772 (it
   // had been reading a permanently-empty/nonexistent source and returning a
   // frozen stamp ever since). It now busts on the same shared health-cron
   // `last_run_at` KV value every sibling Postgres-tier analytics route already

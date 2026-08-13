@@ -158,7 +158,7 @@ describe("buildAccountStakeFlow", () => {
   });
 
   test("equal-gross subnets keep dominant_netuid deterministic (tie-break, not row order)", () => {
-    // Rows arrive netuid 7 then 3 (D1 row order); equal gross must still resolve to the
+    // Rows arrive netuid 7 then 3 (store row order); equal gross must still resolve to the
     // netuid tie-break, and dominant_netuid must agree with the head of the sorted list.
     const d = buildAccountStakeFlow([added(7, 50), added(3, 50)], ADDR);
     assert.deepEqual(

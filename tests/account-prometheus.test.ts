@@ -173,7 +173,7 @@ describe("buildAccountPrometheus honesty marker (#9307)", () => {
 describe("loadAccountPrometheus", () => {
   test("seeks the hotkey index for PrometheusServed over the window and shapes it", async () => {
     let captured: { sql: string; params: unknown[] } | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       // Multiple rows so generatedAt walks past the first (later row wins) and a
       // null-observed row is skipped rather than counted.
@@ -183,7 +183,7 @@ describe("loadAccountPrometheus", () => {
         row(3, 1, null, null), // no observed timestamp -> skipped for generatedAt
       ];
     };
-    const { data, generatedAt } = await loadAccountPrometheus(d1, ADDR, {
+    const { data, generatedAt } = await loadAccountPrometheus(runner, ADDR, {
       windowLabel: "7d",
     });
     assert.match(
@@ -201,11 +201,11 @@ describe("loadAccountPrometheus", () => {
 
   test("an unknown window label falls back to the default window days", async () => {
     let captured: { sql: string; params: unknown[] } | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [];
     };
-    await loadAccountPrometheus(d1, ADDR, { windowLabel: "bogus" });
+    await loadAccountPrometheus(runner, ADDR, { windowLabel: "bogus" });
     const expected = Date.now() - 30 * 24 * 60 * 60 * 1000;
     assert.ok(
       Math.abs((captured!.params[2] as number) - expected) <
@@ -224,7 +224,7 @@ describe("loadAccountPrometheus", () => {
     assert.equal(generatedAt, null);
   });
 
-  test("a non-array D1 result degrades to a zeroed card (never throws)", async () => {
+  test("a non-array store result degrades to a zeroed card (never throws)", async () => {
     const { data, generatedAt } = await loadAccountPrometheus(
       async () => null as unknown as Record<string, unknown>[],
       ADDR,

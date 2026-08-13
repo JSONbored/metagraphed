@@ -508,16 +508,16 @@ interface RunHealthProberOverrides {
 }
 
 /**
- * The Postgres runner for the observation family, or null to stay on D1.
+ * The Postgres runner for the observation family, or null to stay on the store.
  *
  * ALL FIVE TABLES OR NONE (#10069). Two of this family's writes aggregate
  * INSIDE the store, so a half-listed group would leave a rollup selecting from
- * a D1 surface_checks that nothing fills any more -- and that failure is a
+ * a store surface_checks that nothing fills any more -- and that failure is a
  * schema-stable empty, not an error.
  *
  * `ctx` is a precondition, not a nicety: createPgSql hands the connection back
  * to Hyperdrive through ctx.waitUntil, and without one every sweep would leak a
- * connection. Absent ctx therefore keeps the whole family on D1 rather than
+ * connection. Absent ctx therefore keeps the whole family on the store rather than
  * writing to Neon by another route.
  */
 function observationsRunner(
@@ -677,7 +677,7 @@ export async function runHealthProber(
       // redirect target, transport throw) and this row dropped it, so the only
       // `error` a served endpoint could ever show was whatever a local build's
       // probe cache baked -- absent in CI, hence null on every row in
-      // production even mid-outage. Not written to D1: surface_checks and
+      // production even mid-outage. Not persisted: surface_checks and
       // surface_status have no error column, and KV is the live serving path
       // for the RPC pool, so carrying it here and through the pool row is the
       // whole fix. persistProbesToStore binds explicit columns, so the extra
@@ -916,7 +916,7 @@ export async function rollupDailyUptime(
   // the 2026-07-16 retirement; Postgres computes its own from ITS copy, as it
   // has since #4832. Independently best-effort in both directions. The caller's
   // rolled-before-prune contract is satisfied when EITHER store rolled: each
-  // prune below is likewise per-store, and blocking D1's prune on a dead
+  // prune below is likewise per-store, and blocking the prune on a dead
   // Postgres (or vice versa) would freeze the surviving store's retention.
   // Both rollups take the same store as the raw checks they read: they are
   // INSERT ... SELECT FROM surface_checks, so aggregating in the store that no
@@ -956,7 +956,7 @@ export async function rollupDailyUptime(
 // D1 retirement: this used to prune D1's own surface_checks/rpc_proxy_events
 // tables alongside their Postgres mirrors. Both D1 writes are gone (see
 // the retired Postgres mirrors' own header
-// comments), so D1's copies are frozen and nothing reads them anymore --
+// comments), so the store's copies are frozen and nothing reads them anymore --
 // pruning a table nobody reads is pointless upkeep on a store being retired
 // wholesale. Only the Postgres-side prune remains.
 export async function pruneHealthHistory(
@@ -976,7 +976,7 @@ export async function pruneHealthHistory(
   const now = overrides.now || (() => Date.now());
   const cutoff = now() - (overrides.retentionMs || HISTORY_RETENTION_MS);
   if (overrides.pruneRawChecks === true) {
-    // The prune follows the rows: deleting D1's raw window while Neon holds
+    // The prune follows the rows: deleting the store's raw window while Neon holds
     // the checks would drop nothing that matters, but deleting Neon's while D1
     // holds them would orphan the aggregate the gate above just wrote.
     const pruneSql = observationsRunner(env, overrides.ctx);
@@ -1027,7 +1027,7 @@ export function pipelineProvenance(
   return { pipeline_block: block, pipeline_block_hash: hash };
 }
 
-// Build one hourly batch of subnet_snapshots rows and write them to D1.
+// Build one hourly batch of subnet_snapshots rows and write them to the store.
 //
 // IT USED TO DO TWO WRITES, AND THE SECOND ONE COULD ONLY FAIL. The Postgres
 // mirror this was named for (#4832) POSTed to
@@ -1069,7 +1069,7 @@ export async function writeSubnetSnapshotRows(
 ): Promise<Row> {
   // The binding this actually needs, now that the Postgres POST is gone. The
   // old guard read DATA_API and SUBNET_SNAPSHOT_SYNC_SECRET -- neither of which
-  // this function touches any more -- so on a deployment with the D1 binding
+  // this function touches any more -- so on a deployment with the store binding
   // and no sync secret it would have declined with the write sitting right
   // there, ready to run.
   // Gated on a store, not on a binding (#10158). The write below goes through
@@ -1159,7 +1159,7 @@ interface WriteSubnetSnapshotOverrides {
 
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
 // subnet_snapshots, keyed on (netuid, UTC date). Fired from the hourly cron.
-// `overrides.readArtifact` is injected from the Worker; the D1 binding this
+// `overrides.readArtifact` is injected from the Worker; the store binding this
 // needs is reached through writeSubnetSnapshotRows below, which is the one
 // place the snapshot rows exist fully built and therefore the write boundary.
 /** This writer's lane name in `lane_health`, and on the self-health card. */

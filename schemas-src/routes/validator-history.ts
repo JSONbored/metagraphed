@@ -1,5 +1,5 @@
 // GET /api/v1/validators/{hotkey}/history (types-epic B batch 7, #8061).
-// Live neuron_daily D1-tier data -- no static file. Modeled from
+// Live neuron_daily store-tier data -- no static file. Modeled from
 // src/validator-history.ts's buildValidatorHistory(), cross-checked against
 // the hand-edited ValidatorHistoryArtifact component it replaces.
 import { z } from "zod";

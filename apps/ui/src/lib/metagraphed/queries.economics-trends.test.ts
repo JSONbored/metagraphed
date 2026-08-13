@@ -139,7 +139,7 @@ describe("economicsTrendsQuery", () => {
     // The network-wide sum already exceeds a JSON number's exact-double
     // ceiling (~9,007,199 TAO at rao precision), so the wire contract now
     // sends a fixed 9-decimal string instead of a number -- confirm the
-    // existing defensive coercion (already tolerant of D1 numeric-string
+    // existing defensive coercion (already tolerant of numeric-string
     // cells) parses it into a display-ready number with no code change.
     resolveWith({
       window: "30d",

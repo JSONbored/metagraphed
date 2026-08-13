@@ -16,7 +16,7 @@
 // ever RAISES the seam. If the object is missing, unreadable, malformed, or
 // reports a height at or below the configured constant, the constant wins. A
 // seam that is too LOW costs column coverage for a few thousand blocks (they
-// serve from D1 `blocks_head` with null author/spec_version/event_count); a
+// serve from the store `blocks_head` with null author/spec_version/event_count); a
 // seam that is too HIGH routes reads to a lakehouse that does not hold them
 // and answers "missing" for blocks that exist. The first is recoverable, the
 // second is a lie, so every failure mode here resolves downward.

@@ -64,7 +64,7 @@ import { jsonBody, type AnyFn, type Row } from "./row-type.ts";
 // dbWith()/analyticsEnv() always populate -- a vestige of the pre-D1-
 // elimination mock shape (analytics.ts itself never reads this binding name;
 // see its own "D1 fully eliminated" header comment), kept only so tests can
-// still prove a Postgres-tier hit never falls through to a D1 read.
+// still prove a Postgres-tier hit never falls through to a store read.
 type TestEnv = Env & { __healthMeta?: unknown; METAGRAPH_HEALTH_DB: Row };
 
 /** The METAGRAPH_*_SOURCE keys the generated Env declares. */
@@ -672,7 +672,7 @@ describe("analyticsQueryError", () => {
 
 // storeAll / hasD1FallbackRows / d1Runner were deleted (2026-07-17, D1 fully
 // eliminated) -- every handler now goes straight to a schema-stable empty
-// payload on a Postgres-tier miss, never a live D1 read, so the D1 read
+// payload on a Postgres-tier miss, never a live store read, so the store read
 // path + its fallback-row bookkeeping had zero remaining callers.
 
 describe("markDataApiTierFallbackResponse", () => {
@@ -825,7 +825,7 @@ describe("withEdgeCache", () => {
     assert.deepEqual(cache.putKeys, []);
   });
 
-  test("does not cache when response is marked as D1 fallback", async () => {
+  test("does not cache when response is marked as store fallback", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
@@ -980,7 +980,7 @@ describe("handleBulkHealthTrends", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("cold D1 returns schema-stable empty windows", async () => {
+  test("a cold store returns schema-stable empty windows", async () => {
     globalWithCaches.caches = undefined;
     const env = { ...emptyEnv(), __healthMeta: { last_run_at: null } };
     const body = await json(
@@ -1027,7 +1027,7 @@ describe("handleBulkHealthTrends", () => {
 
   test("edge cache MISS then HIT avoids a second DATA_API call", async () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier miss now falls straight
-    // through to an empty payload that's ALWAYS marked a D1 fallback, so it can
+    // through to an empty payload that's ALWAYS marked a store fallback, so it can
     // never be cached (mirrors withEdgeCache's own DATA_API_TIER_FALLBACK_RESPONSES guard).
     // The only path that still gets cached is a Postgres-tier HIT, so that's
     // what this now exercises -- was a D1-mock MISS/HIT pair.
@@ -1104,7 +1104,7 @@ describe("handleHealthTrends", () => {
     }
   });
 
-  test("cold D1 returns empty surfaces for all windows", async () => {
+  test("a cold store returns empty surfaces for all windows", async () => {
     globalWithCaches.caches = undefined;
     const env = { ...emptyEnv(), __healthMeta: { last_run_at: null } };
     const body = await json(
@@ -1192,7 +1192,7 @@ describe("handleHealthPercentiles", () => {
     assert.equal(body.data.window, "7d");
   });
 
-  test("cold D1 returns empty surfaces", async () => {
+  test("a cold store returns empty surfaces", async () => {
     globalWithCaches.caches = undefined;
     const env = { ...emptyEnv(), __healthMeta: { last_run_at: null } };
     const body = await json(
@@ -1259,7 +1259,7 @@ describe("handleHealthPercentiles", () => {
 
   test("edge cache stores percentiles under window-specific key", async () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier miss is ALWAYS marked a
-    // D1 fallback now (no live D1 read left to distinguish "had rows" from
+    // store fallback now (no live D1 read left to distinguish "had rows" from
     // "cold"), so it can never be cached -- only a Postgres-tier HIT is.
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
@@ -1308,7 +1308,7 @@ describe("handleHealthIncidents", () => {
     await errorJson(res);
   });
 
-  test("cold D1 returns empty surfaces and incidents", async () => {
+  test("a cold store returns empty surfaces and incidents", async () => {
     globalWithCaches.caches = undefined;
     const env = { ...emptyEnv(), __healthMeta: { last_run_at: null } };
     const body = await json(
@@ -1403,7 +1403,7 @@ describe("handleGlobalIncidents", () => {
     await errorJson(res);
   });
 
-  test("cold D1 returns empty incidents list", async () => {
+  test("a cold store returns empty incidents list", async () => {
     const env = { ...emptyEnv(), __healthMeta: { last_run_at: null } };
     const body = await json(
       await handleGlobalIncidents(
@@ -1481,9 +1481,9 @@ describe("handleGlobalIncidents", () => {
 
   // #6571: the window-scoped ledger now pages/sorts/filters like the sibling
   // endpoint-incidents route. Non-empty surfaces come from the Postgres tier (the
-  // D1 fallback ledger is always empty now), so these stub DATA_API with a payload
+  // store fallback ledger is always empty now), so these stub DATA_API with a payload
   // in the exact shape formatGlobalIncidents emits.
-  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // #10190: METAGRAPH_HEALTH_SOURCE is deleted from every config and absent from
   // FORWARDABLE_TIER_FLAGS, so the tier this stubbed never answered --
   // loadGlobalIncidentsLedger reads `surface_checks` through readStore. Doubled
   // there, and given INCIDENT rows rather than a finished surfaces list: the
@@ -1682,7 +1682,7 @@ describe("analytics handler invariants", () => {
     assert.ok(res.headers.get("etag"));
   });
 
-  test("D1 fallback responses are not edge-cached when stamp is warm", async () => {
+  test("store fallback responses are not edge-cached when stamp is warm", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
@@ -1710,7 +1710,7 @@ describe("chain analytics ?format=csv export", () => {
       header:
         "day,block_count,extrinsic_count,event_count,successful_extrinsics,success_rate,unique_signers",
       // #4909/#6013: extrinsics'/blocks' D1 write path is retired, so
-      // chain-activity no longer queries D1 at all (D1 fully eliminated,
+      // chain-activity no longer queries the store at all (D1 fully eliminated,
       // 2026-07-16) -- there is no "degraded D1" scenario to mark as
       // fallback anymore.
       skipDegradedD1: true,
@@ -1727,7 +1727,7 @@ describe("chain analytics ?format=csv export", () => {
       handler: handleChainSigners,
       header: "signer,tx_count,total_fee_tao,total_tip_tao,last_tx_block",
       // #4909/#6013: extrinsics' D1 write path is retired, so chain-signers no
-      // longer queries D1 at all -- there is no "degraded D1" scenario to mark
+      // longer queries the store at all -- there is no "degraded D1" scenario to mark
       // as fallback anymore (see the dedicated test below instead).
       skipDegradedD1: true,
     },
@@ -1738,7 +1738,7 @@ describe("chain analytics ?format=csv export", () => {
       header:
         "day,extrinsic_count,signed_extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
       // #4909/#6013: extrinsics' D1 write path is retired, so chain-fees no
-      // longer queries D1 at all (D1 fully eliminated, 2026-07-16) -- there
+      // longer queries the store at all (D1 fully eliminated, 2026-07-16) -- there
       // is no "degraded D1" scenario to mark as fallback anymore.
       skipDegradedD1: true,
     },
@@ -1900,7 +1900,7 @@ describe("chain analytics ?format=csv export", () => {
 // left unset in wrangler.jsonc (see handleBulkHealthTrends' own header
 // comment) -- these tests only prove the wiring, not a live flip.
 describe("health analytics: postgres tier wiring", () => {
-  test("handleBulkHealthTrends: flag=data-api serves the DATA_API response, D1 never queried", async () => {
+  test("handleBulkHealthTrends: flag=data-api serves the DATA_API response, the store never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
@@ -1911,7 +1911,7 @@ describe("health analytics: postgres tier wiring", () => {
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       d1Called = true;
       throw new Error(
-        "D1 must not be queried when Postgres serves the request",
+        "the retired tier must not be queried when Postgres serves the request",
       );
     };
     const res = await handleBulkHealthTrends(
@@ -1926,7 +1926,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(d1Called, false);
   });
 
-  test("handleBulkHealthTrends: flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("handleBulkHealthTrends: flag=postgres falls back to the empty card when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
@@ -1941,7 +1941,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(body.data.schema_version, 1);
   });
 
-  test("handleHealthTrends: flag=data-api serves the DATA_API response, D1 never queried", async () => {
+  test("handleHealthTrends: flag=data-api serves the DATA_API response, the store never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
@@ -1952,7 +1952,7 @@ describe("health analytics: postgres tier wiring", () => {
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       d1Called = true;
       throw new Error(
-        "D1 must not be queried when Postgres serves the request",
+        "the retired tier must not be queried when Postgres serves the request",
       );
     };
     const p = `/api/v1/subnets/${NETUID}/health/trends`;
@@ -1963,7 +1963,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(d1Called, false);
   });
 
-  test("handleHealthTrends: flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("handleHealthTrends: flag=postgres falls back to the empty card when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
@@ -1978,7 +1978,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(body.data.schema_version, 1);
   });
 
-  test("handleHealthPercentiles: flag=data-api serves the DATA_API response, D1 never queried", async () => {
+  test("handleHealthPercentiles: flag=data-api serves the DATA_API response, the store never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
@@ -1989,7 +1989,7 @@ describe("health analytics: postgres tier wiring", () => {
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       d1Called = true;
       throw new Error(
-        "D1 must not be queried when Postgres serves the request",
+        "the retired tier must not be queried when Postgres serves the request",
       );
     };
     const p = `/api/v1/subnets/${NETUID}/health/percentiles?window=7d`;
@@ -2000,7 +2000,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(d1Called, false);
   });
 
-  test("handleHealthPercentiles: flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("handleHealthPercentiles: flag=postgres falls back to the empty card when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
@@ -2015,7 +2015,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(body.data.schema_version, 1);
   });
 
-  test("handleHealthIncidents: flag=data-api serves the DATA_API response, D1 never queried", async () => {
+  test("handleHealthIncidents: flag=data-api serves the DATA_API response, the store never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
@@ -2026,7 +2026,7 @@ describe("health analytics: postgres tier wiring", () => {
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       d1Called = true;
       throw new Error(
-        "D1 must not be queried when Postgres serves the request",
+        "the retired tier must not be queried when Postgres serves the request",
       );
     };
     const p = `/api/v1/subnets/${NETUID}/health/incidents?window=7d`;
@@ -2037,7 +2037,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(d1Called, false);
   });
 
-  test("handleHealthIncidents: flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("handleHealthIncidents: flag=postgres falls back to the empty card when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {
@@ -2052,7 +2052,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(body.data.schema_version, 1);
   });
 
-  test("handleGlobalIncidents: flag=data-api serves the DATA_API response, D1 never queried", async () => {
+  test("handleGlobalIncidents: flag=data-api serves the DATA_API response, the store never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
@@ -2067,7 +2067,7 @@ describe("health analytics: postgres tier wiring", () => {
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       d1Called = true;
       throw new Error(
-        "D1 must not be queried when Postgres serves the request",
+        "the retired tier must not be queried when Postgres serves the request",
       );
     };
     const p = "/api/v1/incidents?window=7d";
@@ -2078,7 +2078,7 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(d1Called, false);
   });
 
-  test("handleGlobalIncidents: flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("handleGlobalIncidents: flag=postgres falls back to the empty card when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
     setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "data-api");
     env.DATA_API = {

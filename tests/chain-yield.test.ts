@@ -333,11 +333,11 @@ describe("buildChainYield", () => {
 
   test("loadChainYield reads every non-root subnet in one SELECT and shapes it", async () => {
     let seen: Row | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
       return ROWS;
     };
-    const out = await loadChainYield(d1);
+    const out = await loadChainYield(runner);
     assert.match(seen!.sql, /FROM neurons/);
     // Root is filtered in SQL to avoid reading rows the builder would drop
     // anyway (#9040) -- the correctness guarantee lives in buildChainYield.
@@ -396,7 +396,7 @@ describe("chain/yield edge cache", () => {
 
   // #5358: chain/yield no longer reads D1 for its edge-cache stamp — the
   // neurons-tier captured_at stamp it used to bust on (readNeuronsCacheStamp) was
-  // removed, since the D1 `neurons` table it read was fully dropped in #4772 (it
+  // removed, since the `neurons` table it read was fully dropped in #4772 (it
   // had been reading a permanently-empty/nonexistent source and returning a
   // frozen stamp ever since). It now busts on the same shared health-cron
   // `last_run_at` KV value every sibling Postgres-tier analytics route already

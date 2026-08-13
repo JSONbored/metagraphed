@@ -17,7 +17,7 @@
 // edge, spaced 50ms apart to avoid tripping our own rate limiter. That route's
 // handler (workers/request-handlers/analytics-routes.ts handleUptime) resolves
 // to `loadSubnetUptime(netuid, { window: "90d", observedAt: <KV health:meta
-// last_run_at> })` over D1's `surface_uptime_daily` whenever the Postgres tier
+// last_run_at> })` over the store's `surface_uptime_daily` whenever the Postgres tier
 // misses. Running INSIDE the Worker, this cron calls that same loader directly
 // with the same arguments: same SQL, same 90-day window, same
 // MAX_UPTIME_ROWS cap, same formatUptime aggregation, same observed_at. The
@@ -34,7 +34,7 @@
 // same instant, the prober's real `last_run_at`. Verification dates get
 // strictly more honest; no surface's day_count/samples/uptime_ratio changes.
 //
-// Subrequest budget: one artifact read (the subnet list), one D1 query per
+// Subrequest budget: one artifact read (the subnet list), one store query per
 // subnet (~129 today), one previous-store read, one conditional write, plus
 // telemetry — well under the 1000-subrequests-per-invocation platform ceiling,
 // and it grows one query per newly registered subnet.
@@ -81,7 +81,7 @@ export const SURFACE_HEALTH_WINDOW = "90d";
 
 export interface SurfaceVerificationSyncDeps {
   readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
-  /** Uptime loader seam; defaults to the real D1-backed loadSubnetUptime. */
+  /** Uptime loader seam; defaults to the real store-backed loadSubnetUptime. */
   loadUptime?: typeof loadSubnetUptime;
   /** Clock seam for tests; stamps generated_at. */
   now?: () => number;
@@ -248,7 +248,7 @@ export async function runSurfaceVerificationSync(
     }
     if (currentStoreReadFailureGeneration() !== storeGeneration) {
       return loud(
-        "a D1 read failed mid-sweep; refusing to write a partial snapshot " +
+        "a store read failed mid-sweep; refusing to write a partial snapshot " +
           "that would demote exactly the surfaces whose query failed.",
         "surface_verification_store_read_failed",
         "store_read_failed",

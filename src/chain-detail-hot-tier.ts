@@ -69,7 +69,7 @@ function db(env: unknown): StatementClientLike | null {
   return binding?.query ? binding : null;
 }
 
-/** Rows for one bound query, or null when D1 is unbound or the query fails. A
+/** Rows for one bound query, or null when the store is unbound or the query fails. A
  * hot-tier failure must never fail the request: the caller falls through to the
  * lakehouse, and past that to a decline, both of which are honest answers. */
 async function query(
@@ -435,7 +435,7 @@ export async function answerBlockDetail<T>(
   /** Which chain this ref belongs to (#8700). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ChainDetailAnswer<T>> {
-  // Off mainnet the seam is 0 -- `blocks_head` and the whole D1 hot tier are
+  // Off mainnet the seam is 0 -- `blocks_head` and the whole hot tier are
   // written by the mainnet firehose poller and carry no network column -- so
   // every block comes from that chain's lakehouse. Taking the network HERE
   // rather than leaving each caller to guard its own hot leg is what stops a

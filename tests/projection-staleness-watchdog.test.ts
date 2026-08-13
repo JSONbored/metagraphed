@@ -464,7 +464,7 @@ describe("every tick leaves a durable verdict, not just a notification", () => {
   });
 
   test("a missing lane_health table never breaks the tick", async () => {
-    // D1 migrations here are applied BY HAND, so the table can legitimately be
+    // migrations here are applied BY HAND, so the table can legitimately be
     // absent. A watchdog whose alarm-recording broke its alarm would be worse
     // than the bug it reports.
     const now = Date.parse("2026-08-04T17:00:00.000Z");

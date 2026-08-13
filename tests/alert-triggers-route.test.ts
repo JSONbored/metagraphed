@@ -711,7 +711,7 @@ test("update: omitting a field on PATCH keeps the existing row's value (partial-
       // A non-null existing min_amount_tao specifically exercises the
       // Number(existing.min_amount_tao) branch of the merge's ternary --
       // every OTHER fixture in this file uses row()'s default (null).
-      min_amount_tao: 12.5, // REAL column -- D1 returns a JS number
+      min_amount_tao: 12.5, // REAL column -- the store returns a JS number
       channel: "email",
       destination: "a@b.com",
     }),

@@ -1,4 +1,4 @@
-// GET /api/v1/runtime (types-epic B batch 7, #8061). Live blocks D1-tier
+// GET /api/v1/runtime (types-epic B batch 7, #8061). Live blocks tier
 // data -- no static file. Modeled from src/runtime-versions.ts's
 // buildRuntimeVersionHistory(), cross-checked against the hand-edited
 // RuntimeVersionsArtifact component it replaces.

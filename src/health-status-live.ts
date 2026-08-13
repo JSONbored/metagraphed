@@ -5,7 +5,7 @@
 //
 // Both callers used to route this through tryDataApiTier(...,
 // "METAGRAPH_HEALTH_SOURCE"), which resolved to null on every run: that flag
-// reads "d1" in production, and tryDataApiTier only forwards "d1" for the
+// is deleted from production, and tryDataApiTier only forwards "d1" for the
 // three FORWARDABLE_TIER_FLAGS. Widening that union would have
 // fixed the read and broken something else -- the flag is shared with
 // /api/v1/health/trends, /api/v1/incidents and /api/v1/internal/compare-health,

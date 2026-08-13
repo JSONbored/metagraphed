@@ -1,5 +1,5 @@
 // GET /api/v1/accounts/{ss58}/extrinsics (types-epic B batch 5, #8059). Live
-// extrinsics D1-tier data -- no static file. Modeled from src/extrinsics.ts's
+// extrinsics store-tier data -- no static file. Modeled from src/extrinsics.ts's
 // buildAccountExtrinsics()/formatExtrinsic(), cross-checked against the
 // hand-edited AccountExtrinsicsArtifact component it replaces.
 //

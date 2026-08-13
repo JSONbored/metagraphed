@@ -289,7 +289,7 @@ describe("rollupChainConcentration", () => {
     expect(out.days_pending).toBe(0);
   });
 
-  // The "all() absent / answers nothing" arms retired with the D1 envelope
+  // The "all() absent / answers nothing" arms retired with D1's envelope
   // (#10309): the owned query() either answers rows or throws, and both are
   // pinned -- the throw as scan_failed above, zero rows as the empty scan.
 
@@ -443,7 +443,7 @@ describe("loadChainConcentrationHistory", () => {
   });
 
   it("returns an empty list on zero rows", async () => {
-    // The "all() absent / null result" arms retired with the D1 envelope
+    // The "all() absent / null result" arms retired with D1's envelope
     // (#10309): the owned query() answers rows or throws (null, above), so
     // zero rows is the one nothing-shape left to pin.
     const empty = { query: async <T>() => [] as T[] };

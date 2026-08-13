@@ -1,7 +1,7 @@
 // Worker-side wiring for the raw chain capture lane (src/raw-chain-capture.ts).
 //
 // The pure capture logic and its no-gap guarantee live in that module; this
-// one binds it to the runtime: the R2 bucket the bytes land in, the D1 row the
+// one binds it to the runtime: the R2 bucket the bytes land in, the store row the
 // watermark lives in, the kill switch, and the loud-failure posture every
 // other cron in this codebase follows.
 //
@@ -245,7 +245,7 @@ export interface WatermarkReadDb {
  *
  * Wrapping rather than duplicating: `raw_capture_state` has exactly one writer
  * and it is this store's `write`, so there is no second path to keep in step.
- * The mirror runs AFTER D1 returns and its failure is a lane verdict only --
+ * The mirror runs AFTER the store returns and its failure is a lane verdict only --
  * the capture must not lose a tick because the copy is unreachable.
  */
 /**
@@ -283,7 +283,7 @@ function neonWatermarkRead(
  * The watermark store, on Neon.
  *
  * THE READ AND THE WRITE MOVE TOGETHER, always. An earlier version of this
- * nearly shipped writing Neon while still reading a D1-backed store, so the
+ * nearly shipped writing Neon while still reading a store-backed store, so the
  * watermark would have been read from a row nothing updated again. The capture
  * resumes FROM that value, so it would have re-captured the same blocks every
  * tick, forever, while both stores looked healthy.

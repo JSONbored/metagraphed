@@ -1,6 +1,6 @@
 // GET /api/v1/accounts/{ss58}/events + .../history + .../transfers
 // (types-epic B batch 5, #8059). Live account_events/account_events_daily
-// D1-tier data -- no static file. Modeled from src/account-events.ts's
+// store-tier data -- no static file. Modeled from src/account-events.ts's
 // buildAccountEvents()/buildAccountHistory()/formatAccountDay()/
 // buildAccountTransfers(), cross-checked against the hand-edited
 // AccountEventsArtifact/AccountHistoryArtifact/AccountTransfersArtifact

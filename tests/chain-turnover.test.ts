@@ -299,14 +299,17 @@ describe("buildChainTurnover", () => {
 describe("loadChainTurnover", () => {
   test("resolves boundary dates then reads the validator rows and shapes them", async () => {
     const calls: Row[] = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       if (/MIN\(snapshot_date\)/.test(sql)) {
         return [{ start_date: START, end_date: END }];
       }
       return ROWS;
     };
-    const data = await loadChainTurnover(d1, { windowLabel: "30d", limit: 20 });
+    const data = await loadChainTurnover(runner, {
+      windowLabel: "30d",
+      limit: 20,
+    });
     assert.match(calls[0].sql, /date\(MAX\(snapshot_date\), \?\)/); // anchored to stored MAX
     assert.equal(calls[0].params[0], "-30 days");
     assert.match(
@@ -321,14 +324,14 @@ describe("loadChainTurnover", () => {
 
   test("defaults the window and returns empty on a cold store", async () => {
     let cutoff: unknown;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         cutoff = params[0];
         return [{ start_date: null, end_date: null }];
       }
       return [];
     };
-    const data = await loadChainTurnover(d1, {});
+    const data = await loadChainTurnover(runner, {});
     assert.equal(data.window, DEFAULT_CHAIN_TURNOVER_WINDOW);
     assert.equal(cutoff, "-30 days");
     assert.equal(data.comparable, false);
@@ -337,28 +340,28 @@ describe("loadChainTurnover", () => {
 
   test("an unknown windowLabel falls back to the default for BOTH days and emitted window", async () => {
     let cutoff: unknown;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         cutoff = params[0];
         return [{ start_date: null, end_date: null }];
       }
       return [];
     };
-    const data = await loadChainTurnover(d1, { windowLabel: "bogus" });
+    const data = await loadChainTurnover(runner, { windowLabel: "bogus" });
     assert.equal(cutoff, "-30 days"); // fell back to the 30d default for the day lookup
     assert.equal(data.window, "30d"); // and the emitted window is the normalized default, not "bogus"
   });
 
   test("a single available snapshot (start === end) skips the read and is not comparable", async () => {
     const calls: string[] = [];
-    const d1 = async (sql: string) => {
+    const runner = async (sql: string) => {
       calls.push(sql);
       if (/MIN\(snapshot_date\)/.test(sql)) {
         return [{ start_date: END, end_date: END }];
       }
       return [];
     };
-    const data = await loadChainTurnover(d1, { windowLabel: "7d" });
+    const data = await loadChainTurnover(runner, { windowLabel: "7d" });
     assert.equal(calls.length, 1); // no second (rows) query
     assert.equal(data.comparable, false);
     assert.deepEqual(data.subnets, []);
@@ -485,7 +488,7 @@ describe("GET /api/v1/chain/turnover", () => {
 // used to live here asserted the edge cache busts when the mocked D1
 // neuron_daily stamp changes. neurons/neuron_daily's D1 write path is
 // retired (#4772) and the tables are dropped in production, so
-// handleChainTurnover no longer queries D1 for its data at all — the
+// handleChainTurnover no longer queries the store for its data at all — the
 // response is a fixed schema-stable-empty literal on a Postgres miss and
 // never varies with the D1 fixture, so there is nothing left for a
 // stamp-busts-the-cache assertion to observe.

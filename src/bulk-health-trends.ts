@@ -1,6 +1,6 @@
 // Shared all-subnet bulk health trends loader for REST + MCP + GraphQL parity.
 //
-// D1 reads resurrected (2026-08-03, box decommission) -- the same move
+// store reads resurrected (2026-08-03, box decommission) -- the same move
 // loadSubnetUptime / loadSubnetHealthTrends made on 2026-08-02, which this
 // loader was left out of. `surface_uptime_daily` is written to D1 by the
 // health-uptime-rollup lane and holds a full rolling window there (verified

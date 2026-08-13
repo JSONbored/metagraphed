@@ -1,7 +1,7 @@
 // BIGINT must come out of Neon the same shape it comes out of D1.
 //
 // node-postgres returns `int8` as a STRING by default, because int8 spans a
-// wider range than a JS number holds exactly. D1 returns the same columns as
+// wider range than a JS number holds exactly. the store returns the same columns as
 // numbers. So without a parser, moving a route between the two stores changes
 // the TYPE of every epoch-ms and counter field in its response -- with no
 // error anywhere, and a consumer doing arithmetic or a `>` comparison silently

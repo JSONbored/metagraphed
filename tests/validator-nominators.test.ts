@@ -388,7 +388,7 @@ describe("GET /api/v1/validators/{hotkey}/nominators via the Worker", () => {
     return { res, body: await res.json() };
   };
 
-  test("is schema-stable when D1 is cold (never 404)", async () => {
+  test("is schema-stable when the store is cold (never 404)", async () => {
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: accountEventsD1([]),

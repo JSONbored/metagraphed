@@ -5,7 +5,7 @@
 // These are the "fetch one entity by its key" reads — a subnet's metagraph, one
 // UID's neuron + history, a per-subnet history rollup, an account summary/events/
 // subnets, the block + extrinsic feeds and their detail rows. Every handler is
-// null-safe by design: an unbound or cold D1 returns a schema-stable empty/zero
+// null-safe by design: an unbound or a cold store returns a schema-stable empty/zero
 // payload (never a 404 or a throw), matching the live tiers the analytics module
 // already owns.
 //
@@ -887,7 +887,7 @@ export async function handleSubnetMetagraph(
   const projection = parseNeuronFields(url.searchParams, "neurons");
   if (projection.error) return analyticsQueryError(projection.error);
   // #4909 D1 retirement: neurons' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   // Mirrors handleSubnetHyperparams's pattern below (a schema-stable literal,
   // not a live D1 query) rather than querying a table that no longer exists.
   // validator_permit is validated by the router against the route's published
@@ -1013,7 +1013,7 @@ export async function handleNeuron(
 // refresh-subnet-hyperparams.yml, #4306/1.3) — no static file, no query
 // params (a single-row lookup, nothing to filter or paginate).
 //
-// D1 retirement: subnet_hyperparams's D1 write path (loadStagedSubnetHyperparams
+// D1 retirement: subnet_hyperparams's store write path (loadStagedSubnetHyperparams
 // in workers/request-handlers/staging.mjs) is retired, so D1's copy is frozen,
 // not actively wrong — but falling back to it here would silently serve an
 // ever-staler snapshot instead of the same schema-stable-null cold shape every
@@ -1069,7 +1069,7 @@ export async function handleSubnetHyperparams(
 // handleSubnetHyperparamsSync's diff-and-append in workers/data-api.ts).
 // Cold/absent store -> schema-stable zero, never 404.
 //
-// D1 retirement: see handleSubnetHyperparams above — the D1 fallback
+// Tier retirement: see handleSubnetHyperparams above — the D1 fallback
 // (loadSubnetHyperparamsHistory) is retired alongside subnet_hyperparams's D1
 // write path; buildSubnetHyperparamsHistory([], ...) reproduces the same
 // schema-stable empty-page shape a cold store returned, without querying D1.
@@ -1232,7 +1232,7 @@ export async function handleSubnetValidators(
 // groups validator-permit UID rows by public identity, so consumers can see cross-subnet
 // operator footprint rather than only one subnet at a time. Stake/emission values stay
 // scoped to each membership row because those source units are not globally aggregated.
-// Cold/absent D1 returns a schema-stable empty list.
+// A cold or absent store returns a schema-stable empty list.
 function parseGlobalValidatorsQuery(
   url: URL,
 ): { sort: string; limit: number } | { error: QueryError } {
@@ -1318,7 +1318,7 @@ export async function handleGlobalValidators(
 // to every account rather than just validator_permit=1 rows. See
 // src/accounts-list.ts's header for the "Free"/"Total" balance columns this
 // deliberately does NOT carry (no balance-tracking tier exists to derive them
-// from). Cold/absent D1 returns a schema-stable empty list.
+// from). A cold or absent store returns a schema-stable empty list.
 function parseAccountsListQuery(
   url: URL,
 ): { sort: string; limit: number } | { error: QueryError } {
@@ -1473,7 +1473,7 @@ export async function handleTopHoldersList(
 // drill-in of the /api/v1/validators leaderboard above. Cold/absent hotkey
 // (no permit=1 rows anywhere) returns 200 with a zeroed aggregate and an
 // empty subnets array, consistent with handleNeuron's absent-uid contract
-// (never 404 on a cold/absent live D1 tier).
+// (never 404 on a cold/absent live store tier).
 export async function handleValidatorDetail(
   request: Request,
   env: Env,
@@ -1688,7 +1688,7 @@ export async function handleNeuronHistory(
 ) {
   const { label, days } = historyWindow(url);
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   const hot =
     ((await tryDataApiTier(
       env,
@@ -1731,7 +1731,7 @@ export async function handleSubnetHistory(
 ) {
   const { label, days } = historyWindow(url);
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   const hot =
     ((await tryDataApiTier(
       env,
@@ -1815,7 +1815,7 @@ export async function handleSubnetIdentityHistory(
 // metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) over
 // the subnet's live distribution (#2106), across three lenses — per-UID, per-entity
 // (coldkeys collapsed, the true control distribution) and validator-only consensus
-// power. Computed from the neurons D1 tier; a cold/absent store or empty
+// power. Computed from the neurons store; a cold/absent store or empty
 // subnet → 200 with null blocks (schema-stable, never 404), mirroring the sibling
 // metagraph/history routes.
 export async function handleSubnetConcentration(
@@ -1849,7 +1849,7 @@ export async function handleSubnetConcentration(
 // Nakamoto/top-share of incentive across neurons and dividends across validators)
 // and how the 0..1 trust/consensus/validator_trust scores are spread (p10..p90).
 // The reward-flow companion to /concentration (which measures stake/emission).
-// Computed from the neurons D1 tier; a cold/absent store or empty subnet → 200
+// Computed from the neurons store; a cold/absent store or empty subnet → 200
 // with null blocks (schema-stable, never 404), mirroring the sibling routes.
 export async function handleSubnetPerformance(
   request: Request,
@@ -1953,7 +1953,7 @@ export async function handleChainConcentrationSubnets(
 // across EVERY subnet's neurons — reward concentration (Gini/HHI/Nakamoto/
 // top-share/entropy) for incentive across all neurons and dividends across
 // validators, plus the p10–p90 spread of the 0–1 trust/consensus/validator_trust
-// scores, computed live from the neurons D1 tier. The reward-flow companion to
+// scores, computed live from the neurons store. The reward-flow companion to
 // /chain/concentration. No params; a cold/absent store → 200 with null blocks.
 export async function handleChainPerformance(request: Request, env: Env) {
   const data =
@@ -1981,7 +1981,7 @@ export async function handleChainPerformance(request: Request, env: Env) {
 // hotkey currently earning zero dividends -- the only stream delegated
 // stake ever receives in dTAO (incentive goes to the hotkey owner alone),
 // so a hotkey with no permit or a zero weight-setting output pays every
-// delegator nothing right now. Computed from the neurons D1 tier; a
+// delegator nothing right now. Computed from the neurons store; a
 // cold/absent store or empty subnet -> 200 with a zeroed scorecard
 // (schema-stable, never 404), mirroring /concentration and /performance.
 export async function handleSubnetIdleStake(
@@ -2051,7 +2051,7 @@ export async function handleChainIdentityHistory(
   // D1 retirement: subnet_identity_history's D1 write path is retired
   // (2026-07-16, syncSubnetIdentityToPostgres is the sole writer now), so a
   // Postgres miss/outage degrades to a schema-stable empty feed, never a
-  // live D1 read.
+  // live store read.
   // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
   // config and is absent from FORWARDABLE_TIER_FLAGS, so this resolved to
   // null on every request.
@@ -2117,12 +2117,12 @@ export async function handleSelfHealth(
     (await loadSelfHealthColdTier(env)) ??
     buildSelfHealth([], []);
   // #9330/#9340: the lane verdicts ride alongside whichever tier answered above.
-  // They come from D1 rather than from that tier, because the point of the change is
+  // They come from the store rather than from that tier, because the point of the change is
   // that a lane's health must be readable without depending on the analytics vendor --
   // or, here, on which serving tier happened to be reachable.
   const lanes = await loadLatestLaneHealth(
     // laneHealthStore, not the binding (#10155) -- lane_health is Neon's, and
-    // this is /health's own lane floor. Reading it from D1 would render an
+    // this is /health's own lane floor. Reading it from the store would render an
     // empty result as "no alarms", which is the one answer a health endpoint
     // must never invent.
     laneHealthStore(env as unknown as Record<string, unknown>) as Parameters<
@@ -2158,7 +2158,7 @@ export async function handleSelfHealth(
 // GET /api/v1/chain/yield: network-wide emission-yield (return rate) across EVERY
 // subnet's neurons — the aggregate network return (total emission / total stake),
 // the same split by validator vs miner role, and the p10–p90 spread of the
-// per-neuron emission/stake return, computed live from the neurons D1 tier. The
+// per-neuron emission/stake return, computed live from the neurons store. The
 // return-rate companion to /chain/performance. No params; a cold/absent store →
 // 200 with null blocks.
 export async function handleChainYield(request: Request, env: Env) {
@@ -2436,7 +2436,7 @@ export async function handleSubnetConcentrationHistory(
     DEFAULT_CONCENTRATION_HISTORY_WINDOW,
   );
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss.
+  // the table is dropped in production, so a store query here would always miss.
   const data =
     ((await tryDataApiTier(
       env,
@@ -2497,7 +2497,7 @@ export async function handleSubnetPerformanceHistory(
     DEFAULT_PERFORMANCE_HISTORY_WINDOW,
   );
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss.
+  // the table is dropped in production, so a store query here would always miss.
   const data =
     ((await tryDataApiTier(
       env,
@@ -2558,7 +2558,7 @@ export async function handleSubnetYieldHistory(
     DEFAULT_YIELD_HISTORY_WINDOW,
   );
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss.
+  // the table is dropped in production, so a store query here would always miss.
   const data =
     ((await tryDataApiTier(
       env,
@@ -2618,7 +2618,7 @@ export async function handleSubnetTurnover(
     });
   }
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss.
+  // the table is dropped in production, so a store query here would always miss.
   const turnoverOptions = { window: label, startDate: null, endDate: null };
   const data =
     (await tryDataApiTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
@@ -3158,7 +3158,7 @@ export async function handleSubnetStakeFlow(
   );
   const direction = routeText(url, "direction");
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss
+  // the table is dropped in production, so a store query here would always miss
   // (#6016/#6017). Postgres → schema-stable empty stub.
   // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
   // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the tier arm
@@ -3476,7 +3476,7 @@ function toValidatorNeurons(
 export async function buildSubnetValidatorEconomicsPayload(
   env: Env,
   netuid: number,
-  // Injection seam, same shape the watchdog family uses: the three non-D1 reads are
+  // Injection seam, same shape the watchdog family uses: the three non-store reads are
   // live RPC behind caches, and a test that cannot stub them exercises only the
   // degraded path — which would leave every real branch here unmeasured.
   deps: {
@@ -4287,7 +4287,7 @@ export async function handleAccountStakeFlow(
   // Mirrors the subnet stake-flow route (#2694).
   const direction = routeText(url, "direction");
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss
+  // the table is dropped in production, so a store query here would always miss
   // (#6016/#6017). Postgres → lakehouse cold tier → schema-stable empty stub.
   const {
     data,
@@ -4616,7 +4616,7 @@ export async function handleAccountEvents(
     });
   }
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss.
+  // the table is dropped in production, so a store query here would always miss.
   const page = resolvePage(url);
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
@@ -4692,7 +4692,7 @@ export async function handleAccountEvents(
 // Newest day first. D1 fully eliminated (2026-07-17): account_events_daily is
 // Postgres-only now, so a tier miss (incl. inverted from>to bounds, which
 // short-circuit before the tier call) always returns the schema-stable empty
-// shape, never a live D1 query.
+// shape, never a live store query.
 //
 // SCOPE: the rollup writes only hotkey-attributed rows, so an ss58 with no
 // hotkey activity returns zero days even when /events shows activity — a
@@ -4799,7 +4799,7 @@ export async function handleAccountHistory(
 }
 
 // GET /api/v1/accounts/{ss58}/extrinsics: the extrinsics this account SIGNED
-// (newest first), from the extrinsics D1 tier (#1844). Matched by the extrinsic
+// (newest first), from the extrinsics store tier (#1844). Matched by the extrinsic
 // signer only — NOT the hotkey or coldkey union the account_events routes use,
 // since `extrinsics` carries a single `signer` column. ?block_start/?block_end
 // constrain block height; ?limit (<=1000) / ?offset, or ?cursor=. Cold/absent store →
@@ -4813,7 +4813,7 @@ export async function handleAccountExtrinsics(
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   const page = resolvePage(url);
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
@@ -4891,7 +4891,7 @@ export async function handleAccountTransfers(
   const page = resolvePage(url);
   const { limit, offset } = page;
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss.
+  // the table is dropped in production, so a store query here would always miss.
   // Postgres → lakehouse cold tier → schema-stable empty stub.
   const data =
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
@@ -4975,7 +4975,7 @@ export async function handleAccountCounterparties(
       });
     }
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-    // and the table is dropped in production, so a D1 query here would
+    // and the table is dropped in production, so a store query here would
     // always miss. An empty rows input always yields transfer_count: 0, so
     // this mirrors loadCounterpartyRelationship's composite shape with an
     // always-empty counterparties list, without querying D1 at all.
@@ -5152,7 +5152,7 @@ export async function handleAccountPositions(
 // `neurons`), not chain-events, so this uses envelopeResponse + metagraphMeta
 // like the neuron/subnet history routes, not accountEnvelopeResponse.
 // Postgres-only (#4839 shipped its write path + this read route; #4910's "no
-// Postgres read route" premise was stale). No D1 fallback: D1's own
+// Postgres read route" premise was stale). No store fallback: D1's own
 // account_position_daily rollup (rollupAccountPositionDaily,
 // src/account-position-history.ts) has been permanently broken since #4908
 // dropped D1's `neurons` table out from under it, so a D1 branch here could
@@ -5206,12 +5206,12 @@ export async function handleAccountPositionHistory(
 // for the common case (most accounts never call set_identity) — schema-stable,
 // never 404.
 //
-// D1 retirement: account_identity's D1 write path (loadStagedAccountIdentity,
+// D1 retirement: account_identity's store write path (loadStagedAccountIdentity,
 // formerly workers/request-handlers/staging.mjs, now deleted) is retired --
 // refresh-account-identity writes Postgres only now (indexer-box cron
 // pipeline). D1 fully eliminated (2026-07-16): a Postgres miss/outage now
-// degrades to the schema-stable "no identity" shape, never a live D1 read of
-// D1's frozen copy.
+// degrades to the schema-stable "no identity" shape, never a live store read of
+// the frozen copy D1 left.
 export async function handleAccountIdentity(
   request: Request,
   env: Env,
@@ -5326,7 +5326,7 @@ export async function handleSubnetEvents(
   // and account-events feeds. A bounded range stays index-satisfiable, so it
   // seeks rather than scans this public, ~60s-cached route.
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss.
+  // the table is dropped in production, so a store query here would always miss.
   const page = resolvePage(url);
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const { block_start: blockStart, block_end: blockEnd } = routeQuery(url);
@@ -6290,7 +6290,7 @@ export async function handleCrowdloan(
 }
 
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the
-// `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
+// `blocks` store tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta
 // (source:"chain-events") since the same first-party poller fills this tier.
 export async function handleBlocks(
@@ -6371,7 +6371,7 @@ export async function handleBlocks(
 // GET /api/v1/blocks/summary: block-production analytics over the most recent
 // blocks — inter-block time distribution, extrinsic/event throughput, block-author
 // decentralization (concentration over each author's block count), and the runtime
-// spec-version spread, computed live from the `blocks` D1 tier. No params; a
+// spec-version spread, computed live from the `blocks` store tier. No params; a
 // cold/absent store → 200 with a schema-stable zeroed card.
 export async function handleBlocksSummary(
   request: Request,
@@ -6405,7 +6405,7 @@ export async function handleBlocksSummary(
 }
 
 // GET /api/v1/blocks/{ref}: per-block detail (#1345). ref is a numeric
-// block_number OR a 0x block_hash. Served live from the `blocks` D1 tier; an
+// block_number OR a 0x block_hash. Served live from the `blocks` store tier; an
 // unknown ref / cold store → 200 with block:null (schema-stable, mirrors the
 // neuron detail route — NEVER 404/throw).
 export async function handleBlock(
@@ -6416,7 +6416,7 @@ export async function handleBlock(
   network?: ChainNetworkId,
 ) {
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   // #9115: same lakehouse fallback as the feed above; buildBlock is shared, so
   // a block served from R2 is byte-identical to one served from Postgres.
   const data =
@@ -6492,7 +6492,7 @@ export async function handleBlockExtrinsics(
   const page = resolvePage(url);
   const { limit, offset } = page;
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
   // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
   // guarded resolved to null before it could touch DATA_API.
@@ -6561,7 +6561,7 @@ export async function handleBlockEvents(
   const page = resolvePage(url);
   const { limit, offset } = page;
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-  // the table is dropped in production, so a D1 query here would always miss.
+  // the table is dropped in production, so a store query here would always miss.
   // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
   // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
   // guarded resolved to null before it could touch DATA_API.
@@ -6606,7 +6606,7 @@ export async function handleBlockEvents(
 }
 
 // GET /api/v1/extrinsics: the recent-extrinsic feed (newest first), served live
-// from the `extrinsics` D1 tier (#1345 block explorer). ?limit clamp <=100,
+// from the `extrinsics` store tier (#1345 block explorer). ?limit clamp <=100,
 // ?offset, and a conjunctive (AND-ed) filter set (#1846): ?block=<n>, ?signer=,
 // ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end
 // (block range), ?from/?to (observed_at epoch-ms range). All optional; an inverted
@@ -6646,7 +6646,7 @@ export async function handleExtrinsics(
     });
   }
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   const data =
     // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
     // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -6709,7 +6709,7 @@ export async function handleExtrinsics(
 // Council/Senate (confirmed live against finney, bittensor 10.5.0, 2026-07-08 —
 // only the Sudo pallet exists from the generic-Substrate governance family), so
 // this is the extrinsics feed hardcoded to call_module='Sudo' rather than a
-// proposal-lifecycle route — same D1 tier + loader as handleExtrinsics, no
+// proposal-lifecycle route — same store tier + loader as handleExtrinsics, no
 // signer/call_module query params (signer is always the current sudo key, see
 // GET /api/v1/sudo/key; call_module is fixed).
 export async function handleSudo(request: Request, env: Env, url: URL) {
@@ -6720,7 +6720,7 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
   const query = routeQuery(url);
   const successRaw = (query.success as string | undefined) ?? null;
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   const data =
     // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
     // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -6785,7 +6785,7 @@ export async function handleGovernanceConfigChanges(
   const query = routeQuery(url);
   const successRaw = (query.success as string | undefined) ?? null;
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   const data =
     // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
     // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -6854,7 +6854,7 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   const history =
     // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
     // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
@@ -7020,7 +7020,7 @@ export async function handleRandomnessStatus(
 // a 0x extrinsic_hash OR the canonical composite id "<block_number>-<extrinsic_index>".
 // The hash is best-effort/nullable in the decoder, so the composite id is the
 // guaranteed-present identifier; the composite path does a direct (block_number,
-// extrinsic_index) PK hit. Served live from the `extrinsics` D1 tier; an unknown
+// extrinsic_index) PK hit. Served live from the `extrinsics` store tier; an unknown
 // ref / cold store / malformed composite → 200 with extrinsic:null (schema-stable,
 // mirrors handleBlock's numeric-OR-hash branch — NEVER 404/throw).
 //
@@ -7035,7 +7035,7 @@ export async function handleExtrinsic(
   network?: ChainNetworkId,
 ) {
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // table is dropped in production, so a store query here would always miss.
   // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
   // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read this branch
   // guarded resolved to null before it could touch DATA_API.

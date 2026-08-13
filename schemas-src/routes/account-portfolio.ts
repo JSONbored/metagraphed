@@ -1,5 +1,5 @@
 // GET /api/v1/accounts/{ss58}/portfolio (types-epic B batch 4, #8058). Live
-// neurons D1-tier data -- no static file. Modeled from
+// neurons store-tier data -- no static file. Modeled from
 // src/account-portfolio.ts's buildAccountPortfolio() (which reuses
 // src/concentration.ts's computeConcentration() -- the exact function
 // ConcentrationMetricsSchema in shared.ts models, added by types-epic B

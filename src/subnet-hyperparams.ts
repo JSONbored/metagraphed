@@ -145,7 +145,7 @@ export function formatSubnetHyperparams(
 
 // GET /api/v1/subnets/{netuid}/hyperparameters (#4307/1.4). Cold/absent
 // snapshot -> 200 with hyperparameters:null, consistent with handleNeuron and
-// the other live D1 tiers (never 404 on a cold store).
+// the other live store tiers (never 404 on a cold store).
 export function buildSubnetHyperparams(
   row: Row | null | undefined,
   netuid: unknown,

@@ -30,7 +30,7 @@ function fakeDb(rows: Row[], opts: { throws?: boolean } = {}) {
 }
 
 describe("loadBulkHealthTrends", () => {
-  test("returns schema-stable empty windows with no D1 binding", async () => {
+  test("returns schema-stable empty windows with no store binding", async () => {
     // The 2026-07-17 floor: no binding must still produce a full envelope,
     // never a null and never a throw.
     const { data, rows } = (await loadBulkHealthTrends({
@@ -116,7 +116,7 @@ describe("loadBulkHealthTrends", () => {
     assert.deepEqual(netuids("30d"), [7, 9]);
   });
 
-  test("degrades to the empty shape when the D1 read fails", async () => {
+  test("degrades to the empty shape when the store read fails", async () => {
     // storeAll contains the failure: a serving path must not turn a store outage
     // into a route error.
     const { data, rows } = (await loadBulkHealthTrends({

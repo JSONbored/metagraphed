@@ -249,6 +249,46 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     assert.equal(res.status, 502);
     assert.deepEqual(await res.json(), { error: "neon write failed" });
   });
+
+  test("a write that throws PAST its own boundary is a 502 too, not a 500", async () => {
+    // The test above drives the write's REPORTED failure (every table comes
+    // back ok:false). This drives the other one: mirrorChainDetailToNeon has
+    // no top-level try, so anything raised before its per-table loop escapes
+    // it entirely -- and the route has to answer the producer either way,
+    // because a 500 and a 200 are equally wrong here. The producer advances
+    // its resume head on ok, so the only safe answer to "we do not know
+    // whether it landed" is the same 502 as "it did not".
+    //
+    // Raised from the binding rather than a module mock so the real
+    // neonWriteRunner -> createPgSql path is the thing that throws.
+    let reads = 0;
+    const exploding = {
+      CHAIN_DETAIL_SYNC_SECRET: SECRET,
+      ...pgMockEnv(),
+      HYPERDRIVE: {
+        // Read once by neonOwnsChainDetail's guard BEFORE the handler's try,
+        // and again by neonWriteRunner INSIDE it. Answering the guard and
+        // failing the write is what puts the throw where the catch can see it
+        // -- failing both would escape the handler entirely and prove nothing.
+        get connectionString(): string {
+          reads += 1;
+          if (reads === 1) return "postgres://stub/db";
+          throw new Error("hyperdrive binding exploded");
+        },
+      },
+    } as never;
+    const res = await dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { "content-type": "application/json", [HEADER]: SECRET },
+        body: JSON.stringify(body()),
+      }),
+      exploding,
+      CTX,
+    );
+    assert.equal(res.status, 502);
+    assert.deepEqual(await res.json(), { error: "store write failed" });
+  });
 });
 
 describe("GET /api/v1/internal/chain-detail-sync/head", () => {

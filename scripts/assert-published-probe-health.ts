@@ -48,7 +48,7 @@ export function assessProbeHealth(
 
 function main(): number {
   if (!existsSync(HEALTH_PATH)) {
-    // Operational health is now live-only (served from KV/D1; no static
+    // Operational health is now live-only (served from KV and the store; no static
     // health/latest.json is built or published), so there is nothing to guard
     // against here — the 15-minute cron is the single source of truth.
     console.log(

@@ -1,5 +1,5 @@
 // GET /api/v1/blocks/summary (types-epic B batch 7, #8061). Live blocks
-// D1-tier data -- no static file. Modeled from src/blocks-summary.ts's
+// store-tier data -- no static file. Modeled from src/blocks-summary.ts's
 // buildBlocksSummary(), cross-checked against the hand-edited
 // BlocksSummaryArtifact component it replaces.
 //

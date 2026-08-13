@@ -44,7 +44,7 @@ const HOTKEY_B = "5CXRfP2ekFhYQ6BCwEy5V8YyxgLmUmTNzHZTKAfTHKhKPBqE";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
+function runner() {
   return {
     prepare(text: string) {
       return {
@@ -79,7 +79,7 @@ function d1() {
 
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: d1(),
+    METAGRAPH_HEALTH_DB: runner(),
     NOMINATOR_POSITIONS_SYNC_SECRET: SECRET,
     ...overrides,
   } as unknown as Env;
@@ -195,7 +195,7 @@ describe("POST /api/v1/internal/nominator-positions-sync", () => {
 
   test("an unprovisioned deployment and a bad token never reach the store", async () => {
     const unprovisioned = await post({ rows: [positionRow()] }, SECRET, {
-      METAGRAPH_HEALTH_DB: d1(),
+      METAGRAPH_HEALTH_DB: runner(),
     } as unknown as Env);
     assert.equal(unprovisioned.status, 503);
     assert.match(

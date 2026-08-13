@@ -32,7 +32,7 @@ test("GET /subnets/{netuid}/events?format=csv emits a header-only CSV when cold"
   assert.equal((await res.text()).trim(), EVENTS_CSV_HEADER);
 });
 
-test("GET /subnets/{netuid}/events is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /subnets/{netuid}/events is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req("/api/v1/subnets/7/events"),
     {} as unknown as Env,

@@ -183,7 +183,7 @@ describe("identityHash", () => {
 });
 
 describe("formatIdentityHistoryEntry", () => {
-  test("formats D1 rows into API entries", () => {
+  test("formats store rows into API entries", () => {
     assert.deepEqual(
       formatIdentityHistoryEntry({
         id: 3,
@@ -792,11 +792,11 @@ describe("recordSubnetIdentityChanges", () => {
 describe("loadSubnetIdentityHistory", () => {
   test("paginates with offset when no cursor is provided", async () => {
     const calls: Row[] = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [identityHistoryRow()];
     };
-    const out = await loadSubnetIdentityHistory(d1, 86, {
+    const out = await loadSubnetIdentityHistory(runner, 86, {
       limit: 10,
       offset: 5,
     });
@@ -807,14 +807,14 @@ describe("loadSubnetIdentityHistory", () => {
 
   test("uses cursor seek and emits next_cursor for a full page", async () => {
     const calls: Row[] = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [
         identityHistoryRow({ id: 9, observed_at: 1_600_000_000_000 }),
         identityHistoryRow({ id: 8, observed_at: 1_500_000_000_000 }),
       ];
     };
-    const out = await loadSubnetIdentityHistory(d1, 86, {
+    const out = await loadSubnetIdentityHistory(runner, 86, {
       limit: 2,
       cursor: encodeCursor([1_700_000_000_000, 10]),
     });
@@ -834,11 +834,11 @@ describe("loadSubnetIdentityHistory", () => {
 
 describe("loadPreviouslyKnownAs", () => {
   test("loads grouped names from D1", async () => {
-    const d1 = async () => [
+    const runner = async () => [
       { subnet_name: "MIAO", observed_at: 2 },
       { subnet_name: "Arena", observed_at: 1 },
     ];
-    assert.deepEqual(await loadPreviouslyKnownAs(d1, 86, "⚒"), [
+    assert.deepEqual(await loadPreviouslyKnownAs(runner, 86, "⚒"), [
       "MIAO",
       "Arena",
     ]);
@@ -857,11 +857,11 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
   });
 
   test("groups aliases per netuid", async () => {
-    const d1 = async () => [
+    const runner = async () => [
       { netuid: 86, subnet_name: "MIAO", observed_at: 2 },
       { netuid: 7, subnet_name: "Old7", observed_at: 1 },
     ];
-    const map = await loadPreviouslyKnownAsForNetuids(d1, [
+    const map = await loadPreviouslyKnownAsForNetuids(runner, [
       { netuid: 86, name: "⚒" },
       { netuid: 7, name: "Current" },
     ]);
@@ -874,7 +874,7 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
     // integer 1 so the caller's aliasMap.get(1) hits and the current name is
     // excluded. Blank/null/non-numeric cells must be dropped, NOT coerced to a
     // valid subnet 0 (Number("") === Number(null) === 0).
-    const d1 = async () => [
+    const runner = async () => [
       { netuid: "1", subnet_name: "OldName", observed_at: 1000 },
       { netuid: "1", subnet_name: "CurrentName", observed_at: 2000 },
       { netuid: "", subnet_name: "Blank", observed_at: 3000 }, // dropped
@@ -882,7 +882,7 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
       { netuid: "bad", subnet_name: "Junk", observed_at: 5000 }, // dropped
       { netuid: -5, subnet_name: "Neg", observed_at: 6000 }, // negative num → dropped
     ];
-    const map = await loadPreviouslyKnownAsForNetuids(d1, [
+    const map = await loadPreviouslyKnownAsForNetuids(runner, [
       { netuid: 1, name: "CurrentName" },
     ]);
     assert.deepEqual(map.get(1), ["OldName"]); // attached under int key
@@ -920,7 +920,7 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
     assert.equal(map.get(7), undefined);
   });
 
-  test("treats null D1 rows as empty", async () => {
+  test("treats null store rows as empty", async () => {
     const map = await loadPreviouslyKnownAsForNetuids(
       (async () => null) as unknown as Parameters<
         typeof loadPreviouslyKnownAsForNetuids

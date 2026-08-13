@@ -1,5 +1,5 @@
 // GET /api/v1/blocks + /api/v1/blocks/{ref} (types-epic B batch 7, #8061).
-// Live blocks D1-tier data -- no static file. Modeled from src/blocks.ts's
+// Live blocks store-tier data -- no static file. Modeled from src/blocks.ts's
 // buildBlockFeed()/buildBlock(), cross-checked against the hand-edited
 // BlocksFeedArtifact/BlockDetailArtifact components they replace.
 //

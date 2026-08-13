@@ -1,5 +1,5 @@
 // GET /api/v1/validators/{hotkey} (types-epic B batch 7, #8061). Live
-// neurons D1-tier data -- no static file. Modeled from
+// neurons store-tier data -- no static file. Modeled from
 // src/metagraph-neurons.ts's buildValidatorDetail() (which builds each
 // subnets[] entry via formatNeuron(row) with no featuredHotkeys/
 // immunityPeriod, so every neuron field is always set, never omitted),

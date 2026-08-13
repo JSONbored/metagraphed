@@ -87,7 +87,7 @@ describe("buildSubnetStakeTransfers", () => {
 describe("loadSubnetStakeTransfers", () => {
   test("queries account_events for the netuid + StakeTransferred over the window and shapes it", async () => {
     let captured: Row | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [
         {
@@ -98,7 +98,7 @@ describe("loadSubnetStakeTransfers", () => {
       ];
     };
     const before = Date.now();
-    const d = await loadSubnetStakeTransfers(d1, 7, {
+    const d = await loadSubnetStakeTransfers(runner, 7, {
       windowLabel: "7d",
       windowDays: 7,
     });

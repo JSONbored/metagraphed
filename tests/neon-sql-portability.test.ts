@@ -10,7 +10,7 @@
 //   #9792  `date(MAX(snapshot_date), '-30 days')` -- a SQLite FUNCTION that
 //          Postgres does not have.       /subnets/movers      5 rows -> 0
 //                                        /subnets/{n}/history 28 rows -> 0
-//   #9802  `validator_permit = 1` -- a TYPING mismatch. D1 stores the column
+//   #9802  `validator_permit = 1` -- a TYPING mismatch. D1 stored the column
 //          INTEGER 0/1; Neon declares it BOOLEAN, because the mirror writes
 //          real JS booleans. Postgres rejects `boolean = integer`.
 //                                        /validators          5 rows -> 0
@@ -115,7 +115,7 @@ const SQLITE_ONLY: readonly Rule[] = [
 ];
 
 /**
- * Columns D1 stores as INTEGER 0/1 and Neon declares BOOLEAN.
+ * Columns D1 stored as INTEGER 0/1 and Neon declares BOOLEAN.
  *
  * This is NOT a dialect difference -- both stores would accept both spellings
  * against a column of the matching type. It is a SCHEMA difference. The

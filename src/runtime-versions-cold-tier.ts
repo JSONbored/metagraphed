@@ -31,7 +31,7 @@ import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
 
 // One row per distinct spec_version: the earliest block that carried that
 // reading, sorted into a single ascending timeline. Identical in shape to the
-// SQL the D1 tier ran (RUNTIME_TRANSITIONS_SQL) — GROUP BY, MIN() and ORDER BY
+// SQL the store tier ran (RUNTIME_TRANSITIONS_SQL) — GROUP BY, MIN() and ORDER BY
 // all behave the same here, so this is a change of tier, not of question.
 //
 // No interpolation: the query takes no caller input at all, so unlike the
@@ -48,7 +48,7 @@ const TRANSITIONS_SQL =
 // into its EARLIEST block, so after a runtime rollback — a version reappearing
 // once a newer one had already been seen — the final transition entry would be
 // the superseded version. `current_spec_version` has to come from the head of
-// the chain. Same reason the D1 tier queried it separately.
+// the chain. Same reason the store tier queried it separately.
 const LATEST_SQL =
   "SELECT spec_version, block_number FROM chain.blocks" +
   " WHERE spec_version IS NOT NULL ORDER BY block_number DESC LIMIT 1";

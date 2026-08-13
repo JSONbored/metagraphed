@@ -1,8 +1,8 @@
 // Block explorer runtime-upgrade history (#4316/3.1): the spec-version
-// transition timeline, computed live off the first-party `blocks` D1 tier's
+// transition timeline, computed live off the first-party `blocks` store tier's
 // spec_version column (migrations/0017_block_spec_version.sql) — no new
 // capture, no migration, just an aggregate read. Pure + exported for unit
-// tests; the Worker does the D1 read + envelope.
+// tests; the Worker does the store read + envelope.
 //
 // Coverage caveat — be honest, not just "partial": spec_version was added to
 // `blocks` via a nullable ALTER on 2026-06-25 (migration 0017), and the row
@@ -44,14 +44,14 @@ function toIso(ms: unknown): string | null {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-// Coerce a D1 cell to a non-negative integer, or null when missing,
-// non-finite, or negative. D1 can return an INTEGER column as a numeric
+// Coerce a cell to a non-negative integer, or null when missing,
+// non-finite, or negative. the store can return an INTEGER column as a numeric
 // string, so a bare `row.spec_version ?? null` would silently leak the string
 // into the API payload. Mirrors the `toBlockNumber` helper duplicated per
 // module across src/blocks.ts, src/subnet-identity-history.ts, etc.
 function toNonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
@@ -66,7 +66,7 @@ export interface RuntimeTransition {
 // One row -> one transition entry. A row whose spec_version/block_number
 // can't be coerced is dropped rather than surfaced malformed — the aggregate
 // query already filters `WHERE spec_version IS NOT NULL`, so this only guards
-// against a D1 cell type surprise, not the expected null case.
+// against a cell type surprise, not the expected null case.
 export function formatRuntimeTransition(
   row: Row | null | undefined,
 ): RuntimeTransition | null {
@@ -206,9 +206,9 @@ const RUNTIME_LATEST_SQL =
 // Cold/empty D1 (or a store with no spec_version reading yet) yields the
 // schema-stable empty shape, never throws.
 export async function loadRuntimeVersionHistory(
-  d1: SqlRunner,
+  runner: SqlRunner,
 ): Promise<RuntimeVersionHistory> {
-  const rows = await d1(RUNTIME_TRANSITIONS_SQL, []);
-  const latestRows = await d1(RUNTIME_LATEST_SQL, []);
+  const rows = await runner(RUNTIME_TRANSITIONS_SQL, []);
+  const latestRows = await runner(RUNTIME_LATEST_SQL, []);
   return buildRuntimeVersionHistory(rows, latestRows[0] ?? null);
 }

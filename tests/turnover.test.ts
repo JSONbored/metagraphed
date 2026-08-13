@@ -463,7 +463,7 @@ describe("buildTurnoverChanges", () => {
 });
 
 describe("turnover loaders", () => {
-  function d1(
+  function runner(
     rowsBySql: Record<string, Row[]> = {},
     captures: { sql: string[]; params: unknown[][] } = { sql: [], params: [] },
   ) {
@@ -477,8 +477,8 @@ describe("turnover loaders", () => {
     };
   }
 
-  test("loadSubnetTurnover returns schema-stable empty on cold D1", async () => {
-    const data = (await loadSubnetTurnover(d1(), 7, {
+  test("loadSubnetTurnover returns schema-stable empty on a cold store", async () => {
+    const data = (await loadSubnetTurnover(runner(), 7, {
       windowLabel: "30d",
       windowDays: 30,
     })) as Row;
@@ -491,7 +491,7 @@ describe("turnover loaders", () => {
 
   test("loadSubnetTurnover computes churn between boundary snapshots", async () => {
     const data = (await loadSubnetTurnover(
-      d1({
+      runner({
         "MIN\\(snapshot_date\\)": [
           { start_date: "2026-06-01", end_date: "2026-06-30" },
         ],
@@ -549,7 +549,7 @@ describe("turnover loaders", () => {
   test("loadSubnetTurnover omits the date cutoff for the all window", async () => {
     const captures = { sql: [], params: [] };
     await loadSubnetTurnover(
-      d1(
+      runner(
         {
           "MIN\\(snapshot_date\\)": [
             { start_date: "2026-06-01", end_date: "2026-06-30" },
@@ -573,7 +573,7 @@ describe("turnover loaders", () => {
     vi.setSystemTime(new Date("2026-06-30T12:00:00.000Z"));
     const captures = { sql: [], params: [] };
     const data = (await loadSubnetTurnover(
-      d1(
+      runner(
         {
           "MIN\\(snapshot_date\\)": [
             { start_date: "2026-01-01", end_date: "2026-01-31" },

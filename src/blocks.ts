@@ -24,14 +24,14 @@ function toIso(ms: unknown): string | null {
 }
 
 // Coerce a block-height cell to a non-negative integer, or null when missing,
-// non-finite, or negative. D1 can return an INTEGER column as a numeric string,
+// non-finite, or negative. the store can return an INTEGER column as a numeric string,
 // so a bare `row.block_number ?? null` would silently leak the string into the
 // API payload (and break downstream arithmetic/comparisons). Mirrors the
 // `toBlockNumber` already applied in account-events.ts / chain-analytics.ts
 // and the `nullableInteger` coercion added to counterparties in #2414.
 function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
@@ -41,7 +41,7 @@ function toBlockNumber(value: unknown): number | null {
 // backfilled blocks for spec_versions 419/421/422 (#4687 -- an indexer-rs
 // Aura-authority-digest decode gap for those three historical runtime
 // versions, not a live-ingestion defect) have `author = ""` instead of the
-// SS58 string D1 has for the same rows. A bare `row.author ?? null` only
+// SS58 string D1 had for the same rows. A bare `row.author ?? null` only
 // catches null/undefined, so it was serving the empty string as if it were
 // a decoded value -- present-looking but wrong, worse than an honest null.
 function toAuthorOrNull(value: unknown): string | null {
@@ -111,7 +111,7 @@ export function buildBlock(
     schema_version: 1,
     ref: ref ?? null,
     block,
-    // D1 can return INTEGER neighbor heights as numeric strings; coerce like
+    // the store can return INTEGER neighbor heights as numeric strings; coerce like
     // formatBlock's block_number so chain-walk nav never leaks string cells.
     prev_block_number: block ? toBlockNumber(prev) : null,
     next_block_number: block ? toBlockNumber(next) : null,
@@ -155,7 +155,7 @@ export function buildBlockFeed(
   };
 }
 
-// ---- Block D1 read paths ---------------------------------------------------
+// ---- Block store read paths ---------------------------------------------------
 // One source of truth for the block SQL + pagination, shared by the REST
 // handlers and the MCP block-explorer tools. `d1` is a
 // (sql, params) => Promise<rows[]> runner; a cold/unbound DB yields [].
@@ -186,7 +186,7 @@ export interface LoadBlocksOptions {
 // min_extrinsics/min_events floors. Inverted indexed ranges short-circuit to an
 // empty feed without querying D1.
 export async function loadBlocks(
-  d1: SqlRunner,
+  runner: SqlRunner,
   {
     limit,
     offset,
@@ -259,7 +259,7 @@ export async function loadBlocks(
     sql += " OFFSET ?";
     params.push(off);
   }
-  const rows = await d1(sql, params);
+  const rows = await runner(sql, params);
   const last = rows.length === lim ? rows[rows.length - 1] : null;
   const nextCursor = last ? encodeCursor([last.block_number as number]) : null;
   return buildBlockFeed(rows, { limit: lim, offset: off, nextCursor });
@@ -282,7 +282,7 @@ function strictBlockNumber(ref: unknown): number | null {
 // (#1853). Returns block:null when the ref is unknown or the store is cold —
 // never throws (schema-stable zero, mirrors the REST route).
 export async function loadBlock(
-  d1: SqlRunner,
+  runner: SqlRunner,
   ref: unknown,
 ): Promise<BlockDetail> {
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(String(ref));
@@ -300,10 +300,10 @@ export async function loadBlock(
   // parity with the REST handleBlock route (#1955); this shared MCP get_block
   // loader was the missed sibling (the strict-ref guard #2314 left it case-naive).
   const param = isHash ? String(ref).toLowerCase() : blockNumber;
-  const rows = await d1(sql, [param]);
+  const rows = await runner(sql, [param]);
   let prev: unknown = null;
   let next: unknown = null;
-  // Coerce the resolved anchor through the same helper formatBlock uses: D1 can
+  // Coerce the resolved anchor through the same helper formatBlock uses: the store can
   // return the INTEGER block_number as a numeric string, and a bare
   // `Number.isInteger(rows[0]?.block_number)` guard is false for "1234", so the
   // neighbor query would be skipped and a resolved block would wrongly report
@@ -311,7 +311,7 @@ export async function loadBlock(
   // string-cell coercion in formatBlock / account-events formatAccountDay (#2489).
   const resolvedNumber = toBlockNumber(rows[0]?.block_number);
   if (resolvedNumber !== null) {
-    const nbr = await d1(
+    const nbr = await runner(
       `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
       [resolvedNumber, resolvedNumber],
     );

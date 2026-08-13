@@ -8,14 +8,15 @@
 //
 // ## The ordering is the point
 //
-// This runs AFTER the D1 write returns, never instead of it and never in front
+// This runs AFTER the store write returns, never instead of it and never in front
 // of it. The pilot broke by doing the opposite -- a read moved to Neon while
 // nothing wrote to it, so `GET /api/v1/accounts/{ss58}/subnets/{netuid}/history`
 // served a two-day-old snapshot until metagraphed#9705 unbound Hyperdrive.
 //
-// While dual-writing, D1 is still the store every route reads. So a Neon
-// failure must cost a mirror and a lane verdict, and nothing else. Nothing here
-// throws.
+// Neon is now the store every route reads, so a snapshot that did not land
+// here did not land at all. Nothing here throws even so: the outcome is
+// reported back and the call site decides, which is where the pass-level
+// verdict belongs.
 //
 // ## What makes the eventual read-cutover safe
 //
@@ -228,7 +229,7 @@ export function neuronSnapshotWrite(
   };
 }
 
-/** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
+/** The lane name this writer files its `lane_health` verdict under (`neon:<lane>`). */
 export const NEURONS_NEON_LANE = "neurons";
 
 type Row = Record<string, unknown>;
@@ -255,7 +256,7 @@ export const NEURON_MIRROR_PLANS: Readonly<Record<string, MirrorPlan>> = {
     table: "neurons",
     columns: NEURON_INSERT_COLUMNS,
     conflict: ["netuid", "uid"],
-    // The out-of-order protection D1's own upsert applies. A retried chunk can
+    // The out-of-order protection the store's own upsert applies. A retried chunk can
     // arrive after a newer pass, and without this it would overwrite fresher
     // rows with older ones -- silently, since both writes succeed.
     guard: "neurons.captured_at < EXCLUDED.captured_at",
@@ -271,7 +272,7 @@ export const NEURON_MIRROR_PLANS: Readonly<Record<string, MirrorPlan>> = {
   // own header promises the opposite: "a backfill re-POST can never clobber a
   // fresher row".
   //
-  // D1's buildJsonUpsert appended `captured_at <= excluded.captured_at` to
+  // the store's buildJsonUpsert appended `captured_at <= excluded.captured_at` to
   // every one of the three unconditionally. This restores that.
   neuron_daily: {
     table: "neuron_daily",
@@ -472,7 +473,7 @@ export async function mirrorNeuronSnapshotToNeon(
     );
   }
 
-  // THE DEREGISTRATION PRUNE (#10184). D1's writer ran this and the Neon mirror
+  // THE DEREGISTRATION PRUNE (#10184). the store's writer ran this and the Neon mirror
   // never did, so a UID that leaves a subnet stayed in `neurons` forever.
   //
   // PER NETUID, never one batch-wide cutoff. A global max would let one

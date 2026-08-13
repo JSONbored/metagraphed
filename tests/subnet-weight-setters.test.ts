@@ -193,11 +193,11 @@ describe("buildSubnetWeightSetters", () => {
 describe("loadSubnetWeightSetters", () => {
   test("runs the leaderboard + totals reads over account_events and shapes them", async () => {
     const captured: Row[] = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured.push({ sql, params });
       return sql.includes("GROUP BY") ? LEADER_ROWS : [TOTALS];
     };
-    const d = (await loadSubnetWeightSetters(d1, NETUID, {
+    const d = (await loadSubnetWeightSetters(runner, NETUID, {
       windowLabel: "7d",
       windowDays: 7,
     })) as Row;
@@ -431,11 +431,11 @@ describe("loadSubnetWeightSetters — the tempo read cannot break the leaderboar
   ];
   const TOTALS = [{ weight_sets: 5, distinct_setters: 1, newest_observed: 2 }];
 
-  function runner(onHyperparams: () => Promise<Row[]>) {
+  function makeRunner(onHyperparams: () => Promise<Row[]>) {
     const seen: string[] = [];
     return {
       seen,
-      d1: async (sql: string) => {
+      runner: async (sql: string) => {
         seen.push(sql);
         if (sql.includes("subnet_hyperparams")) return onHyperparams();
         if (sql.includes("COUNT(DISTINCT")) return TOTALS;
@@ -447,10 +447,10 @@ describe("loadSubnetWeightSetters — the tempo read cannot break the leaderboar
   test("a throwing hyperparams read still serves the leaderboard", async () => {
     // The whole card must not be lost because a cadence was unknown -- that trades a
     // useful answer for no answer.
-    const { d1, seen } = runner(async () => {
+    const { runner, seen } = makeRunner(async () => {
       throw new Error("D1_ERROR: no such table: subnet_hyperparams");
     });
-    const card = await loadSubnetWeightSetters(d1, NETUID, {
+    const card = await loadSubnetWeightSetters(runner, NETUID, {
       windowLabel: "7d",
       windowDays: 7,
     });
@@ -462,8 +462,8 @@ describe("loadSubnetWeightSetters — the tempo read cannot break the leaderboar
   });
 
   test("a subnet with no hyperparams row leaves the verdicts unevaluated", async () => {
-    const { d1 } = runner(async () => []);
-    const card = await loadSubnetWeightSetters(d1, NETUID, {
+    const { runner } = makeRunner(async () => []);
+    const card = await loadSubnetWeightSetters(runner, NETUID, {
       windowLabel: "7d",
       windowDays: 7,
     });
@@ -472,8 +472,8 @@ describe("loadSubnetWeightSetters — the tempo read cannot break the leaderboar
   });
 
   test("a present tempo is looked up by primary key, not scanned", async () => {
-    const { d1, seen } = runner(async () => [{ tempo: 360 }]);
-    const card = await loadSubnetWeightSetters(d1, NETUID, {
+    const { runner, seen } = makeRunner(async () => [{ tempo: 360 }]);
+    const card = await loadSubnetWeightSetters(runner, NETUID, {
       windowLabel: "7d",
       windowDays: 7,
     });

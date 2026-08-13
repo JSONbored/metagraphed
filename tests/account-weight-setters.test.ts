@@ -151,7 +151,7 @@ describe("buildAccountWeightSetters", () => {
 describe("loadAccountWeightSetters", () => {
   test("queries direct and uid-resolved WeightsSet rows over the window and shapes them", async () => {
     let captured: { sql: string; params: unknown[] } | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       // Multiple rows so generatedAt walks past the first (later row wins) and a
       // null-observed row is skipped rather than counted.
@@ -161,7 +161,7 @@ describe("loadAccountWeightSetters", () => {
         row(3, 1, null, null), // no observed timestamp -> skipped for generatedAt
       ];
     };
-    const { data, generatedAt } = await loadAccountWeightSetters(d1, ADDR, {
+    const { data, generatedAt } = await loadAccountWeightSetters(runner, ADDR, {
       windowLabel: "7d",
     });
     assert.match(
@@ -229,7 +229,7 @@ describe("loadAccountWeightSetters", () => {
       { netuid: 9, uid: 4, hotkey: ADDR },
       { netuid: 8, uid: 5, hotkey: "5DifferentHotkey" },
     ];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       const [
         directHotkey,
         directKind,
@@ -273,7 +273,7 @@ describe("loadAccountWeightSetters", () => {
       return Array.from(grouped.values());
     };
 
-    const { data, generatedAt } = await loadAccountWeightSetters(d1, ADDR, {
+    const { data, generatedAt } = await loadAccountWeightSetters(runner, ADDR, {
       windowLabel: "30d",
     });
 
@@ -291,11 +291,11 @@ describe("loadAccountWeightSetters", () => {
 
   test("an unknown window label falls back to the default window days", async () => {
     let captured: { sql: string; params: unknown[] } | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [];
     };
-    await loadAccountWeightSetters(d1, ADDR, { windowLabel: "bogus" });
+    await loadAccountWeightSetters(runner, ADDR, { windowLabel: "bogus" });
     // 7d default cutoff = now - 7d; assert it's within a day of that.
     const expected = Date.now() - 7 * 24 * 60 * 60 * 1000;
     assert.ok(
@@ -319,7 +319,7 @@ describe("loadAccountWeightSetters", () => {
     assert.equal(generatedAt, null);
   });
 
-  test("a non-array D1 result degrades to a zeroed card (never throws)", async () => {
+  test("a non-array store result degrades to a zeroed card (never throws)", async () => {
     const { data, generatedAt } = await loadAccountWeightSetters(
       async () => null as unknown as Record<string, unknown>[],
       ADDR,

@@ -182,7 +182,7 @@ describe("all three subnet weight-setter surfaces go through the one loader", ()
 //
 // AND IT HAS RECURRED. `loadSubnetTempo` reaches the store through
 // `observationsReadDb(env, ctx)`, and `loadSubnetWeightSettersColdTier` calls it
-// with no ctx at all -- which used to fall back to the D1 binding and, since
+// with no ctx at all -- which used to fall back to the store binding and, since
 // D1 was removed, returns `undefined`. So `tempo` is unconditionally null again
 // on every published card. The first test below is RED on purpose: it is
 // asserting the behaviour #9396 shipped, not the behaviour production has, and

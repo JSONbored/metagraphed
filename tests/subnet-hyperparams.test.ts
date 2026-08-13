@@ -50,7 +50,7 @@ function rawRow(overrides: Row = {}) {
 }
 
 describe("formatSubnetHyperparams", () => {
-  test("formats every field from a full D1 row", () => {
+  test("formats every field from a full store row", () => {
     const out = formatSubnetHyperparams(rawRow()) as Row;
     assert.equal(out.kappa_ratio, 0.5);
     assert.equal(out.immunity_period, 4096);
@@ -100,7 +100,7 @@ describe("formatSubnetHyperparams", () => {
     assert.equal(out.kappa_ratio, 0.5);
   });
 
-  test("nullable numeric fields stay null on a null or blank D1 cell", () => {
+  test("nullable numeric fields stay null on a null or blank cell", () => {
     const out = formatSubnetHyperparams(
       rawRow({
         kappa_ratio: null,
@@ -196,7 +196,7 @@ describe("buildSubnetHyperparams", () => {
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
 // D1 retirement: subnet_hyperparams's D1 write/read path is retired, so this
-// route never queries D1 -- with no METAGRAPH_SUBNET_HYPERPARAMS_SOURCE=
+// route never queries the store -- with no METAGRAPH_SUBNET_HYPERPARAMS_SOURCE=
 // postgres flag configured, it always returns the schema-stable null shape
 // (buildSubnetHyperparams(null, netuid) in workers/request-handlers/
 // entities.ts's handleSubnetHyperparams). Postgres-hit/-failure coverage for

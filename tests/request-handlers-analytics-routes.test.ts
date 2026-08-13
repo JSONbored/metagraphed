@@ -129,7 +129,7 @@ function snapshotStoreEnv(rows: SnapshotFixture[]) {
   return storeEnv(rows as unknown as Row[]);
 }
 
-// #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+// #10190: METAGRAPH_HEALTH_SOURCE is deleted from every config and absent from
 // FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered --
 // loadSubnetUptime reads `surface_uptime_daily` through readStore. Doubled at
 // that transport, and given the (surface, day) ROWS the GROUP BY emits rather
@@ -565,7 +565,7 @@ describe("handleUptime", () => {
     assert.deepEqual(body.data.surfaces, []);
   });
 
-  test("trajectory + economics-trends serve from the D1 binding on a tier miss", async () => {
+  test("trajectory + economics-trends serve from the store binding on a tier miss", async () => {
     const snapshotRow = {
       snapshot_date: "2026-08-01",
       completeness_score: 70,
@@ -936,7 +936,7 @@ describe("handleCompare", () => {
   // request unchanged" contract -- these tests prove that wiring in
   // isolation, same reused METAGRAPH_HEALTH_SOURCE flag as handleUptime
   // above. D1 fully eliminated (2026-07-17): a tier miss now always falls
-  // through to an empty health row set, never a live D1 query.
+  // through to an empty health row set, never a live store query.
   test("health dimension: the store answers, and the retired tier is not consulted", async () => {
     // #10190: the health dimension read METAGRAPH_HEALTH_SOURCE, a flag that
     // reads "d1" and is absent from FORWARDABLE_TIER_FLAGS -- so it returned

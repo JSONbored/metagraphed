@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
 
-// Guard the D1 migration sequence: each file must be `NNNN_snake_case.sql`
+// Guard the migration sequence: each file must be `NNNN_snake_case.sql`
 // with a unique 4-digit prefix, ascending and gap-free. Two migrations once
 // shared `0007` (0007_neurons from #1303 + 0007_latency_percentiles from #1331),
 // which desynced name-keyed migration tracking. The prefix is the canonical
@@ -21,7 +21,7 @@ import { repoRoot } from "./lib.ts";
 // the sequence legitimately begins at 0001.
 //
 // The guarantee that survives is the one that always mattered: prefixes unique,
-// ascending and gap-free. It matters MORE here, because D1 migrations are applied BY
+// ascending and gap-free. It matters MORE here, because migrations are applied BY
 // HAND -- there is no apply step that would notice a duplicate on the way past.
 
 /**

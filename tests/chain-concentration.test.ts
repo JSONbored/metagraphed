@@ -108,7 +108,7 @@ describe("buildChainConcentration", () => {
     assert.equal(out.captured_at, new Date(1_700_000_001_000).toISOString());
   });
 
-  test("converts D1 string-typed epoch-millisecond captured_at to ISO strings", () => {
+  test("converts string-typed epoch-millisecond captured_at to ISO strings", () => {
     const out = buildChainConcentration([
       {
         stake_tao: 5,
@@ -198,15 +198,15 @@ describe("loadChainConcentration", () => {
   // A D1 stub that records the SQL/params so the read shape can be asserted.
   function captureD1(rows: Row[] = []) {
     const calls: Row[] = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return rows;
     };
-    return { d1, calls };
+    return { runner, calls };
   }
 
   test("reads every subnet's neurons in one pass — no netuid filter", async () => {
-    const { d1, calls } = captureD1([
+    const { runner, calls } = captureD1([
       {
         stake_tao: 100,
         emission_tao: 2,
@@ -224,7 +224,7 @@ describe("loadChainConcentration", () => {
         captured_at: "2026-06-27T00:00:00Z",
       },
     ]);
-    const data = await loadChainConcentration(d1);
+    const data = await loadChainConcentration(runner);
     assert.equal(calls.length, 1);
     assert.match(calls[0].sql, /FROM neurons/);
     // whole network, not one subnet: no WHERE/netuid filter, no bound params.
@@ -235,8 +235,8 @@ describe("loadChainConcentration", () => {
   });
 
   test("returns a schema-stable null block on a cold D1", async () => {
-    const { d1 } = captureD1([]);
-    const data = await loadChainConcentration(d1);
+    const { runner } = captureD1([]);
+    const data = await loadChainConcentration(runner);
     assert.equal(data.subnet_count, 0);
     assert.equal(data.neuron_count, 0);
     assert.equal(data.stake, null);
@@ -294,7 +294,7 @@ describe("chain/concentration edge cache", () => {
 
   // #5358: chain/concentration no longer reads D1 for its edge-cache stamp — the
   // neurons-tier captured_at stamp it used to bust on (readNeuronsCacheStamp) was
-  // removed, since the D1 `neurons` table it read was fully dropped in #4772 (it
+  // removed, since the `neurons` table it read was fully dropped in #4772 (it
   // had been reading a permanently-empty/nonexistent source and returning a
   // frozen stamp ever since). It now busts on the same shared health-cron
   // `last_run_at` KV value every sibling Postgres-tier analytics route already

@@ -95,7 +95,7 @@ describe("write order", () => {
 
 describe("the nullable boolean", () => {
   test("success binds as a BOOLEAN, not 0/1", async () => {
-    // D1 stores it 0/1 with a CHECK; Neon's column is BOOLEAN and a number is
+    // D1 stored it 0/1 with a CHECK; Neon's column is BOOLEAN and a number is
     // a type error there, not a coercion.
     const { sql, calls } = recordingSql();
     await mirrorChainDetailToNeon(env, ctx, input, {

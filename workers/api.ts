@@ -3007,7 +3007,7 @@ async function dispatchScheduled(
 ) {
   const cron = controller?.cron || "";
   // The former fast-load cron (#1346 Option A, EVENTS_LOAD_CRON, "*/3 * * * *")
-  // drained R2-staged batches into D1. Its last consumer, loadStagedAccountIdentity
+  // drained R2-staged batches into the store. Its last consumer, loadStagedAccountIdentity
   // (#4324/5.1), was removed once refresh-account-identity moved to a
   // direct-to-Postgres sync running on the indexer-box cron pipeline instead of
   // GitHub Actions + R2 staging -- see workers/request-handlers/staging.mjs's
@@ -3024,13 +3024,13 @@ async function dispatchScheduled(
     //
     // #4772 D1 chain-data retirement: the D1-side rollupAccountEventsDaily/
     // pruneAccountEvents/pruneBlocks/pruneExtrinsics calls that used to run here
-    // are removed alongside their D1 tables. account_events_daily (explicitly
+    // are removed alongside their store tables. account_events_daily (explicitly
     // retained, NOT part of this retirement) already has its own fully
     // independent Postgres-side rollup — a dedicated hourly GitHub Actions
     // workflow calling POST /api/v1/internal/rollup-account-events-daily, reading
-    // and writing Postgres directly — so it never depended on this D1 rollup for
+    // and writing Postgres directly — so it never depended on this store rollup for
     // its real production data. Leaving the D1-side call in here after dropping
-    // D1's account_events would have made it fail every tick (querying a table
+    // the store's account_events would have made it fail every tick (querying a table
     // that no longer exists) and, worse, its `!eventsRollup.rolled` gate would
     // have silently skipped THIS cron's unrelated pruneHealthHistory
     // (surface_checks) prune forever — a regression to fix here, not carry.
@@ -3269,7 +3269,7 @@ async function dispatchScheduled(
     // Chain reads live in src/emission-gate-sampler.ts (shared verbatim with
     // the script shell); persistence goes through the SAME token-authed sync
     // handler the external callers use, as an in-process synthetic Request --
-    // one code path for the differs and their D1 writes no matter who calls.
+    // one code path for the differs and their store writes no matter who calls.
     if (!env.EMISSION_GATE_SYNC_SECRET) {
       return {
         ok: false,
@@ -3522,7 +3522,7 @@ async function dispatchScheduled(
     // The account-balances lane's alarm (#9478) -- the SOURCE side of the
     // watchdog above rather than a replacement for it: that one asks whether
     // the served artifact is readable and current, this one asks whether the
-    // D1 table it is composed from is being written at all -- and, since
+    // store table it is composed from is being written at all -- and, since
     // #9530, whether each pass COVERS the network rather than merely arriving
     // recently. Zero alerts is the correct steady state; a stale verdict
     // records one exception under watchdog:account-balances-staleness, the
@@ -3535,7 +3535,7 @@ async function dispatchScheduled(
   }
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) {
     // The live-economics refresh, formerly the 3-hourly Actions schedule and
-    // the last data lane on it. All the chain/D1 reading and the whole build
+    // the last data lane on it. All the chain/store reading and the whole build
     // live in src/live-economics-refresh.ts; this branch owns only the
     // reader injection, exactly as the github-signals branch above does.
     //
@@ -4674,7 +4674,7 @@ async function handlePollerLaneHealthSyncProxy(request: Request, env: Env) {
 
 // --- POST /api/v1/internal/emission-gate-sync (#8748/#8750 restored) --------
 // The persistence half of the emission-gate sampling lane, moved off the
-// decommissioned box's Postgres onto D1. scripts/sample-emission-gate.ts (now
+// decommissioned box's Postgres onto the store. scripts/sample-emission-gate.ts (now
 // on a 10-minute GitHub Actions schedule, .github/workflows/
 // sample-emission-gate.yml) keeps ALL the chain reading and POSTs one
 // observation here; this handler loads the last known state per key from D1,
@@ -4702,7 +4702,7 @@ const EMISSION_GATE_SYNC_MAX_NETUID = 65_535;
 // bytes. 256 chars bounds any future shape without accepting arbitrary blobs.
 const EMISSION_GATE_SYNC_MAX_RAW_CHARS = 256;
 
-// Latest row per key via ROW_NUMBER() -- the D1/SQLite translation of the
+// Latest row per key via ROW_NUMBER() -- the SQLite-era translation of the
 // box sampler's postgres `SELECT DISTINCT ON (key) ... ORDER BY key,
 // observed_at DESC` reads (DISTINCT ON is postgres-only; SQLite has window
 // functions). `id DESC` tiebreaks two rows sharing an observed_at
@@ -5846,7 +5846,7 @@ async function dispatchRequest(
   // Cross-subnet compare (registry structure + economics + live health composed
   // side by side; the same fileless-D1 pattern as the leaderboards route).
   // Edge-cached on the cron snapshot's last_run_at so a polling/cross-colo burst
-  // doesn't re-run the economics + D1 reads.
+  // doesn't re-run the economics + store reads.
   if (url.pathname === "/api/v1/compare") {
     return withEdgeCache(
       request,
@@ -6020,7 +6020,7 @@ async function dispatchRequest(
         { slug: resolved.slug },
       );
     }
-    // D1-backed health trends (slug-aware after resolution). Special-handled
+    // store-backed health trends (slug-aware after resolution). Special-handled
     // rather than artifact-backed, like /api/v1/events.
     const bulkTrendsMatch = BULK_TRENDS_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -6493,7 +6493,7 @@ async function dispatchRequest(
       );
     }
     // Per-UID emission yield distribution over the current neurons snapshot — computed
-    // live from the neurons D1 tier, like the sibling metagraph route. Edge-cache
+    // live from the neurons store, like the sibling metagraph route. Edge-cache
     // busts on the shared health-cron stamp like every sibling Postgres-tier route.
     const yieldMatch = SUBNET_YIELD_PATH_PATTERN.exec(resolved.url.pathname);
     if (yieldMatch) {
@@ -6530,7 +6530,7 @@ async function dispatchRequest(
         handleSubnetIdleStake(request, env, Number(idleStakeMatch[1])),
       );
     }
-    // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
+    // Per-UID metagraph (#1304/#1305): computed live from the neurons store.
     const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -6771,7 +6771,7 @@ async function dispatchRequest(
       );
     }
     // Account entity routes (#1347): computed live from the account_events +
-    // neurons D1 tiers. More-specific paths first (each pattern is anchored).
+    // neurons store tiers. More-specific paths first (each pattern is anchored).
     const accountHistoryMatch = ACCOUNT_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -7091,7 +7091,7 @@ async function dispatchRequest(
     // (like chain/performance but a capped feed, not a per-subnet aggregate).
     // Edge-cache busts on the shared health-cron stamp like every sibling
     // Postgres-tier route — its own bespoke observed_at stamp was retired
-    // alongside the D1 read it existed to bust on (D1 fully eliminated,
+    // alongside the store read it existed to bust on (D1 fully eliminated,
     // 2026-07-16).
     if (resolved.url.pathname === "/api/v1/chain/identity-history") {
       return withEdgeCache(
@@ -7199,7 +7199,7 @@ async function dispatchRequest(
 // runs the same runtime (spec 441, same 28 pallets, same declared defaults).
 // They now resolve their endpoint through rpcUrlForNetwork() and are served on
 // every network with chain state. The remaining entries are mainnet-only
-// because of the DATA behind them (D1 tiers, curated registry, AI indexes),
+// because of the DATA behind them (store tiers, curated registry, AI indexes),
 // which is a real constraint rather than a hardcoded constant.
 /**
  * Routes whose data is the CURATED REGISTRY or metagraphed's own build, both of
@@ -7440,7 +7440,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
     SUBNET_OHLC_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_QUOTE_PATH_PATTERN.test(pathname) ||
-    // Mainnet-only because it joins the D1 `neurons` tier, which is indexed
+    // Mainnet-only because it joins the `neurons` tier, which is indexed
     // for finney only. Its live half (StakeThreshold/TaoWeight/Burn) became
     // network-aware in #8700 -- the storage reads are no longer what pins this
     // route to mainnet, the per-UID data behind them is.
@@ -7481,7 +7481,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
  * The live chain-storage routes (#8700), as ONE table both dispatch paths use.
  *
  * Every route here answers from `state_getStorage` (or the EVM precompile) at
- * request time rather than from an artifact or a D1 tier, which is what makes
+ * request time rather than from an artifact or a store tier, which is what makes
  * them servable on any network with chain state: the storage keys are twox128
  * hashes of pallet+item names, identical across chains running the same
  * runtime.
@@ -7721,7 +7721,7 @@ const PROJECTION_ROUTE_HANDLERS: Record<
 /**
  * The chain-HISTORY routes (#8700), as one table both dispatch paths use.
  *
- * These answer from the R2 lakehouse (and, on mainnet only, the D1 hot tier
+ * These answer from the R2 lakehouse (and, on mainnet only, the hot tier
  * above the seam) rather than from live chain state, so unlike
  * dispatchLiveChainRoute they depend on a decode lane having run for that
  * network. `chain_testnet` is populated by the same decode-r2 container that
@@ -8355,7 +8355,7 @@ export async function readHealthMetaKv(
 
 // Wire the api.ts-local snapshot-meta reader into the extracted analytics module
 // (workers/request-handlers/analytics.ts, #1763). The analytics handlers + their
-// edge-cache guard own the D1-fallback state; they only need this one in-isolate
+// edge-cache guard own the store-fallback state; they only need this one in-isolate
 // memoized KV read, which stays here because the deferred handler clusters and a
 // test import it from api.ts. Injecting the stable reference (rather than having
 // analytics.ts import it back) keeps the two modules from importing each other.
@@ -8417,7 +8417,7 @@ export async function readEconomicsCurrentKv(
 // 503 and the health payload published `chain_events: {null, null, null}` --
 // "the index has no heartbeat at all" -- every time, verified live 2026-08-04.
 //
-// D1's `chain_detail_blocks` is the right source rather than merely a working
+// the store's `chain_detail_blocks` is the right source rather than merely a working
 // one: this field documents itself as the LIVE-FOLLOW streamer's heartbeat
 // (~12-30s while it runs), and that lane is exactly what fills this table. The
 // lakehouse feed would answer too, but it is the wrong clock -- an hourly decode
@@ -8625,7 +8625,7 @@ async function handleApiRequest(
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
   // not by whether live data happened to be available for this request, so cold
-  // KV/D1 fallback responses cannot seed stale operational metadata.
+  // KV/store fallback responses cannot seed stale operational metadata.
   // The key namespaces by network + contract version so a deploy or a network
   // switch can never serve a cross-version body; the response's own
   // cache-control max-age bounds staleness.
@@ -8826,7 +8826,7 @@ async function handleApiRequest(
       ? { ...overlaid, subnet: overlayPreviouslyKnownAs(nested, aliasNames) }
       : rowOf(overlayPreviouslyKnownAs(overlaid, aliasNames));
   }
-  // Identity-history aliases are D1-backed and independent of the live health KV
+  // Identity-history aliases are store-backed and independent of the live health KV
   // overlay — apply them whenever the catalog artifact is served (static or live).
   if (
     network.isDefault &&

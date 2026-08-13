@@ -58,7 +58,7 @@ function raoBigToTao(rao: bigint): number {
 
 function nullableNumber(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? round(n) : null;
@@ -66,7 +66,7 @@ function nullableNumber(value: unknown): number | null {
 
 function nullableInteger(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
@@ -74,7 +74,7 @@ function nullableInteger(value: unknown): number | null {
 
 function nullableTimestamp(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -167,7 +167,7 @@ export function buildCounterparties(
     entry.receivedRao += receivedRao;
     entry.count += 1;
     // `row` is non-null here (it produced a party), so no optional chain needed.
-    // Coerce the cell (D1 can return an INTEGER column as a numeric string) so a
+    // Coerce the cell (the store can return an INTEGER column as a numeric string) so a
     // string block_number still updates last_block — matching the coercion the
     // sibling buildCounterpartyRelationship already applies via nullableInteger.
     const block = nullableInteger(row.block_number);

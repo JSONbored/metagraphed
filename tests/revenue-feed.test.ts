@@ -747,7 +747,7 @@ describe("rows the store can really produce", () => {
   });
 
   test("zero rows on every leg is an empty read, not a crash", async () => {
-    // The "no results key" premise retired with the D1 envelope (#10309):
+    // The "no results key" premise retired with D1's envelope (#10309):
     // query() answers rows directly, so the nothing-shape is the empty array.
     const out = await loadRevenueFeedItems(
       { query: async <T>() => [] as T[] },

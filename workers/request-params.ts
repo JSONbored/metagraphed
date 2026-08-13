@@ -7,7 +7,7 @@
 // constants and the per-route page-size pairs are named profiles. The URL
 // parsers that used to live here went with #10218 -- see the note below the
 // profiles -- leaving the `clampLimit`/`clampOffset` primitives, which let the
-// shared D1 loaders and MCP tools clamp identically off plain values (they
+// shared store loaders and MCP tools clamp identically off plain values (they
 // never see a URL).
 //
 // Import-free apart from `clampInt`, so it stays a leaf the request handlers and
@@ -65,7 +65,7 @@ export function clampLimit(
  * Exported because 18 modules had each written this out privately: 17
  * byte-identical copies plus `src/mcp-server.ts`'s, which is the one carrying
  * the comment that explains them all. This module's own header already said
- * the raw primitives exist so "the shared D1 loaders + MCP tools clamp
+ * the raw primitives exist so "the shared store loaders + MCP tools clamp
  * identically off plain values" — they just could not reach a rule that was
  * never exported.
  */

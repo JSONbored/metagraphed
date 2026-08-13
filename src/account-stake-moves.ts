@@ -1,7 +1,7 @@
 // Per-account stake-movement (re-delegation) footprint: which subnets one account
 // (coldkey) moved stake out of over a recent window, broken down per subnet and
 // rolled up into a movement scorecard. Pure shaping (buildAccountStakeMoves) + a
-// thin D1 loader (loadAccountStakeMoves); the Worker adds the REST envelope.
+// thin store loader (loadAccountStakeMoves); the Worker adds the REST envelope.
 // Null-safe: a cold store or an empty window yields schema-stable zeros.
 //
 // This is the account-level companion of /api/v1/chain/stake-moves and
@@ -189,7 +189,7 @@ export function buildAccountStakeMoves(
 }
 
 export async function loadAccountStakeMoves(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -202,7 +202,7 @@ export async function loadAccountStakeMoves(
     ACCOUNT_STAKE_MOVES_WINDOWS[windowLabel] ??
     ACCOUNT_STAKE_MOVES_WINDOWS[DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT netuid, COUNT(*) AS movements, MIN(observed_at) AS first_observed, " +
       "MAX(observed_at) AS last_observed " +
       "FROM account_events INDEXED BY idx_account_events_coldkey " +
@@ -219,7 +219,7 @@ export async function loadAccountStakeMoves(
       latestObserved = observed;
     }
   }
-  const priceByNetuidDate = await loadAlphaPricesForLastMoves(d1, rows);
+  const priceByNetuidDate = await loadAlphaPricesForLastMoves(runner, rows);
   return {
     data: buildAccountStakeMoves(rows, address, {
       window: windowLabel,
@@ -237,7 +237,7 @@ export async function loadAccountStakeMoves(
 // coldkey) kept untouched here rather than risk its index-seek behavior
 // under D1/SQLite's query planner. Returns a Map keyed "netuid:YYYY-MM-DD".
 async function loadAlphaPricesForLastMoves(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
@@ -258,7 +258,7 @@ async function loadAlphaPricesForLastMoves(
   const dateList = [...dates];
   const netuidPlaceholders = netuidList.map(() => "?").join(",");
   const datePlaceholders = dateList.map(() => "?").join(",");
-  const priceRows = await d1(
+  const priceRows = await runner(
     `SELECT netuid, snapshot_date, alpha_price_tao FROM subnet_snapshots ` +
       `WHERE netuid IN (${netuidPlaceholders}) AND snapshot_date IN (${datePlaceholders})`,
     [...netuidList, ...dateList],

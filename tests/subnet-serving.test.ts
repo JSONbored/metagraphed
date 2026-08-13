@@ -83,7 +83,7 @@ describe("buildSubnetServing", () => {
 describe("loadSubnetServing", () => {
   test("queries account_events for the netuid + AxonServed over the window and shapes it", async () => {
     let captured: Row | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [
         {
@@ -93,7 +93,7 @@ describe("loadSubnetServing", () => {
         },
       ];
     };
-    const d = await loadSubnetServing(d1, 7, {
+    const d = await loadSubnetServing(runner, 7, {
       windowLabel: "7d",
       windowDays: 7,
     });

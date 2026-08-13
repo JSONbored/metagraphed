@@ -21,7 +21,7 @@
 //    original: `ceil(q * lat_cnt)::int`, verified identical to the SQLite
 //    expression at lat_cnt = 1, 3, 7, 20 and 100 for all three quantiles.
 //
-// 2. `surface_checks.ok` is INTEGER 0/1 in D1 and BOOLEAN in Neon, so `SUM(ok)`
+// 2. `surface_checks.ok` is INTEGER 0/1 in the store and BOOLEAN in Neon, so `SUM(ok)`
 //    and `ok = 1` are both type errors. Counting moves to
 //    `COUNT(*) FILTER (WHERE ok)`, which is also what it always meant.
 //
@@ -32,7 +32,7 @@
 // ux_surface_failure_daily_key is already `(day, netuid, kind, classification)
 // NULLS NOT DISTINCT`, the native form of the expression-index trick D1 needed
 // because SQLite treats NULLs as distinct in a unique constraint.
-// OK_LATENCY is shared with the D1 readers rather than restated here (#10086).
+// OK_LATENCY is shared with the store readers rather than restated here (#10086).
 // It used to be defined twice -- `ok AND ...` in this file, `ok = 1 AND ...` in
 // health-sql.ts -- which is precisely how the two stores drifted apart without
 // anything failing: each spelling was correct for the store its own file
@@ -114,7 +114,7 @@ async function attempt(
  * One probe sweep: a surface_checks row per surface, plus the latest-status
  * upsert.
  *
- * THE RENAME, AND WHY IT IS TWO STATEMENTS. D1's upsert names two conflict
+ * THE RENAME, AND WHY IT IS TWO STATEMENTS. the store's upsert names two conflict
  * targets -- surface_key when present, so a display-id rename updates the alias
  * in place, and surface_id as the fallback for keyless rows. Postgres permits
  * exactly ONE ON CONFLICT clause per statement, and both arbiters exist in Neon
@@ -333,7 +333,7 @@ export async function pruneChecksNeon(
  * row upsert on the primary key, which writeRowsToNeon already covers. It rides
  * here because it shares a module and a producer with the other four, not
  * because it shares their constraint. `emission_enabled` and `subtoken_enabled`
- * are 0/1 with a CHECK in D1 and real BOOLEAN in Neon. */
+ * are 0/1 with a CHECK in the store and real BOOLEAN in Neon. */
 export async function upsertSubnetSnapshotsToNeon(
   sql: ObservationsSql,
   rows: Row[],

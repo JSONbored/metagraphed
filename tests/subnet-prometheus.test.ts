@@ -113,7 +113,7 @@ describe("buildSubnetPrometheus honesty marker (#9307)", () => {
 describe("loadSubnetPrometheus", () => {
   test("queries account_events for the netuid + PrometheusServed over the window and shapes it", async () => {
     let captured: Row | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [
         {
@@ -123,7 +123,7 @@ describe("loadSubnetPrometheus", () => {
         },
       ];
     };
-    const d = await loadSubnetPrometheus(d1, 7, {
+    const d = await loadSubnetPrometheus(runner, 7, {
       windowLabel: "7d",
       windowDays: 7,
     });

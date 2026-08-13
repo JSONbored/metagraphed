@@ -76,7 +76,7 @@ test("GET /api/v1/sudo rejects an unsupported success value with 400", async () 
   assert.equal(res.status, 400);
 });
 
-test("GET /api/v1/sudo is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /api/v1/sudo is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req("/api/v1/sudo"),
     dbWith([]) as unknown as Env,

@@ -121,7 +121,7 @@ describe("every ported reader declares the tables it reads", () => {
     });
   }
 
-  test("no ported reader still reaches for the D1 binding", () => {
+  test("no ported reader still reaches for the store binding", () => {
     // The port is a swap, so a leftover binding read is a second store choice
     // in a module that already made one -- and the two would disagree exactly
     // when it matters, which is once Neon owns the tables.

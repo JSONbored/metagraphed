@@ -11,7 +11,7 @@ function req(path: string) {
 // D1 fully eliminated (2026-07-16): subnet_identity_history's D1 write/read
 // path is fully retired -- handleSubnetIdentityHistory now goes
 // tryDataApiTier -> buildSubnetIdentityHistory([], ...) on any miss/outage,
-// never a live D1 read.
+// never a live store read.
 // REMOVED (#10190): "returns the identity timeline (#1647)". It served the
 // timeline by stubbing DATA_API behind METAGRAPH_SUBNET_IDENTITY_SOURCE
 // ="postgres" -- retired everywhere and absent from FORWARDABLE_TIER_FLAGS, so
@@ -147,7 +147,7 @@ test("GET /agent-catalog/{netuid} publishes no previously_known_as overlay on th
 
 // THREE TESTS REMOVED HERE (#10190/#10706). All three drove the alias overlay
 // through METAGRAPH_SUBNET_IDENTITY_SOURCE="postgres" plus a DATA_API stub: two
-// asserting it "serves the DATA_API response, D1 never queried", one asserting it
+// asserting it "serves the DATA_API response, the store never queried", one asserting it
 // degrades when that stub fails. The flag forwards nowhere, there is no D1 left to
 // leave unqueried, and the degrade case is now simply the only case -- asserted by
 // the four overlay tests above. Restore them against a real source when

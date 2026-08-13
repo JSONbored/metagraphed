@@ -46,7 +46,7 @@ const NONE: PassCompleteness = {
 /**
  * The pass tables this reader will query.
  *
- * AN ALLOWLIST, because the table name is interpolated into SQL. D1 has no
+ * AN ALLOWLIST, because the table name is interpolated into SQL. D1 had no
  * placeholder for an identifier, so the only safe formulation is one that
  * cannot take an arbitrary string — a caller passing a lane name that is not
  * here gets a decline, not a query.
@@ -54,17 +54,17 @@ const NONE: PassCompleteness = {
 export const PASS_TABLES: Readonly<Record<string, string>> = {
   neurons: "neurons_passes",
   // Absent until #10124, which is why account_balances_passes had ZERO rows in
-  // Neon while D1's copy filled: writeAccountBalancesToStore takes the pass and
+  // Neon while the store's copy filled: writeAccountBalancesToStore takes the pass and
   // writes the tally, but mirrorLedgerToNeon skips any lane missing from this
   // map -- silently, since a lane with no pass table is a legitimate state.
   //
-  // `scanned` and `outcome` exist on the D1 table and on Neon's, and NEITHER
+  // `scanned` and `outcome` exist on the store table and on Neon's, and NEITHER
   // writer sets them; they are nullable leftovers. So the generic four-column
-  // tally is not a narrowing here -- it writes exactly what D1's own statement
+  // tally is not a narrowing here -- it writes exactly what the store's own statement
   // writes.
   "account-balances": "account_balances_passes",
   // Absent until #10137, for the same reason account-balances was: the D1
-  // writer takes the pass and writes the tally itself, so D1's copy filled
+  // writer takes the pass and writes the tally itself, so the store's copy filled
   // while Neon's stayed empty. A lane missing from this map is skipped by the
   // mirror without complaint, because "no pass table" is a legitimate state.
   "hotkey-alpha": "hotkey_alpha_passes",

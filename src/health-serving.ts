@@ -5,7 +5,7 @@
 // static artifacts. Every helper returns null when the live store is cold/absent
 // so the caller (workers/api.ts) falls back to the static artifact — keeping
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
-// objects + D1 rows in.
+// objects + store rows in.
 
 import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
 import {
@@ -609,7 +609,7 @@ export function mergeFreshness(
   };
 }
 
-// --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
+// --- AI-4 historical analytics (pure transforms over store query rows) ---------
 
 // A gap larger than this between consecutive failing checks ends one incident and
 // starts another. Must exceed the probe cadence (15 min) so consecutive failed

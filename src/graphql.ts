@@ -988,7 +988,7 @@ export interface GqlContext {
   request?: Request;
   /** The request's ExecutionContext, threaded so resolvers can select a store
    * (#10086). createPgSql returns its connection via waitUntil, so a resolver
-   * without one cannot read Neon and correctly falls back to D1. */
+   * without one cannot read Neon and correctly falls back to the store. */
   ctx?: { waitUntil?: (promise: Promise<unknown>) => void };
   clientIp?: string | null;
   graphqlWsConnection?: unknown;
@@ -1483,7 +1483,7 @@ function loadEconomics(
     // The live economics KV is written by the mainnet cron and carries no
     // network column, so off mainnet there is no live tier to prefer -- the
     // network's own artifact is the whole answer. Same asymmetry
-    // `answerBlockDetail` applies to the D1 hot tier.
+    // `answerBlockDetail` applies to the hot tier.
     if (!testnet) {
       const live = await resolveLiveEconomics({
         readHealthKv,
@@ -2852,7 +2852,7 @@ const rootValue = {
     // D1 retirement: subnet_identity_history's D1 write/read path is fully
     // retired (2026-07-16), so a Postgres miss/outage degrades straight to
     // the schema-stable empty timeline (entry_count 0), never a GraphQL
-    // error and never a live D1 read.
+    // error and never a live store read.
     // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
     // config and is absent from FORWARDABLE_TIER_FLAGS, so this resolved to
     // null on every request. The composer's lakehouse leg
@@ -4509,7 +4509,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", label);
     const data =
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadGlobalIncidentsLedger(context.env, { label })).data;
@@ -4574,7 +4574,7 @@ const rootValue = {
   // #7643: the get_global_incidents-aligned name for the same downtime-incident
   // ledger -- a thin delegate so MCP tool names and GraphQL fields line up.
   // Identical window validation (7d/30d -> BAD_USER_INPUT), Postgres-tier ->
-  // retired-D1 fallback, and schema-stable cold-tier degradation; nothing
+  // retired-store fallback, and schema-stable cold-tier degradation; nothing
   // re-derived. Distinct from endpoint_incidents (the active endpoint feed).
   async global_incidents(args: QueryGlobal_IncidentsArgs, context: GqlContext) {
     return rootValue.incidents(args, context);
@@ -5039,7 +5039,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", label);
     const data =
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       await loadSubnetPercentiles(netuid, {
@@ -5319,7 +5319,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", label);
     const data =
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       await loadSubnetIncidents(netuid, {
@@ -5838,7 +5838,7 @@ const rootValue = {
 
   async runtime(_args: unknown, context: GqlContext) {
     // Same cold-tier -> buildRuntimeVersionHistory([]) fallback contract
-    // GET /api/v1/runtime and the get_runtime MCP tool use; blocks' D1 write
+    // GET /api/v1/runtime and the get_runtime MCP tool use; blocks' store write
     // path is retired (#4909) and the Postgres tier that replaced it is retired
     // too (#10190) -- the empty builder shape (transition_count 0,
     // current_spec_version null) satisfies the non-null RuntimeVersionHistory!
@@ -5962,11 +5962,11 @@ const rootValue = {
                 ),
               isEmpty: isEmptyExtrinsicPayload,
             },
-            // Off mainnet `answerBlockDetail` skips the D1 hot tier entirely --
+            // Off mainnet `answerBlockDetail` skips the hot tier entirely --
             // blocks_head and the whole hot path are written by the mainnet
             // firehose poller and carry no network column -- so a testnet ref
             // resolves from that chain's lakehouse instead of being looked up in
-            // mainnet's D1 (#10394).
+            // mainnet's store (#10394).
             chainNetworkFromChainName(network),
           ),
           () =>
@@ -6026,11 +6026,11 @@ const rootValue = {
                 ),
               isEmpty: isEmptyEventPayload,
             },
-            // Off mainnet `answerBlockDetail` skips the D1 hot tier entirely --
+            // Off mainnet `answerBlockDetail` skips the hot tier entirely --
             // blocks_head and the whole hot path are written by the mainnet
             // firehose poller and carry no network column -- so a testnet ref
             // resolves from that chain's lakehouse instead of being looked up in
-            // mainnet's D1 (#10394).
+            // mainnet's store (#10394).
             chainNetworkFromChainName(network),
           ),
           () =>
@@ -6197,7 +6197,7 @@ const rootValue = {
     // ride the same request params REST parses (#8547); an omitted arg uses the
     // module's own default (20/0). #4772 D1
     // retirement: the `account_events` D1 table is dropped in production, so the
-    // fallback goes straight to the pure builder with no rows, never a live D1 query.
+    // fallback goes straight to the pure builder with no rows, never a live store query.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -6506,7 +6506,7 @@ const rootValue = {
     params.set("window", requestedWindow);
     // This account-footprint route's Postgres-tier body is { data, generatedAt }
     // (unlike account's own flat body) -- same shape REST's makeAccountEventHandler
-    // destructures. No live D1 fallback exists for this route family (the account
+    // destructures. No live store fallback exists for this route family (the account
     // event footprints' D1 write path is retired); a cold/absent tier degrades to
     // the pure builder over an empty row set, same as REST's own fallback.
     const data =
@@ -7109,7 +7109,7 @@ const rootValue = {
     // (2026-07-16). Most accounts have never called set_identity, so a
     // row-less account is already the common case: has_identity:false with
     // every field null, never a GraphQL error -- a Postgres miss/outage
-    // degrades to that exact same schema-stable shape, never a live D1 read.
+    // degrades to that exact same schema-stable shape, never a live store read.
     const data =
       ((await tryDataApiTier(
         context.env,
@@ -7149,7 +7149,7 @@ const rootValue = {
     // retired (2026-07-16), forwarding limit/offset/cursor as query params --
     // an address with no identity-history rows is a schema-stable empty
     // timeline, never a GraphQL error, and a Postgres miss/outage now
-    // degrades to that same shape, never a live D1 read.
+    // degrades to that same shape, never a live store read.
     const params = new URLSearchParams();
     if (limit != null) params.set("limit", String(limit));
     if (offset != null) params.set("offset", String(offset));
@@ -7363,7 +7363,7 @@ const rootValue = {
     if (block_start != null) params.set("block_start", String(block_start));
     if (block_end != null) params.set("block_end", String(block_end));
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
-    // MCP get_account_transfers tool use. The account_events D1 write path is
+    // MCP get_account_transfers tool use. The account_events store write path is
     // retired (#4772), so a tier miss resolves through buildAccountTransfers over
     // an empty scan -- a schema-stable empty feed, never a GraphQL error.
     const data =
@@ -7504,7 +7504,7 @@ const rootValue = {
     if (block_start != null) params.set("block_start", String(block_start));
     if (block_end != null) params.set("block_end", String(block_end));
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
-    // MCP get_account_events tool use. The account_events D1 write path is
+    // MCP get_account_events tool use. The account_events store write path is
     // retired (#4772), so a tier miss resolves through buildAccountEvents over an
     // empty scan -- a schema-stable empty feed, never a GraphQL error.
     const data =
@@ -8139,7 +8139,7 @@ const rootValue = {
     // fallback contract REST's handleChainWeights uses -- a cold store yields a
     // schema-stable empty leaderboard, never a GraphQL error. #4772 D1 retirement:
     // the `account_events` D1 table is dropped in production, so the fallback goes
-    // straight to the pure builder with no rows, never a live D1 query.
+    // straight to the pure builder with no rows, never a live store query.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8191,7 +8191,7 @@ const rootValue = {
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-    // the table is dropped in production, so a D1 query here would always miss
+    // the table is dropped in production, so a store query here would always miss
     // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's chainServing route uses, never
     // a GraphQL error.
@@ -8243,7 +8243,7 @@ const rootValue = {
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-    // the table is dropped in production, so a D1 query here would always miss
+    // the table is dropped in production, so a store query here would always miss
     // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainAxonRemovals uses,
     // never a GraphQL error.
@@ -8293,7 +8293,7 @@ const rootValue = {
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-    // the table is dropped in production, so a D1 query here would always miss
+    // the table is dropped in production, so a store query here would always miss
     // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainDeregistrations
     // uses, never a GraphQL error.
@@ -8355,7 +8355,7 @@ const rootValue = {
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-    // the table is dropped in production, so a D1 query here would always miss
+    // the table is dropped in production, so a store query here would always miss
     // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainRegistrations uses,
     // never a GraphQL error.
@@ -8411,7 +8411,7 @@ const rootValue = {
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-    // the table is dropped in production, so a D1 query here would always miss
+    // the table is dropped in production, so a store query here would always miss
     // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainPrometheus uses,
     // never a GraphQL error.
@@ -8492,7 +8492,7 @@ const rootValue = {
     // observed_at stamp REST passes; no ranking/aggregation logic is duplicated
     // here, and a cold store yields a schema-stable empty leaderboard. #4772 D1
     // retirement: the `extrinsics` D1 table is dropped in production, so the
-    // fallback goes straight to the pure builder with no rows, never a live D1 query.
+    // fallback goes straight to the pure builder with no rows, never a live store query.
     const data =
       // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8552,8 +8552,8 @@ const rootValue = {
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
     // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-    // and the table is dropped in production, so a D1 query here would
-    // always miss. Postgres → schema-stable empty stub, never a live D1 read.
+    // and the table is dropped in production, so a store query here would
+    // always miss. Postgres → schema-stable empty stub, never a live store read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8597,7 +8597,7 @@ const rootValue = {
     // a schema-stable zeroed card (subnet_count 0, empty leaderboard, neutral
     // sentiment), never a GraphQL error. Fixed 24h window, no window arg. #4772 D1
     // retirement: the `account_events` D1 table is dropped in production, so the
-    // fallback goes straight to the pure builder with no rows, never a live D1 query.
+    // fallback goes straight to the pure builder with no rows, never a live store query.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8676,7 +8676,7 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainStakeFlow empty-card fallback REST's handleChainStakeFlow
-    // uses. #4909 D1 retirement: never a live D1 read.
+    // uses. #4909 D1 retirement: never a live store read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8737,7 +8737,7 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainStakeMoves empty-card fallback REST's handleChainStakeMoves
-    // uses. #4909 D1 retirement: never a live D1 read.
+    // uses. #4909 D1 retirement: never a live store read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8795,7 +8795,7 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainStakeTransfers empty-card fallback REST's
-    // handleChainStakeTransfers uses. #4909 D1 retirement: never a live D1 read.
+    // handleChainStakeTransfers uses. #4909 D1 retirement: never a live store read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8859,7 +8859,7 @@ const rootValue = {
     if (sort != null) params.set("sort", sort);
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainTransferPairs empty-card fallback REST uses, including the KV
-    // health:meta observed_at stamp. #4909 D1 retirement: never a live D1 read.
+    // health:meta observed_at stamp. #4909 D1 retirement: never a live store read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8916,7 +8916,7 @@ const rootValue = {
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
     // buildChainTransfers empty-card fallback REST's handleChainTransfers
     // uses, including the KV health:meta observed_at stamp. #4909 D1
-    // retirement: never a live D1 read.
+    // retirement: never a live store read.
     const data =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8999,7 +8999,7 @@ const rootValue = {
       if (value != null) trendsParams.set(name, String(value));
     }
     const data =
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (
@@ -9034,7 +9034,7 @@ const rootValue = {
     // tier owns the per-surface uptime/latency aggregation; nothing is
     // duplicated here.
     const data =
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       await loadSubnetHealthTrends(netuid, {
@@ -9187,7 +9187,7 @@ const rootValue = {
     // surfaces card, never a GraphQL error. The tier owns the
     // surface_uptime_daily aggregation; nothing is duplicated here.
     const data =
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetUptime(netuid, {
@@ -9290,7 +9290,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Reuses handleLeaderboards' own projection + D1 reads via the shared
+    // Reuses handleLeaderboards' own projection + store reads via the shared
     // composer, so REST and GraphQL can never drift apart on board composition.
     const { data } = await composeLeaderboardsData(context.env, {
       board: board ?? null,

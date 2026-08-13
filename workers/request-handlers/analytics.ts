@@ -3,7 +3,7 @@
 // D1 fully eliminated (2026-07-17, reconfirmed live 2026-07-25 -- zero D1
 // databases remain on the account): every handler in this file now goes
 // straight to a schema-stable empty payload on a Postgres-tier miss, never a
-// live D1 read -- the D1 read path (`storeAll`) and its fallback-row bookkeeping
+// live store read -- the store read path (`storeAll`) and its fallback-row bookkeeping
 // (`markD1FallbackRows`/`hasD1FallbackRows`/the `d1FallbackGeneration`
 // counter) were deleted once they had zero remaining callers.
 //
@@ -675,14 +675,14 @@ export async function handleBulkHealthTrends(
       // and surface_uptime_daily holds 1,182 rows spanning 2026-07-11 through
       // 2026-07-16, a full rolling window. See wrangler.jsonc's own comment on
       // this flag for the complete verification writeup.
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from every wrangler config and is
       // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
       // initialise `data` resolved to null on every request -- which made the
       // branch below the only path, not the fallback.
-      // D1-served payloads are cacheable; only a genuinely empty one is not.
+      // store-served payloads are cacheable; only a genuinely empty one is not.
       // `isFallback` bars the edge cache, so it must mean "this payload is
       // the schema-stable empty", not merely "the Postgres tier missed" --
-      // since 2026-08-03 a tier miss is the NORMAL path and D1 answers it
+      // since 2026-08-03 a tier miss is the NORMAL path and the store answers it
       // with real rows. Mirrors handleSubnetUptime in analytics-routes.ts.
       const storeGeneration = currentStoreReadFailureGeneration();
       const result = await loadBulkHealthTrends({
@@ -734,19 +734,19 @@ export async function handleHealthTrends(
   // route takes no params and returns all configured windows.
   return withEdgeCache(request, ctx, env, "trends", async (cacheRequest) => {
     // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
-    // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
+    // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from every wrangler config and is
     // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
     // initialise `data` resolved to null on every request -- which made the
     // branch below the only path, not the fallback.
     // Read through the shared storeAll (rather than handing the loader the bare
-    // db) so a failure is still logged + marked as a D1 fallback (the
+    // db) so a failure is still logged + marked as a store fallback (the
     // dark-serve log contract) — a Postgres-tier miss now falls straight
-    // through to the pure formatter with no rows (never a live D1 query),
+    // through to the pure formatter with no rows (never a live store query),
     // so it's always marked a fallback (never edge-cache a schema-stable
     // empty payload).
-    // Only an EMPTY payload is barred from the edge cache — no D1 binding,
-    // or a D1 read that failed mid-load (tracked by the failure generation,
-    // the same contract the Postgres tier uses). A D1-served response
+    // Only an EMPTY payload is barred from the edge cache — no store binding,
+    // or a store read that failed mid-load (tracked by the failure generation,
+    // the same contract the Postgres tier uses). A store-served response
     // carries real rows and caches like any tier hit (the pre-elimination
     // behavior this route always had).
     const storeGeneration = currentStoreReadFailureGeneration();
@@ -796,14 +796,14 @@ export async function handleHealthPercentiles(
     "percentiles",
     async (cacheRequest) => {
       // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from every wrangler config and is
       // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
       // initialise `data` resolved to null on every request -- which made the
       // branch below the only path, not the fallback.
       // A Postgres-tier miss now falls straight through to the pure
-      // formatter with no rows (never a live D1 query), so it's always
+      // formatter with no rows (never a live store query), so it's always
       // marked a fallback (mirrors handleHealthTrends).
-      // Cacheable when D1-served — see handleHealthTrends' comment.
+      // Cacheable when store-served — see handleHealthTrends' comment.
       const storeGeneration = currentStoreReadFailureGeneration();
       const meta = await readHealthMetaKv(env);
       const data = await loadSubnetPercentiles(netuid, {
@@ -850,14 +850,14 @@ export async function handleHealthIncidents(
     "incidents",
     async (cacheRequest) => {
       // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
-      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from every wrangler config and is
       // absent from FORWARDABLE_TIER_FLAGS, so the tier read that used to
       // initialise `data` resolved to null on every request -- which made the
       // branch below the only path, not the fallback.
       // A Postgres-tier miss now falls straight through to the pure
-      // formatter with no rows (never a live D1 query), so it's always
+      // formatter with no rows (never a live store query), so it's always
       // marked a fallback (mirrors handleHealthTrends / handleHealthPercentiles).
-      // Cacheable when D1-served — see handleHealthTrends' comment.
+      // Cacheable when store-served — see handleHealthTrends' comment.
       const storeGeneration = currentStoreReadFailureGeneration();
       const meta = await readHealthMetaKv(env);
       const data = await loadSubnetIncidents(netuid, {
@@ -949,7 +949,7 @@ export async function resolveGlobalIncidents(
   env: Env,
   { label = "7d", days = 7 }: { label?: string; days?: number } = {},
 ): Promise<{ data: Record<string, unknown>; isFallback: boolean }> {
-  // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc
+  // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from every wrangler config
   // and is absent from FORWARDABLE_TIER_FLAGS, so the tier read that guarded an
   // early return here resolved to null before it could touch DATA_API.
   const storeGeneration = currentStoreReadFailureGeneration();
@@ -1234,7 +1234,7 @@ const CHAIN_TRANSFERS_CSV_COLUMNS = [
   "transfer_count",
 ];
 
-// Daily network-activity aggregates over the first-party chain D1 tiers (#1987):
+// Daily network-activity aggregates over the first-party chain store tiers (#1987):
 // per-UTC-day extrinsic/event/block counts, success rate, and unique signers —
 // the foundation time-series for the block-explorer "network at a glance" view
 // (epic #1986). Two independent GROUP-BY-day aggregations (extrinsics + blocks)
@@ -1260,7 +1260,7 @@ export async function handleChainActivity(
       // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
-      // D1 read.
+      // store read.
       // #8242: the upstream aggregation buckets by UTC day across a
       // `now - N days` range, so a 7d window comes back as 8 calendar days (a
       // partial today plus a partial tail day). Trim to the window the caller
@@ -1339,7 +1339,7 @@ export async function handleChainCalls(
     async (cacheRequest) => {
       // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production, so
       // a postgres-tier miss now falls straight back to the pure builder with no
-      // rows (never a live D1 query) -- always mark that response as a fallback
+      // rows (never a live store query) -- always mark that response as a fallback
       // (never edge-cache a schema-stable empty payload).
       let usedFallback = false;
       const meta = await readHealthMetaKv(env);
@@ -1418,7 +1418,7 @@ export async function handleChainSigners(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  // limit/call_module no longer feed a live D1 read (see the retirement note
+  // limit/call_module no longer feed a live store read (see the retirement note
   // below) but are still shape-validated so the REST contract stays stable.
   const limit = pageLimit(url);
   const sort = routeValue<string>(url, "sort");
@@ -1431,8 +1431,8 @@ export async function handleChainSigners(
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
       // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
-      // the table is dropped in production, so a D1 query here would always
-      // miss (#6013). Postgres → schema-stable empty stub, never a live D1 read.
+      // the table is dropped in production, so a store query here would always
+      // miss (#6013). Postgres → schema-stable empty stub, never a live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -1499,7 +1499,7 @@ export async function handleChainTransfers(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  // limit no longer feeds a live D1 read (see the retirement note below) but
+  // limit no longer feeds a live store read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
   const limit = pageLimit(url);
   const csv = csvRequested(url, request);
@@ -1520,9 +1520,9 @@ export async function handleChainTransfers(
     async () => {
       const meta = await readHealthMetaKv(env);
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -1596,7 +1596,7 @@ export async function handleChainTransferPairs(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  // limit no longer feeds a live D1 read (see the retirement note below) but
+  // limit no longer feeds a live store read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
   const limit = pageLimit(url);
   const sort = routeValue<string>(url, "sort");
@@ -1614,9 +1614,9 @@ export async function handleChainTransferPairs(
     async () => {
       const meta = await readHealthMetaKv(env);
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -1705,9 +1705,9 @@ export async function handleChainStakeFlow(
     edgeCacheScope("chain-stake-flow", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -1808,9 +1808,9 @@ export async function handleChainAlphaVolume(
     edgeCacheScope("chain-alpha-volume", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -1898,9 +1898,9 @@ export async function handleChainWeights(
     "chain-weights",
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -1977,8 +1977,8 @@ export async function handleChainWeightSetters(
     "chain-weight-setters",
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
+      // and the table is dropped in production, so a store query here would
+      // always miss. Postgres → schema-stable empty stub, never a live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -2048,9 +2048,9 @@ export async function handleChainServing(
     "chain-serving",
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -2127,9 +2127,9 @@ export async function handleChainPrometheus(
     "chain-prometheus",
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -2204,9 +2204,9 @@ export async function handleChainAxonRemovals(
     "chain-axon-removals",
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -2274,9 +2274,9 @@ export async function handleChainRegistrations(
     edgeCacheScope("chain-registrations", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -2435,9 +2435,9 @@ export async function handleChainDeregistrations(
     edgeCacheScope("chain-deregistrations", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
+      // and the table is dropped in production, so a store query here would
       // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live D1 read.
+      // live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -2531,8 +2531,8 @@ export async function handleChainStakeMoves(
     edgeCacheScope("chain-stake-moves", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
+      // and the table is dropped in production, so a store query here would
+      // always miss. Postgres → schema-stable empty stub, never a live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -2615,8 +2615,8 @@ export async function handleChainStakeTransfers(
     edgeCacheScope("chain-stake-transfers", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
+      // and the table is dropped in production, so a store query here would
+      // always miss. Postgres → schema-stable empty stub, never a live store read.
       const data =
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -2694,7 +2694,7 @@ export async function handleChainFees(
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
       // #4909/#4772 D1 retirement: extrinsics' D1 write path is retired and
-      // the table is dropped in production, so a D1 query here would always
+      // the table is dropped in production, so a store query here would always
       // miss.
       //
       // The Postgres tier this route used to try FIRST is gone with it. It sat

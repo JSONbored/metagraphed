@@ -657,7 +657,7 @@ describe("routed to the sync queue (metagraphed-infra#350)", () => {
     // There is no un-opted deployment for this lane any more: the inline write
     // was deleted after six consecutive complete queued passes
     // (metagraphed-infra#353), so dropping the lane from SYNC_QUEUE_LANES no
-    // longer restores a D1 path -- and the route must say so rather than
+    // longer restores a store path -- and the route must say so rather than
     // accepting rows it cannot deliver.
     const response = await post(
       { rows: [balanceRow()] },

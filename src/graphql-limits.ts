@@ -229,7 +229,7 @@ export const FIELD_COMPLEXITY = {
   account_subnets: RELATIONSHIP_FIELD_COMPLEXITY,
   account_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   account_entities: RELATIONSHIP_FIELD_COMPLEXITY,
-  // Fans out into leaderboardProfilesProjection plus several D1 reads and the
+  // Fans out into leaderboardProfilesProjection plus several store reads and the
   // economics tier -- same cost class as the other relationship fields.
   registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,

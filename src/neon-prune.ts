@@ -18,10 +18,10 @@
 //
 // src/health-prober.ts on its dual rollup:
 //
-//   each prune below is likewise per-store, and blocking D1's prune on a dead
+//   each prune below is likewise per-store, and blocking the prune on a dead
 //   Postgres (or vice versa) would freeze the surviving store's retention
 //
-// This does not replay D1's delete list and does not care whether D1's prune
+// This does not replay the store's delete list and does not care whether the store's prune
 // ran. It applies the SAME cutoff to Neon independently. Two stores computing
 // the same boundary from the same constant stay aligned; one waiting on the
 // other stops pruning the moment the other breaks.
@@ -47,7 +47,7 @@ import { BURN_HISTORY_RETENTION_MS } from "./subnet-burn-history.ts";
 export const NEON_PRUNE_LANE = "neon-prune";
 
 /** Hourly, offset from the other lanes so a tick does not contend with the
- * reconciler's D1 reads. */
+ * reconciler's store reads. */
 export const NEON_PRUNE_CRON = "52 * * * *";
 
 export interface NeonPrunePlan {
@@ -70,10 +70,11 @@ export interface NeonPrunePlan {
  * That inverted when the lanes finished. A table leaves NEON_BACKFILL_LANES
  * exactly when Neon becomes its sole store (#10078), so "absent from the flag"
  * stopped meaning "not filled yet" and started meaning "Neon holds the only
- * copy" -- the precise moment the window most needs bounding. The flag is now
- * empty in both configs, so this lane has been pruning NOTHING while reporting
- * a clean run, and surface_checks is a 30-day rolling window with no other
- * writer to trim it.
+ * copy" -- the precise moment the window most needs bounding. By then the flag
+ * was empty in both configs, so this lane had been pruning NOTHING while
+ * reporting a clean run, and surface_checks is a 30-day rolling window with no
+ * other writer to trim it. The flag itself is gone now, which is why the gate
+ * reads ownership directly.
  *
  * Same inversion, and the same reason, as the chain-detail prune in #10152.
  */

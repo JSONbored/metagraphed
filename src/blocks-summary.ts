@@ -1,9 +1,9 @@
 // Block-production summary: aggregate health of recent finalized blocks from the
-// `blocks` D1 tier — how fast blocks are produced (inter-block time distribution),
+// `blocks` store tier — how fast blocks are produced (inter-block time distribution),
 // how much they carry (extrinsic/event throughput), how DECENTRALIZED production is
 // (concentration of block authorship across authors — the novel measurement, the
 // block-producer analog of the stake/emission concentration scorecards), and the
-// runtime spec-version spread. Pure shaping (buildBlocksSummary) + a thin D1 loader
+// runtime spec-version spread. Pure shaping (buildBlocksSummary) + a thin store loader
 // (loadBlocksSummary); the Worker adds the REST envelope + edge cache. Null-safe: a
 // cold/absent store yields a schema-stable zeroed card (never throws).
 //
@@ -237,16 +237,16 @@ export function buildBlocksSummary(
   };
 }
 
-// Shared D1 loader (REST + MCP parity): read the most recent BLOCKS_SUMMARY_SCAN_CAP
-// blocks newest-first and shape them into the production summary. Cold/absent D1 →
+// Shared store loader (REST + MCP parity): read the most recent BLOCKS_SUMMARY_SCAN_CAP
+// blocks newest-first and shape them into the production summary. A cold or absent store →
 // zeroed card. Exported for the MCP tool.
 export async function loadBlocksSummary(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
 ): Promise<BlocksSummaryResult> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${BLOCKS_SUMMARY_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ?`,
     [BLOCKS_SUMMARY_SCAN_CAP],
   );

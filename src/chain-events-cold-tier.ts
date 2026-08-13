@@ -84,7 +84,7 @@ export interface ChainEventsPage {
 /**
  * Lakehouse rows -> the published event shape.
  *
- * THE SAME FORMATTER the D1 hot tier and `/blocks/{n}/chain-events` use, and
+ * THE SAME FORMATTER the hot tier and `/blocks/{n}/chain-events` use, and
  * for the reason that module states: a caller must not be able to tell which
  * tier answered. Serving the raw rows instead was a live contract break --
  * `chain_events.args` is TEXT in Iceberg, so the feed published a JSON STRING

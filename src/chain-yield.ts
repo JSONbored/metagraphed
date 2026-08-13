@@ -1,11 +1,11 @@
 // Network-wide emission yield: the emission-per-stake RETURN RATE over EVERY
-// subnet's neurons from the live `neurons` D1 tier, summarized as a distribution
+// subnet's neurons from the live `neurons` store tier, summarized as a distribution
 // (no per-UID list — the network analog of the per-subnet yield scorecard in
 // subnet-yield.ts). The return-rate companion to chain-performance.ts: that
 // measures how CONCENTRATED the rewards are and how the 0..1 trust scores spread,
 // while this measures how efficiently stake earns emission across the whole
 // network and how that return is distributed across all neurons at once. Every
-// function is pure + exported for unit tests; the Worker does the D1 read +
+// function is pure + exported for unit tests; the Worker does the store read +
 // envelope. Null-safe: an empty snapshot yields a schema-stable zeroed card.
 
 import { median, percentile } from "./lib/stats.ts";
@@ -27,7 +27,7 @@ function round9(value: unknown): number {
   return Math.round(Number(value) * SCALE) / SCALE;
 }
 
-// A finite TAO cell, or null when absent/blank/non-numeric. Blank D1 cells coerce via
+// A finite TAO cell, or null when absent/blank/non-numeric. Blank cells coerce via
 // Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
 // zero-yield readings (mirrors subnet-yield.ts / metagraph-neurons.ts).
 function nullableTao(value: unknown): number | null {
@@ -258,18 +258,18 @@ export function buildChainYield(
   };
 }
 
-// Shared D1 loader (mirrors handleChainYield + loadChainPerformance): read every
+// Shared store loader (mirrors handleChainYield + loadChainPerformance): read every
 // non-root subnet's neurons in one pass and shape them into the network yield
 // artifact. Exported for the MCP tool. The `netuid != 0` predicate is an I/O
 // saving only -- buildChainYield drops root rows itself (#9040), so a caller
 // passing unfiltered rows still gets a root-free aggregate.
 export async function loadChainYield(
-  d1: (
+  runner: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
 ): Promise<ChainYieldResult> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${CHAIN_YIELD_READ_COLUMNS} FROM neurons WHERE netuid != 0`,
     [],
   );

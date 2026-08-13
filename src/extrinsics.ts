@@ -24,7 +24,7 @@ type SqlRunner = (
 ) => Promise<Array<Record<string, unknown>>>;
 
 // Was the D1 prune-cron's retention window (a 2026-07-10 capacity emergency:
-// ~101k rows/day, ~9.0GB of D1's hard 10GB-per-database cap already used).
+// ~101k rows/day, ~9.0GB of the store's hard 10GB-per-database cap already used).
 // D1's write path + prune cron are retired (#4772 D1 chain-data retirement) --
 // this constant now only bounds loadExtrinsics' query-floor short-circuit
 // below (an impossible ?to= before this floor is a guaranteed empty page,
@@ -33,7 +33,7 @@ type SqlRunner = (
 export const EXTRINSIC_RETENTION_MS = 5 * 24 * 60 * 60 * 1000;
 
 function toIso(ms: unknown): string | null {
-  // D1 can return the INTEGER observed_at as a numeric string; a bare
+  // the store can return the INTEGER observed_at as a numeric string; a bare
   // Number.isFinite(ms) is false for a string, so the old form dropped a real
   // timestamp to null. Coerce first, and require n > 0 so a null/blank/invalid
   // cell stays null instead of epoch 1970. Mirrors the blocks toIso fix (#2708).
@@ -49,7 +49,7 @@ function toIso(ms: unknown): string | null {
 }
 
 // Coerce a chain-position cell (block_number / extrinsic_index) to a
-// non-negative integer, or null when missing, non-finite, or negative. D1 can
+// non-negative integer, or null when missing, non-finite, or negative. the store can
 // return an INTEGER column as a numeric string, so a bare `?? null` pass-through
 // would silently leak the string into the API payload and break downstream
 // arithmetic/comparisons. Mirrors the `toBlockNumber` already applied in
@@ -57,21 +57,21 @@ function toIso(ms: unknown): string | null {
 // blocks.ts in #2435.
 function toChainPosition(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 // Coerce a TAO amount cell (fee_tao / tip_tao, D1 REAL columns) to a number
-// rounded to rao precision (9 dp), or null when missing/non-finite. D1 can
+// rounded to rao precision (9 dp), or null when missing/non-finite. the store can
 // return a REAL column as a numeric string, so a bare `?? null` pass-through
 // would leak the string form into the ["number","null"] contract field and
 // serve unrounded float noise. Mirrors toTaoOrNull in account-events.ts
 // (#2662) and the coercion in formatRegistration (#2487).
 function toTaoOrNull(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
@@ -120,14 +120,14 @@ export function formatExtrinsic(
       // SINGLE-element BTreeSet as an unrelated side effect -- see
       // postgres-collection-normalize.ts's header for why that doesn't
       // conflict with running this pass afterward). All four are no-ops on
-      // D1's own call_args shape (an array of {name,type,value} descriptors)
+      // the store's own call_args shape (an array of {name,type,value} descriptors)
       // -- safe to apply unconditionally regardless of which serving tier
       // produced this row. This is a genuine guarantee, not an assumption:
       // normalizePostgresValue (#4724) reads each D1 descriptor's own `type`
       // string before touching its `value`, so a collection-typed field
       // (Vec<T>/BTreeSet<T>/etc) is preserved as an array at ANY element
-      // count -- decodeBTreeSetFields is then a true no-op on D1 rows
-      // regardless, since D1's call_args never becomes the flat
+      // count -- decodeBTreeSetFields is then a true no-op on store rows
+      // regardless, since the store's call_args never becomes the flat
       // {fieldName: value} object shape that function's own Array.isArray
       // early-return requires it to skip.
       //
@@ -182,7 +182,7 @@ export function formatExtrinsic(
     call_module: row.call_module ?? null,
     call_function: row.call_function ?? null,
     call_args,
-    // D1 can return the `success` INTEGER column as a numeric string ("1"/"0"),
+    // the store can return the `success` INTEGER column as a numeric string ("1"/"0"),
     // same as block_number/extrinsic_index above — a bare `=== 1` would leave a
     // successful extrinsic mislabeled false. Number()-coerce first, mirroring
     // toBooleanFlag in account-events.ts (#2487).
@@ -383,7 +383,7 @@ export function buildBlockExtrinsics(
   };
 }
 
-// ---- Extrinsic D1 read paths -----------------------------------------------
+// ---- Extrinsic store read paths -----------------------------------------------
 // One source of truth for the extrinsics SQL + pagination, shared by the REST
 // handlers and the MCP extrinsic tools. `d1` is a
 // (sql, params) => Promise<rows[]> runner; a cold/unbound DB yields [].
@@ -412,7 +412,7 @@ export interface LoadExtrinsicsOptions {
 // below). A cursor takes precedence over offset when present — uses a
 // (block_number, extrinsic_index) row-value seek.
 export async function loadExtrinsics(
-  d1: SqlRunner,
+  runner: SqlRunner,
   {
     signer,
     callModule,
@@ -550,7 +550,7 @@ export async function loadExtrinsics(
     sql += " OFFSET ?";
     params.push(off);
   }
-  const rows = await d1(sql, params);
+  const rows = await runner(sql, params);
   const last = rows.length === lim ? rows[rows.length - 1] : null;
   const nextCursor = last
     ? encodeCursor([

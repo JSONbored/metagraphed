@@ -2,7 +2,7 @@
 // metagraph snapshot, ranked high-to-low, with a distribution summary (the subnet-wide
 // aggregate yield, mean, and p25/median/p75/p90 percentiles), a validator/miner split,
 // and a per-UID above/below-median classification. Pure shaping (buildSubnetYield) + a
-// thin D1 loader (loadSubnetYield) over the neurons tier; the Worker adds the REST
+// thin store loader (loadSubnetYield) over the neurons tier; the Worker adds the REST
 // envelope. Snapshot-based (no time window) — the answer is "right now, which UIDs earn
 // the most emission per unit of stake, and how is that return distributed across the set".
 // Null-safe: a cold/empty subnet yields a zeroed, empty-neuron card (never throws).
@@ -33,7 +33,7 @@ function toNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-// A finite TAO cell, or null when absent/blank/non-numeric. Blank D1 cells coerce via
+// A finite TAO cell, or null when absent/blank/non-numeric. Blank cells coerce via
 // Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
 // zero-yield readings (mirrors nullableNumber in metagraph-neurons.ts).
 function nullableTao(value: unknown): number | null {
@@ -61,7 +61,7 @@ function raoBigToTao(rao: bigint): number {
 // so guard null explicitly rather than coercing it to uid 0).
 function normalizedUid(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const uid = Number(value);
   return Number.isSafeInteger(uid) && uid >= 0 ? uid : null;
@@ -129,7 +129,7 @@ export function buildSubnetYield(
       // block_number is a nullable INTEGER; guard null before Number() since
       // Number(null) === 0 would fabricate the genesis height 0 for a row whose
       // block is absent (the contract models it as ["integer","null"]). A
-      // numeric string like "8454388" from D1 must still pass.
+      // numeric string like "8454388" from the store must still pass.
       const rawBlock = row?.block_number;
       if (
         rawBlock == null ||
@@ -225,12 +225,12 @@ export function buildSubnetYield(
 }
 
 // One subnet's yield distribution — reads the current neurons snapshot (the same tier
-// the metagraph/validators routes serve) and shapes it. Cold/absent D1 -> empty card.
+// the metagraph/validators routes serve) and shapes it. A cold or absent store -> empty card.
 export async function loadSubnetYield(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: number,
 ): Promise<Row> {
-  const rows = await d1(
+  const rows = await runner(
     "SELECT uid, hotkey, validator_permit, stake_tao, emission_tao, " +
       "captured_at, block_number FROM neurons WHERE netuid = ? ORDER BY uid",
     [netuid],

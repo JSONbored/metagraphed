@@ -85,8 +85,8 @@ const SOURCE_DIRS = ["src", "workers"];
  * Written against the TYPE ARGUMENT rather than the runner's identifier, so it
  * covers every shape a read takes here without a list to maintain: `sql` and
  * the `historySql` alias two handlers use, as a tagged template or an `unsafe`
- * call, and D1's `.all<Record<string, unknown>>()`. That breadth is not
- * incidental -- an identifier-keyed matcher missed the D1 read while this one
+ * call, and the old `.all<Record<string, unknown>>()`. That breadth is not
+ * incidental -- an identifier-keyed matcher missed the store read while this one
  * found it, which is the same lesson the runner default taught.
  *
  * WHITESPACE-TOLERANT, and not optionally. Prettier splits a long read across

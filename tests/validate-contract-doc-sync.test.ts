@@ -21,14 +21,14 @@ const STALE_DESCRIPTION =
   "not live: those three sorts answer from the one-shot 2026-08-02 materialization.";
 const LIVE_DESCRIPTION =
   "Balance-based top-holder leaderboard. The holdings sorts are composed live " +
-  "from D1 and served only while the producer's most recent pass is recorded " +
-  "complete; while an input is unproven that sort declines to a fixed " +
-  "materialization.";
+  "from the store and served only while the producer's most recent pass is " +
+  "recorded complete; while an input is unproven that sort declines to a " +
+  "fixed materialization.";
 
 const DOC_WITH_STALE_BULLET = [
   "## Public Artifacts",
   "",
-  "- `/metagraph/accounts.json`: the hotkey leaderboard, served live from D1.",
+  "- `/metagraph/accounts.json`: the hotkey leaderboard, served live from the store.",
   "- `/metagraph/top-holders.json`: the coldkey counterpart to " +
     "`/metagraph/accounts.json` above. The three holdings sorts answer from the " +
     "frozen 2026-08-02 materialization.",
@@ -57,14 +57,14 @@ describe("claimVector", () => {
       "declines",
       "unproven",
       "complete-pass",
-      "d1",
     ]);
   });
 
   it("ignores a description edit that changes no claim", () => {
-    const before = "Fetch the per-UID metagraph, served live from the D1 tier.";
+    const before =
+      "Fetch the per-UID metagraph, served live from the store tier.";
     const after =
-      "Fetch the per-UID metagraph, served live from the D1 tier; " +
+      "Fetch the per-UID metagraph, served live from the store tier; " +
       "?format=csv returns the same rows as CSV.";
     expect(claimVector(after)).toEqual(claimVector(before));
   });
@@ -246,18 +246,18 @@ describe("head-side source (#9575)", () => {
 
 describe("bullet already agrees (#9575)", () => {
   // A description corrected to match prose that was already right: the bullet
-  // says D1, the description finally does too. Editing the bullet to satisfy a
-  // gate would degrade a correct line.
+  // says lakehouse, the description finally does too. Editing the bullet to
+  // satisfy a gate would degrade a correct line.
   const correctBullet =
-    "- `/metagraph/x.json`: served live from the `neurons` D1 tier.";
+    "- `/metagraph/x.json`: served live from the `neurons` lakehouse tier.";
   const staleDescription = "Served live from the Postgres-backed neurons tier.";
-  const fixedDescription = "Served live from the neurons D1 tier.";
+  const fixedDescription = "Served live from the neurons lakehouse tier.";
 
   it("does not fire when the bullet already carries the gained claims", () => {
-    // Positive control: the claim vector really did move (postgres -> d1), so
-    // the pre-#9575 rule would have reported drift here.
+    // Positive control: the claim vector really did move (postgres ->
+    // lakehouse), so the pre-#9575 rule would have reported drift here.
     expect(claimVector(staleDescription)).toContain("postgres");
-    expect(claimVector(fixedDescription)).toContain("d1");
+    expect(claimVector(fixedDescription)).toContain("lakehouse");
 
     const result = evaluateContractDocSync({
       baseDescriptions: new Map([["/metagraph/x.json", staleDescription]]),

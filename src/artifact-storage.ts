@@ -21,13 +21,13 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^candidates\/(?:\d+|\{netuid\})\.json$/,
   /^endpoint-incidents\.json$/,
   /^endpoint-pools\.json$/,
-  // Global cross-subnet incident ledger, computed live from D1 at
+  // Global cross-subnet incident ledger, computed live from the store at
   // /api/v1/incidents — never written as a file.
   /^incidents\.json$/,
-  // Global validator/operator leaderboard, computed live from the neurons D1 tier.
+  // Global validator/operator leaderboard, computed live from the neurons store.
   /^validators\.json$/,
   // Site-wide accounts leaderboard (#4324/5.3), computed live from the neurons
-  // D1 tier — the collection-level counterpart to validators.json above.
+  // store tier — the collection-level counterpart to validators.json above.
   /^accounts\.json$/,
   // Balance-based top-holder leaderboard (#6741/#6743): computed live from
   // the account_balances/nominator_positions Postgres tier, the coldkey/
@@ -38,12 +38,12 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // page served from a build-time artifact would keep reporting the health
   // the site had when it last built, which is the one moment it must not.
   /^self-health\.json$/,
-  // Cross-subnet validator detail (#4334/7.1): computed live from the neurons D1 tier.
+  // Cross-subnet validator detail (#4334/7.1): computed live from the neurons store.
   /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\.json$/,
   // Validator nominator list (#4334/7.2): computed live from account_events.
   /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\/nominators\.json$/,
   // Validator staked-over-time + rewards history (#4334/7.3): computed live
-  // from the neuron_daily D1 rollup.
+  // from the neuron_daily rollup.
   /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\/history\.json$/,
   /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
@@ -54,7 +54,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^health\/latest\.json$/,
   /^health\/summary\.json$/,
   /^health\/subnets\/(?:\d+|\{netuid\})\.json$/,
-  // Health trends are computed live from D1 by the Worker, never written as a
+  // Health trends are computed live from the store by the Worker, never written as a
   // file. Marked R2-only so the contract maps a schema to the route without the
   // build expecting a committed/staged artifact.
   /^health\/trends\.json$/,
@@ -62,7 +62,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // AI-4 analytics: also computed live from D1, never written as files.
   /^health\/percentiles\/(?:\d+|\{netuid\})\.json$/,
   /^health\/incidents\/(?:\d+|\{netuid\})\.json$/,
-  // One subnet's registration-cost series (#9402), served from the D1 rows the
+  // One subnet's registration-cost series (#9402), served from the store rows the
   // capture cron writes -- never a file. A baked series would freeze at build time,
   // which is the opposite of what a series is for.
   /^subnets\/(?:\d+|\{netuid\})\/burn-history\.json$/,
@@ -79,7 +79,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // outlive the completeness gate that decides whether it may be served at all.
   /^subnets\/(?:\d+|\{netuid\})\/holders\.json$/,
   // The cross-subnet holder ranking (#9607), computed live from the same two
-  // D1 tables -- a baked ranking would freeze exactly the fact it reports.
+  // store tables -- a baked ranking would freeze exactly the fact it reports.
   /^chain\/holders\.json$/,
   // The probe failure-reason mix (#9622), computed live from the daily rollup
   // -- a baked copy would stop the day it built, on a route whose subject is
@@ -98,9 +98,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // whose subject is how the pipeline MOVED.
   /^subnets\/(?:\d+|\{netuid\})\/emission-pipeline\/history\.json$/,
   // The emission-gate change log (#9615), read live from three append-on-change
-  // D1 tables -- a baked copy would stop recording the moment it built.
+  // store tables -- a baked copy would stop recording the moment it built.
   /^chain\/governance\/emission-changes\.json$/,
-  // The TAO/USD index (#9609): a live D1 read of a table written once a minute.
+  // The TAO/USD index (#9609): a live store read of a table written once a minute.
   // A baked copy would be stale before it published.
   /^network\/tao-usd\.json$/,
   // One subnet's surface audit trail (#9612), read live from the registry's
@@ -108,15 +108,15 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^subnets\/(?:\d+|\{netuid\})\/surface-history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
-  // Stake/emission concentration (#2106): computed live from the neurons D1 tier.
+  // Stake/emission concentration (#2106): computed live from the neurons store.
   /^subnets\/(?:\d+|\{netuid\})\/concentration\.json$/,
   // Per-day concentration history: computed live from the neuron_daily rollup.
   /^subnets\/(?:\d+|\{netuid\})\/concentration\/history\.json$/,
-  // Reward distribution & score spread: computed live from the neurons D1 tier.
+  // Reward distribution & score spread: computed live from the neurons store.
   /^subnets\/(?:\d+|\{netuid\})\/performance\.json$/,
   // Per-day performance history: computed live from the neuron_daily rollup.
   /^subnets\/(?:\d+|\{netuid\})\/performance\/history\.json$/,
-  // Idle-stake rollup (#6789): computed live from the neurons D1 tier.
+  // Idle-stake rollup (#6789): computed live from the neurons store.
   /^subnets\/(?:\d+|\{netuid\})\/idle-stake\.json$/,
   // Validator-set / registration turnover: computed live from neuron_daily.
   /^subnets\/(?:\d+|\{netuid\})\/turnover\.json$/,
@@ -166,12 +166,12 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^subnets\/(?:\d+|\{netuid\})\/yield\/history\.json$/,
   // Cross-subnet movers leaderboard: computed live from neuron_daily.
   /^subnets\/movers\.json$/,
-  // Per-UID metagraph (#1303/#1304/#1305): computed live from the neurons D1
+  // Per-UID metagraph (#1303/#1304/#1305): computed live from the neurons store
   // tier at /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, /validators —
   // never written as files.
   /^subnets\/(?:\d+|\{netuid\})\/metagraph\.json$/,
   // Subnet hyperparameters (#4303/1.4): computed live from the
-  // subnet_hyperparams D1 tier, refreshed daily — never written as a file.
+  // subnet_hyperparams store tier, refreshed daily — never written as a file.
   /^subnets\/(?:\d+|\{netuid\})\/hyperparameters\.json$/,
   // Historical hyperparameter change tracking (#4309/1.6): computed live from
   // the subnet_hyperparams_history D1 tier — never written as a file.
@@ -204,15 +204,15 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/prometheus\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/deregistrations\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\.json$/,
-  // Cross-subnet neuron portfolio, computed live from the neurons D1 tier at
+  // Cross-subnet neuron portfolio, computed live from the neurons store at
   // /api/v1/accounts/{ss58}/portfolio — never a file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/portfolio\.json$/,
   // Nominator-side (coldkey) position reconstruction (#5233), computed live
-  // from nominator_positions joined against the neurons D1 tier at
+  // from nominator_positions joined against the neurons store at
   // /api/v1/accounts/{ss58}/positions — never a file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/positions\.json$/,
   // Per-account, per-subnet position history (#4329/6.2), computed live from the
-  // account_position_daily D1 rollup tier at
+  // account_position_daily store rollup tier at
   // /api/v1/accounts/{ss58}/subnets/{netuid}/history — never a file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\/(?:\d+|\{netuid\})\/history\.json$/,
   // Live TAO balance query (#1818): computed from RPC at request time, never a static file.
@@ -225,7 +225,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/children\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/parents\.json$/,
   // Personal chain identity (epic #4301/5.4), computed live from the
-  // account_identity D1 tier at /api/v1/accounts/{ss58}/identity — never a file.
+  // account_identity store tier at /api/v1/accounts/{ss58}/identity — never a file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/identity\.json$/,
   // Personal chain identity diff-tracking history (epic #4301/5.2), computed
   // live from the account_identity_history D1 tier at
@@ -277,40 +277,40 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // never a static file. Same tier rationale as subnet lease above.
   /^crowdloans\.json$/,
   /^crowdloans\/(?:\d+|\{crowdloan_id\})\.json$/,
-  // Block-explorer tiers (#1345): computed live from the blocks D1 tier at
+  // Block-explorer tiers (#1345): computed live from the blocks store tier at
   // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
   // 0x block_hash) — never written as files.
   /^blocks\.json$/,
-  // Block-production analytics summary, computed live from the blocks D1 tier at
+  // Block-production analytics summary, computed live from the blocks store tier at
   // /api/v1/blocks/summary — never a file.
   /^blocks\/summary\.json$/,
   // Per-network capability matrix (#8699): derived at request time from the
   // router's own mainnet-only predicate at /api/v1/networks — never a file.
   /^networks\.json$/,
   // Spec-version transition timeline (#4316/3.1), computed live from the blocks
-  // D1 tier at /api/v1/runtime — never a file.
+  // store tier at /api/v1/runtime — never a file.
   /^runtime\.json$/,
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\.json$/,
   // Per-block extrinsics sub-resource (#1845): computed live from the extrinsics
-  // D1 tier at /api/v1/blocks/{ref}/extrinsics — never written as a file.
+  // store tier at /api/v1/blocks/{ref}/extrinsics — never written as a file.
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/extrinsics\.json$/,
   // Per-block events sub-resource (#1852): computed live from the account_events
-  // D1 tier at /api/v1/blocks/{ref}/events — never written as a file.
+  // store tier at /api/v1/blocks/{ref}/events — never written as a file.
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/events\.json$/,
   // Block-explorer extrinsic tiers (#1345 second slice): computed live from the
-  // extrinsics D1 tier at /api/v1/extrinsics (recent feed) + /api/v1/extrinsics/{hash}
+  // extrinsics store tier at /api/v1/extrinsics (recent feed) + /api/v1/extrinsics/{hash}
   // (0x extrinsic_hash or composite block-index ref) — never written as files.
   /^extrinsics\.json$/,
   /^extrinsics\/(?:0x[0-9a-fA-F]{64}|\d+-\d+|\{hash\})\.json$/,
   // Sudo-call feed (#4310/2.2): the extrinsics feed hardcoded to
-  // call_module='Sudo' — computed live from the same D1 tier, never a file.
+  // call_module='Sudo' — computed live from the same store tier, never a file.
   /^sudo\.json$/,
   // AdminUtils config-change feed (#4310/2.3): the extrinsics feed hardcoded
-  // to call_module='AdminUtils' — computed live from the same D1 tier, never
+  // to call_module='AdminUtils' — computed live from the same store tier, never
   // a file.
   /^governance\/config-changes\.json$/,
   // Chain analytics (#1987-#1990): network-activity / call-mix / signer-leaderboard
-  // / fee-market aggregates computed live from the extrinsics + blocks D1 tiers at
+  // / fee-market aggregates computed live from the extrinsics + blocks store tiers at
   // /api/v1/chain/* — never files.
   /^chain\/activity\.json$/,
   /^chain\/calls\.json$/,
@@ -385,25 +385,25 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // the account_events StakeTransferred stream at /api/v1/chain/stake-transfers — never a file.
   /^chain\/stake-transfers\.json$/,
   // Network-wide concentration aggregated across every subnet's neurons, computed
-  // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
+  // live from the neurons store at /api/v1/chain/concentration — never a file.
   /^chain\/concentration\.json$/,
   // Every subnet RANKED by one lens of its distribution (#9717), computed live
-  // from the same neurons D1 read the aggregate above performs — never a file.
+  // from the same neurons store read the aggregate above performs — never a file.
   /^chain\/concentration\/subnets\.json$/,
   // Network-wide reward distribution & score spread, computed live from the
-  // neurons D1 tier at /api/v1/chain/performance — never a file.
+  // neurons store tier at /api/v1/chain/performance — never a file.
   /^chain\/performance\.json$/,
-  // Network-wide idle-stake rollup (#6789), computed live from the neurons D1
+  // Network-wide idle-stake rollup (#6789), computed live from the neurons store
   // tier at /api/v1/chain/idle-stake — never a file.
   /^chain\/idle-stake\.json$/,
   // Network-wide recent subnet-identity-change feed, computed live from the
-  // subnet_identity_history D1 tier at /api/v1/chain/identity-history — never a file.
+  // subnet_identity_history store tier at /api/v1/chain/identity-history — never a file.
   /^chain\/identity-history\.json$/,
-  // Network-wide emission yield (return rate), computed live from the neurons D1
+  // Network-wide emission yield (return rate), computed live from the neurons store
   // tier at /api/v1/chain/yield — never a file.
   /^chain\/yield\.json$/,
   // Network-wide validator-set turnover across every subnet, computed live from the
-  // neuron_daily D1 rollup at /api/v1/chain/turnover — never a file.
+  // neuron_daily store rollup at /api/v1/chain/turnover — never a file.
   /^chain\/turnover\.json$/,
   // the chain_events lakehouse tier: the recent-events feed, the
   // per-block all-events list, and the activity-stats aggregate are served live
@@ -414,7 +414,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^chain-events\/stats\.json$/,
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/chain-events\.json$/,
   // Network-wide economics time series (#1307): aggregated live per UTC day from
-  // the subnet_snapshots D1 rollup at /api/v1/economics/trends — never a file.
+  // the subnet_snapshots store rollup at /api/v1/economics/trends — never a file.
   /^economics\/trends\.json$/,
   /^registry\/leaderboards\.json$/,
   // Cross-subnet comparison (#1664), composed live from registry projections +
@@ -435,7 +435,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // resolved tag and the literal `{tag}` template, mirroring the
   // `(?:\d+|\{netuid\})` dual-pattern convention used throughout this list.
   /^domains\/(?:[a-z-]+|\{tag\})\/summary\.json$/,
-  // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
+  // RPC reverse-proxy usage analytics (B3), computed live from the store telemetry at
   // /api/v1/rpc/usage — never written as a file.
   /^rpc\/usage\.json$/,
   // Per-subnet agent capability catalog (full service detail) — large, built.

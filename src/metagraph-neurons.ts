@@ -2,7 +2,7 @@
 // workers/data-api.ts's handleNeuronsSync, #4771) into the per-UID metagraph
 // API responses for #1304/#1305 (epic #1302). Populated by the refresh-metagraph
 // cron first-party via the Bittensor SDK (#1348) -- no Taostats, no API key.
-// Pure + exported for tests; the Worker handlers run the D1 or Postgres query
+// Pure + exported for tests; the Worker handlers run the store query
 // and call these builders.
 
 import {
@@ -126,7 +126,7 @@ function selectsAnything(selection: NeuronSelection): boolean {
 
 // A null/absent sort value orders LAST in both directions -- see
 // NEURON_SORT_NULLS_LAST_NOTE for why "unranked" must not read as "rank
-// worst". Non-numeric values (a D1 numeric string that escaped coercion)
+// worst". Non-numeric values (a numeric string that escaped coercion)
 // take the same branch: unorderable is unorderable.
 function sortValue(row: Row, field: string): number | null {
   const raw = row[field];
@@ -299,7 +299,7 @@ const APY_SECONDS_PER_BLOCK = 12;
 const APY_SECONDS_PER_YEAR = 365 * 24 * 60 * 60; // 31,536,000
 
 function toIso(ms: unknown): string | null {
-  // D1 can return the INTEGER captured_at as a numeric string; a bare
+  // the store can return the INTEGER captured_at as a numeric string; a bare
   // Number.isFinite(ms) is false for a string, so the old form dropped a real
   // snapshot timestamp to null. Coerce first and require n > 0 so null/blank/
   // invalid cells stay null (never epoch 1970). Mirrors the blocks/extrinsics
@@ -318,7 +318,7 @@ function numberOrZero(value: unknown): number {
 
 function nullableNumber(value: unknown): number | null {
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -327,9 +327,9 @@ function nullableNumber(value: unknown): number | null {
 function nonNegativeInt(value: unknown): number | null {
   // Guard null first: Number(null) === 0, so a null column (block_number is a
   // nullable INTEGER) would masquerade as the real chain height / netuid / uid 0
-  // instead of "absent". A numeric string like "10" from D1 must still pass.
+  // instead of "absent". A numeric string like "10" from the store must still pass.
   if (value == null) return null;
-  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
@@ -399,7 +399,7 @@ interface ImmunityWindow {
 }
 
 // coerce the flag columns back to real booleans for the API (toBooleanFlag
-// handles the D1 INTEGER 0/1 cells; nonNegativeInt/nullableNumber coerce
+// handles the INTEGER 0/1 cells; nonNegativeInt/nullableNumber coerce
 // string-typed uid/registered_at_block into real integers, and roundTao
 // rounds stake_tao / emission_tao to rao precision). The explicit null
 // guards preserve the previous null-on-missing contract: Number(null) is
@@ -524,7 +524,7 @@ function snapshotStamp(rows: Row[]): {
   const first = rows[0] || {};
   return {
     captured_at: toIso(first.captured_at),
-    // Coerce like buildGlobalValidators (#2611): block_number is a nullable D1
+    // Coerce like buildGlobalValidators (#2611): block_number is a nullable store
     // INTEGER that can come back as a numeric string, so a bare `?? null` would
     // leak "8454388" into the ["integer","null"] contract field. nonNegativeInt
     // maps null→null and numeric strings→real integers.
@@ -590,7 +590,7 @@ export function buildNeuronDetail(
     schema_version: 1,
     netuid,
     captured_at: toIso(row?.captured_at),
-    // Same D1 numeric-string coercion as snapshotStamp / buildGlobalValidators
+    // Same numeric-string coercion as snapshotStamp / buildGlobalValidators
     // (#2611): keep the top-level block_number an integer or null, never a string.
     block_number: nonNegativeInt(row?.block_number),
     neuron: formatNeuron(row, undefined, immunityPeriod),
@@ -606,7 +606,7 @@ function primaryColdkey(coldkeys: Map<string, number>): string | null {
 
 // The coldkey's own self-declared identity (#5234), joined by `coldkey` --
 // NOT the hotkey's. `identityByColdkey` is a coldkey -> account_identity row
-// Map built by the caller (empty by default, so every existing D1 call site
+// Map built by the caller (empty by default, so every existing call site
 // below that never passes one gets a stable "no identity" shape rather than
 // an omitted field). Reuses buildAccountIdentity's own has_identity/sanitize
 // logic and IDENTITY_FIELDS's field list (single source of truth with the
@@ -717,7 +717,7 @@ function finalizeApy(acc: ApyAccumulator): Row {
 // backward-looking return figures. The keys index the per-hotkey baseline
 // object the worker resolves from neuron_daily (see loadRealizedStakeBaselines
 // in workers/data-api.ts); the values are the human window labels the field
-// names carry (1d/1w/1m). A cold/absent baseline (D1 fallback, or a hotkey with
+// names carry (1d/1w/1m). A cold/absent baseline (store fallback, or a hotkey with
 // no neuron_daily row far enough back) leaves that window's return null.
 const REALIZED_RETURN_FIELDS: Array<[string, string]> = [
   ["d1", "realized_return_1d"],
@@ -1131,7 +1131,7 @@ function moveFeaturedToFront(rows: Row[]): Row[] {
 
 // Featured-validator pin overlay (#5166): moves any row with featured=true to
 // the front of GlobalValidatorsArtifact.validators / SubnetValidatorsArtifact.
-// validators, applied ONCE at the point where the D1/Postgres tiers already
+// validators, applied ONCE at the point where the store tiers already
 // converge (mirrors overlayPreviouslyKnownAs in src/subnet-identity-history.ts
 // -- a small pure post-processing function, not duplicated per tier). Must
 // never run on an explicit, non-default sort: GlobalValidatorsArtifact carries
@@ -1157,15 +1157,15 @@ export function overlayFeaturedValidators(
   };
 }
 
-// D1 read paths shared by the REST handlers and the MCP tools (one source of
-// truth). `d1` is a (sql, params) => Promise<rows[]> runner; a cold/unbound DB
+// store read paths shared by the REST handlers and the MCP tools (one source of
+// truth). `runner` is a (sql, params) => Promise<rows[]> runner; a cold/unbound store
 // returns [] → a schema-stable empty payload.
 export async function loadSubnetMetagraph(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   { validatorsOnly = false }: { validatorsOnly?: boolean } = {},
 ): Promise<Row> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
       validatorsOnly ? " AND validator_permit = TRUE" : ""
     } ORDER BY uid`,
@@ -1175,30 +1175,30 @@ export async function loadSubnetMetagraph(
 }
 
 export async function loadSubnetValidators(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
 ): Promise<Row> {
   // Tie-break equal stake by the unique uid so the ranking is deterministic
   // across snapshot-replaced captures (without it, SQLite returns tied rows in
   // arbitrary physical order). Mirrors loadSubnetMetagraph's ORDER BY uid.
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY stake_tao DESC, uid ASC`,
     [netuid],
   );
   return buildSubnetValidators(rows, netuid);
 }
 
-// netuid -> latest alpha_price_tao from the D1 subnet_snapshots mirror
-// (#9051), for the shared D1 fallback loaders below -- the D1 twin of
+// netuid -> latest alpha_price_tao from the subnet_snapshots table
+// (#9051), for the shared store fallback loaders below -- the store twin of
 // workers/data-api.ts's loadAlphaPricesByNetuid. Group-wise MAX join rather
 // than DISTINCT ON (SQLite has neither). A cold/absent table yields an empty
 // map, which prices nothing: every non-root row is excluded from the totals
 // rather than being silently counted 1:1.
 export async function loadStoreAlphaPricesByNetuid(
-  d1: SqlRunner,
+  runner: SqlRunner,
 ): Promise<Map<number, number | null>> {
   try {
-    const rows = await d1(
+    const rows = await runner(
       "SELECT s.netuid, s.alpha_price_tao FROM subnet_snapshots s " +
         "JOIN (SELECT netuid, MAX(snapshot_date) AS snapshot_date " +
         "FROM subnet_snapshots GROUP BY netuid) latest " +
@@ -1217,29 +1217,29 @@ export async function loadStoreAlphaPricesByNetuid(
   }
 }
 
-// The identity join reads D1's account_identity directly. The old #5234
+// The identity join reads the store's account_identity directly. The old #5234
 // posture ("D1 write path is retired -- the Postgres-backed route is what
 // actually joins") stopped being true when Postgres was removed: D1 became
 // the only path and every operator name silently vanished from /validators.
-// account_identity is actively written in D1 (the account-identity-sync
+// account_identity is actively written in the store (the account-identity-sync
 // path), so it is joined here like any other side table.
 export async function loadGlobalValidators(
-  d1: SqlRunner,
+  runner: SqlRunner,
   {
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   }: { sort?: string; limit?: unknown } = {},
 ): Promise<Row> {
   const [rows, priceByNetuid, identityByColdkey] = await Promise.all([
-    d1(
+    runner(
       "SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, " +
         "stake_tao, block_number, captured_at FROM neurons " +
         "WHERE validator_permit = TRUE AND hotkey IS NOT NULL " +
         "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
       [],
     ),
-    loadStoreAlphaPricesByNetuid(d1),
-    loadIdentityByColdkeyMap(d1),
+    loadStoreAlphaPricesByNetuid(runner),
+    loadIdentityByColdkeyMap(runner),
   ]);
   return buildGlobalValidators(rows, {
     sort,
@@ -1250,11 +1250,11 @@ export async function loadGlobalValidators(
 }
 
 export async function loadNeuron(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   uid: unknown,
 ): Promise<Row> {
-  const rows = await d1(
+  const rows = await runner(
     `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
     [netuid, uid],
   );
@@ -1446,16 +1446,16 @@ export function buildValidatorDetail(
 
 // Identity joined here too -- see loadGlobalValidators' comment.
 export async function loadValidatorDetail(
-  d1: SqlRunner,
+  runner: SqlRunner,
   hotkey: unknown,
 ): Promise<Row> {
   const [rows, priceByNetuid, identityByColdkey] = await Promise.all([
-    d1(
+    runner(
       `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
       [hotkey],
     ),
-    loadStoreAlphaPricesByNetuid(d1),
-    loadIdentityByColdkeyMap(d1),
+    loadStoreAlphaPricesByNetuid(runner),
+    loadIdentityByColdkeyMap(runner),
   ]);
   return buildValidatorDetail(rows, hotkey, {
     priceByNetuid,

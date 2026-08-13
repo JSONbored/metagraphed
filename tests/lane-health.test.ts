@@ -217,7 +217,7 @@ describe("loadLatestLaneHealth", () => {
   });
 
   test("a driver without an all() is treated as no data", async () => {
-    // The injected-fake surface is deliberately narrow (`all?()`), and a D1 binding
+    // The injected-fake surface is deliberately narrow (`all?()`), and a store binding
     // that cannot answer a SELECT must degrade to "no lanes" rather than throw
     // through a watchdog tick.
     const db = {

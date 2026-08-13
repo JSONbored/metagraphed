@@ -30,7 +30,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
-// Edge-cache coverage for the D1-backed analytics routes (audit #6). These four
+// Edge-cache coverage for the store-backed analytics routes (audit #6). These four
 // handlers (per-subnet health trends / percentiles / incidents + the bulk-trends
 // route) used to re-run a full-window D1 aggregation on EVERY request; they are
 // now wrapped in withEdgeCache, which mirrors the existing live-overlay
@@ -260,7 +260,7 @@ afterEach(() => {
 describe("analytics edge cache", () => {
   test("INVARIANT: cache key includes contract_version + snapshot stamp + netuid + window", async () => {
     // D1 fully eliminated (2026-07-17): percentiles always marks a Postgres-tier
-    // MISS a D1 fallback (never cached), so only a Postgres-tier HIT exercises
+    // MISS a store fallback (never cached), so only a Postgres-tier HIT exercises
     // this key-shape invariant now.
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
@@ -541,7 +541,7 @@ describe("analytics edge cache", () => {
     assert.equal(first.status, 200);
     const queriesAfterMiss = queries.length;
 
-    // Explicit ?window=30d is the canonical form — must be a cache HIT (no new D1).
+    // Explicit ?window=30d is the canonical form — must be a cache HIT (no new store read).
     const hit = await handleRequest(
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/turnover?window=30d",
@@ -870,7 +870,7 @@ describe("analytics edge cache", () => {
     assert.equal(first.status, 200);
     const queriesAfterMiss = queries.length;
 
-    // Explicit ?window=7d is the canonical form — must be a cache HIT (no new D1).
+    // Explicit ?window=7d is the canonical form — must be a cache HIT (no new store read).
     const hit = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/activity?window=7d"),
       mockEnv(env) as unknown as Env,
@@ -946,7 +946,7 @@ describe("analytics edge cache", () => {
 
   test("HIT: a pre-populated cache serves the cached body WITHOUT re-calling the Postgres tier", async () => {
     // D1 fully eliminated (2026-07-17): incidents always marks a Postgres-tier
-    // MISS a D1 fallback (never cached), so only a Postgres-tier HIT can prove
+    // MISS a store fallback (never cached), so only a Postgres-tier HIT can prove
     // the cached body is served without a second upstream call.
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
@@ -1021,7 +1021,7 @@ describe("analytics edge cache", () => {
 
   test("MISS: an empty cache calls the Postgres tier once and issues a cache.put via waitUntil", async () => {
     // D1 fully eliminated (2026-07-17): bulk-trends always marks a
-    // Postgres-tier MISS a D1 fallback (never cached), so only a Postgres-tier
+    // Postgres-tier MISS a store fallback (never cached), so only a Postgres-tier
     // HIT still schedules a cache write.
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
@@ -1106,7 +1106,7 @@ describe("analytics edge cache", () => {
   });
 
   test("NO-CACHE-ON-ERROR: a marked fallback Response is skipped even when the generation is unchanged", async () => {
-    // This isolates the WeakSet response marker from the independent D1 fallback
+    // This isolates the WeakSet response marker from the independent store fallback
     // generation guard: a handler must mark the awaited Response object, not the
     // Promise that produces it, or withEdgeCache cannot recognize the fallback.
     originalCaches = globalWithCaches.caches;
@@ -1527,7 +1527,7 @@ describe("analytics edge cache", () => {
 
   test("health percentiles: bare path populates cache; explicit ?window=7d is a HIT", async () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
-    // D1 fallback (never cached), so this canonical-key invariant only survives
+    // store fallback (never cached), so this canonical-key invariant only survives
     // on a Postgres-tier HIT.
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
@@ -1591,7 +1591,7 @@ describe("analytics edge cache", () => {
 
   test("health incidents: bare path populates cache; explicit ?window=7d is a HIT", async () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
-    // D1 fallback (never cached), so this canonical-key invariant only survives
+    // store fallback (never cached), so this canonical-key invariant only survives
     // on a Postgres-tier HIT.
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
@@ -1658,13 +1658,13 @@ describe("analytics edge cache", () => {
     // were edgeCache=0 — they re-ran their D1 aggregation on every request. Now
     // wrapped in withEdgeCache at the call site, keyed on the same
     // contract_version + last_run_at + pathname + search. D1 fully eliminated
-    // (2026-07-17): a Postgres-tier MISS is always marked a D1 fallback (never
+    // (2026-07-17): a Postgres-tier MISS is always marked a store fallback (never
     // cached), so only a Postgres-tier HIT still gets cached here.
     //
     // The 4th route this test used to cover, registry leaderboards, never had
     // Postgres-tier wiring to begin with (its health/rpc/growth/reliability
     // boards are permanently empty now) and handleLeaderboards unconditionally
-    // marks its response a D1 fallback -- it is categorically never
+    // marks its response a store fallback -- it is categorically never
     // edge-cacheable anymore, covered instead by "NO-CACHE-ON-ERROR: D1
     // fallback on the five additional edge-cached routes is not cached" below.
     const routes = [
@@ -1974,7 +1974,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
 
   test("health percentiles still bust on health last_run_at (unaffected sibling route)", async () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
-    // D1 fallback (never cached), so only a Postgres-tier HIT still seeds a
+    // store fallback (never cached), so only a Postgres-tier HIT still seeds a
     // cache entry keyed on the shared health-cron last_run_at stamp.
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();

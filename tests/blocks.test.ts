@@ -21,7 +21,7 @@ import type { Row } from "./row-type.ts";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
-test("formatBlock maps a D1 row to an API block (ISO time)", () => {
+test("formatBlock maps a store row to an API block (ISO time)", () => {
   const out = formatBlock({
     block_number: 1000,
     block_hash: "0xhash",
@@ -148,7 +148,7 @@ test("formatBlock defaults a missing block_number to null (every field nullable)
 });
 
 test("formatBlock coerces a string-typed block_number cell to a Number", () => {
-  // D1 can return an INTEGER column as a numeric string ("1000" not 1000); the
+  // the store can return an INTEGER column as a numeric string ("1000" not 1000); the
   // bare `?? null` pass-through this replaced would have leaked the string into
   // the API payload and broken downstream arithmetic/comparisons.
   const out = formatBlock({ block_number: "1000", block_hash: "0xabc" })!;
@@ -219,13 +219,13 @@ test("formatBlock rejects blank integer cells that coerce to 0 (not block 0)", (
   }
 });
 
-test("loadBlock resolves neighbors when D1 returns a string-typed block_number (#1853)", async () => {
+test("loadBlock resolves neighbors when the store returns a string-typed block_number (#1853)", async () => {
   // D1 can return the INTEGER block_number as a numeric string. The neighbor
   // guard must coerce the resolved anchor (like formatBlock) before the MAX/MIN
   // lookup — a bare Number.isInteger("1234") is false, which skipped the query
   // and wrongly reported prev/next_block_number: null for a block that has
   // neighbors. Regression for the missed sibling of the #2489 string-cell fix.
-  const d1 = async (sql: string, params: unknown[]) => {
+  const runner = async (sql: string, params: unknown[]) => {
     if (/block_number = \?/.test(sql)) {
       return [{ block_number: "1234", block_hash: "0xabc", observed_at: 1 }];
     }
@@ -236,14 +236,14 @@ test("loadBlock resolves neighbors when D1 returns a string-typed block_number (
     }
     return [];
   };
-  const out = await loadBlock(d1, "1234");
+  const out = await loadBlock(runner, "1234");
   assert.equal(out.block!.block_number, 1234);
   assert.equal(out.prev_block_number, 1230);
   assert.equal(out.next_block_number, 1240);
 });
 
 test("loadBlock coerces string-typed neighbor heights from D1 (#1853)", async () => {
-  const d1 = async (sql: string) => {
+  const runner = async (sql: string) => {
     if (/block_number = \?/.test(sql)) {
       return [{ block_number: 1234, block_hash: "0xabc", observed_at: 1 }];
     }
@@ -252,7 +252,7 @@ test("loadBlock coerces string-typed neighbor heights from D1 (#1853)", async ()
     }
     return [];
   };
-  const out = await loadBlock(d1, "1234");
+  const out = await loadBlock(runner, "1234");
   assert.equal(out.prev_block_number, 1230);
   assert.equal(out.next_block_number, 1240);
   assert.equal(typeof out.prev_block_number, "number");
@@ -339,7 +339,7 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-// A D1 mock that routes by SQL shape so the block handlers get realistic rows.
+// A store mock that routes by SQL shape so the block handlers get realistic rows.
 function dbWith({
   feed,
   detail,
@@ -449,7 +449,7 @@ test("GET /blocks/{ref} is schema-stable when cold (block:null, never 404)", asy
   assert.equal(body.data.next_block_number, null);
 });
 
-test("GET /blocks is schema-stable when D1 is cold (never 404)", async () => {
+test("GET /blocks is schema-stable when the store is cold (never 404)", async () => {
   const res = await handleRequest(
     req("/api/v1/blocks"),
     {} as unknown as Env,
@@ -591,7 +591,7 @@ test("GET /blocks/{ref}/extrinsics rejects an unsupported query param (#1845)", 
 // hit instead of the expected miss.
 function recordingDb(known: Set<unknown> = new Set()) {
   const calls: Row[] = [];
-  const d1 = async (sql: string, params: unknown[]) => {
+  const runner = async (sql: string, params: unknown[]) => {
     calls.push({ sql, params });
     if (/WHERE block_number = \?/.test(sql)) {
       const n = params[0];
@@ -601,7 +601,7 @@ function recordingDb(known: Set<unknown> = new Set()) {
     }
     return [];
   };
-  return { d1, calls };
+  return { runner, calls };
 }
 
 test("loadBlock treats a malformed non-hash ref as a clean miss (#2314)", async () => {
@@ -617,8 +617,8 @@ test("loadBlock treats a malformed non-hash ref as a clean miss (#2314)", async 
     "99999999999999999999",
   ];
   for (const ref of bad) {
-    const { d1, calls } = recordingDb(new Set([1, 5, 7, 31, 1000]));
-    const out = await loadBlock(d1, ref);
+    const { runner, calls } = recordingDb(new Set([1, 5, 7, 31, 1000]));
+    const out = await loadBlock(runner, ref);
     assert.equal(out.block, null, `ref ${ref} must miss`);
     assert.equal(out.ref, ref);
     assert.equal(
@@ -630,8 +630,8 @@ test("loadBlock treats a malformed non-hash ref as a clean miss (#2314)", async 
 });
 
 test("loadBlock still resolves a well-formed numeric ref (#2314)", async () => {
-  const { d1, calls } = recordingDb(new Set([42]));
-  const out = await loadBlock(d1, "42");
+  const { runner, calls } = recordingDb(new Set([42]));
+  const out = await loadBlock(runner, "42");
   assert.equal(out.block!.block_number, 42);
   assert.equal(
     calls.some(
@@ -644,14 +644,14 @@ test("loadBlock still resolves a well-formed numeric ref (#2314)", async () => {
 test("loadBlock still resolves a 64-hex block_hash ref (#2314)", async () => {
   const hash = `0x${"a".repeat(64)}`;
   const calls: Row[] = [];
-  const d1 = async (sql: string, params: unknown[]) => {
+  const runner = async (sql: string, params: unknown[]) => {
     calls.push({ sql, params });
     if (/WHERE block_hash = \?/.test(sql)) {
       return [{ block_number: 9, block_hash: hash }];
     }
     return [];
   };
-  const out = await loadBlock(d1, hash);
+  const out = await loadBlock(runner, hash);
   assert.equal(out.block!.block_number, 9);
   assert.equal(
     calls.some(
@@ -668,7 +668,7 @@ test("loadBlock lowercases a mixed-case 0x block_hash before binding (#2349)", a
   const lower = `0x${"a".repeat(64)}`;
   const mixed = `0x${"A".repeat(64)}`;
   const calls: Row[] = [];
-  const d1 = async (sql: string, params: unknown[]) => {
+  const runner = async (sql: string, params: unknown[]) => {
     calls.push({ sql, params });
     if (/WHERE block_hash = \?/.test(sql)) {
       return params[0] === lower
@@ -677,7 +677,7 @@ test("loadBlock lowercases a mixed-case 0x block_hash before binding (#2349)", a
     }
     return [];
   };
-  const out = await loadBlock(d1, mixed);
+  const out = await loadBlock(runner, mixed);
   assert.equal(out.block!.block_number, 9);
   assert.equal(
     calls.some(
@@ -699,8 +699,8 @@ function recordingBlocksD1(capture: Row[] = []) {
 
 test("loadBlocks applies the conjunctive filter set (#1991)", async () => {
   const capture: Row[] = [];
-  const d1 = recordingBlocksD1(capture);
-  await loadBlocks(d1, {
+  const runner = recordingBlocksD1(capture);
+  await loadBlocks(runner, {
     author: "5Author",
     specVersion: 423,
     blockStart: 100,
@@ -727,10 +727,10 @@ test("loadBlocks applies the conjunctive filter set (#1991)", async () => {
   assert.equal(params.at(-1), 0);
 });
 
-test("loadBlocks short-circuits impossible ranges and count floors before D1", async () => {
+test("loadBlocks short-circuits impossible ranges and count floors before the store", async () => {
   const capture: Row[] = [];
-  const d1 = recordingBlocksD1(capture);
-  const empty = await loadBlocks(d1, {
+  const runner = recordingBlocksD1(capture);
+  const empty = await loadBlocks(runner, {
     blockStart: 20,
     blockEnd: 10,
     from: 200,
@@ -744,8 +744,8 @@ test("loadBlocks short-circuits impossible ranges and count floors before D1", a
 
 test("loadBlocks ANDs keyset cursor with filters and drops OFFSET", async () => {
   const capture: Row[] = [];
-  const d1 = recordingBlocksD1(capture);
-  await loadBlocks(d1, {
+  const runner = recordingBlocksD1(capture);
+  await loadBlocks(runner, {
     author: "5Author",
     cursor: encodeCursor([300]),
   });
@@ -757,8 +757,8 @@ test("loadBlocks ANDs keyset cursor with filters and drops OFFSET", async () => 
 
 test("loadBlocks keeps the plain OFFSET path when unfiltered", async () => {
   const capture: Row[] = [];
-  const d1 = recordingBlocksD1(capture);
-  await loadBlocks(d1, { limit: 10, offset: 20 });
+  const runner = recordingBlocksD1(capture);
+  await loadBlocks(runner, { limit: 10, offset: 20 });
   const { sql } = capture[0];
   assert.ok(!/WHERE/.test(sql));
   assert.ok(/ORDER BY block_number DESC LIMIT \? OFFSET \?/.test(sql));

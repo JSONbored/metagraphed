@@ -29,7 +29,7 @@
 //      load half works.
 //
 // WHY A WORKER CRON, NOT A GITHUB ACTION. Unchanged from #9164: the check
-// needs `R2_SQL_TOKEN`, the `METAGRAPH_ARCHIVE` bucket and the D1 binding, and
+// needs `R2_SQL_TOKEN`, the `METAGRAPH_ARCHIVE` bucket and the store binding, and
 // this Worker already holds all three. An Actions job would need every one of
 // them duplicated as a repository secret, plus a third-party trigger hop, to
 // ask a question the Worker can ask itself.

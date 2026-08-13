@@ -1,6 +1,6 @@
 // Unwraps indexer-rs's (Postgres) BTreeSet<T> extra array-nesting layer for
 // specific, confirmed call-arg fields (#4693) -- e.g.
-// SubtensorModule.claim_root's `subnets`: D1 serves `[104]`, Postgres serves
+// SubtensorModule.claim_root's `subnets`: D1 served `[104]`, Postgres serves
 // `[[104]]` (confirmed real data, block 8587445/extrinsic_index 19, 162
 // in-window occurrences).
 //

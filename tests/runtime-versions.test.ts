@@ -138,12 +138,12 @@ describe("buildRuntimeVersionHistory", () => {
 describe("loadRuntimeVersionHistory", () => {
   test("runs the boundary-aggregate + latest-reading queries and shapes the result", async () => {
     const calls: Row[] = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       if (sql.includes("GROUP BY")) return [transitionRow()];
       return [{ spec_version: 218 }];
     };
-    const out = (await loadRuntimeVersionHistory(d1)) as Row;
+    const out = (await loadRuntimeVersionHistory(runner)) as Row;
     assert.match(calls[0].sql, /GROUP BY spec_version/);
     assert.match(calls[0].sql, /WHERE spec_version IS NOT NULL/);
     assert.deepEqual(calls[0].params, []);
@@ -153,7 +153,7 @@ describe("loadRuntimeVersionHistory", () => {
     assert.equal(out.current_spec_version, 218);
   });
 
-  test("cold D1 (empty rows) yields the schema-stable empty shape", async () => {
+  test("a cold store (empty rows) yields the schema-stable empty shape", async () => {
     const out = (await loadRuntimeVersionHistory(async () => [])) as Row;
     assert.equal(out.transition_count, 0);
     assert.equal(out.current_spec_version, null);
@@ -197,7 +197,7 @@ function runtimeEnv(
 }
 
 describe("GET /api/v1/runtime via the Worker", () => {
-  test("is schema-stable when D1 is cold (never 404)", async () => {
+  test("is schema-stable when the store is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/runtime"),
       runtimeEnv([]) as unknown as Env,

@@ -3,7 +3,7 @@
 // The rollup snapshots the live `neurons` table into the dated `neuron_daily`
 // table once a day (its own cron); the read builders reuse the live formatters
 // (metagraph-neurons.ts) so a historical row is byte-identical in shape to a live
-// one. Pure + injectable for tests — the Worker handlers run the D1 query and call
+// one. Pure + injectable for tests — the Worker handlers run the store query and call
 // these.
 import {
   NEURON_COLUMNS,
@@ -99,7 +99,7 @@ function toIso(ms: unknown): string | null {
 }
 
 // Coerce a non-negative integer cell, or null when missing, non-finite, or
-// negative. D1 can return COUNT/SUM aggregates as numeric strings, so a bare
+// negative. the store can return COUNT/SUM aggregates as numeric strings, so a bare
 // `r.neuron_count ?? null` would leak the string into the subnet-history
 // payload (breaking the ["integer","null"] contract). Mirrors toBlockNumber in
 // blocks.ts / account-events.ts.
@@ -279,7 +279,7 @@ export function buildEconomicsTrends(
   };
 }
 
-// Blank D1 cells coerce via Number("") -> 0; trim rejects "" / whitespace-only
+// Blank cells coerce via Number("") -> 0; trim rejects "" / whitespace-only
 // so a blank cell is excluded from the day's aggregate rather than read as a
 // genuine 0. Mirrors toNonNegativeInt above.
 function toFiniteOrNull(v: unknown): number | null {

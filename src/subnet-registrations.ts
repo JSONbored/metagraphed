@@ -4,7 +4,7 @@
 // the account_events companion to the neuron_daily validator-set churn in /turnover (which
 // measures net snapshot change + deregistrations, NOT raw registration event volume), exactly
 // the way /stake-flow (account_events) coexists with /turnover (neuron_daily). Pure shaping
-// (buildSubnetRegistrations) + a thin D1 loader (loadSubnetRegistrations); the Worker adds the
+// (buildSubnetRegistrations) + a thin store loader (loadSubnetRegistrations); the Worker adds the
 // envelope. Null-safe: a cold store or a subnet with no NeuronRegistered events yields the zeroed card.
 
 type Row = Record<string, unknown>;
@@ -29,7 +29,7 @@ function round(value: number, dp = 2): number {
   return Math.round(value * factor) / factor;
 }
 
-// A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
+// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -90,12 +90,12 @@ export function buildSubnetRegistrations(
 // registering hotkey, so COUNT(DISTINCT hotkey) is exact here (unlike WeightsSet). The handler
 // resolves windowLabel/windowDays from the window param. Cold/absent store -> the zeroed card.
 export async function loadSubnetRegistrations(
-  d1: SqlRunner,
+  runner: SqlRunner,
   netuid: unknown,
   { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
 ): Promise<Row> {
   const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await d1(
+  const rows = await runner(
     "SELECT COUNT(*) AS registrations, COUNT(DISTINCT hotkey) AS distinct_registrants, " +
       "MAX(observed_at) AS newest_observed " +
       "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ?",

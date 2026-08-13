@@ -39,7 +39,7 @@ export { SURFACE_HISTORY_LIMIT_DEFAULT, SURFACE_HISTORY_LIMIT_MAX };
 
 type Row = Record<string, unknown>;
 
-/** The minimal D1 surface used here, so tests can inject a plain object. */
+/** The minimal store surface used here, so tests can inject a plain object. */
 export interface SurfaceHistoryDb {
   query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
 }

@@ -362,7 +362,7 @@ describe("freshnessSql", () => {
   });
 
   test("batches stay under D1's compound-SELECT term limit", () => {
-    // D1 rejects a compound SELECT past roughly five terms.
+    // D1 rejected a compound SELECT past roughly five terms.
     assert.ok(FRESHNESS_BATCH <= 4, "batch size must keep a margin under 5");
   });
 
@@ -585,7 +585,7 @@ describe("confirmRedirectedStale (#10656)", () => {
     // It measured itself; re-asking would be the scan this exists to avoid.
     let asked = 0;
     const db = {
-      prepare(sql: string) {
+      async query(sql: string) {
         asked += 1;
         return {
           async all() {

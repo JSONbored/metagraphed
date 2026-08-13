@@ -208,11 +208,11 @@ describe("buildBlocksSummary", () => {
 
   test("loadBlocksSummary reads recent blocks newest-first and shapes them", async () => {
     let seen: { sql: string; params: unknown[] } | undefined;
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
       return ROWS;
     };
-    const out = await loadBlocksSummary(d1);
+    const out = await loadBlocksSummary(runner);
     assert.match(seen!.sql, /FROM blocks ORDER BY block_number DESC LIMIT/);
     assert.equal(out.block_count, 5);
     assert.equal(out.distinct_authors, 2);

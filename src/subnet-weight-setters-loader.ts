@@ -103,7 +103,7 @@ async function loadSubnetTempo(
   }
 }
 
-/** The minimal D1 surface this needs, so tests can hand it a plain object. */
+/** The minimal store surface this needs, so tests can hand it a plain object. */
 interface StatementClientLike {
   first?(text: string, values?: unknown[]): Promise<unknown>;
 }

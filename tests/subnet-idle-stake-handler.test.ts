@@ -55,7 +55,7 @@ async function assertValidComponent(componentName: string, data: unknown) {
 }
 
 describe("handleSubnetIdleStake", () => {
-  test("returns a schema-stable zero scorecard on cold D1", async () => {
+  test("returns a schema-stable zero scorecard on a cold store", async () => {
     const body = await json(
       await handleSubnetIdleStake(
         req(`/api/v1/subnets/${NETUID}/idle-stake`),
@@ -73,7 +73,7 @@ describe("handleSubnetIdleStake", () => {
 });
 
 describe("handleChainIdleStake", () => {
-  test("returns a schema-stable empty ranking on cold D1", async () => {
+  test("returns a schema-stable empty ranking on a cold store", async () => {
     const body = await json(
       await handleChainIdleStake(req("/api/v1/chain/idle-stake"), emptyEnv()),
     );

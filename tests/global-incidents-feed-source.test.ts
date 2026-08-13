@@ -62,7 +62,7 @@ test("the incidents feed resolves through the Postgres tier, not the empty ledge
  * the #8242 shape and passes on the #8353 fix.
  */
 test("resolveGlobalIncidentsForFeed reaches real data even though DATA_API has no /api/v1/feeds/* route", async () => {
-  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // #10190: METAGRAPH_HEALTH_SOURCE is deleted from every config and absent from
   // FORWARDABLE_TIER_FLAGS, so the tier this doubled never answered -- and the
   // point of this test survives it intact. DATA_API genuinely has no
   // /api/v1/feeds/* route, so a feed resolver that reached for one would get a

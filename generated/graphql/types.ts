@@ -3406,7 +3406,7 @@ export type Query = {
   agent_resources?: Maybe<Scalars['JSON']['output']>;
   /** One block by numeric height or 0x block hash; block is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/{ref}. */
   block?: Maybe<BlockDetail>;
-  /** Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{ref}/chain-events. */
+  /** Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{ref}/chain-events. */
   block_chain_events: BlockChainEvents;
   /** The decoded, account-attributed chain events in one block by ref, in read order (event_index ASC), paginated with limit (1-1000, default 100)/offset. Returns block_number:null + events:[] for an unknown ref or cold store, never a GraphQL error. Mirrors GET /api/v1/blocks/{ref}/events. */
   block_events: BlockEvents;
@@ -3568,7 +3568,7 @@ export type Query = {
   providers: ProviderList;
   /** The get_randomness_status-aligned name for the same live drand beacon snapshot (#7649): identical loader, KV cache, and independently-null RPC-failure behavior as network_randomness — a thin alias so MCP tool names and GraphQL fields line up. Returns the typed NetworkRandomness envelope rather than the issue's literal JSON suggestion, matching network_randomness. Mirrors GET /api/v1/network/randomness. */
   randomness_status?: Maybe<NetworkRandomness>;
-  /** Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards. */
+  /** Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d), composed live from the registry profiles projection plus store health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards. */
   registry_leaderboards: RegistryLeaderboards;
   /** The registry-wide summary: overall subnet count, coverage/curation-level/profile-level counts, recent registry changes, and the most-complete top subnets. A fast orientation for the whole Bittensor application layer. Null when the summary has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the registry_summary MCP/REST shape. Mirrors GET /api/v1/registry/summary. */
   registry_summary?: Maybe<Scalars['JSON']['output']>;
@@ -7293,7 +7293,7 @@ export type SubnetYield = {
   validator_count: Scalars['Int']['output'];
 };
 
-/** Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup. */
+/** Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup. */
 export type SubnetYieldHistory = {
   __typename?: 'SubnetYieldHistory';
   netuid: Scalars['Int']['output'];

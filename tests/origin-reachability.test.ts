@@ -570,7 +570,7 @@ describe("shapes the store can really produce", () => {
     assert.match(String(out.reason), /a bare string/);
   });
 
-  // "a driver returning no results key" retired with the D1 envelope
+  // "a driver returning no results key" retired with D1's envelope
   // (#10309): query() answers rows directly, so there is no envelope whose
   // absence needs a reading. The nothing-dead case is the empty array.
 

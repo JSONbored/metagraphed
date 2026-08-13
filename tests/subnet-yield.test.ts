@@ -385,14 +385,14 @@ describe("buildSubnetYield", () => {
 describe("loadSubnetYield", () => {
   test("reads the neurons snapshot for the subnet and shapes it", async () => {
     const calls: Row[] = [];
-    const d1 = async (sql: string, params: unknown[]) => {
+    const runner = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [
         neuron(0, { validator: true, stake: 10, emission: 2 }),
         neuron(1, { stake: 5, emission: 3 }),
       ];
     };
-    const d = await loadSubnetYield(d1, 7);
+    const d = await loadSubnetYield(runner, 7);
     assert.match(calls[0].sql, /FROM neurons WHERE netuid = \?/);
     assert.match(calls[0].sql, /ORDER BY uid/);
     assert.equal(calls[0].params[0], 7);

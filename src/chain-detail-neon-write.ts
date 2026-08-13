@@ -1,7 +1,7 @@
 // The chain-detail lane's Neon mirror (#9787).
 //
 // Four tables written by one producer pass, so they mirror as one unit and in
-// the SAME ORDER the D1 writer uses. That order is load-bearing rather than
+// the SAME ORDER the store writer uses. That order is load-bearing rather than
 // incidental: `chain_detail_blocks` is the COVERAGE REGISTER -- it is what says
 // "this block's detail is stored" -- so it goes LAST, after the rows it
 // vouches for. Written first, a failure below it would leave the register
@@ -88,7 +88,7 @@ export const CHAIN_DETAIL_CONFLICT_KEYS = {
   chain_detail_account_events: ["block_number", "event_index"],
 } as const;
 
-/** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
+/** The lane name this writer files its `lane_health` verdict under (`neon:<lane>`). */
 export const CHAIN_DETAIL_NEON_LANE = "chain-detail";
 
 type Row = Record<string, unknown>;
@@ -97,7 +97,7 @@ interface DetailPlan {
   table: string;
   columns: readonly string[];
   conflict: readonly string[];
-  /** Columns that are 0/1 INTEGER in D1 and BOOLEAN in Neon.
+  /** Columns that are 0/1 INTEGER in the store and BOOLEAN in Neon.
    *
    * `success` is the only one, and it is NULLABLE unlike every other boolean in
    * the schema -- an extrinsic whose outcome was not decoded is genuinely
@@ -163,7 +163,7 @@ export interface ChainDetailMirrorDeps {
 }
 
 /**
- * D1 stores these flags as 0/1 with a CHECK; Neon's columns are BOOLEAN, and
+ * D1 stored these flags as 0/1 with a CHECK; Neon's columns are BOOLEAN, and
  * binding a number to one is a type error rather than a coercion.
  *
  * null is PRESERVED. `success` is nullable because an undecoded outcome is

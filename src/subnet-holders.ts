@@ -54,7 +54,7 @@ export { SUBNET_HOLDERS_LIMIT_DEFAULT, SUBNET_HOLDERS_LIMIT_MAX };
 
 type Row = Record<string, unknown>;
 
-/** The minimal D1 surface used here, so tests can inject a plain object. */
+/** The minimal store surface used here, so tests can inject a plain object. */
 export interface SubnetHoldersDb {
   query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
   first?(text: string, values?: unknown[]): Promise<unknown>;
