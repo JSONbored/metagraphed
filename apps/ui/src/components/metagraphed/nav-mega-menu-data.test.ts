@@ -29,6 +29,19 @@ describe("MEGA_PANELS catalogue", () => {
     ]);
   });
 
+  it("REACHES /revenue, which had zero inbound links (#10927)", () => {
+    // It was in the sitemap and nowhere else — the only way to it was typing
+    // the URL. Asserted on the catalogue rather than on the rendered menu so
+    // the guard survives a markup change; the panel body renders whatever this
+    // list holds.
+    const everyLink = MEGA_PANELS.flatMap((p) => [
+      p.to,
+      ...p.browse.map((l) => l.to),
+      ...p.filters.map((l) => l.to),
+    ]);
+    expect(everyLink).toContain("/revenue");
+  });
+
   it("has unique keys and self-consistent route/api fields", () => {
     const keys = new Set<string>();
     for (const p of MEGA_PANELS) {

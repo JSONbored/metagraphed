@@ -17,6 +17,7 @@ import {
   Braces,
   BookOpen,
   Code2,
+  Coins,
   Compass,
   Copy,
   ExternalLink,
@@ -164,6 +165,15 @@ const STATIC_ROUTES_HEAD: RouteEntry[] = [
     to: "/apis/schemas",
     hint: "OpenAPI, contracts, drift",
     icon: FileJson,
+    scope: "route",
+  },
+  // #10927: the palette is the other discovery surface, and it was missing this
+  // route for the same reason the mega-menu was.
+  {
+    label: "Revenue coverage",
+    to: "/revenue",
+    hint: "External earnings vs emission",
+    icon: Coins,
     scope: "route",
   },
 ];

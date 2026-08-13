@@ -89,7 +89,7 @@ export function RevenuePage() {
 
   const sortField = COVERAGE_SORT_FIELDS.includes(search.sort)
     ? search.sort
-    : ("subsidy_multiple" as CoverageSortField);
+    : ("revenue_usd" as CoverageSortField);
 
   return (
     <div className="space-y-6">
