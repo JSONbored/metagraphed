@@ -87,6 +87,47 @@ export class McpResponseSchemaDriftError extends Error {
 }
 
 /**
+ * The payload AS THE CLIENT RECEIVES IT, not as the handler built it.
+ *
+ * ## WHY THIS EXISTS
+ *
+ * `get_subnet_health` failed 46% of its calls with `response_schema_drift`
+ * (13 of 28 in 24h, #10972) on a response that was never wrong. A handler that
+ * spreads an object built from an absent artifact leaves keys present with
+ * `undefined` -- `overlaySubnetHealth(null, ...)` produces
+ * `contract_version`, `generated_at`, `slug` and `name` that way. Zod
+ * `.strict()` keys on `Object.keys()`, so it counted all four as unrecognized;
+ * `JSON.stringify` DROPS them, so the client never saw one.
+ *
+ * The tripwire was therefore stricter than the contract it enforces, and
+ * turned a correct answer into a tool error for every agent that called it.
+ *
+ * ## WHY THE ROUND-TRIP, AND NOT A KEY FILTER
+ *
+ * The published `outputSchema` describes JSON. A conformant MCP client parses
+ * the JSON it received and validates THAT -- so the only shape worth checking
+ * is the one serialization produces. A shallow "delete undefined keys" pass
+ * would fix this call site and miss a nested one, a `Date`, a `Map`, or
+ * anything else whose serialized form differs from its in-memory form; the
+ * round-trip is the definition rather than an approximation of it.
+ *
+ * It costs one clone per validated response, paid only while
+ * `METAGRAPH_VALIDATE_RESPONSES` is on -- the same trade that flag already
+ * exists to make.
+ *
+ * A payload that cannot be serialized at all is a real fault and is left to
+ * the parse, which will fail on the untouched value rather than silently
+ * validating something else.
+ */
+function asSentOverTheWire(payload: unknown): unknown {
+  try {
+    return JSON.parse(JSON.stringify(payload));
+  } catch {
+    return payload;
+  }
+}
+
+/**
  * Parse one tool's structured result against the schema it publishes.
  *
  * Called ONLY when the caller has confirmed
@@ -115,7 +156,7 @@ export function validateMcpResponseTripwire(
     );
     return;
   }
-  const result = schema.safeParse(structuredContent);
+  const result = schema.safeParse(asSentOverTheWire(structuredContent));
   if (!result.success) {
     throw new McpResponseSchemaDriftError(tool, result.error);
   }

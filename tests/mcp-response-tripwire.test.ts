@@ -135,3 +135,86 @@ describe("validateMcpResponseTripwire", () => {
     );
   });
 });
+
+// ── It validates the wire, not the handler's object (#10972) ────────────────
+//
+// `get_subnet_health` failed 46% of its calls (13 of 28 in 24h) with
+// `response_schema_drift` on a response that was never wrong. A handler that
+// spreads an object built from an ABSENT source leaves keys present with
+// `undefined` -- `overlaySubnetHealth(null, ...)` produces `contract_version`,
+// `generated_at`, `slug` and `name` that way. Zod `.strict()` keys on
+// `Object.keys()` and counted all four; `JSON.stringify` drops them, so the
+// client never saw one.
+//
+// The tripwire exists so a caller never receives a shape the contract does not
+// describe. Rejecting a correct answer is the opposite of that, and it reached
+// every agent calling the tool as a hard error.
+describe("the tripwire validates what is sent, not what was built", () => {
+  const published = outputJsonSchema(Card);
+
+  test("an undefined-valued key does not fail a response that serializes clean", () => {
+    // Exactly the shape a `{...spread}` of an absent artifact produces.
+    const built = { netuid: 0, name: "root", contract_version: undefined };
+    assert.equal(
+      JSON.stringify(built),
+      '{"netuid":0,"name":"root"}',
+      "the premise: serialization drops the key, so the client never sees it",
+    );
+    assert.doesNotThrow(() =>
+      validateMcpResponseTripwire("get_card", published, built),
+    );
+  });
+
+  test("a key with a REAL value still fails", () => {
+    // Guards the guard. If the fix had stripped keys rather than serializing,
+    // or had loosened the schema, this is the case that would stop failing --
+    // and undeclared keys reaching a caller is the whole reason this exists.
+    assert.throws(
+      () =>
+        validateMcpResponseTripwire("get_card", published, {
+          netuid: 0,
+          name: "root",
+          surprise: "shipped",
+        }),
+      McpResponseSchemaDriftError,
+    );
+  });
+
+  test("a nested undefined-valued key is covered too", () => {
+    // Why the round-trip rather than a shallow key filter: a one-level pass
+    // would fix the case above and miss this one.
+    const Nested = z
+      .object({ netuid: z.int(), inner: z.object({ a: z.int() }).strict() })
+      .strict();
+    assert.doesNotThrow(() =>
+      validateMcpResponseTripwire("get_nested", outputJsonSchema(Nested), {
+        netuid: 0,
+        inner: { a: 1, b: undefined },
+      }),
+    );
+  });
+
+  test("a genuinely missing required field still fails", () => {
+    // Serializing must not paper over an absent value: `undefined` for a
+    // REQUIRED key is a real drift, and it survives the round-trip as absence.
+    assert.throws(
+      () =>
+        validateMcpResponseTripwire("get_card", published, {
+          netuid: 0,
+          name: undefined,
+        }),
+      McpResponseSchemaDriftError,
+    );
+  });
+
+  test("a payload that cannot be serialized is left to the parse", () => {
+    // A circular structure is a real fault; swallowing it would make the
+    // tripwire report success on something it never checked.
+    const circular: Record<string, unknown> = { netuid: 0, name: "root" };
+    circular.self = circular;
+    assert.throws(
+      () => validateMcpResponseTripwire("get_card", published, circular),
+      McpResponseSchemaDriftError,
+    );
+  });
+});
