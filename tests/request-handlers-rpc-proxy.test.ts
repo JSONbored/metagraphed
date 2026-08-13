@@ -16,6 +16,7 @@ import {
   handleSurfaceVerify,
 } from "../workers/request-handlers/rpc-proxy.ts";
 import { MAX_RPC_BODY_BYTES } from "../workers/config.ts";
+import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 
 // The health-meta KV's `last_run_at`, which is what this route hands the zeroed
 // floor as its freshness stamp. It is an ISO string here because that is what
@@ -402,6 +403,22 @@ describe("handleSurfaceVerify", () => {
       assert.equal(typeof body.data.callable, "boolean");
       assert.equal(body.meta.source, "live-probe");
       assert.equal(body.meta.cache, "short");
+      // #11082: the envelope's artifact_path is a string or absent, never
+      // null -- and this route stamps the concrete form of its declared
+      // computed-live template, like every sibling meta builder.
+      assert.equal(
+        body.meta.artifact_path,
+        `/metagraph/surfaces/${SURFACE_ID}/verify.json`,
+      );
+      // The audit seam's own validation must accept the envelope whole: this
+      // is the exact call auditResponse makes, and the null stamp it replaces
+      // was a warn fingerprint on every verify (enforce would have 500'd).
+      await validateResponseTripwire(
+        "surface-verify",
+        body,
+        "/metagraph/surfaces/{surface_id}/verify.json",
+        false,
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -234,9 +234,14 @@ export async function handleRpcUsage(
   );
 }
 
-async function verifyMeta(env: Env) {
+async function verifyMeta(env: Env, surfaceId: string) {
   return {
-    artifact_path: null,
+    // The concrete form of the declared computed-live template
+    // (/metagraph/surfaces/{surface_id}/verify.json), like every sibling meta
+    // builder. It was `null` -- the tree's only null stamper -- which the
+    // envelope's `artifact_path: z.string().optional()` refuses: absence is
+    // legal, null is not, and the audit seam fingerprinted it (#11082).
+    artifact_path: `/metagraph/surfaces/${surfaceId}/verify.json`,
     cache: "short",
     contract_version: contractVersion(env),
     generated_at: null,
@@ -339,7 +344,7 @@ export async function handleSurfaceVerify(
   );
   return envelopeResponse(
     request,
-    { data: result, meta: await verifyMeta(env) },
+    { data: result, meta: await verifyMeta(env, surfaceId) },
     "short",
   );
 }
