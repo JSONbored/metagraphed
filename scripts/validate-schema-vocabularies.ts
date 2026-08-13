@@ -83,10 +83,6 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
     "schemas-src/routes/subnet-detail.ts",
     "schemas-src/routes/subnets.ts",
   ],
-  "bearish|bullish|neutral": [
-    "schemas-src/routes/chain-alpha-volume.ts",
-    "schemas-src/routes/subnet-alpha-volume.ts",
-  ],
   "dual|git|r2": [
     "schemas-src/artifacts/r2-manifest.ts",
     "schemas-src/routes/meta-contracts.ts",
