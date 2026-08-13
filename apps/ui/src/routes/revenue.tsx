@@ -4,13 +4,20 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { RevenuePage } from "./-revenue-page";
 
 // Sort/filter state lives in the URL so a specific view ("the probe-derived
-// subnets, by subsidy multiple") is shareable — the same reason /chain/emissions
-// puts its own sort there.
+// subnets, by revenue") is shareable — the same reason /chain/emissions puts
+// its own sort there.
+//
+// #10927: the default is `revenue_usd`, not `subsidy_multiple`. `isMeasured`
+// partitions on `revenue_usd`, so it is the one column non-null for every row
+// in the ranked group BY CONSTRUCTION. `subsidy_multiple` is a derived ratio
+// needing both a revenue figure and a priced emission side, so a subnet that
+// was measured but whose emission failed to price sorts to the BOTTOM of a
+// table it legitimately belongs in — ranked last on a column it cannot answer.
 const revenueSearchSchema = z.object({
   sort: fallback(
     z.enum(["subsidy_multiple", "coverage_ratio", "emission_usd", "revenue_usd", "netuid"]),
-    "subsidy_multiple",
-  ).default("subsidy_multiple"),
+    "revenue_usd",
+  ).default("revenue_usd"),
   dir: fallback(z.enum(["asc", "desc"]), "desc").default("desc"),
   // Empty means every tier, which is the default: the counts beside each tier
   // are how a reader learns the headline-eligible set is two subnets wide, and

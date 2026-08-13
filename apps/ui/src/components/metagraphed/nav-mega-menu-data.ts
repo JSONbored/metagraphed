@@ -32,6 +32,14 @@ export const MEGA_PANELS: MegaPanel[] = [
       { to: "/subnets/0", label: "Root (netuid 0)", hint: "Base-layer Subtensor" },
       { to: "/subnets/7", label: "Allways · SN7", hint: "Adapter-backed pilot" },
       { to: "/subnets/74", label: "Gittensor · SN74", hint: "Adapter-backed pilot" },
+      // #10927: /revenue had zero inbound links — it was in the sitemap and
+      // nowhere else, reachable only by typing the URL. It belongs here rather
+      // than under Chain: the page's rows ARE subnets, one per netuid.
+      {
+        to: "/revenue",
+        label: "Revenue coverage",
+        hint: "External earnings vs emission",
+      },
     ],
     filters: [
       { to: "/subnets", search: { kind: "api" }, label: "Has APIs" },
