@@ -47,7 +47,12 @@ const repoRoot = path.resolve(
   "..",
 );
 
-const SCHEMA_ROOT = "schemas-src";
+// The schema tree AND the serving tree (#10995). This gate watched only
+// schemas-src/ while an MCP composer or a handler could re-model a shape by
+// hand in src/ and stay green forever -- the same blindness #10987 fixed for
+// the enum-vocabulary gate. ts.sys.readDirectory recurses, so "src" covers
+// src/graphql/ and "workers" covers workers/request-handlers/.
+const SCAN_ROOTS = ["schemas-src", "src", "workers"];
 /** Below this, a shared key set is coincidence rather than lineage. */
 const MIN_KEYS = 4;
 
@@ -170,62 +175,13 @@ export function findDuplicates(sites: readonly ShapeSite[]): ShapeDuplicate[] {
   return out.sort((a, b) => b.sites[0]!.count - a.sites[0]!.count);
 }
 
-/**
- * STORAGE is a different layer from CONTRACT, and this gate compares within a
- * layer.
- *
- * `schemas-src/lakehouse.ts` is generated from the Iceberg catalog: it declares
- * what the WAREHOUSE holds. Every other file here declares what we SERVE. A
- * table and the route over it share a key set by construction -- that is the
- * route doing its job, not a copy -- and the types say so:
- *
- *   chain.blocks.observed_at        z.int()     epoch millis, as stored
- *   BlockSchema.observed_at         z.string()  ISO 8601, as served
- *   account_events.amount_tao       z.number()  a double, as stored
- *   AccountEventItemSchema.amount_tao  z.unknown()  opaque on the MCP surface
- *
- * Collapsing those would not remove a duplicate; it would erase the formatting
- * seam between the warehouse and the wire.
- *
- * Excluded by ROLE, not by key set: an allowlist of the three vocabularies
- * that currently collide would go stale the moment a table gains a column,
- * and would hide the case this gate is for. Two CONTRACT files sharing a key
- * set still fails, and so does a second storage schema declared anywhere but
- * here -- the file is generated, so a hand-written copy of a table lands in a
- * contract file and is caught.
- */
-const STORAGE_SCHEMA = "schemas-src/lakehouse.ts";
-
-/**
- * REQUEST is a different layer from CONTRACT, for the same reason.
- *
- * `schemas-src/route-queries.ts` declares what a caller may SEND. A response
- * that ECHOES the filters it applied carries the same key names and a
- * different contract: `since` parses a bare date on the way in and is a plain
- * string on the way out, and `limit` carries the route's CEILING on the way in
- * and is a plain int on the way out. Collapsing them would either apply
- * request validation to a nullable echo or drop the ceiling -- and dropping a
- * limit ceiling is how a route starts accepting a page size it cannot serve.
- *
- * This used to be spelled as a ceiling of 1, which said "there is one pair we
- * tolerate" without saying WHICH or keeping it honest. The pair is now locked
- * instead: `tests/feed-filters-echo-parity.test.ts` asserts the echo's key set
- * EQUALS the request vocabulary's, so the drift this gate exists to catch
- * cannot happen here even though the two declarations remain separate. A
- * tolerated duplicate became a proven one, and the ceiling goes to 0.
- */
-const REQUEST_SCHEMA = "schemas-src/route-queries.ts";
-
 function schemaFiles(): string[] {
-  return ts.sys
-    .readDirectory(path.join(repoRoot, SCHEMA_ROOT), [".ts"], ["node_modules"])
-    .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
-    .filter(
-      (file) =>
-        !file.endsWith(".d.ts") &&
-        file !== STORAGE_SCHEMA &&
-        file !== REQUEST_SCHEMA,
-    );
+  return SCAN_ROOTS.flatMap((root) =>
+    ts.sys
+      .readDirectory(path.join(repoRoot, root), [".ts"], ["node_modules"])
+      .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
+      .filter((file) => !file.endsWith(".d.ts")),
+  );
 }
 
 /**
@@ -241,11 +197,7 @@ function schemaFiles(): string[] {
  * gate used to misread as duplication until it learned that
  * `Route.shape.field` is a borrowing rather than a second opinion.
  *
- * ZERO REMAIN (#11008). The last one was not duplication and is no longer
- * counted as tolerance -- see REQUEST_SCHEMA above and
- * tests/feed-filters-echo-parity.test.ts, which locks the pair's key sets
- * together so the drift this gate exists to catch cannot happen there. What
- * follows is the pair, kept for the reasoning rather than as an exception:
+ * ONE REMAINS, and it is not duplication:
  *
  *   {limit, since, tag, until}
  *     schemas-src/route-queries.ts       FEED_QUERY_SCHEMAS.common
@@ -259,22 +211,78 @@ function schemaFiles(): string[] {
  * make the input accept anything the echo can carry -- which is the input/
  * output conflation #10790 was explicitly told to keep separate.
  *
- * So the ceiling is 1, and it is a rule in all but name.
+ * So the pair is pinned BY NAME -- not held behind a bare count. A count of 1
+ * would stay 1 if the feed pair resolved and a NEW duplicate appeared the same
+ * week, and the gate would pass while its own prose lied (#10995, the same
+ * hides-what-it-names fix as #10990's allowlist). An entry names the exact
+ * key set and the exact files allowed to share it; a new file joining fails,
+ * a file leaving makes the entry stale, and stale entries fail too.
  */
-const CEILING = 0;
+const COINCIDENT_BY_DESIGN: Record<string, string[]> = {
+  "limit,since,tag,until": [
+    "schemas-src/mcp-tools/feed.ts",
+    "schemas-src/route-queries.ts",
+  ],
+  // STORAGE and WIRE, not a copy (#11008). `schemas-src/lakehouse.ts` is
+  // GENERATED from the Iceberg catalog and declares what the WAREHOUSE holds;
+  // the file beside each entry declares what we SERVE. A table and the route
+  // over it share a key set by construction -- that is the route doing its
+  // job, not a second declaration -- and the types say so: `observed_at` is
+  // epoch millis as stored and an ISO string as served; `amount_tao` is a
+  // double as stored and opaque on the MCP surface. Collapsing either would
+  // erase the formatting seam between the warehouse and the wire.
+  //
+  // Declared as PAIRS rather than by excluding the generated file, so a third
+  // declaration of the same vocabulary still fails.
+  "author,block_hash,block_number,event_count,extrinsic_count,observed_at,parent_hash,spec_version":
+    ["schemas-src/lakehouse.ts", "schemas-src/routes/blocks.ts"],
+  "alpha_amount,amount_tao,block_number,coldkey,event_index,event_kind,extrinsic_index,hotkey,netuid,observed_at,uid":
+    ["schemas-src/lakehouse.ts", "schemas-src/mcp-tools/shared.ts"],
+};
 
 function main(): void {
   const files = schemaFiles();
   const sites = findObjectShapes(files);
   const duplicates = findDuplicates(sites);
+  // A pinned entry excuses exactly the files it names; anything else is new.
+  const unlisted = duplicates
+    .map((duplicate) => {
+      const pinned = COINCIDENT_BY_DESIGN[duplicate.keys];
+      if (!pinned) return duplicate;
+      const sites = duplicate.sites.filter(
+        (site) => !pinned.includes(site.file),
+      );
+      return { ...duplicate, sites };
+    })
+    .filter((duplicate) => duplicate.sites.length > 0);
+  const stale = Object.entries(COINCIDENT_BY_DESIGN).flatMap(
+    ([keys, pinned]) => {
+      const match = duplicates.find((duplicate) => duplicate.keys === keys);
+      if (!match)
+        return [
+          `  {${keys}} — no longer duplicated anywhere; delete the entry`,
+        ];
+      return pinned
+        .filter((file) => !match.sites.some((site) => site.file === file))
+        .map((file) => `  {${keys}} — ${file} no longer declares it`);
+    },
+  );
   const report =
     `schema-shape-duplicates: ${duplicates.length} object vocabular(ies) ` +
     `declared in more than one schema file, across ${sites.length} literal(s) ` +
-    `of ${MIN_KEYS}+ keys in ${files.length} file(s) (ceiling ${CEILING}).`;
-  if (duplicates.length > CEILING) {
+    `of ${MIN_KEYS}+ keys in ${files.length} file(s) ` +
+    `(${Object.keys(COINCIDENT_BY_DESIGN).length} pinned by design).`;
+  if (stale.length > 0) {
     console.error(
-      `${report}\n\nNEW duplicate(s) -- the ceiling is ${CEILING}:\n` +
-        duplicates
+      `${report}\n\nStale pinned entr(y/ies) — they over-excuse, shrink them:\n` +
+        stale.join("\n"),
+    );
+    process.exit(1);
+  }
+  if (unlisted.length > 0) {
+    console.error(
+      `${report}\n\nNEW duplicate(s):\n` +
+        unlisted
           .map(
             (duplicate) =>
               `  {${duplicate.keys}}\n` +
@@ -292,12 +300,6 @@ function main(): void {
     process.exit(1);
   }
   console.log(report);
-  if (duplicates.length < CEILING) {
-    console.log(
-      `  ${CEILING - duplicates.length} below the ceiling -- lower CEILING to ` +
-        `${duplicates.length} so it cannot come back.`,
-    );
-  }
 }
 
 /* v8 ignore next 3 -- the CLI entry, exercised by the pipeline not the suite. */
