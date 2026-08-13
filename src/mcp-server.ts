@@ -1570,6 +1570,11 @@ import {
 } from "./emission-pipeline-history.ts";
 import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "./route-limits.ts";
 import {
+  ATTRIBUTION_WINDOW_DAYS,
+  DEFAULT_SUBNET_REVENUE_WINDOW,
+  SUBNET_REVENUE_WINDOWS,
+} from "./route-limits.ts";
+import {
   EMISSION_PIPELINE_LIMIT_MAX,
   EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,
 } from "./route-limits.ts";
@@ -1631,6 +1636,7 @@ import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import {
   SUBNET_REVENUE_FIELD_SOURCES,
   loadSubnetRevenue,
+  revenueWindowDays,
 } from "./revenue-load.ts";
 import {
   loadSubnetOwnerCut,
@@ -4463,6 +4469,40 @@ function requireNetuid(args: Row) {
     );
   }
   return netuid;
+}
+
+/**
+ * An enum-valued argument, checked against the vocabulary the tool PUBLISHES.
+ *
+ * SAME REASON AS requireNetuid: dispatch does not validate against the Zod
+ * input schema, so an `enum` in a published inputSchema is documentation until
+ * a handler enforces it. An out-of-enum value does not error -- it matches
+ * nothing and falls through to whatever default the handler had, which returns
+ * a real, confident, WRONG answer. `window: "90d"` handed back the 1-day
+ * figure labelled as though the caller had been served.
+ *
+ * The message is built FROM the vocabulary rather than typed out beside it, so
+ * a value added to the enum cannot leave the error text listing the old set.
+ * 43 hand-written copies of this guard remain, 10 of which restate their
+ * vocabulary in prose and are one edit away from exactly that drift (they all
+ * agree with their enums today). Those are #10973; this is the shape they
+ * should collapse onto.
+ */
+function requireEnumArgument<T extends string>(
+  args: Row,
+  key: string,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  const value = args?.[key];
+  if (value === undefined || value === null) return fallback;
+  if (typeof value !== "string" || !allowed.includes(value as T)) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be one of: ${allowed.join(", ")}.`,
+    );
+  }
+  return value as T;
 }
 
 function optionalBoolean(args: Row, key: string) {
@@ -9404,7 +9444,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         schema_version: 1,
         generated_at: new Date().toISOString(),
         netuid,
-        window_days: 30,
+        window_days: ATTRIBUTION_WINDOW_DAYS,
         wallet_count: wallets.length,
         wallets,
         // #10489-#10509: whether anyone has looked, and when. An empty wallet
@@ -9463,7 +9503,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const ownerCut = parameters?.subnet_owner_cut_effective;
       const view = loadSubnetOwnerCut({
         netuid,
-        window_days: 30,
+        window_days: ATTRIBUTION_WINDOW_DAYS,
         economics,
         owner_cut: typeof ownerCut === "number" ? ownerCut : null,
         // #10926: the rate. Without it `accrual.usd` was null on every MCP
@@ -9512,7 +9552,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         netuid,
         revenue: loadSubnetRevenue({
           netuid,
-          window_days: 1,
+          window_days: revenueWindowDays(
+            requireEnumArgument(
+              args as Row,
+              "window",
+              SUBNET_REVENUE_WINDOWS,
+              DEFAULT_SUBNET_REVENUE_WINDOW,
+            ),
+          ),
           economics,
           surfaces: await mcpSubnetSurfaces(ctx, netuid),
           usd_per_tao: await mcpUsdPerTao(ctx),
@@ -9538,7 +9585,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "rather than dropped: omitting them would make the covered set look like the whole " +
       "network. Mirrors GET /api/v1/chain/revenue-coverage.",
     inputSchema: inputJsonSchema(ListRevenueCoverageInputSchema),
-    async handler(_args: unknown, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListRevenueCoverageInputSchema>,
+      ctx: McpCtx,
+    ) {
       const blob = await mcpEconomicsBlob(ctx);
       const rows = Array.isArray(blob?.subnets)
         ? (blob.subnets as Array<Record<string, unknown>>)
@@ -9546,6 +9596,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const usd = await mcpUsdPerTao(ctx);
       // ONE read for every subnet, matching the REST handler: the whole series
       // is cheaper than the first dozen per-netuid queries.
+      const windowDays = revenueWindowDays(
+        requireEnumArgument(
+          args as Row,
+          "window",
+          SUBNET_REVENUE_WINDOWS,
+          DEFAULT_SUBNET_REVENUE_WINDOW,
+        ),
+      );
       const allObservations = await mcpRevenueObservations(ctx, null);
       const subnets = [];
       for (const row of rows) {
@@ -9554,7 +9612,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         subnets.push(
           loadSubnetRevenue({
             netuid,
-            window_days: 1,
+            window_days: windowDays,
             economics: row,
             surfaces: await mcpSubnetSurfaces(ctx, netuid),
             usd_per_tao: usd,
@@ -9565,7 +9623,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       return {
         schema_version: 1,
         generated_at: new Date().toISOString(),
-        window_days: 1,
+        window_days: windowDays,
         observed_count: subnets.filter((s) => s.revenue_usd !== null).length,
         subnet_count: subnets.length,
         subnets,

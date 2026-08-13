@@ -102,7 +102,9 @@ import {
 import { buildSubnetEmissionSplitHistory } from "../../src/emission-split.ts";
 import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  DEFAULT_SUBNET_REVENUE_WINDOW,
   SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+  SUBNET_REVENUE_WINDOW_DAYS,
 } from "../../src/route-limits.ts";
 import {
   buildNeuronHistory,
@@ -217,7 +219,7 @@ import {
   type ValidatorEconomicsRow,
   type ValidatorNeuron,
 } from "../../src/validator-economics.ts";
-import {} from "../../src/route-limits.ts";
+import { ATTRIBUTION_WINDOW_DAYS } from "../../src/route-limits.ts";
 import { loadSubnetLease } from "../../src/subnet-lease.ts";
 import {
   isCrowdloanId,
@@ -7230,7 +7232,7 @@ export async function handleSubnetWallets(
         schema_version: 1,
         generated_at: new Date().toISOString(),
         netuid,
-        window_days: 30,
+        window_days: ATTRIBUTION_WINDOW_DAYS,
         wallet_count: wallets.length,
         wallets,
         attribution_search: attributionSearch,
@@ -7277,7 +7279,7 @@ export async function handleSubnetOwnerCut(
   const ownerCut = parameters?.subnet_owner_cut_effective;
   const view = loadSubnetOwnerCut({
     netuid,
-    window_days: 30,
+    window_days: ATTRIBUTION_WINDOW_DAYS,
     economics: row,
     owner_cut: typeof ownerCut === "number" ? ownerCut : null,
     usd_per_tao: await usdPerTaoOrNull(env),
@@ -7301,6 +7303,7 @@ export async function handleSubnetRevenue(
   request: Request,
   env: Env,
   netuid: number,
+  url: URL,
 ) {
   if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535) {
     return errorResponse(
@@ -7318,9 +7321,18 @@ export async function handleSubnetRevenue(
     readStore(env, REVENUE_OBSERVATION_TABLES) as RevenueStoreDb | undefined,
     netuid,
   );
+  // #10925: the window is a parameter now, not a constant. The DEFAULT is
+  // still one day -- every caller quoting "the" coverage ratio today is
+  // quoting a one-day one, and re-denominating them silently would be worse
+  // than leaving the wider windows unreachable.
+  const { days: windowDays } = resolveWindow(
+    url,
+    SUBNET_REVENUE_WINDOW_DAYS,
+    DEFAULT_SUBNET_REVENUE_WINDOW,
+  );
   const revenue = loadSubnetRevenue({
     netuid,
-    window_days: 1,
+    window_days: windowDays,
     economics: row,
     surfaces: await subnetSurfacesFor(env, netuid),
     usd_per_tao: await usdPerTaoOrNull(env),
@@ -7345,7 +7357,16 @@ export async function handleSubnetRevenue(
 /** Every subnet's coverage in one response. Subnets with no observed revenue
  * are INCLUDED with null ratios rather than dropped: omitting them would make
  * the covered set look like the whole network. */
-export async function handleChainRevenueCoverage(request: Request, env: Env) {
+export async function handleChainRevenueCoverage(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const { days: windowDays } = resolveWindow(
+    url,
+    SUBNET_REVENUE_WINDOW_DAYS,
+    DEFAULT_SUBNET_REVENUE_WINDOW,
+  );
   const blob = await resolveEconomicsBlob(env, async () => {
     const artifact = await readArtifact(env, "/metagraph/economics.json");
     return artifact.ok
@@ -7370,7 +7391,7 @@ export async function handleChainRevenueCoverage(request: Request, env: Env) {
     subnets.push(
       loadSubnetRevenue({
         netuid,
-        window_days: 1,
+        window_days: windowDays,
         economics: row,
         surfaces: await subnetSurfacesFor(env, netuid),
         usd_per_tao: usd,
@@ -7384,7 +7405,7 @@ export async function handleChainRevenueCoverage(request: Request, env: Env) {
       data: {
         schema_version: 1,
         generated_at: new Date().toISOString(),
-        window_days: 1,
+        window_days: windowDays,
         observed_count: subnets.filter((s) => s.revenue_usd !== null).length,
         subnet_count: subnets.length,
         subnets,

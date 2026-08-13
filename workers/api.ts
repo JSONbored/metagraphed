@@ -7590,10 +7590,10 @@ async function dispatchLiveChainRoute(
 
   const revenueMatch = SUBNET_REVENUE_PATH_PATTERN.exec(pathname);
   if (revenueMatch) {
-    return handleSubnetRevenue(request, env, Number(revenueMatch[1]));
+    return handleSubnetRevenue(request, env, Number(revenueMatch[1]), url);
   }
   if (pathname === CHAIN_REVENUE_COVERAGE_PATH) {
-    return handleChainRevenueCoverage(request, env);
+    return handleChainRevenueCoverage(request, env, url);
   }
   const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(pathname);
   if (recycledMatch) {

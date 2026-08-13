@@ -3454,7 +3454,7 @@ export type Query = {
   chain_prometheus: ChainPrometheus;
   /** Network-wide neuron-registration leaderboard over a 7d/30d window (default 7d): subnets ranked by NeuronRegistered events with each's distinct-hotkey count and registrations-per-registrant re-registration intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide, entry-side counterpart of subnet_registrations -- where neurons are joining. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/registrations. */
   chain_registrations: ChainRegistrations;
-  /** Every subnet's revenue coverage in one response. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network -- observed_count against subnet_count is the honest headline. Mirrors GET /api/v1/chain/revenue-coverage. */
+  /** Every subnet's revenue coverage in one response. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network -- observed_count against subnet_count is the honest headline. Mirrors GET /api/v1/chain/revenue-coverage Takes ?window=1d|7d|30d (default 1d): a surface contributes only when the window is a whole number of its declared grain's periods, so a monthly figure needs 30d and is invisible at 1d. */
   chain_revenue_coverage: ChainRevenueCoverage;
   /** Network-wide axon-serving announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonServed announcements with each's distinct-server count and announcements-per-server re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide counterpart of subnet_serving. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/serving. */
   chain_serving: ChainServing;
@@ -3686,7 +3686,7 @@ export type Query = {
   subnet_recycled?: Maybe<SubnetRecycled>;
   /** Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations. */
   subnet_registrations: SubnetRegistrations;
-  /** One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue. */
+  /** One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue Takes ?window=1d|7d|30d (default 1d): a surface contributes only when the window is a whole number of its declared grain's periods, so a monthly figure needs 30d and is invisible at 1d. */
   subnet_revenue: SubnetRevenueCard;
   /** Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving. */
   subnet_serving: SubnetServing;
@@ -4091,6 +4091,11 @@ export type QueryChain_PrometheusArgs = {
 export type QueryChain_RegistrationsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   network?: InputMaybe<Network>;
+  window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryChain_Revenue_CoverageArgs = {
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -4988,6 +4993,7 @@ export type QuerySubnet_RegistrationsArgs = {
 
 export type QuerySubnet_RevenueArgs = {
   netuid: Scalars['Int']['input'];
+  window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -11490,7 +11496,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   chain_performance?: Resolver<ResolversTypes['ChainPerformance'], ParentType, ContextType>;
   chain_prometheus?: Resolver<ResolversTypes['ChainPrometheus'], ParentType, ContextType, Partial<QueryChain_PrometheusArgs>>;
   chain_registrations?: Resolver<ResolversTypes['ChainRegistrations'], ParentType, ContextType, Partial<QueryChain_RegistrationsArgs>>;
-  chain_revenue_coverage?: Resolver<ResolversTypes['ChainRevenueCoverage'], ParentType, ContextType>;
+  chain_revenue_coverage?: Resolver<ResolversTypes['ChainRevenueCoverage'], ParentType, ContextType, Partial<QueryChain_Revenue_CoverageArgs>>;
   chain_serving?: Resolver<ResolversTypes['ChainServing'], ParentType, ContextType, Partial<QueryChain_ServingArgs>>;
   chain_signers?: Resolver<ResolversTypes['ChainSigners'], ParentType, ContextType, Partial<QueryChain_SignersArgs>>;
   chain_stake_flow?: Resolver<ResolversTypes['ChainStakeFlow'], ParentType, ContextType, Partial<QueryChain_Stake_FlowArgs>>;

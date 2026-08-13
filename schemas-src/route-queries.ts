@@ -65,6 +65,7 @@ import {
   BULK_HEALTH_TRENDS_LIMIT_MAX,
   CHAIN_CONCENTRATION_HISTORY_WINDOWS,
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  DEFAULT_SUBNET_REVENUE_WINDOW,
   CHAIN_CALL_MODULE_MAX_LENGTH,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
@@ -96,6 +97,7 @@ import {
   SEMANTIC_QUERY_MAX_LENGTH,
   SEMANTIC_TYPES,
   SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS,
+  SUBNET_REVENUE_WINDOWS,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   UPTIME_WINDOWS,
@@ -306,17 +308,11 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/network/parameters",
   "/api/v1/network/randomness",
   "/api/v1/subnets/{netuid}/recycled",
-  // #10447: both revenue routes take no query parameters. The window is
-  // fixed at one day for now -- a ?window= that silently changed the
-  // denominator would make two callers quoting "the" ratio mean different
-  // things, so it waits until the series exists to make it meaningful.
-  "/api/v1/subnets/{netuid}/revenue",
   // #10488: both wallet routes take no query parameters. The window is fixed
   // by the loader, so an accepted-but-ignored ?window= would be worse than a
   // 400 -- the caller would believe it narrowed something.
   "/api/v1/subnets/{netuid}/wallets",
   "/api/v1/subnets/{netuid}/owner-cut",
-  "/api/v1/chain/revenue-coverage",
   "/api/v1/subnets/{netuid}/burn",
   "/api/v1/chain/indexer-lag",
   "/api/v1/chain/burn",
@@ -814,6 +810,22 @@ export const ROUTE_QUERY_SCHEMAS = {
   "/api/v1/subnets/{netuid}/yield/history": z.object({
     window: windowSchema(["7d", "30d", "90d"] as const, "30d").optional(),
     format: formatSchema().optional(),
+  }),
+  // #10925: the window a revenue figure is compared against. It was hardcoded
+  // to one day at nine sites, which capped `observed_count` by ARITHMETIC
+  // rather than by coverage -- SN51 publishes a real monthly figure that no
+  // served window could express, because 1 % 30 != 0.
+  "/api/v1/subnets/{netuid}/revenue": z.object({
+    window: windowSchema(
+      SUBNET_REVENUE_WINDOWS as [string, ...string[]],
+      DEFAULT_SUBNET_REVENUE_WINDOW,
+    ).optional(),
+  }),
+  "/api/v1/chain/revenue-coverage": z.object({
+    window: windowSchema(
+      SUBNET_REVENUE_WINDOWS as [string, ...string[]],
+      DEFAULT_SUBNET_REVENUE_WINDOW,
+    ).optional(),
   }),
   "/api/v1/subnets/{netuid}/emission-split/history": z.object({
     window: windowSchema(
