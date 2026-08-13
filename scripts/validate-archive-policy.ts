@@ -79,7 +79,15 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   surfaces: "mirrored",
   validator_nominator_counts: "mirrored",
 
-  // -- pending: chain history with no archive copy -------------------------
+  // -- pending: history with no archive copy -------------------------------
+  //
+  // NOT only chain data. The first cut of this map filed anything that was not
+  // chain-derived under `serving`, which was too fast: `surface_uptime_daily`,
+  // `surface_failure_daily`, `surface_history`, `revenue_observations` and
+  // `compute_declarations` are TIME SERIES about the registry, and a time
+  // series kept only in the serving tier is one nothing promises to keep. The
+  // test is not "is it about the chain" but "does yesterday's value still mean
+  // something" -- a probe cursor fails that, a year of uptime does not.
   // Each of these is a fact about the CHAIN, not about us, and the serving
   // tier is currently the only place it exists.
   //
@@ -99,7 +107,15 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   tao_usd_index: "pending",
   treasury_readings: "pending",
 
-  // -- serving: describes the system, not the chain ------------------------
+  // -- serving: state, not history -----------------------------------------
+  // These are overwritten in place or rebuilt continuously, so there is no
+  // series to keep: a capture cursor, a circuit-breaker verdict, the current
+  // head. Yesterday's value is not a fact about yesterday, it is a stale
+  // reading of the same thing.
+  //
+  // `surface_checks` and `self_health_checks` are raw probe rows that
+  // `surface_uptime_daily` and `self_health_daily` already summarise; the
+  // rollups are archived, the raw firehose is not.
   api_key_usage_daily: "serving",
   api_quota_daily: "serving",
   api_usage_rollup: "serving",
@@ -110,18 +126,18 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   chain_detail_blocks: "serving",
   chain_detail_chain_events: "serving",
   chain_detail_extrinsics: "serving",
-  compute_declarations: "serving",
+  compute_declarations: "pending",
   lane_health: "serving",
   origin_reachability: "serving",
   raw_capture_state: "serving",
-  revenue_observations: "serving",
+  revenue_observations: "pending",
   revenue_probe_failures: "serving",
   self_health_checks: "serving",
   surface_checks: "serving",
-  surface_failure_daily: "serving",
-  surface_history: "serving",
+  surface_failure_daily: "pending",
+  surface_history: "pending",
   surface_status: "serving",
-  surface_uptime_daily: "serving",
+  surface_uptime_daily: "pending",
 
   // -- sensitive: never archived -------------------------------------------
   api_key_blocks: "sensitive",
@@ -142,7 +158,7 @@ export const POLICY: Readonly<Record<string, Policy>> = {
 };
 
 /** How many `pending` tables we accept. ONLY FALLS. */
-export const PENDING_CEILING = 11;
+export const PENDING_CEILING = 16;
 
 interface Column {
   table: string;
