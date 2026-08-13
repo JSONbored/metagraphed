@@ -186,7 +186,8 @@
     "check:lakehouse-freshness": "node scripts/check-lakehouse-freshness.ts",
     "validate:store-type-parity": "node scripts/validate-store-type-parity.ts",
     "validate:featured-validators-drift": "node scripts/validate-featured-validators-drift.ts",
-    "build:featured-validators": "node scripts/generate-featured-validators.ts"
+    "build:featured-validators": "node scripts/generate-featured-validators.ts",
+    "validate:archive-policy": "node scripts/validate-archive-policy.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.8.3",
