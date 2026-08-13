@@ -3707,6 +3707,41 @@ const CHAIN_EVENTS_CSV_COLUMNS = [
 // version) since this tier has no publish-time snapshot to key off of.
 const CHAIN_EVENTS_PROXY_CACHE_TTL_SECONDS = 60;
 
+/**
+ * How long one chain-events answer may sit at the edge (#11003).
+ *
+ * The flat 60 s this replaces was throwing away answers incapable of changing.
+ * `chainEventsCacheKey` is namespaced by contract version, network and the block
+ * ref, so a LAKEHOUSE answer for ONE BLOCK cannot go stale within its own key —
+ * it is decoded, settled history. Production showed the cost of pretending
+ * otherwise: a `cache_status: STALE` on finalized block 8803453, i.e. an answer
+ * we computed, stored, discarded 60 seconds later, and re-derived with another
+ * scan.
+ *
+ * BOTH conditions are required, and the second is the one that is easy to miss.
+ *
+ *  - COLD TIER, because a hot-window answer is still inside the live-follow
+ *    range and may yet move. This is the same signal #11001's chain-detail cache
+ *    reads, deliberately: the tier IS the immutability, and neither cache
+ *    derives a block-depth rule of its own that would then have to agree.
+ *
+ *  - BLOCK-SCOPED, because this handler also serves the /api/v1/chain-events
+ *    FEED and its /stats aggregate, and those are not immutable at all. A feed
+ *    page is a window over a growing stream: new events land, and the same
+ *    key's correct answer changes. Only a single block's events are fixed, so
+ *    only they earn the long TTL — the feed keeps 60 s.
+ */
+export function chainEventsCacheTtlSeconds(
+  url: URL,
+  answer: { source?: string } | null,
+): number {
+  const blockScoped = BLOCK_CHAIN_EVENTS_PATH_PATTERN.test(url.pathname);
+  const settled = answer?.source === "lakehouse-cold-tier";
+  return blockScoped && settled
+    ? CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS
+    : CHAIN_EVENTS_PROXY_CACHE_TTL_SECONDS;
+}
+
 // A service binding can REJECT, not merely return a bad status. An unreachable
 // DATA_API -- Hyperdrive down, the upstream Worker over its duration limit, the
 // binding absent at runtime -- makes `fetch` throw. Every proxy below used to
@@ -4023,7 +4058,7 @@ export async function handleChainEventsFamily(
             status: 200,
             headers: {
               "content-type": "application/json",
-              "cache-control": `public, s-maxage=${CHAIN_EVENTS_PROXY_CACHE_TTL_SECONDS}`,
+              "cache-control": `public, s-maxage=${chainEventsCacheTtlSeconds(url, answer)}`,
             },
           }),
         ),
