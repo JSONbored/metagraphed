@@ -13,10 +13,12 @@
 // subnetType,curationLevel,profileLevel} and the "profiles" query
 // collection's sort_fields at the time of writing.
 import { z } from "zod";
-import { QUERY_ENUMS } from "../query-enums.ts";
 import { sectionsSchema } from "../query-params.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
-import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
+import {
+  SubnetProfileArtifactSchema,
+  SUBNET_PROFILE_SECTIONS,
+} from "../routes/subnet-profiles.ts";
 import {
   reviewStateSchema,
   fieldsSchema,
@@ -76,7 +78,10 @@ export const GetSubnetProfileInputSchema = z
     // reading our contract would send it and be rejected. Worth more here than
     // on REST: a REST caller pays the unprojected payload in bandwidth, an
     // agent pays it in context window.
-    sections: sectionsSchema(QUERY_ENUMS.subnetProfileSection).optional(),
+    sections: sectionsSchema(SUBNET_PROFILE_SECTIONS, [
+      "subnet",
+      "profile",
+    ]).optional(),
   })
   .strict();
 export type GetSubnetProfileInput = z.infer<typeof GetSubnetProfileInputSchema>;

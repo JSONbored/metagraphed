@@ -14,16 +14,28 @@
 // there would promise a section it can never return.
 import assert from "node:assert/strict";
 import { describe, expect, it, test } from "vitest";
-import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
+import { z } from "zod";
+import { sectionsOf } from "../schemas-src/artifact-sections.ts";
+import { sectionsSchema } from "../schemas-src/query-params.ts";
 import {
-  ALWAYS_KEPT_SECTIONS,
+  ENVELOPE_SECTIONS,
   parseSectionsParam,
   projectSections,
   projectToolSections,
 } from "../src/section-projection.ts";
+import {
+  SubnetDetailArtifactSchema,
+  SUBNET_DETAIL_SECTIONS,
+} from "../schemas-src/routes/subnet-detail.ts";
+import {
+  SubnetProfileArtifactSchema,
+  SUBNET_PROFILE_SECTIONS,
+} from "../schemas-src/routes/subnet-profiles.ts";
+import { ArtifactBaseSchema } from "../schemas-src/envelope.ts";
+import { LIVE_HEALTH_OVERLAY } from "../schemas-src/routes/subnet-detail.ts";
 
-const DETAIL = QUERY_ENUMS.subnetDetailSection;
-const PROFILE = QUERY_ENUMS.subnetProfileSection;
+const DETAIL = SUBNET_DETAIL_SECTIONS;
+const PROFILE = SUBNET_PROFILE_SECTIONS;
 
 /** A document shaped like the served artifact: envelope + sections. */
 const document = (): Record<string, unknown> => ({
@@ -77,10 +89,10 @@ describe("parseSectionsParam", () => {
     // `economics` is a real section of the detail route and does not exist on
     // the profile. Accepting it there would promise a section that can never
     // arrive, which is worse than refusing it.
-    // Widened deliberately: QUERY_ENUMS is `as const`, so asking whether the
-    // PROFILE list contains "economics" is a type error rather than a false --
-    // which is the type system making exactly this issue's point, that the two
-    // vocabularies are different sets and not one shared one.
+    // Widened deliberately: both lists are narrow tuples, so asking whether
+    // the PROFILE list contains "economics" is a type error rather than a
+    // false -- which is the type system making exactly this issue's point,
+    // that the two vocabularies are different sets and not one shared one.
     assert.ok((DETAIL as readonly string[]).includes("economics"));
     assert.ok(!(PROFILE as readonly string[]).includes("economics"));
     assert.deepEqual(parseSectionsParam("economics", PROFILE)?.unknown, [
@@ -97,7 +109,7 @@ describe("projectSections", () => {
   test("keeps the requested section and drops the rest", () => {
     const out = projectSections(document(), ["economics"]);
     assert.deepEqual(
-      Object.keys(out).filter((k) => !ALWAYS_KEPT_SECTIONS.includes(k)),
+      Object.keys(out).filter((k) => !ENVELOPE_SECTIONS.includes(k)),
       ["economics"],
     );
     assert.deepEqual(out.economics, { alpha_price_tao: 0.02 });
@@ -108,7 +120,7 @@ describe("projectSections", () => {
     // Without this, `?sections=notes` would return an anonymous blob.
     for (const sections of [[], ["notes"], ["subnet", "gaps"]]) {
       const out = projectSections(document(), sections);
-      for (const key of ALWAYS_KEPT_SECTIONS) {
+      for (const key of ENVELOPE_SECTIONS) {
         assert.ok(
           key in out,
           `${key} must survive ?sections=${sections.join(",")}`,
@@ -276,8 +288,8 @@ describe("the lever is published, not just implemented", () => {
     >;
 
   it.each([
-    ["/api/v1/subnets/{netuid}", QUERY_ENUMS.subnetDetailSection],
-    ["/api/v1/subnets/{netuid}/profile", QUERY_ENUMS.subnetProfileSection],
+    ["/api/v1/subnets/{netuid}", SUBNET_DETAIL_SECTIONS],
+    ["/api/v1/subnets/{netuid}/profile", SUBNET_PROFILE_SECTIONS],
   ])("%s publishes sections with its own closed set", (route, vocabulary) => {
     const parameter = published(route).find((p) => p.name === "sections");
     expect(parameter, `${route} must publish sections`).toBeTruthy();
@@ -352,5 +364,128 @@ describe("projectToolSections (the MCP side)", () => {
       projectToolSections(null, { sections: "economics" }, DETAIL),
       null,
     );
+  });
+});
+
+// The vocabularies are DERIVED from the artifact schemas rather than written
+// out (#10600 follow-up). Deriving removes the drift these tests used to have
+// to watch for, so what is left to pin is the derivation itself: that it reads
+// the document it claims to, and that the envelope it holds back is the
+// envelope the schemas actually declare.
+describe("the section vocabulary cannot drift from the document", () => {
+  // Written out ON PURPOSE, and the only place in the tree that is. Asserting
+  // `sectionsOf(schema)` equals `keys(schema) minus envelope` would just be
+  // sectionsOf restated -- it passes however wrong both sides are, together.
+  // These are the published values of a public query parameter, so widening or
+  // narrowing one should cost a deliberate edit here: add a top-level key to a
+  // served artifact and it silently becomes a new accepted `?sections=` value
+  // otherwise.
+  test.each([
+    [
+      "detail",
+      SUBNET_DETAIL_SECTIONS,
+      [
+        "candidate_surfaces",
+        "candidates",
+        "economics",
+        "endpoints",
+        "gaps",
+        "notes",
+        "subnet",
+        "surfaces",
+        "verified_surfaces",
+      ],
+    ],
+    [
+      "profile",
+      SUBNET_PROFILE_SECTIONS,
+      [
+        "candidate_surfaces",
+        "endpoints",
+        "gaps",
+        "notes",
+        "profile",
+        "subnet",
+        "surfaces",
+      ],
+    ],
+  ])("%s publishes exactly this vocabulary", (_name, vocab, expected) => {
+    // Compared unsorted: `sectionsOf` sorts, so the published order is part of
+    // what this pins.
+    assert.deepEqual([...vocab], expected);
+  });
+
+  test("every offered section is a key the document can actually carry", () => {
+    // The direction that matters to a caller: `?sections=X` must never name a
+    // card the artifact has no slot for, or the 200 comes back missing the one
+    // thing that was asked for.
+    for (const [schema, vocab] of [
+      [SubnetDetailArtifactSchema, SUBNET_DETAIL_SECTIONS],
+      [SubnetProfileArtifactSchema, SUBNET_PROFILE_SECTIONS],
+    ] as const) {
+      for (const section of vocab) {
+        assert.ok(
+          section in schema.shape,
+          `${section} is offered but the artifact declares no such key`,
+        );
+      }
+    }
+  });
+
+  test("ENVELOPE_SECTIONS is what the schemas declare, both directions", () => {
+    // The five names were hand-written in three places before this. They are
+    // exactly the base envelope (minus `notes`, which is public-safe content a
+    // caller may legitimately shed) plus the live-health overlay -- so if a
+    // key is added to either, this fails rather than silently making it
+    // unselectable or projecting it away.
+    const declared = [
+      ...Object.keys(ArtifactBaseSchema.shape).filter((k) => k !== "notes"),
+      ...Object.keys(LIVE_HEALTH_OVERLAY),
+    ].sort();
+    assert.deepEqual([...ENVELOPE_SECTIONS].sort(), declared);
+  });
+
+  test("`notes` is content, not envelope", () => {
+    // It sits in the base alongside the envelope keys, so the one thing that
+    // separates it is this decision. Pinned because losing it would quietly
+    // make `notes` unshakeable on every artifact route at once.
+    assert.ok(!ENVELOPE_SECTIONS.includes("notes"));
+    assert.ok(SUBNET_DETAIL_SECTIONS.includes("notes"));
+    assert.ok(SUBNET_PROFILE_SECTIONS.includes("notes"));
+  });
+});
+
+// Both derivations refuse rather than publish something incoherent. Neither is
+// reachable from the two routes today -- which is the point of pinning them:
+// they are the guardrails a THIRD composite route would hit first.
+describe("the derivation refuses what it cannot publish", () => {
+  test("a document with only envelope keys gets no `sections` parameter", () => {
+    // Deriving an empty vocabulary would publish `?sections=` that accepts
+    // nothing -- a parameter whose every value is a 400.
+    assert.throws(
+      () =>
+        sectionsOf({
+          shape: { schema_version: z.literal(1), generated_at: z.string() },
+        }),
+      /only envelope keys/,
+    );
+  });
+
+  test("an example naming a section the document lacks is refused", () => {
+    // The example is hand-picked for what it teaches, so this is what keeps it
+    // honest: drop `economics` from the artifact and the build fails instead of
+    // shipping a documented example the route now rejects.
+    assert.throws(
+      () => sectionsSchema(["subnet", "gaps"], ["subnet", "economics"]),
+      /economics/,
+    );
+  });
+
+  test("an example the document does carry is accepted", () => {
+    // The other side of the same branch: a valid example must not throw, or
+    // the check would be a guard nothing can pass.
+    const schema = sectionsSchema(["subnet", "gaps"], ["subnet", "gaps"]);
+    assert.equal(schema.safeParse("subnet,gaps").success, true);
+    assert.equal(schema.safeParse("economics").success, false);
   });
 });
