@@ -59,14 +59,14 @@ export interface VolumeDistribution {
   mean: number;
   min: number;
   p25: number;
-  median: number;
+  p50: number;
   p75: number;
   p90: number;
   max: number;
 }
 
 // Spread of per-subnet total_volume_tao across every subnet with volume in the window: count,
-// mean, and min / p25 / median / p75 / p90 / max (TAO). Null when no subnet had volume — lets a
+// mean, and min / p25 / p50 / p75 / p90 / max (TAO). Null when no subnet had volume — lets a
 // caller read how concentrated (or spread out) the network's market activity is. Mirrors
 // chain-stake-flow.ts's netFlowDistribution, applied to total_volume_tao instead of net flow.
 function volumeDistribution(values: number[]): VolumeDistribution | null {
@@ -78,7 +78,7 @@ function volumeDistribution(values: number[]): VolumeDistribution | null {
     mean: round9OrZero(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    median: round9OrZero(median(ascending)!),
+    p50: round9OrZero(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],

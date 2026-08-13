@@ -83,7 +83,7 @@ describe("buildChainStakeFlow", () => {
     assert.equal(dist!.mean, 3.333333333); // 10/3 rounded to rao
     assert.equal(dist!.min, -60);
     assert.equal(dist!.p25, -60);
-    assert.equal(dist!.median, 0);
+    assert.equal(dist!.p50, 0);
     assert.equal(dist!.p75, 70);
     assert.equal(dist!.p90, 70);
     assert.equal(dist!.max, 70);

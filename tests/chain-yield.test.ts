@@ -48,7 +48,7 @@ describe("yieldDistribution", () => {
     assert.equal(d.count, 3);
     assert.equal(d.min, 0.04);
     assert.equal(d.max, 0.1);
-    assert.equal(d.median, 0.05); // middle of [0.04, 0.05, 0.1]
+    assert.equal(d.p50, 0.05); // middle of [0.04, 0.05, 0.1]
     assert.ok(Math.abs(d.mean - 0.063333333) < 1e-6);
     assert.equal(d.p10, 0.04);
     assert.equal(d.p90, 0.1);
@@ -56,7 +56,7 @@ describe("yieldDistribution", () => {
 
   test("averages the two middle values for an even count", () => {
     const d = yieldDistribution([0.2, 0.4])!;
-    assert.equal(d.median, 0.3); // (0.2 + 0.4) / 2
+    assert.equal(d.p50, 0.3); // (0.2 + 0.4) / 2
   });
 
   test("drops null cells; empty / all-null → null (schema-stable)", () => {

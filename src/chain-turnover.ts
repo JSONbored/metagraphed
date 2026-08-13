@@ -64,14 +64,14 @@ export interface StabilityDistribution {
   mean: number;
   min: number;
   p25: number;
-  median: number;
+  p50: number;
   p75: number;
   p90: number;
   max: number;
 }
 
 // Spread of the per-subnet stability scores across every subnet in the window: count, mean,
-// and min / p25 / median / p75 / p90 / max. Null when no subnet is comparable. Lets a caller
+// and min / p25 / p50 / p75 / p90 / max. Null when no subnet is comparable. Lets a caller
 // read network stability as a distribution (how many subnets are churning hard) rather than a
 // single rollup number.
 function stabilityDistribution(scores: number[]): StabilityDistribution | null {
@@ -83,7 +83,7 @@ function stabilityDistribution(scores: number[]): StabilityDistribution | null {
     mean: Math.round((sum / ascending.length) * 100) / 100,
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    median: round(median(ascending)!),
+    p50: round(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],

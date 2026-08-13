@@ -169,7 +169,7 @@ export const AccountEventItemSchema = z
   })
   .strict();
 
-// The 8-field distribution-stats shape (count/mean/min/p25/median/p75/p90/
+// The 8-field distribution-stats shape (count/mean/min/p25/p50/p75/p90/
 // max) 10 of types-epic E batch 9's (#8072) "chain leaderboard" tools use
 // identically for their `*_distribution` field (get_chain_turnover's
 // stability_distribution, get_chain_stake_flow's net_flow_distribution,

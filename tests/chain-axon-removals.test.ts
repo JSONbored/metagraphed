@@ -79,7 +79,7 @@ describe("buildChainAxonRemovals", () => {
     assert.equal(intensity_distribution!.count, 3);
     assert.equal(intensity_distribution!.min, 2.5);
     assert.equal(intensity_distribution!.p25, 2.5);
-    assert.equal(intensity_distribution!.median, 10);
+    assert.equal(intensity_distribution!.p50, 10);
     assert.equal(intensity_distribution!.p75, 15);
     assert.equal(intensity_distribution!.p90, 15);
     assert.equal(intensity_distribution!.max, 15);

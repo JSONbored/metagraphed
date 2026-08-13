@@ -9306,7 +9306,7 @@ const rootValue = {
         ? {
             count: distribution.count ?? 0,
             mean: distribution.mean ?? 0,
-            median: distribution.median ?? 0,
+            p50: distribution.p50 ?? 0,
             min: distribution.min ?? 0,
             max: distribution.max ?? 0,
             p10: distribution.p10 ?? 0,

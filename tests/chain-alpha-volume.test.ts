@@ -163,7 +163,7 @@ describe("buildChainAlphaVolume", () => {
     assert.equal(dist!.mean, 83.333333333); // 250/3 rounded to rao
     assert.equal(dist!.min, 20);
     assert.equal(dist!.p25, 20);
-    assert.equal(dist!.median, 100);
+    assert.equal(dist!.p50, 100);
     assert.equal(dist!.p75, 130);
     assert.equal(dist!.p90, 130);
     assert.equal(dist!.max, 130);

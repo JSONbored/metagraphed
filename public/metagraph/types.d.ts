@@ -6998,9 +6998,9 @@ export interface components {
                 count: number;
                 max: number;
                 mean: number;
-                median: number;
                 min: number;
                 p25: number;
+                p50: number;
                 p75: number;
                 p90: number;
             } | null;
@@ -7180,9 +7180,9 @@ export interface components {
                 count: number;
                 max: number;
                 mean: number;
-                median: number;
                 min: number;
                 p25: number;
+                p50: number;
                 p75: number;
                 p90: number;
             } | null;
@@ -7249,10 +7249,10 @@ export interface components {
                 count: number;
                 max: number;
                 mean: number;
-                median: number;
                 min: number;
                 p10: number;
                 p25: number;
+                p50: number;
                 p75: number;
                 p90: number;
             } | null;
@@ -8945,9 +8945,9 @@ export interface components {
             count: number;
             max: number;
             mean: number;
-            median: number;
             min: number;
             p25: number;
+            p50: number;
             p75: number;
             p90: number;
         };
@@ -15032,9 +15032,9 @@ export interface operations {
                      *           "count": 1,
                      *           "max": 0.5,
                      *           "mean": 0.5,
-                     *           "median": 0.5,
                      *           "min": 0.5,
                      *           "p25": 0.5,
+                     *           "p50": 0.5,
                      *           "p75": 0.5,
                      *           "p90": 0.5
                      *         },
@@ -15416,9 +15416,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -15701,9 +15701,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -15977,9 +15977,9 @@ export interface operations {
                      *           "count": 1,
                      *           "max": 0.5,
                      *           "mean": 0.5,
-                     *           "median": 0.5,
                      *           "min": 0.5,
                      *           "p25": 0.5,
+                     *           "p50": 0.5,
                      *           "p75": 0.5,
                      *           "p90": 0.5
                      *         },
@@ -16127,9 +16127,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -16273,9 +16273,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -24843,9 +24843,9 @@ export interface operations {
                      *           "count": 1,
                      *           "max": 0.5,
                      *           "mean": 0.5,
-                     *           "median": 0.5,
                      *           "min": 0.5,
                      *           "p25": 0.5,
+                     *           "p50": 0.5,
                      *           "p75": 0.5,
                      *           "p90": 0.5
                      *         },
@@ -24968,9 +24968,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -26020,9 +26020,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -27230,9 +27230,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -27373,9 +27373,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -27670,9 +27670,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -27940,9 +27940,9 @@ export interface operations {
                      *           "count": 1,
                      *           "max": 0.5,
                      *           "mean": 0.5,
-                     *           "median": 0.5,
                      *           "min": 0.5,
                      *           "p25": 0.5,
+                     *           "p50": 0.5,
                      *           "p75": 0.5,
                      *           "p90": 0.5
                      *         },
@@ -28087,9 +28087,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -28230,9 +28230,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -28782,9 +28782,9 @@ export interface operations {
                      *           "count": 1,
                      *           "max": 1,
                      *           "mean": 0.5,
-                     *           "median": 0.5,
                      *           "min": 1,
                      *           "p25": 1,
+                     *           "p50": 0.5,
                      *           "p75": 1,
                      *           "p90": 1
                      *         },
@@ -28916,9 +28916,9 @@ export interface operations {
                      *           "count": 2,
                      *           "max": 15,
                      *           "mean": 12.5,
-                     *           "median": 10,
                      *           "min": 10,
                      *           "p25": 10,
+                     *           "p50": 10,
                      *           "p75": 15,
                      *           "p90": 15
                      *         },
@@ -29189,10 +29189,10 @@ export interface operations {
                      *           "count": 1,
                      *           "max": 0.5,
                      *           "mean": 0.5,
-                     *           "median": 0.5,
                      *           "min": 0.5,
                      *           "p10": 0.5,
                      *           "p25": 0.5,
+                     *           "p50": 0.5,
                      *           "p75": 0.5,
                      *           "p90": 0.5
                      *         },

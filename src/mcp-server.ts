@@ -6985,7 +6985,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "or 90d; default 30d): each subnet ranked by gross validator churn " +
       "(validators entered + exited) with Jaccard retention and a 0–100 " +
       "stability score, a network rollup over the union validator set, and the " +
-      "count/mean/min/p25/median/p75/p90/max spread of per-subnet stability. " +
+      "count/mean/min/p25/p50/p75/p90/max spread of per-subnet stability. " +
       "The network-level companion of get_subnet_turnover, mirroring how " +
       "get_chain_concentration companions get_subnet_concentration. Mirrors " +
       "GET /api/v1/chain/turnover.",
@@ -7031,7 +7031,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "flow (StakeAdded minus StakeRemoved) with staked/unstaked/gross totals, " +
       "stake/unstake event counts, and an inflow/outflow/balanced direction " +
       "label, plus a network rollup (gaining/losing/flat subnet counts) and the " +
-      "count/mean/min/p25/median/p75/p90/max spread of per-subnet net flow, " +
+      "count/mean/min/p25/p50/p75/p90/max spread of per-subnet net flow, " +
       "summed live from the account_events stream. The network-level companion " +
       "of get_subnet_stake_flow, mirroring how get_chain_concentration " +
       "companions get_subnet_concentration. Mirrors GET /api/v1/chain/stake-flow.",
@@ -7077,7 +7077,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "total_volume_tao, each subnet carrying the same buy/sell/total volume + sentiment " +
       "scorecard as get_subnet_volume (vol_mcap_ratio always null here — no per-subnet " +
       "market-cap input in scope at the network level), plus a network rollup (with its own " +
-      "net/gross sentiment reading) and the count/mean/min/p25/median/p75/p90/max spread of " +
+      "net/gross sentiment reading) and the count/mean/min/p25/p50/p75/p90/max spread of " +
       "per-subnet total volume, summed live from the account_events stream. The network-level " +
       "companion of get_subnet_volume, mirroring how get_chain_stake_flow companions " +
       "get_subnet_stake_flow. Fixed 24h window, no window parameter. Mirrors GET " +
@@ -7116,7 +7116,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "requested window (7d or 30d; default 7d): each subnet ranked by WeightsSet " +
       "events with its distinct-setter count and sets-per-setter update " +
       "intensity, plus a network rollup (distinct setters, total weight sets, " +
-      "sets per setter) and the count/mean/min/p25/median/p75/p90/max spread of " +
+      "sets per setter) and the count/mean/min/p25/p50/p75/p90/max spread of " +
       "per-subnet intensity, summed live from the account_events stream. The " +
       "consensus-maintenance companion to get_chain_stake_flow (capital) and " +
       "get_chain_turnover (validator churn). Use get_chain_weight_setters for the " +
@@ -7210,7 +7210,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the requested window (7d or 30d; default 7d): each subnet ranked by " +
       "StakeMoved events with its distinct-mover (coldkey) count and " +
       "movements-per-mover intensity, plus a network rollup (distinct movers, " +
-      "total movements, movements per mover) and the count/mean/min/p25/median/" +
+      "total movements, movements per mover) and the count/mean/min/p25/p50/" +
       "p75/p90/max spread of per-subnet intensity, summed live from the " +
       "account_events stream. StakeMoved is a coldkey relocating stake between " +
       "hotkeys/subnets without unstaking — it measures re-delegation churn, not " +
@@ -7257,7 +7257,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "window (7d or 30d; default 7d): each subnet ranked by StakeTransferred " +
       "events with its distinct-sender (origin coldkey) count and " +
       "transfers-per-sender intensity, plus a network rollup (distinct senders, " +
-      "total transfers, transfers per sender) and the count/mean/min/p25/median/" +
+      "total transfers, transfers per sender) and the count/mean/min/p25/p50/" +
       "p75/p90/max spread of per-subnet intensity, summed live from the " +
       "account_events stream. StakeTransferred moves staked alpha from one " +
       "coldkey to another on the same hotkey — it relocates ownership, not net " +
@@ -7306,7 +7306,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "window (7d or 30d; default 7d): each subnet ranked by AxonInfoRemoved " +
       "events with its distinct-remover (hotkey) count and removals-per-remover " +
       "intensity, plus a network rollup (distinct removers, total removals, " +
-      "removals per remover) and the count/mean/min/p25/median/p75/p90/max spread " +
+      "removals per remover) and the count/mean/min/p25/p50/p75/p90/max spread " +
       "of per-subnet intensity, summed live from the account_events stream. " +
       "AxonInfoRemoved is emitted when a neuron's announced axon endpoint is " +
       "removed — the teardown-side companion to get_chain_serving (axon " +
@@ -7350,7 +7350,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "AxonServed events with its distinct-server (hotkey) count and " +
       "announcements-per-server intensity, plus a network rollup (distinct " +
       "servers, total announcements, announcements per server) and the " +
-      "count/mean/min/p25/median/p75/p90/max spread of per-subnet intensity, " +
+      "count/mean/min/p25/p50/p75/p90/max spread of per-subnet intensity, " +
       "summed live from the account_events stream. AxonServed is emitted when " +
       "a neuron announces its axon endpoint — the axon-endpoint companion to " +
       "get_chain_prometheus (Prometheus telemetry announcements) and " +
@@ -7401,7 +7401,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "PrometheusServed events with its distinct-exporter (hotkey) count and " +
       "announcements-per-exporter intensity, plus a network rollup (distinct " +
       "exporters, total announcements, announcements per exporter) and the " +
-      "count/mean/min/p25/median/p75/p90/max spread of per-subnet intensity, " +
+      "count/mean/min/p25/p50/p75/p90/max spread of per-subnet intensity, " +
       "summed live from the account_events stream. PrometheusServed is emitted " +
       "when a neuron announces its Prometheus telemetry endpoint — the " +
       "telemetry-endpoint companion to get_chain_serving (axon announcements) " +
@@ -12474,7 +12474,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "NeuronDeregistered events with its distinct-deregistered-hotkey count and " +
       "deregistrations-per-hotkey intensity, plus a network rollup (distinct " +
       "deregistered hotkeys, total deregistrations, deregistrations per hotkey) " +
-      "and the count/mean/min/p25/median/p75/p90/max spread of per-subnet " +
+      "and the count/mean/min/p25/p50/p75/p90/max spread of per-subnet " +
       "intensity, summed live from the account_events stream. Raw eviction " +
       "activity — the exit-side companion to get_chain_registrations " +
       "(NeuronRegistered demand) and get_subnet_deregistrations (one subnet). " +

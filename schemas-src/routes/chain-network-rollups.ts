@@ -3,7 +3,7 @@
 // .../weights (types-epic B batch 6, #8060). Live account_events-stream
 // data -- no static file. All eight share one shape family: a network
 // rollup + a null-when-cold intensity distribution (count/mean/min/p25/
-// median/p75/p90/max) + a per-subnet leaderboard, driven by
+// p50/p75/p90/max) + a per-subnet leaderboard, driven by
 // src/chain-axon-removals.ts, src/chain-deregistrations.ts,
 // src/chain-prometheus.ts, src/chain-registrations.ts, src/chain-serving.ts,
 // src/chain-stake-moves.ts, src/chain-stake-transfers.ts, and

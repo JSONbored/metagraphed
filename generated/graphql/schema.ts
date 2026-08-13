@@ -6490,7 +6490,7 @@ type ChainTurnoverStabilityDistribution {
   mean: Float!
   min: Int!
   p25: Int!
-  median: Float!
+  p50: Float!
   p75: Int!
   p90: Int!
   max: Int!
@@ -6575,7 +6575,7 @@ type IntensityDistribution {
   mean: Float!
   min: Float!
   p25: Float!
-  median: Float!
+  p50: Float!
   p75: Float!
   p90: Float!
   max: Float!
@@ -7189,7 +7189,7 @@ type YieldDistribution {
   mean: Float!
   min: Float!
   p25: Float!
-  median: Float!
+  p50: Float!
   p75: Float!
   p90: Float!
   max: Float!
@@ -7431,7 +7431,7 @@ type ChainStakeFlowDistribution {
   mean: Float!
   min: Float!
   p25: Float!
-  median: Float!
+  p50: Float!
   p75: Float!
   p90: Float!
   max: Float!
