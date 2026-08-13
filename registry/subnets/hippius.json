@@ -31,7 +31,7 @@
   "social": {
     "x": "https://x.com/hippius_subnet"
   },
-  "source_repo": "https://github.com/thenervelab/hippius-validator",
+  "source_repo": "https://github.com/thenervelab/thebrain",
   "status": "active",
   "surfaces": [
     {
@@ -93,8 +93,8 @@
       "authority": "official",
       "id": "sn-75-hippius-validator-source",
       "kind": "source-repo",
-      "name": "Hippius validator repository",
-      "notes": "Official Hippius validator repository.",
+      "name": "Hippius subnet repository",
+      "notes": "Official SN75 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; the README identifies it as the Hippius decentralized infrastructure subnet. Replaces thenervelab/hippius-validator, last pushed 2025-04-09.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -103,8 +103,8 @@
       },
       "provider": "hippius",
       "public_safe": true,
-      "source_urls": ["https://github.com/thenervelab/hippius-validator"],
-      "url": "https://github.com/thenervelab/hippius-validator"
+      "source_urls": ["https://github.com/thenervelab/thebrain"],
+      "url": "https://github.com/thenervelab/thebrain"
     },
     {
       "auth_required": false,

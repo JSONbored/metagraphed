@@ -20,7 +20,9 @@
 //   - sn-120-affine-config               GET .../api/v1/config -> 200
 //     application/json {"configs":{"validator_burn_percentage":0}}
 //   - sn-120-affine-website     HEAD https://www.affine.io/ -> 200 text/html
-//   - sn-120-affine-source-repo HEAD .../AffineFoundation/affine-cortex -> 200 text/html
+//   - sn-120-affine-source-repo HEAD .../AffineFoundation/affine -> 200 text/html
+//     (repointed 2026-08-13: affine-cortex now 404s, and SubnetIdentitiesV3
+//     declares AffineFoundation/affine at block 8823651.)
 // subnet-api + data-artifact are in OPERATIONAL_SURFACE_KINDS and are exercised
 // end-to-end through the MCP tool; openapi/website/source-repo are not, so they
 // are verified direct-call only (matching the SN85 openapi / SN87 website
@@ -230,7 +232,7 @@ const SURFACES = [
     id: "sn-120-affine-source-repo",
     kind: "source-repo",
     operational: false,
-    url: "https://github.com/AffineFoundation/affine-cortex",
+    url: "https://github.com/AffineFoundation/affine",
     method: "HEAD",
     contentType: "text/html; charset=utf-8",
     rawBody: null,

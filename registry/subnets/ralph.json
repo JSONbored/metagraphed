@@ -26,7 +26,7 @@
   "notes": "This netuid was previously tracked under the \"Chunking\" identity (VectorChat's text-chunking/RAG subnet, github.com/salahawk/chunking_subnet). On-chain SubnetIdentitiesV3 native_name, source_repo, and description now all point to \"Ralph\" (RalphLabsAI's decentralized, autonomous AI training-recipe research subnet) -- the same pivot pattern as SN3 Templar/Crusades, but more conclusively corroborated: the old chunking_subnet repo has been dead for 2+ years (last push 2024-05-26), subnet.chunking.com has an expired TLS certificate, and RalphLabsAI/ralph's own README explicitly self-identifies as \"Live on Bittensor mainnet, netuid 40\" and was pushed 13 days before this review. This is a full identity/ownership pivot, not cosmetic drift, so the old Chunking-era surfaces are retired rather than kept alongside the new ones. File renamed from chunking.json to ralph.json to match slugify(name). Ralph funds an open, continuously-improving training recipe (a canonical recipe repo miners patch, a public knowledge corpus of every evaluated change, and open-weights demonstration models) verified via attested execution (TDX + nvtrust hardware attestation). No public API, OpenAPI schema, or hosted dashboard found.",
   "schema_version": 1,
   "slug": "ralph",
-  "source_repo": "https://github.com/RalphLabsAI/ralph",
+  "source_repo": "https://github.com/RalphLabsAI/ralph-v2",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -58,8 +58,8 @@
       "authority": "official",
       "id": "sn-40-ralph-protocol-source-repo",
       "kind": "source-repo",
-      "name": "Ralph protocol source repository",
-      "notes": "Official Ralph (SN40) protocol source repository -- validator, proof-test runner, attestation, scoring, and submission tooling. Self-identifies as \"Live on Bittensor mainnet, netuid 40\" in its own README.",
+      "name": "Ralph v2 source repository",
+      "notes": "Official SN40 source repository, verified live 2026-08-13: the README reads \"Ralph -- open model compression on Bittensor SN40\" and registers against netuid 40. Replaces RalphLabsAI/ralph, archived 2026-08-03. The chain identity still declares the archived repository, so this registration is ahead of SubnetIdentitiesV3.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -68,8 +68,11 @@
       },
       "provider": "ralphlabs",
       "public_safe": true,
-      "source_urls": ["https://www.ralphlabs.ai/"],
-      "url": "https://github.com/RalphLabsAI/ralph"
+      "source_urls": [
+        "https://www.ralphlabs.ai/",
+        "https://github.com/RalphLabsAI/ralph-v2"
+      ],
+      "url": "https://github.com/RalphLabsAI/ralph-v2"
     },
     {
       "auth_required": false,

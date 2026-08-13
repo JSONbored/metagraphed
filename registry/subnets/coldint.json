@@ -32,7 +32,7 @@
   },
   "schema_version": 1,
   "slug": "sn-29",
-  "source_repo": "https://github.com/coldint/coldint_validator",
+  "source_repo": "https://github.com/coldint/hotfloat",
   "status": "active",
   "surfaces": [
     {
@@ -61,8 +61,8 @@
       "authority": "official",
       "id": "sn-29-coldint-validator-source",
       "kind": "source-repo",
-      "name": "Coldint validator source repository",
-      "notes": "Official Coldint validator repository for SN29.",
+      "name": "Coldint source repository",
+      "notes": "Official SN29 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13. Replaces coldint/coldint_validator, last pushed 2025-07-11.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -71,8 +71,8 @@
       },
       "provider": "coldint",
       "public_safe": true,
-      "source_urls": ["https://github.com/coldint/coldint_validator"],
-      "url": "https://github.com/coldint/coldint_validator"
+      "source_urls": ["https://github.com/coldint/hotfloat"],
+      "url": "https://github.com/coldint/hotfloat"
     },
     {
       "auth_required": false,
