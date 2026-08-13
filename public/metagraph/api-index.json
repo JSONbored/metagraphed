@@ -9916,7 +9916,20 @@
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "default": "1d",
+            "enum": [
+              "1d",
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/chain/revenue-coverage.json",
@@ -9932,7 +9945,20 @@
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "default": "1d",
+            "enum": [
+              "1d",
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/recycled.json",

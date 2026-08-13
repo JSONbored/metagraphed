@@ -24778,6 +24778,62 @@ describe("revenue coverage over GraphQL (#10476)", () => {
     assert.match(String(subset.excluded_reason), /superseded/);
   });
 
+  // #10925: the window is an argument on both revenue fields now. GraphQL is
+  // the one surface of the three that does NOT need a hand-written guard --
+  // parseArgumentsAtDispatch resolves each field's args against the route's own
+  // query schema and raises BAD_USER_INPUT -- but that is a claim about wiring,
+  // and wiring is exactly what was wrong here. Proven, not assumed.
+  test("the window reaches window_days through the field argument", async () => {
+    for (const [window, days] of [
+      ["1d", 1],
+      ["7d", 7],
+      ["30d", 30],
+    ] as const) {
+      const { body } = await gql(
+        `query { subnet_revenue(netuid: 64, window: "${window}") { revenue { window_days } } }`,
+        revenueEnv(),
+      );
+      assert.equal(body.errors, undefined, `errored on ${window}`);
+      const r = (body.data.subnet_revenue as Row).revenue as Row;
+      assert.equal(r.window_days, days, `on ${window}`);
+    }
+  });
+
+  test("AN OUT-OF-ENUM WINDOW IS REJECTED, not silently defaulted", async () => {
+    const { body } = await gql(
+      `query { subnet_revenue(netuid: 64, window: "90d") { revenue { window_days } } }`,
+      revenueEnv(),
+    );
+    assert.ok(body.errors, "90d was accepted");
+    assert.equal((body.errors as Row[])[0].extensions?.code, "BAD_USER_INPUT");
+  });
+
+  test("an omitted window is the published default", async () => {
+    const { body } = await gql(
+      `query { subnet_revenue(netuid: 64) { revenue { window_days } } }`,
+      revenueEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(
+      ((body.data.subnet_revenue as Row).revenue as Row).window_days,
+      1,
+    );
+  });
+
+  test("chain_revenue_coverage takes the same argument, same vocabulary", async () => {
+    const ok = await gql(
+      `query { chain_revenue_coverage(window: "30d") { window_days } }`,
+      revenueEnv(),
+    );
+    assert.equal(ok.body.errors, undefined);
+    assert.equal((ok.body.data.chain_revenue_coverage as Row).window_days, 30);
+    const bad = await gql(
+      `query { chain_revenue_coverage(window: "90d") { window_days } }`,
+      revenueEnv(),
+    );
+    assert.ok(bad.body.errors, "90d was accepted on the coverage field");
+  });
+
   test("a surface with no revenue block is not listed as a source", () => {
     // Asserted through the query above rather than separately: a response
     // listing a models endpoint among its revenue "sources" invites exactly

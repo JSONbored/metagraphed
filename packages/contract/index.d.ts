@@ -27462,7 +27462,10 @@ export interface operations {
     };
     chainRevenueCoverage: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `1d`, `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "1d" | "7d" | "30d";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -45941,7 +45944,10 @@ export interface operations {
     };
     subnetRevenue: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `1d`, `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "1d" | "7d" | "30d";
+            };
             header?: never;
             path: {
                 netuid: number;

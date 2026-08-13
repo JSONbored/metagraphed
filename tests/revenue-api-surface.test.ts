@@ -203,6 +203,65 @@ describe("GET /api/v1/subnets/{netuid}/revenue", () => {
     assert.equal((body.error as Row)?.code, "invalid_netuid");
   });
 
+  // #10925: the third surface. REST needs no hand-written guard either -- the
+  // router validates against the published query schema and answers
+  // `invalid_query` -- but the point of this issue is that all three surfaces
+  // resolve ONE vocabulary, and "they must agree" is worth an assertion on each
+  // rather than an argument about the wiring.
+  test("each published window reaches window_days", async () => {
+    for (const [window, days] of [
+      ["1d", 1],
+      ["7d", 7],
+      ["30d", 30],
+    ] as const) {
+      const res = await handleRequest(
+        req(`/api/v1/subnets/64/revenue?window=${window}`),
+        artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      );
+      assert.equal(res.status, 200, `on ${window}`);
+      const body = await jsonBody(res);
+      assert.equal(
+        ((body.data as Row).revenue as Row).window_days,
+        days,
+        `on ${window}`,
+      );
+    }
+  });
+
+  test("an out-of-enum window is a 400, not the default window", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets/64/revenue?window=90d"),
+      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+    );
+    assert.equal(res.status, 400);
+    const body = await jsonBody(res);
+    assert.equal((body.error as Row)?.code, "invalid_query");
+    assert.equal((body.meta as Row)?.parameter, "window");
+  });
+
+  test("an omitted window is the default, unchanged from before #10925", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets/64/revenue"),
+      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+    );
+    const body = await jsonBody(res);
+    assert.equal(((body.data as Row).revenue as Row).window_days, 1);
+  });
+
+  test("the coverage route takes the same vocabulary", async () => {
+    const ok = await handleRequest(
+      req("/api/v1/chain/revenue-coverage?window=30d"),
+      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+    );
+    assert.equal(ok.status, 200);
+    assert.equal((await jsonBody(ok)).data.window_days, 30);
+    const bad = await handleRequest(
+      req("/api/v1/chain/revenue-coverage?window=90d"),
+      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+    );
+    assert.equal(bad.status, 400);
+  });
+
   test("serves the ratio when economics, surfaces and a TAO price are all present", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/64/revenue"),
@@ -439,6 +498,60 @@ describe("the get_subnet_revenue MCP tool", () => {
     );
   });
 
+  // #10925: the window is a real argument here, and MCP dispatch does not
+  // validate against the published input schema -- so these two tools are the
+  // only thing standing between an out-of-enum window and a confidently wrong
+  // answer. `revenueWindowDays` falls back to 1d by design (the REST router has
+  // already rejected anything else by the time it runs), which on this path
+  // would mean `window: "90d"` silently returns the ONE-DAY figure.
+  test("an out-of-enum window is an error, NOT the default window", async () => {
+    await assert.rejects(
+      () =>
+        tool("get_subnet_revenue").handler(
+          { netuid: 64, window: "90d" },
+          mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+        ),
+      /must be one of: 1d, 7d, 30d/,
+    );
+  });
+
+  test("a non-string window is rejected too", async () => {
+    // `30` is the shape a caller reaches for after reading `window_days` in the
+    // response body, and `allowed.includes(30)` is false -- but only because
+    // the guard checks the type first. Without that check the number would
+    // reach the day map and miss, i.e. the 1d answer again.
+    await assert.rejects(
+      () =>
+        tool("get_subnet_revenue").handler(
+          { netuid: 64, window: 30 },
+          mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+        ),
+      /must be one of/,
+    );
+  });
+
+  test("each published window is accepted and reaches the body", async () => {
+    for (const [window, days] of [
+      ["1d", 1],
+      ["7d", 7],
+      ["30d", 30],
+    ] as const) {
+      const out = (await tool("get_subnet_revenue").handler(
+        { netuid: 64, window },
+        mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      )) as Row;
+      assert.equal((out.revenue as Row).window_days, days, `on ${window}`);
+    }
+  });
+
+  test("an omitted window is the default, not an error", async () => {
+    const out = (await tool("get_subnet_revenue").handler(
+      { netuid: 64 },
+      mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+    )) as Row;
+    assert.equal((out.revenue as Row).window_days, 1);
+  });
+
   test("returns the composed view when every artifact is present", async () => {
     const out = (await tool("get_subnet_revenue").handler(
       { netuid: 64 },
@@ -523,6 +636,25 @@ describe("the list_revenue_coverage MCP tool", () => {
     assert.equal(out.subnet_count, 2);
     assert.equal(out.observed_count, 0);
     assert.equal((out.subnets as unknown[]).length, 2);
+  });
+
+  test("rejects an out-of-enum window rather than defaulting", async () => {
+    await assert.rejects(
+      () =>
+        tool("list_revenue_coverage").handler(
+          { window: "90d" },
+          mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+        ),
+      /must be one of: 1d, 7d, 30d/,
+    );
+  });
+
+  test("carries the requested window into every row", async () => {
+    const out = (await tool("list_revenue_coverage").handler(
+      { window: "30d" },
+      mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+    )) as Row;
+    assert.equal(out.window_days, 30);
   });
 
   test("skips a row whose netuid does not parse", async () => {

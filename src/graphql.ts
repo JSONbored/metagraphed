@@ -952,6 +952,7 @@ import type {
 import { readStore } from "./read-store.ts";
 import {
   loadSubnetRevenue,
+  revenueWindowDays,
   SUBNET_REVENUE_FIELD_SOURCES,
 } from "./revenue-load.ts";
 import { loadRevenueObservations } from "./revenue-observations.ts";
@@ -1561,6 +1562,7 @@ async function taoUsdForRevenue(context: GqlContext): Promise<number | null> {
 async function revenueForNetuid(
   context: GqlContext,
   netuid: number,
+  window?: unknown,
 ): Promise<SubnetRevenueView> {
   const rows = (await loadEconomicsRows(context)) as Row[];
   const economics = rows.find((row) => Number(row?.netuid) === netuid) ?? null;
@@ -1570,7 +1572,7 @@ async function revenueForNetuid(
   );
   return loadSubnetRevenue({
     netuid,
-    window_days: 1,
+    window_days: revenueWindowDays(window),
     economics,
     surfaces: await surfacesForNetuid(context, netuid),
     usd_per_tao: await taoUsdForRevenue(context),
@@ -7617,8 +7619,11 @@ const rootValue = {
   // endpoint and a caller sweeping the network would see 127 failures instead
   // of 127 answers. Every missing piece degrades to a null ratio with the
   // emission side still served.
-  async subnet_revenue({ netuid }: { netuid: number }, context: GqlContext) {
-    const revenue = await revenueForNetuid(context, netuid);
+  async subnet_revenue(
+    { netuid, window }: { netuid: number; window?: string | null },
+    context: GqlContext,
+  ) {
+    const revenue = await revenueForNetuid(context, netuid, window);
     return {
       schema_version: 1,
       generated_at: new Date().toISOString(),
@@ -7632,7 +7637,8 @@ const rootValue = {
   // null ratios rather than dropped -- omitting them would make the covered set
   // look like the whole network, which is the single most misleading thing this
   // field could do.
-  async chain_revenue_coverage(_args: Row, context: GqlContext) {
+  async chain_revenue_coverage(args: Row, context: GqlContext) {
+    const windowDays = revenueWindowDays(args?.window);
     const rows = await loadEconomicsRows(context);
     const usd = await taoUsdForRevenue(context);
     // ONE observation read for the whole network rather than one per subnet:
@@ -7648,7 +7654,7 @@ const rootValue = {
       subnets.push(
         loadSubnetRevenue({
           netuid,
-          window_days: 1,
+          window_days: windowDays,
           economics: row,
           surfaces: await surfacesForNetuid(context, netuid),
           usd_per_tao: usd,
@@ -7659,7 +7665,7 @@ const rootValue = {
     return {
       schema_version: 1,
       generated_at: new Date().toISOString(),
-      window_days: 1,
+      window_days: windowDays,
       observed_count: subnets.filter((s) => s.revenue_usd !== null).length,
       subnet_count: subnets.length,
       subnets,

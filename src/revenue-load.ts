@@ -13,6 +13,10 @@
 // endpoint, and a caller sweeping the network would see 127 failures instead of
 // 127 answers.
 import {
+  DEFAULT_SUBNET_REVENUE_WINDOW,
+  SUBNET_REVENUE_WINDOW_DAYS,
+} from "./route-limits.ts";
+import {
   type SubnetRevenueView,
   buildSubnetRevenue,
   type RevenueObservation,
@@ -154,4 +158,26 @@ export function loadSubnetRevenue(
     searched_at: input.searched_at ?? null,
   });
   return view;
+}
+
+/**
+ * The window a revenue caller asked for, in DAYS.
+ *
+ * Lives beside the loader every surface calls, so REST, MCP and GraphQL cannot
+ * resolve the same `?window=` to different denominators -- which is the exact
+ * failure the hardcoded `1` was hiding at nine sites. An unrecognised value
+ * falls back to the default rather than throwing: the router, the MCP input
+ * schema and the GraphQL dispatch have all already rejected anything outside
+ * the published enum by the time this runs, so a throw here would be
+ * unreachable, and a silent default is the safer unreachable branch.
+ */
+export function revenueWindowDays(window: unknown): number {
+  const label =
+    typeof window === "string" && window
+      ? window
+      : DEFAULT_SUBNET_REVENUE_WINDOW;
+  return (
+    SUBNET_REVENUE_WINDOW_DAYS[label] ??
+    SUBNET_REVENUE_WINDOW_DAYS[DEFAULT_SUBNET_REVENUE_WINDOW]
+  );
 }

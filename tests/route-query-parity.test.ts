@@ -205,8 +205,13 @@ describe("each route's schema emits exactly what it publishes (#10062)", () => {
     );
     const declared = Object.keys(ROUTE_QUERY_SCHEMAS).length;
     assert.ok(declared >= 100, `only ${declared} routes are declared`);
+    // 67, down from 69 (#10925): the two revenue routes moved OUT of this list
+    // because they now take a real `?window=`. This is a vacuity floor, not a
+    // ratchet -- it exists so the sweep above cannot pass on an empty set, and
+    // a route legitimately gaining a parameter is the one reason it should
+    // fall. `withParameters` rises by the same two.
     assert.ok(
-      NO_QUERY_PARAMETERS.length >= 69,
+      NO_QUERY_PARAMETERS.length >= 67,
       `only ${NO_QUERY_PARAMETERS.length} routes declare that they take none`,
     );
     assert.ok(

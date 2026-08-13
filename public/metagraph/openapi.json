@@ -75055,7 +75055,23 @@
     "/api/v1/chain/revenue-coverage": {
       "get": {
         "operationId": "chainRevenueCoverage",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `1d`, `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "1d",
+              "enum": [
+                "1d",
+                "7d",
+                "30d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -96753,6 +96769,21 @@
               "maximum": 65535,
               "minimum": 0,
               "type": "integer"
+            }
+          },
+          {
+            "description": "Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `1d`, `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "1d",
+              "enum": [
+                "1d",
+                "7d",
+                "30d"
+              ],
+              "type": "string"
             }
           }
         ],

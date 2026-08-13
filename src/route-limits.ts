@@ -465,3 +465,46 @@ export const SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS = Object.keys(
   SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
 );
 export const DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW = "30d";
+
+/**
+ * `/api/v1/subnets/{netuid}/revenue` and `/api/v1/chain/revenue-coverage`
+ * -- the window a revenue figure is compared against (#10925).
+ *
+ * THE VALUES ARE THE GRAINS THE REGISTRY DECLARES. `GRAIN_DAYS` in
+ * src/revenue-serving.ts maps `daily -> 1`, `weekly -> 7`, `monthly -> 30`, and
+ * a surface contributes only when the window is a whole number of its periods.
+ * So these three are not a taste: they are exactly the windows any declared
+ * surface can answer, and a fourth value would be a window nothing could fill.
+ *
+ * 1d REMAINS THE DEFAULT. The window was hardcoded to 1 at nine call sites, and
+ * every caller quoting "the" coverage ratio today is quoting a one-day one --
+ * changing the default would silently re-denominate all of them.
+ *
+ * `cumulative` is still unreachable at every window, deliberately: a lifetime
+ * total is a running sum with no period, and dividing it by a window compares a
+ * subnet's whole history against one day of emission.
+ */
+export const SUBNET_REVENUE_WINDOW_DAYS: Record<string, number> = {
+  "1d": 1,
+  "7d": 7,
+  "30d": 30,
+};
+export const SUBNET_REVENUE_WINDOWS = Object.keys(SUBNET_REVENUE_WINDOW_DAYS);
+export const DEFAULT_SUBNET_REVENUE_WINDOW = "1d";
+
+/**
+ * `/api/v1/subnets/{netuid}/wallets` and `/api/v1/subnets/{netuid}/owner-cut`
+ * -- the window those two publish, which the CALLER DOES NOT CHOOSE (#10925).
+ *
+ * Named here rather than left as a literal because it was stated four times --
+ * once in each route's REST handler and once in each of their MCP tools -- and
+ * four copies of a number two surfaces must agree on is how a surface starts
+ * reporting a 30-day accrual beside a `window_days` of 7. They agreed at the
+ * time this was extracted; nothing was making them.
+ *
+ * Deliberately NOT folded into SUBNET_REVENUE_WINDOW_DAYS. That vocabulary is a
+ * menu a caller picks from; this is a fixed property of two attribution
+ * surfaces, and giving them a `?window=` they cannot honour would publish a
+ * lever that does nothing -- the exact defect #10925 exists to remove.
+ */
+export const ATTRIBUTION_WINDOW_DAYS = 30;
