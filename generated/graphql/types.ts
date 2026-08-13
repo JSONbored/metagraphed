@@ -6790,6 +6790,8 @@ export type SubnetMinerFairness = {
   entity_count: Scalars['Int']['output'];
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
+  /** THE CAPTURE TRIPWIRE: the same two lenses over the CURRENT metagraph, beside the windowed ones -- because a window aggregate smooths away a mid-window capture event. SN75 reported a 30d uid gini of 0.77 while one UID held incentive 0.9908 live; when these lenses diverge violently from `concentration`, trust these. Null when the current-metagraph store has no rows for this subnet. */
+  live?: Maybe<SubnetMinerFairnessLive>;
   /** Distinct non-validator UIDs seen anywhere in the window — the denominator for the persistence block. */
   miner_uid_count: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
@@ -6809,6 +6811,51 @@ export type SubnetMinerFairnessConcentration = {
   entity?: Maybe<ConcentrationMetrics>;
   /** The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator. Same distribution and unit as the entity lens: window-summed daily per-tempo alpha samples. */
   uid?: Maybe<ConcentrationMetrics>;
+};
+
+export type SubnetMinerFairnessLive = {
+  __typename?: 'SubnetMinerFairnessLive';
+  block_number?: Maybe<Scalars['Int']['output']>;
+  /** Epoch-ms stamp of the newest current-metagraph row the lenses below were computed from -- read this against the window: these lenses are NOW, the ones under `concentration` are the whole window. */
+  captured_at?: Maybe<Scalars['Float']['output']>;
+  /** The entity lens over the CURRENT per-UID incentive distribution (miners only). Incentive is the chain's live ranking and already a share, so `total` is the miners' summed incentive. Null when no miner carries any. */
+  entity?: Maybe<SubnetMinerFairnessLiveEntity>;
+  /** The per-UID lens over the same current incentive distribution. */
+  uid?: Maybe<SubnetMinerFairnessLiveUid>;
+};
+
+export type SubnetMinerFairnessLiveEntity = {
+  __typename?: 'SubnetMinerFairnessLiveEntity';
+  entropy?: Maybe<Scalars['Float']['output']>;
+  entropy_normalized?: Maybe<Scalars['Float']['output']>;
+  gini?: Maybe<Scalars['Float']['output']>;
+  hhi?: Maybe<Scalars['Float']['output']>;
+  hhi_normalized?: Maybe<Scalars['Float']['output']>;
+  holders: Scalars['Int']['output'];
+  nakamoto_coefficient: Scalars['Int']['output'];
+  top_1pct_share?: Maybe<Scalars['Float']['output']>;
+  top_5pct_share?: Maybe<Scalars['Float']['output']>;
+  top_10pct_share?: Maybe<Scalars['Float']['output']>;
+  top_20pct_share?: Maybe<Scalars['Float']['output']>;
+  /** The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit. */
+  total?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubnetMinerFairnessLiveUid = {
+  __typename?: 'SubnetMinerFairnessLiveUid';
+  entropy?: Maybe<Scalars['Float']['output']>;
+  entropy_normalized?: Maybe<Scalars['Float']['output']>;
+  gini?: Maybe<Scalars['Float']['output']>;
+  hhi?: Maybe<Scalars['Float']['output']>;
+  hhi_normalized?: Maybe<Scalars['Float']['output']>;
+  holders: Scalars['Int']['output'];
+  nakamoto_coefficient: Scalars['Int']['output'];
+  top_1pct_share?: Maybe<Scalars['Float']['output']>;
+  top_5pct_share?: Maybe<Scalars['Float']['output']>;
+  top_10pct_share?: Maybe<Scalars['Float']['output']>;
+  top_20pct_share?: Maybe<Scalars['Float']['output']>;
+  /** The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit. */
+  total?: Maybe<Scalars['Float']['output']>;
 };
 
 export type SubnetMinerFairnessPersistence = {
@@ -8633,6 +8680,9 @@ export type ResolversTypes = ResolversObject<{
   SubnetList: ResolverTypeWrapper<SubnetList>;
   SubnetMinerFairness: ResolverTypeWrapper<SubnetMinerFairness>;
   SubnetMinerFairnessConcentration: ResolverTypeWrapper<SubnetMinerFairnessConcentration>;
+  SubnetMinerFairnessLive: ResolverTypeWrapper<SubnetMinerFairnessLive>;
+  SubnetMinerFairnessLiveEntity: ResolverTypeWrapper<SubnetMinerFairnessLiveEntity>;
+  SubnetMinerFairnessLiveUid: ResolverTypeWrapper<SubnetMinerFairnessLiveUid>;
   SubnetMinerFairnessPersistence: ResolverTypeWrapper<SubnetMinerFairnessPersistence>;
   SubnetMinerFairnessPoint: ResolverTypeWrapper<SubnetMinerFairnessPoint>;
   SubnetMover: ResolverTypeWrapper<SubnetMover>;
@@ -9096,6 +9146,9 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetList: SubnetList;
   SubnetMinerFairness: SubnetMinerFairness;
   SubnetMinerFairnessConcentration: SubnetMinerFairnessConcentration;
+  SubnetMinerFairnessLive: SubnetMinerFairnessLive;
+  SubnetMinerFairnessLiveEntity: SubnetMinerFairnessLiveEntity;
+  SubnetMinerFairnessLiveUid: SubnetMinerFairnessLiveUid;
   SubnetMinerFairnessPersistence: SubnetMinerFairnessPersistence;
   SubnetMinerFairnessPoint: SubnetMinerFairnessPoint;
   SubnetMover: SubnetMover;
@@ -13248,6 +13301,7 @@ export type SubnetMinerFairnessResolvers<ContextType = GqlContext, ParentType ex
   days_covered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   entity_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  live?: Resolver<Maybe<ResolversTypes['SubnetMinerFairnessLive']>, ParentType, ContextType>;
   miner_uid_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   persistence?: Resolver<Maybe<ResolversTypes['SubnetMinerFairnessPersistence']>, ParentType, ContextType>;
@@ -13261,6 +13315,43 @@ export type SubnetMinerFairnessResolvers<ContextType = GqlContext, ParentType ex
 export type SubnetMinerFairnessConcentrationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairnessConcentration'] = ResolversParentTypes['SubnetMinerFairnessConcentration']> = ResolversObject<{
   entity?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
+}>;
+
+export type SubnetMinerFairnessLiveResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairnessLive'] = ResolversParentTypes['SubnetMinerFairnessLive']> = ResolversObject<{
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  entity?: Resolver<Maybe<ResolversTypes['SubnetMinerFairnessLiveEntity']>, ParentType, ContextType>;
+  uid?: Resolver<Maybe<ResolversTypes['SubnetMinerFairnessLiveUid']>, ParentType, ContextType>;
+}>;
+
+export type SubnetMinerFairnessLiveEntityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairnessLiveEntity'] = ResolversParentTypes['SubnetMinerFairnessLiveEntity']> = ResolversObject<{
+  entropy?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  entropy_normalized?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hhi?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hhi_normalized?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  holders?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  nakamoto_coefficient?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  top_1pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_5pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_10pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_20pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetMinerFairnessLiveUidResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairnessLiveUid'] = ResolversParentTypes['SubnetMinerFairnessLiveUid']> = ResolversObject<{
+  entropy?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  entropy_normalized?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hhi?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hhi_normalized?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  holders?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  nakamoto_coefficient?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  top_1pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_5pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_10pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_20pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetMinerFairnessPersistenceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairnessPersistence'] = ResolversParentTypes['SubnetMinerFairnessPersistence']> = ResolversObject<{
@@ -14701,6 +14792,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetList?: SubnetListResolvers<ContextType>;
   SubnetMinerFairness?: SubnetMinerFairnessResolvers<ContextType>;
   SubnetMinerFairnessConcentration?: SubnetMinerFairnessConcentrationResolvers<ContextType>;
+  SubnetMinerFairnessLive?: SubnetMinerFairnessLiveResolvers<ContextType>;
+  SubnetMinerFairnessLiveEntity?: SubnetMinerFairnessLiveEntityResolvers<ContextType>;
+  SubnetMinerFairnessLiveUid?: SubnetMinerFairnessLiveUidResolvers<ContextType>;
   SubnetMinerFairnessPersistence?: SubnetMinerFairnessPersistenceResolvers<ContextType>;
   SubnetMinerFairnessPoint?: SubnetMinerFairnessPointResolvers<ContextType>;
   SubnetMover?: SubnetMoverResolvers<ContextType>;

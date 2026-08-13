@@ -7506,6 +7506,24 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         WHERE nd.netuid = ${netuid} AND nd.snapshot_date >= ${cutoff}
         ORDER BY nd.snapshot_date DESC, nd.uid ASC
         LIMIT ${MINER_FAIRNESS_ROW_CAP}`;
+      // #11091: the CURRENT metagraph beside the window. A window aggregate
+      // smooths away a mid-window capture event (SN75: 30d uid gini 0.77
+      // while one UID held incentive 0.9908 live), so the builder publishes
+      // the same lenses over the live incentive distribution. One bounded
+      // read -- a subnet is at most 256 UIDs.
+      const liveRows = await sql<{
+        uid: Neurons["uid"];
+        coldkey: Neurons["coldkey"];
+        validator_permit: Neurons["validator_permit"];
+        incentive: Neurons["incentive"];
+        captured_at: Neurons["captured_at"];
+        block_number: Neurons["block_number"];
+      }>`
+        SELECT n.uid, n.coldkey, n.validator_permit, n.incentive,
+               n.captured_at, n.block_number
+        FROM neurons n
+        WHERE n.netuid = ${netuid}
+        ORDER BY n.uid ASC`;
       return json(
         buildSubnetMinerFairness(rows, netuid, {
           window: windowLabelFor(
@@ -7514,6 +7532,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
           ),
           capped: rows.length >= MINER_FAIRNESS_ROW_CAP,
+          liveRows,
         }),
       );
     };
