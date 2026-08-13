@@ -1154,6 +1154,30 @@ export const SUBNET_BURN_HISTORY_COLUMNS = [
   "burn_tao",
 ] as const;
 
+/** `chain.account_events_daily` */
+export type AccountEventsDailyRow = {
+  hotkey: string | null;
+  netuid: number | null;
+  day: string | null;
+  event_count: number | null;
+  event_kinds: string | null;
+  first_block: number | null;
+  last_block: number | null;
+  updated_at: number | null;
+};
+
+/** `chain.account_events_daily` columns, in field-id order. */
+export const ACCOUNT_EVENTS_DAILY_COLUMNS = [
+  "hotkey",
+  "netuid",
+  "day",
+  "event_count",
+  "event_kinds",
+  "first_block",
+  "last_block",
+  "updated_at",
+] as const;
+
 /** Every Iceberg table this repo reads, by name. */
 export const LAKEHOUSE_TABLES = [
   "blocks",
@@ -1195,4 +1219,5 @@ export const LAKEHOUSE_TABLES = [
   "tao_usd_index",
   "treasury_readings",
   "subnet_burn_history",
+  "account_events_daily",
 ] as const;

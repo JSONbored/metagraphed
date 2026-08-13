@@ -17,6 +17,9 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
+type Row = Record<string, unknown>;
+
+import { CHAIN_FIREHOSE_TOPICS } from "../src/chain-firehose-topics.ts";
 import {
   SNAPSHOT_PATH,
   type LakehouseColumn,
@@ -119,6 +122,12 @@ export const TABLES = [
   // The last of the archive gap, created 2026-08-13 once a composite watermark
   // made it mirrorable (metagraphed-infra#553).
   "subnet_burn_history",
+  // DERIVED HERE, not mirrored: account_events_daily is rolled up from
+  // chain.account_events by metagraphed-infra#544. The old comment below said
+  // it was "queried by nothing", which was true when nothing produced it -- we
+  // now WRITE it every tick, so its shape is load-bearing and it belongs under
+  // the same drift and parity coverage as everything else we write.
+  "account_events_daily",
 ];
 
 // Guarded, so importing TABLES does not reach for the catalog. Before this the
@@ -148,6 +157,31 @@ async function main(): Promise<void> {
   if (!prefix) {
     process.stderr.write("catalog /v1/config returned no prefix\n");
     process.exit(1);
+  }
+
+  async function tableFields(
+    namespace: string,
+    table: string,
+  ): Promise<[string, string, boolean][]> {
+    const res = await fetch(
+      `${BASE}/v1/${prefix}/namespaces/${namespace}/tables/${table}`,
+      { headers: auth },
+    );
+    if (!res.ok) {
+      process.stderr.write(`${namespace}.${table}: HTTP ${res.status}\n`);
+      process.exit(1);
+    }
+    const body = (await res.json()) as Row;
+    const meta = body.metadata as Row;
+    const schemas = (meta?.schemas ?? []) as Row[];
+    const current =
+      schemas.find((s) => s["schema-id"] === meta?.["current-schema-id"]) ??
+      schemas[schemas.length - 1];
+    return ((current?.fields ?? []) as Row[]).map((f) => [
+      String(f.name),
+      typeof f.type === "string" ? f.type : JSON.stringify(f.type),
+      Boolean(f.required),
+    ]);
   }
 
   const columns: LakehouseColumn[] = [];
@@ -192,6 +226,45 @@ async function main(): Promise<void> {
       });
     }
   }
+
+  // TESTNET IS NOT SNAPSHOTTED SEPARATELY, AND THIS IS WHY THAT IS SAFE.
+  //
+  // `chain_testnet` holds the same four decoded tables under the same NAMES, so
+  // a flat snapshot keyed by table name cannot hold both. They are excluded on
+  // the grounds that one decoder writes both namespaces, so the shapes are
+  // identical and the mainnet Zod schema describes a testnet row exactly.
+  //
+  // That was an assumption until it was checked. Measured 2026-08-13: all four
+  // agree on every field id, name, type and nullability. If the decoder ever
+  // diverges, testnet rows would be validated against a schema that no longer
+  // describes them -- silently, because the row schema would still parse the
+  // fields it recognises. So the claim is asserted here, where the catalog is
+  // already in hand, rather than left in a comment.
+  // CHAIN_FIREHOSE_TOPICS, not a fifth copy of the same four names. The
+  // vocabulary gate caught the restatement immediately, which is the gate doing
+  // exactly its job: src/chain-firehose-topics.ts already owns this set, and
+  // the decoder's tables, the GraphQL enum and the published `topics` parameter
+  // all derive from it.
+  const DECODED: readonly string[] = CHAIN_FIREHOSE_TOPICS;
+  const divergent: string[] = [];
+  for (const table of DECODED) {
+    const [main, test] = await Promise.all([
+      tableFields("chain", table),
+      tableFields("chain_testnet", table),
+    ]);
+    if (JSON.stringify(main) !== JSON.stringify(test)) divergent.push(table);
+  }
+  if (divergent.length) {
+    process.stderr.write(
+      `chain_testnet has diverged from chain for: ${divergent.join(", ")}.\n` +
+        `  The mainnet Zod schemas no longer describe a testnet row. Either\n` +
+        `  restore the decoder's symmetry or give testnet its own snapshot.\n`,
+    );
+    process.exit(1);
+  }
+  process.stdout.write(
+    `chain_testnet matches chain on all ${DECODED.length} decoded tables\n`,
+  );
 
   writeFileSync(
     path.join(repoRoot, SNAPSHOT_PATH),
