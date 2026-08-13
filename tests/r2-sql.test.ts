@@ -1131,6 +1131,19 @@ describe("a row limit is not a byte limit (#11000)", () => {
   // a decline: it is raised by the runtime and it kills the ISOLATE, taking
   // every unrelated request sharing it, which is the one failure this module's
   // header promises cannot happen.
+  const streamOfBytes = (parts: Uint8Array[]) =>
+    (async () =>
+      new Response(
+        new ReadableStream({
+          start(c) {
+            for (const p of parts) c.enqueue(p);
+            c.close();
+          },
+        }),
+        { status: 200 },
+      )) as unknown as typeof fetch;
+  const streamOfChunks = (parts: string[]) =>
+    streamOfBytes(parts.map((p) => new TextEncoder().encode(p)));
   const streamOf = (chunks: string[], status = 200) =>
     (async () =>
       new Response(
@@ -1158,6 +1171,45 @@ describe("a row limit is not a byte limit (#11000)", () => {
       null,
       "a declined read degrades like every other failure",
     );
+  });
+
+  test("a MULTI-CHUNK body reassembles exactly -- the decode is incremental", () => {
+    // The reader decodes chunk by chunk and releases each one, so a value split
+    // across a chunk boundary must still come back whole. Split mid-token on
+    // purpose: a decoder that mishandled the boundary would corrupt the JSON
+    // rather than fail loudly.
+    const payload = JSON.stringify({
+      success: true,
+      result: {
+        rows: [{ signer: "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3" }],
+      },
+    });
+    const mid = Math.floor(payload.length / 2);
+    return r2SqlQuery(mockEnv(TOKEN), "SELECT signer FROM chain.extrinsics", {
+      fetch: streamOfChunks([payload.slice(0, mid), payload.slice(mid)]),
+      ...noCapture,
+    }).then((rows) =>
+      assert.deepEqual(rows, [
+        { signer: "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3" },
+      ]),
+    );
+  });
+
+  test("a MULTI-BYTE character split across chunks survives", () => {
+    // The reason the decode is `{ stream: true }` and not a decode-per-chunk:
+    // a UTF-8 sequence can straddle a chunk boundary, and decoding each chunk
+    // independently turns it into replacement characters silently.
+    const payload = JSON.stringify({
+      success: true,
+      result: { rows: [{ subnet_name: "τaο-Ω" }] },
+    });
+    const bytes = new TextEncoder().encode(payload);
+    // Cut inside the multi-byte τ.
+    const cut = payload.indexOf("τ") + 1;
+    return r2SqlQuery(mockEnv(TOKEN), "SELECT subnet_name FROM chain.subnets", {
+      fetch: streamOfBytes([bytes.slice(0, cut), bytes.slice(cut)]),
+      ...noCapture,
+    }).then((rows) => assert.deepEqual(rows, [{ subnet_name: "τaο-Ω" }]));
   });
 
   test("a body UNDER the cap still parses -- the guard is not a blanket refusal", async () => {

@@ -165,17 +165,26 @@ const SERVER_ERROR_FLOOR = 500;
  * to report. Tuning `LIMIT` per caller would narrow the odds without closing
  * the hole, and the next unbounded column would reopen it.
  *
- * 8 MiB of RAW body against a 128 MB isolate. Deliberately far below the
- * ceiling rather than near it: the bytes are held once as chunks, again as a
- * decoded string, and a third time as parsed objects, so the resident cost of
- * a body is several times its wire size. Every legitimate result measured in
+ * 12 MiB of RAW body against a 128 MB isolate.
+ *
+ * It was 8 MiB, and production declined a legitimate read by TWENTY-FOUR BYTES
+ * on 2026-08-13 -- one block's extrinsics carrying their full `call_args`. The
+ * number moved only because the READER got cheaper: it used to hold the body
+ * three times at peak (chunks, a joined copy, the decoded string) before
+ * `JSON.parse` added the object graph. Decoding incrementally and releasing
+ * each chunk removes the joined copy, so 12 MiB now peaks around where 8 MiB
+ * used to.
+ *
+ * Raising the number ALONE would have walked back toward the out-of-memory
+ * this cap replaced, which is the one failure mode that takes the isolate with
+ * it rather than declining one query. Every legitimate result measured in
  * this repo is orders of magnitude under it -- the widest documented read is
  * the deregistrations lane's 33,386 rows over six narrow columns. Overridable
  * per-deployment via R2_SQL_MAX_BODY_BYTES, because the right number follows
  * the isolate's memory rather than this comment.
  */
 export const R2_SQL_MAX_BODY_BYTES_ENV = "R2_SQL_MAX_BODY_BYTES";
-export const R2_SQL_MAX_BODY_BYTES_DEFAULT = 8 * 1024 * 1024;
+export const R2_SQL_MAX_BODY_BYTES_DEFAULT = 12 * 1024 * 1024;
 
 /**
  * The `error_code` a response too large to buffer reports.
@@ -423,14 +432,26 @@ async function readCappedBody(
       /* the stream is already done or errored */
     }
   }
-  const joined = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    joined.set(chunk, offset);
-    offset += chunk.byteLength;
+  // Decoded INCREMENTALLY, and each chunk dropped as it is consumed. The first
+  // version concatenated every chunk into one `Uint8Array` and decoded that,
+  // which held the body THREE times at peak -- the chunk list, the joined copy,
+  // and the decoded string -- before `JSON.parse` added the object graph on
+  // top. Dropping the joined copy is what buys the cap its headroom; see
+  // R2_SQL_MAX_BODY_BYTES_DEFAULT for the arithmetic that number rests on.
+  const decoder = new TextDecoder();
+  let text = "";
+  for (let i = 0; i < chunks.length; i += 1) {
+    text += decoder.decode(chunks[i]!, { stream: true });
+    // Release the chunk now rather than at function exit: the array is the
+    // other live reference to these bytes.
+    chunks[i] = EMPTY_CHUNK;
   }
-  return JSON.parse(new TextDecoder().decode(joined));
+  text += decoder.decode();
+  return JSON.parse(text);
 }
+
+/** Reused so releasing a chunk allocates nothing. */
+const EMPTY_CHUNK = new Uint8Array(0);
 
 /**
  * The lakehouse table a statement reads, e.g. `chain.account_events`.
