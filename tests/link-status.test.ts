@@ -7,6 +7,7 @@
 // fails here instead of passing on a canned answer.
 
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import {
   checkLink,
@@ -168,7 +169,17 @@ describe("collectLinkTargets", () => {
           kind: "docs",
           url: "https://off.one.example/",
           public_safe: true,
+          // Disabled BECAUSE the host is broken — the registry's real notes on
+          // bitads.ai and oneoneone.io say exactly this. #11007.
           probe: { enabled: false },
+        },
+        {
+          id: "sn-1-noprobe",
+          kind: "example",
+          url: "https://examples.one.example/",
+          public_safe: true,
+          // No probe block at all — the shape 19 registry surfaces have, and
+          // the reason 9 of them were checked by nothing.
         },
         {
           id: "sn-1-private",
@@ -211,10 +222,33 @@ describe("collectLinkTargets", () => {
     );
   });
 
-  test("skips probe-disabled and non-public surfaces", () => {
+  test("skips non-public surfaces", () => {
     const urls = collectLinkTargets(subnets, [], OP_KINDS).map((t) => t.url);
-    assert.equal(urls.includes("https://off.one.example/"), false);
     assert.equal(urls.includes("https://private.one.example/"), false);
+  });
+
+  // #11007. `probe` configures the 15-minute UPTIME prober — {enabled, method,
+  // expect, timeout_ms}. This lane exists for URLs that HAVE no uptime, so
+  // requiring an uptime config to be link-checked was backwards, and it is the
+  // surface disabled *because* it is broken that most needs the daily re-check.
+  test("checks a reference surface whose probe is disabled or absent", () => {
+    const targets = collectLinkTargets(subnets, [], OP_KINDS);
+    const urls = targets.map((t) => t.url);
+    assert.equal(
+      urls.includes("https://off.one.example/"),
+      true,
+      "probe.enabled:false means 'do not poll it for uptime', never 'do not check the link exists'",
+    );
+    assert.equal(
+      urls.includes("https://examples.one.example/"),
+      true,
+      "a surface with no probe block was nobody's decision, and fell through both lanes",
+    );
+    assert.deepEqual(
+      targets.find((t) => t.url === "https://off.one.example/")?.citations,
+      [{ kind: "surface", id: "sn-1-off", netuid: 1 }],
+      "the verdict must name the broken surface, not only whoever happens to cite its URL",
+    );
   });
 
   test("dedupes across populations and keeps every citation", () => {
@@ -1048,5 +1082,82 @@ describe("default dependencies", () => {
       },
     );
     assert.deepEqual(result, { ok: false, reason: "unreachable" });
+  });
+});
+
+// --- the invariant, over the real registry ------------------------------------
+//
+// #11007. The fixtures above prove the predicate; this proves the POPULATION,
+// which is where the bug actually lived. A gate phrased as "these rules are
+// right" cannot catch "and something is missing from the set they run over" —
+// so this asserts the negative directly: no public_safe non-operational surface
+// URL is left out of the lane, whatever its probe block says.
+describe("collectLinkTargets over registry/subnets", () => {
+  const OPERATIONAL = new Set(OPERATIONAL_SURFACE_KINDS);
+  const manifests = readdirSync("registry/subnets")
+    .filter((file) => file.endsWith(".json"))
+    .map(
+      (file) =>
+        JSON.parse(readFileSync(`registry/subnets/${file}`, "utf8")) as Row,
+    );
+
+  const referenceSurfaces = manifests.flatMap((manifest) =>
+    ((manifest.surfaces as Row[] | undefined) ?? []).filter(
+      (surface) =>
+        surface.public_safe === true &&
+        !OPERATIONAL.has(String(surface.kind)) &&
+        typeof surface.url === "string" &&
+        /^https?:\/\//i.test(surface.url),
+    ),
+  );
+
+  test("every reference surface in the registry is a link target", () => {
+    // Without this the assertion below passes on an empty list, which is how a
+    // coverage sweep reports success for having found nothing to check.
+    assert.ok(
+      referenceSurfaces.length > 400,
+      `expected the reference population, got ${referenceSurfaces.length}`,
+    );
+    const targets = new Set(
+      collectLinkTargets(manifests, [], OPERATIONAL).map((t) => t.url),
+    );
+    const missing = referenceSurfaces
+      .filter((surface) => !targets.has(String(surface.url)))
+      .map((surface) => `${String(surface.id)} -> ${String(surface.url)}`);
+    assert.deepEqual(
+      missing,
+      [],
+      "a registered public surface that no lane checks is a citation nobody can verify",
+    );
+  });
+
+  test("an operational surface's own URL stays with the 15-minute prober", () => {
+    const targets = new Set(
+      collectLinkTargets(manifests, [], OPERATIONAL).map((t) => t.url),
+    );
+    // The reverse direction, so widening the predicate cannot quietly pull the
+    // 612-surface probe population into a daily 1000-subrequest budget. Only
+    // operational URLs that nothing else cites can be asserted absent — a
+    // source_url is evidence and belongs here regardless of its surface's kind.
+    const cited = new Set(
+      manifests.flatMap((manifest) =>
+        ((manifest.surfaces as Row[] | undefined) ?? []).flatMap(
+          (surface) => (surface.source_urls as string[] | undefined) ?? [],
+        ),
+      ),
+    );
+    const operational = manifests.flatMap((manifest) =>
+      ((manifest.surfaces as Row[] | undefined) ?? []).filter(
+        (surface) =>
+          OPERATIONAL.has(String(surface.kind)) &&
+          typeof surface.url === "string" &&
+          !cited.has(surface.url),
+      ),
+    );
+    assert.ok(operational.length > 100, "expected the operational population");
+    assert.deepEqual(
+      operational.filter((surface) => targets.has(String(surface.url))),
+      [],
+    );
   });
 });

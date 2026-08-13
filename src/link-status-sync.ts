@@ -11,11 +11,13 @@
 //          means the bar only applies on the way in.
 //   #9917  384 provider URLs — including our own gittensory entry, cited by
 //          five surfaces.
-//   #9907  494 surface URLs whose `kind` keeps them out of the health prober.
+//   #9907  514 surface URLs whose `kind` keeps them out of the health prober
+//          -- every public_safe one, not only those carrying an uptime-probe
+//          config, which had silently excluded 19 of them (#11007).
 //
-// 1,067 distinct URLs between them — the populations overlap heavily. See
+// 1,076 distinct URLs between them — the populations overlap heavily. See
 // link-status-core.ts for why 102 of those are answered from the repo instead
-// of the network, and how the remaining 965 fit one invocation's
+// of the network, and how the remaining 974 fit one invocation's
 // 1000-subrequest budget.
 //
 // WHAT IT DELIBERATELY DOES NOT DO. It never writes health, uptime, latency or

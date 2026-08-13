@@ -6,19 +6,19 @@
 // data-artifact -- things with uptime. The URLs here are references: a README
 // that proves a subnet publishes an API, a provider's website, a docs page. They
 // have no uptime, they must never enter incidents or the pool breaker, and
-// checking them every 15 minutes would be 1,067 pointless requests an hour.
+// checking them every 15 minutes would be 1,076 pointless requests an hour.
 // They rot on a scale of weeks, so they are checked once a day.
 //
-// The populations overlap heavily -- 777 source_urls + 384 provider URLs + 494
-// non-operational surface URLs is only 1,067 DISTINCT urls -- so everything here
-// is keyed by URL, and citations fan back out to whoever referenced it.
+// The populations overlap heavily -- 777 source_urls + 384 provider URLs + 514
+// non-operational surface URLs is only 1,076 DISTINCT urls -- so everything
+// here is keyed by URL, and citations fan back out to whoever referenced it.
 //
 // Subrequest budget: a Worker invocation may make 1000 subrequests.
 //
 // 102 of the URLs are metagraph.sh/logos/* — OUR OWN static assets. Those are
 // checked against the files on disk by a build gate: free, deterministic, and
 // it attributes a missing logo to the commit that dropped it instead of to a
-// 3am fetch. That leaves 965 network checks.
+// 3am fetch. That leaves 974 network checks.
 //
 // Reusing github-signals for the 165 github.com repo roots was considered and
 // REJECTED: that lane DROPS a gone repo from its artifact (#9969) rather than
@@ -27,7 +27,7 @@
 // #9969 existed to fix. All 429 github.com URLs go through the GitHub API
 // instead, which answers the question directly.
 //
-// 965 exceeds LINK_STATUS_MAX_CHECKS_PER_RUN on purpose: the per-run cap picks
+// 974 exceeds LINK_STATUS_MAX_CHECKS_PER_RUN on purpose: the per-run cap picks
 // the least-recently-checked first, so every URL is still covered every ~2 days
 // and the invocation keeps headroom under the platform ceiling.
 
@@ -61,9 +61,9 @@ export const LINK_CHECK_CONCURRENCY = 8;
 /**
  * Defensive per-run ceiling, mirroring GITHUB_SIGNALS_MAX_REPOS_PER_RUN.
  *
- * The measured population is 965 network-checkable URLs; 900 keeps ~100
+ * The measured population is 974 network-checkable URLs; 900 keeps ~100
  * subrequests of headroom under the 1000-per-invocation platform limit for the
- * two artifact reads, the two store reads, the write and telemetry. The 65-URL
+ * two artifact reads, the two store reads, the write and telemetry. The 74-URL
  * remainder is not dropped — urlsForRun orders by least-recently-checked, so
  * the tail rotates in on the following tick and every URL is covered within
  * about two days.
@@ -249,11 +249,29 @@ export function collectLinkTargets(
       }
       // The surface's own URL, but only for the kinds the prober skips —
       // an operational surface is already checked every 15 minutes.
-      if (
-        surface.public_safe &&
-        (surface.probe as Row | undefined)?.enabled &&
-        !operationalKinds.has(String(surface.kind))
-      ) {
+      //
+      // `probe.enabled` IS NOT CONSULTED, and gating on it here was a bug
+      // (#11007). `probe` is the UPTIME prober's config -- `{enabled, method,
+      // expect, timeout_ms}` in the surface schema, describing how to poll
+      // something that has uptime -- and this lane's whole premise, stated at
+      // the top of this file, is that these URLs have none. Requiring it meant
+      // a reference surface had to opt into a config it has no reason to
+      // carry.
+      //
+      // Measured over registry/subnets/*.json (2026-08-13): 19 of the 514
+      // non-operational public_safe surfaces failed that gate. NINE were
+      // checked by nothing at all -- their URL is not cited as a source_url
+      // anywhere either -- and they are the ordinary case, an examples/ tree
+      // or a docs page nobody thought to give a probe block.
+      //
+      // The other ten were reached only as somebody else's citation, which
+      // checks the URL but attributes the verdict to the CITING surface. Three
+      // of those are surfaces disabled BECAUSE they were broken -- bitads.ai
+      // (DNS lame delegation), oneoneone.io (Cloudflare 1016) -- each carrying
+      // a registry note reading "probe disabled until it recovers". The lane
+      // that would notice a recovery could not name the surface waiting on
+      // one.
+      if (surface.public_safe && !operationalKinds.has(String(surface.kind))) {
         add(surface.url, { kind: "surface", id, netuid });
       }
     }
