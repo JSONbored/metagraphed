@@ -430,7 +430,7 @@
     "table": "nominator_positions",
     "field_id": 4,
     "column": "share_fraction",
-    "type": "float",
+    "type": "double",
     "required": false
   },
   {
@@ -438,6 +438,20 @@
     "field_id": 5,
     "column": "captured_at",
     "type": "long",
+    "required": false
+  },
+  {
+    "table": "nominator_positions",
+    "field_id": 6,
+    "column": "shares",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "nominator_positions",
+    "field_id": 7,
+    "column": "source",
+    "type": "string",
     "required": false
   },
   {
@@ -584,7 +598,7 @@
     "table": "subnet_hyperparams",
     "field_id": 7,
     "column": "weights_version",
-    "type": "int",
+    "type": "long",
     "required": false
   },
   {
@@ -857,7 +871,7 @@
     "table": "subnet_hyperparams_history",
     "field_id": 10,
     "column": "weights_version",
-    "type": "int",
+    "type": "long",
     "required": false
   },
   {
@@ -1326,7 +1340,7 @@
     "table": "neuron_daily",
     "field_id": 22,
     "column": "take",
-    "type": "float",
+    "type": "double",
     "required": false
   },
   {

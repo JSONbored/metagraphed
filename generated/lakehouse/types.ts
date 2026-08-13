@@ -177,6 +177,8 @@ export type NominatorPositionsRow = {
   netuid: number | null;
   share_fraction: number | null;
   captured_at: number | null;
+  shares: number | null;
+  source: string | null;
 };
 
 /** `chain.nominator_positions` columns, in field-id order. */
@@ -186,6 +188,8 @@ export const NOMINATOR_POSITIONS_COLUMNS = [
   "netuid",
   "share_fraction",
   "captured_at",
+  "shares",
+  "source",
 ] as const;
 
 /** `chain.rpc_proxy_events` */

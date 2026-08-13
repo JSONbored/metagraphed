@@ -184,26 +184,23 @@ export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
  * claim: "this cannot go stale" rather than "this is stale and we know".
  */
 export const KNOWN_FROZEN: ReadonlySet<string> = new Set([
-  "account_balances",
+  // Was eighteen. metagraphed-infra#536 ported the Neon -> Iceberg sink that
+  // the 2026-08-02 host retirement took with it, and fifteen of these came
+  // back on 2026-08-13 -- verified against the catalog, 11 -> 22 chain tables
+  // with a snapshot inside 24h.
+  //
+  // The three left are not waiting on that sink, and none of them is Neon's to
+  // give:
+  //   account_events_daily  a rollup over chain.account_events, which is LIVE
+  //                         here (454M rows) -- derived, not mirrored
+  //   featured_validators   no such table in Neon; it is registry curation
+  //                         published from this repo
+  //   rpc_proxy_events      no such table in Neon; the RPC proxy Worker writes
+  //                         it to D1
   "account_events_daily",
-  "account_identity",
-  "account_identity_history",
   "featured_validators",
-  "neurons",
-  "nominator_positions",
-  "providers",
   "rpc_proxy_events",
-  "self_health_daily",
-  "subnet_hyperparams",
-  "subnet_hyperparams_history",
-  "subnet_identity_history",
-  "subnet_ownership",
-  "subnet_ownership_history",
-  "subnets",
-  "surfaces",
-  "validator_nominator_counts",
 ]);
-
 export interface TableAge {
   table: string;
   newestMs: number | null;
