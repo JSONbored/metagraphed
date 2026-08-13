@@ -243,6 +243,24 @@ describe("every capture carries what every capture must", () => {
         );
       });
 
+      test("a rejecting transport never escapes into the caller", async () => {
+        // The refactor to a single chokepoint broke this and the per-recorder
+        // suites caught it: `return capturePostHogEvent(...)` inside a `try`
+        // does NOT await, so a rejected capture propagates straight past the
+        // catch that exists to stop telemetry ever failing a request. It is
+        // asserted here too, for all thirteen, because the next recorder to
+        // be written will not have a per-recorder suite yet.
+        const throwing = (async () => {
+          throw new Error("network unreachable");
+        }) as unknown as typeof fetch;
+        assert.equal(
+          await SAMPLES[name]({ fetch: throwing }),
+          false,
+          `${name} let a transport failure escape — telemetry must never ` +
+            "surface into the request or tool path",
+        );
+      });
+
       test("names its event", async () => {
         const body = await captureOf();
         assert.equal(
