@@ -565,7 +565,11 @@ export const fieldsSchema = () =>
     .describe(
       "Comma-separated row field names to project, e.g. `netuid,name,slug`. " +
         "Bare identifiers only — not a JSON array, no paths or indices. " +
-        "An unknown name is rejected rather than ignored.",
+        "An unknown name is rejected rather than ignored. A projected row " +
+        "omits every non-selected property, including ones the row schema " +
+        "marks required: `required` describes the unprojected response " +
+        "(#10960), so a client validating responses should skip validation " +
+        "or treat row properties as optional when it sends this parameter.",
     )
     .meta({ examples: ["netuid,name,slug"] });
 
@@ -901,8 +905,13 @@ export const sectionsSchema = (
         `One of: ${allowed.join(", ")}. Selecting sections never removes the ` +
         `response envelope (${ENVELOPE_SECTIONS.join(", ")}) -- a smaller ` +
         `document still has to say what it is. An unknown name is rejected ` +
-        `rather than ignored. NOT the same parameter as \`fields\`, which ` +
-        `projects columns out of the rows of a list.`,
+        `rather than ignored. A projected document omits every non-selected ` +
+        `section, including ones the document schema marks required: ` +
+        `\`required\` describes the unprojected response (#10960), so a ` +
+        `client validating responses should skip validation or treat ` +
+        `sections as optional when it sends this parameter. NOT the same ` +
+        `parameter as \`fields\`, which projects columns out of the rows ` +
+        `of a list.`,
     )
     .meta({ examples: [example[0], example.join(",")] });
 };
