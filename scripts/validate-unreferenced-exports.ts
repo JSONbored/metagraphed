@@ -73,6 +73,7 @@ import { repoRoot } from "./lib.ts";
  * generated one became aliases of it, so the shapes they restated stopped
  * being separate declarations. A deletion this time, and the RIGHT kind --
  * nothing lost, because the thing deleted was a copy.
+ *
  */
 export const MAX_UNREFERENCED_EXPORTS: number = 731;
 

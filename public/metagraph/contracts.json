@@ -1093,6 +1093,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Per-day split of one subnet's emission by recipient class -- owner, validators, miners -- over a 7d/30d/90d window, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/emission-split/history; pass ?format=csv to download the per-day series as CSV (no static file). The validator/miner split is MEASURED from the per-UID rows; the owner leg and every absolute figure are RECONSTRUCTED, because the owner's cut is paid outside the UID set and SubnetOwnerCut is unset on chain. The recipient-class companion to /yield/history.",
+      "id": "subnet-emission-split-history",
+      "path": "/metagraph/subnets/{netuid}/emission-split/history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetEmissionSplitHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events store filtered by netuid at /api/v1/subnets/{netuid}/events; pass ?format=csv to download the page as CSV (no static file).",
       "id": "subnet-events",
       "path": "/metagraph/subnets/{netuid}/events.json",
@@ -2958,7 +2969,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 168,
+    "mainnet_only_route_count": 169,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

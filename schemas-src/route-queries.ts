@@ -63,6 +63,7 @@ import {
   ANALYTICS_WINDOWS,
   BULK_HEALTH_TRENDS_LIMIT_MAX,
   CHAIN_CONCENTRATION_HISTORY_WINDOWS,
+  DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
   CHAIN_CALL_MODULE_MAX_LENGTH,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
@@ -93,6 +94,7 @@ import {
   SEMANTIC_LIMIT_MAX,
   SEMANTIC_QUERY_MAX_LENGTH,
   SEMANTIC_TYPES,
+  SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   UPTIME_WINDOWS,
@@ -804,6 +806,13 @@ export const ROUTE_QUERY_SCHEMAS = {
   }),
   "/api/v1/subnets/{netuid}/yield/history": z.object({
     window: windowSchema(["7d", "30d", "90d"] as const, "30d").optional(),
+    format: formatSchema().optional(),
+  }),
+  "/api/v1/subnets/{netuid}/emission-split/history": z.object({
+    window: windowSchema(
+      SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],
+      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/events": z.object({

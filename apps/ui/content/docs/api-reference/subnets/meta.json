@@ -20,6 +20,7 @@
     "subnet-detail",
     "subnet-detail-by-network",
     "subnet-emission-pipeline-history",
+    "subnet-emission-split-history",
     "subnet-event-summary",
     "subnet-events",
     "subnet-history",

@@ -99,6 +99,11 @@ import {
   DEFAULT_YIELD_HISTORY_WINDOW,
   YIELD_HISTORY_WINDOWS,
 } from "../../src/subnet-yield.ts";
+import { buildSubnetEmissionSplitHistory } from "../../src/emission-split.ts";
+import {
+  DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+} from "../../src/route-limits.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -654,6 +659,31 @@ const SUBNET_YIELD_HISTORY_CSV_COLUMNS = [
   "p25_yield",
   "p75_yield",
   "p90_yield",
+];
+
+// Flat and explicitly ordered, like every other CSV column list here: the
+// measured legs first, then the counts a reader compares them against, then
+// the reconstructed absolutes. A chart and a spreadsheet consume the same row.
+const SUBNET_EMISSION_SPLIT_HISTORY_CSV_COLUMNS = [
+  "snapshot_date",
+  "neuron_count",
+  "validator_count",
+  "miner_count",
+  "earning_validator_count",
+  "earning_miner_count",
+  "validator_alpha",
+  "miner_alpha",
+  "uid_alpha",
+  "validator_share_of_uid",
+  "miner_share_of_uid",
+  "owner_cut",
+  "total_alpha",
+  "owner_alpha",
+  "owner_share",
+  "validator_share",
+  "miner_share",
+  "alpha_price_tao",
+  "total_tao",
 ];
 // performanceHistoryPoint's flat row shape (src/subnet-performance.ts) — the
 // reward-flow twin of SUBNET_CONCENTRATION_HISTORY_CSV_COLUMNS.
@@ -2254,6 +2284,24 @@ export function canonicalSubnetYieldHistoryCachePath(
   );
 }
 
+export function canonicalSubnetEmissionSplitHistoryCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
+  // NO second `validateResponseFormat` guard here, unlike the older siblings.
+  // `formatSchema` is `z.enum(["json","csv"])` and RESPONSE_FORMATS is the same
+  // two values, so anything the format check would catch `parseRouteQuery` has
+  // already rejected on the line above -- the guard cannot fire, and a branch
+  // nothing can reach reads as a tested one.
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = historyWindow(url);
+  return csvCacheVariant(
+    url,
+    request,
+    `${url.pathname}?window=${encodeURIComponent(label)}`,
+  );
+}
+
 // Canonical edge-cache key for the subnet-turnover route (?window= via
 // parseHistoryWindow). Distinct from canonicalSubnetConcentrationHistoryCachePath
 // which uses a different parse function (parseConcentrationHistoryWindow).
@@ -2589,6 +2637,66 @@ export async function handleSubnetYieldHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/yield/history.json`,
+        (data.points as unknown as Array<Record<string, unknown>>)[0]
+          ?.snapshot_date ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/emission-split/history?window=7d|30d|90d
+// (#10928): who received this subnet's emission, per day -- owner, validators,
+// miners. A cold/absent store answers 200 with points:[] rather than 404,
+// because a subnet with no daily rollup is a real state and the normal one for
+// anything registered in the last day.
+export async function handleSubnetEmissionSplitHistory(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  const formatError = validateResponseFormat(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { label } = resolveWindow(
+    url,
+    SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+    DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  );
+  // Same DATA_API tier every neuron_daily-derived series reads through --
+  // the SQL lives on the data Worker, and a null here degrades to the empty
+  // builder rather than surfacing a store failure as a 500.
+  const data =
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetEmissionSplitHistory> | null) ??
+    buildSubnetEmissionSplitHistory([], Number(netuid), {
+      window: label,
+      capped: false,
+    });
+  if (csvRequested(url, request)) {
+    const points = [
+      ...(data.points as unknown as Array<Record<string, unknown>>),
+    ].sort((a, b) =>
+      String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
+    );
+    return csvResponse(
+      points,
+      `subnet-${netuid}-emission-split-history`,
+      "short",
+      request,
+      SUBNET_EMISSION_SPLIT_HISTORY_CSV_COLUMNS,
+    );
+  }
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/emission-split/history.json`,
         (data.points as unknown as Array<Record<string, unknown>>)[0]
           ?.snapshot_date ?? null,
       ),

@@ -2,6 +2,7 @@
 // published `maximum` and this route's enforcement cannot drift (#9127).
 import { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX } from "./route-limits.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
+import { toRaoBig } from "./lib/rao.ts";
 export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
 // Cross-subnet momentum ("movers"): rank every subnet by how much its stake, emission,
 // and validator set changed between a window's start and end neuron_daily snapshots.
@@ -41,9 +42,6 @@ const RAO_PER_TAO_BIG = 1_000_000_000n;
 // (#5290, mirrors toRaoBig/raoBigToTao in chain-yield.ts and stake_sum_rao in
 // neuron-history.ts). Summing ~130 subnets' total_stake_tao with plain float `+=`
 // compounds error past the point a JSON number can represent exactly at network scale.
-function toRaoBig(tao: number): bigint {
-  return BigInt(Math.round(tao * RAO_PER_TAO));
-}
 
 // A display-rounded Number from an exact rao BigInt. Safe ONLY for a value that's about to
 // be rounded again anyway (pctShare's 2dp percentage denominator below) -- the ~1e-16

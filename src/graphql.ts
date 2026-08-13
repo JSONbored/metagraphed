@@ -28,6 +28,8 @@ import {
 // re-exported so every pre-existing importer keeps working.
 export * from "./graphql-limits.ts";
 import {
+  assertNetuidArgument,
+  assertOptionalNetuidArgument,
   GRAPHQL_MAX_DEPTH,
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_BODY_BYTES,
@@ -283,6 +285,10 @@ import {
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
 } from "./subnet-yield.ts";
+import {
+  buildSubnetEmissionSplitHistory,
+  emissionSplitWindowLabel,
+} from "./emission-split.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -933,6 +939,7 @@ import type {
   QuerySubnet_Weight_SettersArgs,
   QuerySubnet_WeightsArgs,
   QuerySubnet_YieldArgs,
+  QuerySubnet_Emission_Split_HistoryArgs,
   QuerySubnet_Yield_HistoryArgs,
   QuerySubnetsArgs,
   QuerySurfacesArgs,
@@ -2837,11 +2844,7 @@ const rootValue = {
     { netuid, limit, offset, cursor }: QuerySubnet_Identity_HistoryArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     const safeLimit = clampLimit(limit, FEED_PAGINATION);
     const safeOffset = clampOffset(offset);
     const params = new URLSearchParams();
@@ -2915,11 +2918,7 @@ const rootValue = {
     { netuid }: QuerySubnet_PerformanceArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetPerformance([])
     // cold fallback contract handleSubnetPerformance / MCP get_subnet_performance
     // use: a subnet with no neurons is a schema-stable zeroed card (metric
@@ -3234,11 +3233,7 @@ const rootValue = {
     { netuid }: QuerySubnet_ConcentrationArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildConcentration([])
     // cold fallback contract handleSubnetConcentration / MCP get_subnet_concentration
     // use: a subnet with no neurons is a schema-stable zeroed card (metric blocks
@@ -3272,11 +3267,7 @@ const rootValue = {
     { netuid, window }: QuerySubnet_Performance_HistoryArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same 7d/30d/90d window validation the REST route + MCP
     // get_subnet_performance_history use -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent card.
@@ -3318,11 +3309,7 @@ const rootValue = {
     { netuid, window }: QuerySubnet_Yield_HistoryArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same 7d/30d/90d window validation the REST route + MCP
     // get_subnet_yield_history use -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent card.
@@ -3359,16 +3346,48 @@ const rootValue = {
       points: data.points ?? [],
     };
   },
+  async subnet_emission_split_history(
+    { netuid, window }: QuerySubnet_Emission_Split_HistoryArgs,
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // NO hand-written window check. `parseArgumentsAtDispatch` already parses
+    // this field's arguments against the route's published query schema, so an
+    // unsupported window is rejected before this resolver runs. Restating the
+    // enum here would put a second copy of a published fact where the contract
+    // cannot see it -- the drift #10060 removed.
+    const windowParam = emissionSplitWindowLabel(window);
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      ((await tryDataApiTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/emission-split/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) as Row | null) ??
+      buildSubnetEmissionSplitHistory([], netuid, {
+        window: windowParam,
+        capped: false,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      point_count: data.point_count ?? 0,
+      points: data.points ?? [],
+      field_sources: data.field_sources ?? null,
+    };
+  },
 
   async subnet_concentration_history(
     { netuid, window }: QuerySubnet_Concentration_HistoryArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same 7d/30d/90d window validation the REST route + MCP
     // get_subnet_concentration_history use -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent card.
@@ -3407,11 +3426,7 @@ const rootValue = {
   },
 
   async neuron({ netuid, uid }: QueryNeuronArgs, context: GqlContext) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     if (!Number.isInteger(uid) || uid < 0) {
       throw new GraphQLError("uid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -3442,11 +3457,7 @@ const rootValue = {
     { netuid, uid, window }: QueryNeuron_HistoryArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     if (!Number.isInteger(uid) || uid < 0) {
       throw new GraphQLError("uid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -3690,11 +3701,7 @@ const rootValue = {
     { netuid }: QuerySubnet_Idle_StakeArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetIdleStake([])
     // zeroed-card fallback handleSubnetIdleStake + the get_subnet_idle_stake MCP
     // tool use; a subnet with no neurons is a schema-stable zeroed card, never a
@@ -3719,11 +3726,7 @@ const rootValue = {
     { netuid, window, direction }: QuerySubnet_Stake_FlowArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same window/direction validation handleSubnetStakeFlow + the
     // get_subnet_stake_flow MCP tool apply -- an unsupported value is a GraphQL
     // BAD_USER_INPUT error, not a silent card.
@@ -3784,11 +3787,7 @@ const rootValue = {
     }: QuerySubnet_EventsArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same FEED_PAGINATION bounds the /events route's parsePagination applies, so
     // a GraphQL caller cannot request a wider page than REST allows;
     // kind/block_start/block_end are forwarded verbatim for the route to
@@ -3845,11 +3844,7 @@ const rootValue = {
     { netuid, window }: QuerySubnet_HistoryArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same parseHistoryWindow handleSubnetHistory + loadSubnetHistory (MCP) use,
     // so accepted window labels (7d/30d/90d/1y/all, default 30d) match exactly.
     const windowResult = parseHistoryWindow(window);
@@ -3900,11 +3895,7 @@ const rootValue = {
     { netuid, window }: QuerySubnet_PrometheusArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same 7d/30d window validation handleSubnetPrometheus + the
     // get_subnet_prometheus MCP tool use -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent card.
@@ -3959,11 +3950,7 @@ const rootValue = {
     { netuid, window }: QuerySubnet_Weight_SettersArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same 7d/30d window validation handleSubnetWeightSetters uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
@@ -4527,11 +4514,7 @@ const rootValue = {
     // same helper the REST pipeline and the list_* MCP loaders use, so the
     // allowlists cannot drift; an unsupported sort/limit/cursor is a GraphQL
     // error rather than a silently substituted default.
-    if (netuid != null && (!Number.isInteger(netuid) || netuid < 0)) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertOptionalNetuidArgument(netuid);
     const queryUrl = new URL("https://graphql.internal/incidents");
     for (const [name, value] of [
       ["netuid", netuid],
@@ -4637,11 +4620,7 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    if (netuid != null && (!Number.isInteger(netuid) || netuid < 0)) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertOptionalNetuidArgument(netuid);
     // One detail load per hotkey via the exact Postgres-tier-or-empty path the
     // validator detail field uses -- no new data source, just the same
     // cross-subnet aggregate fetched per compared validator, then projected
@@ -4747,11 +4726,7 @@ const rootValue = {
   },
 
   async subnet_volume({ netuid }: QuerySubnet_VolumeArgs, context: GqlContext) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // The vol/mcap ratio needs the subnet's alpha market cap, which lives in the
     // economics artifact rather than the trade stream -- same two-source shape
     // the REST route and get_subnet_volume MCP tool use.
@@ -4805,11 +4780,7 @@ const rootValue = {
     { netuid, interval, days, limit }: QuerySubnet_OhlcArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same interval/days validation the REST route + get_subnet_ohlc MCP tool
     // apply -- out-of-contract input is a GraphQL BAD_USER_INPUT error rather
     // than a silently-clamped card.
@@ -4889,11 +4860,7 @@ const rootValue = {
     { netuid, window }: { netuid: number; window?: string | null },
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     const windowLabel = window ?? DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW;
     if (!Object.hasOwn(VALIDATOR_ECONOMICS_HISTORY_WINDOWS, windowLabel)) {
       throw new GraphQLError(
@@ -4941,11 +4908,7 @@ const rootValue = {
     { netuid }: { netuid: number },
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // The same composer the REST route and the get_subnet_validator_economics MCP
     // tool run — one derivation across all three surfaces, so they cannot drift
     // into different answers for the identical question (#9229's parity lesson).
@@ -4959,11 +4922,7 @@ const rootValue = {
     { netuid, amount, direction }: QuerySubnet_Stake_QuoteArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     const directionParam = direction ?? "stake";
     if (!STAKE_QUOTE_DIRECTIONS.includes(directionParam)) {
       throw new GraphQLError(
@@ -4996,11 +4955,7 @@ const rootValue = {
     { netuid }: QuerySubnet_ValidatorsArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetValidators([])
     // empty-snapshot fallback the REST route and list_subnet_validators share.
     // REST takes no filter params here, so neither does this mirror.
@@ -5071,11 +5026,7 @@ const rootValue = {
     { netuid, window, limit }: QuerySubnet_Event_SummaryArgs,
     context: GqlContext,
   ) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same 7d/30d/90d window set the REST route + get_subnet_event_summary MCP
     // tool accept (default 30d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent card.
@@ -5131,11 +5082,7 @@ const rootValue = {
 
   async subnet_gaps(args: QuerySubnet_GapsArgs, context: GqlContext) {
     const { netuid } = args;
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same baked review-gaps artifact the REST route + get_subnet_gaps MCP tool
     // read; null when no report has been baked, matching how every other
     // artifact-backed resolver here treats a cold/absent artifact.
@@ -5195,11 +5142,7 @@ const rootValue = {
 
   async subnet_evidence(args: QuerySubnet_EvidenceArgs, context: GqlContext) {
     const { netuid } = args;
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // #7879: reuse loadSubnetEvidenceList -- the same loader MCP
     // list_subnet_evidence calls -- rather than reimplementing the
     // search/sort/page pass here, so this field cannot drift from
@@ -5233,11 +5176,7 @@ const rootValue = {
     context: GqlContext,
   ) {
     const { netuid } = args;
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // #7878: reuse loadSubnetCandidatesList -- the same loader the
     // list_subnet_candidates MCP tool calls (#7899) -- rather than
     // reimplementing the filter/sort/page pass here, so this field cannot
@@ -9069,11 +9008,7 @@ const rootValue = {
     // Same non-negative netuid gate the other per-subnet resolvers use --
     // GraphQL Int coercion rejects non-integers at parse time; a negative
     // netuid is a BAD_USER_INPUT error, not a silent card.
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
+    assertNetuidArgument(netuid);
     // Same live composition REST's subnet-health route (workers/api.ts's
     // subnet-health overlay) and the get_subnet_health MCP tool share: the
     // latest ~15-minute cron snapshot (resolveLiveHealth) overlaid per subnet

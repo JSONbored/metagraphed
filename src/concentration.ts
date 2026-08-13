@@ -6,6 +6,7 @@
 // live metagraph tiers the entity handlers already own.
 
 import { DAY_MS } from "../workers/config.ts";
+import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
 
 // The neurons-tier columns the concentration handler reads — the store read contract
 // for buildConcentration (mirrors BLOCK_READ_COLUMNS / EXTRINSIC_READ_COLUMNS). Kept
@@ -36,19 +37,9 @@ function roundRatio(value: number | null | undefined, dp = 6): number | null {
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
-// Sum in rao-integer BigInt space, not float space -- summing potentially
-// thousands of network-wide stake_tao/emission_tao floats (per controlling
-// entity, or as a distribution total) with plain `+=` compounds rounding error
-// across the accumulation even when each individual value is itself exact
-// (metagraphed#2922, mirrors the toRaoBig pattern in src/chain-yield.ts and
-// src/metagraph-neurons.ts). Convert back to TAO only once, at the very end.
-function toRaoBig(taoValue: unknown): bigint {
-  const n = typeof taoValue === "number" ? taoValue : Number(taoValue);
-  return Number.isFinite(n) ? BigInt(Math.round(n * 1e9)) : 0n;
-}
-function raoBigToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
 
 interface CaptureStamp {
   ms: number;

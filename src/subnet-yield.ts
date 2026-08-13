@@ -8,6 +8,7 @@
 // Null-safe: a cold/empty subnet yields a zeroed, empty-neuron card (never throws).
 
 import { median, percentile } from "./lib/stats.ts";
+import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -43,19 +44,9 @@ function nullableTao(value: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-// Sum a subnet's per-UID stake_tao/emission_tao in rao-integer BigInt space, not
-// float space -- a subnet's neuron set is often hundreds to thousands of rows, and
-// plain `+=` float accumulation compounds rounding error across the sum even when
-// each individual value is itself exact (metagraphed#2922, the per-subnet analog of
-// the network-wide chain-yield fix in #2933; mirrors the toRao pattern proven in
-// src/account-balance.ts for #2070). Convert back to TAO only once, at the end.
-// Callers always pass an already-finite toNumber() result, so no isFinite guard here.
-function toRaoBig(tao: number): bigint {
-  return BigInt(Math.round(tao * 1e9));
-}
-function raoBigToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
 
 // A non-negative integer uid, or null for a malformed/absent cell (Number(null) === 0,
 // so guard null explicitly rather than coercing it to uid 0).

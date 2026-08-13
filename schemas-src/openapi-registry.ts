@@ -258,6 +258,7 @@ import {
   SubnetYieldArtifactSchema,
   SubnetYieldHistoryArtifactSchema,
 } from "./routes/subnet-yield.ts";
+import { SubnetEmissionSplitHistoryArtifactSchema } from "./routes/emission-split.ts";
 import { SubnetMoversArtifactSchema } from "./routes/subnet-movers.ts";
 import {
   SubnetTrajectoryArtifactSchema,
@@ -691,6 +692,10 @@ register(SubnetStakeTransfersArtifactSchema, "SubnetStakeTransfersArtifact");
 register(SubnetOhlcArtifactSchema, "SubnetOhlcArtifact");
 register(SubnetYieldArtifactSchema, "SubnetYieldArtifact");
 register(SubnetYieldHistoryArtifactSchema, "SubnetYieldHistoryArtifact");
+register(
+  SubnetEmissionSplitHistoryArtifactSchema,
+  "SubnetEmissionSplitHistoryArtifact",
+);
 register(SubnetMoversArtifactSchema, "SubnetMoversArtifact");
 register(SubnetTrajectoryArtifactSchema, "SubnetTrajectoryArtifact");
 // The VALUE of the `deltas` record (#10404). The record itself is keyed by
@@ -1154,6 +1159,7 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "SubnetStakeTransfersArtifact",
   "SubnetOhlcArtifact",
   "SubnetYieldArtifact",
+  "SubnetEmissionSplitHistoryArtifact",
   "SubnetYieldHistoryArtifact",
   "SubnetMoversArtifact",
   "SubnetTrajectoryArtifact",

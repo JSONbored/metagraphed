@@ -55,8 +55,24 @@ import { readFileSync } from "node:fs";
  *
  * It is ONE throw serving FOUR fields. Writing it per field, as the existing
  * collection resolvers do, would have cost four.
+ *
+ * LOWERED, 246 -> 219 (#10928). Twenty-eight of the throws in this file were
+ * ONE check, written out character-identical at every subnet-scoped field:
+ * `netuid` is a PATH parameter, so `resolveRouteArgs` -- which resolves a
+ * field's arguments against the route's QUERY schema -- never sees it, and
+ * nothing parses it before a resolver runs. The check was real and needed;
+ * twenty-eight copies of it were not. It now lives once, as
+ * `assertNetuidArgument` in src/graphql-limits.ts (plus an optional variant
+ * for the two fields where an absent netuid means "do not filter", which is a
+ * different contract from 0).
+ *
+ * That is the direction this constant is supposed to move. The branch that
+ * lowered it had itself added a subnet-scoped field, and the first instinct was
+ * to raise the ceiling by one and write a justification -- which is how a
+ * ratchet becomes a rubber stamp. Extracting the duplicate paid for the new
+ * field twenty-seven times over.
  */
-const CEILING = 246;
+const CEILING = 219;
 
 const SOURCE = "src/graphql.ts";
 

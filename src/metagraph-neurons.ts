@@ -20,6 +20,7 @@ import {
   type FieldProjectionResult,
 } from "./field-projection.ts";
 import type { Neurons } from "../generated/db/types.ts";
+import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -339,20 +340,9 @@ function roundTao(value: unknown): number {
   return Math.round(numberOrZero(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
-// Sum in rao-integer BigInt space, not float space -- summing every validator
-// UID's stake_tao/emission_tao per hotkey (network-wide, unbounded) with plain
-// `+=` compounds rounding error across the accumulation even when each
-// individual value is itself exact (metagraphed#2922, mirrors the toRaoBig
-// pattern in src/chain-yield.ts and the toRao helper proven in
-// src/account-balance.ts for #2070). Convert back to TAO only once, at the
-// very end. Callers always pass an already-finite numberOrZero()/roundTao()
-// result, so no isFinite guard here.
-function toRaoBig(tao: number): bigint {
-  return BigInt(Math.round(tao * RAO_PER_TAO));
-}
-function raoBigToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
 
 function round(value: unknown, dp = 6): number | null {
   if (value == null || !Number.isFinite(value as number)) return null;

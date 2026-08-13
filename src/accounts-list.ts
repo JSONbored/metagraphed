@@ -29,6 +29,7 @@
 
 import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
+import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -82,17 +83,9 @@ function roundTao(value: unknown): number {
   return Math.round(numberOrZero(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
-// Sum in rao-integer BigInt space, not float space — mirrors
-// buildGlobalValidators' own toRaoBig/raoBigToTao pair and its cited
-// rationale (metagraphed#2922): summing many already-rounded per-UID
-// stake_tao/emission_tao COLUMN values per hotkey with plain `+=` compounds
-// float error across the accumulation even when each input is exact.
-function toRaoBig(tao: number): bigint {
-  return BigInt(Math.round(tao * RAO_PER_TAO));
-}
-function raoBigToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
 
 function round(value: number | null, dp = 6): number | null {
   /* v8 ignore next -- defensive: this module's one caller (applyStakeDominance)

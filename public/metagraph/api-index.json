@@ -896,6 +896,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-emission-split-history",
+      "path": "/metagraph/subnets/{netuid}/emission-split/history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetEmissionSplitHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-events",
       "path": "/metagraph/subnets/{netuid}/events.json",
       "retirement": null,
@@ -2507,7 +2516,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 168,
+    "mainnet_only_route_count": 169,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8567,6 +8576,47 @@
         "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/yield/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "default": "30d",
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "default": "json",
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/emission-split/history.json",
+      "cache": "short",
+      "description": "Fetch the per-day split of one subnet's emission by recipient class over a 7d/30d/90d window: how much went to the owner, to validators, and to miners, one point per day (computed live from the neuron_daily rollup). The validator/miner split is measured from the per-UID rows and is exact; the owner leg and every absolute alpha/TAO figure are reconstructed, because the owner's cut is paid OUTSIDE the UID set -- summing the rows alone yields 82% of the emission, not all of it. Each point also reports how many validator and miner UIDs actually earned anything. Pass ?format=csv to download the per-day series as CSV.",
+      "id": "subnet-emission-split-history",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/emission-split/history",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

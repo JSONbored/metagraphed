@@ -134,6 +134,9 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_subnet_turnover: { operation: "subnet-turnover" },
   get_subnet_yield: { operation: "subnet-yield" },
   get_subnet_yield_history: { operation: "subnet-yield-history" },
+  get_subnet_emission_split_history: {
+    operation: "subnet-emission-split-history",
+  },
   get_subnet_stake_flow: { operation: "subnet-stake-flow" },
   get_subnet_event_summary: { operation: "subnet-event-summary" },
   get_subnet_weights: { operation: "subnet-weights" },

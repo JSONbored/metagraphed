@@ -488,6 +488,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Per-subnet per-day emission-per-stake yield trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's subnet-wide yield plus the mean/median/p25/p75/p90 distribution across UIDs, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/yield/history.",
   },
   {
+    field: "subnet_emission_split_history",
+    operation: "subnet-emission-split-history",
+    returns: "SubnetEmissionSplitHistory!",
+    description:
+      "Per-subnet per-day emission split by recipient class from the neuron_daily rollup over a 7d/30d/90d window (default 30d): the owner, validator and miner legs, the exact measured validator/miner ratio, and how many UIDs of each class actually earned, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. The owner leg and every absolute figure are reconstructed — the owner cut is paid outside the UID set. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history.",
+  },
+  {
     field: "subnet_performance",
     operation: "subnet-performance",
     returns: "SubnetPerformance!",

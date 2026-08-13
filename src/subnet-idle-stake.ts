@@ -1,4 +1,4 @@
-// Per-subnet / network-wide idle-stake rollup (#6789, follow-up to #6645's
+import { raoBigToTao, toRaoBig } from "./lib/rao.ts"; // Per-subnet / network-wide idle-stake rollup (#6789, follow-up to #6645's
 // design spike -- docs/idle-stake-mechanism.md). Dividends are the ONLY
 // stream delegated stake ever receives in dTAO (incentive goes to the
 // hotkey owner alone, never split with delegators); dividends are zero for
@@ -11,19 +11,9 @@
 
 type Row = Record<string, unknown>;
 
-// 1 TAO = 1e9 rao. Sum in rao-integer BigInt space, not float space --
-// summing potentially thousands of neurons' stake_tao (network-wide) with
-// plain `+=` compounds rounding error across the accumulation even when
-// each individual value is itself exact (mirrors src/concentration.ts's
-// own toRaoBig/raoBigToTao, a deliberate byte-for-byte copy per this
-// codebase's per-module rounding-helper convention).
-function toRaoBig(taoValue: unknown): bigint {
-  const n = Number(taoValue);
-  return Number.isFinite(n) ? BigInt(Math.round(n * 1e9)) : 0n;
-}
-function raoBigToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
 
 // The rows share one cron capture, but don't assume an order -- take the
 // newest captured_at (mirrors src/concentration.ts's own captureStamp/

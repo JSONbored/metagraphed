@@ -441,3 +441,27 @@ export const HEALTH_TREND_WINDOW_VALUES = ["7d", "30d"] as const;
  * exhausted result set.
  */
 export const BULK_HEALTH_TRENDS_LIMIT_MAX = 512;
+
+/**
+ * `/api/v1/subnets/{netuid}/emission-split/history` -- one subnet's emission
+ * split by recipient class (#10928).
+ *
+ * Windows rather than a free day count, for the same reason as its
+ * `concentration/history` sibling: the source is the DAILY `neuron_daily`
+ * rollup, so an arbitrary day count would imply a resolution it does not have.
+ * 30d is the default and matches every other neuron_daily-derived series.
+ * `neuron_daily` is itself only ~27-33 days deep, so a 90d window is answered
+ * with the depth actually FOUND rather than refused -- the payload reports
+ * `point_count`, and a caller reading an array length as a month is the failure
+ * this reports its way out of.
+ */
+export const SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS: Record<string, number> =
+  {
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
+  };
+export const SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS = Object.keys(
+  SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+);
+export const DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW = "30d";

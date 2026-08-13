@@ -2136,6 +2136,16 @@ const HARNESS_SERVES_NO_ROWS =
 // harness structurally cannot.
 const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   [
+    "get_subnet_emission_split_history",
+    // The series is served through the DATA_API tier over neuron_daily, and
+    // the hermetic harness binds no data Worker -- so the tool correctly
+    // answers with the empty builder (point_count 0) and `points` has no row
+    // for the item shape to be checked against. The point shape IS covered:
+    // it is the route's own artifact schema by identity, exercised by
+    // tests/emission-split.test.ts against real rows.
+    "DATA_API-tier series; the harness binds no data Worker, so points is empty by construction",
+  ],
+  [
     "get_subnet_lifecycle",
     // subnet_lifecycle is written by the detection folded into the
     // neurons-staleness tick, which needs a live neurons pass -- the harness

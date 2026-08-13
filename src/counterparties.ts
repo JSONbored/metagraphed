@@ -1,4 +1,4 @@
-/**
+import { raoBigToTao, toRaoBig } from "./lib/rao.ts"; /**
  * Rows `buildCounterparties` returns when the caller names no limit.
  *
  * Named so the MCP tool can PUBLISH it (#10101). It was a bare `20` in the
@@ -36,25 +36,9 @@ function round(value: number, dp = 9): number {
   return Math.round(value * factor) / factor;
 }
 
-// Sum in rao-integer BigInt space, not float space -- accumulating TAO amounts
-// with plain `+=` compounds rounding error across the scan (up to thousands of
-// transfers) even when each individual value is itself exact, so convert each
-// addend to integer rao, sum the integers, and convert back once at the end.
-// Mirrors the toRaoBig/raoBigToTao pattern established in concentration.ts /
-// chain-yield.ts (#2933).
-function toRaoBig(tao: number): bigint {
-  // Guard the post-multiply value (not just `tao`): a huge-but-finite TAO amount
-  // like Number.MAX_VALUE overflows `tao * 1e9` to Infinity, and BigInt(Infinity)
-  // throws — so clamp a non-finite rao to 0n, preserving the old round()-based
-  // defensive behaviour that dropped an overflowing sum to 0 rather than leaking
-  // Infinity/NaN into the JSON.
-  const rao = Math.round(tao * 1e9);
-  return Number.isFinite(rao) ? BigInt(rao) : 0n;
-}
-
-function raoBigToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
 
 function nullableNumber(value: unknown): number | null {
   if (value == null) return null;

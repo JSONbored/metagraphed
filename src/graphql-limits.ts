@@ -449,3 +449,35 @@ export function maxComplexityRule(max: number) {
     },
   });
 }
+
+/**
+ * Reject a netuid a subnet cannot have.
+ *
+ * TWENTY-EIGHT resolvers carried this check inline, character-identical, which
+ * is why `validate-graphql-hand-written-checks` counted 247 BAD_USER_INPUT
+ * throws in one file. `netuid` is a PATH parameter, so `resolveRouteArgs` --
+ * which resolves a field's arguments against the route's QUERY schema -- never
+ * sees it, and nothing parses it before a resolver runs. The check is real; it
+ * did not need 28 copies.
+ *
+ * Lives here rather than in src/graphql.ts so the throw has ONE definition,
+ * and so adding a subnet-scoped field costs no new hand-written check.
+ */
+export function assertNetuidArgument(netuid: unknown): void {
+  if (!Number.isInteger(netuid) || (netuid as number) < 0) {
+    throw new GraphQLError("netuid must be a non-negative integer.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+}
+
+/**
+ * The same rule where the argument is OPTIONAL -- absent means "do not filter",
+ * which is a different contract from "0". Two resolvers carried this variant
+ * inline; splitting it from the required form keeps the distinction visible
+ * rather than collapsing an absent filter into a subnet id.
+ */
+export function assertOptionalNetuidArgument(netuid: unknown): void {
+  if (netuid == null) return;
+  assertNetuidArgument(netuid);
+}

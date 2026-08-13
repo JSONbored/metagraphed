@@ -1384,6 +1384,7 @@ test("GET /api/v1/subnets/:netuid/{concentration,performance,yield}/history serv
     "/api/v1/subnets/7/concentration/history",
     "/api/v1/subnets/7/performance/history",
     "/api/v1/subnets/7/yield/history",
+    "/api/v1/subnets/7/emission-split/history",
   ]) {
     const res = await call(req(route));
     assert.equal(res.status, 200, route);

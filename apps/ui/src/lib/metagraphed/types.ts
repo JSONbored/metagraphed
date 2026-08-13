@@ -3011,6 +3011,35 @@ export interface SubnetYieldHistory {
   points: YieldHistoryPoint[];
 }
 
+/**
+ * One day of the emission split by recipient class.
+ *
+ * The `_share_of_uid` pair is MEASURED — a ratio of observed per-UID sums. The
+ * owner leg and every absolute figure are RECONSTRUCTED, because the owner's
+ * cut is paid outside the UID set and `SubnetOwnerCut` is unset on chain. The
+ * render must not present the two the same way.
+ */
+export interface EmissionSplitPoint {
+  snapshot_date: string;
+  validator_count?: number;
+  miner_count?: number;
+  earning_validator_count?: number;
+  earning_miner_count?: number;
+  validator_share_of_uid?: number | null;
+  miner_share_of_uid?: number | null;
+  owner_share?: number | null;
+  validator_share?: number | null;
+  miner_share?: number | null;
+  total_alpha?: number | null;
+}
+
+export interface SubnetEmissionSplitHistory {
+  netuid: number;
+  window?: string;
+  point_count?: number;
+  points: EmissionSplitPoint[];
+}
+
 // --- Compile-time contract enforcement ---------------------------------------
 //
 // These are type-only assertions (zero runtime cost). They tie this file's UI

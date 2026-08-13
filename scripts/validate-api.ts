@@ -839,6 +839,18 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/emission-split/history?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+      // The provenance map rides with the payload from the BUILDER, so every
+      // surface publishes it -- a response without it is a surface that
+      // re-shaped the card and dropped which half is reconstructed.
+      assert.equal(typeof body.data.field_sources, "object");
+    },
+  ],
+  [
     "/api/v1/validators?sort=uid_count&limit=3",
     (body) => {
       assert.equal(body.data.sort, "uid_count");

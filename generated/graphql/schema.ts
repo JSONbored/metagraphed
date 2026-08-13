@@ -311,6 +311,11 @@ type Query {
   subnet_yield_history(netuid: Int!, window: String): SubnetYieldHistory!
 
   """
+  Per-subnet per-day emission split by recipient class from the neuron_daily rollup over a 7d/30d/90d window (default 30d): the owner, validator and miner legs, the exact measured validator/miner ratio, and how many UIDs of each class actually earned, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. The owner leg and every absolute figure are reconstructed — the owner cut is paid outside the UID set. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history.
+  """
+  subnet_emission_split_history(netuid: Int!, window: String): SubnetEmissionSplitHistory!
+
+  """
   Per-subnet reward-distribution and score-spread card over the current neurons snapshot: incentive/dividends concentration plus p10–p90 trust/consensus/validator_trust; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/performance.
   """
   subnet_performance(netuid: Int!): SubnetPerformance!
@@ -2502,6 +2507,98 @@ type SubnetYieldHistoryPoint {
   p25_yield: Float
   p75_yield: Float
   p90_yield: Float
+}
+
+"""
+Per-day split of one subnet's emission by recipient class — owner, validators, miners — over a 7d/30d/90d window, newest first. The validator/miner split is MEASURED from the per-UID neuron_daily rollup; the owner leg and every absolute figure are RECONSTRUCTED, because the owner's cut is paid outside the UID set and \`SubnetOwnerCut\` is unset on chain. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history.
+"""
+type SubnetEmissionSplitHistory {
+  schema_version: Int!
+  netuid: Int!
+
+  """The resolved window label (7d/30d/90d)."""
+  window: String
+  point_count: Int!
+  points: [SubnetEmissionSplitHistoryPoint!]!
+
+  """
+  Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+  """
+  field_sources: JSON
+}
+
+type SubnetEmissionSplitHistoryPoint {
+  snapshot_date: String!
+  neuron_count: Int
+  validator_count: Int
+  miner_count: Int
+
+  """Validator-permit UIDs that recorded emission above zero on this day."""
+  earning_validator_count: Int
+
+  """
+  Non-validator UIDs that recorded emission above zero on this day. Against \`miner_count\` this is how many registered miners earned anything at all — the median subnet has almost none, and a miner count read alone overstates participation.
+  """
+  earning_miner_count: Int
+
+  """
+  Emission to validator-permit UIDs. ALPHA-denominated for every non-root subnet — safe to compare within one subnet, never across subnets without the price join.
+  """
+  validator_alpha: Float
+
+  """Emission to non-validator UIDs, alpha-denominated."""
+  miner_alpha: Float
+
+  """
+  Emission across the whole UID set. This is NOT the day's total emission: the subnet owner's cut is paid outside the UID set, so this is the distributable remainder — see \`total_alpha\`.
+  """
+  uid_alpha: Float
+
+  """
+  Validator share of the observed per-UID emission. MEASURED and parameter-free — a ratio of two sums this response also publishes. Null when the day emitted nothing, never 0, which would read as 'validators received none of it'.
+  """
+  validator_share_of_uid: Float
+
+  """Miner share of the observed per-UID emission. Measured."""
+  miner_share_of_uid: Float
+
+  """
+  The owner share applied to this day. \`SubnetOwnerCut\` is 11796/65535 — 18%, not 1/6 — and is UNSET on chain, so this is the runtime default rather than a read. Published so a reader can see which constant produced the reconstructed fields.
+  """
+  owner_cut: Float
+
+  """
+  The whole day's alpha emission: \`alpha_out_emission x 7200 blocks\`. RECONSTRUCTED. Null when the day's snapshot carries no \`alpha_out_emission\` — the measured legs are still published beside it, because a validator/miner split is a real answer even when the day's total is not known.
+  """
+  total_alpha: Float
+
+  """
+  The owner leg, \`total_alpha x owner_cut\`. RECONSTRUCTED. It is NOT summed from the rows — the owner cut is paid outside the UID set, so no per-UID row carries it.
+  """
+  owner_alpha: Float
+
+  """
+  Owner share of the whole day. Reconstructed. \`owner_share + validator_share + miner_share\` sums to 1 within rao precision.
+  """
+  owner_share: Float
+
+  """
+  Validator share of the WHOLE day, owner leg included — so it is strictly below \`validator_share_of_uid\`, which is a share of the distributable remainder only. Reconstructed.
+  """
+  validator_share: Float
+
+  """Miner share of the whole day. Reconstructed."""
+  miner_share: Float
+
+  """
+  The day's alpha price in TAO, from the same daily snapshot. This is \`SubnetMovingPrice\`, the chain's emission-weighting average — not a traded mark.
+  """
+  alpha_price_tao: Float
+
+  """
+  \`total_alpha\` priced through \`alpha_price_tao\`. Reconstructed, and null whenever either input is.
+  """
+  total_tao: Float
 }
 
 """

@@ -13,26 +13,15 @@
 // throws.
 
 import { DOMAIN_TAGS } from "./domain-tags.ts";
+import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
 import {
   computeConcentration,
   type ConcentrationScorecard,
 } from "./concentration.ts";
 
-// 1 TAO = 1e9 rao. Sum in rao-integer BigInt space, not float space -- summing a
-// domain's worth of subnets' total_stake_tao with plain `+=` compounds rounding
-// error across the accumulation even when each individual value is itself exact
-// (mirrors src/concentration.ts's own toRaoBig/raoBigToTao, a deliberate
-// byte-for-byte copy per this codebase's per-module rounding-helper convention --
-// see src/subnet-ohlc.ts's header comment for why these aren't shared imports).
-function toRaoBig(taoValue: unknown): bigint {
-  /* v8 ignore next -- defensive: the only call site already passes a number. */
-  const n = typeof taoValue === "number" ? taoValue : Number(taoValue);
-  /* v8 ignore next -- defensive: the only call site already Number.isFinite-checked it. */
-  return Number.isFinite(n) ? BigInt(Math.round(n * 1e9)) : 0n;
-}
-function raoBigToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
 
 function round(value: number | null | undefined, dp = 4): number | null {
   /* v8 ignore next -- defensive: both call sites below always pass a finite

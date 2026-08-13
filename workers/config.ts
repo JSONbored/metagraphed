@@ -706,6 +706,11 @@ export const SUBNET_YIELD_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/yield$/;
 // rollup, no static file.
 export const SUBNET_YIELD_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/yield\/history$/;
+
+// Per-day emission split by recipient class (owner / validator / miner) from
+// the neuron_daily rollup, no static file.
+export const SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/emission-split\/history$/;
 // Reward-distribution + score-spread metrics over the current neurons snapshot
 // (reward concentration + trust/consensus percentiles), no static file.
 export const SUBNET_PERFORMANCE_PATH_PATTERN =

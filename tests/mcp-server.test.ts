@@ -4566,7 +4566,10 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("get_subnet_gaps is not_found when the artifact is missing", async () => {
-    const res = await callTool("get_subnet_gaps", { netuid: 99999 });
+    // 65535, not 99999: the point is a VALID netuid with no artifact. An
+    // out-of-range one is now `invalid_params` at the argument guard, which is
+    // a different fact and would stop this exercising the not_found path.
+    const res = await callTool("get_subnet_gaps", { netuid: 65535 });
     assert.equal(res.body.result.isError, true);
     assert.equal(res.body.result.structuredContent.error.code, "not_found");
   });
@@ -4574,6 +4577,21 @@ describe("MCP tools (injected deps)", () => {
   test("get_subnet_gaps rejects invalid netuid", async () => {
     const res = await callTool("get_subnet_gaps", { netuid: -1 });
     assert.equal(res.body.result.isError, true);
+  });
+
+  test("a netuid above the u16 ceiling is invalid_params, not an empty card", () => {
+    // The REST routes get this from isU16Netuid; an MCP argument has no router
+    // regex in front of it and dispatch does not validate against the Zod
+    // input schema, so `requireNetuid` is the only thing enforcing it. Before
+    // it did, 70000 degraded to an empty card across all 70 call sites --
+    // "this subnet has no data" standing in for "there is no such subnet".
+    return callTool("get_subnet_gaps", { netuid: 70000 }).then((res) => {
+      assert.equal(res.body.result.isError, true);
+      assert.match(
+        res.body.result.structuredContent.error.message,
+        /u16 range/,
+      );
+    });
   });
 
   const opportunityDeps = makeDeps({
@@ -11648,9 +11666,10 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_subnet_profile surfaces not_found for a missing netuid", async () => {
+    // In-range but absent -- see the get_subnet_gaps note above.
     const res = await callTool(
       "get_subnet_profile",
-      { netuid: 99999 },
+      { netuid: 65535 },
       { deps: makeDeps({}, {}), env: {} },
     );
     assert.equal(res.body.result.isError, true);
