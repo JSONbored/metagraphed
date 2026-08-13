@@ -5,11 +5,20 @@
 //
 // Why this exists: the overflow check's dev server has no fixture layer of
 // its own -- DEFAULT_API_BASE (src/lib/metagraphed/config.ts) points at real
-// production by default, and this app fetches all its data client-side (no
-// SSR loaders -- confirmed empirically: the raw server-rendered HTML has no
-// embedded query state or subnet/incident data, just the static shell), so
-// intercepting browser-level requests via page.routeFromHAR is sufficient --
-// no server-process-level mocking needed. Before this, the overflow baseline
+// production by default, so the browser's requests are intercepted with
+// page.routeFromHAR instead.
+//
+// THAT IS NOT THE WHOLE STORY, and the sentence that used to stand here said
+// it was: "this app fetches all its data client-side (no SSR loaders --
+// confirmed empirically)". It does not. router.tsx wires
+// `setupRouterSsrQueryIntegration`, so a route's `useSuspenseQuery` also runs
+// in the worker, where routeFromHAR cannot reach it. Those requests go to live
+// production on every run. The empirical check that "confirmed" otherwise was
+// run against `vite dev`, which fires no queries at all -- see the recording
+// trap below. A fixture that omits a path the page reads therefore does not
+// abort loudly; it silently reads production (#10938).
+//
+// Before this, the overflow baseline
 // silently went stale whenever live chain/incident data changed shape,
 // failing PRs that never touched the affected pages (see the /status
 // incidents-feed overflow that sat undetected for ~14h until unrelated data
@@ -46,11 +55,40 @@ import { HAR_DIR, harPathForRoute } from "./har-path.ts";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:8080";
 
+/**
+ * Which routes to re-record, comma-separated; every route when unset.
+ *
+ * A page's API surface changes one page at a time, but this script rewrote all
+ * 25 fixtures on every run -- so a one-route fix arrived as a 25-file diff in
+ * which the one intended change was unreviewable, and 24 fixtures silently
+ * took on whatever production happened to be serving that afternoon. Each of
+ * those is a chance for the overflow baseline to shift for reasons unrelated
+ * to the change.
+ *
+ *   RECORD_ROUTES=/chain/analytics,/status npm run test:e2e:record-har --workspace=apps/ui
+ */
+const only = process.env.RECORD_ROUTES?.split(",")
+  .map((r) => r.trim())
+  .filter(Boolean);
+const targets = only?.length ? ROUTES.filter((r) => only.includes(r)) : ROUTES;
+if (only?.length) {
+  const unknown = only.filter((r) => !ROUTES.includes(r));
+  if (unknown.length > 0) {
+    // A typo would otherwise record nothing and exit 0, leaving the fixture
+    // exactly as stale as it was while the run looked successful.
+    throw new Error(
+      `RECORD_ROUTES names ${unknown.join(", ")}, which ROUTES does not list. ` +
+        `A fixture only exists for a route the sweep visits.`,
+    );
+  }
+  console.log(`Recording ${targets.length} of ${ROUTES.length} routes: ${targets.join(", ")}`);
+}
+
 mkdirSync(HAR_DIR, { recursive: true });
 
 const browser = await chromium.launch();
 
-for (const route of ROUTES) {
+for (const route of targets) {
   const harPath = harPathForRoute(route);
   const context = await browser.newContext({
     recordHar: { path: harPath, urlFilter: "**/api.metagraph.sh/**" },
