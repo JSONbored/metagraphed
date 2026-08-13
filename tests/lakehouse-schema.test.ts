@@ -52,31 +52,52 @@ describe("the committed snapshot", () => {
     // comments and a route description and queried by nothing, because
     // src/account-history-cold-tier.ts computes its own day bucket from
     // account_events instead.
-    assert.deepEqual([...new Set(snapshot.map((c) => c.table))].sort(), [
-      "account_events",
-      "account_identity",
-      "account_identity_history",
-      // The per-(account, netuid, day) position rollup #4908 added;
-      // src/account-position-history.ts serves from it.
-      "account_position_daily",
-      "blocks",
-      "chain_events",
-      "extrinsics",
-      // The per-(uid, day) neuron rollup the history routes read.
-      "neuron_daily",
-      "nominator_positions",
-      "rpc_proxy_events",
-      "self_health_daily",
-      "subnet_hyperparams",
-      "subnet_hyperparams_history",
-      "subnet_identity_history",
-      "subnet_ownership_history",
-      // Joined by src/neuron-daily-cold-tier.ts to price stake and emission in
-      // TAO. It was read for months with no snapshot at all -- #11049 added the
-      // gate that now fails on a read-without-snapshot rather than leaving it
-      // to the comment above.
-      "subnet_snapshots",
-    ]);
+    assert.deepEqual(
+      [...new Set(snapshot.map((c) => c.table))].sort(),
+      [
+        "account_events",
+        "account_identity",
+        "account_identity_history",
+        // The per-(account, netuid, day) position rollup #4908 added;
+        // src/account-position-history.ts serves from it.
+        "account_position_daily",
+        "blocks",
+        "chain_events",
+        "extrinsics",
+        // The per-(uid, day) neuron rollup the history routes read.
+        "neuron_daily",
+        "nominator_positions",
+        "rpc_proxy_events",
+        "self_health_daily",
+        "subnet_hyperparams",
+        "subnet_hyperparams_history",
+        "subnet_identity_history",
+        "subnet_ownership_history",
+        // Joined by src/neuron-daily-cold-tier.ts to price stake and emission in
+        // TAO. It was read for months with no snapshot at all -- #11049 added the
+        // gate that now fails on a read-without-snapshot rather than leaving it
+        // to the comment above.
+        "subnet_snapshots",
+        // WRITTEN BY THE MIRROR, NOT READ BY A ROUTE. The list stopped being
+        // "tables this repo reads" when the lakehouse became the archive: these
+        // eight are mirrored from Neon, so their shape is load-bearing whether or
+        // not a route queries them, and leaving them out meant
+        // `validate:store-type-parity` compared 186 columns while the archive
+        // held 252. Extending it immediately caught `neurons.take` as a real
+        // float32 narrowing.
+        //
+        // Still hand-written for the reason above: a table reaching the snapshot
+        // is a decision, and this is where the decision is recorded.
+        "account_balances",
+        "neurons",
+        "providers",
+        "subnet_identity",
+        "subnet_ownership",
+        "subnets",
+        "surfaces",
+        "validator_nominator_counts",
+      ].sort(),
+    );
     // The TS side mirrors the snapshot -- it is the READER's list.
     assert.deepEqual(
       [...LAKEHOUSE_TABLES].sort(),
@@ -186,7 +207,12 @@ describe("emitTypes", () => {
         table: "blocks",
         field_id: 9999,
         column: "when",
-        type: "timestamptz",
+        // `decimal(38,9)` rather than `timestamptz`, which this used to poison
+        // with: timestamptz is now MAPPED (the registry tables inherited it
+        // from the exodus load), so the old poison silently stopped poisoning
+        // and the test passed for the wrong reason. Pick a type we genuinely
+        // do not emit, and one Iceberg really has.
+        type: "decimal(38,9)",
         required: false,
       },
     ];

@@ -136,6 +136,13 @@ export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
     maxAgeMs: 2 * DAY,
     reason: "identity poller, restore pending",
   },
+  // Created 2026-08-13 so the archive holds the current-state table it already
+  // held the HISTORY of -- the lakehouse could say what a subnet's identity used
+  // to be and not what it is (#11089).
+  subnet_identity: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated: identity changes are rare",
+  },
   subnet_ownership: {
     maxAgeMs: 2 * DAY,
     reason: "ownership poller, restore pending",
