@@ -2134,7 +2134,7 @@ export function toolResultContent(
 // - change or remove a tool's I/O       → MAJOR
 // - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.78.18";
+export const MCP_SERVER_VERSION = "1.78.19";
 // Price-impact thresholds for get_stake_action_preview's plan-shaped
 // `warnings`/`ok` advisory (#6894). There is no prior precedent for these in
 // this codebase, so they follow common AMM/DEX slippage conventions: ~1% is the
