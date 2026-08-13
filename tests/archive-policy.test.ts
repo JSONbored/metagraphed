@@ -24,13 +24,16 @@ describe("archive policy", () => {
     assert.ok(stale.length > 0);
   });
 
-  test("pending is the debt list, and it is currently non-empty", () => {
-    // A vacuous pass would be the failure mode here: if this ever reads zero
-    // because the map emptied rather than because the debt was paid, the
-    // ceiling test below stops proving anything.
-    const pending = Object.entries(POLICY).filter(([, p]) => p === "pending");
-    assert.ok(pending.length > 0, "pending must not be silently emptied");
+  test("pending matches the ceiling, and the ceiling is zero", () => {
+    // This asserted pending was NON-empty, guarding against the map emptying
+    // and making the ceiling vacuous. The debt is now genuinely paid, so the
+    // guard inverts -- and the non-vacuity that matters moves to `mirrored`,
+    // which must stay large or this gate is measuring nothing.
+    const pending = Object.values(POLICY).filter((p) => p === "pending");
     assert.equal(pending.length, PENDING_CEILING);
+    assert.equal(PENDING_CEILING, 0);
+    const mirrored = Object.values(POLICY).filter((p) => p === "mirrored");
+    assert.ok(mirrored.length > 30, `mirrored collapsed to ${mirrored.length}`);
   });
 
   test("subnet_identity is mirrored alongside its own history", () => {
@@ -42,12 +45,11 @@ describe("archive policy", () => {
     assert.equal(POLICY.subnet_identity_history, "mirrored");
   });
 
-  test("the one remaining debt is subnet_burn_history, and it is a decision", () => {
-    // Not waiting on effort: 95,060 rows across 852 distinct observed_at
-    // values means a `> since` watermark skips nearly everything, and
-    // `versioned` would re-append all 95,060 on every change.
-    assert.equal(POLICY.subnet_burn_history, "pending");
-    assert.equal(PENDING_CEILING, 1);
+  test("subnet_burn_history is mirrored via a composite watermark", () => {
+    // The last debt, and it closed on a measurement rather than effort:
+    // observed_at alone ties 94,208 times across 852 distinct values,
+    // (observed_at, netuid) is unique across all 95,447 rows.
+    assert.equal(POLICY.subnet_burn_history, "mirrored");
   });
 
   test("credentials and personal data are never archived", () => {

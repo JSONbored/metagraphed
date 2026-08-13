@@ -79,18 +79,19 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   surfaces: "mirrored",
   validator_nominator_counts: "mirrored",
 
-  // -- pending: the one table still owed an archive copy --------------------
+  // -- formerly the archive debt, now empty ---------------------------------
   //
-  // `subnet_burn_history` is not waiting on effort, it is waiting on a
-  // DECISION. It has no `id`, and its timestamps do not identify a row:
-  // 95,060 rows across 852 distinct `observed_at` values -- 94,208 ties. A
-  // `> since` watermark would skip nearly every row, and `versioned` would
-  // re-append all 95,060 on every change. It needs a composite watermark the
-  // mirror does not support, and a lane that silently drops rows is worse than
-  // a table that is honestly still missing.
+  // `subnet_burn_history` was the last entry, and it closed on a MEASUREMENT
+  // rather than more effort. It has no `id`, and `observed_at` alone ties
+  // 94,208 times across 852 distinct values, so a `> since` watermark would
+  // have skipped nearly every row. `(observed_at, netuid)` is unique -- 95,447
+  // rows, 95,447 distinct pairs, zero ties -- and metagraphed-infra#553 taught
+  // the mirror to compare row values in one predicate.
   //
-  // The other fifteen that were here are mirrored as of 2026-08-13
-  // (metagraphed-infra#552).
+  // PENDING_CEILING is 0 and only falls, so a table filed as `pending` from
+  // here fails the gate outright. Deliberate: `pending` was a debt list being
+  // paid down, and it must not become a parking space for anything nobody
+  // wants to classify.
   //
   // NOT only chain data. The first cut of this map filed anything that was not
   // chain-derived under `serving`, which was too fast: `surface_uptime_daily`,
@@ -110,7 +111,7 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   emission_flow_watch: "mirrored",
   emission_gate_param_history: "mirrored",
   hotkey_alpha: "mirrored",
-  subnet_burn_history: "pending",
+  subnet_burn_history: "mirrored",
   subnet_deregistration_daily: "mirrored",
   subnet_emission_enabled_history: "mirrored",
   subnet_identity: "mirrored",
@@ -169,7 +170,7 @@ export const POLICY: Readonly<Record<string, Policy>> = {
 };
 
 /** How many `pending` tables we accept. ONLY FALLS. */
-export const PENDING_CEILING = 1;
+export const PENDING_CEILING = 0;
 
 interface Column {
   table: string;
