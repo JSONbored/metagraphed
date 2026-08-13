@@ -615,13 +615,40 @@ describe("chain-registrations lane compute", () => {
     );
   });
 
-  test("ignores a pair with a malformed netuid rather than counting it", async () => {
+  test("a pair whose netuid violates the catalog DECLINES the lane", async () => {
+    // `netuid` is an `int`, so a string is a row R2 SQL cannot emit. Skipping
+    // it and storing the rest would publish a rollup that silently undercounts
+    // -- the same trade the poller's truncation floor refuses. The lane
+    // declines instead, and the previous pass stays served.
     lakeFetch(STAMP, [{ netuid: "not-a-number", hotkey: "A", n: 9 }]);
+    assert.equal(
+      await laneNamed("chain-registrations").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
+      null,
+    );
+  });
+
+  test("a NULL netuid is skipped, not counted as subnet 0", async () => {
+    // `Number(null)` is 0 and `Number.isInteger(0)` is true, so before this the
+    // guard let a null netuid through as ROOT and inflated its registration
+    // count. Null is legal in the catalog, so validation cannot catch it -- the
+    // check has to happen before the coercion.
+    lakeFetch(STAMP, [
+      { netuid: null, hotkey: "A", n: 9 },
+      { netuid: 7, hotkey: "B", n: 2 },
+    ]);
     const body = (await laneNamed("chain-registrations").compute(
       LAKE_ENV as unknown as Env,
       "mainnet",
     )) as Row;
-    assert.deepEqual(((body.windows as Row)["7d"] as Row).rows, []);
+    const rows = ((body.windows as Row)["7d"] as Row).rows as Row[];
+    assert.deepEqual(
+      rows.map((r) => r.netuid),
+      [7],
+      "the null pair must not appear, least of all as netuid 0",
+    );
   });
 });
 
@@ -633,14 +660,14 @@ describe("chain-stake-flow lane compute", () => {
         netuid: 7,
         event_kind: "StakeAdded",
         total_tao: "100",
-        event_count: "3",
+        event_count: 3,
         last_observed: NOW - 1000,
       },
       {
         netuid: 7,
         event_kind: "StakeRemoved",
         total_tao: "40",
-        event_count: "2",
+        event_count: 2,
         last_observed: NOW - 2000,
       },
     ];
@@ -711,19 +738,19 @@ describe("chain-activity lane compute", () => {
       [
         {
           day_index: NOW_DAY,
-          extrinsic_count: "100",
-          successful_extrinsics: "97",
+          extrinsic_count: 100,
+          successful_extrinsics: 97,
         },
         {
           day_index: NOW_DAY - 1,
-          extrinsic_count: "50",
-          successful_extrinsics: "50",
+          extrinsic_count: 50,
+          successful_extrinsics: 50,
         },
       ],
       // The older day is missing here on purpose: data-api's merge defaults
       // an unmatched day's unique_signers to 0, and so must this one.
-      [{ day_index: NOW_DAY, unique_signers: "9" }],
-      [{ day_index: NOW_DAY, block_count: "7200", event_count: "40000" }],
+      [{ day_index: NOW_DAY, unique_signers: 9 }],
+      [{ day_index: NOW_DAY, block_count: 7200, event_count: 40000 }],
       [{ newest_observed: NOW - 1000 }],
       // 30d: an empty window is a legitimate answer, not a decline.
       [],
@@ -770,19 +797,19 @@ describe("chain-activity lane compute", () => {
     assert.deepEqual(w7.extrinsic_rows, [
       {
         day: "2026-08-02",
-        extrinsic_count: "100",
-        successful_extrinsics: "97",
-        unique_signers: "9",
+        extrinsic_count: 100,
+        successful_extrinsics: 97,
+        unique_signers: 9,
       },
       {
         day: "2026-08-01",
-        extrinsic_count: "50",
-        successful_extrinsics: "50",
+        extrinsic_count: 50,
+        successful_extrinsics: 50,
         unique_signers: 0,
       },
     ]);
     assert.deepEqual(w7.block_rows, [
-      { day: "2026-08-02", block_count: "7200", event_count: "40000" },
+      { day: "2026-08-02", block_count: 7200, event_count: 40000 },
     ]);
     assert.equal(w7.newest_observed, NOW - 1000);
     const w30 = (body.windows as Row)["30d"] as Row;
@@ -814,7 +841,7 @@ describe("chain-activity lane compute", () => {
 
   test("an unrenderable day index declines rather than mislabeling a day", async () => {
     // In the extrinsic rows...
-    lakeFetch([{ day_index: "bogus", extrinsic_count: "1" }], [], [], []);
+    lakeFetch([{ day_index: "bogus", extrinsic_count: 1 }], [], [], []);
     assert.equal(
       await laneNamed("chain-activity").compute(
         LAKE_ENV as unknown as Env,
@@ -823,7 +850,7 @@ describe("chain-activity lane compute", () => {
       null,
     );
     // ...and in the block rows.
-    lakeFetch([], [], [{ day_index: -5, block_count: "1" }], []);
+    lakeFetch([], [], [{ day_index: -5, block_count: 1 }], []);
     assert.equal(
       await laneNamed("chain-activity").compute(
         LAKE_ENV as unknown as Env,
@@ -936,7 +963,7 @@ describe("chain-fees lane compute", () => {
       [
         {
           day_index: NOW_DAY,
-          extrinsic_count: "100",
+          extrinsic_count: 100,
           signed_extrinsic_count: "80",
           total_fee_tao: "1.6",
           total_tip_tao: "0.4",
@@ -947,7 +974,7 @@ describe("chain-fees lane compute", () => {
           signer: "5F",
           total_fee_tao: "0.6",
           total_tip_tao: "0.2",
-          extrinsic_count: "10",
+          extrinsic_count: 10,
         },
       ],
       [
@@ -1019,7 +1046,7 @@ describe("chain-fees lane compute", () => {
     assert.deepEqual(w7.daily_rows, [
       {
         day: "2026-08-02",
-        extrinsic_count: "100",
+        extrinsic_count: 100,
         signed_extrinsic_count: "80",
         total_fee_tao: "1.6",
         total_tip_tao: "0.4",
@@ -1037,7 +1064,7 @@ describe("chain-fees lane compute", () => {
         signer: "5F",
         total_fee_tao: "0.6",
         total_tip_tao: "0.2",
-        extrinsic_count: "10",
+        extrinsic_count: 10,
       },
     ]);
     const w30 = (body.windows as Row)["30d"] as Row;
@@ -1065,7 +1092,7 @@ describe("chain-fees lane compute", () => {
 
   test("an unrenderable day index declines rather than mislabeling a day", async () => {
     // In the daily series...
-    lakeFetch([{ day_index: null, extrinsic_count: "1" }], [], [], [], []);
+    lakeFetch([{ day_index: null, extrinsic_count: 1 }], [], [], [], []);
     assert.equal(
       await laneNamed("chain-fees").compute(
         LAKE_ENV as unknown as Env,
@@ -1175,7 +1202,7 @@ describe("chain-alpha-volume lane compute", () => {
         event_kind: "StakeAdded",
         alpha_volume: "120",
         tao_volume: "60",
-        event_count: "4",
+        event_count: 4,
         last_observed: NOW - 1000,
       },
     ];

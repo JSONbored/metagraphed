@@ -1062,6 +1062,13 @@ async function computeChainRegistrations(
       >();
       const networkHotkeys = new Set<string>();
       for (const pair of pairs) {
+        // NULL is checked before coercion, not after. `netuid` is nullable in
+        // the catalog and `Number(null)` is 0, which `Number.isInteger` accepts
+        // -- so a null netuid was silently attributed to SUBNET 0 and inflated
+        // root's registration count. The guard was written for a malformed
+        // STRING, which coerces to NaN and is caught; null is the one bad value
+        // that coerces to a valid answer.
+        if (pair.netuid == null) continue;
         const netuid = Number(pair.netuid);
         if (!Number.isInteger(netuid)) continue;
         const hotkey = pair.hotkey == null ? null : String(pair.hotkey);

@@ -38,6 +38,7 @@
 import { z } from "zod";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import { LAKEHOUSE_ROW_SCHEMAS } from "../generated/lakehouse/schemas.ts";
 
 /** Personal/API token with R2 SQL read access (wrangler secret). */
 export const R2_SQL_TOKEN_ENV = "R2_SQL_TOKEN";
@@ -477,6 +478,26 @@ export function r2SqlQueryKind(sql: string): string {
 }
 
 /**
+ * The generated schema for the table a statement reads, or null.
+ *
+ * Null is a legitimate answer, not a gap: a statement can read a table outside
+ * the `chain` namespace, or one the catalog snapshot does not carry yet, and
+ * inventing a schema there would reject data this repo has no description of.
+ * An unknown table is simply unvalidated, exactly as it was before.
+ */
+export function catalogRowSchema(
+  sql: string,
+): { safeParse: (value: unknown) => { success: boolean } } | null {
+  const kind = r2SqlQueryKind(sql);
+  const table = kind.startsWith("chain.") ? kind.slice("chain.".length) : kind;
+  const schemas = LAKEHOUSE_ROW_SCHEMAS as Record<
+    string,
+    { safeParse: (value: unknown) => { success: boolean } } | undefined
+  >;
+  return schemas[table] ?? null;
+}
+
+/**
  * The statement with its literals collapsed to `?`, whitespace flattened.
  *
  * The precise half of the attribution: the shape identifies the exact call
@@ -752,9 +773,24 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
     // A successful query with no rows is a legitimate answer (no such block),
     // and must not be conflated with a failure — hence [] rather than null.
     if (!Array.isArray(rows)) return [];
-    if (deps.rowSchema) {
+    // Validation is the DEFAULT, resolved from the statement's own table --
+    // the same `r2SqlQueryKind` the attribution already computes. Opting in per
+    // call site would have meant 44 edits and a 45th read landing unvalidated,
+    // which is how the generated TYPES ended up covering 14 of them.
+    //
+    // Safe to apply blind because of what the generated schemas are: every
+    // catalog column is nullable (a JOIN's null side passes), unknown keys are
+    // kept (`COUNT(*) AS n` passes), and absent keys are optional (a projection
+    // passes). The only rejection is a NAMED catalog column arriving with a
+    // type the catalog says it cannot have, which is the whole point.
+    //
+    // Checked before shipping: no aggregate in this repo is aliased onto an
+    // int-typed column in a way that could produce a fraction -- the aliases
+    // are COUNT/SUM/MIN/MAX, never AVG.
+    const rowSchema = deps.rowSchema ?? catalogRowSchema(sql);
+    if (rowSchema) {
       for (const row of rows) {
-        if (deps.rowSchema.safeParse(row).success) continue;
+        if (rowSchema.safeParse(row).success) continue;
         thrownCode = "row_schema";
         throw new Error(
           `r2 sql: a row did not match the catalog schema for ${r2SqlQueryKind(sql)}`,

@@ -183,7 +183,7 @@ describe("loadSubnetHyperparamsHistoryColdTier", () => {
   });
 
   test("an unusable last row emits no cursor; a failed query yields null", async () => {
-    sqlFetch([{ ...historyRow(3), observed_at: "bad" }]);
+    sqlFetch([{ ...historyRow(3), observed_at: null }]);
     const odd = await loadSubnetHyperparamsHistoryColdTier(TOKEN as never, 3, {
       limit: 1,
     });

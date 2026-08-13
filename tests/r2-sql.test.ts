@@ -1298,16 +1298,36 @@ describe("a lakehouse read is VALIDATED, not cast (#11000)", () => {
     );
   });
 
-  test("no schema means no validation -- the 30 unmigrated reads keep working", async () => {
+  test("validation is the DEFAULT, resolved from the statement's own table", async () => {
+    // No `rowSchema` passed, and the row is still refused: the table comes from
+    // the SQL, so a read cannot be left unvalidated by forgetting to opt in.
+    // This test asserted the opposite while validation was opt-in.
+    assert.equal(
+      await r2SqlQuery(
+        mockEnv(TOKEN),
+        "SELECT block_number FROM chain.blocks",
+        {
+          fetch: streamOf({
+            success: true,
+            result: { rows: [{ block_number: "still-untyped" }] },
+          }),
+          ...noCapture,
+        },
+      ),
+      null,
+    );
+  });
+
+  test("a table outside the catalog is unvalidated, not rejected", async () => {
+    // The honest limit of the automatic lookup: a statement can read something
+    // the snapshot does not describe, and inventing a schema there would refuse
+    // data this repo has no description of.
     assert.deepEqual(
-      await r2SqlQuery(mockEnv(TOKEN), "SELECT anything FROM chain.blocks", {
-        fetch: streamOf({
-          success: true,
-          result: { rows: [{ block_number: "still-untyped" }] },
-        }),
+      await r2SqlQuery(mockEnv(TOKEN), "SELECT x FROM other.thing", {
+        fetch: streamOf({ success: true, result: { rows: [{ x: "free" }] } }),
         ...noCapture,
       }),
-      [{ block_number: "still-untyped" }],
+      [{ x: "free" }],
     );
   });
 });

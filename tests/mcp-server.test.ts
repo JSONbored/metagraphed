@@ -5303,9 +5303,16 @@ describe("MCP get_subnet_ownership_history (lakehouse cold tier)", () => {
         method: "SubnetOwnerChanged",
         block_number: 8_587_754,
         observed_at: 1_783_600_000_000,
-        args: { netuid: 7 },
+        // A JSON STRING: `chain_events.args` is a `string` in the catalog, and
+        // this tier RESTORES it to the driver's object shape. The object form
+        // is a row R2 SQL cannot emit.
+        args: JSON.stringify({ netuid: 7 }),
       },
-      { pallet: "SubtensorModule", method: "SubnetOwnerChanged", args: {} },
+      {
+        pallet: "SubtensorModule",
+        method: "SubnetOwnerChanged",
+        args: JSON.stringify({}),
+      },
     ]);
     const res = await callTool(
       "get_subnet_ownership_history",
@@ -16715,7 +16722,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
           coldkey: null,
           netuid: 7,
           uid: 3,
-          amount_tao: "5000",
+          amount_tao: 5000,
           alpha_amount: null,
           observed_at: 1750009000000,
         },
@@ -16767,7 +16774,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
         coldkey: OTHER_SS58,
         netuid: null,
         uid: null,
-        amount_tao: "2.5",
+        amount_tao: 2.5,
         alpha_amount: null,
         observed_at: 1750009000000,
       },
@@ -16790,7 +16797,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
         netuid: 7,
         event_kind: "StakeAdded",
         total_tao: "100",
-        event_count: "2",
+        event_count: 2,
         last_observed: 1750009000000,
       },
     ]);
@@ -16856,7 +16863,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     const TRANSFER = {
       hotkey: LAKE_EXTRINSIC.signer,
       coldkey: OTHER_SS58,
-      amount_tao: "2.5",
+      amount_tao: 2.5,
       block_number: 4200000,
       event_index: 0,
       observed_at: 1750009000000,
@@ -17039,14 +17046,14 @@ describe("MCP windowed-aggregate tools — projection artifact answers when Post
                 netuid: 7,
                 event_kind: "StakeAdded",
                 total_tao: "100",
-                event_count: "3",
+                event_count: 3,
                 last_observed: NEWEST,
               },
               {
                 netuid: 7,
                 event_kind: "StakeRemoved",
                 total_tao: "40",
-                event_count: "2",
+                event_count: 2,
                 last_observed: NEWEST - 1000,
               },
             ],
@@ -17089,7 +17096,7 @@ describe("MCP windowed-aggregate tools — projection artifact answers when Post
             extrinsic_rows: [
               {
                 day: "2026-08-02",
-                extrinsic_count: "100",
+                extrinsic_count: 100,
                 successful_extrinsics: "97",
                 unique_signers: "9",
               },
@@ -17187,7 +17194,7 @@ describe("MCP windowed-aggregate tools — projection artifact answers when Post
             daily_rows: [
               {
                 day: "2026-08-02",
-                extrinsic_count: "100",
+                extrinsic_count: 100,
                 signed_extrinsic_count: "80",
                 total_fee_tao: "1.6",
                 total_tip_tao: "0.4",
@@ -17205,7 +17212,7 @@ describe("MCP windowed-aggregate tools — projection artifact answers when Post
                 signer: "5A",
                 total_fee_tao: "0.9",
                 total_tip_tao: "0",
-                extrinsic_count: "10",
+                extrinsic_count: 10,
               },
             ],
           },
@@ -17231,7 +17238,7 @@ describe("MCP windowed-aggregate tools — projection artifact answers when Post
             daily_rows: [
               {
                 day: "2026-08-02",
-                extrinsic_count: "100",
+                extrinsic_count: 100,
                 signed_extrinsic_count: "80",
                 total_fee_tao: "1.6",
                 total_tip_tao: "0.4",
@@ -17264,7 +17271,7 @@ describe("MCP windowed-aggregate tools — projection artifact answers when Post
                 event_kind: "StakeAdded",
                 alpha_volume: "120",
                 tao_volume: "60",
-                event_count: "4",
+                event_count: 4,
                 last_observed: NEWEST,
               },
             ],
@@ -17427,7 +17434,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     call_module: "SubtensorModule",
     call_function: "set_weights",
     call_args: null,
-    success: 1,
+    // A real boolean: `extrinsics.success` is a `boolean` in the catalog and
+    // production serves true/false. `1` is the D1/Postgres shape, and this is
+    // a lakehouse row.
+    success: true,
     fee_tao: 0.0005,
     tip_tao: null,
     observed_at: 1750009000000,
@@ -17946,7 +17956,12 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
         event_index: 0,
         pallet: "System",
         method: "ExtrinsicSuccess",
-        args: { x: 1 },
+        // TEXT, as the lakehouse column holds it -- the same correction its
+        // sibling DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD already carries. Despite
+        // the name, this payload's `events` are only ever fed to
+        // makeExtrinsicLakehouse as ROWS, and `chain_events.args` is a `string`
+        // in the catalog. The object form is what this tier RESTORES it to.
+        args: '{"x":1}',
         phase: "ApplyExtrinsic",
         extrinsic_index: 2,
         observed_at: 100,
