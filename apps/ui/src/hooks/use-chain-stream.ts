@@ -18,7 +18,12 @@ export type { SseStatus };
 export const CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES = 3;
 export const CHAIN_STREAM_DOWNGRADE_RETRY_MS = 5 * 60_000;
 
-/** Tables the chain firehose can filter on via `?topics=` (#4980 / ADR 0015). */
+/** Tables the chain firehose can filter on via `?topics=` (#4980 / ADR 0015).
+ * DELIBERATELY literal (#10994): the SSE firehose's `topics` parameter is not
+ * published in openapi.json (a contract gap noted on the issue), and the
+ * vocabulary's owner is the graphql/stream schema tree the UI cannot import
+ * at runtime. When the parameter is published, derive this from
+ * QUERY_PARAMETER_ENUMS like every other repointed site. */
 export const CHAIN_FIREHOSE_TOPICS = [
   "blocks",
   "extrinsics",

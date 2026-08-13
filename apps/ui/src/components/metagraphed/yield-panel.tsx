@@ -17,9 +17,11 @@ import { classNames } from "@/lib/metagraphed/format";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import type { SubnetYieldNeuron, YieldHistoryPoint } from "@/lib/metagraphed/types";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
-type Win = "7d" | "30d" | "90d";
-const WINDOWS: Win[] = ["7d", "30d", "90d"];
+// The route's own published windows (#10994).
+const WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/subnets/{netuid}/yield/history"].window;
+type Win = (typeof WINDOWS)[number];
 const TOP_N = 15;
 
 function VsMedian({ vs }: { vs: SubnetYieldNeuron["vs_median"] }) {

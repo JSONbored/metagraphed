@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { RevenuePage } from "./-revenue-page";
+import { COVERAGE_SORT_FIELDS } from "@/lib/metagraphed/coverage-leaderboard-model";
 
 // Sort/filter state lives in the URL so a specific view ("the probe-derived
 // subnets, by revenue") is shareable — the same reason /chain/emissions puts
@@ -14,10 +15,7 @@ import { RevenuePage } from "./-revenue-page";
 // was measured but whose emission failed to price sorts to the BOTTOM of a
 // table it legitimately belongs in — ranked last on a column it cannot answer.
 const revenueSearchSchema = z.object({
-  sort: fallback(
-    z.enum(["subsidy_multiple", "coverage_ratio", "emission_usd", "revenue_usd", "netuid"]),
-    "revenue_usd",
-  ).default("revenue_usd"),
+  sort: fallback(z.enum(COVERAGE_SORT_FIELDS), "revenue_usd").default("revenue_usd"),
   dir: fallback(z.enum(["asc", "desc"]), "desc").default("desc"),
   // Empty means every tier, which is the default: the counts beside each tier
   // are how a reader learns the headline-eligible set is two subnets wide, and

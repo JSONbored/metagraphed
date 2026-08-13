@@ -10,15 +10,17 @@ import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { validatorDetailQuery } from "@/lib/metagraphed/queries";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
+
+const NOMINATOR_ENUMS = QUERY_PARAMETER_ENUMS["/api/v1/validators/{hotkey}/nominators"];
 
 const validatorDetailSearchSchema = z.object({
   // #8251: which detail tab is active (Per-subnet performance / Nominators /
   // History) — same `tab` convention subnets.$netuid.tsx uses.
   tab: fallback(z.string(), "subnets").default("subnets"),
-  window: fallback(z.enum(["7d", "30d", "90d"]), "30d").default("30d"),
-  sort: fallback(z.enum(["net_staked", "gross_staked", "last_activity"]), "net_staked").default(
-    "net_staked",
-  ),
+  // The nominators route's own published enums (#10994).
+  window: fallback(z.enum(NOMINATOR_ENUMS.window), "30d").default("30d"),
+  sort: fallback(z.enum(NOMINATOR_ENUMS.sort), "net_staked").default("net_staked"),
   limit: fallback(z.number().int().min(1).max(100), 20).default(20),
   offset: fallback(z.number().int().min(0), 0).default(0),
   coldkey: fallback(z.string(), "").default(""),
