@@ -291,6 +291,10 @@ import {
 } from "./owner-capture.ts";
 import { buildSubnetTreasury } from "./treasury-readings.ts";
 import {
+  buildSubnetCostToParticipate,
+  entryCostFrom,
+} from "./cost-to-participate.ts";
+import {
   buildSubnetMinerFairness,
   minerFairnessWindowLabel,
 } from "./miner-fairness.ts";
@@ -921,6 +925,7 @@ import type {
   QuerySubnet_Emission_Split_HistoryArgs,
   QuerySubnet_Owner_CaptureArgs,
   QuerySubnet_TreasuryArgs,
+  QuerySubnet_Cost_To_ParticipateArgs,
   QuerySubnet_Miner_FairnessArgs,
   QuerySubnet_Yield_HistoryArgs,
   QuerySubnetsArgs,
@@ -3324,6 +3329,43 @@ const rootValue = {
       entity_count: data.entity_count ?? 0,
       uids_per_entity: data.uids_per_entity ?? null,
       concentration: data.concentration ?? null,
+    };
+  },
+  async subnet_cost_to_participate(
+    { netuid }: QuerySubnet_Cost_To_ParticipateArgs,
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    const data =
+      ((await tryDataApiTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/cost-to-participate`,
+          new URLSearchParams(),
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) as Row | null) ?? buildSubnetCostToParticipate([], netuid);
+    // The tier cannot reach the validator-economics composer, so the entry
+    // costs merge here through the same projection the REST handler and the
+    // MCP tool use -- one shape, three surfaces, no chance of this field
+    // answering null on one of them alone.
+    const entryCost = entryCostFrom(
+      (await buildSubnetValidatorEconomicsPayload(context.env, netuid)).data,
+    );
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      entry_cost: entryCost,
+      declarations_read: data.declarations_read ?? 0,
+      declared_compute: data.declared_compute ?? {
+        miner: null,
+        validator: null,
+        evidence: null,
+      },
+      declarations: data.declarations ?? [],
+      earnings: data.earnings ?? null,
+      not_modelled: data.not_modelled ?? [],
     };
   },
   async subnet_treasury(

@@ -715,6 +715,11 @@ export const SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN =
 // neuron_daily rollup over a window, no static file.
 export const SUBNET_MINER_FAIRNESS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/miner-fairness$/;
+// What a subnet says it takes to participate and what the chain charges to
+// enter (#10932), from the compute_declarations store, no static file.
+export const SUBNET_COST_TO_PARTICIPATE_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/cost-to-participate$/;
+
 // What a subnet's own published source declares it allocates to a treasury
 // (#10933), from the treasury_readings store, no static file.
 export const SUBNET_TREASURY_PATH_PATTERN =

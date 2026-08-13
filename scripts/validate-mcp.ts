@@ -2156,6 +2156,17 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
     "DATA_API-tier series; the harness binds no data Worker, so points is empty by construction",
   ],
   [
+    "get_subnet_cost_to_participate",
+    // The declaration half is DATA_API-tier and the harness binds no data
+    // Worker, so `declarations` is empty by construction -- which is also this
+    // surface's correct answer for the 111 of 128 subnets whose min_compute
+    // file nobody has read, rather than a harness gap. The RESPONSE is
+    // validated here (the entry-cost merge and the empty card both run), and
+    // tests/cost-to-participate.test.ts safeParses a POPULATED payload through
+    // the same artifact schema.
+    "declarations is empty by construction until the infra extractor runs; a populated payload is schema-checked in tests/cost-to-participate.test.ts",
+  ],
+  [
     "get_subnet_treasury",
     // No subnet has been read yet -- the extractor lane lives in
     // metagraphed-infra and has not run -- so `readings` is empty by

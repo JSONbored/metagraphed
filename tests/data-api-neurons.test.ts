@@ -58,6 +58,9 @@ const MIGRATIONS = [
   // CHECK constraints are the only thing standing between a private extractor
   // and a published contradiction.
   "migrations/neon/0028_treasury_readings.sql",
+  // #10932: same argument for the compute declarations -- the extractor writes
+  // from a private lane, so its CHECK constraints are the only enforcement.
+  "migrations/neon/0029_compute_declarations.sql",
 ].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
 
 /** Tables a test may write, emptied between tests. */
@@ -74,6 +77,7 @@ const SEEDED_TABLES = [
   "subnet_ownership",
   "nominator_positions",
   "treasury_readings",
+  "compute_declarations",
 ];
 
 let db: PGlite;
@@ -1620,6 +1624,111 @@ test("miner-fairness counts a registered UID that earns nothing", async () => {
   assert.equal(point.earning_miner_count, 1);
   assert.equal(point.zero_emission_pct, 0.75);
   assert.equal((body.persistence as Row).never_earned_count, 3);
+});
+
+// #10932: the cost-to-participate read, against the real DDL.
+//
+// The ENTRY COSTS are not asserted here on purpose: this tier does not compute
+// them. They are merged by the API worker from the validator-economics
+// composer, which tests/validator-economics covers -- so what this exercises is
+// the half the store owns, plus the constraints that keep a private extractor
+// from publishing a contradiction.
+test("GET /api/v1/subnets/:netuid/cost-to-participate reads the declaration", async () => {
+  await seed(
+    `INSERT INTO compute_declarations (netuid, source_url, read_at_sha,
+       observed_at, first_seen, found, spec_version, miner, validator)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      7,
+      "https://raw.githubusercontent.com/a/b/main/min_compute.yml",
+      "abc1234",
+      1760000000000,
+      1760000000000,
+      true,
+      "0.0.17",
+      JSON.stringify({
+        cpu: { min_cores: 4 },
+        gpu: { required: false, min_vram: 8, recommended_gpu: "NVIDIA A100" },
+      }),
+      JSON.stringify({ cpu: { min_cores: 4 } }),
+    ],
+  );
+
+  const res = await call(req("/api/v1/subnets/7/cost-to-participate"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.declarations_read, 1);
+  const miner = (body.declared_compute as Row).miner as Row;
+  // THE ROUND TRIP THAT MATTERS: a JSONB column read back out of a real
+  // Postgres and through the tri-state rule. `required: false` beside a
+  // non-zero minimum VRAM is neither boolean.
+  assert.equal((miner.gpu as Row).requirement, "declared-inconsistently");
+  assert.equal((miner.gpu as Row).declared_min_vram_gb, 8);
+  assert.equal((miner.gpu as Row).declared_model, "NVIDIA A100");
+  // The validator declares no gpu stanza at all -- a FOURTH answer, and not a
+  // "no GPU needed".
+  assert.equal(
+    (((body.declared_compute as Row).validator as Row).gpu as Row).requirement,
+    null,
+  );
+  assert.equal(
+    ((body.declarations as Row[])[0].evidence as Row).read_at_sha,
+    "abc1234",
+  );
+});
+
+test("a subnet whose declaration nobody has read answers with declarations_read 0", async () => {
+  const body = (await (
+    await call(req("/api/v1/subnets/7/cost-to-participate"))
+  ).json()) as Row;
+  assert.equal(body.declarations_read, 0);
+  assert.deepEqual(body.declarations, []);
+  // Null, not an empty spec. An empty spec renders as a row of dashes that
+  // reads like "declared, and needs nothing".
+  assert.equal((body.declared_compute as Row).miner, null);
+  assert.ok((body.not_modelled as string[]).length > 0);
+});
+
+test("THE CHECK CONSTRAINTS REFUSE A DECLARATION THAT CONTRADICTS ITSELF", async () => {
+  const base = [7, "u1", "sha1234", 1760000000000, 1760000000000];
+  // found:false may not carry a stanza...
+  await assert.rejects(
+    seed(
+      `INSERT INTO compute_declarations (netuid, source_url, read_at_sha,
+         observed_at, first_seen, found, miner) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [...base, false, JSON.stringify({ cpu: {} })],
+    ),
+    /nothing_found_declares_nothing/,
+  );
+  // ...and found:true must carry one.
+  await assert.rejects(
+    seed(
+      `INSERT INTO compute_declarations (netuid, source_url, read_at_sha,
+         observed_at, first_seen, found) VALUES (?, ?, ?, ?, ?, ?)`,
+      [...base, true],
+    ),
+    /finding_needs_a_stanza/,
+  );
+  // A stanza must be an OBJECT. A YAML list reaching this column means the
+  // extractor read the wrong node, and every reader below would be indexing
+  // into something that cannot answer.
+  await assert.rejects(
+    seed(
+      `INSERT INTO compute_declarations (netuid, source_url, read_at_sha,
+         observed_at, first_seen, found, miner) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [...base, true, JSON.stringify(["4 cores"])],
+    ),
+    /stanzas_are_objects/,
+  );
+  // Seconds where millis belong is the shape a unit mix-up takes.
+  await assert.rejects(
+    seed(
+      `INSERT INTO compute_declarations (netuid, source_url, read_at_sha,
+         observed_at, first_seen, found, miner) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [7, "u2", "sha1234", 1760000000, 1760000000000, true, JSON.stringify({})],
+    ),
+    /observed_at_is_millis/,
+  );
 });
 
 // #10933: the treasury read, against the real DDL. The CHECK constraints are

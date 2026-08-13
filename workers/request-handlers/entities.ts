@@ -103,6 +103,10 @@ import { buildSubnetEmissionSplitHistory } from "../../src/emission-split.ts";
 import { buildSubnetOwnerCapture } from "../../src/owner-capture.ts";
 import { buildSubnetTreasury } from "../../src/treasury-readings.ts";
 import {
+  buildSubnetCostToParticipate,
+  entryCostFrom,
+} from "../../src/cost-to-participate.ts";
+import {
   ownerCutFlowLegs,
   OWNER_CUT_FLOW_WINDOW,
 } from "../../src/owner-cut-disposition.ts";
@@ -2776,6 +2780,54 @@ export async function handleSubnetMinerFairness(
         (data.points as unknown as Array<Record<string, unknown>>)[0]
           ?.snapshot_date ?? null,
       ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/cost-to-participate (#10932): what this subnet
+// says it takes to run, what the chain charges to enter, and what miners there
+// actually earn.
+//
+// TWO SOURCES, MERGED IN TWO NAMED FIELDS. The declaration and the earnings
+// come from the Neon tier; the entry costs come from
+// buildSubnetValidatorEconomicsPayload, which is the exact composer
+// /subnets/{netuid}/validator-economics serves. That is the whole reason for
+// the merge: the issue's rule is that the burn and the validator floors are
+// already served and already exact, so they are RE-SERVED here rather than
+// derived a second time from the same tables.
+//
+// A cold/absent store answers 200 with declarations_read:0 and null specs --
+// the correct answer for the 111 of 128 subnets that register no min_compute
+// surface, and distinguishable in the payload from one read with nothing found.
+export async function handleSubnetCostToParticipate(
+  request: Request,
+  env: Env,
+  netuid: number,
+  // Same injection seam the validator-economics family uses, and for the same
+  // reason: the entry costs sit behind live RPC reads, and a test that cannot
+  // stub them would exercise only the degraded branch.
+  deps: {
+    loadEntryCost?: typeof buildSubnetValidatorEconomicsPayload;
+  } = {},
+) {
+  const readEntryCost =
+    deps.loadEntryCost ?? buildSubnetValidatorEconomicsPayload;
+  const data =
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetCostToParticipate> | null) ??
+    buildSubnetCostToParticipate([], Number(netuid));
+  data.entry_cost = entryCostFrom(
+    (await readEntryCost(env, Number(netuid))).data,
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: { contract_version: contractVersion(env) },
     },
     "short",
   );

@@ -321,6 +321,11 @@ type Query {
   subnet_miner_fairness(netuid: Int!, window: String): SubnetMinerFairness!
 
   """
+  What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number that are not interchangeable: \`entry_cost\` is measured on chain and exact (the registration burn and the validator permit/earning floors, re-served from the routes that already compute them); \`declared_compute\` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; \`earnings\` is what miners there actually earned, projected from miner-fairness so a floor-to-run never appears without it. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued: required, not-required, declared-inconsistently (a \`required: False\` beside a non-zero minimum VRAM, never coerced to either boolean) and null (no declaration read at all, which is the state 111 of 128 subnets are in). Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.
+  """
+  subnet_cost_to_participate(netuid: Int!): SubnetCostToParticipate!
+
+  """
   What one subnet's own published source declares it allocates to a treasury, against what the chain shows. A cut disclosed in a public repo is a business model, not a discovery, and agreement between declared and observed is the expected result — published as prominently as any divergence. Three states are kept apart: no reading (nobody looked, and the response claims nothing), \`found: false\` (read at a commit and found nothing — evidence), and a reviewed share. \`declared_matches_observed\` is tri-state and null is the normal answer today; null must never render as false. Machine readings publish their read status and withhold their finding until reviewed. Mirrors GET /api/v1/subnets/{netuid}/treasury.
   """
   subnet_treasury(netuid: Int!): SubnetTreasury!
@@ -2701,6 +2706,188 @@ type SubnetMinerFairnessConcentration {
   The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator.
   """
   uid: ConcentrationMetrics
+}
+
+"""
+What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number, not interchangeable: \`entry_cost\` is measured on chain and exact; \`declared_compute\` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; \`earnings\` is what miners there actually earned. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. A declared minimum is the floor to RUN, not the spec to EARN. Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.
+"""
+type SubnetCostToParticipate {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  What the CHAIN charges to enter. Exact, measured, and the only hard numbers in this card.
+  """
+  entry_cost: SubnetEntryCost!
+
+  """
+  How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 128 subnets register none, and a card with \`declarations_read: 0\` makes no claim about what running here takes.
+  """
+  declarations_read: Int!
+
+  """
+  The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them.
+  """
+  declared_compute: SubnetDeclaredCompute!
+
+  """
+  Every declaration read for this subnet. A subnet registering two files that disagree keeps both here rather than being collapsed to whichever was read last.
+  """
+  declarations: [SubnetComputeDeclaration!]!
+
+  """
+  What miners here actually earned, projected from /api/v1/subnets/{netuid}/miner-fairness — never recomputed. Present so a floor-to-run can never sit on the page without the distribution that says whether running is worth it. Deliberately carries NO mean earning: that would invite exactly the cost-minus-revenue arithmetic these numbers do not support.
+  """
+  earnings: SubnetParticipationEarnings
+
+  """
+  What this card does NOT account for, served in the payload rather than left on a docs page — so an agent quoting the numbers carries the caveats with them.
+  """
+  not_modelled: [String!]!
+
+  """
+  Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+  """
+  field_sources: JSON
+}
+
+"""
+What the CHAIN charges to enter. Exact, measured, and the only hard numbers in this card.
+"""
+type SubnetEntryCost {
+  """
+  What one registration costs on this subnet right now, from \`subnet_burn_history\` — the same value /api/v1/subnets/{netuid}/burn serves, re-served rather than recomputed. EXACT and on-chain. Null means not read; zero is a real price (netuid 76 reads a true zero), so the two are never conflated.
+  """
+  registration_cost_tao: Float
+
+  """
+  The stake that would currently buy a validator permit, from /api/v1/subnets/{netuid}/validator-economics. A permit is not income — see the earning floor beside it.
+  """
+  validator_permit_floor_tao: Float
+
+  """
+  The stake at which a validator actually starts earning dividends here. Differs from the permit floor by a median of ~7x across subnets.
+  """
+  validator_earning_floor_tao: Float
+}
+
+"""
+The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them.
+"""
+type SubnetDeclaredCompute {
+  miner: SubnetDeclaredComputeSpec
+  validator: SubnetDeclaredComputeSpec
+  evidence: SubnetComputeDeclarationEvidence
+}
+
+"""
+One role's DECLARED minimum, in the subnet's own numbers. Units are carried in the field names; nothing is converted or defaulted. This is the floor to RUN, never the spec to EARN.
+"""
+type SubnetDeclaredComputeSpec {
+  gpu: SubnetDeclaredGpu!
+  cpu: SubnetDeclaredCpu!
+  memory: SubnetDeclaredMemory!
+  storage: SubnetDeclaredStorage!
+  network: SubnetDeclaredNetwork!
+}
+
+type SubnetDeclaredGpu {
+  """
+  Does this role need a GPU, as the DECLARATION supports it? FOUR answers. \`required\` and \`not-required\` are what they say. \`declared-inconsistently\` is a declared \`required: False\` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. \`null\` means no GPU stanza was declared at all, which is not a 'no'.
+  """
+  requirement: String
+
+  """
+  The file's own \`required:\` value, published verbatim so a reader can see why \`requirement\` is not a boolean rather than take our word for it.
+  """
+  declared_required: Boolean
+
+  """
+  The file's own \`min_vram\`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration.
+  """
+  declared_min_vram_gb: Float
+  declared_min_count: Float
+
+  """
+  The file's own \`recommended_gpu\`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves \`requirement\` on its own.
+  """
+  declared_model: String
+}
+
+type SubnetDeclaredCpu {
+  min_cores: Float
+  min_speed_ghz: Float
+  architecture: String
+}
+
+type SubnetDeclaredMemory {
+  min_ram_gb: Float
+  min_swap_gb: Float
+}
+
+type SubnetDeclaredStorage {
+  min_space_gb: Float
+  min_iops: Float
+  type: String
+}
+
+type SubnetDeclaredNetwork {
+  min_download_speed_mbps: Float
+  min_upload_speed_mbps: Float
+}
+
+type SubnetComputeDeclarationEvidence {
+  """
+  The registered min_compute surface that was read. Points at a branch, correctly — a human clicks this and wants the current file. The pinned half is \`read_at_sha\`.
+  """
+  source_url: String!
+
+  """
+  The commit that was HEAD when the file was read. THE CITATION: it is what a re-read diffs against to know the declaration moved.
+  """
+  read_at_sha: String!
+
+  """
+  The file's own \`version:\` key. Worth seeing beside the spec: a subnet that has bumped it has revisited the declaration, one still on the template's default has not.
+  """
+  spec_version: String
+
+  """
+  When this reading was taken. A declared minimum with no date cannot be aged out.
+  """
+  observed_at: String!
+
+  """When this file was first read, preserved across re-reads."""
+  first_seen: String
+}
+
+type SubnetComputeDeclaration {
+  """
+  The citation. \`read_at_sha\` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at \`main\`, which moves under the claim.
+  """
+  evidence: SubnetComputeDeclarationEvidence!
+
+  """
+  Did the fetch yield a parseable compute_spec? \`false\` IS A MEASUREMENT — the file was read at that commit and declared nothing — and is distinct from a subnet that registers no min_compute surface at all, which has no declaration here.
+  """
+  found: Boolean!
+  miner: SubnetDeclaredComputeSpec
+  validator: SubnetDeclaredComputeSpec
+}
+
+type SubnetParticipationEarnings {
+  """
+  How many days the distribution beside it was measured over. A zero-rate over 3 days and one over 31 are not the same claim.
+  """
+  days_covered: Float
+  miner_uid_count: Float
+
+  """
+  The share of this subnet's miner UIDs that earned nothing on the most recent day, as a fraction. The network median is 0.992.
+  """
+  zero_emission_pct: Float
+  never_earned_count: Float
+  median_earning_days: Float
 }
 
 """

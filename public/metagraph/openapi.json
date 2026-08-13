@@ -9072,6 +9072,113 @@
           "schema_version": 1
         }
       },
+      "SubnetCostToParticipateArtifactResponse": {
+        "value": {
+          "data": {
+            "declarations": [
+              {
+                "evidence": {
+                  "observed_at": "2026-06-01T00:00:00.000Z",
+                  "read_at_sha": "example",
+                  "source_url": "https://api.metagraph.sh/example"
+                },
+                "found": false,
+                "miner": {
+                  "cpu": {},
+                  "gpu": {
+                    "requirement": "required"
+                  },
+                  "memory": {},
+                  "network": {},
+                  "storage": {}
+                },
+                "validator": {
+                  "cpu": {},
+                  "gpu": {
+                    "requirement": "required"
+                  },
+                  "memory": {},
+                  "network": {},
+                  "storage": {}
+                }
+              }
+            ],
+            "declarations_read": 1,
+            "declared_compute": {
+              "evidence": {
+                "observed_at": "2026-06-01T00:00:00.000Z",
+                "read_at_sha": "example",
+                "source_url": "https://api.metagraph.sh/example"
+              },
+              "miner": {
+                "cpu": {},
+                "gpu": {
+                  "requirement": "required"
+                },
+                "memory": {},
+                "network": {},
+                "storage": {}
+              },
+              "validator": {
+                "cpu": {},
+                "gpu": {
+                  "requirement": "required"
+                },
+                "memory": {},
+                "network": {},
+                "storage": {}
+              }
+            },
+            "earnings": {
+              "days_covered": 0.5,
+              "median_earning_days": 0.5,
+              "miner_uid_count": 1,
+              "never_earned_count": 1,
+              "zero_emission_pct": 0.5
+            },
+            "entry_cost": {
+              "registration_cost_tao": 0.5,
+              "validator_earning_floor_tao": 0.5,
+              "validator_permit_floor_tao": 0.5
+            },
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
+            "netuid": 7,
+            "not_modelled": [
+              "example"
+            ],
+            "schema_version": 1
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "SubnetDeregistrationRankingArtifactResponse": {
         "value": {
           "data": {
@@ -45543,6 +45650,1176 @@
           "count",
           "leaderboard",
           "field_sources"
+        ],
+        "type": "object"
+      },
+      "SubnetCostToParticipateArtifact": {
+        "additionalProperties": false,
+        "description": "What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number, not interchangeable: `entry_cost` is measured on chain and exact; `declared_compute` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; `earnings` is what miners there actually earned. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. A declared minimum is the floor to RUN, not the spec to EARN. Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.",
+        "properties": {
+          "declarations": {
+            "description": "Every declaration read for this subnet. A subnet registering two files that disagree keeps both here rather than being collapsed to whichever was read last.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "evidence": {
+                  "additionalProperties": false,
+                  "description": "The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at `main`, which moves under the claim.",
+                  "properties": {
+                    "first_seen": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "When this file was first read, preserved across re-reads."
+                    },
+                    "observed_at": {
+                      "description": "When this reading was taken. A declared minimum with no date cannot be aged out.",
+                      "type": "string"
+                    },
+                    "read_at_sha": {
+                      "description": "The commit that was HEAD when the file was read. THE CITATION: it is what a re-read diffs against to know the declaration moved.",
+                      "minLength": 7,
+                      "type": "string"
+                    },
+                    "source_url": {
+                      "description": "The registered min_compute surface that was read. Points at a branch, correctly — a human clicks this and wants the current file. The pinned half is `read_at_sha`.",
+                      "type": "string"
+                    },
+                    "spec_version": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The file's own `version:` key. Worth seeing beside the spec: a subnet that has bumped it has revisited the declaration, one still on the template's default has not."
+                    }
+                  },
+                  "required": [
+                    "source_url",
+                    "read_at_sha",
+                    "observed_at"
+                  ],
+                  "type": "object"
+                },
+                "found": {
+                  "description": "Did the fetch yield a parseable compute_spec? `false` IS A MEASUREMENT — the file was read at that commit and declared nothing — and is distinct from a subnet that registers no min_compute surface at all, which has no declaration here.",
+                  "type": "boolean"
+                },
+                "miner": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "description": "One role's DECLARED minimum, in the subnet's own numbers. Units are carried in the field names; nothing is converted or defaulted. This is the floor to RUN, never the spec to EARN.",
+                      "properties": {
+                        "cpu": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "architecture": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_cores": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_speed_ghz": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "gpu": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "declared_min_count": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "declared_min_vram_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration."
+                            },
+                            "declared_model": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own."
+                            },
+                            "declared_required": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it."
+                            },
+                            "requirement": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "required",
+                                    "not-required",
+                                    "declared-inconsistently"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'."
+                            }
+                          },
+                          "required": [
+                            "requirement"
+                          ],
+                          "type": "object"
+                        },
+                        "memory": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_ram_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_swap_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "network": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_download_speed_mbps": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_upload_speed_mbps": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "storage": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_iops": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_space_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "type": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "gpu",
+                        "cpu",
+                        "memory",
+                        "storage",
+                        "network"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validator": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "description": "One role's DECLARED minimum, in the subnet's own numbers. Units are carried in the field names; nothing is converted or defaulted. This is the floor to RUN, never the spec to EARN.",
+                      "properties": {
+                        "cpu": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "architecture": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_cores": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_speed_ghz": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "gpu": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "declared_min_count": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "declared_min_vram_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration."
+                            },
+                            "declared_model": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own."
+                            },
+                            "declared_required": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it."
+                            },
+                            "requirement": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "required",
+                                    "not-required",
+                                    "declared-inconsistently"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'."
+                            }
+                          },
+                          "required": [
+                            "requirement"
+                          ],
+                          "type": "object"
+                        },
+                        "memory": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_ram_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_swap_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "network": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_download_speed_mbps": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_upload_speed_mbps": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "storage": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_iops": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_space_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "type": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "gpu",
+                        "cpu",
+                        "memory",
+                        "storage",
+                        "network"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "evidence",
+                "found",
+                "miner",
+                "validator"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "declarations_read": {
+            "description": "How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 128 subnets register none, and a card with `declarations_read: 0` makes no claim about what running here takes.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "declared_compute": {
+            "additionalProperties": false,
+            "description": "The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them.",
+            "properties": {
+              "evidence": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "first_seen": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "When this file was first read, preserved across re-reads."
+                      },
+                      "observed_at": {
+                        "description": "When this reading was taken. A declared minimum with no date cannot be aged out.",
+                        "type": "string"
+                      },
+                      "read_at_sha": {
+                        "description": "The commit that was HEAD when the file was read. THE CITATION: it is what a re-read diffs against to know the declaration moved.",
+                        "minLength": 7,
+                        "type": "string"
+                      },
+                      "source_url": {
+                        "description": "The registered min_compute surface that was read. Points at a branch, correctly — a human clicks this and wants the current file. The pinned half is `read_at_sha`.",
+                        "type": "string"
+                      },
+                      "spec_version": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The file's own `version:` key. Worth seeing beside the spec: a subnet that has bumped it has revisited the declaration, one still on the template's default has not."
+                      }
+                    },
+                    "required": [
+                      "source_url",
+                      "read_at_sha",
+                      "observed_at"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "miner": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "One role's DECLARED minimum, in the subnet's own numbers. Units are carried in the field names; nothing is converted or defaulted. This is the floor to RUN, never the spec to EARN.",
+                    "properties": {
+                      "cpu": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "architecture": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_cores": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_speed_ghz": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "gpu": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "declared_min_count": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "declared_min_vram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration."
+                          },
+                          "declared_model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own."
+                          },
+                          "declared_required": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it."
+                          },
+                          "requirement": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "required",
+                                  "not-required",
+                                  "declared-inconsistently"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'."
+                          }
+                        },
+                        "required": [
+                          "requirement"
+                        ],
+                        "type": "object"
+                      },
+                      "memory": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_ram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_swap_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "network": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_download_speed_mbps": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_upload_speed_mbps": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "storage": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_iops": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_space_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "type": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "gpu",
+                      "cpu",
+                      "memory",
+                      "storage",
+                      "network"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "validator": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "One role's DECLARED minimum, in the subnet's own numbers. Units are carried in the field names; nothing is converted or defaulted. This is the floor to RUN, never the spec to EARN.",
+                    "properties": {
+                      "cpu": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "architecture": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_cores": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_speed_ghz": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "gpu": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "declared_min_count": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "declared_min_vram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration."
+                          },
+                          "declared_model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own."
+                          },
+                          "declared_required": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it."
+                          },
+                          "requirement": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "required",
+                                  "not-required",
+                                  "declared-inconsistently"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'."
+                          }
+                        },
+                        "required": [
+                          "requirement"
+                        ],
+                        "type": "object"
+                      },
+                      "memory": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_ram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_swap_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "network": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_download_speed_mbps": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_upload_speed_mbps": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "storage": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_iops": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_space_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "type": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "gpu",
+                      "cpu",
+                      "memory",
+                      "storage",
+                      "network"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "miner",
+              "validator",
+              "evidence"
+            ],
+            "type": "object"
+          },
+          "earnings": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "days_covered": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "How many days the distribution beside it was measured over. A zero-rate over 3 days and one over 31 are not the same claim."
+                  },
+                  "median_earning_days": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "miner_uid_count": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "never_earned_count": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "zero_emission_pct": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "The share of this subnet's miner UIDs that earned nothing on the most recent day, as a fraction. The network median is 0.992."
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What miners here actually earned, projected from /api/v1/subnets/{netuid}/miner-fairness — never recomputed. Present so a floor-to-run can never sit on the page without the distribution that says whether running is worth it. Deliberately carries NO mean earning: that would invite exactly the cost-minus-revenue arithmetic these numbers do not support."
+          },
+          "entry_cost": {
+            "additionalProperties": false,
+            "description": "What the CHAIN charges to enter. Exact, measured, and the only hard numbers in this card.",
+            "properties": {
+              "registration_cost_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "What one registration costs on this subnet right now, from `subnet_burn_history` — the same value /api/v1/subnets/{netuid}/burn serves, re-served rather than recomputed. EXACT and on-chain. Null means not read; zero is a real price (netuid 76 reads a true zero), so the two are never conflated."
+              },
+              "validator_earning_floor_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The stake at which a validator actually starts earning dividends here. Differs from the permit floor by a median of ~7x across subnets."
+              },
+              "validator_permit_floor_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The stake that would currently buy a validator permit, from /api/v1/subnets/{netuid}/validator-economics. A permit is not income — see the earning floor beside it."
+              }
+            },
+            "type": "object"
+          },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "not_modelled": {
+            "description": "What this card does NOT account for, served in the payload rather than left on a docs page — so an agent quoting the numbers carries the caveats with them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "entry_cost",
+          "declarations_read",
+          "declared_compute",
+          "declarations",
+          "earnings",
+          "not_modelled"
         ],
         "type": "object"
       },
@@ -93023,6 +94300,114 @@
         "summary": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the current lock state forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Read from chain storage at request time, no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
         "tags": [
           "subnets"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/cost-to-participate": {
+      "get": {
+        "operationId": "subnetCostToParticipate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SubnetCostToParticipateArtifactResponse": {
+                    "$ref": "#/components/examples/SubnetCostToParticipateArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetCostToParticipateArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter. THREE KINDS OF NUMBER, NOT INTERCHANGEABLE. entry_cost is MEASURED on chain and exact -- the registration burn from the burn tier and the validator permit and earning floors from validator-economics, re-served here rather than recomputed. declared_compute is what the subnet's own min_compute file SAYS, which is a declaration and not a measurement of anything: the file is an upstream template and it is filled in inconsistently across the fleet. earnings is what miners on this subnet actually earned, projected from miner-fairness, so a floor-to-run never appears on the page without the distribution that says whether running is worth it. NO COST PER DAY IS PUBLISHED. Of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate prices hardware most subnets never asked for. THE GPU ANSWER IS FOUR-VALUED: required, not-required, declared-inconsistently (a declared required:False sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape an unedited template field takes, never coerced to either boolean), and null, which means no declaration has been read and is the state 111 of 128 subnets are in. A declared minimum is the floor to RUN, not the spec to EARN, and what the card does not model is served in the payload rather than left on a docs page.",
+        "tags": [
+          "subnets",
+          "registry"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

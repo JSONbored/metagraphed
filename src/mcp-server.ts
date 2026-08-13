@@ -160,6 +160,10 @@ import {
   GetSubnetTreasuryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-treasury.ts";
 import {
+  GetSubnetCostToParticipateInputSchema,
+  GetSubnetCostToParticipateOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-cost-to-participate.ts";
+import {
   GetSubnetMinerFairnessInputSchema,
   GetSubnetMinerFairnessOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-miner-fairness.ts";
@@ -1450,6 +1454,10 @@ import {
   parseOwnerCaptureWindow,
 } from "./owner-capture.ts";
 import { buildSubnetTreasury } from "./treasury-readings.ts";
+import {
+  buildSubnetCostToParticipate,
+  entryCostFrom,
+} from "./cost-to-participate.ts";
 import {
   buildSubnetMinerFairness,
   parseMinerFairnessWindow,
@@ -5542,6 +5550,48 @@ export function withAnalyticsArguments(
  * in a bespoke one nobody opens. */
 export const MCP_MISSING_CAPABILITY_TOOL = "get_more_tools";
 
+/**
+ * The economics-row reader every MCP surface that runs the validator-economics
+ * composer must pass.
+ *
+ * EXTRACTED because two tools now need it (#10932). MCP resolves artifacts
+ * through `ctx` -- which carries the resource cache and the test seam -- not
+ * off `env` the way a Worker request handler does, so a tool that lets the
+ * composer's default reader run finds no reserves and no cap and answers
+ * degraded for every subnet while REST answers correctly. A second copy of this
+ * ladder is a second chance to get that wrong in only one of the tools.
+ */
+function mcpEconomicsRowReader(ctx: McpCtx, netuid: number) {
+  return async () => {
+    // The SAME live-then-artifact ladder REST climbs (#10307), with only
+    // the artifact READ supplied from here. Reading the artifact alone
+    // -- which this did -- made the tool answer
+    // `tao_inflow_per_day: 91.04839199999999` where REST answered
+    // 89.4820752 for the same subnet, both stable: two blobs refreshed
+    // on different cadences, not a moving window read twice.
+    //
+    // A cold economics artifact DEGRADES this answer, it does not 404 it:
+    // the artifact is an input to the derivation, not its subject, and the
+    // floors in units are still true without the reserves. loadArtifactData
+    // raises not_found for a missing artifact, which would otherwise turn a
+    // partial answer into no answer at all.
+    const blob = await resolveEconomicsBlob(ctx.env, async () => {
+      try {
+        return rowOf(await loadArtifactData(ctx, "/metagraph/economics.json"));
+      } catch {
+        return null;
+      }
+    });
+    // Through the same `subnetEconomicsRow` the REST default reader
+    // uses, so the two ladders cannot disagree about what a row IS on
+    // top of already agreeing about where it comes from (#10782).
+    return {
+      row: subnetEconomicsRow(blob, netuid),
+      generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
+    };
+  };
+}
+
 const MCP_TOOLS_BASE: McpToolDefinition[] = [
   {
     // The only tool here that answers nothing and exists to be told something.
@@ -6269,36 +6319,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ctx.env,
         netuid,
         {
-          loadEconomicsRow: async () => {
-            // The SAME live-then-artifact ladder REST climbs (#10307), with only
-            // the artifact READ supplied from here. Reading the artifact alone
-            // -- which this did -- made the tool answer
-            // `tao_inflow_per_day: 91.04839199999999` where REST answered
-            // 89.4820752 for the same subnet, both stable: two blobs refreshed
-            // on different cadences, not a moving window read twice.
-            //
-            // A cold economics artifact DEGRADES this answer, it does not 404 it:
-            // the artifact is an input to the derivation, not its subject, and the
-            // floors in units are still true without the reserves. loadArtifactData
-            // raises not_found for a missing artifact, which would otherwise turn a
-            // partial answer into no answer at all.
-            const blob = await resolveEconomicsBlob(ctx.env, async () => {
-              try {
-                return rowOf(
-                  await loadArtifactData(ctx, "/metagraph/economics.json"),
-                );
-              } catch {
-                return null;
-              }
-            });
-            // Through the same `subnetEconomicsRow` the REST default reader
-            // uses, so the two ladders cannot disagree about what a row IS on
-            // top of already agreeing about where it comes from (#10782).
-            return {
-              row: subnetEconomicsRow(blob, netuid),
-              generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
-            };
-          },
+          loadEconomicsRow: mcpEconomicsRowReader(ctx, netuid),
         },
       );
       return data;
@@ -7678,6 +7699,67 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         )) ??
         buildSubnetMinerFairness([], netuid, { window: label, capped: false })
       );
+    },
+  },
+  {
+    name: "get_subnet_cost_to_participate",
+    title: "Get what it costs to participate in a subnet",
+    description:
+      "Read what one subnet SAYS it takes to run a miner or a validator " +
+      "there, beside what the chain EXACTLY charges to enter and what miners " +
+      "there actually earned. " +
+      "THREE KINDS OF NUMBER, AND THEY ARE NOT INTERCHANGEABLE. `entry_cost` " +
+      "is measured on chain and exact: the registration burn and the " +
+      "validator permit and earning floors. `declared_compute` is what the " +
+      "subnet's own min_compute file SAYS -- a declaration, not a " +
+      "measurement, from an upstream template that is filled in " +
+      "inconsistently across the fleet. `earnings` is what miners there " +
+      "actually earned. " +
+      "DO NOT COMPUTE A PROFIT. No cost per day is published and none can be " +
+      "derived here: of the 17 registered declarations exactly ONE asks for a " +
+      "GPU, so pricing the fleet against a rental rate charges most subnets " +
+      "for hardware they never asked for. A declared minimum is the floor to " +
+      "RUN, not the spec to EARN -- on a subnet where most miners earn " +
+      "nothing, the minimum spec is precisely the configuration that does not " +
+      "win. " +
+      "THE GPU ANSWER IS FOUR-VALUED. `required` and `not-required` say what " +
+      "they mean. `declared-inconsistently` is a declared `required: False` " +
+      "sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape " +
+      "an unedited template field takes beside an edited one -- and you must " +
+      "NOT report it as either boolean. `null` means NO DECLARATION HAS BEEN " +
+      "READ, which is the state 111 of 128 subnets are in, and is never a " +
+      "'this subnet needs no GPU'. A CPU-only subnet reports no GPU cost " +
+      "rather than a zero: those are different claims. " +
+      "`not_modelled` is served in the payload and every entry in it applies " +
+      "to any answer you give from this tool. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.",
+    inputSchema: inputJsonSchema(GetSubnetCostToParticipateInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetCostToParticipateInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      const data =
+        ((await tryDataApiTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/subnets/${netuid}/cost-to-participate`,
+            {},
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) as Row | null) ?? buildSubnetCostToParticipate([], netuid);
+      // The tier cannot reach the validator-economics composer, so the entry
+      // costs are merged here exactly as the REST handler and the GraphQL
+      // resolver do -- through the one shared projection, so this tool can
+      // never quietly serve a poorer card than the route it mirrors.
+      data.entry_cost = entryCostFrom(
+        (
+          await buildSubnetValidatorEconomicsPayload(ctx.env, netuid, {
+            loadEconomicsRow: mcpEconomicsRowReader(ctx, netuid),
+          })
+        ).data,
+      );
+      return data;
     },
   },
   {
@@ -15043,6 +15125,9 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   ),
   get_subnet_owner_capture: outputJsonSchema(GetSubnetOwnerCaptureOutputSchema),
   get_subnet_treasury: outputJsonSchema(GetSubnetTreasuryOutputSchema),
+  get_subnet_cost_to_participate: outputJsonSchema(
+    GetSubnetCostToParticipateOutputSchema,
+  ),
   get_subnet_miner_fairness: outputJsonSchema(
     GetSubnetMinerFairnessOutputSchema,
   ),

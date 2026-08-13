@@ -3639,6 +3639,8 @@ export type Query = {
   subnet_concentration_history: SubnetConcentrationHistory;
   /** Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) -- who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to subnet_ownership_history (that's the event log of past flips; this is the current standings). A subnet with no active challengers/owner lock returns an empty leaderboard. Reaches the Postgres-only all-events tier directly; an out-of-range netuid or an unavailable tier is a GraphQL error, never a silent empty leaderboard. Mirrors GET /api/v1/subnets/{netuid}/conviction. */
   subnet_conviction: SubnetConviction;
+  /** What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number that are not interchangeable: `entry_cost` is measured on chain and exact (the registration burn and the validator permit/earning floors, re-served from the routes that already compute them); `declared_compute` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; `earnings` is what miners there actually earned, projected from miner-fairness so a floor-to-run never appears without it. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued: required, not-required, declared-inconsistently (a `required: False` beside a non-zero minimum VRAM, never coerced to either boolean) and null (no declaration read at all, which is the state 111 of 128 subnets are in). Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate. */
+  subnet_cost_to_participate: SubnetCostToParticipate;
   /** Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, deregistration count, and deregistrations per hotkey), DERIVED from UID reuse in the NeuronRegistered stream -- NeuronDeregistered has never been emitted by the runtime (#9307). A subnet with no slot turnover in the window resolves to a schema-stable zeroed card, never null; when nothing derived the window the card carries a degraded block instead of a confident zero. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
   subnet_deregistrations: SubnetDeregistrations;
   /** One subnet's emission-pipeline decomposition OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. */
@@ -4776,6 +4778,11 @@ export type QuerySubnet_Concentration_HistoryArgs = {
 
 
 export type QuerySubnet_ConvictionArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_Cost_To_ParticipateArgs = {
   netuid: Scalars['Int']['input'];
 };
 
@@ -6106,6 +6113,30 @@ export type SubnetBurnHistoryPoint = {
   observed_at: Scalars['String']['output'];
 };
 
+export type SubnetComputeDeclaration = {
+  __typename?: 'SubnetComputeDeclaration';
+  /** The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at `main`, which moves under the claim. */
+  evidence: SubnetComputeDeclarationEvidence;
+  /** Did the fetch yield a parseable compute_spec? `false` IS A MEASUREMENT — the file was read at that commit and declared nothing — and is distinct from a subnet that registers no min_compute surface at all, which has no declaration here. */
+  found: Scalars['Boolean']['output'];
+  miner?: Maybe<SubnetDeclaredComputeSpec>;
+  validator?: Maybe<SubnetDeclaredComputeSpec>;
+};
+
+export type SubnetComputeDeclarationEvidence = {
+  __typename?: 'SubnetComputeDeclarationEvidence';
+  /** When this file was first read, preserved across re-reads. */
+  first_seen?: Maybe<Scalars['String']['output']>;
+  /** When this reading was taken. A declared minimum with no date cannot be aged out. */
+  observed_at: Scalars['String']['output'];
+  /** The commit that was HEAD when the file was read. THE CITATION: it is what a re-read diffs against to know the declaration moved. */
+  read_at_sha: Scalars['String']['output'];
+  /** The registered min_compute surface that was read. Points at a branch, correctly — a human clicks this and wants the current file. The pinned half is `read_at_sha`. */
+  source_url: Scalars['String']['output'];
+  /** The file's own `version:` key. Worth seeing beside the spec: a subnet that has bumped it has revisited the declaration, one still on the template's default has not. */
+  spec_version?: Maybe<Scalars['String']['output']>;
+};
+
 /** Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration. */
 export type SubnetConcentration = {
   __typename?: 'SubnetConcentration';
@@ -6173,6 +6204,84 @@ export type SubnetConvictionArtifactLeaderboard = {
   hotkey?: Maybe<Scalars['String']['output']>;
   is_owner?: Maybe<Scalars['Boolean']['output']>;
   locked_mass?: Maybe<Scalars['Float']['output']>;
+};
+
+/** What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number, not interchangeable: `entry_cost` is measured on chain and exact; `declared_compute` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; `earnings` is what miners there actually earned. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. A declared minimum is the floor to RUN, not the spec to EARN. Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate. */
+export type SubnetCostToParticipate = {
+  __typename?: 'SubnetCostToParticipate';
+  /** Every declaration read for this subnet. A subnet registering two files that disagree keeps both here rather than being collapsed to whichever was read last. */
+  declarations: Array<SubnetComputeDeclaration>;
+  /** How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 128 subnets register none, and a card with `declarations_read: 0` makes no claim about what running here takes. */
+  declarations_read: Scalars['Int']['output'];
+  /** The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. */
+  declared_compute: SubnetDeclaredCompute;
+  /** What miners here actually earned, projected from /api/v1/subnets/{netuid}/miner-fairness — never recomputed. Present so a floor-to-run can never sit on the page without the distribution that says whether running is worth it. Deliberately carries NO mean earning: that would invite exactly the cost-minus-revenue arithmetic these numbers do not support. */
+  earnings?: Maybe<SubnetParticipationEarnings>;
+  /** What the CHAIN charges to enter. Exact, measured, and the only hard numbers in this card. */
+  entry_cost: SubnetEntryCost;
+  /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+  field_sources?: Maybe<Scalars['JSON']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** What this card does NOT account for, served in the payload rather than left on a docs page — so an agent quoting the numbers carries the caveats with them. */
+  not_modelled: Array<Scalars['String']['output']>;
+  schema_version: Scalars['Int']['output'];
+};
+
+/** The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. */
+export type SubnetDeclaredCompute = {
+  __typename?: 'SubnetDeclaredCompute';
+  evidence?: Maybe<SubnetComputeDeclarationEvidence>;
+  miner?: Maybe<SubnetDeclaredComputeSpec>;
+  validator?: Maybe<SubnetDeclaredComputeSpec>;
+};
+
+/** One role's DECLARED minimum, in the subnet's own numbers. Units are carried in the field names; nothing is converted or defaulted. This is the floor to RUN, never the spec to EARN. */
+export type SubnetDeclaredComputeSpec = {
+  __typename?: 'SubnetDeclaredComputeSpec';
+  cpu: SubnetDeclaredCpu;
+  gpu: SubnetDeclaredGpu;
+  memory: SubnetDeclaredMemory;
+  network: SubnetDeclaredNetwork;
+  storage: SubnetDeclaredStorage;
+};
+
+export type SubnetDeclaredCpu = {
+  __typename?: 'SubnetDeclaredCpu';
+  architecture?: Maybe<Scalars['String']['output']>;
+  min_cores?: Maybe<Scalars['Float']['output']>;
+  min_speed_ghz?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubnetDeclaredGpu = {
+  __typename?: 'SubnetDeclaredGpu';
+  declared_min_count?: Maybe<Scalars['Float']['output']>;
+  /** The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration. */
+  declared_min_vram_gb?: Maybe<Scalars['Float']['output']>;
+  /** The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own. */
+  declared_model?: Maybe<Scalars['String']['output']>;
+  /** The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it. */
+  declared_required?: Maybe<Scalars['Boolean']['output']>;
+  /** Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'. */
+  requirement?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetDeclaredMemory = {
+  __typename?: 'SubnetDeclaredMemory';
+  min_ram_gb?: Maybe<Scalars['Float']['output']>;
+  min_swap_gb?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubnetDeclaredNetwork = {
+  __typename?: 'SubnetDeclaredNetwork';
+  min_download_speed_mbps?: Maybe<Scalars['Float']['output']>;
+  min_upload_speed_mbps?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubnetDeclaredStorage = {
+  __typename?: 'SubnetDeclaredStorage';
+  min_iops?: Maybe<Scalars['Float']['output']>;
+  min_space_gb?: Maybe<Scalars['Float']['output']>;
+  type?: Maybe<Scalars['String']['output']>;
 };
 
 export type SubnetDeregistrationEvent = {
@@ -6343,6 +6452,17 @@ export type SubnetEmissionSplitHistoryPoint = {
   validator_share?: Maybe<Scalars['Float']['output']>;
   /** Validator share of the observed per-UID emission. MEASURED and parameter-free — a ratio of two sums this response also publishes. Null when the day emitted nothing, never 0, which would read as 'validators received none of it'. */
   validator_share_of_uid?: Maybe<Scalars['Float']['output']>;
+};
+
+/** What the CHAIN charges to enter. Exact, measured, and the only hard numbers in this card. */
+export type SubnetEntryCost = {
+  __typename?: 'SubnetEntryCost';
+  /** What one registration costs on this subnet right now, from `subnet_burn_history` — the same value /api/v1/subnets/{netuid}/burn serves, re-served rather than recomputed. EXACT and on-chain. Null means not read; zero is a real price (netuid 76 reads a true zero), so the two are never conflated. */
+  registration_cost_tao?: Maybe<Scalars['Float']['output']>;
+  /** The stake at which a validator actually starts earning dividends here. Differs from the permit floor by a median of ~7x across subnets. */
+  validator_earning_floor_tao?: Maybe<Scalars['Float']['output']>;
+  /** The stake that would currently buy a validator permit, from /api/v1/subnets/{netuid}/validator-economics. A permit is not income — see the earning floor beside it. */
+  validator_permit_floor_tao?: Maybe<Scalars['Float']['output']>;
 };
 
 /** One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope. */
@@ -6913,6 +7033,17 @@ export type SubnetOwnershipHistoryArtifactOwnershipChanges = {
   observed_at?: Maybe<Scalars['String']['output']>;
   old_coldkey?: Maybe<Scalars['String']['output']>;
   source?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetParticipationEarnings = {
+  __typename?: 'SubnetParticipationEarnings';
+  /** How many days the distribution beside it was measured over. A zero-rate over 3 days and one over 31 are not the same claim. */
+  days_covered?: Maybe<Scalars['Float']['output']>;
+  median_earning_days?: Maybe<Scalars['Float']['output']>;
+  miner_uid_count?: Maybe<Scalars['Float']['output']>;
+  never_earned_count?: Maybe<Scalars['Float']['output']>;
+  /** The share of this subnet's miner UIDs that earned nothing on the most recent day, as a fraction. The network median is 0.992. */
+  zero_emission_pct?: Maybe<Scalars['Float']['output']>;
 };
 
 /** Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance. */
@@ -8450,17 +8581,28 @@ export type ResolversTypes = ResolversObject<{
   SubnetBurn: ResolverTypeWrapper<SubnetBurn>;
   SubnetBurnHistory: ResolverTypeWrapper<SubnetBurnHistory>;
   SubnetBurnHistoryPoint: ResolverTypeWrapper<SubnetBurnHistoryPoint>;
+  SubnetComputeDeclaration: ResolverTypeWrapper<SubnetComputeDeclaration>;
+  SubnetComputeDeclarationEvidence: ResolverTypeWrapper<SubnetComputeDeclarationEvidence>;
   SubnetConcentration: ResolverTypeWrapper<SubnetConcentration>;
   SubnetConcentrationHistory: ResolverTypeWrapper<SubnetConcentrationHistory>;
   SubnetConcentrationHistoryPoint: ResolverTypeWrapper<SubnetConcentrationHistoryPoint>;
   SubnetConviction: ResolverTypeWrapper<SubnetConviction>;
   SubnetConvictionArtifactLeaderboard: ResolverTypeWrapper<SubnetConvictionArtifactLeaderboard>;
+  SubnetCostToParticipate: ResolverTypeWrapper<SubnetCostToParticipate>;
+  SubnetDeclaredCompute: ResolverTypeWrapper<SubnetDeclaredCompute>;
+  SubnetDeclaredComputeSpec: ResolverTypeWrapper<SubnetDeclaredComputeSpec>;
+  SubnetDeclaredCpu: ResolverTypeWrapper<SubnetDeclaredCpu>;
+  SubnetDeclaredGpu: ResolverTypeWrapper<SubnetDeclaredGpu>;
+  SubnetDeclaredMemory: ResolverTypeWrapper<SubnetDeclaredMemory>;
+  SubnetDeclaredNetwork: ResolverTypeWrapper<SubnetDeclaredNetwork>;
+  SubnetDeclaredStorage: ResolverTypeWrapper<SubnetDeclaredStorage>;
   SubnetDeregistrationEvent: ResolverTypeWrapper<SubnetDeregistrationEvent>;
   SubnetDeregistrations: ResolverTypeWrapper<SubnetDeregistrations>;
   SubnetEconomics: ResolverTypeWrapper<SubnetEconomics>;
   SubnetEmissionDecomposition: ResolverTypeWrapper<SubnetEmissionDecomposition>;
   SubnetEmissionSplitHistory: ResolverTypeWrapper<SubnetEmissionSplitHistory>;
   SubnetEmissionSplitHistoryPoint: ResolverTypeWrapper<SubnetEmissionSplitHistoryPoint>;
+  SubnetEntryCost: ResolverTypeWrapper<SubnetEntryCost>;
   SubnetEventSummary: ResolverTypeWrapper<SubnetEventSummary>;
   SubnetEventSummaryArtifactCategories: ResolverTypeWrapper<SubnetEventSummaryArtifactCategories>;
   SubnetEventSummaryArtifactEventKinds: ResolverTypeWrapper<SubnetEventSummaryArtifactEventKinds>;
@@ -8502,6 +8644,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetOwnerCaptureUid: ResolverTypeWrapper<SubnetOwnerCaptureUid>;
   SubnetOwnershipHistory: ResolverTypeWrapper<SubnetOwnershipHistory>;
   SubnetOwnershipHistoryArtifactOwnershipChanges: ResolverTypeWrapper<SubnetOwnershipHistoryArtifactOwnershipChanges>;
+  SubnetParticipationEarnings: ResolverTypeWrapper<SubnetParticipationEarnings>;
   SubnetPerformance: ResolverTypeWrapper<SubnetPerformance>;
   SubnetPerformanceHistory: ResolverTypeWrapper<SubnetPerformanceHistory>;
   SubnetPerformanceHistoryPoint: ResolverTypeWrapper<SubnetPerformanceHistoryPoint>;
@@ -8901,17 +9044,28 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetBurn: SubnetBurn;
   SubnetBurnHistory: SubnetBurnHistory;
   SubnetBurnHistoryPoint: SubnetBurnHistoryPoint;
+  SubnetComputeDeclaration: SubnetComputeDeclaration;
+  SubnetComputeDeclarationEvidence: SubnetComputeDeclarationEvidence;
   SubnetConcentration: SubnetConcentration;
   SubnetConcentrationHistory: SubnetConcentrationHistory;
   SubnetConcentrationHistoryPoint: SubnetConcentrationHistoryPoint;
   SubnetConviction: SubnetConviction;
   SubnetConvictionArtifactLeaderboard: SubnetConvictionArtifactLeaderboard;
+  SubnetCostToParticipate: SubnetCostToParticipate;
+  SubnetDeclaredCompute: SubnetDeclaredCompute;
+  SubnetDeclaredComputeSpec: SubnetDeclaredComputeSpec;
+  SubnetDeclaredCpu: SubnetDeclaredCpu;
+  SubnetDeclaredGpu: SubnetDeclaredGpu;
+  SubnetDeclaredMemory: SubnetDeclaredMemory;
+  SubnetDeclaredNetwork: SubnetDeclaredNetwork;
+  SubnetDeclaredStorage: SubnetDeclaredStorage;
   SubnetDeregistrationEvent: SubnetDeregistrationEvent;
   SubnetDeregistrations: SubnetDeregistrations;
   SubnetEconomics: SubnetEconomics;
   SubnetEmissionDecomposition: SubnetEmissionDecomposition;
   SubnetEmissionSplitHistory: SubnetEmissionSplitHistory;
   SubnetEmissionSplitHistoryPoint: SubnetEmissionSplitHistoryPoint;
+  SubnetEntryCost: SubnetEntryCost;
   SubnetEventSummary: SubnetEventSummary;
   SubnetEventSummaryArtifactCategories: SubnetEventSummaryArtifactCategories;
   SubnetEventSummaryArtifactEventKinds: SubnetEventSummaryArtifactEventKinds;
@@ -8953,6 +9107,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetOwnerCaptureUid: SubnetOwnerCaptureUid;
   SubnetOwnershipHistory: SubnetOwnershipHistory;
   SubnetOwnershipHistoryArtifactOwnershipChanges: SubnetOwnershipHistoryArtifactOwnershipChanges;
+  SubnetParticipationEarnings: SubnetParticipationEarnings;
   SubnetPerformance: SubnetPerformance;
   SubnetPerformanceHistory: SubnetPerformanceHistory;
   SubnetPerformanceHistoryPoint: SubnetPerformanceHistoryPoint;
@@ -11842,6 +11997,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_concentration?: Resolver<ResolversTypes['SubnetConcentration'], ParentType, ContextType, RequireFields<QuerySubnet_ConcentrationArgs, 'netuid'>>;
   subnet_concentration_history?: Resolver<ResolversTypes['SubnetConcentrationHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Concentration_HistoryArgs, 'netuid'>>;
   subnet_conviction?: Resolver<ResolversTypes['SubnetConviction'], ParentType, ContextType, RequireFields<QuerySubnet_ConvictionArgs, 'netuid'>>;
+  subnet_cost_to_participate?: Resolver<ResolversTypes['SubnetCostToParticipate'], ParentType, ContextType, RequireFields<QuerySubnet_Cost_To_ParticipateArgs, 'netuid'>>;
   subnet_deregistrations?: Resolver<ResolversTypes['SubnetDeregistrations'], ParentType, ContextType, RequireFields<QuerySubnet_DeregistrationsArgs, 'netuid'>>;
   subnet_emission_pipeline_history?: Resolver<ResolversTypes['SubnetPipelineHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Emission_Pipeline_HistoryArgs, 'netuid'>>;
   subnet_emission_split_history?: Resolver<ResolversTypes['SubnetEmissionSplitHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Emission_Split_HistoryArgs, 'netuid'>>;
@@ -12581,6 +12737,21 @@ export type SubnetBurnHistoryPointResolvers<ContextType = GqlContext, ParentType
   observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
+export type SubnetComputeDeclarationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetComputeDeclaration'] = ResolversParentTypes['SubnetComputeDeclaration']> = ResolversObject<{
+  evidence?: Resolver<ResolversTypes['SubnetComputeDeclarationEvidence'], ParentType, ContextType>;
+  found?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  miner?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
+  validator?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
+}>;
+
+export type SubnetComputeDeclarationEvidenceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetComputeDeclarationEvidence'] = ResolversParentTypes['SubnetComputeDeclarationEvidence']> = ResolversObject<{
+  first_seen?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  read_at_sha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  spec_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type SubnetConcentrationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetConcentration'] = ResolversParentTypes['SubnetConcentration']> = ResolversObject<{
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   emission?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
@@ -12631,6 +12802,62 @@ export type SubnetConvictionArtifactLeaderboardResolvers<ContextType = GqlContex
   hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   is_owner?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   locked_mass?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetCostToParticipateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetCostToParticipate'] = ResolversParentTypes['SubnetCostToParticipate']> = ResolversObject<{
+  declarations?: Resolver<Array<ResolversTypes['SubnetComputeDeclaration']>, ParentType, ContextType>;
+  declarations_read?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  declared_compute?: Resolver<ResolversTypes['SubnetDeclaredCompute'], ParentType, ContextType>;
+  earnings?: Resolver<Maybe<ResolversTypes['SubnetParticipationEarnings']>, ParentType, ContextType>;
+  entry_cost?: Resolver<ResolversTypes['SubnetEntryCost'], ParentType, ContextType>;
+  field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  not_modelled?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetDeclaredComputeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeclaredCompute'] = ResolversParentTypes['SubnetDeclaredCompute']> = ResolversObject<{
+  evidence?: Resolver<Maybe<ResolversTypes['SubnetComputeDeclarationEvidence']>, ParentType, ContextType>;
+  miner?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
+  validator?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
+}>;
+
+export type SubnetDeclaredComputeSpecResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeclaredComputeSpec'] = ResolversParentTypes['SubnetDeclaredComputeSpec']> = ResolversObject<{
+  cpu?: Resolver<ResolversTypes['SubnetDeclaredCpu'], ParentType, ContextType>;
+  gpu?: Resolver<ResolversTypes['SubnetDeclaredGpu'], ParentType, ContextType>;
+  memory?: Resolver<ResolversTypes['SubnetDeclaredMemory'], ParentType, ContextType>;
+  network?: Resolver<ResolversTypes['SubnetDeclaredNetwork'], ParentType, ContextType>;
+  storage?: Resolver<ResolversTypes['SubnetDeclaredStorage'], ParentType, ContextType>;
+}>;
+
+export type SubnetDeclaredCpuResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeclaredCpu'] = ResolversParentTypes['SubnetDeclaredCpu']> = ResolversObject<{
+  architecture?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  min_cores?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  min_speed_ghz?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetDeclaredGpuResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeclaredGpu'] = ResolversParentTypes['SubnetDeclaredGpu']> = ResolversObject<{
+  declared_min_count?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  declared_min_vram_gb?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  declared_model?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  declared_required?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  requirement?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetDeclaredMemoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeclaredMemory'] = ResolversParentTypes['SubnetDeclaredMemory']> = ResolversObject<{
+  min_ram_gb?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  min_swap_gb?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetDeclaredNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeclaredNetwork'] = ResolversParentTypes['SubnetDeclaredNetwork']> = ResolversObject<{
+  min_download_speed_mbps?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  min_upload_speed_mbps?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetDeclaredStorageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeclaredStorage'] = ResolversParentTypes['SubnetDeclaredStorage']> = ResolversObject<{
+  min_iops?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  min_space_gb?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  type?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetDeregistrationEventResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeregistrationEvent'] = ResolversParentTypes['SubnetDeregistrationEvent']> = ResolversObject<{
@@ -12752,6 +12979,12 @@ export type SubnetEmissionSplitHistoryPointResolvers<ContextType = GqlContext, P
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_share_of_uid?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetEntryCostResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEntryCost'] = ResolversParentTypes['SubnetEntryCost']> = ResolversObject<{
+  registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validator_earning_floor_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validator_permit_floor_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetEventSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEventSummary'] = ResolversParentTypes['SubnetEventSummary']> = ResolversObject<{
@@ -13188,6 +13421,14 @@ export type SubnetOwnershipHistoryArtifactOwnershipChangesResolvers<ContextType 
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   old_coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetParticipationEarningsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetParticipationEarnings'] = ResolversParentTypes['SubnetParticipationEarnings']> = ResolversObject<{
+  days_covered?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  median_earning_days?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  miner_uid_count?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  never_earned_count?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  zero_emission_pct?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetPerformanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPerformance'] = ResolversParentTypes['SubnetPerformance']> = ResolversObject<{
@@ -14408,17 +14649,28 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetBurn?: SubnetBurnResolvers<ContextType>;
   SubnetBurnHistory?: SubnetBurnHistoryResolvers<ContextType>;
   SubnetBurnHistoryPoint?: SubnetBurnHistoryPointResolvers<ContextType>;
+  SubnetComputeDeclaration?: SubnetComputeDeclarationResolvers<ContextType>;
+  SubnetComputeDeclarationEvidence?: SubnetComputeDeclarationEvidenceResolvers<ContextType>;
   SubnetConcentration?: SubnetConcentrationResolvers<ContextType>;
   SubnetConcentrationHistory?: SubnetConcentrationHistoryResolvers<ContextType>;
   SubnetConcentrationHistoryPoint?: SubnetConcentrationHistoryPointResolvers<ContextType>;
   SubnetConviction?: SubnetConvictionResolvers<ContextType>;
   SubnetConvictionArtifactLeaderboard?: SubnetConvictionArtifactLeaderboardResolvers<ContextType>;
+  SubnetCostToParticipate?: SubnetCostToParticipateResolvers<ContextType>;
+  SubnetDeclaredCompute?: SubnetDeclaredComputeResolvers<ContextType>;
+  SubnetDeclaredComputeSpec?: SubnetDeclaredComputeSpecResolvers<ContextType>;
+  SubnetDeclaredCpu?: SubnetDeclaredCpuResolvers<ContextType>;
+  SubnetDeclaredGpu?: SubnetDeclaredGpuResolvers<ContextType>;
+  SubnetDeclaredMemory?: SubnetDeclaredMemoryResolvers<ContextType>;
+  SubnetDeclaredNetwork?: SubnetDeclaredNetworkResolvers<ContextType>;
+  SubnetDeclaredStorage?: SubnetDeclaredStorageResolvers<ContextType>;
   SubnetDeregistrationEvent?: SubnetDeregistrationEventResolvers<ContextType>;
   SubnetDeregistrations?: SubnetDeregistrationsResolvers<ContextType>;
   SubnetEconomics?: SubnetEconomicsResolvers<ContextType>;
   SubnetEmissionDecomposition?: SubnetEmissionDecompositionResolvers<ContextType>;
   SubnetEmissionSplitHistory?: SubnetEmissionSplitHistoryResolvers<ContextType>;
   SubnetEmissionSplitHistoryPoint?: SubnetEmissionSplitHistoryPointResolvers<ContextType>;
+  SubnetEntryCost?: SubnetEntryCostResolvers<ContextType>;
   SubnetEventSummary?: SubnetEventSummaryResolvers<ContextType>;
   SubnetEventSummaryArtifactCategories?: SubnetEventSummaryArtifactCategoriesResolvers<ContextType>;
   SubnetEventSummaryArtifactEventKinds?: SubnetEventSummaryArtifactEventKindsResolvers<ContextType>;
@@ -14460,6 +14712,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetOwnerCaptureUid?: SubnetOwnerCaptureUidResolvers<ContextType>;
   SubnetOwnershipHistory?: SubnetOwnershipHistoryResolvers<ContextType>;
   SubnetOwnershipHistoryArtifactOwnershipChanges?: SubnetOwnershipHistoryArtifactOwnershipChangesResolvers<ContextType>;
+  SubnetParticipationEarnings?: SubnetParticipationEarningsResolvers<ContextType>;
   SubnetPerformance?: SubnetPerformanceResolvers<ContextType>;
   SubnetPerformanceHistory?: SubnetPerformanceHistoryResolvers<ContextType>;
   SubnetPerformanceHistoryPoint?: SubnetPerformanceHistoryPointResolvers<ContextType>;
