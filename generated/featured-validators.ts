@@ -6,8 +6,7 @@
 // see the generator's header for why this is not a runtime read.
 
 export const FEATURED_HOTKEYS: readonly string[] = Object.freeze([
-  "5DtUJ9ytbeCMjovFieNwaxxqRP3DzT6iQPnZTyKmi3n6iXey",
-  "5Gjr7VuYJC8D58d9S2iZofu7FzFvRiRjpM4zpAaDdqb1Wy6V",
+
 ]);
 
 /** The same list as a Set, for the membership test the validator builder does. */
