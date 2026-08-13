@@ -2368,6 +2368,9 @@ await fs.writeFile(
     `Disallow: /api/v1/extrinsics/\n` +
     `Disallow: /api/v1/accounts/\n` +
     `Allow: /api/v1/accounts/top-holders\n` +
+    `# A stream is for a subscriber, not an indexer: it never ends, and a\n` +
+    `# crawler holding one pins a Durable Object subscription for nothing.\n` +
+    `Disallow: /api/v1/chain/stream\n` +
     `Sitemap: ${llmsApiBase}/sitemap.xml\n`,
   "utf8",
 );

@@ -265,6 +265,11 @@ describe("Discovery artifacts", () => {
       "/api/v1/extrinsics/0xa6fd0387b5e54ffe8cf753c10720a437e82ad7e4c47a33997cbd68b498d14d95",
       "/api/v1/accounts/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
       "/api/v1/accounts/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY/transfers",
+      // #11024: meta-externalagent was observed opening this. A stream never
+      // ends, so a crawler holding one pins a Durable Object subscription for
+      // a response it can never finish reading.
+      "/api/v1/chain/stream",
+      "/api/v1/chain/stream?topics=blocks",
     ]) {
       assert.equal(crawlable(p), false, `${p} should be withheld`);
     }

@@ -28,6 +28,7 @@
 // webSocketClose's graphql-ws branches, and src/graphql.ts's
 // GRAPHQL_SUBSCRIPTION_CONTEXT_KEY for the other half of the wiring.
 
+import { isDurableObjectReset } from "../src/durable-object-reset.ts";
 import {
   GraphQLError,
   type GraphQLSchema,
@@ -1272,7 +1273,38 @@ export class ChainFirehoseHub implements DurableObject {
         await recordExceptionEvent(this.env, { error, route: "head-poller" });
       }
     } finally {
-      await this.state.storage.setAlarm(Date.now() + interval);
+      // #11021: a deploy evicts this object, and once reset EVERY storage
+      // operation rejects -- including this one, in a `finally`, where there is
+      // nothing left to catch it. That is how a deploy became an uncaught
+      // `outcome: exception` on ChainFirehoseHub.alarm.
+      //
+      // Safe to swallow, and only because the repair already exists: the
+      // 15-minute cron's `/poll-start` re-arms an alarm that is MISSING OR
+      // OVERDUE (#10766), and its comment names this exact case -- "an alarm
+      // whose handler never ran -- the storage reset mid-`setAlarm`". So the
+      // chain restarts within one cron tick rather than being lost.
+      //
+      // Narrow on purpose. Any OTHER setAlarm failure is still reported --
+      // recorded rather than rethrown, because a throw out of a `finally`
+      // masks whatever the `try` was propagating (eslint no-unsafe-finally)
+      // and, here, would only become the uncaught exception this change
+      // exists to remove. Recording keeps the signal: a hub that has genuinely
+      // stopped scheduling must not look like a deploy, which is the silence
+      // #10991's alarm work exists to prevent.
+      try {
+        await this.state.storage.setAlarm(Date.now() + interval);
+      } catch (error) {
+        if (!isDurableObjectReset(error)) {
+          console.error(
+            "[head-poller] setAlarm",
+            String((error as Error)?.message),
+          );
+          await recordExceptionEvent(this.env, {
+            error,
+            route: "head-poller-setalarm",
+          });
+        }
+      }
     }
   }
 

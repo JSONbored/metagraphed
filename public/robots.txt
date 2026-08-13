@@ -8,4 +8,7 @@ Allow: /api/v1/blocks/summary
 Disallow: /api/v1/extrinsics/
 Disallow: /api/v1/accounts/
 Allow: /api/v1/accounts/top-holders
+# A stream is for a subscriber, not an indexer: it never ends, and a
+# crawler holding one pins a Durable Object subscription for nothing.
+Disallow: /api/v1/chain/stream
 Sitemap: https://api.metagraph.sh/sitemap.xml

@@ -11,6 +11,10 @@ import {
   compileRoutePattern,
   liveOnlyArtifactRoute,
 } from "../src/contracts.ts";
+import {
+  CHAIN_FIREHOSE_RECONNECT_MS,
+  isDurableObjectReset,
+} from "../src/durable-object-reset.ts";
 
 type Row = Record<string, unknown>;
 
@@ -5325,6 +5329,50 @@ async function handleEmissionGateSync(
 // data /api/v1/chain-events already serves, just pushed instead of polled.
 // ChainFirehoseHub itself decides SSE vs WS and applies the ?topics= filter
 // -- this is only the forwarding boundary into the DO.
+/**
+ * The response a subscriber gets when a deploy takes the hub out from under it.
+ *
+ * SSE has exactly one reconnection control and it is NOT `Retry-After`:
+ * `EventSource` ignores that header, and the spec makes it FAIL THE CONNECTION
+ * -- permanently, no reconnect -- on any non-2xx status or wrong content-type.
+ * So a 503 here would be worse than the 500 it replaces: every browser
+ * subscriber would give up for good rather than come back after the deploy.
+ *
+ * The protocol-correct answer is a 200 event-stream that closes immediately,
+ * carrying a `retry:` field. The client then reconnects on its own, after the
+ * interval we name -- which is also the only lever that keeps a fleet-wide
+ * reconnect from arriving as one burst (#6451's thundering herd was this hub).
+ *
+ * A WebSocket upgrade is the exception: there is no stream to close and no
+ * `retry:` field, and WS clients implement their own backoff, so that branch
+ * gets an honest 503 with `Retry-After`.
+ */
+function chainFirehoseReconnect(request: Request): Response {
+  if (request.headers.get("upgrade")?.toLowerCase() === "websocket") {
+    return errorResponse(
+      "chain_firehose_reconnect",
+      "The realtime chain firehose was restarted by a deploy; reconnect.",
+      503,
+      {},
+      { "retry-after": String(Math.ceil(CHAIN_FIREHOSE_RECONNECT_MS / 1000)) },
+    );
+  }
+  return new Response(
+    `retry: ${CHAIN_FIREHOSE_RECONNECT_MS}\n` +
+      `: hub restarted by a deploy; reconnecting\n\n`,
+    {
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream; charset=utf-8",
+        // A restart notice is never the stream, and must never be replayed as
+        // one by an intermediary.
+        "cache-control": "no-store",
+        "access-control-allow-origin": "*",
+      },
+    },
+  );
+}
+
 async function handleChainFirehoseStream(request: Request, env: Env, url: URL) {
   if (!env.CHAIN_FIREHOSE_HUB) {
     return errorResponse(
@@ -5338,7 +5386,31 @@ async function handleChainFirehoseStream(request: Request, env: Env, url: URL) {
   );
   const forwardUrl = new URL("https://chain-firehose-hub.internal/subscribe");
   forwardUrl.search = url.search;
-  const response = await stub.fetch(new Request(forwardUrl, request));
+  // #11021: a deploy evicts the hub, and every in-flight operation on it --
+  // including this subscriber's -- rejects. Production served an HTTP 500 for
+  // that, on `GET /api/v1/chain/stream?topics=blocks`. A 500 is the one answer
+  // that says WE are broken, when what happened is that we shipped.
+  //
+  // Written as `.catch()` returning a sentinel rather than try/catch around an
+  // assignment: TypeScript does not carry definite-assignment through a
+  // try/catch whose catch returns, so `let response: Response` there widens
+  // this function's inferred return to include `undefined` -- and that widening
+  // propagates all the way out through dispatchRequest to the Worker's fetch
+  // handler. Keeping `const` keeps the inference honest.
+  //
+  // `Promise.resolve().then(...)` rather than `stub.fetch(...).catch(...)`:
+  // a stub is not required to return a real Promise (test doubles in this repo
+  // return a bare Response, and `await` accepts both), so calling `.catch` on
+  // the result is a TypeError against anything but the production binding.
+  // This form also catches a SYNCHRONOUS throw from `.fetch`, which the
+  // `.catch` form silently would not.
+  const response = await Promise.resolve()
+    .then(() => stub.fetch(new Request(forwardUrl, request)))
+    .catch((error: unknown) => {
+      if (!isDurableObjectReset(error)) throw error;
+      return null;
+    });
+  if (response === null) return chainFirehoseReconnect(request);
   // #10606: the DO names which cap refused, this records it, and the header is
   // DELETED before the response continues. Both halves matter: the Worker
   // needs the kind (a global cap and a per-IP cap are operationally opposite,
