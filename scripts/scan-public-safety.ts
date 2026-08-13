@@ -286,6 +286,13 @@ const patterns: SafetyPattern[] = [
     // parenthetical (stored in coldkey (the account...)) -- both common in
     // Rust/SQL comments describing the data model, not suspicious wording.
     //
+    // Extended for #10987: the vocabulary gate keys value sets as
+    // sorted.join("|"), so its allowlist legitimately contains the exact
+    // quoted string "coldkey|hotkey|netuid" (EVM ABI arg names vs a Neon
+    // index). EXACT phrase, not a pipe-blanket -- "coldkey|<anything>" must
+    // still trip, for the same reason "coldkey-only" is exact: a delimiter
+    // must not become a smuggling syntax.
+    //
     // Extended again (#6718): Rust's OWN field-access + method-call syntax
     // (ext.coldkey.is_some(), .coldkey.clone(), .coldkey.unwrap()) wasn't
     // covered by the coldkey?. optional-chaining case above -- that's TS/JS
@@ -295,7 +302,7 @@ const patterns: SafetyPattern[] = [
     // a lowercase identifier + `(` matches the method-call shape without
     // loosening the bare `\bcoldkey\b` trigger itself.
     allow:
-      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bcoldkey\.[a-z_]+\(|\b(?:hotkey(?:\s+or\s+|\s*\/\s*)coldkey|coldkey(?:\s+or\s+|\s*\/\s*)hotkey)\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bcoldkey\.[a-z_]+\(|\b(?:hotkey(?:\s+or\s+|\s*\/\s*)coldkey|coldkey(?:\s+or\s+|\s*\/\s*)hotkey)\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|"coldkey\|hotkey\|netuid"|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
     soft: true,
   },
   {
