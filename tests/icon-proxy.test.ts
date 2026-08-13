@@ -173,14 +173,15 @@ test("404 for syntactically valid but non-allowlisted hosts", async () => {
 });
 
 test("rejects oversized upstream responses before caching", async () => {
-  const puts = [];
+  const puts: { key: unknown; body: Uint8Array; opts: Row }[] = [];
   const tooLarge = new Uint8Array(256 * 1024 + 1).fill(1);
   const res = await call("?host=example.com", {
     env: {
       METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
       METAGRAPH_ARCHIVE: {
         get: async () => null,
-        put: async (k: unknown) => puts.push(k),
+        put: async (k: unknown, body: Uint8Array, opts: Row = {}) =>
+          puts.push({ key: k, body, opts }),
       },
     },
     fetchImpl: async () =>
@@ -193,7 +194,17 @@ test("rejects oversized upstream responses before caching", async () => {
       }),
   });
   assert.equal(res.status, 404);
-  assert.equal(puts.length, 0);
+  // The oversized IMAGE is still never cached -- that is what this test has
+  // always been for. #11020 added one write on this path, and it is a
+  // zero-byte tombstone, not the payload: asserting `puts.length === 0` would
+  // now be asserting that we re-run the whole fan-out next time.
+  assert.equal(puts.length, 1);
+  const [written] = puts as unknown as {
+    body: Uint8Array;
+    opts: { customMetadata?: Record<string, string> };
+  }[];
+  assert.equal(written.body.byteLength, 0, "no image bytes were stored");
+  assert.equal(written.opts.customMetadata?.negative, "stable");
 });
 
 test("builds the allowlist from artifact url/base_url/website fields (nested + arrays)", async () => {
@@ -597,12 +608,12 @@ test("boundedArrayBuffer rejects oversized arrayBuffer() in the non-stream path"
 });
 
 test("boundedArrayBuffer rejects an oversized streamed body (no content-length)", async () => {
-  const puts = [];
+  const puts: { key: unknown; body: Uint8Array }[] = [];
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
     METAGRAPH_ARCHIVE: {
       get: async () => null,
-      put: async (k: unknown) => puts.push(k),
+      put: async (k: unknown, body: Uint8Array) => puts.push({ key: k, body }),
     },
   };
   let canceled = false;
@@ -634,7 +645,11 @@ test("boundedArrayBuffer rejects an oversized streamed body (no content-length)"
   });
   assert.equal(res.status, 404);
   assert.equal(canceled, true); // reader.cancel() ran on the size cap
-  assert.equal(puts.length, 0);
+  // The oversized STREAM is never buffered into the cache -- unchanged. The one
+  // write here is #11020's zero-byte tombstone, asserted by shape rather than
+  // by count so this keeps meaning "no payload was stored".
+  assert.equal(puts.length, 1);
+  assert.equal((puts[0] as { body: Uint8Array }).body.byteLength, 0);
 });
 
 test("accepts a streamed body under the size cap (reader path success)", async () => {
@@ -875,4 +890,194 @@ test("aborts a hung upstream fetch via the timeout controller", async () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+// #11020. The negative cache used to be a `Cache-Control` header and nothing
+// else — per-colo, per-client state — so a subject that will never resolve
+// re-ran the whole aggregator fan-out in every colo, forever. Four such
+// subjects were 55% of the entire Worker error channel over one 3-day window.
+//
+// The property under test is that a SECOND request does no upstream work.
+// Asserting only "returns 404" would pass on the old behaviour too.
+test("a stable negative is recorded server-side and skips the fan-out next time", async () => {
+  const store = new Map<string, { body: Uint8Array; opts: Row }>();
+  let upstreamCalls = 0;
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async (k: string) => {
+        const hit = store.get(k);
+        return hit
+          ? {
+              body: { cancel: async () => {} },
+              customMetadata: hit.opts.customMetadata,
+              httpMetadata: {},
+            }
+          : null;
+      },
+      put: async (k: string, body: Uint8Array, opts: Row = {}) =>
+        void store.set(k, { body, opts }),
+    },
+  };
+  // Every source gives a clean 404 -> a stable "no".
+  const fetchImpl = async () => {
+    upstreamCalls += 1;
+    return new Response("nope", { status: 404 });
+  };
+
+  const first = await call("?host=example.com", { env, fetchImpl });
+  assert.equal(first.status, 404);
+  const afterFirst = upstreamCalls;
+  assert.ok(afterFirst > 0, "the first request must actually try upstream");
+
+  const stored = [...store.values()][0];
+  assert.equal(stored.body.byteLength, 0, "a tombstone carries no image bytes");
+  assert.equal(stored.opts.customMetadata?.negative, "stable");
+
+  const second = await call("?host=example.com", { env, fetchImpl });
+  assert.equal(second.status, 404);
+  // THE assertion: the second request cost nothing upstream.
+  assert.equal(upstreamCalls, afterFirst);
+  assert.match(second.headers.get("cache-control") ?? "", /max-age=86400/);
+});
+
+test("a transient failure is recorded as transient, and expires on its own window", async () => {
+  const store = new Map<string, { body: Uint8Array; opts: Row }>();
+  let upstreamCalls = 0;
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async (k: string) => {
+        const hit = store.get(k);
+        return hit
+          ? {
+              body: { cancel: async () => {} },
+              customMetadata: hit.opts.customMetadata,
+              httpMetadata: {},
+            }
+          : null;
+      },
+      put: async (k: string, body: Uint8Array, opts: Row = {}) =>
+        void store.set(k, { body, opts }),
+    },
+  };
+  // A 403 is the anti-bot block these aggregators return, and the module
+  // already treats it as retry-soon rather than a stable "no".
+  const fetchImpl = async () => {
+    upstreamCalls += 1;
+    return new Response("blocked", { status: 403 });
+  };
+
+  await call("?host=example.com", {
+    env,
+    fetchImpl,
+    options: { now: 1_000_000 },
+  });
+  assert.equal(
+    [...store.values()][0].opts.customMetadata?.negative,
+    "transient",
+  );
+  const afterFirst = upstreamCalls;
+
+  // Inside the 10m window: suppressed.
+  await call("?host=example.com", {
+    env,
+    fetchImpl,
+    options: { now: 1_000_000 + 60_000 },
+  });
+  assert.equal(upstreamCalls, afterFirst, "still inside the transient window");
+
+  // Past it: re-resolved, which is the entire point of the shorter window --
+  // a 403 that has cleared must not be blackholed for 24h.
+  await call("?host=example.com", {
+    env,
+    fetchImpl,
+    options: { now: 1_000_000 + 700_000 },
+  });
+  assert.ok(
+    upstreamCalls > afterFirst,
+    "an expired transient tombstone must re-resolve",
+  );
+});
+
+test("a tombstone write that throws still returns the 404", async () => {
+  // Best-effort, exactly like the positive put above it: failing to CACHE a
+  // negative must never turn a 404 into a 500.
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async () => null,
+      put: async () => {
+        throw new Error("r2 unavailable");
+      },
+    },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => new Response("nope", { status: 404 }),
+  });
+  assert.equal(res.status, 404);
+});
+
+test("a tombstone with no usable timestamp is treated as expired", async () => {
+  // Fail OPEN, not closed. A record we cannot date is a record we cannot trust
+  // to still be valid, and blackholing a subject forever on a malformed stamp
+  // is strictly worse than re-resolving it once.
+  let upstreamCalls = 0;
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async () => ({
+        body: { cancel: async () => {} },
+        customMetadata: { negative: "stable", negative_at: "not-a-number" },
+        httpMetadata: {},
+      }),
+      put: async () => {},
+    },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => {
+      upstreamCalls += 1;
+      return new Response("nope", { status: 404 });
+    },
+  });
+  assert.equal(res.status, 404);
+  assert.ok(upstreamCalls > 0, "an undateable tombstone must re-resolve");
+});
+
+test("no bucket at all still resolves and 404s", async () => {
+  const res = await call("?host=example.com", {
+    env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
+    fetchImpl: async () => new Response("nope", { status: 404 }),
+  });
+  assert.equal(res.status, 404);
+});
+
+test("a tombstone with NO timestamp field is treated as expired too", async () => {
+  // Distinct branch from the malformed case above: `negative_at` absent
+  // entirely, which falls to the `?? 0` default. Same fail-open outcome, and
+  // worth its own case because it is the shape an older tombstone written
+  // before this field existed would have.
+  let upstreamCalls = 0;
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async () => ({
+        body: { cancel: async () => {} },
+        customMetadata: { negative: "stable" },
+        httpMetadata: {},
+      }),
+      put: async () => {},
+    },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => {
+      upstreamCalls += 1;
+      return new Response("nope", { status: 404 });
+    },
+  });
+  assert.equal(res.status, 404);
+  assert.ok(upstreamCalls > 0, "an undated tombstone must re-resolve");
 });
