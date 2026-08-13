@@ -218,3 +218,70 @@ describe("the tripwire validates what is sent, not what was built", () => {
     );
   });
 });
+
+// ── The alarm carries its diagnosis, and stays carrying it ─────────────────
+//
+// #10914 put the unrecognized keys into the message, because the message is
+// the only thing the exception pipeline serializes -- `detail` never leaves
+// the error object. #10917, a store refactor branched before that landed,
+// removed it again with ZERO conflicts.
+//
+// Nothing asserted it, so nothing noticed. Production emitted a 64-character
+// alarm naming no key for six hours, and diagnosing #10972 needed a local
+// reproduction to recover what the error already knew.
+//
+// These exist so the next stale-base merge fails instead of passing.
+describe("the drift alarm carries its diagnosis", () => {
+  const published = outputJsonSchema(Card);
+
+  function driftMessage(payload: unknown): string {
+    try {
+      validateMcpResponseTripwire("get_card", published, payload);
+    } catch (err) {
+      return (err as Error).message;
+    }
+    throw new Error("expected a drift");
+  }
+
+  test("the message names the unrecognized key", () => {
+    const message = driftMessage({
+      netuid: 0,
+      name: "root",
+      surprise: "shipped",
+    });
+    assert.match(
+      message,
+      /surprise/,
+      "the unrecognized key IS the diagnosis — an alarm without it sends " +
+        "whoever reads it to a local reproduction",
+    );
+  });
+
+  test("the message names the path of a wrong type", () => {
+    assert.match(driftMessage({ netuid: "zero", name: "root" }), /netuid/);
+  });
+
+  test("it is bounded, so one alarm cannot carry a whole payload", () => {
+    const message = driftMessage({
+      netuid: 0,
+      name: "root",
+      ...Object.fromEntries(
+        Array.from({ length: 200 }, (_, i) => [`extra_${i}`, i]),
+      ),
+    });
+    assert.ok(
+      message.length < 600,
+      `the alarm must stay bounded; got ${message.length} characters`,
+    );
+  });
+
+  test("the tool name still leads, so grouping is unchanged", () => {
+    // The fingerprint keys on tool + message; a diagnosis appended AFTER the
+    // stable prefix keeps every drift of one tool in one issue.
+    assert.ok(
+      driftMessage({ netuid: 0, name: "root", surprise: 1 }).startsWith(
+        "get_card result drifted from its published outputSchema",
+      ),
+    );
+  });
+});
