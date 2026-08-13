@@ -33,11 +33,21 @@ describe("archive policy", () => {
     assert.equal(pending.length, PENDING_CEILING);
   });
 
-  test("subnet_identity is pending, not mirrored", () => {
-    // The sharpest omission: the archive holds subnet_identity_history but not
-    // the current-state table it is the history OF.
-    assert.equal(POLICY.subnet_identity, "pending");
+  test("subnet_identity is mirrored alongside its own history", () => {
+    // This asserted `pending` when the archive held subnet_identity_history and
+    // NOT the current-state table it is the history of -- so the lakehouse
+    // could say what a subnet's identity used to be and not what it is. Closed
+    // 2026-08-13; kept as a pair so the two can never drift apart again.
+    assert.equal(POLICY.subnet_identity, "mirrored");
     assert.equal(POLICY.subnet_identity_history, "mirrored");
+  });
+
+  test("the one remaining debt is subnet_burn_history, and it is a decision", () => {
+    // Not waiting on effort: 95,060 rows across 852 distinct observed_at
+    // values means a `> since` watermark skips nearly everything, and
+    // `versioned` would re-append all 95,060 on every change.
+    assert.equal(POLICY.subnet_burn_history, "pending");
+    assert.equal(PENDING_CEILING, 1);
   });
 
   test("credentials and personal data are never archived", () => {
