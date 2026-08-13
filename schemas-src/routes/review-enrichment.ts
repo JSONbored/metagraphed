@@ -12,6 +12,7 @@
 // (+Target/TargetGroup), and ReviewAdapterCandidatesArtifact(+Candidate)
 // components they replace.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { CurationLevelSchema } from "../shared.ts";
@@ -121,26 +122,8 @@ export const ReviewEnrichmentTargetQueueContextSchema = z
   })
   .strict();
 
-export const QUEUE_SORT_FIELDS = [
-  "adapter_score",
-  "candidate_count",
-  "completeness_score",
-  "curation_level",
-  "endpoint_count",
-  "evidence_action",
-  "identity_level",
-  "identity_surface_count",
-  "lane",
-  "name",
-  "netuid",
-  "operational_interface_count",
-  "priority_score",
-  "profile_level",
-  "review_state",
-  "stale_candidate_count",
-  "surface_count",
-  "verified_candidate_count",
-] as const;
+export const QUEUE_SORT_FIELDS =
+  API_QUERY_COLLECTIONS["enrichment-queue"].sort_fields;
 
 export const ReviewEnrichmentQueueEntrySchema = z
   .object({
@@ -203,13 +186,8 @@ export type ReviewEnrichmentQueueArtifact = z.infer<
   typeof ReviewEnrichmentQueueArtifactSchema
 >;
 
-export const EVIDENCE_SORT_FIELDS = [
-  "evidence_action",
-  "lane",
-  "name",
-  "netuid",
-  "priority_score",
-] as const;
+export const EVIDENCE_SORT_FIELDS =
+  API_QUERY_COLLECTIONS["enrichment-evidence"].sort_fields;
 
 export const ReviewEnrichmentEvidenceEntrySchema = z
   .object({
@@ -248,21 +226,8 @@ export type ReviewEnrichmentEvidenceArtifact = z.infer<
   typeof ReviewEnrichmentEvidenceArtifactSchema
 >;
 
-export const TARGET_SORT_FIELDS = [
-  "auto_review_candidate",
-  "evidence_action",
-  "identity_level",
-  "kind",
-  "lane",
-  "manual_review_required",
-  "name",
-  "netuid",
-  "priority_score",
-  "profile_level",
-  "submission_route",
-  "target_action",
-  "target_type",
-] as const;
+export const TARGET_SORT_FIELDS =
+  API_QUERY_COLLECTIONS["enrichment-targets"].sort_fields;
 
 export const ReviewEnrichmentTargetSchema = z
   .object({
@@ -332,17 +297,8 @@ export type ReviewEnrichmentTargetsArtifact = z.infer<
 >;
 
 export const RECOMMENDED_ADAPTER_KINDS = QUERY_ENUMS.recommendedAdapterKind;
-export const ADAPTER_CANDIDATES_SORT_FIELDS = [
-  "candidate_api_count",
-  "candidate_api_kinds",
-  "curation_level",
-  "name",
-  "netuid",
-  "operational_kinds",
-  "operational_surface_count",
-  "priority_score",
-  "recommended_adapter_kind",
-] as const;
+export const ADAPTER_CANDIDATES_SORT_FIELDS =
+  API_QUERY_COLLECTIONS["adapter-candidates"].sort_fields;
 
 export const ReviewAdapterCandidateSchema = z
   .object({

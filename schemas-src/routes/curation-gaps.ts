@@ -8,6 +8,7 @@
 // hand-edited CurationArtifact/CurationEntry and GapsArtifact/GapsEntry
 // components they replace.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { COVERAGE_LEVEL_VALUES, CurationLevelSchema } from "../shared.ts";
 import { CurationMetadataSchema, GapsSchema } from "./subnet-detail.ts";
@@ -16,12 +17,7 @@ import { ENDPOINT_INCIDENT_SEVERITY_VALUES } from "./endpoints-pools.ts";
 const COVERAGE_LEVELS = COVERAGE_LEVEL_VALUES;
 export const CoverageLevelSchema = z.enum(COVERAGE_LEVELS);
 
-export const CURATION_SORT_FIELDS = [
-  "coverage_level",
-  "curation_level",
-  "name",
-  "netuid",
-] as const;
+export const CURATION_SORT_FIELDS = API_QUERY_COLLECTIONS.curation.sort_fields;
 
 export const CurationEntrySchema = z
   .object({
@@ -49,13 +45,7 @@ export const CurationArtifactSchema = ArtifactBaseSchema.extend({
   );
 export type CurationArtifact = z.infer<typeof CurationArtifactSchema>;
 
-export const GAPS_SORT_FIELDS = [
-  "coverage_level",
-  "curation_level",
-  "gap_count",
-  "name",
-  "netuid",
-] as const;
+export const GAPS_SORT_FIELDS = API_QUERY_COLLECTIONS.gaps.sort_fields;
 
 export const GapsEntrySchema = z
   .object({

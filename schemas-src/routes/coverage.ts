@@ -115,20 +115,9 @@ export const COVERAGE_DEPTH_SEVERITIES = [
  * name those two and not this one. API_QUERY_COLLECTIONS["coverage-depth"]
  * declares the same four as a filter.
  */
-export const BLOCKER_LEVELS = [
-  "none",
-  "hard-blocked",
-  "needs-review",
-  "missing-data",
-] as const;
+export const BLOCKER_LEVELS = QUERY_ENUMS.agentBlockerLevel;
 
-export const AGENT_READINESS_STATUSES = [
-  "callable",
-  "base-layer",
-  "candidate",
-  "needs-evidence",
-  "blocked",
-] as const;
+export const AGENT_READINESS_STATUSES = QUERY_ENUMS.agentReadinessStatus;
 
 export const AgentReadinessBlockerSchema = z
   .object({

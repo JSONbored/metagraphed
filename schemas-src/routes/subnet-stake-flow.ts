@@ -3,13 +3,12 @@
 // src/stake-flow.ts's buildStakeFlow(), cross-checked against the
 // hand-edited SubnetStakeFlowArtifact component it replaces.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 
-/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
-export const SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES = [
-  "all",
-  "in",
-  "out",
-] as const;
+/** Derived from the vocabulary owner (#10987): src/stake-flow.ts enforced the
+ * same three values from its own literal, and nothing compared the two. */
+export const SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES =
+  QUERY_ENUMS.stakeFlowDirection;
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_STAKE_FLOW_WINDOW_VALUES = ["7d", "30d", "90d"] as const;

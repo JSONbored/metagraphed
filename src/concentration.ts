@@ -7,6 +7,7 @@
 
 import { DAY_MS } from "../workers/config.ts";
 import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 
 // The neurons-tier columns the concentration handler reads — the store read contract
 // for buildConcentration (mirrors BLOCK_READ_COLUMNS / EXTRINSIC_READ_COLUMNS). Kept
@@ -406,13 +407,9 @@ export async function loadChainConcentration(
 // is what a sort and a `fields` projection can act on.
 
 /** The distributions a caller can rank subnets by. */
-export const CONCENTRATION_LENSES = [
-  "emission",
-  "stake",
-  "entity_emission",
-  "entity_stake",
-  "validator_stake",
-] as const;
+// The vocabulary, derived from its owner so the route schema, the route
+// table and this enforcement cannot disagree (#10987).
+export const CONCENTRATION_LENSES = QUERY_ENUMS.concentrationLens;
 export type ConcentrationLens = (typeof CONCENTRATION_LENSES)[number];
 export const DEFAULT_CONCENTRATION_LENS: ConcentrationLens = "emission";
 
@@ -424,14 +421,7 @@ export const DEFAULT_CONCENTRATION_LENS: ConcentrationLens = "emission";
  * of the distribution -- and it is an integer count rather than a ratio, so
  * "9 vs 1" is legible where "gini 0.658 vs 0.968" is not.
  */
-export const CONCENTRATION_RANKING_SORTS = [
-  "nakamoto_coefficient",
-  "gini",
-  "holders",
-  "top_1pct_share",
-  "total",
-  "netuid",
-] as const;
+export const CONCENTRATION_RANKING_SORTS = QUERY_ENUMS.concentrationRankingSort;
 export type ConcentrationRankingSort =
   (typeof CONCENTRATION_RANKING_SORTS)[number];
 export const DEFAULT_CONCENTRATION_RANKING_SORT: ConcentrationRankingSort =

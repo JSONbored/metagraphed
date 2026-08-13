@@ -40,6 +40,7 @@ import {
   EMISSION_CHANGES_LIMIT_DEFAULT,
   EMISSION_CHANGES_LIMIT_MAX,
 } from "./route-limits.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 
 export { EMISSION_CHANGES_LIMIT_DEFAULT, EMISSION_CHANGES_LIMIT_MAX };
 
@@ -50,7 +51,7 @@ export interface EmissionChangesDb {
 }
 
 /** The three change kinds, which are also the `?kind=` filter's vocabulary. */
-export const EMISSION_CHANGE_KINDS = ["param", "subnet", "flow"] as const;
+export const EMISSION_CHANGE_KINDS = QUERY_ENUMS.emissionChangeKind;
 
 /** How a parameter value came to be, per 0005's CHECK constraint. */
 export const EMISSION_PARAM_SOURCES = [

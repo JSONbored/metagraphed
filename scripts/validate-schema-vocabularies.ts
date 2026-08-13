@@ -26,30 +26,80 @@ const SCHEMA_DIRS = [
   "schemas-src/routes",
   "schemas-src/mcp-tools",
   "schemas-src/artifacts",
+  // The SERVING tree (#10987). This gate watched only the schema tree, while
+  // the copies people actually make live in src/ and workers/ -- contracts.ts
+  // restating a query enum it could import, an MCP composer restating a route
+  // vocabulary in its own literal. A vocabulary owned once in schemas-src and
+  // restated four times in src/ was green here for as long as the gate has
+  // existed, which is how the consolidation epics closed while the drift kept
+  // appearing: the duplication moved to the one tree this never read.
+  "src",
+  "src/graphql",
+  "workers",
+  "workers/request-handlers",
 ];
 
-/** Vocabularies still restated in more than one file. Each is a value set whose
- * owner has not been extracted yet -- delete the entry when it is, never add
- * one to silence a NEW copy. Keyed by the sorted value set, so a copy that
- * merely reorders the list is the same entry. */
-const COINCIDENT_BY_DOMAIN: string[] = [
+/** Vocabularies allowed to coincide, pinned to the EXACT files that do.
+ *
+ * Keyed by the sorted value set, valued by the file list -- because a bare
+ * value-set key hides what it names (#10987): with "all|in|out" allowlisted as
+ * a string, a NEW copy of that list in any file was invisible, which meant the
+ * one mechanism this gate has could be defeated by duplicating a vocabulary
+ * that happened to coincide somewhere else once. A new file joining an entry
+ * now fails the gate and forces the decision it should force; a file leaving
+ * one makes the entry stale, and stale entries fail too. The list may only
+ * shrink. */
+const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
   // WINDOW SETS. Each route chooses the windows it serves, and schemas-src
   // declares six DIFFERENT sets -- 30d|7d, 30d|7d|90d, 1y|30d|7d|90d|all,
   // 24h|30d|7d|90d, 1h|24h|30d|7d, 1d|1h. Six sets is the proof each route
   // chose: coupling them would let one domain's change silently alter every
-  // other. Each route now owns its own tuple and its MCP tool imports THAT --
-  // what is left below is two routes happening to offer the same three.
-  "1y|30d|7d|90d|all",
-  "30d|7d|90d",
+  // other. Each route owns its own tuple and its MCP tool imports THAT --
+  // what is left is routes happening to offer the same windows.
+  "1y|30d|7d|90d|all": [
+    "schemas-src/routes/economics-trends.ts",
+    "schemas-src/routes/subnet-history.ts",
+    "schemas-src/routes/subnet-turnover.ts",
+  ],
+  "30d|7d|90d": [
+    "schemas-src/routes/account-activity-registrations.ts",
+    "schemas-src/routes/account-activity.ts",
+    "schemas-src/routes/chain-turnover.ts",
+    "schemas-src/routes/subnet-concentration.ts",
+    "schemas-src/routes/subnet-event-summary.ts",
+    "schemas-src/routes/subnet-movers.ts",
+    "schemas-src/routes/subnet-performance.ts",
+    "schemas-src/routes/subnet-stake-flow.ts",
+    "schemas-src/routes/subnet-yield.ts",
+    "schemas-src/routes/validator-nominators.ts",
+  ],
   // Per-domain lifecycle/verdict sets that coincide in value only.
-  "active|deprecated|parked|pending",
-  "all|in|out",
-  "base-layer|blocked|callable|candidate|needs-evidence",
-  "bearish|bullish|neutral",
-  "dual|git|r2",
-  "hard-blocked|missing-data|needs-review|none",
-  "missing-probe|not-monitored|probe-derived",
-];
+  "active|deprecated|parked|pending": [
+    "schemas-src/routes/curation-gaps.ts",
+    "schemas-src/routes/subnet-detail.ts",
+    "schemas-src/routes/subnets.ts",
+  ],
+  "bearish|bullish|neutral": [
+    "schemas-src/routes/chain-alpha-volume.ts",
+    "schemas-src/routes/subnet-alpha-volume.ts",
+  ],
+  "dual|git|r2": [
+    "schemas-src/artifacts/r2-manifest.ts",
+    "schemas-src/routes/meta-contracts.ts",
+  ],
+  "missing-probe|not-monitored|probe-derived": [
+    "schemas-src/routes/endpoints-pools.ts",
+    "schemas-src/routes/providers-rpc.ts",
+  ],
+  // EVM precompile ABI argument names (src/evm-precompiles.ts) vs the Neon
+  // nominator_positions primary-key column list -- the same three words
+  // naming two unrelated things. A shared owner would couple an on-chain ABI
+  // to a database index.
+  "coldkey|hotkey|netuid": [
+    "src/evm-precompiles.ts",
+    "src/nominator-positions-neon-write.ts",
+  ],
+};
 
 const errors: string[] = [];
 
@@ -120,13 +170,21 @@ for (const site of sites) {
   byVocabulary.get(key)!.add(site.file);
 }
 
-const allowed = new Set(COINCIDENT_BY_DOMAIN);
 const duplicated = [...byVocabulary.entries()].filter(
   ([, files]) => files.size > 1,
 );
 
+// An entry excuses exactly the files it names: a NEW file joining an
+// allowlisted coincidence is a violation, reported with the files that are
+// not covered rather than silently absorbed.
 const unlisted = duplicated
-  .filter(([key]) => !allowed.has(key))
+  .map(([key, files]) => {
+    const pinned = COINCIDENT_BY_DOMAIN[key];
+    if (!pinned) return [key, files] as const;
+    const strays = new Set([...files].filter((f) => !pinned.includes(f)));
+    return [key, strays] as const;
+  })
+  .filter(([, files]) => files.size > 0)
   .sort((a, b) => b[1].size - a[1].size);
 if (unlisted.length > 0) {
   errors.push(
@@ -146,13 +204,25 @@ if (unlisted.length > 0) {
   );
 }
 
-const stale = [...allowed]
-  .filter((key) => !byVocabulary.get(key) || byVocabulary.get(key)!.size <= 1)
+// Stale in either dimension: the vocabulary no longer coincides at all, or a
+// pinned FILE no longer declares it. Both mean the entry over-excuses.
+const stale = Object.entries(COINCIDENT_BY_DOMAIN)
+  .flatMap(([key, pinned]) => {
+    const files = byVocabulary.get(key);
+    if (!files || files.size <= 1)
+      return [`    [${key.split("|").join(", ")}] — no longer duplicated`];
+    return pinned
+      .filter((f) => !files.has(f))
+      .map(
+        (f) =>
+          `    [${key.split("|").join(", ")}] — ${f} no longer declares it`,
+      );
+  })
   .sort();
 if (stale.length > 0) {
   errors.push(
-    `${stale.length} allowlist entr(y/ies) no longer name a duplicated vocabulary — delete them (the coincidence resolved itself):\n` +
-      stale.map((key) => `    [${key.split("|").join(", ")}]`).join("\n"),
+    `${stale.length} allowlist entr(y/ies) over-excuse — shrink them (the coincidence resolved itself):\n` +
+      stale.join("\n"),
   );
 }
 
@@ -359,7 +429,7 @@ if (errors.length > 0) {
 
 console.log(
   `Schema-vocabulary validation passed: ${byVocabulary.size} distinct vocabularies, ` +
-    `${duplicated.length} still restated in more than one file (all per-domain coincidences, not debt — see COINCIDENT_BY_DOMAIN); ` +
+    `${duplicated.length} still restated in more than one file (all per-domain coincidences pinned to their exact files — see COINCIDENT_BY_DOMAIN); ` +
     `${Object.keys(MIRRORED_VOCABULARIES).length} cross-boundary mirrors match the collection that owns them; ` +
     `${JSON_SCHEMA_MIRRORS.length} JSON Schema enum(s) match their schemas-src copy.`,
 );

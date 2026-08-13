@@ -19,17 +19,15 @@
 // declared -- the served response has always included it; the hand-edited
 // schema was stale. Modeled here as present.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { HealthStatusSchema } from "../shared.ts";
 import { AuthoritySchema } from "./subnet-detail.ts";
 import { ProviderKindSchema } from "./providers-rpc.ts";
 
-/** This route's own vocabulary, owned here so its MCP tools import rather than restate it (#9799). */
-export const SEARCH_DOCUMENT_TYPE_VALUES = [
-  "subnet",
-  "surface",
-  "provider",
-] as const;
+/** Derived from the vocabulary owner (#10987): route-limits.ts's
+ * SEMANTIC_TYPES and an inline enum below each restated these three. */
+export const SEARCH_DOCUMENT_TYPE_VALUES = QUERY_ENUMS.searchDocumentType;
 
 const CountMapSchema = z.record(z.string(), z.int().min(0));
 
@@ -198,7 +196,7 @@ export type SearchArtifact = z.infer<typeof SearchArtifactSchema>;
 const SearchIndexDocumentSchema = z
   .object({
     id: z.string(),
-    type: z.enum(["subnet", "surface", "provider"]),
+    type: z.enum(SEARCH_DOCUMENT_TYPE_VALUES),
     netuid: z.int().min(0).optional(),
     slug: z.string().optional(),
     title: z.string(),

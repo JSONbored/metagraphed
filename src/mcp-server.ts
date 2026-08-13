@@ -7673,7 +7673,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const direction =
         optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
-      if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
+      if (!(STAKE_FLOW_DIRECTIONS as readonly string[]).includes(direction)) {
         throw toolError(
           "invalid_params",
           `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
@@ -11010,7 +11010,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // since account_events is retired (#4772).
       const direction =
         optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
-      if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
+      if (!(STAKE_FLOW_DIRECTIONS as readonly string[]).includes(direction)) {
         throw toolError(
           "invalid_params",
           `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,

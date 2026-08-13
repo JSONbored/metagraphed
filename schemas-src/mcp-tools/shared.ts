@@ -21,95 +21,44 @@ import {
 } from "../query-params.ts";
 import { MAX_LIMIT } from "../../workers/request-params.ts";
 import { MCP_LIST_LIMIT_DEFAULT } from "../../src/route-limits.ts";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 
 // The query-parameter vocabulary now lives in schemas-src/query-params.ts so the
 // REST route schemas can use it too (#9986). Re-exported here because ~100 MCP
 // tool modules already import these names from this file.
 export * from "../query-params.ts";
 
-/** Shared across MCP tools that have no single route owner (#9799). */
-export const EVIDENCE_ENTRY_SORT_VALUES = [
-  "claim",
-  "source_url",
-  "subject",
-  "verified_at",
-] as const;
+// --- Sort vocabularies, derived from the route table -----------------------
+//
+// Each of these was a hand-kept copy of one query collection's `sort_fields`,
+// justified by a comment claiming schemas-src cannot import src/ -- which
+// profiles.ts had already disproved by importing API_QUERY_COLLECTIONS
+// directly. Deriving makes the invariant structural: a sort field added to a
+// collection is offered by its MCP tool the same moment, and one removed
+// cannot linger here as a value the route now rejects (#10987).
+export const EVIDENCE_ENTRY_SORT_VALUES =
+  API_QUERY_COLLECTIONS.claims.sort_fields;
 
-/** Shared across MCP tools that have no single route owner (#9799). */
-export const CANDIDATE_SORT_VALUES = [
-  "confidence",
-  "id",
-  "kind",
-  "name",
-  "netuid",
-  "provider",
-  "state",
-] as const;
+export const CANDIDATE_SORT_VALUES =
+  API_QUERY_COLLECTIONS.candidates.sort_fields;
 
-/** Shared across MCP tools that have no single route owner (#9799). */
-export const SURFACE_SORT_VALUES = [
-  "id",
-  "kind",
-  "name",
-  "netuid",
-  "provider",
-] as const;
+export const SURFACE_SORT_VALUES =
+  API_QUERY_COLLECTIONS["curated-surfaces"].sort_fields;
 
-/** Shared across MCP tools that have no single route owner (#9799). */
-export const HEALTH_SURFACE_SORT_VALUES = [
-  "classification",
-  "kind",
-  "last_checked",
-  "last_ok",
-  "latency_ms",
-  "netuid",
-  "provider",
-  "status",
-  "status_code",
-  "surface_id",
-  "verified_at",
-] as const;
+export const HEALTH_SURFACE_SORT_VALUES =
+  API_QUERY_COLLECTIONS["health-surfaces"].sort_fields;
 
 /** Shared across MCP tools that have no single route owner (#9799). */
 export const HEALTH_CLASSIFICATION_VALUES = QUERY_ENUMS.healthClassification;
 
 /** Shared across MCP tools that have no single route owner (#9799). */
-/**
- * Mirrors API_QUERY_COLLECTIONS["coverage-depth"].sort_fields (#10011).
- *
- * A copy because schemas-src imports from neither src/ nor workers/;
- * validate:schema-vocabularies asserts it still matches (#10005).
- */
-export const COVERAGE_DEPTH_SORT_VALUES = [
-  "agent_status",
-  "blocker_level",
-  "name",
-  "netuid",
-  "priority_score",
-  "score",
-  "tier",
-] as const;
+export const COVERAGE_DEPTH_SORT_VALUES =
+  API_QUERY_COLLECTIONS["coverage-depth"].sort_fields;
 
-export const ENDPOINT_SORT_VALUES = [
-  "kind",
-  "last_checked",
-  "latency_ms",
-  "layer",
-  "netuid",
-  "pool_eligible",
-  "provider",
-  "publication_state",
-  "score",
-  "status",
-] as const;
+export const ENDPOINT_SORT_VALUES = API_QUERY_COLLECTIONS.endpoints.sort_fields;
 
-/** Shared across MCP tools that have no single route owner (#9799). */
-export const ENDPOINT_POOL_SORT_VALUES = [
-  "eligible_count",
-  "endpoint_count",
-  "id",
-  "kind",
-] as const;
+export const ENDPOINT_POOL_SORT_VALUES =
+  API_QUERY_COLLECTIONS["endpoint-pools"].sort_fields;
 
 // --- Bounded input primitives --------------------------------------
 //

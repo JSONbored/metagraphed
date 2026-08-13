@@ -10,6 +10,7 @@
 // (+ReviewGapPriority), SubnetGapsArtifact, and
 // ReviewProfileCompletenessArtifact(+Entry) components they replace.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { CurationLevelSchema } from "../shared.ts";
 import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
@@ -21,16 +22,8 @@ import {
   NATIVE_NAME_QUALITY_VALUES,
   PROFILE_LEVEL_VALUES,
 } from "../shared.ts";
-export const PRIORITY_SORT_FIELDS = [
-  "candidate_count",
-  "curation_level",
-  "missing_kinds",
-  "name",
-  "netuid",
-  "priority_score",
-  "surface_count",
-  "verified_candidate_count",
-] as const;
+export const PRIORITY_SORT_FIELDS =
+  API_QUERY_COLLECTIONS["review-gap-priorities"].sort_fields;
 
 export const ReviewGapPrioritySchema = z
   .object({
@@ -64,22 +57,8 @@ export const SubnetGapsArtifactSchema = ArtifactBaseSchema.extend({
 }).strict();
 export type SubnetGapsArtifact = z.infer<typeof SubnetGapsArtifactSchema>;
 
-export const PROFILE_SORT_FIELDS = [
-  "candidate_count",
-  "completeness_score",
-  "identity_level",
-  "identity_promotion_kind_count",
-  "identity_surface_count",
-  "live_identity_candidate_kind_count",
-  "missing_critical_count",
-  "name",
-  "native_identity_signal_count",
-  "native_name_quality",
-  "netuid",
-  "priority_score",
-  "profile_level",
-  "stale_identity_candidate_kind_count",
-] as const;
+export const PROFILE_SORT_FIELDS =
+  API_QUERY_COLLECTIONS["profile-completeness"].sort_fields;
 
 export const ReviewProfileCompletenessEntrySchema = z
   .object({

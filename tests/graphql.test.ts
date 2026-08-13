@@ -8002,6 +8002,20 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
     } }`;
   }
 
+  test("a direction outside the vocabulary is BAD_USER_INPUT, not a default", async () => {
+    // Same derived tuple as the subnet field and the REST route (#10987).
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", direction: "sideways")`),
+    );
+    assert.equal(status, 200);
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /direction must be one of/);
+  });
+
   test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
     const { status, body } = await gql(query(`(ss58: "${SS58}")`));
     assert.equal(status, 200);
@@ -14175,6 +14189,23 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       idle_neuron_count: 0,
       idle_stake_alpha: 0,
     });
+  });
+
+  test("subnet_stake_flow rejects a direction outside the vocabulary", async () => {
+    // The rejection reads the derived STAKE_FLOW_DIRECTIONS (#10987) -- the
+    // same tuple the REST route publishes -- so the two surfaces cannot
+    // disagree about what a direction is.
+    const { status, body } = await gql(
+      `{ subnet_stake_flow(netuid: 5, direction: "sideways") { schema_version } }`,
+    );
+    assert.equal(status, 200);
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /direction must be one of/);
+    assert.match(errors[0]?.message ?? "", /all, in, out/);
   });
 
   test("subnet_stake_flow cold store returns a schema-stable zeroed card", async () => {
