@@ -749,6 +749,17 @@ export type AlphaUsdFieldSource = {
   storage?: Maybe<Scalars['String']['output']>;
 };
 
+export type AttributionEvidence = {
+  __typename?: 'AttributionEvidence';
+  /** The extrinsic that carried the funding path or key rotation, so the link can be re-derived from chain rather than trusted. */
+  extrinsic_hash?: Maybe<Scalars['String']['output']>;
+  kind: Scalars['String']['output'];
+  /** When this was established. Evidence goes stale: a wallet relationship true last quarter may not be true today, and a citation without a date cannot be aged out. */
+  observed_at: Scalars['String']['output'];
+  /** A public page a reader can open — the subnet's own docs, repo or site. Pin a repo citation to a commit SHA; a branch moves under the claim. */
+  source_url?: Maybe<Scalars['String']['output']>;
+};
+
 export type Block = {
   __typename?: 'Block';
   author?: Maybe<Scalars['String']['output']>;
@@ -6781,11 +6792,9 @@ export type SubnetOwnerCapturePoint = {
 export type SubnetOwnerCaptureStakeholder = {
   __typename?: 'SubnetOwnerCaptureStakeholder';
   coldkey: Scalars['String']['output'];
-  /** Always empty on this surface. A verdict above `unresolved` requires an evidence object a reader can follow, and this surface establishes none — see the attribution method statement. */
-  evidence: Array<Scalars['JSON']['output']>;
+  evidence: Array<AttributionEvidence>;
   /** This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids. */
   stake_share: Scalars['Float']['output'];
-  /** From the shared attribution vocabulary. `owner` is the only verdict this surface assigns, because the chain read (SubtensorModule.SubnetOwner) IS its evidence. EVERY OTHER COLDKEY IS `unresolved` — the honest default for a relationship nobody has established, and never to be rendered as a negative finding. Nothing here computes a verdict from stake size, timing or co-registration. */
   verdict: Scalars['String']['output'];
 };
 
@@ -8055,6 +8064,7 @@ export type ResolversTypes = ResolversObject<{
   Adapter: ResolverTypeWrapper<Adapter>;
   AdapterArtifactSnapshot: ResolverTypeWrapper<AdapterArtifactSnapshot>;
   AlphaUsdFieldSource: ResolverTypeWrapper<AlphaUsdFieldSource>;
+  AttributionEvidence: ResolverTypeWrapper<AttributionEvidence>;
   Block: ResolverTypeWrapper<Block>;
   BlockChainEvents: ResolverTypeWrapper<BlockChainEvents>;
   BlockChainEventsArtifactEvents: ResolverTypeWrapper<BlockChainEventsArtifactEvents>;
@@ -8500,6 +8510,7 @@ export type ResolversParentTypes = ResolversObject<{
   Adapter: Adapter;
   AdapterArtifactSnapshot: AdapterArtifactSnapshot;
   AlphaUsdFieldSource: AlphaUsdFieldSource;
+  AttributionEvidence: AttributionEvidence;
   Block: Block;
   BlockChainEvents: BlockChainEvents;
   BlockChainEventsArtifactEvents: BlockChainEventsArtifactEvents;
@@ -9473,6 +9484,13 @@ export type AdapterArtifactSnapshotResolvers<ContextType = GqlContext, ParentTyp
 export type AlphaUsdFieldSourceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AlphaUsdFieldSource'] = ResolversParentTypes['AlphaUsdFieldSource']> = ResolversObject<{
   kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   storage?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type AttributionEvidenceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AttributionEvidence'] = ResolversParentTypes['AttributionEvidence']> = ResolversObject<{
+  extrinsic_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type BlockResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Block'] = ResolversParentTypes['Block']> = ResolversObject<{
@@ -12957,7 +12975,7 @@ export type SubnetOwnerCapturePointResolvers<ContextType = GqlContext, ParentTyp
 
 export type SubnetOwnerCaptureStakeholderResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnerCaptureStakeholder'] = ResolversParentTypes['SubnetOwnerCaptureStakeholder']> = ResolversObject<{
   coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  evidence?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  evidence?: Resolver<Array<ResolversTypes['AttributionEvidence']>, ParentType, ContextType>;
   stake_share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   verdict?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
@@ -13926,6 +13944,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   Adapter?: AdapterResolvers<ContextType>;
   AdapterArtifactSnapshot?: AdapterArtifactSnapshotResolvers<ContextType>;
   AlphaUsdFieldSource?: AlphaUsdFieldSourceResolvers<ContextType>;
+  AttributionEvidence?: AttributionEvidenceResolvers<ContextType>;
   Block?: BlockResolvers<ContextType>;
   BlockChainEvents?: BlockChainEventsResolvers<ContextType>;
   BlockChainEventsArtifactEvents?: BlockChainEventsArtifactEventsResolvers<ContextType>;

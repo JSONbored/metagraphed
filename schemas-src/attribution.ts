@@ -116,17 +116,52 @@ export const AttributionEvidenceSchema = z
  * Written as a schema constraint rather than a convention so a surface that
  * forgets cannot serialise at all.
  */
-export const AttributedColdkeySchema = z
-  .object({
-    coldkey: z.string(),
-    verdict: AttributionVerdictSchema.default(DEFAULT_ATTRIBUTION_VERDICT),
-    evidence: z.array(AttributionEvidenceSchema).default([]),
-  })
-  .strict()
-  .refine(
-    (row) =>
-      row.verdict === "unresolved" ||
-      row.verdict === "owner" ||
-      row.evidence.length > 0,
-    "a verdict above `unresolved` needs at least one evidence entry — see the attribution method statement",
+export const AttributedColdkeyFields = {
+  coldkey: z.string(),
+  verdict: AttributionVerdictSchema.default(DEFAULT_ATTRIBUTION_VERDICT),
+  evidence: z.array(AttributionEvidenceSchema).default([]),
+};
+
+/** The rule itself, as a predicate, so the factory below and the plain schema
+ * apply ONE copy of it. `owner` is exempt because the chain read is the
+ * evidence; `unresolved` is the default and asserts nothing. */
+// Takes `unknown` and narrows, rather than a structural type: the factory
+// below applies it to an object whose shape is generic in the caller's extra
+// fields, and Zod's inferred output there is not assignable to a hand-written
+// interface.
+export function verdictIsSupported(row: unknown): boolean {
+  const { verdict, evidence } = (row ?? {}) as {
+    verdict?: unknown;
+    evidence?: unknown;
+  };
+  return (
+    verdict === "unresolved" ||
+    verdict === "owner" ||
+    (Array.isArray(evidence) && evidence.length > 0)
   );
+}
+
+export const ATTRIBUTION_EVIDENCE_REQUIRED_MESSAGE =
+  "a verdict above `unresolved` needs at least one evidence entry — see the attribution method statement";
+
+export const AttributedColdkeySchema = z
+  .object(AttributedColdkeyFields)
+  .strict()
+  .refine(verdictIsSupported, ATTRIBUTION_EVIDENCE_REQUIRED_MESSAGE);
+
+/**
+ * The same coldkey+verdict+evidence shape, plus whatever a surface measures
+ * about it, WITH THE REFINEMENT REAPPLIED.
+ *
+ * A surface that needs an extra field (a stake share, a flow total) must reach
+ * for this rather than re-declaring the three fields beside its own — a
+ * re-declared `evidence: z.array(z.unknown())` type-checks, serialises, and
+ * silently drops the "a claim a reader cannot check is not publishable" rule
+ * that is the entire point of this file.
+ */
+export function attributedColdkeySchema<T extends z.ZodRawShape>(extra: T) {
+  return z
+    .object({ ...AttributedColdkeyFields, ...extra })
+    .strict()
+    .refine(verdictIsSupported, ATTRIBUTION_EVIDENCE_REQUIRED_MESSAGE);
+}

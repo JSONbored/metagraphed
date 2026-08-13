@@ -10746,7 +10746,10 @@
               {
                 "coldkey": "example",
                 "evidence": [
-                  null
+                  {
+                    "kind": "funding-path",
+                    "observed_at": "2026-06-01T00:00:00.000Z"
+                  }
                 ],
                 "stake_share": 0.5,
                 "verdict": "unresolved"
@@ -51083,8 +51086,53 @@
                   "type": "string"
                 },
                 "evidence": {
-                  "description": "Always empty on this surface. A verdict above `unresolved` requires an evidence object a reader can follow, and this surface establishes none — see the attribution method statement.",
-                  "items": {},
+                  "default": [],
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "extrinsic_hash": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The extrinsic that carried the funding path or key rotation, so the link can be re-derived from chain rather than trusted."
+                      },
+                      "kind": {
+                        "enum": [
+                          "funding-path",
+                          "chain-identity",
+                          "self-declared",
+                          "key-rotation",
+                          "known-entity"
+                        ],
+                        "type": "string"
+                      },
+                      "observed_at": {
+                        "description": "When this was established. Evidence goes stale: a wallet relationship true last quarter may not be true today, and a citation without a date cannot be aged out.",
+                        "type": "string"
+                      },
+                      "source_url": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "A public page a reader can open — the subnet's own docs, repo or site. Pin a repo citation to a commit SHA; a branch moves under the claim."
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "observed_at"
+                    ],
+                    "type": "object"
+                  },
                   "type": "array"
                 },
                 "stake_share": {
@@ -51092,7 +51140,7 @@
                   "type": "number"
                 },
                 "verdict": {
-                  "description": "From the shared attribution vocabulary. `owner` is the only verdict this surface assigns, because the chain read (SubtensorModule.SubnetOwner) IS its evidence. EVERY OTHER COLDKEY IS `unresolved` — the honest default for a relationship nobody has established, and never to be rendered as a negative finding. Nothing here computes a verdict from stake size, timing or co-registration.",
+                  "default": "unresolved",
                   "enum": [
                     "unresolved",
                     "third-party",
@@ -51104,9 +51152,9 @@
               },
               "required": [
                 "coldkey",
-                "stake_share",
                 "verdict",
-                "evidence"
+                "evidence",
+                "stake_share"
               ],
               "type": "object"
             },

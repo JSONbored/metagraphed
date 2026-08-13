@@ -23,6 +23,7 @@ import { round9 } from "../src/lib/rao.ts";
 // precision the payload deliberately does not carry.
 const CUT = round9(OWNER_CUT);
 import { ATTRIBUTION_VERDICT_VALUES } from "../schemas-src/attribution.ts";
+import { SubnetOwnerCaptureArtifactSchema } from "../schemas-src/routes/owner-capture.ts";
 
 const OWNER = "5Owner";
 const OUTSIDER = "5Outsider";
@@ -705,6 +706,127 @@ describe("rows the store can legally hold", () => {
     assert.deepEqual(
       uids.map((u) => u.uid),
       [null, 1, 5],
+    );
+  });
+});
+
+describe("the contract", () => {
+  // THE SCHEMA IS NOT SELF-ENFORCING. The builder returns
+  // Record<string, unknown>, so nothing compares the payload to the served
+  // shape unless a test does -- and every nested object here is `.strict()`,
+  // which means a field the builder emits and the schema does not declare
+  // fails right here rather than in production.
+  test("a populated payload validates against the served schema", () => {
+    const out = buildSubnetOwnerCapture(
+      [
+        row({
+          snapshot_date: "2026-08-12",
+          uid: 0,
+          coldkey: OWNER,
+          hotkey: "5HotA",
+          validator_permit: true,
+          emission_tao: 30,
+          take: 0.18,
+        }),
+        row({ snapshot_date: "2026-08-12", uid: 1, emission_tao: 70 }),
+        row({ snapshot_date: "2026-08-11", uid: 0, coldkey: OWNER }),
+      ],
+      74,
+      {
+        window: "30d",
+        ownerColdkey: OWNER,
+        positions: [
+          { coldkey: OWNER, hotkey: "5HotA", share_fraction: 0.0023 },
+          { coldkey: OUTSIDER, hotkey: "5HotA", share_fraction: 0.9977 },
+        ],
+      },
+    );
+    const parsed = SubnetOwnerCaptureArtifactSchema.safeParse(out);
+    assert.equal(
+      parsed.success,
+      true,
+      JSON.stringify(parsed.error?.issues?.slice(0, 3)),
+    );
+  });
+
+  test("THE SHARED EVIDENCE RULE REACHES THIS SURFACE'S SCHEMA", () => {
+    // The reason the stakeholder shape EXTENDS attributedColdkeySchema instead
+    // of re-declaring coldkey/verdict/evidence beside `stake_share`: a local
+    // `evidence: z.array(z.unknown())` type-checks, serialises, and silently
+    // drops the rule that a verdict above `unresolved` needs something a
+    // reader can follow. Asserted through the route schema, not the shared
+    // one, so a future re-declaration fails here.
+    const withBadVerdict = {
+      schema_version: 1,
+      netuid: 74,
+      window: "30d",
+      point_count: 0,
+      points: [],
+      attribution: [
+        {
+          coldkey: "5X",
+          stake_share: 0.5,
+          verdict: "affiliated",
+          evidence: [],
+        },
+      ],
+    };
+    const parsed = SubnetOwnerCaptureArtifactSchema.safeParse(withBadVerdict);
+    assert.equal(
+      parsed.success,
+      false,
+      "`affiliated` with no evidence must not serialise",
+    );
+    // ...and the same row WITH evidence does.
+    const withEvidence = {
+      ...withBadVerdict,
+      attribution: [
+        {
+          coldkey: "5X",
+          stake_share: 0.5,
+          verdict: "affiliated",
+          evidence: [
+            {
+              kind: "funding-path",
+              extrinsic_hash: "0xabc",
+              observed_at: "2026-08-12T00:00:00Z",
+            },
+          ],
+        },
+      ],
+    };
+    assert.equal(
+      SubnetOwnerCaptureArtifactSchema.safeParse(withEvidence).success,
+      true,
+    );
+  });
+
+  test("the empty card validates too", () => {
+    // The cold card takes different branches and is the one most often served,
+    // so it needs its own pass rather than riding on the populated one.
+    const parsed = SubnetOwnerCaptureArtifactSchema.safeParse(
+      buildSubnetOwnerCapture([], 74, { window: "7d" }),
+    );
+    assert.equal(
+      parsed.success,
+      true,
+      JSON.stringify(parsed.error?.issues?.slice(0, 3)),
+    );
+  });
+
+  test("the unknown-owner card validates, nulls and all", () => {
+    // The third shape: rows exist, ownership does not. Every owner field is
+    // null here, and a schema that forgot `.nullable()` on one would fail.
+    const parsed = SubnetOwnerCaptureArtifactSchema.safeParse(
+      buildSubnetOwnerCapture([row({ uid: 0, emission_tao: 5 })], 74, {
+        window: "30d",
+        ownerColdkey: null,
+      }),
+    );
+    assert.equal(
+      parsed.success,
+      true,
+      JSON.stringify(parsed.error?.issues?.slice(0, 3)),
     );
   });
 });

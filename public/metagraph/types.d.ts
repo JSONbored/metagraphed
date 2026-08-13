@@ -11606,12 +11606,21 @@ export interface components {
             /** @description Every coldkey staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked. */
             attribution?: {
                 coldkey: string;
-                /** @description Always empty on this surface. A verdict above `unresolved` requires an evidence object a reader can follow, and this surface establishes none — see the attribution method statement. */
-                evidence: unknown[];
+                /** @default [] */
+                evidence: {
+                    /** @description The extrinsic that carried the funding path or key rotation, so the link can be re-derived from chain rather than trusted. */
+                    extrinsic_hash?: string | null;
+                    /** @enum {string} */
+                    kind: "funding-path" | "chain-identity" | "self-declared" | "key-rotation" | "known-entity";
+                    /** @description When this was established. Evidence goes stale: a wallet relationship true last quarter may not be true today, and a citation without a date cannot be aged out. */
+                    observed_at: string;
+                    /** @description A public page a reader can open — the subnet's own docs, repo or site. Pin a repo citation to a commit SHA; a branch moves under the claim. */
+                    source_url?: string | null;
+                }[];
                 /** @description This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids. */
                 stake_share: number;
                 /**
-                 * @description From the shared attribution vocabulary. `owner` is the only verdict this surface assigns, because the chain read (SubtensorModule.SubnetOwner) IS its evidence. EVERY OTHER COLDKEY IS `unresolved` — the honest default for a relationship nobody has established, and never to be rendered as a negative finding. Nothing here computes a verdict from stake size, timing or co-registration.
+                 * @default unresolved
                  * @enum {string}
                  */
                 verdict: "unresolved" | "third-party" | "affiliated" | "owner";
@@ -44760,7 +44769,10 @@ export interface operations {
                      *           {
                      *             "coldkey": "example",
                      *             "evidence": [
-                     *               null
+                     *               {
+                     *                 "kind": "funding-path",
+                     *                 "observed_at": "2026-06-01T00:00:00.000Z"
+                     *               }
                      *             ],
                      *             "stake_share": 0.5,
                      *             "verdict": "unresolved"

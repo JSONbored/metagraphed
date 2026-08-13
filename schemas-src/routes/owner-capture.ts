@@ -22,7 +22,7 @@
 // than restated, so this surface cannot drift into its own set of words for
 // what it is claiming.
 import { z } from "zod";
-import { AttributionVerdictSchema } from "../attribution.ts";
+import { attributedColdkeySchema } from "../attribution.ts";
 import { FieldSourcesSchema, subnetHistoryArtifactSchema } from "../shared.ts";
 
 const OwnerCapturePointSchema = z
@@ -96,23 +96,17 @@ const OwnerHeldUidSchema = z
   })
   .strict();
 
-const AttributedStakeholderSchema = z
-  .object({
-    coldkey: z.string(),
-    stake_share: z.number().meta({
-      description:
-        "This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids.",
-    }),
-    verdict: AttributionVerdictSchema.meta({
-      description:
-        "From the shared attribution vocabulary. `owner` is the only verdict this surface assigns, because the chain read (SubtensorModule.SubnetOwner) IS its evidence. EVERY OTHER COLDKEY IS `unresolved` — the honest default for a relationship nobody has established, and never to be rendered as a negative finding. Nothing here computes a verdict from stake size, timing or co-registration.",
-    }),
-    evidence: z.array(z.unknown()).meta({
-      description:
-        "Always empty on this surface. A verdict above `unresolved` requires an evidence object a reader can follow, and this surface establishes none — see the attribution method statement.",
-    }),
-  })
-  .strict();
+// EXTENDED from the shared shape, not re-declared beside it. `coldkey`,
+// `verdict` and `evidence` — and the refinement that a verdict above
+// `unresolved` cannot serialise without an evidence object — all come from
+// schemas-src/attribution.ts. A local `evidence: z.array(z.unknown())` would
+// type-check, serialise, and silently drop that rule.
+const AttributedStakeholderSchema = attributedColdkeySchema({
+  stake_share: z.number().meta({
+    description:
+      "This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids.",
+  }),
+});
 
 const BlindSpotSchema = z
   .object({ layer: z.string(), summary: z.string() })

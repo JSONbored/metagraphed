@@ -232,6 +232,12 @@ describe("the DATA_API tier, when it is bound", () => {
   test("a forwarded card reaches GraphQL with every list intact", async () => {
     // The resolver names each field explicitly, so a list it forgot would be
     // dropped silently. Every one of them is asserted here.
+    //
+    // Note the `evidence { ... }` selection: it is a TYPED object list, not an
+    // opaque scalar, because the stakeholder shape extends the shared
+    // attributedColdkeySchema. GraphQL REQUIRING a subfield selection here is
+    // that reuse working — a locally re-declared `z.array(z.unknown())` would
+    // have published a scalar and accepted a bare field name.
     const res = await handleGraphQLRequest(
       new Request("https://api.metagraph.sh/api/v1/graphql", {
         method: "POST",
@@ -241,7 +247,12 @@ describe("the DATA_API tier, when it is bound", () => {
             netuid window owner_coldkey point_count owner_uid_count
             points { snapshot_date owner_attributed_share }
             owner_uids { uid take nominator_share }
-            attribution { coldkey stake_share verdict evidence }
+            attribution {
+              coldkey
+              stake_share
+              verdict
+              evidence { kind source_url extrinsic_hash observed_at }
+            }
             attribution_vocabulary
             blind_spots { layer summary }
           } }`,

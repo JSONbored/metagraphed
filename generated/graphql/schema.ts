@@ -2733,21 +2733,32 @@ type SubnetOwnerCaptureUid {
 
 type SubnetOwnerCaptureStakeholder {
   coldkey: String!
+  verdict: String!
+  evidence: [AttributionEvidence!]!
 
   """
   This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids.
   """
   stake_share: Float!
+}
+
+type AttributionEvidence {
+  kind: String!
 
   """
-  From the shared attribution vocabulary. \`owner\` is the only verdict this surface assigns, because the chain read (SubtensorModule.SubnetOwner) IS its evidence. EVERY OTHER COLDKEY IS \`unresolved\` — the honest default for a relationship nobody has established, and never to be rendered as a negative finding. Nothing here computes a verdict from stake size, timing or co-registration.
+  A public page a reader can open — the subnet's own docs, repo or site. Pin a repo citation to a commit SHA; a branch moves under the claim.
   """
-  verdict: String!
+  source_url: String
 
   """
-  Always empty on this surface. A verdict above \`unresolved\` requires an evidence object a reader can follow, and this surface establishes none — see the attribution method statement.
+  The extrinsic that carried the funding path or key rotation, so the link can be re-derived from chain rather than trusted.
   """
-  evidence: [JSON!]!
+  extrinsic_hash: String
+
+  """
+  When this was established. Evidence goes stale: a wallet relationship true last quarter may not be true today, and a citation without a date cannot be aged out.
+  """
+  observed_at: String!
 }
 
 type SubnetOwnerCaptureBlindSpot {
