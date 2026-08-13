@@ -32,7 +32,7 @@
   },
   "schema_version": 1,
   "slug": "sn-29",
-  "source_repo": "https://github.com/coldint/hotfloat",
+  "source_repo": "https://github.com/coldint/coldint_validator",
   "status": "active",
   "surfaces": [
     {
@@ -61,8 +61,8 @@
       "authority": "official",
       "id": "sn-29-coldint-validator-source",
       "kind": "source-repo",
-      "name": "Coldint source repository",
-      "notes": "Official SN29 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13. Replaces coldint/coldint_validator, last pushed 2025-07-11.",
+      "name": "Coldint validator source repository",
+      "notes": "Official SN29 validator repository -- its README states \"Bittensor subnet 29 is focused on advancing collaborative, distributed model training\". Reverts #11086, which repointed this to coldint/hotfloat because SubnetIdentitiesV3 declares that repo for netuid 29. It is not SN29's: hotfloat's README is titled \"Cacheon (SN14)\", links tao.app/subnets/14 and cacheon.ai, and its validator/.env.example sets CACHEON_NETUID=14. The chain identity is operator-set and wrong here. Last pushed 2025-07-11; coldint/sn29 (the dynamic-configuration repository, also registered) names it as \"the validator code\".",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -71,8 +71,8 @@
       },
       "provider": "coldint",
       "public_safe": true,
-      "source_urls": ["https://github.com/coldint/hotfloat"],
-      "url": "https://github.com/coldint/hotfloat"
+      "source_urls": ["https://github.com/coldint/coldint_validator"],
+      "url": "https://github.com/coldint/coldint_validator"
     },
     {
       "auth_required": false,

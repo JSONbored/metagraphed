@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
 
-// Drift gate for apps/ui/content/docs/api-reference/** (#8917).
+// Drift gate for apps/ui/content/docs/api-reference/** (#8917) and
+// apps/ui/content/docs/catalog.mdx.
 //
 // Those pages are generated entirely from public/metagraph/openapi.json by
 // apps/ui/scripts/generate-openapi-docs.ts, so the thing that invalidates them
@@ -16,12 +17,25 @@ import { repoRoot } from "./lib.ts";
 // found out from a red `ui` job (observed on #8892, which added
 // /api/v1/chain/emission-pipeline).
 //
+// catalog.mdx has the identical shape one layer over: it is generated from the
+// curated overlays by apps/ui/scripts/generate-catalog-docs.ts, so a REGISTRY
+// PR invalidates it without touching apps/ui. That went unnoticed twice in one
+// day -- #11086 and #11090 each repointed source repos and each needed a
+// separate cleanup PR (#11104, #11106) once the `ui` job went red on somebody
+// else's branch. README.md is generated from the same renderer
+// (scripts/lib/readme-catalog.ts, "one source, two destinations") and IS gated,
+// by validate:readme-catalog; this closes the other destination.
+//
 // Generates into a TEMP directory via the generator's own
 // OPENAPI_DOCS_OUTPUT override rather than regenerating in place and diffing
 // the way the CI step does -- same never-mutate-the-tree convention as
 // validate-graphql-types-drift.ts, so running this can't leave a dirty
 // working tree behind on failure.
 const COMMITTED_DIR = path.join(repoRoot, "apps/ui/content/docs/api-reference");
+const COMMITTED_CATALOG = path.join(
+  repoRoot,
+  "apps/ui/content/docs/catalog.mdx",
+);
 const UI_DIR = path.join(repoRoot, "apps/ui");
 
 // The generator preserves one hand-written page it does not own; it is not
@@ -105,8 +119,47 @@ try {
     process.exit(1);
   }
 
+  // Same never-mutate-the-tree contract as above: the generator writes to a
+  // temp file via CATALOG_DOCS_OUTPUT and we diff, so a stale catalog cannot
+  // leave the working tree dirty on the way to reporting itself.
+  const catalogTemp = path.join(tempDir, "catalog.mdx");
+  try {
+    execFileSync("node", ["scripts/generate-catalog-docs.ts"], {
+      cwd: UI_DIR,
+      encoding: "utf8",
+      stdio: "pipe",
+      env: { ...process.env, CATALOG_DOCS_OUTPUT: catalogTemp },
+    });
+  } catch (error) {
+    const e = error as { stdout?: string; stderr?: string };
+    console.error(
+      "Failed to run apps/ui/scripts/generate-catalog-docs.ts. The apps/ui " +
+        "workspace must be installed (root `npm ci` covers it).\n" +
+        `${e.stdout ?? ""}${e.stderr ?? ""}`,
+    );
+    process.exit(1);
+  }
+
+  const [expectedCatalog, committedCatalog] = await Promise.all([
+    fs.readFile(catalogTemp, "utf8"),
+    fs.readFile(COMMITTED_CATALOG, "utf8").catch(() => null),
+  ]);
+  if (committedCatalog !== expectedCatalog) {
+    console.error(
+      committedCatalog === null
+        ? "apps/ui/content/docs/catalog.mdx is missing."
+        : "apps/ui/content/docs/catalog.mdx is out of date with the registry overlays.",
+    );
+    console.error(
+      "\nRegenerate and commit:\n" +
+        "  cd apps/ui && node scripts/generate-catalog-docs.ts",
+    );
+    process.exit(1);
+  }
+
   console.log(
-    `API reference docs are current (${expected.size} generated page(s)).`,
+    `API reference docs are current (${expected.size} generated page(s)), ` +
+      "and so is the subnet catalog.",
   );
 } finally {
   await fs.rm(tempDir, { recursive: true, force: true });
