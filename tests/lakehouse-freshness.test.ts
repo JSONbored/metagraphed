@@ -1,7 +1,11 @@
 // The lakehouse freshness rule, tested without a catalog (#11048).
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { EXPECTED, evaluate } from "../scripts/check-lakehouse-freshness.ts";
+import {
+  EXPECTED,
+  evaluate,
+  typeChangedAcrossSchemas,
+} from "../scripts/check-lakehouse-freshness.ts";
 import { TABLES } from "../scripts/refresh-lakehouse-schema.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -76,5 +80,84 @@ describe("lakehouse freshness", () => {
       const rule = EXPECTED[t]!;
       assert.ok(rule.maxAgeMs !== null && rule.maxAgeMs < 10.5 * DAY, t);
     }
+  });
+});
+
+describe("type changes across schema generations (metagraphed-infra#542)", () => {
+  const field = (id: number, name: string, type: string) => ({
+    id,
+    name,
+    type,
+  });
+
+  test("a widened column is a candidate", () => {
+    // float -> double is legal in Iceberg and unreadable in R2 SQL until the
+    // files are rewritten. This is the case that broke chain.neurons.
+    const changed = typeChangedAcrossSchemas({
+      "current-schema-id": 1,
+      schemas: [
+        { "schema-id": 0, fields: [field(22, "take", "float")] },
+        { "schema-id": 1, fields: [field(22, "take", "double")] },
+      ],
+    });
+    assert.deepEqual(changed, ["take"]);
+  });
+
+  test("ADDING a column is not a candidate", () => {
+    // R2 SQL tolerates augmentation, so observed_at appearing in a later
+    // generation must not be reported -- three registry tables gained exactly
+    // that column and none of them broke.
+    const changed = typeChangedAcrossSchemas({
+      "current-schema-id": 1,
+      schemas: [
+        { "schema-id": 0, fields: [field(1, "netuid", "int")] },
+        {
+          "schema-id": 1,
+          fields: [field(1, "netuid", "int"), field(2, "observed_at", "long")],
+        },
+      ],
+    });
+    assert.deepEqual(changed, []);
+  });
+
+  test("a DROPPED column is not a candidate", () => {
+    const changed = typeChangedAcrossSchemas({
+      "current-schema-id": 1,
+      schemas: [
+        {
+          "schema-id": 0,
+          fields: [field(1, "netuid", "int"), field(2, "gone", "string")],
+        },
+        { "schema-id": 1, fields: [field(1, "netuid", "int")] },
+      ],
+    });
+    assert.deepEqual(changed, []);
+  });
+
+  test("a single generation is never a candidate", () => {
+    assert.deepEqual(
+      typeChangedAcrossSchemas({
+        "current-schema-id": 0,
+        schemas: [{ "schema-id": 0, fields: [field(1, "a", "int")] }],
+      }),
+      [],
+    );
+  });
+
+  test("matching is by FIELD ID, not name", () => {
+    // Iceberg identifies a column by id; a rename with the same id is the same
+    // column, and two columns sharing a name across generations need not be.
+    const changed = typeChangedAcrossSchemas({
+      "current-schema-id": 1,
+      schemas: [
+        { "schema-id": 0, fields: [field(7, "old_name", "int")] },
+        { "schema-id": 1, fields: [field(7, "new_name", "long")] },
+      ],
+    });
+    assert.deepEqual(changed, ["new_name"]);
+  });
+
+  test("undefined metadata is not a crash", () => {
+    assert.deepEqual(typeChangedAcrossSchemas(undefined), []);
   });
 });
