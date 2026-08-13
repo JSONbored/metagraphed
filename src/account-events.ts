@@ -10,6 +10,7 @@ import {
 } from "../workers/request-params.ts";
 import { resolvePriceAtTx, type PriceBasis } from "./price-at-tx.ts";
 import { loadAccountHistoryColdTier } from "./account-history-cold-tier.ts";
+import { taoCellOrNull } from "./lib/rao.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -199,16 +200,9 @@ function toBlockNumber(value: unknown): number | null {
 // in src/chain-analytics.ts (which rounds the SAME signer-total-fee value for
 // /chain/signers + /chain/fees); kept null-preserving here because the activity
 // aggregate is null on a cold store, not 0.
-function toTaoOrNull(value: unknown): number | null {
-  if (value == null) return null;
-  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
-}
 
 function toTaoOrZero(value: unknown): number {
-  return toTaoOrNull(value) ?? 0;
+  return taoCellOrNull(value) ?? 0;
 }
 
 function toCount(value: unknown): number {
@@ -260,8 +254,8 @@ export function formatAccountEvent(
     // so a numeric string never leaks the string form into the JSON payload,
     // and SUM float noise is rounded to rao precision. Mirrors the coercion
     // applied in formatRegistration (#2487) and the sibling formatters.
-    amount_tao: toTaoOrNull(row.amount_tao),
-    alpha_amount: toTaoOrNull(row.alpha_amount),
+    amount_tao: taoCellOrNull(row.amount_tao),
+    alpha_amount: taoCellOrNull(row.alpha_amount),
     observed_at: toIso(row.observed_at),
     extrinsic_index: toBlockNumber(row.extrinsic_index),
     // #8369: derived from the two legs already on this row -- no join, no
@@ -303,7 +297,7 @@ export function formatRegistration(
   return {
     netuid: toBlockNumber(row.netuid),
     uid: toBlockNumber(row.uid),
-    stake_tao: toTaoOrNull(row.stake_tao),
+    stake_tao: taoCellOrNull(row.stake_tao),
     validator_permit: toBooleanFlag(row.validator_permit),
     active: toBooleanFlag(row.active),
   };
@@ -354,7 +348,7 @@ export function formatAccountActivity(
     tx_count: txCount,
     last_tx_block: toBlockNumber(a.last_tx_block),
     last_tx_at: toIso(a.last_tx_at),
-    total_fee_tao: toTaoOrNull(a.total_fee_tao),
+    total_fee_tao: taoCellOrNull(a.total_fee_tao),
     modules_called: (modules || [])
       .filter((m) => m && m.call_module)
       .map((m) => ({
@@ -936,7 +930,7 @@ export function buildAccountTransfers(
       event_index: toBlockNumber(r.event_index),
       from: (r.hotkey as string | null | undefined) ?? null,
       to: (r.coldkey as string | null | undefined) ?? null,
-      amount_tao: toTaoOrNull(r.amount_tao),
+      amount_tao: taoCellOrNull(r.amount_tao),
       direction:
         fixedDirection ??
         (r.hotkey === ss58 ? "sent" : r.coldkey === ss58 ? "received" : null),

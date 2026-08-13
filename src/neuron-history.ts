@@ -21,7 +21,7 @@ type Row = Record<string, unknown>;
 export { DEFAULT_HISTORY_WINDOW, HISTORY_WINDOW_DAYS } from "./route-limits.ts";
 import { HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW } from "./route-limits.ts";
 import type { NeuronDaily } from "../generated/db/types.ts";
-import { RAO_PER_TAO } from "./lib/rao.ts";
+import { RAO_PER_TAO, round9 } from "./lib/rao.ts";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;
 
@@ -262,7 +262,7 @@ export function buildEconomicsTrends(
       : null,
     alpha_price_tao_weighted:
       acc.weighted_price_den > 0
-        ? roundPrice(acc.weighted_price_num / acc.weighted_price_den)
+        ? round9(acc.weighted_price_num / acc.weighted_price_den)
         : null,
     alpha_price_tao_median: median(acc.prices),
     validator_count: acc.validator_seen ? acc.validator_sum : null,
@@ -316,9 +316,7 @@ function roundTaoOrNull(v: unknown): number | null {
   const n = toFiniteOrNull(v);
   return n == null ? null : roundTao(n);
 }
-function roundPrice(v: number): number {
-  return Math.round(v * 1e9) / 1e9;
-}
+
 function roundShare(v: number): number {
   return Math.round(v * 1e6) / 1e6;
 }
@@ -329,7 +327,7 @@ function median(values: number[]): number | null {
   const mid = Math.floor(sorted.length / 2);
   const raw =
     sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-  return roundPrice(raw);
+  return round9(raw);
 }
 
 // Per-subnet metric-over-time: the daily count + a couple of cheap aggregates per

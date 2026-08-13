@@ -1,3 +1,4 @@
+import { round9 } from "./lib/rao.ts";
 // GET /api/v1/subnets/{netuid}/holders (#9557): who owns one subnet's alpha.
 //
 // WHAT NOTHING ELSE ANSWERS. Four routes look like they should and each answers
@@ -268,7 +269,7 @@ export function buildSubnetHolders(
   return {
     ...base,
     holder_count: read.aggregate?.holderCount ?? null,
-    total_alpha: totalAlpha === null ? null : round(totalAlpha),
+    total_alpha: totalAlpha === null ? null : round9(totalAlpha),
     concentration: concentrationBlock(read.aggregate ?? null, totalAlpha),
     captured_at: toIsoOrNull(read.capturedAt),
     positions_captured_at: toIsoOrNull(
@@ -309,7 +310,7 @@ function concentrationBlock(
  */
 function share(part: number | null, whole: number | null): number | null {
   if (part === null || whole === null || whole <= 0) return null;
-  return round(part / whole);
+  return round9(part / whole);
 }
 
 /** Finite and >= 0, else null. A holding cannot be negative: a negative here is
@@ -329,8 +330,4 @@ function toIsoOrNull(value: number | null): string | null {
   if (value === null || !Number.isFinite(value) || value <= 0) return null;
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-}
-
-function round(value: number): number {
-  return Math.round(value * 1e9) / 1e9;
 }

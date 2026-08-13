@@ -13,6 +13,7 @@
 
 import { loadChainBurn } from "./chain-burn.ts";
 import type { ChainNetworkId } from "./chain-network.ts";
+import { round9 } from "./lib/rao.ts";
 
 type Row = Record<string, unknown>;
 
@@ -214,7 +215,7 @@ export function buildSubnetBurnHistory(
   const changeTao =
     newest === null || oldest === null || points.length < 2
       ? null
-      : round(newest - oldest);
+      : round9(newest - oldest);
   return {
     schema_version: 1,
     netuid,
@@ -230,7 +231,7 @@ export function buildSubnetBurnHistory(
     change_pct:
       changeTao === null || oldest === null || oldest === 0
         ? null
-        : round(changeTao / oldest),
+        : round9(changeTao / oldest),
     points,
   };
 }
@@ -278,8 +279,4 @@ function toIsoOrNull(value: unknown): string | null {
   if (!Number.isFinite(n) || n <= 0) return null;
   const date = new Date(n);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-}
-
-function round(value: number): number {
-  return Math.round(value * 1e9) / 1e9;
 }

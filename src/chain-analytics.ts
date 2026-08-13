@@ -1,3 +1,4 @@
+import { nonNegativeOrZero, round9 } from "./lib/rao.ts";
 // Chain analytics builders (#1987, epic #1986): pure row→API shapers for the
 // network-activity aggregates served live from the first-party chain store tiers
 // (blocks / extrinsics / account_events). Kept pure + exported so the Worker does
@@ -22,10 +23,13 @@ function round4(value: number): number {
 // Coerce a D1 fee/tip cell (TAO float, numeric string, or null) to a finite
 // non-negative number rounded to 9 dp (rao precision), so SUM float noise and
 // NULL fees never leak into the payload.
+/**
+ * Composed rather than re-implemented (#10948): `nonNegativeOrZero` is the
+ * `!Number.isFinite(n) || n < 0 -> 0` half and `round9` is the rest, so this
+ * is exactly what it was and there is one fewer body to drift.
+ */
 function toTao(value: unknown): number {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.round(n * 1e9) / 1e9;
+  return round9(nonNegativeOrZero(value));
 }
 
 function toNullableTao(value: unknown): number | null {

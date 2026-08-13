@@ -18,6 +18,7 @@ import {
   round9,
   round9OrNull,
   round9OrZero,
+  taoCellOrNull,
   toRaoBig,
 } from "../src/lib/rao.ts";
 
@@ -189,6 +190,28 @@ describe("round9 / round9OrZero / round9OrNull", () => {
         numberOrZero(v),
         nonNegativeOrZero(v),
         `disagreed on ${String(v)}`,
+      );
+    }
+  });
+
+  test("taoCellOrNull rejects a blank cell that round9OrNull would zero", () => {
+    // THE REASON IT IS A SEPARATE FUNCTION. `Number("")` is 0, so a blank
+    // store cell rounds to a confident zero — a measurement nobody made.
+    // account-events and extrinsics both carried an identical private copy
+    // guarding this; folding the rule into round9OrNull would have changed
+    // what a blank cell means for every existing caller of that one.
+    assert.equal(round9OrNull(""), 0);
+    assert.equal(taoCellOrNull(""), null);
+    assert.equal(taoCellOrNull("   "), null);
+    assert.equal(taoCellOrNull("\t"), null);
+  });
+
+  test("taoCellOrNull otherwise agrees with round9OrNull", () => {
+    for (const v of [null, undefined, "nope", Number.NaN, 1.5, "2.25", 0, -3]) {
+      assert.equal(
+        taoCellOrNull(v),
+        round9OrNull(v),
+        `diverged on ${String(v)}`,
       );
     }
   });

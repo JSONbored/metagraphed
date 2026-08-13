@@ -17,6 +17,7 @@ import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.ts";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.ts";
 import { summarizeCall } from "@jsonbored/chain-summaries";
+import { taoCellOrNull } from "./lib/rao.ts";
 
 type SqlRunner = (
   sql: string,
@@ -69,13 +70,6 @@ function toChainPosition(value: unknown): number | null {
 // would leak the string form into the ["number","null"] contract field and
 // serve unrounded float noise. Mirrors toTaoOrNull in account-events.ts
 // (#2662) and the coercion in formatRegistration (#2487).
-function toTaoOrNull(value: unknown): number | null {
-  if (value == null) return null;
-  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
-}
 
 // ---- Extrinsic API builders ------------------------------------------------
 // The columns the extrinsic handlers SELECT for an extrinsic row.
@@ -190,8 +184,8 @@ export function formatExtrinsic(
     // fee_tao / tip_tao (D1 REAL columns) — coerce through toTaoOrNull so a
     // numeric string never leaks the string form into the ["number","null"]
     // payload, matching formatAccountEvent (#2662) and the sibling formatters.
-    fee_tao: toTaoOrNull(row.fee_tao),
-    tip_tao: toTaoOrNull(row.tip_tao),
+    fee_tao: taoCellOrNull(row.fee_tao),
+    tip_tao: taoCellOrNull(row.tip_tao),
     observed_at: toIso(row.observed_at),
     // #8525: computed from the SAME fully-decoded call_args just built above
     // (post decodePostgresCallArgs/normalizePostgresValue/decodeEthereumEvmCallArgs/

@@ -1,3 +1,4 @@
+import { round9 } from "./lib/rao.ts";
 // GET /api/v1/network/tao-usd (#9609): what one TAO is worth in USD, how that
 // figure was derived, and how it has moved.
 //
@@ -215,7 +216,7 @@ export function buildTaoUsdSeries(
   const changeUsd =
     newest === null || oldest === null || priced.length < 2
       ? null
-      : round(newest - oldest);
+      : round9(newest - oldest);
 
   const newestRow = Array.isArray(rows) && rows.length ? rows[0] : null;
   return {
@@ -255,7 +256,7 @@ export function buildTaoUsdSeries(
     change_pct:
       changeUsd === null || oldest === null || oldest === 0
         ? null
-        : round(changeUsd / oldest),
+        : round9(changeUsd / oldest),
     // OMITTED, not emptied, when the caller opts out (#9720). An empty array
     // would be indistinguishable from a window that priced nothing, and the
     // counts above already say how many points exist -- so absence is the only
@@ -327,10 +328,6 @@ function toIsoOrNull(value: unknown): string | null {
   if (!Number.isFinite(n) || n <= 0) return null;
   const date = new Date(n);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-}
-
-function round(value: number): number {
-  return Math.round(value * 1e9) / 1e9;
 }
 
 /**

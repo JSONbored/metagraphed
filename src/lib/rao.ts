@@ -166,3 +166,24 @@ export function nonNegativeOrZero(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
+
+/**
+ * A store cell as rao-rounded TAO, or null when the cell says nothing.
+ *
+ * The difference from `round9OrNull`, and why it is a separate function rather
+ * than an option: `Number("")` is 0, so a BLANK cell would round to a
+ * confident zero. `account-events` and `extrinsics` both carried an identical
+ * private copy that rejects blank and whitespace-only strings first, and their
+ * comment says why -- "Blank cells coerce via Number('') -> 0; trim rejects
+ * '' / whitespace-only".
+ *
+ * Folding that rule into `round9OrNull` would silently change what a blank
+ * cell means on every existing caller of it, which is the move #10948 exists
+ * to stop.
+ */
+export function taoCellOrNull(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? round9(n) : null;
+}

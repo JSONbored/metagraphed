@@ -1,3 +1,4 @@
+import { round9 } from "./lib/rao.ts";
 // #10485: what happened to the owner cut after it accrued.
 //
 // #10484 answers how much was credited. This answers where it went, and it is
@@ -88,10 +89,6 @@ function finite(value: unknown): number | null {
     : null;
 }
 
-function round(value: number): number {
-  return Math.round(value * 1e9) / 1e9;
-}
-
 function emptyBuckets(): Record<DispositionBucket, number | null> {
   return {
     "held-as-stake": null,
@@ -139,8 +136,8 @@ export function classifyOwnerCutDisposition(
     return {
       netuid: input.netuid,
       window_days,
-      accrued_alpha: round(accrued),
-      buckets: { ...buckets, unresolved: round(accrued) },
+      accrued_alpha: round9(accrued),
+      buckets: { ...buckets, unresolved: round9(accrued) },
       residual_alpha: 0,
       reconciles: false,
       notes,
@@ -152,9 +149,9 @@ export function classifyOwnerCutDisposition(
   const burned = finite(input.burned_alpha) ?? 0;
   const held = finite(input.held_alpha);
 
-  buckets.unstaked = round(unstaked);
-  buckets["transferred-out"] = round(transferred);
-  buckets.burned = round(burned);
+  buckets.unstaked = round9(unstaked);
+  buckets["transferred-out"] = round9(transferred);
+  buckets.burned = round9(burned);
 
   if (held === null) {
     notes.push(
@@ -166,7 +163,7 @@ export function classifyOwnerCutDisposition(
     // be self-bonded validator capital, and `holders: 1` proves owner control
     // rather than origin (#10481). So the held figure is capped at what
     // actually accrued; the excess belongs to a different question.
-    buckets["held-as-stake"] = round(Math.min(held, accrued));
+    buckets["held-as-stake"] = round9(Math.min(held, accrued));
     if (held > accrued + DISPOSITION_TOLERANCE_ALPHA) {
       notes.push(
         "standing stake exceeds the window's accrual; the excess is not " +
@@ -183,7 +180,7 @@ export function classifyOwnerCutDisposition(
   // flows that include capital this accrual never contained. Reported, never
   // clamped: a clamp would hide the contradiction.
   if (residual > DISPOSITION_TOLERANCE_ALPHA) {
-    buckets.unresolved = round(residual);
+    buckets.unresolved = round9(residual);
     notes.push(
       "the accounted buckets do not cover the accrual; the remainder is " +
         "unresolved rather than assigned",
@@ -202,9 +199,9 @@ export function classifyOwnerCutDisposition(
   return {
     netuid: input.netuid,
     window_days,
-    accrued_alpha: round(accrued),
+    accrued_alpha: round9(accrued),
     buckets,
-    residual_alpha: round(residual),
+    residual_alpha: round9(residual),
     reconciles: Math.abs(residual) <= DISPOSITION_TOLERANCE_ALPHA,
     notes,
   };
