@@ -72,7 +72,15 @@ import { readFileSync } from "node:fs";
  * ratchet becomes a rubber stamp. Extracting the duplicate paid for the new
  * field twenty-seven times over.
  */
-const CEILING = 219;
+// 219 -> 185 (#10993): 41 guards deleted after an empirical audit proved each
+// unreachable -- parseArgumentsAtDispatch rejects against the bound route's
+// published schema before any resolver runs, so every deleted guard wore an
+// error message no caller had ever received. What remains is the LIVE set:
+// path-parameter format guards (dispatch validates query parameters only),
+// cross-field semantics the schema cannot express, and saved_query (the one
+// route:null binding). tests/graphql.test.ts pins the dispatch-level
+// rejection for a representative of every deleted class.
+const CEILING = 185;
 
 const SOURCE = "src/graphql.ts";
 

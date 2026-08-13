@@ -24990,3 +24990,105 @@ describe("revenue coverage over GraphQL (#10476)", () => {
     assert.equal(r.coverage_ratio, null);
   });
 });
+
+// ── the dispatch owns argument validation (#10993) ──────────────────────────
+//
+// 41 resolver-level guards were deleted after an empirical audit proved each
+// unreachable: parseArgumentsAtDispatch validates every argument against the
+// bound route's published query schema BEFORE the resolver runs, so every one
+// of those guards wore an error message no caller had ever received. What
+// stays live, and why, is structural: guards on PATH-parameter-shaped
+// arguments (ss58, hotkey, netuid on per-entity routes -- the dispatch
+// validates QUERY parameters only), and cross-field semantic checks the
+// schema cannot express (counterparty !== ss58).
+//
+// These pin the dispatch-level rejection for one representative of every
+// deleted guard class, asserting the code AND the fingerprint of the layer
+// that answers (route-query.ts appends `Received: "…"`; a resolver message
+// never did).
+describe("deleted resolver guards: the dispatch still refuses, with its own sentence (#10993)", () => {
+  const CASES: Array<[string, string]> = [
+    // window guards (27 deleted)
+    ["subnet_movers", `subnet_movers(window: "__bogus__") { __typename }`],
+    [
+      "account_stake_flow",
+      `account_stake_flow(ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", window: "__bogus__") { __typename }`,
+    ],
+    [
+      "subnet_uptime",
+      `subnet_uptime(netuid: 1, window: "__bogus__") { __typename }`,
+    ],
+    [
+      "subnet_burn_history",
+      `subnet_burn_history(netuid: 1, window: "__bogus__") { __typename }`,
+    ],
+    ["health_trends", `health_trends(window: "__bogus__") { __typename }`],
+    // sort guards
+    ["chain_signers", `chain_signers(sort: "__bogus__") { __typename }`],
+    [
+      "chain_transfer_pairs",
+      `chain_transfer_pairs(sort: "__bogus__") { __typename }`,
+    ],
+    [
+      "validator_nominators",
+      `validator_nominators(hotkey: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", sort: "__bogus__") { __typename }`,
+    ],
+    // enum / board / kind guards
+    [
+      "registry_leaderboards",
+      `registry_leaderboards(board: "__bogus__") { __typename }`,
+    ],
+    ["emission_changes", `emission_changes(kind: "__bogus__") { __typename }`],
+    // format guards (ss58-pattern on QUERY params, date bounds)
+    [
+      "account_counterparties",
+      `account_counterparties(ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", counterparty: "__bogus__") { __typename }`,
+    ],
+    [
+      "account_history",
+      `account_history(ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", from: "__bogus__") { __typename }`,
+    ],
+  ];
+  for (const [name, query] of CASES) {
+    test(`${name} rejects at dispatch`, async () => {
+      const { status, body } = await gql(`{ ${query} }`);
+      assert.equal(status, 200);
+      const errors = (body.errors ?? []) as Array<{
+        message?: string;
+        extensions?: { code?: string };
+      }>;
+      assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT", name);
+      // The dispatch's fingerprint -- route-query's sentence, not a deleted
+      // resolver's. If a resolver guard grows back, this stops matching.
+      assert.match(errors[0]?.message ?? "", /Received: /, name);
+    });
+  }
+
+  test("a valid window reaches the resolver and a cold store is an empty series", async () => {
+    // The half the rejection probes cannot cover: the dispatch-validated label
+    // indexes BURN_HISTORY_WINDOWS non-null by construction, and a subnet with
+    // no recorded burn history answers an empty series, never an error -- the
+    // convention every sibling history field follows.
+    const { status, body } = await gql(
+      `{ subnet_burn_history(netuid: 1, window: "30d") { netuid window points { observed_at burn_tao } } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal((body.data.subnet_burn_history as Row).window, "30d");
+  });
+
+  test("the LIVE guard class still fires at the resolver: cross-field semantics", async () => {
+    // counterparty === ss58 is inexpressible in the route's query schema, so
+    // its guard survived the audit -- and must keep firing.
+    const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+    const { body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${SS58}") { __typename } }`,
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /must differ from ss58/);
+  });
+});
