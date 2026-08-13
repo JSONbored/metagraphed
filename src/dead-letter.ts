@@ -45,6 +45,19 @@ export const DEAD_LETTER_LANES: Readonly<Record<string, string>> = {
   "revenue-probes-dlq": "revenue-probes-dlq",
 };
 
+/**
+ * The LANE names a dead-letter queue reports under, as a set.
+ *
+ * Derived from the mapping above rather than re-listed, so a queue added there
+ * is recognised here without a second edit. `laneAlarmSummary` reads this to
+ * tell a DLQ lane from a producer: their durations mean different things, and
+ * labelling one with the other's cadence is how a lost message got triaged as
+ * a missed cycle (#10809's lesson, in the other direction).
+ */
+export const DEAD_LETTER_LANE_NAMES: ReadonlySet<string> = new Set(
+  Object.values(DEAD_LETTER_LANES),
+);
+
 /** Whether a delivered batch came from a dead-letter queue.
  *
  * THE FIRST THING EITHER HANDLER MUST ASK. Both Workers bind their DLQ to the
