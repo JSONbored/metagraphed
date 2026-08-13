@@ -70,8 +70,15 @@ export const CoverageArtifactSchema = ArtifactBaseSchema.extend({
   // the contract said nothing about them -- invisible until this component was
   // published as a GraphQL type and the emitted shape could be compared
   // field-for-field against what production returns.
-  domain_coverage: CountMapSchema,
-  first_party_subnet_count: z.int().min(0),
+  //
+  // The registry-derived counts are OPTIONAL, not required (#10965): the
+  // registry (surfaces, curation, domains) is mainnet-only, so the testnet
+  // build has nothing to count and its artifact omits these five keys --
+  // measured on the served testnet document, which the response tripwire now
+  // actually validates. Requiring them made the published contract refuse a
+  // response the builder is right to produce.
+  domain_coverage: CountMapSchema.optional(),
+  first_party_subnet_count: z.int().min(0).optional(),
   manifested_count: z.int().min(0),
   native_only_count: z.int().min(0),
   native_only_with_candidates: z.int().min(0),
@@ -80,11 +87,11 @@ export const CoverageArtifactSchema = ArtifactBaseSchema.extend({
   network: BittensorNetworkSchema,
   probed_count: z.int().min(0),
   probed_surface_count: z.int().min(0),
-  official_surface_count: z.int().min(0),
-  registry_observed_surface_count: z.int().min(0),
+  official_surface_count: z.int().min(0).optional(),
+  registry_observed_surface_count: z.int().min(0).optional(),
   root_subnet_count: z.int().min(0),
   source: CoverageSourceSchema,
-  subnets_without_official_surface: z.int().min(0),
+  subnets_without_official_surface: z.int().min(0).optional(),
   surface_count: z.int().min(0),
 }).strict();
 export type CoverageArtifact = z.infer<typeof CoverageArtifactSchema>;

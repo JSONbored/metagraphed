@@ -20,6 +20,9 @@ import {
   validateResponseTripwire,
 } from "../src/response-validation-tripwire.ts";
 import { COMPONENT_SCHEMAS_BY_ID } from "../schemas-src/openapi-registry.ts";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { repoRoot } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
 const ECONOMICS_ARTIFACT = "/metagraph/economics.json";
@@ -615,5 +618,124 @@ describe("isProjectedAway walks the path, and stops when it cannot", () => {
     // drift, which is the one thing this function must never do.
     assert.equal(isProjectedAway({ a: "scalar" }, ["a", "b"]), false);
     assert.equal(isProjectedAway({ a: null }, ["a", "b"]), false);
+  });
+});
+
+// The projection tolerance above is proven at the unit; these prove the
+// WIRING, which is the half that actually broke: #10975 was not a filter bug,
+// it was every list route passing `projected=false` because nothing passed
+// anything. A unit-green filter and a call site that never sets the flag give
+// exactly the production behaviour this repo shipped.
+describe("the projection signal reaches the tripwire from the routes", () => {
+  test("flag on: EVERY route publishing `fields` answers 200 with it", async () => {
+    // DERIVED from the published document, not a hand-list: a route that
+    // starts publishing `fields` tomorrow is covered the moment it appears.
+    // The pre-#10975 suite named several of the broken routes and stayed green
+    // throughout, because it never sent the parameter -- the gap is the
+    // parameter, not the route.
+    //
+    // Templated paths are excluded because the tripwire cannot resolve them at
+    // all yet (#10965) -- including them would assert a 200 that proves
+    // nothing.
+    const spec = JSON.parse(
+      readFileSync(
+        path.join(repoRoot, "public/metagraph/openapi.json"),
+        "utf8",
+      ),
+    ) as Row;
+    const routes = Object.entries(spec.paths as Record<string, Row>)
+      .filter(([route]) => !route.includes("{"))
+      .filter(([, ops]) =>
+        Object.values(ops as Record<string, Row>).some((op) =>
+          (op?.parameters as Row[] | undefined)?.some(
+            (param) => param?.name === "fields",
+          ),
+        ),
+      )
+      .map(([route]) => route);
+    assert.ok(
+      routes.length >= 25,
+      `expected the fields surface, saw ${routes.length}`,
+    );
+
+    const env = createLocalArtifactEnv() as Row;
+    env.METAGRAPH_VALIDATE_RESPONSES = "true";
+    const drifted: string[] = [];
+    for (const route of routes) {
+      const base = await handleRequest(
+        req(`${route}?limit=1`),
+        env as unknown as Env,
+        {},
+      );
+      if (base.status !== 200) continue;
+      const body = (await base.json()) as Row;
+      // Any array of objects under `data` is a projectable collection; the
+      // first of its keys is a field the route certainly serves.
+      const rows = Object.values((body.data ?? {}) as Record<string, unknown>)
+        .filter(
+          (value): value is Row[] =>
+            Array.isArray(value) &&
+            value.length > 0 &&
+            typeof value[0] === "object" &&
+            value[0] !== null,
+        )
+        .at(0);
+      const field = rows && Object.keys(rows[0])[0];
+      if (!field) continue;
+      const res = await handleRequest(
+        req(`${route}?limit=1&fields=${field}`),
+        env as unknown as Env,
+        {},
+      );
+      // A 400 is the route declining the field name, not a drift -- two routes
+      // project a collection this generic pick does not land on. A 500 is the
+      // regression.
+      if (res.status >= 500) drifted.push(`${route}?fields=${field}`);
+    }
+    assert.deepEqual(drifted, []);
+  });
+
+  test("flag on: a `?sections=` request answers 200 on a TEMPLATED route", async () => {
+    // The two halves of this change, proven inseparable: passing the TEMPLATE
+    // makes these routes resolvable at all (#10965), and the sections signal
+    // is what keeps that from turning `?sections=` into a 500 (#10960).
+    // Reverting the signal alone fails exactly this test.
+    const env = createLocalArtifactEnv() as Row;
+    env.METAGRAPH_VALIDATE_RESPONSES = "true";
+    for (const path of [
+      "/api/v1/subnets/1?sections=economics",
+      "/api/v1/subnets/1/profile?sections=profile",
+    ]) {
+      const res = await handleRequest(req(path), env as unknown as Env, {});
+      assert.equal(res.status, 200, `${path} did not answer 200`);
+    }
+  });
+
+  test("flag on: a TEMPLATED route's drift detection is really on now", async () => {
+    // The other half of #10965: resolvable must mean ENFORCED, or the fix is
+    // cosmetic. The same projected body that the sections signal forgives is
+    // still a drift when nothing was projected.
+    const env = createLocalArtifactEnv() as Row;
+    const res = await handleRequest(
+      req("/api/v1/subnets/1?sections=economics"),
+      env as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    for (const required of ["subnet", "surfaces", "gaps"]) {
+      assert.ok(
+        !((body.data as Row) ?? {})[required],
+        `${required} should have been projected away`,
+      );
+    }
+    const artifact = "/metagraph/subnets/{netuid}.json";
+    await assert.rejects(
+      () => validateResponseTripwire("subnet-detail", body, artifact, false),
+      ResponseSchemaDriftError,
+    );
+    await assert.doesNotReject(
+      validateResponseTripwire("subnet-detail", body, artifact, true),
+    );
   });
 });

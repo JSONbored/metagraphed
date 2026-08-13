@@ -1155,14 +1155,14 @@ type SubnetEconomics {
   miner_count: Int!
   miner_readiness: Int
   miner_burned_fraction: Float
-  name: String!
-  netuid: Int!
+  name: String
+  netuid: Int
   open_slots: Int
   owner_coldkey: String
   owner_hotkey: String
   registration_allowed: Boolean!
   registration_cost_tao: Float
-  slug: String!
+  slug: String
   subnet_volume_tao: Float
   subtoken_enabled: Boolean
   moving_price_pinned: Float
@@ -4414,8 +4414,8 @@ type CoverageArtifact {
   completeness: CoverageCompleteness
   curated_overlay_count: Int!
   curation_level_counts: JSON!
-  domain_coverage: JSON!
-  first_party_subnet_count: Int!
+  domain_coverage: JSON
+  first_party_subnet_count: Int
   manifested_count: Int!
   native_only_count: Int!
   native_only_with_candidates: Int!
@@ -4424,11 +4424,11 @@ type CoverageArtifact {
   network: String!
   probed_count: Int!
   probed_surface_count: Int!
-  official_surface_count: Int!
-  registry_observed_surface_count: Int!
+  official_surface_count: Int
+  registry_observed_surface_count: Int
   root_subnet_count: Int!
   source: CoverageArtifactSource!
-  subnets_without_official_surface: Int!
+  subnets_without_official_surface: Int
   surface_count: Int!
 }
 
@@ -4635,12 +4635,12 @@ type OpportunityEntry {
   max_uids: Int
   max_validators: Int
   miner_count: Int
-  name: String!
-  netuid: Int!
+  name: String
+  netuid: Int
   open_slots: Int
   registration_allowed: Boolean
   registration_cost_tao: Float
-  slug: String!
+  slug: String
   total_stake_alpha: Float
   validator_count: Int
   validator_headroom: Int

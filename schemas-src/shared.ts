@@ -342,7 +342,15 @@ export const SubnetEconomicsSchema = z
     // The serve-time USD twins (#10381), declared with the schema they are
     // stamped onto rather than restated here -- see ALPHA_USD_ROW_OVERLAY.
     ...ALPHA_USD_ROW_OVERLAY,
-    alpha_fdv_tao: z.number().nullable(),
+    // OPTIONAL on six fields (#10965): identity (name/netuid/slug) and the
+    // market roll-ups (alpha_fdv_tao/alpha_market_cap_tao/emission_share) are
+    // stamped by the MAINNET economics overlay at serve time. Testnet serves
+    // the raw chain economics inside the subnet-detail document, which never
+    // carries them -- measured on the served testnet response, which the
+    // response tripwire now actually validates. `nullable` stays where it was:
+    // absent means "this network's producer has no such field", null still
+    // means "known to be unknown".
+    alpha_fdv_tao: z.number().nullable().optional(),
     // --- v440 emission pipeline (#8743) ---------------------------------
     // Optional, not required: a refresh whose node could not serve
     // state_queryStorageAt publishes the rest of the economics block rather
@@ -355,7 +363,7 @@ export const SubnetEconomicsSchema = z
     alpha_in_emission: z.number().nullable().optional(),
     alpha_out_emission: z.number().nullable().optional(),
     alpha_in_pool: z.number().nullable(),
-    alpha_market_cap_tao: z.number().nullable(),
+    alpha_market_cap_tao: z.number().nullable().optional(),
     alpha_out_pool: z.number().nullable(),
     alpha_price_change_1d: z
       .number()
@@ -402,7 +410,7 @@ export const SubnetEconomicsSchema = z
         "The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average.",
       ),
     block: z.int().min(0).nullable().optional(),
-    emission_share: z.number().min(0).max(1).nullable(),
+    emission_share: z.number().min(0).max(1).nullable().optional(),
     // Stage 5. DEFAULTS TO TRUE on chain: absent storage is enabled and 0x00
     // is disabled, so 57 of 127 subnets are enabled with no entry at all.
     emission_enabled: z.boolean().nullable().optional(),
@@ -421,14 +429,14 @@ export const SubnetEconomicsSchema = z
     // non-zero value lands in (0, 1] with a maximum of exactly 1.0, which a
     // misscaled amount would not.
     miner_burned_fraction: z.number().min(0).max(1).nullable().optional(),
-    name: z.string(),
-    netuid: z.int().min(0),
+    name: z.string().optional(),
+    netuid: z.int().min(0).optional(),
     open_slots: z.int().min(0).nullable().optional(),
     owner_coldkey: z.string().nullable(),
     owner_hotkey: z.string().nullable(),
     registration_allowed: z.boolean(),
     registration_cost_tao: z.number().nullable(),
-    slug: z.string(),
+    slug: z.string().optional(),
     subnet_volume_tao: z.number().nullable(),
     // Stage 0 eligibility.
     subtoken_enabled: z.boolean().nullable().optional(),
