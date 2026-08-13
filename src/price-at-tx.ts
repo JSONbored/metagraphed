@@ -1,3 +1,4 @@
+import { round9 } from "./lib/rao.ts";
 // Price-at-transaction for alpha-denominated stake events (#8369).
 //
 // The question a human actually asks about a stake event is "what was that
@@ -105,20 +106,6 @@ export function resolveUsdAtTx(
   };
 }
 
-// Rao-precision rounding, matching the roundUnit helpers in subnet-ohlc.ts /
-// chain-alpha-volume.ts (each module keeps its own copy by this codebase's
-// convention, so each stays independently reviewable).
-//
-// Unlike those, this one carries no `!Number.isFinite` guard: they round
-// accumulator sums from several call sites, whereas this has exactly one
-// caller which finiteness-checks the quotient immediately before calling —
-// so a guard here would be unreachable by construction rather than
-// defensive, and unreachable code is worse than no code.
-const RAO_PER_UNIT = 1e9;
-function roundUnit(value: number): number {
-  return Math.round(value * RAO_PER_UNIT) / RAO_PER_UNIT;
-}
-
 // The price denominator: zero/negative/non-finite must never reach the
 // division (Infinity/NaN/a nonsensical negative price). Same guard as
 // subnet-ohlc.ts's positiveFinite.
@@ -176,7 +163,7 @@ export function resolvePriceAtTx(
   const price = tao / alpha;
   if (!Number.isFinite(price)) return { price_at_tx: null, price_basis: null };
 
-  return { price_at_tx: roundUnit(price), price_basis: "trade_exact" };
+  return { price_at_tx: round9(price), price_basis: "trade_exact" };
 }
 
 /**

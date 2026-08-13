@@ -32,10 +32,23 @@ function toTao(value: unknown): number {
   return round9(nonNegativeOrZero(value));
 }
 
+/**
+ * DELIBERATELY LOCAL, and the last one (#10948).
+ *
+ * It looks like `nonNegativeCellOrNull` composed with `round9`, and it is not:
+ * that pair treats a BLANK string as null, while this treats it as `Number("")
+ * === 0`, passes the `>= 0` check and returns a rounded 0. Composing would
+ * change what a blank cell means on this surface.
+ *
+ * Left as the one exception rather than adding a sixth shared variant for a
+ * single caller -- the point of the shared module is fewer contracts, not a
+ * function per call site. If a second module ever wants this exact behaviour,
+ * that is the moment it earns a name.
+ */
 function toNullableTao(value: unknown): number | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) return null;
-  return Math.round(n * 1e9) / 1e9;
+  return round9(n);
 }
 
 // Coerce a block-height cell to a non-negative integer, or null when the value is

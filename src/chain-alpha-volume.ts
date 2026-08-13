@@ -24,19 +24,10 @@ import {
 } from "./alpha-volume.ts";
 import { median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
+import { round9OrZero } from "./lib/rao.ts";
 
 export const CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT = 20;
 export const CHAIN_ALPHA_VOLUME_LIMIT_MAX = 100;
-
-// 1 TAO/alpha = 1e9 rao. Summing many already-rounded per-subnet totals can still accumulate
-// IEEE-754 noise below the rao floor; round every network-rollup output to rao precision,
-// mirroring alpha-volume.ts's own roundUnit / chain-stake-flow.ts's roundTao.
-const RAO_PER_UNIT = 1e9;
-function roundUnit(value: number): number {
-  /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_UNIT) / RAO_PER_UNIT;
-}
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null AND a
 // blank/whitespace-only string explicitly so neither is silently coerced to subnet 0
@@ -84,10 +75,10 @@ function volumeDistribution(values: number[]): VolumeDistribution | null {
   const sum = ascending.reduce((total, value) => total + value, 0);
   return {
     count: ascending.length,
-    mean: roundUnit(sum / ascending.length),
+    mean: round9OrZero(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    median: roundUnit(median(ascending)!),
+    median: round9OrZero(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],
@@ -208,15 +199,15 @@ export function buildChainAlphaVolume(
   const netAlpha = buyAlpha - sellAlpha;
   const grossAlpha = buyAlpha + sellAlpha;
   const network: ChainAlphaVolumeNetwork = {
-    buy_volume_alpha: roundUnit(buyAlpha),
-    sell_volume_alpha: roundUnit(sellAlpha),
-    total_volume_alpha: roundUnit(grossAlpha),
-    buy_volume_tao: roundUnit(buyTao),
-    sell_volume_tao: roundUnit(sellTao),
-    total_volume_tao: roundUnit(buyTao + sellTao),
+    buy_volume_alpha: round9OrZero(buyAlpha),
+    sell_volume_alpha: round9OrZero(sellAlpha),
+    total_volume_alpha: round9OrZero(grossAlpha),
+    buy_volume_tao: round9OrZero(buyTao),
+    sell_volume_tao: round9OrZero(sellTao),
+    total_volume_tao: round9OrZero(buyTao + sellTao),
     buy_count: buyCount,
     sell_count: sellCount,
-    net_volume_alpha: roundUnit(netAlpha),
+    net_volume_alpha: round9OrZero(netAlpha),
     // Network-wide sentiment reading (#4339/8.2 at the network scope), derived from the SAME
     // net/gross alpha totals above via alpha-volume.ts's own sentimentRatio/classifySentiment
     // rather than re-deriving the math a second time.

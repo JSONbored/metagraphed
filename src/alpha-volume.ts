@@ -1,4 +1,4 @@
-import { numberOrZero } from "./lib/rao.ts";
+import { numberOrZero, round9OrZero } from "./lib/rao.ts";
 // Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), plus a
 // buy/sell sentiment indicator derived from it (#4339/8.2 — net/gross alpha
 // lean, no new capture or query): how much subnet alpha was bought
@@ -28,16 +28,6 @@ function nullableAmount(value: unknown): number | null {
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
-}
-
-// 1 TAO/alpha = 1e9 rao. Summing many REAL amount cells accumulates IEEE-754
-// noise below the rao floor; round every output to rao precision, mirroring
-// stake-flow.ts's roundTao.
-const RAO_PER_UNIT = 1e9;
-function roundUnit(value: number): number {
-  /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_UNIT) / RAO_PER_UNIT;
 }
 
 // |net| / gross at or above this share reads as a directional lean rather than
@@ -186,22 +176,22 @@ export function buildAlphaVolume(
   }
   const netAlpha = buyAlpha - sellAlpha;
   const grossAlpha = buyAlpha + sellAlpha;
-  const totalVolumeTao = roundUnit(buyTao + sellTao);
+  const totalVolumeTao = round9OrZero(buyTao + sellTao);
   return {
     schema_version: 1,
     netuid,
     window: "24h",
-    buy_volume_alpha: roundUnit(buyAlpha),
-    sell_volume_alpha: roundUnit(sellAlpha),
-    total_volume_alpha: roundUnit(grossAlpha),
-    buy_volume_tao: roundUnit(buyTao),
-    sell_volume_tao: roundUnit(sellTao),
+    buy_volume_alpha: round9OrZero(buyAlpha),
+    sell_volume_alpha: round9OrZero(sellAlpha),
+    total_volume_alpha: round9OrZero(grossAlpha),
+    buy_volume_tao: round9OrZero(buyTao),
+    sell_volume_tao: round9OrZero(sellTao),
     total_volume_tao: totalVolumeTao,
     buy_count: buyCount,
     sell_count: sellCount,
     // Sentiment indicator (#4339/8.2), purely derived from the alpha totals
     // above — no new capture or query. See sentimentRatio/classifySentiment.
-    net_volume_alpha: roundUnit(netAlpha),
+    net_volume_alpha: round9OrZero(netAlpha),
     sentiment_ratio: sentimentRatio(netAlpha, grossAlpha),
     sentiment: classifySentiment(netAlpha, grossAlpha),
     // Vol/mcap ratio (#4339/8.3) — see volMcapRatio for the externally-loaded
