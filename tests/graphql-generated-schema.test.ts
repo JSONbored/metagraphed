@@ -24,11 +24,21 @@ import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.t
 const openapi = JSON.parse(
   readFileSync("public/metagraph/openapi.json", "utf8"),
 ) as OpenApiParameters;
+
+// ONE build for every test that reads the UNMODIFIED document (#10973's flake
+// fix). Each `builtOnce` call is the full zod->GraphQL
+// conversion -- seconds under coverage instrumentation -- and ten tests each
+// paid it again for the same input, which is what pushed the heavy ones past
+// the 30s ceiling on loaded runs. Tests that build a MODIFIED document still
+// build their own; this instance is read-only by construction (every consumer
+// asserts, none mutates).
+const builtOnce = buildGeneratedSchema(openapi);
+
 const sdl = SDL;
 
 describe("the generated schema", () => {
   test("builds, and builds the whole published surface", () => {
-    const { schema } = buildGeneratedSchema(openapi);
+    const { schema } = builtOnce;
     const objects = Object.entries(schema.getTypeMap()).filter(
       ([name, type]) => !name.startsWith("__") && isObjectType(type),
     );
@@ -43,7 +53,7 @@ describe("the generated schema", () => {
   test("prints without graphql-js rejecting it", () => {
     // The real proof that what was assembled is a SCHEMA and not a bag of
     // types: printSchema validates the whole graph on its way out.
-    const printed = printSchema(buildGeneratedSchema(openapi).schema);
+    const printed = printSchema(builtOnce.schema);
     assert.ok(printed.includes("type Query {"));
     assert.ok(printed.includes("type Subscription {"));
     assert.ok(printed.includes("scalar JSON"));
@@ -54,7 +64,7 @@ describe("the generated schema", () => {
     // `AccountEntry`. Reading only PUBLISHED_TYPE_NAMES mints a second type for
     // a shape the schema already names -- which it did, until the reverse
     // lookup went through PROJECTED_TYPES too.
-    const { schema } = buildGeneratedSchema(openapi);
+    const { schema } = builtOnce;
     assert.ok(schema.getType("AccountEntry"), "the projection name is missing");
     assert.equal(
       schema.getType("AccountsListArtifactAccounts"),
@@ -64,7 +74,7 @@ describe("the generated schema", () => {
   });
 
   test("the Query root carries the DERIVED arguments, not none", () => {
-    const { schema } = buildGeneratedSchema(openapi);
+    const { schema } = builtOnce;
     const field = schema.getQueryType()!.getFields().subnet_registrations;
     assert.ok(field, "subnet_registrations is missing from the root");
     const args = field.args.map((a) => a.name);
@@ -153,7 +163,7 @@ describe("the generated schema", () => {
     // shape, so replacing it cannot contradict anything. Both live entries
     // rely on this -- REST serves an un-flattened union and a window-keyed
     // record, neither of which GraphQL can spell.
-    const { schema } = buildGeneratedSchema(openapi);
+    const { schema } = builtOnce;
     assert.equal(
       String(
         (schema.getType("SubnetTrajectory") as GraphQLObjectType).getFields()
@@ -216,7 +226,7 @@ describe("the generated schema", () => {
     // answers `open_slots[].miner_count: null` on every row. The component
     // keeps its promise (the full card fills all five on all 129 rows of
     // /api/v1/economics); only the view relaxes it.
-    const entry = buildGeneratedSchema(openapi).schema.getType(
+    const entry = builtOnce.schema.getType(
       "OpportunityEntry",
     ) as GraphQLObjectType;
     assert.equal(String(entry.getFields().miner_count.type), "Int");
@@ -248,7 +258,7 @@ describe("the generated schema", () => {
     // `Validator` is the union of two producers that spell one fact two ways;
     // the resolver publishes one spelling, so the other must not be served as
     // a permanent null beside the value it duplicates.
-    const validator = buildGeneratedSchema(openapi).schema.getType(
+    const validator = builtOnce.schema.getType(
       "Validator",
     ) as GraphQLObjectType;
     assert.equal(validator.getFields().latest_captured_at, undefined);
@@ -261,7 +271,7 @@ describe("the generated schema", () => {
   test("the type set is what the ROOTS REACH", () => {
     // Publishing every registered component instead would advertise ~200 types
     // no query can select, which is a different contract from the served one.
-    const { schema } = buildGeneratedSchema(openapi);
+    const { schema } = builtOnce;
     assert.equal(
       schema.getType("GenericArtifact"),
       undefined,
@@ -272,7 +282,7 @@ describe("the generated schema", () => {
 
 describe("the published enums", () => {
   test("both are emitted, with their declared values", () => {
-    const { schema } = buildGeneratedSchema(openapi);
+    const { schema } = builtOnce;
     for (const [name, declaration] of Object.entries(GRAPHQL_ENUMS)) {
       const type = schema.getType(name);
       assert.ok(isEnumType(type), `${name} is not an enum`);
@@ -365,7 +375,7 @@ describe("the committed schema module", () => {
   // schema is caught by the byte comparison, which is stricter than any
   // classed diff was.
   test("is a print of the generated schema, not a survivor of the hand-written one", () => {
-    const { schema } = buildGeneratedSchema(openapi);
+    const { schema } = builtOnce;
     assert.equal(`\n${printSchema(schema)}`, sdl);
   });
 });

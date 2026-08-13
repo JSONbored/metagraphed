@@ -1127,6 +1127,10 @@ import {
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
   CHAIN_CALL_MODULE_MAX_LENGTH,
+  ANALYTICS_WINDOWS,
+  DEFAULT_ANALYTICS_WINDOW,
+  UPTIME_WINDOWS,
+  DEFAULT_UPTIME_WINDOW,
 } from "./route-limits.ts";
 import { SUBNET_CONVICTION_FIELD_SOURCES } from "./subnet-conviction.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
@@ -2159,65 +2163,6 @@ function computeStakePreviewAdvisory(quote: StakeQuote) {
   }
   return { warnings, ok: impact < STAKE_PREVIEW_IMPACT_MAX_PCT };
 }
-// Window labels accepted by get_chain_transfers — derived from the loader constant
-// so input/output schemas and runtime validation cannot drift.
-const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
-const CHAIN_TURNOVER_WINDOW_KEYS = Object.keys(CHAIN_TURNOVER_WINDOWS);
-const CHAIN_STAKE_FLOW_WINDOW_KEYS = Object.keys(CHAIN_STAKE_FLOW_WINDOWS);
-const CHAIN_WEIGHTS_WINDOW_KEYS = Object.keys(CHAIN_WEIGHTS_WINDOWS);
-const CHAIN_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
-  CHAIN_WEIGHT_SETTERS_WINDOWS,
-);
-const CHAIN_STAKE_MOVES_WINDOW_KEYS = Object.keys(CHAIN_STAKE_MOVES_WINDOWS);
-const CHAIN_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
-  CHAIN_STAKE_TRANSFERS_WINDOWS,
-);
-const CHAIN_AXON_REMOVALS_WINDOW_KEYS = Object.keys(
-  CHAIN_AXON_REMOVALS_WINDOWS,
-);
-const CHAIN_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
-  CHAIN_DEREGISTRATIONS_WINDOWS,
-);
-const CHAIN_PROMETHEUS_WINDOW_KEYS = Object.keys(CHAIN_PROMETHEUS_WINDOWS);
-const CHAIN_SERVING_WINDOW_KEYS = Object.keys(CHAIN_SERVING_WINDOWS);
-const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
-  CHAIN_TRANSFER_PAIR_WINDOWS,
-);
-const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
-const ACCOUNT_STAKE_MOVES_WINDOW_KEYS = Object.keys(
-  ACCOUNT_STAKE_MOVES_WINDOWS,
-);
-const ACCOUNT_AXON_REMOVALS_WINDOW_KEYS = Object.keys(AXON_REMOVAL_WINDOWS);
-const ACCOUNT_PROMETHEUS_WINDOW_KEYS = Object.keys(PROMETHEUS_WINDOWS);
-const ACCOUNT_REGISTRATIONS_WINDOW_KEYS = Object.keys(REGISTRATION_WINDOWS);
-const ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
-  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
-);
-const ACCOUNT_SERVING_WINDOW_KEYS = Object.keys(SERVING_WINDOWS);
-const ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
-  ACCOUNT_DEREGISTRATION_WINDOWS,
-);
-const SUBNET_EVENT_SUMMARY_WINDOW_KEYS = Object.keys(
-  SUBNET_EVENT_SUMMARY_WINDOWS,
-);
-const SUBNET_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
-  SUBNET_WEIGHT_SETTERS_WINDOWS,
-);
-const SUBNET_WEIGHTS_WINDOW_KEYS = Object.keys(SUBNET_WEIGHTS_WINDOWS);
-const SUBNET_AXON_REMOVALS_WINDOW_KEYS = Object.keys(
-  SUBNET_AXON_REMOVALS_WINDOWS,
-);
-const SUBNET_SERVING_WINDOW_KEYS = Object.keys(SUBNET_SERVING_WINDOWS);
-const SUBNET_PROMETHEUS_WINDOW_KEYS = Object.keys(SUBNET_PROMETHEUS_WINDOWS);
-const SUBNET_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
-  SUBNET_DEREGISTRATIONS_WINDOWS,
-);
-const SUBNET_STAKE_MOVES_WINDOW_KEYS = Object.keys(SUBNET_STAKE_MOVES_WINDOWS);
-const SUBNET_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
-  SUBNET_STAKE_TRANSFERS_WINDOWS,
-);
-const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
-
 // Directions accepted by get_account_transfers' direction filter -- mirrors
 // GET /api/v1/accounts/{ss58}/transfers' REST validation
 // (workers/request-handlers/entities.ts).
@@ -4525,6 +4470,59 @@ function requireEnumArgument<T extends string>(
   return value as T;
 }
 
+/**
+ * The `window` argument, validated against ONE domain's window record
+ * (#10973). Thirty-three handlers carried this exact guard by hand; the
+ * message here is built from the SAME record that is checked, so the sentence
+ * cannot drift from the set. Per-domain records stay separate on purpose --
+ * each route chose its own windows (#10987) -- and this is deliberately NOT
+ * `requireEnumArgument`, whose generic "Argument \`window\` must be..."
+ * prose would change the sentence 33 tools already publish.
+ */
+function requireWindowArgument<K extends string>(
+  args: Row,
+  windows: Readonly<Record<K, unknown>>,
+  fallback: NoInfer<K>,
+): K {
+  let value: string | null = optionalString(args, "window");
+  if (value === null) value = fallback;
+  if (!Object.hasOwn(windows, value)) {
+    throw toolError(
+      "invalid_params",
+      `window must be one of: ${Object.keys(windows).join(", ")}.`,
+    );
+  }
+  return value as K;
+}
+
+/**
+ * The analytics/uptime `window` arguments (#10973). Nine analytics handlers and
+ * one uptime handler carried the same parse-then-check with the vocabulary
+ * RESTATED in the error prose ("window must be one of: 7d, 30d.") -- all ten
+ * agreed with their enums today, and adding a window would have left the
+ * guards correct while the sentences lied, which is the harder drift to see.
+ * `requireEnumArgument` builds the message from the vocabulary it checks, so
+ * the sentence cannot outlive the set. The non-null assertions are sound by
+ * construction: the value just validated IS a key of the record the parser
+ * reads.
+ */
+function requireAnalyticsWindow(args: Row) {
+  return parseAnalyticsWindow(
+    requireEnumArgument(
+      args,
+      "window",
+      ANALYTICS_WINDOWS,
+      DEFAULT_ANALYTICS_WINDOW,
+    ),
+  )!;
+}
+
+function requireUptimeWindow(args: Row) {
+  return parseUptimeWindow(
+    requireEnumArgument(args, "window", UPTIME_WINDOWS, DEFAULT_UPTIME_WINDOW),
+  )!;
+}
+
 function optionalBoolean(args: Row, key: string) {
   const value = args?.[key];
   if (value === undefined || value === null) return false;
@@ -6108,11 +6106,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label } = parsed;
       return (
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -6143,11 +6138,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label } = parsed;
       return (
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -7014,14 +7006,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainTurnoverInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
-      if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_TURNOVER_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_TURNOVER_WINDOWS,
+        DEFAULT_CHAIN_TURNOVER_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_TURNOVER_LIMIT_DEFAULT,
@@ -7060,14 +7049,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainStakeFlowInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
-      if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_STAKE_FLOW_WINDOWS,
+        DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
@@ -7146,14 +7132,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainWeightsInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_WEIGHTS_WINDOW;
-      if (!Object.hasOwn(CHAIN_WEIGHTS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_WEIGHTS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_WEIGHTS_WINDOWS,
+        DEFAULT_CHAIN_WEIGHTS_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_WEIGHTS_LIMIT_DEFAULT,
@@ -7193,14 +7176,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainWeightSettersInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW;
-      if (!Object.hasOwn(CHAIN_WEIGHT_SETTERS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_WEIGHT_SETTERS_WINDOWS,
+        DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
@@ -7241,14 +7221,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainStakeMovesInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_MOVES_WINDOW;
-      if (!Object.hasOwn(CHAIN_STAKE_MOVES_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_STAKE_MOVES_WINDOWS,
+        DEFAULT_CHAIN_STAKE_MOVES_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
@@ -7288,14 +7265,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainStakeTransfersInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
-      if (!Object.hasOwn(CHAIN_STAKE_TRANSFERS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_STAKE_TRANSFERS_WINDOWS,
+        DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
@@ -7337,14 +7311,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainAxonRemovalsInputSchema>,
       _ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
-      if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_AXON_REMOVALS_WINDOWS,
+        DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
@@ -7381,14 +7352,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainServingInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_SERVING_WINDOW;
-      if (!Object.hasOwn(CHAIN_SERVING_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_SERVING_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_SERVING_WINDOWS,
+        DEFAULT_CHAIN_SERVING_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_SERVING_LIMIT_DEFAULT,
@@ -7432,14 +7400,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainPrometheusInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_PROMETHEUS_WINDOW;
-      if (!Object.hasOwn(CHAIN_PROMETHEUS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_PROMETHEUS_WINDOWS,
+        DEFAULT_CHAIN_PROMETHEUS_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_PROMETHEUS_LIMIT_DEFAULT,
@@ -7773,14 +7738,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
-      if (!Object.hasOwn(STAKE_FLOW_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        STAKE_FLOW_WINDOWS,
+        DEFAULT_STAKE_FLOW_WINDOW,
+      );
       const direction =
         optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
       if (!(STAKE_FLOW_DIRECTIONS as readonly string[]).includes(direction)) {
@@ -7824,14 +7786,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
-      if (!Object.hasOwn(SUBNET_EVENT_SUMMARY_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_EVENT_SUMMARY_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_EVENT_SUMMARY_WINDOWS,
+        DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
@@ -7870,14 +7829,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
-      if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_WEIGHTS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_WEIGHTS_WINDOWS,
+        DEFAULT_SUBNET_WEIGHTS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -7910,14 +7866,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
-      if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_WEIGHT_SETTERS_WINDOWS,
+        DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -7952,14 +7905,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
-      if (!Object.hasOwn(SUBNET_REGISTRATIONS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${Object.keys(SUBNET_REGISTRATIONS_WINDOWS).join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_REGISTRATIONS_WINDOWS,
+        DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -7995,14 +7945,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
-      if (!Object.hasOwn(SUBNET_STAKE_MOVES_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_STAKE_MOVES_WINDOWS,
+        DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8039,14 +7986,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
-      if (!Object.hasOwn(SUBNET_STAKE_TRANSFERS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_STAKE_TRANSFERS_WINDOWS,
+        DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8083,14 +8027,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       _ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
-      if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_AXON_REMOVALS_WINDOWS,
+        DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8117,14 +8058,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_SERVING_WINDOW;
-      if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_SERVING_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_SERVING_WINDOWS,
+        DEFAULT_SUBNET_SERVING_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8162,14 +8100,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_PROMETHEUS_WINDOW;
-      if (!Object.hasOwn(SUBNET_PROMETHEUS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_PROMETHEUS_WINDOWS,
+        DEFAULT_SUBNET_PROMETHEUS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8217,14 +8152,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
-      if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${SUBNET_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SUBNET_DEREGISTRATIONS_WINDOWS,
+        DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -8291,13 +8223,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetSubnetMoversInputSchema>,
       ctx: McpCtx,
     ) {
-      const window = optionalString(args, "window") ?? DEFAULT_MOVERS_WINDOW;
-      if (!Object.hasOwn(MOVERS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${MOVERS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        MOVERS_WINDOWS,
+        DEFAULT_MOVERS_WINDOW,
+      );
       const sort = optionalString(args, "sort") ?? DEFAULT_MOVERS_SORT;
       if (!MOVERS_SORTS.includes(sort)) {
         throw toolError(
@@ -8346,10 +8276,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const window = parseUptimeWindow(args?.window);
-      if (args?.window !== undefined && window === null) {
-        throw toolError("invalid_params", "window must be one of: 90d, 1y.");
-      }
+      const window = requireUptimeWindow(args);
       const minSamples = optionalNonNegativeInt(args, "min_samples");
       return (
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
@@ -8531,11 +8458,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetGlobalIncidentsInputSchema>,
       ctx: McpCtx,
     ) {
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label, days } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label, days } = parsed;
       const data =
         // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE is deleted from
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -9351,7 +9275,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const parsed = parseHistoryWindow(
         optionalString(args, "window") ?? DEFAULT_SUBNET_LIFECYCLE_WINDOW,
       );
-      if ("error" in parsed) throw new Error(parsed.error.message);
+      // toolError, NOT a bare Error (#10973): a bare throw surfaces as the
+      // generic "The tool failed to complete" -- no code, no vocabulary, and
+      // the analytics count it as a handler failure when it is the caller's
+      // typo. Found by the window-vocabulary test, as a live behaviour.
+      if ("error" in parsed)
+        throw toolError("invalid_params", parsed.error.message);
       const { days } = parsed;
       const limit = clampToolLimit(
         args?.limit,
@@ -11131,14 +11060,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
-      if (!Object.hasOwn(STAKE_FLOW_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        STAKE_FLOW_WINDOWS,
+        DEFAULT_STAKE_FLOW_WINDOW,
+      );
       // direction is validated for REST-parity and forwarded to the Postgres
       // tier below; the D1 fallback (buildAccountStakeFlow([])) never sees it
       // since account_events is retired (#4772).
@@ -11181,14 +11107,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
-      if (!Object.hasOwn(ACCOUNT_STAKE_MOVES_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${ACCOUNT_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        ACCOUNT_STAKE_MOVES_WINDOWS,
+        DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -11216,14 +11139,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       _ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_AXON_REMOVAL_WINDOW;
-      if (!Object.hasOwn(AXON_REMOVAL_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${ACCOUNT_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        AXON_REMOVAL_WINDOWS,
+        DEFAULT_AXON_REMOVAL_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -11251,14 +11171,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_PROMETHEUS_WINDOW;
-      if (!Object.hasOwn(PROMETHEUS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${ACCOUNT_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        PROMETHEUS_WINDOWS,
+        DEFAULT_PROMETHEUS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -11289,14 +11206,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_REGISTRATION_WINDOW;
-      if (!Object.hasOwn(REGISTRATION_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${ACCOUNT_REGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        REGISTRATION_WINDOWS,
+        DEFAULT_REGISTRATION_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -11325,14 +11239,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
-      if (!Object.hasOwn(ACCOUNT_WEIGHT_SETTERS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+        DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -11361,13 +11272,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const window = optionalString(args, "window") ?? DEFAULT_SERVING_WINDOW;
-      if (!Object.hasOwn(SERVING_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${ACCOUNT_SERVING_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        SERVING_WINDOWS,
+        DEFAULT_SERVING_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -11397,14 +11306,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW;
-      if (!Object.hasOwn(ACCOUNT_DEREGISTRATION_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        ACCOUNT_DEREGISTRATION_WINDOWS,
+        DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW,
+      );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
@@ -12413,11 +12319,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(list_extrinsics). Mirrors GET /api/v1/chain/calls.",
     inputSchema: inputJsonSchema(GetChainCallsInputSchema),
     async handler(args: z.infer<typeof GetChainCallsInputSchema>, ctx: McpCtx) {
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label } = parsed;
       const groupBy =
         optionalEnum(args, "group_by", ["module", "module_function"]) ||
         "module";
@@ -12469,11 +12372,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainSignersInputSchema>,
       ctx: McpCtx,
     ) {
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label, days } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label, days } = parsed;
       const sort =
         optionalEnum(args, "sort", CHAIN_SIGNERS_SORTS) || "tx_count";
       const limit = clampToolLimit(args?.limit, 50, 100);
@@ -12519,11 +12419,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "GET /api/v1/chain/fees.",
     inputSchema: inputJsonSchema(GetChainFeesInputSchema),
     async handler(args: z.infer<typeof GetChainFeesInputSchema>, ctx: McpCtx) {
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label, days } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label, days } = parsed;
       const limit = clampToolLimit(args?.limit, 25, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
@@ -12574,11 +12471,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainRegistrationsInputSchema>,
       ctx: McpCtx,
     ) {
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label } = parsed;
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
@@ -12618,14 +12512,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainDeregistrationsInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW;
-      if (!Object.hasOwn(CHAIN_DEREGISTRATIONS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_DEREGISTRATIONS_WINDOWS,
+        DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
@@ -12665,14 +12556,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainTransfersInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
-      if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_TRANSFER_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_TRANSFER_WINDOWS,
+        DEFAULT_CHAIN_TRANSFER_WINDOW,
+      );
       const limit = clampToolLimit(
         args?.limit,
         CHAIN_TRANSFER_LIMIT_DEFAULT,
@@ -12715,14 +12603,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainTransferPairsInputSchema>,
       ctx: McpCtx,
     ) {
-      const window =
-        optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
-      if (!Object.hasOwn(CHAIN_TRANSFER_PAIR_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${CHAIN_TRANSFER_PAIR_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
+      const window = requireWindowArgument(
+        args,
+        CHAIN_TRANSFER_PAIR_WINDOWS,
+        DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
+      );
       const sort =
         optionalEnum(args, "sort", CHAIN_TRANSFER_PAIR_SORTS) ?? "volume";
       const limit = clampToolLimit(
@@ -12766,11 +12651,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetNetworkActivityInputSchema>,
       ctx: McpCtx,
     ) {
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label, days } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label, days } = parsed;
       // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
@@ -13542,11 +13424,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "actually carrying traffic. Mirrors GET /api/v1/rpc/usage.",
     inputSchema: inputJsonSchema(GetRpcUsageInputSchema),
     async handler(args: z.infer<typeof GetRpcUsageInputSchema>, ctx: McpCtx) {
-      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
-      if (args?.window !== undefined && parsed === null) {
-        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
-      }
-      const { label } = parsed!;
+      const parsed = requireAnalyticsWindow(args);
+      const { label } = parsed;
       // The tier cascade is src/rpc-usage-answer.ts's, not this tool's. It
       // used to be `tryDataApiTier -> loadRpcUsage` here, which -- with the
       // Postgres box gone -- meant an MCP client was told the proxy served

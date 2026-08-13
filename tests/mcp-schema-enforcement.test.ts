@@ -41,6 +41,9 @@ import type { Row } from "./row-type.ts";
 
 const env = createLocalArtifactEnv() as unknown as Env;
 
+/** A real finney address, for probes that must get PAST address validation. */
+const VALID_SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
 async function errorCode(
   name: string,
   args: Record<string, unknown>,
@@ -61,6 +64,34 @@ async function errorCode(
   );
   const body = (await response.json()) as Row;
   return ((body?.result?.structuredContent as Row)?.error as Row)?.code ?? null;
+}
+
+/** The refusal's human sentence, for the tests that pin its CONTENT --
+ * the window vocabulary test asserts the message lists the published enum,
+ * which the code-only helper above cannot see. */
+async function errorMessage(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<string | null> {
+  const response = await handleMcpRequest(
+    new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name, arguments: args },
+      }),
+    }),
+    env,
+    {},
+  );
+  const body = (await response.json()) as Row;
+  return (
+    (((body?.result?.structuredContent as Row)?.error as Row)
+      ?.message as string) ?? null
+  );
 }
 
 /** Arguments that satisfy every `required` key, so a probe isolates the one
@@ -432,5 +463,74 @@ describe("a published `limit` says what omitting it does (#10101)", () => {
         `it with .meta({ default }): ${missing.join(", ")}`,
     );
     assert.ok(checked > 90, `only ${checked} tools publish a limit`);
+  });
+});
+
+describe("a window rejection names exactly the published vocabulary (#10973)", () => {
+  // Ten guards restated their vocabulary in prose ("window must be one of:
+  // 7d, 30d.") -- all ten agreed with their enums, so nothing was broken, but
+  // adding a window would have left the guard right and the sentence lying.
+  // The guards now build the message from the vocabulary they check
+  // (requireWindowArgument / requireEnumArgument), and this pins the claim the
+  // enum-enforcement suite above does not make: not just THAT an out-of-enum
+  // window is rejected, but that the refusal LISTS the same values the tool
+  // publishes. Derived from listToolDefinitions(), so a window tool added
+  // tomorrow is covered tonight.
+  test("every runnable tool with a `window` enum lists it in the refusal", async () => {
+    const failures: string[] = [];
+    let checked = 0;
+    for (const tool of listToolDefinitions() as Row[]) {
+      const properties = (tool.inputSchema as Row)?.properties as
+        Row | undefined;
+      const windowEnum = (properties?.window as Row | undefined)?.enum as
+        string[] | undefined;
+      if (!windowEnum?.length) continue;
+      if (!(await isRunnable(tool))) continue;
+      checked++;
+      const args = baselineArgs(tool.inputSchema as Row, "window");
+      // baselineArgs fills strings with "1", which fails SS58 validation
+      // BEFORE the window guard runs -- give the address-shaped keys a real
+      // address so the probe reaches the constraint under test.
+      for (const key of ["ss58", "hotkey", "coldkey"]) {
+        if (key in args) args[key] = VALID_SS58;
+      }
+      args.window = "__not_a_window__";
+      const message = await errorMessage(tool.name as string, args);
+      // The exact joined vocabulary, not a per-value scan: a message listing
+      // the values in the published order is the claim; a message listing a
+      // SUPERSET would pass a per-value scan and still lie.
+      if (!message?.includes(windowEnum.join(", "))) {
+        failures.push(
+          `${tool.name}: published [${windowEnum.join(", ")}], refused with ${JSON.stringify(message)}`,
+        );
+      }
+      // The other half of the same claim: the guard ACCEPTS its own published
+      // values. A guard that refused everything would pass the probe above.
+      args.window = windowEnum[0];
+      const acceptedCode = await errorCode(tool.name as string, args);
+      if (acceptedCode === "invalid_params") {
+        failures.push(
+          `${tool.name}: rejected its own published window ${JSON.stringify(windowEnum[0])}`,
+        );
+      }
+      // And the published DEFAULT: omitting `window` must never be a window
+      // error -- the schema says the argument is optional.
+      delete args.window;
+      const defaultedCode = await errorCode(tool.name as string, args);
+      if (defaultedCode === "invalid_params") {
+        failures.push(`${tool.name}: rejected an omitted window`);
+      }
+      // An EXPLICIT null is the one absent-shape dispatch does not fill with
+      // the schema default (defaults are injected only for missing keys), so
+      // it is the path that reaches the handler-side fallback. It must mean
+      // "use the default", never a rejection.
+      args.window = null;
+      const nulledCode = await errorCode(tool.name as string, args);
+      if (nulledCode === "invalid_params") {
+        failures.push(`${tool.name}: rejected an explicit null window`);
+      }
+    }
+    assert.ok(checked >= 40, `expected the window surface, probed ${checked}`);
+    assert.deepEqual(failures, []);
   });
 });
