@@ -1,3 +1,4 @@
+import type { ApiSchema } from "@jsonbored/metagraphed";
 /**
  * #10511: the money-map panel's display decisions, extracted so the ones with
  * consequences are testable without rendering.
@@ -15,13 +16,22 @@
  * side by side; the panel states the difference and stops.
  */
 
+// CHECKED AGAINST THE CONTRACT, not restated blind (#10994): the buckets are
+// the property KEYS of SubnetOwnerCutArtifact.disposition.buckets, so the
+// `satisfies` clause makes a renamed or removed bucket a compile error here
+// the moment the contract package updates -- a runtime import is impossible
+// (component keys have no runtime emit), and an unchecked literal is how the
+// panel would keep charting a bucket the contract dropped.
+type ContractBuckets = NonNullable<
+  NonNullable<ApiSchema<"SubnetOwnerCutArtifact">["disposition"]>["buckets"]
+>;
 export const DISPOSITION_BUCKETS = [
   "held-as-stake",
   "unstaked",
   "transferred-out",
   "burned",
   "unresolved",
-] as const;
+] as const satisfies readonly (keyof ContractBuckets)[];
 
 export type DispositionBucket = (typeof DISPOSITION_BUCKETS)[number];
 

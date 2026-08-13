@@ -12,14 +12,16 @@ import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/state
 import { classNames } from "@/lib/metagraphed/format";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import { Panel } from "@/components/metagraphed/primitives";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 import type {
   ConcentrationMetrics,
   ConcentrationHistoryPoint,
   PerformanceHistoryPoint,
 } from "@/lib/metagraphed/types";
 
-type Win = "7d" | "30d" | "90d";
-const WINDOWS: Win[] = ["7d", "30d", "90d"];
+// The route's own published windows (#10994).
+const WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/subnets/{netuid}/concentration/history"].window;
+type Win = (typeof WINDOWS)[number];
 
 function numStr(v?: number | null, digits = 3): string {
   if (v == null || !Number.isFinite(v)) return "—";

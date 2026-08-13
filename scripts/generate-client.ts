@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { repoRoot } from "./lib.ts";
@@ -15,6 +16,58 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } else {
     process.stdout.write(content);
   }
+}
+
+/**
+ * Every string-enum query parameter the published contract declares, keyed by
+ * route path then parameter name (#10994).
+ *
+ * Emitted as \`as const\` so a consumer gets the literal tuple -- the UI's
+ * window selectors and stream-topic lists derive their unions from these
+ * instead of restating them, which is how a chart stopped being able to offer
+ * a window its route rejects. Derived from openapi.json at generation time:
+ * the published contract is the source, not a hand-kept mirror of it.
+ */
+function emitQueryParameterEnums(): string {
+  const spec = JSON.parse(
+    readFileSync(path.join(repoRoot, "public/metagraph/openapi.json"), "utf8"),
+  ) as {
+    paths: Record<
+      string,
+      Record<
+        string,
+        { parameters?: Array<{ name: string; schema?: { enum?: unknown[] } }> }
+      >
+    >;
+  };
+  const byRoute: Record<string, Record<string, string[]>> = {};
+  for (const [route, operations] of Object.entries(spec.paths)) {
+    for (const operation of Object.values(operations)) {
+      if (typeof operation !== "object" || operation === null) continue;
+      for (const parameter of operation.parameters ?? []) {
+        const values = parameter.schema?.enum;
+        if (
+          !Array.isArray(values) ||
+          values.length === 0 ||
+          !values.every((value) => typeof value === "string")
+        )
+          continue;
+        (byRoute[route] ??= {})[parameter.name] = values as string[];
+      }
+    }
+  }
+  const lines: string[] = [];
+  for (const route of Object.keys(byRoute).sort()) {
+    const parameters = byRoute[route];
+    lines.push(`  ${JSON.stringify(route)}: {`);
+    for (const name of Object.keys(parameters).sort()) {
+      lines.push(
+        `    ${JSON.stringify(name)}: ${JSON.stringify(parameters[name])},`,
+      );
+    }
+    lines.push("  },");
+  }
+  return lines.join("\n");
 }
 
 export function generateClientSource(): string {
@@ -824,5 +877,14 @@ export function createMetagraphedClient(
     health: (options) => request("/api/v1/health", { ...options }),
   };
 }
+
+/**
+ * Every string-enum query parameter the published contract declares, keyed by
+ * route path then parameter name. "as const", so a consumer derives literal
+ * unions instead of restating them (#10994).
+ */
+export const QUERY_PARAMETER_ENUMS = {
+${emitQueryParameterEnums()}
+} as const;
 `;
 }

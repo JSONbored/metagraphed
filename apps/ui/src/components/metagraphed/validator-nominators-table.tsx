@@ -12,8 +12,10 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { validatorNominatorsQuery } from "@/lib/metagraphed/queries";
 import type { ValidatorNominatorEntry } from "@/lib/metagraphed/types";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
-const WINDOWS = ["7d", "30d", "90d"] as const;
+// The route's own published windows (#10994).
+const WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/validators/{hotkey}/nominators"].window;
 const SORTS = [
   { value: "net_staked", label: "Net staked" },
   { value: "gross_staked", label: "Gross staked" },

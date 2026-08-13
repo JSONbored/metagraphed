@@ -449,5 +449,795 @@ function createMetagraphedClient(clientOptions = {}) {
     health: (options) => request("/api/v1/health", { ...options })
   };
 }
+var QUERY_PARAMETER_ENUMS = {
+  "/api/v1/accounts": {
+    "format": ["json", "csv"],
+    "sort": ["total_stake", "total_emission", "subnet_count", "uid_count", "validator_count", "stake_dominance", "last_active"]
+  },
+  "/api/v1/accounts/top-holders": {
+    "format": ["json", "csv"],
+    "sort": ["total_tao", "free_tao", "delegated_tao", "net_flow_7d", "net_flow_30d", "net_flow_90d"]
+  },
+  "/api/v1/accounts/{ss58}/axon-removals": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/accounts/{ss58}/counterparties": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/accounts/{ss58}/deregistrations": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/accounts/{ss58}/events": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/accounts/{ss58}/extrinsics": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/accounts/{ss58}/history": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/accounts/{ss58}/identity-history": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/accounts/{ss58}/prometheus": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/accounts/{ss58}/registrations": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/accounts/{ss58}/serving": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/accounts/{ss58}/stake-flow": {
+    "direction": ["all", "in", "out"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/accounts/{ss58}/stake-moves": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/accounts/{ss58}/subnets/{netuid}/history": {
+    "window": ["7d", "30d", "90d", "1y", "all"]
+  },
+  "/api/v1/accounts/{ss58}/transfers": {
+    "direction": ["all", "sent", "received"],
+    "format": ["json", "csv"]
+  },
+  "/api/v1/accounts/{ss58}/weight-setters": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/agent-catalog": {
+    "order": ["asc", "desc"],
+    "sort": ["netuid", "callable_count", "completeness_score", "example_count"]
+  },
+  "/api/v1/blocks": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/blocks/{ref}/events": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/blocks/{ref}/extrinsics": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/candidates": {
+    "confidence": ["low", "medium", "high"],
+    "format": ["json", "csv"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "sort": ["confidence", "id", "kind", "name", "netuid", "provider", "state"],
+    "state": ["schema-invalid", "schema-valid", "maintainer-review", "verified", "stale", "rejected"]
+  },
+  "/api/v1/chain-events": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/chain/activity": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/alpha-volume": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/chain/axon-removals": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/calls": {
+    "format": ["json", "csv"],
+    "group_by": ["module", "module_function"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/concentration/history": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/chain/concentration/subnets": {
+    "lens": ["emission", "stake", "entity_emission", "entity_stake", "validator_stake"],
+    "order": ["asc", "desc"],
+    "sort": ["nakamoto_coefficient", "gini", "holders", "top_1pct_share", "total", "netuid"]
+  },
+  "/api/v1/chain/deregistrations": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/emission-pipeline": {
+    "order": ["asc", "desc"],
+    "sort": ["final_share", "emission_share", "weighted_share", "gated_share", "gate_delta", "distance_to_bar", "tao_in_emission", "excess_tao", "tao_total", "liquidity_fraction", "miner_burned", "netuid"]
+  },
+  "/api/v1/chain/fees": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/governance/emission-changes": {
+    "kind": ["param", "subnet", "flow"]
+  },
+  "/api/v1/chain/holders": {
+    "sort": ["top1_share", "top5_share", "top10_share", "top20_share", "holder_count", "total_alpha"]
+  },
+  "/api/v1/chain/prometheus": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/registrations": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/revenue-coverage": {
+    "window": ["1d", "7d", "30d"]
+  },
+  "/api/v1/chain/serving": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/signers": {
+    "format": ["json", "csv"],
+    "sort": ["tx_count", "total_fee_tao"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/stake-flow": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/stake-moves": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/stake-transfers": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/subnet-lifecycle": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d", "90d", "1y", "all"]
+  },
+  "/api/v1/chain/transfer-pairs": {
+    "format": ["json", "csv"],
+    "sort": ["volume", "count"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/transfers": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/turnover": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/chain/weights": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/chain/weights/setters": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/contracts": {
+    "order": ["asc", "desc"],
+    "sort": ["id", "path", "contract_version"]
+  },
+  "/api/v1/coverage-depth": {
+    "agent_status": ["callable", "base-layer", "candidate", "needs-evidence", "blocked"],
+    "blocker_level": ["none", "hard-blocked", "needs-review", "missing-data"],
+    "format": ["json", "csv"],
+    "order": ["asc", "desc"],
+    "sort": ["agent_status", "blocker_level", "name", "netuid", "priority_score", "score", "tier"],
+    "tier": ["agent-ready", "machine-usable", "candidate-review", "needs-evidence", "hard-blocked", "missing-interface"]
+  },
+  "/api/v1/curation": {
+    "coverage_level": ["native-only", "manifested", "probed"],
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "order": ["asc", "desc"],
+    "sort": ["coverage_level", "curation_level", "name", "netuid"]
+  },
+  "/api/v1/domains/{tag}/summary": {
+    "tag": ["agents", "compute", "data", "finance", "inference", "media", "prediction", "privacy", "robotics", "science", "search", "security", "storage", "training"]
+  },
+  "/api/v1/economics": {
+    "format": ["json", "csv"],
+    "order": ["asc", "desc"],
+    "registration_allowed": ["true", "false"],
+    "sort": ["alpha_fdv_tao", "alpha_market_cap_tao", "alpha_price_change_1d", "alpha_price_change_1h", "alpha_price_change_1m", "alpha_price_change_7d", "alpha_price_tao", "block", "emission_share", "max_stake_alpha", "max_uids", "max_validators", "miner_count", "miner_readiness", "name", "netuid", "open_slots", "registration_cost_tao", "subnet_volume_tao", "total_stake_alpha", "validator_count"]
+  },
+  "/api/v1/economics/trends": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d", "90d", "1y", "all"]
+  },
+  "/api/v1/endpoint-incidents": {
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "severity": ["critical", "warning", "info"],
+    "sort": ["detected_at", "endpoint_id", "kind", "last_checked", "netuid", "provider", "severity", "state", "status"],
+    "state": ["active", "resolved"],
+    "status": ["ok", "degraded", "failed", "unknown"]
+  },
+  "/api/v1/endpoint-pools": {
+    "kind": ["subtensor-rpc", "subtensor-wss", "archive"],
+    "order": ["asc", "desc"],
+    "sort": ["eligible_count", "endpoint_count", "id", "kind"]
+  },
+  "/api/v1/endpoints": {
+    "format": ["json", "csv"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "layer": ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
+    "order": ["asc", "desc"],
+    "pool_eligible": ["true", "false"],
+    "publication_state": ["candidate", "verified", "monitored", "pool-eligible", "disabled", "rejected"],
+    "sort": ["kind", "last_checked", "latency_ms", "layer", "netuid", "pool_eligible", "provider", "publication_state", "score", "status"],
+    "status": ["ok", "degraded", "failed", "unknown"]
+  },
+  "/api/v1/evidence": {
+    "order": ["asc", "desc"],
+    "sort": ["claim", "source_url", "subject", "verified_at"]
+  },
+  "/api/v1/extrinsics": {
+    "format": ["json", "csv"],
+    "success": ["true", "false"]
+  },
+  "/api/v1/fixtures": {
+    "order": ["asc", "desc"],
+    "sort": ["captured_at", "netuid", "surface_id"]
+  },
+  "/api/v1/gaps": {
+    "coverage_level": ["native-only", "manifested", "probed"],
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "order": ["asc", "desc"],
+    "sort": ["coverage_level", "curation_level", "gap_count", "name", "netuid"]
+  },
+  "/api/v1/governance/config-changes": {
+    "format": ["json", "csv"],
+    "success": ["true", "false"]
+  },
+  "/api/v1/health": {
+    "order": ["asc", "desc"],
+    "sort": ["avg_latency_ms", "degraded_count", "failed_count", "last_checked", "last_ok", "name", "netuid", "ok_count", "status", "surface_count", "unknown_count"],
+    "status": ["ok", "degraded", "failed", "unknown"]
+  },
+  "/api/v1/health/failure-reasons": {
+    "window": ["7d", "30d", "90d", "180d"]
+  },
+  "/api/v1/health/history/{date}": {
+    "classification": ["auth-required", "content-mismatch", "dead", "live", "rate-limited", "redirected", "timeout", "transient", "unsupported", "unsafe", "wrong-chain"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "sort": ["classification", "kind", "last_checked", "last_ok", "latency_ms", "netuid", "provider", "status", "status_code", "surface_id", "verified_at"],
+    "status": ["ok", "degraded", "failed", "unknown"]
+  },
+  "/api/v1/health/trends": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/incidents": {
+    "order": ["asc", "desc"],
+    "sort": ["downtime_ms", "incident_count", "netuid", "surface_id"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/network/tao-usd": {
+    "window": ["1h", "24h", "7d", "30d"]
+  },
+  "/api/v1/profiles": {
+    "confidence": ["low", "medium", "high"],
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "format": ["json", "csv"],
+    "order": ["asc", "desc"],
+    "profile_level": ["directory-only", "identity-partial", "identity-complete", "operational", "adapter-backed"],
+    "sort": ["candidate_count", "completeness_score", "curation_level", "interface_count", "missing_critical_count", "name", "netuid", "operational_interface_count", "profile_level", "review_state"],
+    "subnet_type": ["root", "application"]
+  },
+  "/api/v1/providers": {
+    "authority": ["community", "official", "provider-claimed", "registry-observed"],
+    "format": ["json", "csv"],
+    "kind": ["data-provider", "docs-provider", "infrastructure-provider", "registry", "subnet-team"],
+    "order": ["asc", "desc"],
+    "sort": ["authority", "id", "kind", "name"]
+  },
+  "/api/v1/providers/{slug}/endpoints": {
+    "format": ["json", "csv"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "layer": ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
+    "order": ["asc", "desc"],
+    "pool_eligible": ["true", "false"],
+    "publication_state": ["candidate", "verified", "monitored", "pool-eligible", "disabled", "rejected"],
+    "sort": ["kind", "last_checked", "latency_ms", "layer", "netuid", "pool_eligible", "provider", "publication_state", "score", "status"],
+    "status": ["ok", "degraded", "failed", "unknown"]
+  },
+  "/api/v1/registry/leaderboards": {
+    "board": ["healthiest", "fastest-rpc", "most-complete", "most-enriched", "fastest-growing", "most-reliable", "open-slots", "cheapest-registration", "highest-emission", "validator-headroom", "biggest-alpha-gain-1d", "biggest-alpha-gain-7d"]
+  },
+  "/api/v1/review/adapter-candidates": {
+    "candidate_api_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "format": ["json", "csv"],
+    "operational_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "recommended_adapter_kind": ["custom-adapter", "data-artifact-adapter", "generic-openapi-or-custom", "stream-adapter"],
+    "sort": ["candidate_api_count", "candidate_api_kinds", "curation_level", "name", "netuid", "operational_kinds", "operational_surface_count", "priority_score", "recommended_adapter_kind"]
+  },
+  "/api/v1/review/enrichment-evidence": {
+    "direct_submission_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "evidence_action": ["submit-new-evidence", "verify-existing-evidence", "replace-stale-evidence", "review-existing-evidence", "maintainer-review-existing-evidence", "monitor"],
+    "lane": ["direct-submission", "maintainer-review", "adapter-candidate", "monitoring-followup", "baseline-monitoring"],
+    "missing_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "sort": ["evidence_action", "lane", "name", "netuid", "priority_score"]
+  },
+  "/api/v1/review/enrichment-queue": {
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "direct_submission_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "evidence_action": ["submit-new-evidence", "verify-existing-evidence", "replace-stale-evidence", "review-existing-evidence", "maintainer-review-existing-evidence", "monitor"],
+    "format": ["json", "csv"],
+    "identity_level": ["none", "directory", "partial", "complete"],
+    "lane": ["direct-submission", "maintainer-review", "adapter-candidate", "monitoring-followup", "baseline-monitoring"],
+    "manual_review_required": ["true", "false"],
+    "missing_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "profile_level": ["directory-only", "identity-partial", "identity-complete", "operational", "adapter-backed"],
+    "sort": ["adapter_score", "candidate_count", "completeness_score", "curation_level", "endpoint_count", "evidence_action", "identity_level", "identity_surface_count", "lane", "name", "netuid", "operational_interface_count", "priority_score", "profile_level", "review_state", "stale_candidate_count", "surface_count", "verified_candidate_count"]
+  },
+  "/api/v1/review/enrichment-targets": {
+    "auto_review_candidate": ["true", "false"],
+    "evidence_action": ["submit-new-evidence", "verify-existing-evidence", "replace-stale-evidence", "review-existing-evidence", "maintainer-review-existing-evidence", "monitor"],
+    "identity_level": ["none", "directory", "partial", "complete"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "lane": ["direct-submission", "maintainer-review", "adapter-candidate", "monitoring-followup", "baseline-monitoring"],
+    "manual_review_required": ["true", "false"],
+    "missing_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "profile_level": ["directory-only", "identity-partial", "identity-complete", "operational", "adapter-backed"],
+    "sort": ["auto_review_candidate", "evidence_action", "identity_level", "kind", "lane", "manual_review_required", "name", "netuid", "priority_score", "profile_level", "submission_route", "target_action", "target_type"],
+    "submission_route": ["direct-candidate-pr", "adapter-request", "maintainer-review", "status-report"],
+    "target_action": ["submit-new-candidate", "replace-stale-candidate", "verify-existing-candidate", "review-existing-candidate", "adapter-review", "maintainer-review", "monitoring-followup"],
+    "target_type": ["surface-candidate", "adapter-review", "maintainer-review", "monitoring-followup"]
+  },
+  "/api/v1/review/gaps": {
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "format": ["json", "csv"],
+    "missing_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "sort": ["candidate_count", "curation_level", "missing_kinds", "name", "netuid", "priority_score", "surface_count", "verified_candidate_count"]
+  },
+  "/api/v1/review/profile-completeness": {
+    "confidence": ["low", "medium", "high"],
+    "format": ["json", "csv"],
+    "identity_level": ["none", "directory", "partial", "complete"],
+    "identity_promotion_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "native_name_quality": ["chain", "placeholder", "empty"],
+    "order": ["asc", "desc"],
+    "profile_level": ["directory-only", "identity-partial", "identity-complete", "operational", "adapter-backed"],
+    "sort": ["candidate_count", "completeness_score", "identity_level", "identity_promotion_kind_count", "identity_surface_count", "live_identity_candidate_kind_count", "missing_critical_count", "name", "native_identity_signal_count", "native_name_quality", "netuid", "priority_score", "profile_level", "stale_identity_candidate_kind_count"]
+  },
+  "/api/v1/rpc/endpoints": {
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "layer": ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
+    "order": ["asc", "desc"],
+    "pool_eligible": ["true", "false"],
+    "publication_state": ["candidate", "verified", "monitored", "pool-eligible", "disabled", "rejected"],
+    "sort": ["kind", "last_checked", "latency_ms", "layer", "netuid", "pool_eligible", "provider", "publication_state", "score", "status"],
+    "status": ["ok", "degraded", "failed", "unknown"]
+  },
+  "/api/v1/rpc/pools": {
+    "kind": ["subtensor-rpc", "subtensor-wss", "archive"],
+    "order": ["asc", "desc"],
+    "sort": ["eligible_count", "endpoint_count", "id", "kind"]
+  },
+  "/api/v1/rpc/usage": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/runtime": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/search": {
+    "order": ["asc", "desc"],
+    "sort": ["netuid", "slug", "title", "type"],
+    "type": ["subnet", "surface", "provider"]
+  },
+  "/api/v1/search-index": {
+    "order": ["asc", "desc"],
+    "sort": ["netuid", "slug", "title", "type"],
+    "type": ["subnet", "surface", "provider"]
+  },
+  "/api/v1/search/semantic": {
+    "type": ["subnet", "surface", "provider"]
+  },
+  "/api/v1/source-snapshots": {
+    "order": ["asc", "desc"],
+    "sort": ["id", "kind", "path", "record_count"]
+  },
+  "/api/v1/subnets": {
+    "coverage_level": ["native-only", "manifested", "probed"],
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "domain": ["agents", "compute", "data", "finance", "inference", "media", "prediction", "privacy", "robotics", "science", "search", "security", "storage", "training"],
+    "format": ["json", "csv"],
+    "order": ["asc", "desc"],
+    "sort": ["block", "candidate_count", "coverage_level", "curation_level", "integration_readiness", "mechanism_count", "name", "netuid", "participant_count", "probed_surface_count", "status", "subnet_type", "surface_count", "tempo"],
+    "status": ["active", "inactive"],
+    "subnet_type": ["root", "application"]
+  },
+  "/api/v1/subnets/movers": {
+    "format": ["json", "csv"],
+    "sort": ["stake", "emission", "validators", "neurons"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/axon-removals": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/burn/history": {
+    "window": ["24h", "7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/candidates": {
+    "confidence": ["low", "medium", "high"],
+    "format": ["json", "csv"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "sort": ["confidence", "id", "kind", "name", "netuid", "provider", "state"],
+    "state": ["schema-invalid", "schema-valid", "maintainer-review", "verified", "stale", "rejected"]
+  },
+  "/api/v1/subnets/{netuid}/concentration/history": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/deregistrations": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/emission-pipeline/history": {
+    "window": ["7d", "30d", "90d", "180d"]
+  },
+  "/api/v1/subnets/{netuid}/emission-split/history": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/endpoints": {
+    "format": ["json", "csv"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "layer": ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
+    "order": ["asc", "desc"],
+    "pool_eligible": ["true", "false"],
+    "publication_state": ["candidate", "verified", "monitored", "pool-eligible", "disabled", "rejected"],
+    "sort": ["kind", "last_checked", "latency_ms", "layer", "netuid", "pool_eligible", "provider", "publication_state", "score", "status"],
+    "status": ["ok", "degraded", "failed", "unknown"]
+  },
+  "/api/v1/subnets/{netuid}/event-summary": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/events": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/subnets/{netuid}/evidence": {
+    "order": ["asc", "desc"],
+    "sort": ["claim", "source_url", "subject", "verified_at"]
+  },
+  "/api/v1/subnets/{netuid}/gaps": {
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "format": ["json", "csv"],
+    "missing_kinds": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "sort": ["candidate_count", "curation_level", "missing_kinds", "name", "netuid", "priority_score", "surface_count", "verified_candidate_count"]
+  },
+  "/api/v1/subnets/{netuid}/health": {
+    "classification": ["auth-required", "content-mismatch", "dead", "live", "rate-limited", "redirected", "timeout", "transient", "unsupported", "unsafe", "wrong-chain"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "sort": ["classification", "kind", "last_checked", "last_ok", "latency_ms", "netuid", "provider", "status", "status_code", "surface_id", "verified_at"],
+    "status": ["ok", "degraded", "failed", "unknown"]
+  },
+  "/api/v1/subnets/{netuid}/health/incidents": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/health/percentiles": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/history": {
+    "window": ["7d", "30d", "90d", "1y", "all"]
+  },
+  "/api/v1/subnets/{netuid}/hyperparameters/history": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/subnets/{netuid}/identity-history": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/subnets/{netuid}/lifecycle": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/subnets/{netuid}/metagraph": {
+    "format": ["json", "csv"],
+    "validator_permit": ["true"]
+  },
+  "/api/v1/subnets/{netuid}/miner-fairness": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/neurons/{uid}/history": {
+    "window": ["7d", "30d", "90d", "1y", "all"]
+  },
+  "/api/v1/subnets/{netuid}/ohlc": {
+    "interval": ["1h", "1d"]
+  },
+  "/api/v1/subnets/{netuid}/owner-capture": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/performance/history": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/prometheus": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/registrations": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/revenue": {
+    "window": ["1d", "7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/serving": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/stake-flow": {
+    "direction": ["all", "in", "out"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/stake-moves": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/stake-quote": {
+    "direction": ["stake", "unstake"]
+  },
+  "/api/v1/subnets/{netuid}/stake-transfers": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/surfaces": {
+    "auth_required": ["true", "false"],
+    "format": ["json", "csv"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "public_safe": ["true", "false"],
+    "rate_limited": ["true", "false"],
+    "sort": ["id", "kind", "name", "netuid", "provider"]
+  },
+  "/api/v1/subnets/{netuid}/trajectory": {
+    "format": ["json", "csv"],
+    "order": ["asc", "desc"],
+    "sort": ["date", "completeness_score", "surface_count", "endpoint_count"]
+  },
+  "/api/v1/subnets/{netuid}/turnover": {
+    "changes": ["true", "false"],
+    "window": ["7d", "30d", "90d", "1y", "all"]
+  },
+  "/api/v1/subnets/{netuid}/uptime": {
+    "format": ["json", "csv"],
+    "window": ["90d", "1y"]
+  },
+  "/api/v1/subnets/{netuid}/validator-economics/history": {
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/subnets/{netuid}/validators": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/subnets/{netuid}/weights": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/weights/setters": {
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/subnets/{netuid}/yield": {
+    "format": ["json", "csv"]
+  },
+  "/api/v1/subnets/{netuid}/yield/history": {
+    "format": ["json", "csv"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/sudo": {
+    "format": ["json", "csv"],
+    "success": ["true", "false"]
+  },
+  "/api/v1/surfaces": {
+    "auth_required": ["true", "false"],
+    "format": ["json", "csv"],
+    "kind": ["archive", "dashboard", "data-artifact", "docs", "example", "openapi", "repo-registry", "sdk", "source-repo", "sse", "subnet-api", "subtensor-rpc", "subtensor-wss", "website"],
+    "order": ["asc", "desc"],
+    "public_safe": ["true", "false"],
+    "rate_limited": ["true", "false"],
+    "sort": ["id", "kind", "name", "netuid", "provider"]
+  },
+  "/api/v1/validators": {
+    "format": ["json", "csv"],
+    "sort": ["avg_validator_trust", "max_validator_trust", "stake_dominance", "subnet_count", "total_emission", "total_stake", "uid_count"]
+  },
+  "/api/v1/validators/economics": {
+    "sort": ["earning_floor_cost_tao", "permit_floor_cost_tao", "permit_to_earning_multiple", "tao_inflow_per_day", "validator_headroom"]
+  },
+  "/api/v1/validators/{hotkey}/history": {
+    "window": ["7d", "30d", "90d", "1y", "all"]
+  },
+  "/api/v1/validators/{hotkey}/nominators": {
+    "basis": ["flow", "positions"],
+    "format": ["json", "csv"],
+    "sort": ["net_staked", "gross_staked", "last_activity"],
+    "window": ["7d", "30d", "90d"]
+  },
+  "/api/v1/{network}/accounts/{ss58}/balance": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/accounts/{ss58}/children": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/accounts/{ss58}/parents": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/accounts/{ss58}/root-claim": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/blocks": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/blocks/summary": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/blocks/{ref}": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/blocks/{ref}/chain-events": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/blocks/{ref}/events": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/blocks/{ref}/extrinsics": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/chain-events": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/chain-events/stats": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/chain/activity": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/alpha-volume": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/chain/burn": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/chain/calls": {
+    "format": ["json", "csv"],
+    "group_by": ["module", "module_function"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/deregistrations": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/fees": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/registrations": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/signers": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "sort": ["tx_count", "total_fee_tao"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/stake-flow": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/stake-moves": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/stake-transfers": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/transfer-pairs": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "sort": ["volume", "count"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/chain/transfers": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "window": ["7d", "30d"]
+  },
+  "/api/v1/{network}/coverage": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/crowdloans": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/crowdloans/{crowdloan_id}": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/economics": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "order": ["asc", "desc"],
+    "registration_allowed": ["true", "false"],
+    "sort": ["alpha_fdv_tao", "alpha_market_cap_tao", "alpha_price_change_1d", "alpha_price_change_1h", "alpha_price_change_1m", "alpha_price_change_7d", "alpha_price_tao", "block", "emission_share", "max_stake_alpha", "max_uids", "max_validators", "miner_count", "miner_readiness", "name", "netuid", "open_slots", "registration_cost_tao", "subnet_volume_tao", "total_stake_alpha", "validator_count"]
+  },
+  "/api/v1/{network}/evm/address/{h160}": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/extrinsics": {
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "success": ["true", "false"]
+  },
+  "/api/v1/{network}/extrinsics/{hash}": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/network/parameters": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/network/randomness": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/networks": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/search/resolve": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/subnets": {
+    "coverage_level": ["native-only", "manifested", "probed"],
+    "curation_level": ["native", "candidate-discovered", "community-seeded", "machine-verified", "maintainer-reviewed", "adapter-backed"],
+    "domain": ["agents", "compute", "data", "finance", "inference", "media", "prediction", "privacy", "robotics", "science", "search", "security", "storage", "training"],
+    "format": ["json", "csv"],
+    "network": ["finney", "mainnet", "test", "testnet"],
+    "order": ["asc", "desc"],
+    "sort": ["block", "candidate_count", "coverage_level", "curation_level", "integration_readiness", "mechanism_count", "name", "netuid", "participant_count", "probed_surface_count", "status", "subnet_type", "surface_count", "tempo"],
+    "status": ["active", "inactive"],
+    "subnet_type": ["root", "application"]
+  },
+  "/api/v1/{network}/subnets/{netuid}": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/subnets/{netuid}/burn": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/subnets/{netuid}/lease": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/subnets/{netuid}/recycled": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/sudo/key": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  }
+};
 
-export { MetagraphedError, createLruEtagCache, createMetagraphedClient, metagraphedFetch, metagraphedPaginate, metagraphedRpc };
+export { MetagraphedError, QUERY_PARAMETER_ENUMS, createLruEtagCache, createMetagraphedClient, metagraphedFetch, metagraphedPaginate, metagraphedRpc };

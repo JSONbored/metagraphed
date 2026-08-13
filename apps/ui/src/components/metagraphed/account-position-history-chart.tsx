@@ -7,10 +7,13 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { AccountPositionHistoryPoint } from "@/lib/metagraphed/types";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
 // Lowercase windows, matching the /history API's window enum.
-type Win = "7d" | "30d" | "90d" | "1y" | "all";
-const WINDOWS: Win[] = ["7d", "30d", "90d", "1y", "all"];
+// The route's own published windows (#10994) -- restating them here is
+// how a chart offers a window its route rejects.
+const WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/accounts/{ss58}/subnets/{netuid}/history"].window;
+type Win = (typeof WINDOWS)[number];
 
 function taoStr(v?: number) {
   if (v == null || !Number.isFinite(v)) return "—";

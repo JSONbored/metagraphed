@@ -7,11 +7,14 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetHistoryPoint } from "@/lib/metagraphed/types";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
 // Lowercase windows, mirroring the /history API + the inline toggle conventions
 // used by health-trends.tsx. "all" maps to the API's widest supported window.
-type Win = "7d" | "30d" | "90d" | "1y" | "all";
-const WINDOWS: Win[] = ["7d", "30d", "90d", "1y", "all"];
+// The route's own published windows (#10994) -- restating them here is
+// how a chart offers a window its route rejects.
+const WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/subnets/{netuid}/history"].window;
+type Win = (typeof WINDOWS)[number];
 
 /**
  * Per-subnet on-chain history (#1302). A window selector drives a daily snapshot

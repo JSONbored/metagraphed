@@ -2,23 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChainEmissionsPage } from "./-chain-emissions-page";
+import { EMISSION_SORT_KEYS } from "@/lib/metagraphed/emission-pipeline";
 
 // Filter/sort state lives in the URL so a specific view of the decomposition
 // ("the subnets the gate took the most from") is shareable — the same reason
 // /chain/governance puts its `view` toggle there.
 const emissionsSearchSchema = z.object({
   state: fallback(z.enum(["all", "eligible", "disabled", "ineligible"]), "all").default("all"),
-  sort: fallback(
-    z.enum([
-      "final_share",
-      "emission_share",
-      "gate_delta",
-      "tao_total",
-      "liquidity_fraction",
-      "netuid",
-    ]),
-    "final_share",
-  ).default("final_share"),
+  sort: fallback(z.enum(EMISSION_SORT_KEYS), "final_share").default("final_share"),
   dir: fallback(z.enum(["asc", "desc"]), "desc").default("desc"),
   limit: fallback(z.number().int().min(1).max(200), 50).default(50),
   netuid: fallback(z.string(), "").default(""),

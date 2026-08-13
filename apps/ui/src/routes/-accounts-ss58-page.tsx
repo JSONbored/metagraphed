@@ -123,6 +123,7 @@ import type {
   Transfer,
 } from "@/lib/metagraphed/types";
 import { DEFAULT_EVENTS_LIMIT } from "./accounts.$ss58";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
 // #8358: detail-page template tabs. Overview carries the KPI band's context
 // plus a bounded recent-activity preview; everything else is a full,
@@ -1889,7 +1890,8 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
   );
 }
 
-const STAKE_FLOW_WINDOWS = ["7d", "30d", "90d"] as const;
+// The route's own published windows (#10994).
+const STAKE_FLOW_WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/accounts/{ss58}/stake-flow"].window;
 
 // Direction label → tone, reusing the health-ok/warn/muted convention the
 // transfers section uses for sent/received direction. `exiting` and `churning`

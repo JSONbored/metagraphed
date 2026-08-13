@@ -282,6 +282,9 @@ function NominatorsSection({ hotkey }: { hotkey: string }) {
   );
 }
 
+// NOT a route enum (#10994): ValidatorApyWindow is the UI-computed APY basis
+// (7d/30d/90d plus "snapshot"), and this selector offers the trailing three.
+// The value overlap with route windows is coincidence, not lineage.
 const APY_WINDOWS: ValidatorApyWindow[] = ["7d", "30d", "90d"];
 
 // #8251: ONE APY tile with a 7d/30d/90d window toggle, replacing the three

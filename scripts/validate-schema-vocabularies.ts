@@ -41,6 +41,15 @@ const SCHEMA_DIRS = [
   // must import the owner. Validator assertion-pins are declaration-invisible
   // here by design -- see the allowlist note below.
   "scripts",
+  // And the UI (#10994): a chart restating a route's window enum is how a
+  // selector offers a window its route rejects. The repointed sites read
+  // QUERY_PARAMETER_ENUMS from the client package; what stays literal is
+  // pinned below with its reason (a UI-domain vocabulary, a multi-route
+  // control, an unpublished parameter).
+  "apps/ui/src/components/metagraphed",
+  "apps/ui/src/lib/metagraphed",
+  "apps/ui/src/hooks",
+  "apps/ui/src/routes",
 ];
 
 /** Vocabularies allowed to coincide, pinned to the EXACT files that do.
@@ -104,6 +113,15 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
     "schemas-src/routes/chain-alpha-volume.ts",
     "schemas-src/routes/subnet-alpha-volume.ts",
   ],
+  // The four decoder tables: one chain fact named by the decode lane's
+  // watermark list and the UI's firehose topics -- the SSE `topics` parameter
+  // is unpublished in openapi.json (the contract gap noted on #10994), so the
+  // UI cannot derive it yet. graphql-only.ts and the lakehouse generator name
+  // the same set in forms this gate's extraction does not currently match.
+  "account_events|blocks|chain_events|extrinsics": [
+    "src/decode-watermark.ts",
+    "apps/ui/src/hooks/use-chain-stream.ts",
+  ],
   "coldkey|hotkey|netuid": [
     "src/evm-precompiles.ts",
     "src/nominator-positions-neon-write.ts",
@@ -123,7 +141,9 @@ for (const dir of SCHEMA_DIRS) {
     continue;
   }
   for (const name of entries) {
-    if (!name.endsWith(".ts")) continue;
+    if (!name.endsWith(".ts") && !name.endsWith(".tsx")) continue;
+    // Assertion pins live in tests; the gate polices source only.
+    if (name.includes(".test.")) continue;
     const file = `${dir}/${name}`;
     const source = await fs.readFile(path.join(absolute, name), "utf8");
     // JSON Schema's own type names. A `type: ["array","string","null"]` union
@@ -139,11 +159,17 @@ for (const dir of SCHEMA_DIRS) {
       "string",
     ]);
     const push = (raw: string) => {
+      // An array of OBJECT literals (select options, column configs) is not a
+      // value list -- the property-form regex can capture into one.
+      if (raw.includes("{")) return;
       const values = [...raw.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
       // Two members is a boolean in disguise (asc/desc, in/out) and carries no
       // vocabulary worth owning; three is where a real domain list starts.
       if (values.length < 3) return;
       if (values.every((value) => JSON_SCHEMA_TYPES.has(value))) return;
+      // Namespaced platform names (og:title, twitter:card) are standards
+      // vocabulary, not ours -- no owner could exist.
+      if (values.some((value) => value.includes(":"))) return;
       sites.push({ file, values });
     };
     // `z\s*\.enum`, not `z\.enum`: prettier breaks a chain across lines once it

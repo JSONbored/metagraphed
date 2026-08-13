@@ -6,6 +6,7 @@ import { extrinsicHashPathSegment } from "./extrinsics";
 import { isValidSs58, ss58PathSegment } from "./accounts";
 import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import { isUsableTimestamp } from "./format";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 import type {
   AdapterSnapshot,
   AgentResource,
@@ -7776,15 +7777,8 @@ function normalizeSubnetValidators(netuid: number, raw: unknown): SubnetValidato
   };
 }
 
-const GLOBAL_VALIDATOR_SORTS: GlobalValidatorSort[] = [
-  "avg_validator_trust",
-  "max_validator_trust",
-  "stake_dominance",
-  "subnet_count",
-  "total_emission",
-  "total_stake",
-  "uid_count",
-];
+// The /api/v1/validators route's own published sort enum (#10994).
+const GLOBAL_VALIDATOR_SORTS = QUERY_PARAMETER_ENUMS["/api/v1/validators"].sort;
 
 function normalizeColdkeyIdentity(raw: unknown): ColdkeyIdentity | null {
   if (raw == null) return null;

@@ -6,9 +6,12 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/state
 import { Panel } from "@/components/metagraphed/primitives";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetNeuronHistoryPoint } from "@/lib/metagraphed/types";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 
-type Win = "7d" | "30d" | "90d" | "1y" | "all";
-const WINDOWS: Win[] = ["7d", "30d", "90d", "1y", "all"];
+// The route's own published windows (#10994) -- restating them here is
+// how a chart offers a window its route rejects.
+const WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/subnets/{netuid}/neurons/{uid}/history"].window;
+type Win = (typeof WINDOWS)[number];
 
 function scoreStr(v?: number) {
   if (v == null || !Number.isFinite(v)) return "—";
