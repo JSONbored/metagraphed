@@ -42,6 +42,7 @@
 // Pure shaping only: rows arrive from the store, so the same rows always
 // produce the same payload.
 import { round9 } from "./lib/rao.ts";
+import type { TreasuryReadings } from "../generated/db/types.ts";
 import {
   TREASURY_REVIEW_STATES,
   TREASURY_APPLIES_TO_VALUES,
@@ -52,26 +53,13 @@ type Row = Record<string, unknown>;
 /**
  * One `treasury_readings` row as the store returns it.
  *
- * Declared here rather than imported from generated/db/types.ts because the
- * table's migration has not been applied yet -- the generated types are
- * introspected from the live schema, so they cannot know about a table this PR
- * is creating. It is replaced by `TreasuryReadings` from the generated types
- * once the migration lands and the schema snapshot refreshes.
+ * Was a hand-written interface in #11025, because the migration had not been
+ * applied yet and the generated types are introspected from the LIVE schema --
+ * they cannot know about a table its own PR is creating. That is now done: the
+ * migration applied, the snapshot refreshed, and this is the generated type as
+ * that comment promised, so the shape can no longer drift from the column set.
  */
-export interface TreasuryReadingRow {
-  netuid: number;
-  source_url: string;
-  read_at_sha: string;
-  observed_at: number | string;
-  first_seen: number | string;
-  found: boolean | null;
-  declared_share: number | null;
-  treasury_address: string | null;
-  applies_to: string | null;
-  evidence_path: string | null;
-  review_state: string;
-  reviewed_at: number | string | null;
-}
+export type TreasuryReadingRow = TreasuryReadings;
 
 /** Tolerance on `declared_matches_observed`. The declared side is a round
  * number a human wrote in a config; the observed side is a ratio of measured

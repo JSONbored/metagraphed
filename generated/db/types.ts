@@ -778,6 +778,22 @@ export interface TaoUsdIndex {
   usd_per_tao: number | null;
 }
 
+/** `public.treasury_readings` */
+export interface TreasuryReadings {
+  applies_to: string | null;
+  declared_share: number | null;
+  evidence_path: string | null;
+  first_seen: number | string;
+  found: boolean;
+  netuid: number;
+  observed_at: number | string;
+  read_at_sha: string;
+  review_state: string;
+  reviewed_at: number | string | null;
+  source_url: string;
+  treasury_address: string | null;
+}
+
 /** `public.validator_nominator_counts` */
 export interface ValidatorNominatorCounts {
   captured_at: number | string;
@@ -866,6 +882,7 @@ export interface DatabaseTables {
   SurfaceUptimeDaily: SurfaceUptimeDaily;
   Surfaces: Surfaces;
   TaoUsdIndex: TaoUsdIndex;
+  TreasuryReadings: TreasuryReadings;
   ValidatorNominatorCounts: ValidatorNominatorCounts;
   ValidatorNominatorCountsPasses: ValidatorNominatorCountsPasses;
   WatchPushSubscriptions: WatchPushSubscriptions;

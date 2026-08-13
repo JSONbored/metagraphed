@@ -1206,6 +1206,31 @@ CREATE TABLE public.tao_usd_index (
 );
 
 --
+-- Name: treasury_readings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.treasury_readings (
+    netuid integer NOT NULL,
+    source_url text NOT NULL,
+    read_at_sha text NOT NULL,
+    observed_at bigint NOT NULL,
+    first_seen bigint NOT NULL,
+    found boolean NOT NULL,
+    declared_share double precision,
+    treasury_address text,
+    applies_to text,
+    evidence_path text,
+    review_state text DEFAULT 'candidate'::text NOT NULL,
+    reviewed_at bigint,
+    CONSTRAINT treasury_readings_finding_needs_a_share CHECK (((found = false) OR (declared_share IS NOT NULL) OR (treasury_address IS NOT NULL))),
+    CONSTRAINT treasury_readings_first_seen_is_millis CHECK ((first_seen >= '1000000000000'::bigint)),
+    CONSTRAINT treasury_readings_nothing_found_declares_nothing CHECK (((found = true) OR ((declared_share IS NULL) AND (treasury_address IS NULL)))),
+    CONSTRAINT treasury_readings_observed_at_is_millis CHECK ((observed_at >= '1000000000000'::bigint)),
+    CONSTRAINT treasury_readings_review_state_known CHECK ((review_state = ANY (ARRAY['candidate'::text, 'reviewed'::text, 'rejected'::text]))),
+    CONSTRAINT treasury_readings_share_is_a_fraction CHECK (((declared_share IS NULL) OR ((declared_share >= (0)::double precision) AND (declared_share <= (1)::double precision))))
+);
+
+--
 -- Name: validator_nominator_counts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1735,6 +1760,13 @@ ALTER TABLE ONLY public.tao_usd_index
     ADD CONSTRAINT tao_usd_index_pkey PRIMARY KEY (block_number, observed_at);
 
 --
+-- Name: treasury_readings treasury_readings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.treasury_readings
+    ADD CONSTRAINT treasury_readings_pkey PRIMARY KEY (netuid, source_url);
+
+--
 -- Name: validator_nominator_counts_passes validator_nominator_counts_passes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2151,6 +2183,12 @@ CREATE INDEX idx_surfaces_subnet ON public.surfaces USING btree (subnet_netuid);
 --
 
 CREATE INDEX idx_tao_usd_index_observed ON public.tao_usd_index USING btree (observed_at DESC);
+
+--
+-- Name: idx_treasury_readings_netuid_state; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_treasury_readings_netuid_state ON public.treasury_readings USING btree (netuid, review_state);
 
 --
 -- Name: idx_validator_nominator_counts_passes_completed; Type: INDEX; Schema: public; Owner: -
