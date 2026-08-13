@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { GraphQLObjectType } from "graphql";
 import { emitTypes, pascalCase } from "../schemas-src/graphql/emit.ts";
 import { PROJECTED_TYPES } from "../schemas-src/graphql/published-names.ts";
@@ -14,6 +14,14 @@ import {
 const openapi = JSON.parse(
   readFileSync("public/metagraph/openapi.json", "utf8"),
 ) as OpenApiDocument;
+
+// Every test here runs at least one FULL-SURFACE parity check (~13s under
+// coverage instrumentation on a loaded runner), and the two that run two
+// crossed vitest's default 30s ceiling twice on 2026-08-13 -- a structural
+// flake, not nondeterminism. The budget is measured headroom for irreducible
+// work: nothing in this file waits on anything that could hang.
+vi.setConfig({ testTimeout: 120_000 });
+
 const sdl = extractSdl(readFileSync("generated/graphql/schema.ts", "utf8"))!;
 
 describe("Zod -> GraphQL type emitter (#10214)", () => {
