@@ -42,7 +42,12 @@
 // tier owns the SQL for every neuron_daily-derived series); this module never
 // touches a store, so the same rows always produce the same payload.
 
-import { raoBigToTao, round9, toRaoBig } from "./lib/rao.ts";
+import {
+  nonNegativeCellOrNull,
+  raoBigToTao,
+  round9,
+  toRaoBig,
+} from "./lib/rao.ts";
 import { BLOCKS_PER_DAY, OWNER_CUT } from "./revenue-coverage.ts";
 import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
@@ -70,12 +75,6 @@ export const EMISSION_SPLIT_HISTORY_ROW_CAP = 50_000;
 // A finite, non-negative numeric cell, or null when absent/blank/non-numeric.
 // Blank cells coerce via Number("") -> 0, and a fabricated zero is a
 // measurement this module must never invent.
-function nullableNumber(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
 
 /**
  * Postgres and the SQLite double answer booleans differently (`true` vs `1`),
@@ -190,10 +189,10 @@ function emissionSplitPoint(
   for (const row of dayRows) {
     // Carried on every row of the day by the join; take the first non-null
     // rather than assuming row order.
-    alphaOutPerBlock ??= nullableNumber(row?.alpha_out_emission);
-    alphaPriceTao ??= nullableNumber(row?.alpha_price_tao);
+    alphaOutPerBlock ??= nonNegativeCellOrNull(row?.alpha_out_emission);
+    alphaPriceTao ??= nonNegativeCellOrNull(row?.alpha_price_tao);
 
-    const emission = nullableNumber(row?.emission_tao);
+    const emission = nonNegativeCellOrNull(row?.emission_tao);
     // A row with no emission cell is still a registered UID -- it counts toward
     // the population, and toward "earning zero", which is the fact #10931
     // reads off this. Skipping it would shrink the denominator and overstate
