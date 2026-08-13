@@ -139,6 +139,73 @@ export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
   // Created 2026-08-13 so the archive holds the current-state table it already
   // held the HISTORY of -- the lakehouse could say what a subnet's identity used
   // to be and not what it is (#11089).
+  // The fifteen created 2026-08-13 to close the archive gap
+  // (metagraphed-infra#552). All are state-mirror tables: digest-gated, so a
+  // tick where nothing changed writes no snapshot at all. The threshold is
+  // therefore about how often the SOURCE moves, not how often the lane runs --
+  // a 2-day ceiling on tables the poller touches hourly, wider where the
+  // underlying fact genuinely changes rarely.
+  chain_concentration_daily: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  compute_declarations: {
+    maxAgeMs: 14 * DAY,
+    reason:
+      "state mirror, digest-gated: this changes only when a subnet's declaration does",
+  },
+  emission_flow_watch: {
+    maxAgeMs: 14 * DAY,
+    reason:
+      "state mirror, digest-gated: this changes only when a subnet's declaration does",
+  },
+  emission_gate_param_history: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  hotkey_alpha: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  revenue_observations: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  subnet_deregistration_daily: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  subnet_emission_enabled_history: {
+    maxAgeMs: 14 * DAY,
+    reason:
+      "state mirror, digest-gated: this changes only when a subnet's declaration does",
+  },
+  subnet_lifecycle: {
+    maxAgeMs: 14 * DAY,
+    reason:
+      "state mirror, digest-gated: this changes only when a subnet's declaration does",
+  },
+  surface_failure_daily: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  surface_history: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  surface_uptime_daily: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  tao_usd_index: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, digest-gated",
+  },
+  treasury_readings: {
+    maxAgeMs: 14 * DAY,
+    reason:
+      "state mirror, digest-gated: this changes only when a subnet's declaration does",
+  },
   subnet_identity: {
     maxAgeMs: 2 * DAY,
     reason: "state mirror, digest-gated: identity changes are rare",

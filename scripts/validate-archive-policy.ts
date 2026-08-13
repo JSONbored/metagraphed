@@ -79,7 +79,18 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   surfaces: "mirrored",
   validator_nominator_counts: "mirrored",
 
-  // -- pending: history with no archive copy -------------------------------
+  // -- pending: the one table still owed an archive copy --------------------
+  //
+  // `subnet_burn_history` is not waiting on effort, it is waiting on a
+  // DECISION. It has no `id`, and its timestamps do not identify a row:
+  // 95,060 rows across 852 distinct `observed_at` values -- 94,208 ties. A
+  // `> since` watermark would skip nearly every row, and `versioned` would
+  // re-append all 95,060 on every change. It needs a composite watermark the
+  // mirror does not support, and a lane that silently drops rows is worse than
+  // a table that is honestly still missing.
+  //
+  // The other fifteen that were here are mirrored as of 2026-08-13
+  // (metagraphed-infra#552).
   //
   // NOT only chain data. The first cut of this map filed anything that was not
   // chain-derived under `serving`, which was too fast: `surface_uptime_daily`,
@@ -95,17 +106,17 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   // `subnet_identity_history` but not the current-state table it is the
   // history OF, so the lakehouse can say what a subnet's identity USED to be
   // and not what it is.
-  chain_concentration_daily: "pending",
-  emission_flow_watch: "pending",
-  emission_gate_param_history: "pending",
-  hotkey_alpha: "pending",
+  chain_concentration_daily: "mirrored",
+  emission_flow_watch: "mirrored",
+  emission_gate_param_history: "mirrored",
+  hotkey_alpha: "mirrored",
   subnet_burn_history: "pending",
-  subnet_deregistration_daily: "pending",
-  subnet_emission_enabled_history: "pending",
-  subnet_identity: "pending",
-  subnet_lifecycle: "pending",
-  tao_usd_index: "pending",
-  treasury_readings: "pending",
+  subnet_deregistration_daily: "mirrored",
+  subnet_emission_enabled_history: "mirrored",
+  subnet_identity: "mirrored",
+  subnet_lifecycle: "mirrored",
+  tao_usd_index: "mirrored",
+  treasury_readings: "mirrored",
 
   // -- serving: state, not history -----------------------------------------
   // These are overwritten in place or rebuilt continuously, so there is no
@@ -126,18 +137,18 @@ export const POLICY: Readonly<Record<string, Policy>> = {
   chain_detail_blocks: "serving",
   chain_detail_chain_events: "serving",
   chain_detail_extrinsics: "serving",
-  compute_declarations: "pending",
+  compute_declarations: "mirrored",
   lane_health: "serving",
   origin_reachability: "serving",
   raw_capture_state: "serving",
-  revenue_observations: "pending",
+  revenue_observations: "mirrored",
   revenue_probe_failures: "serving",
   self_health_checks: "serving",
   surface_checks: "serving",
-  surface_failure_daily: "pending",
-  surface_history: "pending",
+  surface_failure_daily: "mirrored",
+  surface_history: "mirrored",
   surface_status: "serving",
-  surface_uptime_daily: "pending",
+  surface_uptime_daily: "mirrored",
 
   // -- sensitive: never archived -------------------------------------------
   api_key_blocks: "sensitive",
@@ -158,7 +169,7 @@ export const POLICY: Readonly<Record<string, Policy>> = {
 };
 
 /** How many `pending` tables we accept. ONLY FALLS. */
-export const PENDING_CEILING = 16;
+export const PENDING_CEILING = 1;
 
 interface Column {
   table: string;
