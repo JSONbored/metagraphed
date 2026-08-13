@@ -116,6 +116,9 @@ export const TABLES = [
   "surface_uptime_daily",
   "tao_usd_index",
   "treasury_readings",
+  // The last of the archive gap, created 2026-08-13 once a composite watermark
+  // made it mirrorable (metagraphed-infra#553).
+  "subnet_burn_history",
 ];
 
 // Guarded, so importing TABLES does not reach for the catalog. Before this the

@@ -1140,6 +1140,20 @@ export const TREASURY_READINGS_COLUMNS = [
   "reviewed_at",
 ] as const;
 
+/** `chain.subnet_burn_history` */
+export type SubnetBurnHistoryRow = {
+  netuid: number | null;
+  observed_at: number | null;
+  burn_tao: number | null;
+};
+
+/** `chain.subnet_burn_history` columns, in field-id order. */
+export const SUBNET_BURN_HISTORY_COLUMNS = [
+  "netuid",
+  "observed_at",
+  "burn_tao",
+] as const;
+
 /** Every Iceberg table this repo reads, by name. */
 export const LAKEHOUSE_TABLES = [
   "blocks",
@@ -1180,4 +1194,5 @@ export const LAKEHOUSE_TABLES = [
   "surface_uptime_daily",
   "tao_usd_index",
   "treasury_readings",
+  "subnet_burn_history",
 ] as const;
