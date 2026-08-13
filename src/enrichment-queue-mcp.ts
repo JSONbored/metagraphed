@@ -16,6 +16,11 @@ import {
   ListEnrichmentQueueOutputSchema,
 } from "../schemas-src/mcp-tools/enrichment-queue-and-candidates.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import { IDENTITY_LEVEL_VALUES } from "../schemas-src/shared.ts";
+import {
+  REVIEW_EVIDENCE_ACTION_VALUES,
+  REVIEW_ENRICHMENT_LANE_VALUES,
+} from "../schemas-src/routes/review-enrichment.ts";
 
 export const ENRICHMENT_QUEUE_ARTIFACT =
   "/metagraph/review/enrichment-queue.json";
@@ -24,22 +29,9 @@ const QUEUE_SORT_FIELDS = API_QUERY_COLLECTIONS["enrichment-queue"].sort_fields;
 const CURATION_LEVELS = QUERY_ENUMS.curationLevel;
 const PROFILE_LEVELS = QUERY_ENUMS.profileLevel;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
-const EVIDENCE_ACTIONS = [
-  "submit-new-evidence",
-  "verify-existing-evidence",
-  "replace-stale-evidence",
-  "review-existing-evidence",
-  "maintainer-review-existing-evidence",
-  "monitor",
-];
-const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"];
-const LANES = [
-  "direct-submission",
-  "maintainer-review",
-  "adapter-candidate",
-  "monitoring-followup",
-  "baseline-monitoring",
-];
+const EVIDENCE_ACTIONS = REVIEW_EVIDENCE_ACTION_VALUES;
+const IDENTITY_LEVELS = IDENTITY_LEVEL_VALUES;
+const LANES = REVIEW_ENRICHMENT_LANE_VALUES;
 
 export interface EnrichmentQueueMcpError extends Error {
   toolError: true;

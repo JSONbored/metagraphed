@@ -25,6 +25,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
+import { SCAN_ROOTS } from "./validate-schema-shape-duplicates.ts";
 
 /**
  * Files that are genuinely unreferenced and stay.
@@ -35,8 +36,10 @@ import { repoRoot } from "./lib.ts";
  */
 const DECLARED: Record<string, string> = {};
 
-/** Directories whose `.ts` files are library modules, reached by import only. */
-const LIBRARY_DIRS = ["src", "workers", "schemas-src"];
+/** Directories whose `.ts` files are library modules, reached by import only.
+ * The same three trees the shape gate scans, and imported from it so the two
+ * gates cannot watch different worlds (#10987 follow-up). */
+const LIBRARY_DIRS = SCAN_ROOTS;
 
 /** Where a script may be named from, beyond an import. */
 const INVOCATION_ROOTS = [

@@ -62,6 +62,7 @@ import {
   type WaitUntilLike,
 } from "./pg-sql.ts";
 import { readStore, type ReadStoreDb } from "./read-store.ts";
+import { CHAIN_DETAIL_HOT_TIER_TABLES } from "./chain-detail-hot-tier.ts";
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
 export const CHAIN_DETAIL_MIN_RETAINED_BLOCKS = 1_800;
@@ -94,7 +95,21 @@ const PRUNE_TABLES = [
   "chain_detail_chain_events",
   "chain_detail_account_events",
   "chain_detail_blocks",
-];
+  // The ORDER above is this module's meaning (children before blocks, per the
+  // comment) -- so this cannot alias the hot tier's list. The satisfies
+  // clause pins every member to CHAIN_DETAIL_HOT_TIER_TABLES, and
+  // PruneCoversHotTier makes a table added to the hot tier but missing here a
+  // type error: a table served but never pruned grows without bound.
+] as const satisfies readonly (typeof CHAIN_DETAIL_HOT_TIER_TABLES)[number][];
+type PruneCoversHotTier =
+  Exclude<
+    (typeof CHAIN_DETAIL_HOT_TIER_TABLES)[number],
+    (typeof PRUNE_TABLES)[number]
+  > extends never
+    ? true
+    : never;
+const _pruneCoversHotTier: PruneCoversHotTier = true;
+void _pruneCoversHotTier;
 
 export interface PruneWindow {
   /** Lowest block the tier should still hold. */

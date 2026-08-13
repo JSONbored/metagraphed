@@ -25,17 +25,10 @@
 // anywhere in schemas/components/*.schema.json (verified via repo-wide $ref
 // grep), so both hand-edited component keys become fully orphaned.
 import { z } from "zod";
+import { ACCOUNTS_LIST_SORTS } from "../../src/accounts-list.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
-export const ACCOUNTS_LIST_LIST_SORTS_VALUES = [
-  "total_stake",
-  "total_emission",
-  "subnet_count",
-  "uid_count",
-  "validator_count",
-  "stake_dominance",
-  "last_active",
-] as const;
+export const ACCOUNTS_LIST_LIST_SORTS_VALUES = ACCOUNTS_LIST_SORTS;
 
 const AccountsListSubnetSchema = z
   .object({

@@ -11,6 +11,10 @@ import {
   ListEnrichmentEvidenceOutputSchema,
 } from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import {
+  REVIEW_EVIDENCE_ACTION_VALUES,
+  REVIEW_ENRICHMENT_LANE_VALUES,
+} from "../schemas-src/routes/review-enrichment.ts";
 
 export const ENRICHMENT_EVIDENCE_ARTIFACT =
   "/metagraph/review/enrichment-evidence.json";
@@ -18,21 +22,8 @@ export const ENRICHMENT_EVIDENCE_ARTIFACT =
 const EVIDENCE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["enrichment-evidence"].sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
-const EVIDENCE_ACTIONS = [
-  "submit-new-evidence",
-  "verify-existing-evidence",
-  "replace-stale-evidence",
-  "review-existing-evidence",
-  "maintainer-review-existing-evidence",
-  "monitor",
-];
-const LANES = [
-  "direct-submission",
-  "maintainer-review",
-  "adapter-candidate",
-  "monitoring-followup",
-  "baseline-monitoring",
-];
+const EVIDENCE_ACTIONS = REVIEW_EVIDENCE_ACTION_VALUES;
+const LANES = REVIEW_ENRICHMENT_LANE_VALUES;
 
 export interface EnrichmentEvidenceMcpError extends Error {
   toolError: true;

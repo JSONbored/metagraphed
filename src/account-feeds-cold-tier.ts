@@ -705,7 +705,7 @@ export async function loadValidatorNominatorsColdTier(
   const sort = query.sort ?? DEFAULT_NOMINATOR_SORT;
   // A sort this tier cannot express would otherwise silently serve the default
   // ordering under the caller's requested label -- decline instead.
-  if (!NOMINATOR_SORTS.includes(sort)) return null;
+  if (!(NOMINATOR_SORTS as readonly string[]).includes(sort)) return null;
 
   const where = [
     `hotkey = '${addr}'`,

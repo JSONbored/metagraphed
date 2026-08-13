@@ -80,7 +80,9 @@ import { readFileSync } from "node:fs";
 // cross-field semantics the schema cannot express, and saved_query (the one
 // route:null binding). tests/graphql.test.ts pins the dispatch-level
 // rejection for a representative of every deleted class.
-const CEILING = 185;
+// 185 -> 179: four more sort guards proven dispatch-covered and deleted in
+// the annotated-consts sweep (probe log on the PR), same method as #10993.
+const CEILING = 179;
 
 const SOURCE = "src/graphql.ts";
 

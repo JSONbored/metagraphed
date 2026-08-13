@@ -11,13 +11,14 @@ import {
   ListCandidatesOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-1.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import { CONFIDENCE_LEVEL_VALUES } from "../schemas-src/shared.ts";
 
 export const CANDIDATES_ARTIFACT = "/metagraph/candidates.json";
 
 const CANDIDATES_SORT_FIELDS = API_QUERY_COLLECTIONS.candidates.sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
 const CANDIDATE_STATES = QUERY_ENUMS.candidateState;
-const CONFIDENCE_LEVELS = ["low", "medium", "high"];
+const CONFIDENCE_LEVELS = CONFIDENCE_LEVEL_VALUES;
 
 export interface CandidatesMcpError extends Error {
   toolError: true;

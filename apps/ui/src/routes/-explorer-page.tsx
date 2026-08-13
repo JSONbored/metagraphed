@@ -60,6 +60,7 @@ import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { ChainTabActions } from "./-chain-hub";
 import { BlockCard } from "./-blocks-index-page";
+import { CHART_PALETTE } from "@/lib/metagraphed/chart-palette";
 import type {
   ChainCalls,
   ChainEventsStats,
@@ -411,14 +412,7 @@ function MiniSeries({
  */
 // #3384: cycle the shared chart palette across the call-mix donut segments +
 // their legend swatches, matching providers.index.tsx's ProviderOverview.
-const CALL_MIX_PALETTE = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-6)",
-];
+const CALL_MIX_PALETTE = CHART_PALETTE;
 
 function CallMixSection({ calls }: { calls: ChainCalls }) {
   const modules = calls.calls.slice(0, 10);

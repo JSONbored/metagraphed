@@ -5,6 +5,7 @@ import {
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
+import { TOP_HOLDERS_SORT_VALUES } from "../schemas-src/routes/top-holders.ts";
 export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 // Balance-based top-holder leaderboard (#6741/#6743) -- the coldkey/balance-
 // centric counterpart to src/accounts-list.ts (hotkey/neuron-centric,
@@ -60,14 +61,7 @@ export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 
 type Row = Record<string, unknown>;
 
-export const TOP_HOLDERS_SORTS = [
-  "total_tao",
-  "free_tao",
-  "delegated_tao",
-  "net_flow_7d",
-  "net_flow_30d",
-  "net_flow_90d",
-];
+export const TOP_HOLDERS_SORTS = TOP_HOLDERS_SORT_VALUES;
 export const DEFAULT_TOP_HOLDERS_SORT = "total_tao";
 
 function toIso(ms: unknown): string | null {
@@ -171,7 +165,7 @@ export function buildTopHoldersList(
     limit = TOP_HOLDERS_LIMIT_DEFAULT,
   }: { sort?: string; limit?: unknown } = {},
 ): Row {
-  const normalizedSort = TOP_HOLDERS_SORTS.includes(sort)
+  const normalizedSort = (TOP_HOLDERS_SORTS as readonly string[]).includes(sort)
     ? sort
     : DEFAULT_TOP_HOLDERS_SORT;
   const normalizedLimit = clampRowLimit(

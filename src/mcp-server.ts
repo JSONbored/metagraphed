@@ -45,6 +45,7 @@ import {
   SearchSubnetsOutputSchema,
 } from "../schemas-src/mcp-tools/search-subnets.ts";
 import {
+  LIST_SUBNETS_SORT_FIELDS,
   ListSubnetsInputSchema,
   ListSubnetsOutputSchema,
 } from "../schemas-src/mcp-tools/list-subnets.ts";
@@ -1773,6 +1774,7 @@ import {
   TAO_USD_TABLES,
   UPTIME_DAILY_TABLES,
 } from "./read-store-tables.ts";
+import { COVERAGE_DEPTH_SEVERITIES as ROUTE_COVERAGE_DEPTH_SEVERITIES } from "../schemas-src/routes/coverage.ts";
 
 type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -4850,12 +4852,7 @@ function searchResponse(
 
 // Fields list_subnets can sort by. Kept in one place so the inputSchema enum and
 // the runtime validation can't drift.
-const LIST_SUBNETS_SORT_FIELDS = [
-  "netuid",
-  "integration_readiness",
-  "surface_count",
-  "name",
-];
+
 const LIST_SUBNETS_ORDERS = ["asc", "desc"];
 
 /**
@@ -5130,15 +5127,10 @@ function scoreDocument(doc: Row, terms: string[]) {
   );
 }
 
-const COVERAGE_DEPTH_TIERS = [
-  "agent-ready",
-  "machine-usable",
-  "candidate-review",
-  "needs-evidence",
-  "hard-blocked",
-  "missing-interface",
-];
-const COVERAGE_DEPTH_SEVERITIES = ["hard", "missing-data", "needs-review"];
+// Derived from the owners (#10987 follow-up): both were restated here by
+// hand while coverage.ts already single-sourced them.
+const COVERAGE_DEPTH_TIERS = QUERY_ENUMS.coverageDepthTier;
+const COVERAGE_DEPTH_SEVERITIES = ROUTE_COVERAGE_DEPTH_SEVERITIES;
 
 // Generic in the member type so a caller passing a `readonly ["a","b"]` gets
 // back `"a" | "b" | null` rather than a bare string -- the guard already proves

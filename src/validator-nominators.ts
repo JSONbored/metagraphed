@@ -1,5 +1,6 @@
 import { clampRowLimit } from "../workers/request-params.ts";
 import { round9OrZero, finiteCellOrNull } from "./lib/rao.ts";
+import { VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES } from "../schemas-src/routes/validator-nominators.ts";
 // Nominator list for one validator hotkey (#4334/7.2): who has staked to this
 // validator (across every subnet it operates in), derived from the same
 // StakeAdded/StakeRemoved account_events flow src/account-stake-flow.ts
@@ -23,7 +24,7 @@ export const NOMINATOR_WINDOWS: Record<string, number> = {
 };
 export const DEFAULT_NOMINATOR_WINDOW = "30d";
 
-export const NOMINATOR_SORTS = ["net_staked", "gross_staked", "last_activity"];
+export const NOMINATOR_SORTS = VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES;
 export const DEFAULT_NOMINATOR_SORT = "net_staked";
 export const NOMINATOR_LIMIT_DEFAULT = 20;
 export const NOMINATOR_LIMIT_MAX = 100;
@@ -189,7 +190,7 @@ export function buildValidatorNominators(
     alreadyPaged?: boolean;
   } = {},
 ): Row {
-  const normalizedSort = NOMINATOR_SORTS.includes(sort)
+  const normalizedSort = (NOMINATOR_SORTS as readonly string[]).includes(sort)
     ? sort
     : DEFAULT_NOMINATOR_SORT;
   // NOMINATOR_LIMIT_MAX bounds the IN-MEMORY slice below, and only that. When
