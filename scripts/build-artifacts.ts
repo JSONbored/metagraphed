@@ -115,6 +115,8 @@ import {
   artifactStorageTierForRelativePath,
   schemaDetailArtifactRelativePath,
 } from "../src/artifact-storage.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
+import { RPC_POOL_KIND_VALUES } from "../schemas-src/query-params.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -872,12 +874,7 @@ const profileArtifacts = buildSubnetProfileArtifacts({
 // live endpoint record by surface_id. Declared here (ahead of the index/profile
 // writes) because integration readiness consumes them via buildSubnetServices;
 // the agent-catalog and per-subnet overview below reuse the same maps.
-const AGENT_SERVICE_KINDS = new Set([
-  "subnet-api",
-  "openapi",
-  "sse",
-  "data-artifact",
-]);
+const AGENT_SERVICE_KINDS = new Set<string>(QUERY_ENUMS.callableServiceKind);
 const FIXTURE_SERVICE_KINDS = new Set([
   "subnet-api",
   "openapi",
@@ -3706,9 +3703,9 @@ function subnetProfileCompleteness({
 
 function operationalKindsForSubnetType(subnetType: unknown): string[] {
   if (subnetType === "root") {
-    return ["subtensor-rpc", "subtensor-wss", "archive"];
+    return [...RPC_POOL_KIND_VALUES];
   }
-  return ["openapi", "subnet-api", "sse", "data-artifact"];
+  return [...QUERY_ENUMS.callableServiceKind];
 }
 
 function surfaceHasArchiveSupport(surface: Row): boolean {
@@ -4163,12 +4160,12 @@ function buildCurationReview(
       const subnetSurfaces = surfacesByNetuid.get(subnet.netuid) || [];
       const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
       const operationalKinds = subnetSurfaces.filter((surface) =>
-        ["openapi", "subnet-api", "sse", "data-artifact"].includes(
+        (QUERY_ENUMS.callableServiceKind as readonly string[]).includes(
           surface.kind,
         ),
       );
       const apiCandidates = subnetCandidates.filter((candidate) =>
-        ["openapi", "subnet-api", "sse", "data-artifact"].includes(
+        (QUERY_ENUMS.callableServiceKind as readonly string[]).includes(
           candidate.kind,
         ),
       );
@@ -5864,7 +5861,9 @@ function reviewPriorityScore(
   );
   const adapterBonus =
     surfacesForSubnet.filter((surface) =>
-      ["openapi", "subnet-api", "sse", "data-artifact"].includes(surface.kind),
+      (QUERY_ENUMS.callableServiceKind as readonly string[]).includes(
+        surface.kind,
+      ),
     ).length * 8;
   const machineReviewPenalty =
     subnet.curation.review_state === "maintainer-reviewed" ? -25 : 20;

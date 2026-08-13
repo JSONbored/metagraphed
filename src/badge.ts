@@ -25,6 +25,7 @@
 import { loadReliabilityAggregate } from "./reliability-badge.ts";
 import { ifNoneMatchSatisfied, weakEtag } from "../workers/http.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 
 const BADGE_CACHE_SECONDS = 3600;
 const BADGE_LABEL = "metagraphed";
@@ -51,14 +52,9 @@ const FOR_THE_BADGE_PAD = 12;
 const FOR_THE_BADGE_LETTER_SPACING = 1.25;
 // shields.io "informational" blue, used for plain-count metrics (e.g. apis).
 const INFO_COLOR = "#007ec6";
-// Surface kinds that are callable machine interfaces (mirrors the build's
-// callable-service set); these are what `metric=apis` counts.
-const CALLABLE_SURFACE_KINDS = new Set([
-  "subnet-api",
-  "openapi",
-  "sse",
-  "data-artifact",
-]);
+// Surface kinds that are callable machine interfaces -- THE declared set,
+// not a mirror of it (#10996); these are what `metric=apis` counts.
+const CALLABLE_SURFACE_KINDS = new Set<string>(QUERY_ENUMS.callableServiceKind);
 // A–F grade → color band (gray for unknown); bands match reliability.ts.
 const GRADE_COLOR: Record<string, string> = {
   A: "#2ea44f",

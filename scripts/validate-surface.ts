@@ -17,6 +17,7 @@ import {
   readJson,
   repoRoot,
 } from "./lib.ts";
+import { RPC_POOL_KIND_VALUES } from "../schemas-src/query-params.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop
@@ -44,7 +45,7 @@ const providerIds = new Set(
 // are NOT per-subnet contributor surfaces. Enforce the boundary here (the
 // contributor template already omits these kinds; this closes the hand-crafted
 // PR gap) without touching the probe-derived endpoint pipeline. See issue #1680.
-const BASE_LAYER_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
+const BASE_LAYER_KINDS = new Set<string>(RPC_POOL_KIND_VALUES);
 
 // Pre-existing duplicate-URL registrations, grandfathered so the new
 // duplicate-URL check below (added for #5737) only fails a contributor PR
