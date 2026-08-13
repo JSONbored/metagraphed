@@ -1,4 +1,8 @@
-import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
+import {
+  RAO_PER_TAO_NUMBER,
+  finiteCellOrNull,
+  numberOrZero,
+} from "./lib/rao.ts";
 // Net stake flow (capital in vs out) for one subnet over a recent window: how much
 // TAO entered (StakeAdded) vs left (StakeRemoved), summed from the first-party
 // account_events stream. Pure shaping (buildStakeFlow); the Worker / data-api
@@ -47,12 +51,6 @@ function roundTao(value: number): number {
 }
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric.
-function nullableTao(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
 
 // Shape a subnet's StakeAdded/StakeRemoved aggregate into a stake-flow scorecard.
 // `rows` is the GROUP BY event_kind result: at most one row per kind carrying
@@ -72,7 +70,7 @@ export function buildStakeFlow(
   // not just the single-row-per-kind shape GROUP BY event_kind guarantees.
   for (const row of list) {
     const kind = row?.event_kind;
-    const tao = nullableTao(row?.total_tao);
+    const tao = finiteCellOrNull(row?.total_tao);
     if (tao == null) continue;
     if (kind === STAKE_ADDED_KIND) {
       stakedTao += tao;

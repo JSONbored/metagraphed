@@ -1,4 +1,4 @@
-import { RAO_PER_TAO_NUMBER } from "./lib/rao.ts";
+import { RAO_PER_TAO_NUMBER, nonNegativeCellOrNull } from "./lib/rao.ts";
 // Nominator-side (coldkey) position reconstruction (#5233): "what does this
 // coldkey actually hold, across every hotkey/subnet it delegates to" — the
 // coldkey-scoped counterpart to buildAccountPortfolio's hotkey-scoped view
@@ -54,12 +54,6 @@ export const NOMINATOR_POSITION_INSERT_COLUMNS = [
 // Blank Postgres cells coerce via Number("") -> 0; skip those rather than
 // joining a phantom zero-stake hotkey (mirrors buildGlobalValidators/
 // numberOrZero's sibling null-safety elsewhere in this codebase).
-function nullableTao(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
 
 function nonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
@@ -402,7 +396,7 @@ export function stakeByHotkeyNetuid(
   for (const row of Array.isArray(neuronRows) ? neuronRows : []) {
     const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
     const netuid = nonNegativeInt(row?.netuid);
-    const stake = nullableTao(row?.stake_tao);
+    const stake = nonNegativeCellOrNull(row?.stake_tao);
     if (!hotkey || netuid == null || stake == null) continue;
     map.set(`${hotkey}|${netuid}`, stake);
   }

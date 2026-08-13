@@ -1,4 +1,8 @@
-import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
+import {
+  RAO_PER_TAO_NUMBER,
+  finiteCellOrNull,
+  numberOrZero,
+} from "./lib/rao.ts";
 // Per-account stake flow: how one account's capital moved in (StakeAdded) vs out
 // (StakeRemoved) over a recent window, broken down per subnet and rolled up into a
 // staking-behavior scorecard. Pure shaping (buildAccountStakeFlow); the Worker /
@@ -55,12 +59,6 @@ function roundConcentration(value: number): number {
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank cells
 // coerce via Number("") → 0; skip those rows rather than counting phantom zero-TAO
 // stake events (mirrors buildCounterparties #3059).
-function nullableTao(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null
 // explicitly so a null netuid is skipped rather than coerced to subnet 0 (Number(null) === 0).
@@ -154,7 +152,7 @@ export function buildAccountStakeFlow(
     if (netuid == null) continue;
     const kind = row?.event_kind;
     if (kind !== STAKE_ADDED_KIND && kind !== STAKE_REMOVED_KIND) continue;
-    const tao = nullableTao(row?.total_tao);
+    const tao = finiteCellOrNull(row?.total_tao);
     if (tao == null) continue;
     const bucket = perSubnet.get(netuid) ?? {
       staked: 0,

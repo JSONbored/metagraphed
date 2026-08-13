@@ -187,3 +187,40 @@ export function taoCellOrNull(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? round9(n) : null;
 }
+
+/**
+ * A store cell as a finite number, or null when the cell says nothing.
+ *
+ * NOT `taoCellOrNull`: this does NOT round. Seven modules declared it as
+ * `nullableTao`, and collapsing them onto the rounding one would have
+ * introduced rao-rounding where there was none on seven surfaces (#10948).
+ * Blank-string handling is shared with `taoCellOrNull` for the same reason it
+ * exists there -- `Number("")` is 0, and a blank cell is not a zero.
+ *
+ * The name says `Cell` because the input is a raw store value: several callers
+ * hand a Postgres/D1 column straight in, where a BIGINT often arrives as a
+ * string.
+ */
+export function finiteCellOrNull(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * `finiteCellOrNull`, and a negative reads as null too.
+ *
+ * THE OTHER HALF OF ONE NAME. Of the seven `nullableTao` copies, four accepted
+ * a negative and three rejected it -- same name, same file shape, opposite
+ * answer for `-1`. Which is right depends on the column: a stake or a balance
+ * cannot be negative, so a negative there is a junk cell; a net flow or a delta
+ * can be, and nulling it would erase a real measurement.
+ *
+ * Two exports rather than a flag, so a call site says which of those it means
+ * and a reader does not have to resolve a boolean to find out.
+ */
+export function nonNegativeCellOrNull(value: unknown): number | null {
+  const n = finiteCellOrNull(value);
+  return n != null && n >= 0 ? n : null;
+}
