@@ -71,6 +71,11 @@ describe("the committed snapshot", () => {
       "subnet_hyperparams_history",
       "subnet_identity_history",
       "subnet_ownership_history",
+      // Joined by src/neuron-daily-cold-tier.ts to price stake and emission in
+      // TAO. It was read for months with no snapshot at all -- #11049 added the
+      // gate that now fails on a read-without-snapshot rather than leaving it
+      // to the comment above.
+      "subnet_snapshots",
     ]);
     // The TS side mirrors the snapshot -- it is the READER's list.
     assert.deepEqual(

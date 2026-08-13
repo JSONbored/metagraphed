@@ -423,6 +423,47 @@ export const AccountPositionDailyRowSchema = z
   .partial()
   .catchall(z.unknown());
 
+/**
+ * `chain.subnet_snapshots` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const SubnetSnapshotsRowSchema = z
+  .object({
+    netuid: z.int().nullable(),
+    snapshot_date: z.iso.date().nullable(),
+    completeness_score: z.int().nullable(),
+    surface_count: z.int().nullable(),
+    endpoint_count: z.int().nullable(),
+    monitored_count: z.int().nullable(),
+    candidate_count: z.int().nullable(),
+    captured_at: z.int().nullable(),
+    validator_count: z.int().nullable(),
+    miner_count: z.int().nullable(),
+    total_stake_tao: z.number().nullable(),
+    alpha_price_tao: z.number().nullable(),
+    emission_share: z.number().nullable(),
+    tao_in_pool_tao: z.number().nullable(),
+    alpha_in_pool: z.number().nullable(),
+    alpha_out_pool: z.number().nullable(),
+    subnet_volume_tao: z.number().nullable(),
+    tao_in_emission_tao: z.number().nullable(),
+    excess_tao: z.number().nullable(),
+    alpha_in_emission: z.number().nullable(),
+    alpha_out_emission: z.number().nullable(),
+    miner_burned_fraction: z.number().nullable(),
+    emission_enabled: z.boolean().nullable(),
+    subtoken_enabled: z.boolean().nullable(),
+    first_emission_block: z.int().nullable(),
+    pipeline_block: z.int().nullable(),
+    pipeline_block_hash: z.string().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
 /** Every table's row schema, by table name. */
 export const LAKEHOUSE_ROW_SCHEMAS = {
   blocks: BlocksRowSchema,
@@ -440,4 +481,5 @@ export const LAKEHOUSE_ROW_SCHEMAS = {
   subnet_ownership_history: SubnetOwnershipHistoryRowSchema,
   neuron_daily: NeuronDailyRowSchema,
   account_position_daily: AccountPositionDailyRowSchema,
+  subnet_snapshots: SubnetSnapshotsRowSchema,
 } as const;
