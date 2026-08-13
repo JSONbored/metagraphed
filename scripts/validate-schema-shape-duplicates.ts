@@ -238,6 +238,22 @@ const COINCIDENT_BY_DESIGN: Record<string, string[]> = {
     ["schemas-src/lakehouse.ts", "schemas-src/routes/blocks.ts"],
   "alpha_amount,amount_tao,block_number,coldkey,event_index,event_kind,extrinsic_index,hotkey,netuid,observed_at,uid":
     ["schemas-src/lakehouse.ts", "schemas-src/mcp-tools/shared.ts"],
+  // Same storage/wire pair, arriving because the snapshot was widened to cover
+  // tables the MIRROR writes rather than only those routes read
+  // (metagraphed-infra#552). `chain.tao_usd_index` reached the archive, so its
+  // generated row schema now coincides with the route that serves it.
+  //
+  // The seam is visible in three of the seven fields, which is why collapsing
+  // them would be a bug rather than a tidy-up:
+  //   observed_at  z.int() epoch-ms stored   -> z.iso.datetime() served
+  //   pools        z.string() JSON text      -> z.array(z.unknown()) parsed
+  //   usd_per_tao  z.number()                -> z.number().positive()
+  // Importing the storage schema into the route would make it accept an
+  // epoch-ms integer and a JSON string for a field it publishes as an array.
+  "block_number,eth_usd,observed_at,pool_count,pools,price_basis,usd_per_tao": [
+    "schemas-src/lakehouse.ts",
+    "schemas-src/routes/tao-usd.ts",
+  ],
 };
 
 function main(): void {
