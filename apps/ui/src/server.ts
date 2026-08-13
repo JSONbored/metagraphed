@@ -686,11 +686,6 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
   },
 
   // Product
-  "/delegate": {
-    title: "Delegate",
-    subtitle: "Stake to a validator, non-custodially, from your own wallet",
-    eyebrow: "Staking",
-  },
   "/contribute": {
     title: "Contribute",
     subtitle: "Add a subnet's surfaces to the registry",

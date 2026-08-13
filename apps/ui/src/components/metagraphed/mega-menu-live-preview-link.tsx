@@ -37,7 +37,7 @@ function LiveRowLink({ item, onNavigate, registerItem, itemIndex }: MegaMenuLive
       to={item.to}
       params={item.params as never}
       onClick={onNavigate}
-      ref={(el) => registerItem(el, itemIndex)}
+      ref={(el: HTMLAnchorElement | null) => registerItem(el, itemIndex)}
       className={LIVE_LINK_CLASS}
       preload="intent"
       data-mega-live-preview={item.kind}

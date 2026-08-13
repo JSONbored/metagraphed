@@ -287,7 +287,7 @@ export function MegaPanelBody({
                     to={l.to}
                     search={(l.search ?? undefined) as never}
                     onClick={onNavigate}
-                    ref={(el) => registerItem(el, i)}
+                    ref={(el: HTMLAnchorElement | null) => registerItem(el, i)}
                     className="group/link block rounded-md px-2 py-1.5 -mx-2 hover:bg-surface/70 focus:bg-surface/70 focus:outline-none transition-colors"
                     preload="intent"
                   >
@@ -362,7 +362,7 @@ export function MegaPanelBody({
                     <Link
                       to={r.to}
                       onClick={onNavigate}
-                      ref={(el) => registerItem(el, i)}
+                      ref={(el: HTMLAnchorElement | null) => registerItem(el, i)}
                       className="rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption text-ink hover:border-accent/40 hover:text-accent focus:border-accent/60 focus:outline-none transition-colors"
                       preload="intent"
                     >
@@ -389,7 +389,7 @@ export function MegaPanelBody({
                     to={l.to}
                     search={(l.search ?? undefined) as never}
                     onClick={onNavigate}
-                    ref={(el) => registerItem(el, i)}
+                    ref={(el: HTMLAnchorElement | null) => registerItem(el, i)}
                     className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-accent/50 focus:border-accent/60 focus:outline-none transition-colors"
                     preload="intent"
                   >
@@ -434,7 +434,7 @@ export function MegaPanelBody({
         <Link
           to={panel.to}
           onClick={onNavigate}
-          ref={(el) => registerItem(el, nextIdx())}
+          ref={(el: HTMLAnchorElement | null) => registerItem(el, nextIdx())}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-text hover:underline focus:underline underline-offset-4 focus:outline-none"
           preload="intent"
         >

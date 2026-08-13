@@ -15,7 +15,6 @@ import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as ApisRouteImport } from './routes/apis'
 import { Route as ChainRouteImport } from './routes/chain'
 import { Route as ContributeRouteImport } from './routes/contribute'
-import { Route as DelegateRouteImport } from './routes/delegate'
 import { Route as DomainsRouteImport } from './routes/domains'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
 import { Route as ExplorerRouteImport } from './routes/explorer'
@@ -93,11 +92,6 @@ const ChainRoute = ChainRouteImport.update({
 const ContributeRoute = ContributeRouteImport.update({
   id: '/contribute',
   path: '/contribute',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DelegateRoute = DelegateRouteImport.update({
-  id: '/delegate',
-  path: '/delegate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DomainsRoute = DomainsRouteImport.update({
@@ -348,7 +342,6 @@ export interface FileRoutesByFullPath {
   '/apis': typeof ApisRouteWithChildren
   '/chain': typeof ChainRouteWithChildren
   '/contribute': typeof ContributeRoute
-  '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -403,7 +396,6 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
   '/contribute': typeof ContributeRoute
-  '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -461,7 +453,6 @@ export interface FileRoutesById {
   '/apis': typeof ApisRouteWithChildren
   '/chain': typeof ChainRouteWithChildren
   '/contribute': typeof ContributeRoute
-  '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -520,7 +511,6 @@ export interface FileRouteTypes {
     | '/apis'
     | '/chain'
     | '/contribute'
-    | '/delegate'
     | '/domains'
     | '/endpoints'
     | '/explorer'
@@ -575,7 +565,6 @@ export interface FileRouteTypes {
     | '/about'
     | '/agents'
     | '/contribute'
-    | '/delegate'
     | '/domains'
     | '/endpoints'
     | '/explorer'
@@ -632,7 +621,6 @@ export interface FileRouteTypes {
     | '/apis'
     | '/chain'
     | '/contribute'
-    | '/delegate'
     | '/domains'
     | '/endpoints'
     | '/explorer'
@@ -690,7 +678,6 @@ export interface RootRouteChildren {
   ApisRoute: typeof ApisRouteWithChildren
   ChainRoute: typeof ChainRouteWithChildren
   ContributeRoute: typeof ContributeRoute
-  DelegateRoute: typeof DelegateRoute
   DomainsRoute: typeof DomainsRoute
   EndpointsRoute: typeof EndpointsRoute
   ExplorerRoute: typeof ExplorerRoute
@@ -771,13 +758,6 @@ declare module '@tanstack/react-router' {
       path: '/contribute'
       fullPath: '/contribute'
       preLoaderRoute: typeof ContributeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/delegate': {
-      id: '/delegate'
-      path: '/delegate'
-      fullPath: '/delegate'
-      preLoaderRoute: typeof DelegateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/domains': {
@@ -1166,7 +1146,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApisRoute: ApisRouteWithChildren,
   ChainRoute: ChainRouteWithChildren,
   ContributeRoute: ContributeRoute,
-  DelegateRoute: DelegateRoute,
   DomainsRoute: DomainsRoute,
   EndpointsRoute: EndpointsRoute,
   ExplorerRoute: ExplorerRoute,
