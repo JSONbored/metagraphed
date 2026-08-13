@@ -7277,6 +7277,17 @@ export async function handleExtrinsic(
   if (answer?.kind === "gap") return chainDetailGapResponse(answer);
   const data =
     answer?.kind === "answer" ? answer.data : buildExtrinsic(undefined, ref);
+  // #11001: name the immutability the tier already knows, the way handleBlock
+  // above does. A COLD (lakehouse) answer is decoded and settled, so it cannot
+  // change within a contract version and takes the `static` profile. Everything
+  // else stays `short`: a HOT-window answer is still inside the live-follow
+  // range and may yet move, and an unresolved hash keeps its schema-stable
+  // `extrinsic: null` precisely because absence from that window proves nothing
+  // — a client must re-check both. withChainDetailEdgeCache reads this profile
+  // to decide what may be stored at the edge, so getting it wrong here would
+  // cache a moving answer, not merely mis-advertise one.
+  const cacheProfile =
+    answer?.kind === "answer" && answer.tier === "cold" ? "static" : "short";
   return envelopeResponse(
     request,
     {
@@ -7287,7 +7298,7 @@ export async function handleExtrinsic(
         data.extrinsic?.observed_at ?? null,
       ),
     },
-    "short",
+    cacheProfile,
   );
 }
 

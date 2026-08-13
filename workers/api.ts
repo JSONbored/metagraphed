@@ -3755,6 +3755,116 @@ async function chainEventsCacheKey(
 }
 
 /**
+ * Edge-cache TTL for a chain-detail answer the handler has declared immutable
+ * (#11001).
+ *
+ * One hour, and the bound is the decode lane's own reconciliation window rather
+ * than a guess: chainDetailGapResponse states the lane "closes [a gap] within
+ * the hour", so an hour is the longest a re-decode can leave a stored answer
+ * disagreeing with the store behind it. The key is already namespaced by
+ * contract version, so a contract change invalidates independently of this.
+ *
+ * Deliberately longer than the 600 s `static` profile the response advertises to
+ * clients: that number is a browser's revalidation interval, this one is how
+ * long OUR edge may answer without re-paying a lakehouse scan. They are
+ * different questions and were never the same number.
+ */
+const CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS = 3600;
+
+/**
+ * Edge-cache key for one chain-detail answer (block / extrinsic detail).
+ *
+ * NETWORK-SCOPED for the same reason chainEventsCacheKey is: the `/{network}/`
+ * prefix is stripped before dispatch, so mainnet and testnet reach these
+ * handlers with byte-identical pathnames and the two chains' block numbers
+ * overlap. A key built from the path alone would serve a testnet block to the
+ * next mainnet caller and nothing downstream could tell.
+ */
+export function chainDetailCacheKey(
+  env: Env,
+  url: URL,
+  network: ChainNetworkId,
+) {
+  return new Request(
+    `https://edge-cache.metagraph.sh/chain-detail/${encodeURIComponent(
+      contractVersion(env),
+    )}/${network}${url.pathname}${url.search}`,
+  );
+}
+
+/**
+ * Serve one chain-detail route through the edge cache (#11001).
+ *
+ * `/api/v1/blocks/{ref}` and `/api/v1/extrinsics/{hash}` reached NO cache at
+ * all before this. They return from dispatchChainHistoryRoute, which is upstream
+ * of handleNetworkScopedRequest's `edgeCacheable` lookup, so every request paid a
+ * full lakehouse scan — measured at 747–3465 ms TTFB, on what #9004 measured as
+ * the single largest route in the project at 758,995 requests/day. Neither route
+ * is in LIVE_OVERLAY_ROUTE_IDS, the set that names deliberate exclusions, so
+ * nothing had decided this; dispatch order had.
+ *
+ * WHAT MAY BE STORED is decided by the handler, not here. Each one already knows
+ * which tier answered — `answerBlockDetail`/`answerExtrinsicDetail` return
+ * `tier: "hot" | "cold"` — and encodes it in the response's cache profile: a
+ * COLD (lakehouse) answer is settled and gets `static`, a hot-window or
+ * unresolved one gets `short`. So this reads one header rather than re-deriving
+ * a "how deep is this block" rule that would then have to agree with three
+ * handlers' independent judgement. A gap (503) and a 304 are excluded by the
+ * same test, without naming either.
+ *
+ * The rate limiter stays UPSTREAM of this, on purpose. A cache hit is cheap for
+ * us but a caller walking 8.8M blocks is still a caller walking 8.8M blocks, and
+ * metering that is the whole point of #11000's ceiling — serving it from cache
+ * must not make it free.
+ */
+export async function withChainDetailEdgeCache(
+  request: Request,
+  env: Env,
+  url: URL,
+  network: ChainNetworkId,
+  ctx: Ctx,
+  produce: () => Promise<Response>,
+): Promise<Response> {
+  const cacheable =
+    request.method === "GET"
+      ? cacheableWith(chainDetailCacheKey(env, url, network))
+      : null;
+  if (!cacheable) return produce();
+
+  const hit = await cacheable.store.match(cacheable.key);
+  if (hit) {
+    // Honour a conditional request against the stored body's weak ETag, so a
+    // polling agent gets a 304 off a warm edge rather than the whole payload
+    // (mirrors envelopeResponse and the artifact cache's own hit path).
+    if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
+      return new Response(null, { status: 304, headers: hit.headers });
+    }
+    return hit;
+  }
+
+  const response = await produce();
+  if (
+    response.status === 200 &&
+    response.headers.get("x-metagraph-cache-profile") === "static"
+  ) {
+    // Stored with OUR ttl, not the client-facing one. Built explicitly rather
+    // than by passing the Response as an init so the headers are copied into a
+    // fresh Headers and mutating them cannot reach the response we return.
+    const stored = new Response(response.clone().body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+    stored.headers.set(
+      "cache-control",
+      `public, s-maxage=${CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS}`,
+    );
+    ctx?.waitUntil?.(cacheable.store.put(cacheable.key, stored));
+  }
+  return response;
+}
+
+/**
  * The chain-events family: the all-events feed, its stats aggregate, one
  * block's raw events, and the three per-subnet histories that read the same
  * store.
@@ -7983,7 +8093,9 @@ async function dispatchChainHistoryRoute(
   if (blockDetailMatch) {
     const limited = await chainDetailRateLimit(request, env, ctx, "block");
     if (limited) return limited;
-    return handleBlock(request, env, blockDetailMatch[1], chain);
+    return withChainDetailEdgeCache(request, env, url, chain, ctx, () =>
+      handleBlock(request, env, blockDetailMatch[1], chain),
+    );
   }
   if (BLOCKS_FEED_PATH_PATTERN.test(pathname)) {
     return handleBlocks(request, env, url, chain);
@@ -7993,7 +8105,9 @@ async function dispatchChainHistoryRoute(
   if (extrinsicDetailMatch) {
     const limited = await chainDetailRateLimit(request, env, ctx, "extrinsic");
     if (limited) return limited;
-    return handleExtrinsic(request, env, extrinsicDetailMatch[1], chain);
+    return withChainDetailEdgeCache(request, env, url, chain, ctx, () =>
+      handleExtrinsic(request, env, extrinsicDetailMatch[1], chain),
+    );
   }
   if (EXTRINSICS_FEED_PATH_PATTERN.test(pathname)) {
     return handleExtrinsics(request, env, url, chain);
