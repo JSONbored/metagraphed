@@ -5444,7 +5444,7 @@ export interface components {
             positions: {
                 active: boolean;
                 dividends: number | null;
-                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
                 emission_alpha: number;
                 incentive: number | null;
                 netuid: number;
@@ -5478,7 +5478,7 @@ export interface components {
                 captured_at: string | null;
                 coldkey: string | null;
                 dividends: number | null;
-                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
                 emission_tao: number;
                 incentive: number | null;
                 rank: number | null;
@@ -5614,7 +5614,7 @@ export interface components {
                 stake_dominance: number | null;
                 subnet_count: number;
                 subnets: {
-                    /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
+                    /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
                     emission_alpha: number;
                     netuid: number;
                     /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO. */
@@ -9153,7 +9153,7 @@ export interface components {
                 coldkey: string | null;
                 consensus?: number | null;
                 dividends?: number | null;
-                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
@@ -9193,7 +9193,7 @@ export interface components {
                 coldkey: string | null;
                 consensus?: number | null;
                 dividends?: number | null;
-                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
@@ -11723,7 +11723,7 @@ export interface components {
                 coldkey: string | null;
                 consensus?: number | null;
                 dividends?: number | null;
-                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
@@ -12750,7 +12750,7 @@ export interface components {
                 coldkey: string | null;
                 consensus?: number | null;
                 dividends?: number | null;
-                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
@@ -12903,7 +12903,7 @@ export interface components {
             netuid: number;
             neuron_count: number;
             neurons: {
-                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
                 emission_tao: number | null;
                 hotkey: string | null;
                 /** @enum {string} */

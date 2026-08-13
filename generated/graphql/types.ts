@@ -407,7 +407,7 @@ export type AccountPortfolioPosition = {
   __typename?: 'AccountPortfolioPosition';
   active: Scalars['Boolean']['output'];
   dividends?: Maybe<Scalars['Float']['output']>;
-  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
+  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
   emission_alpha: Scalars['Float']['output'];
   incentive?: Maybe<Scalars['Float']['output']>;
   netuid: Scalars['Int']['output'];
@@ -440,7 +440,7 @@ export type AccountPositionHistoryPoint = {
   captured_at?: Maybe<Scalars['String']['output']>;
   coldkey?: Maybe<Scalars['String']['output']>;
   dividends?: Maybe<Scalars['Float']['output']>;
-  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
   emission_tao: Scalars['Float']['output'];
   incentive?: Maybe<Scalars['Float']['output']>;
   rank?: Maybe<Scalars['Float']['output']>;
@@ -626,7 +626,7 @@ export type AccountStakeMoves = {
 /** One subnet position in a wallet's portfolio, ranked biggest-stake-first. */
 export type AccountSubnet = {
   __typename?: 'AccountSubnet';
-  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
+  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
   emission_alpha: Scalars['Float']['output'];
   netuid: Scalars['Int']['output'];
   /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO. */
@@ -3135,7 +3135,7 @@ export type NeuronHistoryPoint = {
   coldkey?: Maybe<Scalars['String']['output']>;
   consensus?: Maybe<Scalars['Float']['output']>;
   dividends?: Maybe<Scalars['Float']['output']>;
-  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
   emission_tao?: Maybe<Scalars['Float']['output']>;
   featured?: Maybe<Scalars['Boolean']['output']>;
   hotkey?: Maybe<Scalars['String']['output']>;
@@ -3168,7 +3168,7 @@ export type NeuronState = {
   coldkey?: Maybe<Scalars['String']['output']>;
   consensus?: Maybe<Scalars['Float']['output']>;
   dividends?: Maybe<Scalars['Float']['output']>;
-  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
   emission_tao?: Maybe<Scalars['Float']['output']>;
   featured?: Maybe<Scalars['Boolean']['output']>;
   hotkey?: Maybe<Scalars['String']['output']>;
@@ -7747,7 +7747,7 @@ export type SubnetYieldHistoryPoint = {
 /** One UID's emission-per-stake yield within a subnet's current metagraph snapshot. */
 export type SubnetYieldNeuron = {
   __typename?: 'SubnetYieldNeuron';
-  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
+  /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
   emission_tao?: Maybe<Scalars['Float']['output']>;
   hotkey?: Maybe<Scalars['String']['output']>;
   role: Scalars['String']['output'];
