@@ -1,3 +1,4 @@
+import { round9 } from "./lib/rao.ts";
 // The POSITIONS basis for /validators/{hotkey}/nominators (#9617).
 //
 // The default basis is FLOW: src/validator-nominators.ts derives the nominator
@@ -157,7 +158,7 @@ export function buildNominatorPositions(
     }
     if (coldkey === null || netuid === null || alpha === null) continue;
     const list = byColdkey.get(coldkey) ?? [];
-    list.push({ netuid, alpha: round(alpha) });
+    list.push({ netuid, alpha: round9(alpha) });
     byColdkey.set(coldkey, list);
   }
 
@@ -221,8 +222,4 @@ function toIsoOrNull(value: number | null): string | null {
   if (value === null || !Number.isFinite(value) || value <= 0) return null;
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-}
-
-function round(value: number): number {
-  return Math.round(value * 1e9) / 1e9;
 }

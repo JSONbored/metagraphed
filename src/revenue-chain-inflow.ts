@@ -23,6 +23,7 @@
 //      own alpha is circular, not external, and adding it to a USD total would
 //      quietly count a subnet paying itself.
 import { protocolSubnetNetuid } from "./subnet-accounts.ts";
+import { round9 } from "./lib/rao.ts";
 
 export interface ChainTransfer {
   to: string;
@@ -141,7 +142,7 @@ export function aggregateChainInflow(input: InflowInput): InflowResult {
 
   return {
     netuid,
-    tao: Math.round(tao * 1e9) / 1e9,
+    tao: round9(tao),
     // A total nobody could price is null, not zero. Partial pricing still
     // reports what it could price, and the caller can see the gap from
     // transfer_count.
@@ -150,7 +151,7 @@ export function aggregateChainInflow(input: InflowInput): InflowResult {
     excluded: [...excluded.entries()].map(([reason, v]) => ({
       reason,
       count: v.count,
-      tao: Math.round(v.tao * 1e9) / 1e9,
+      tao: round9(v.tao),
     })),
     rejected_collectors: rejected,
   };

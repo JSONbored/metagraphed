@@ -1,3 +1,4 @@
+import { round9 } from "./lib/rao.ts";
 // #10486: what moves through a DECLARED wallet, per window.
 //
 // Aggregation only. Attribution comes from registry/entities/ (#10483) and is
@@ -57,10 +58,6 @@ export interface WalletActivity {
 
 function finite(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function round(value: number): number {
-  return Math.round(value * 1e9) / 1e9;
 }
 
 function legKey(denomination: string, netuid: number | null): string {
@@ -130,9 +127,9 @@ export function aggregateWalletActivity(
       net: 0,
       events: 0,
     };
-    if (row.direction === "in") leg.in = round(leg.in + amount);
-    else leg.out = round(leg.out + amount);
-    leg.net = round(leg.in - leg.out);
+    if (row.direction === "in") leg.in = round9(leg.in + amount);
+    else leg.out = round9(leg.out + amount);
+    leg.net = round9(leg.in - leg.out);
     leg.events += 1;
     legs.set(key, leg);
 

@@ -41,6 +41,7 @@ import {
   CHAIN_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
 import { median } from "./lib/stats.ts";
+import { round9 } from "./lib/rao.ts";
 
 export { CHAIN_HOLDERS_LIMIT_DEFAULT, CHAIN_HOLDERS_LIMIT_MAX };
 
@@ -182,7 +183,7 @@ export function buildChainHolders(
       const entry: Row = {
         netuid,
         holder_count: nonNegativeOrNull(r?.holder_count),
-        total_alpha: total === null ? null : round(total),
+        total_alpha: total === null ? null : round9(total),
         top_holder: typeof r?.top_holder === "string" ? r.top_holder : null,
       };
       for (const n of CHAIN_HOLDERS_RANKS) {
@@ -256,7 +257,7 @@ function networkRollup(subnets: Row[]): Row {
       .length,
     // median() is null-typed for the empty case, which the length guard already
     // excludes -- narrowed rather than asserted so an empty array can never
-    // reach round() and become NaN.
+    // reach round9() and become NaN.
     median_top1_share: medianOrNull(top1),
   };
 }
@@ -273,13 +274,13 @@ function emptyNetwork(): Row {
 /** The median of an ASCENDING array, rounded, or null when there is none. */
 function medianOrNull(ascending: number[]): number | null {
   const value = median(ascending);
-  return value === null ? null : round(value);
+  return value === null ? null : round9(value);
 }
 
 /** A share, or null. A zero denominator yields null, never 0 or Infinity. */
 function share(part: number | null, whole: number | null): number | null {
   if (part === null || whole === null || whole <= 0) return null;
-  return round(part / whole);
+  return round9(part / whole);
 }
 
 function nonNegativeOrNull(value: unknown): number | null {
@@ -314,8 +315,4 @@ function toIsoOrNull(value: number | null): string | null {
   if (value === null || !Number.isFinite(value) || value <= 0) return null;
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-}
-
-function round(value: number): number {
-  return Math.round(value * 1e9) / 1e9;
 }
