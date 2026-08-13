@@ -747,7 +747,10 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
         throw err;
       }
       thrownCode = "unparseable";
-      throw new Error("r2 sql: response body was not JSON");
+      // `cause` carries the parser's own reason -- "Unexpected token '<'" is
+      // what distinguishes an edge error page from a truncated body, and this
+      // module's whole point is that the caller learns WHY it has no rows.
+      throw new Error("r2 sql: response body was not JSON", { cause: err });
     }
     // safeParse, not a cast: see R2SqlBodySchema. A body that does not carry
     // the envelope becomes a decline the caller can read, where the cast made
