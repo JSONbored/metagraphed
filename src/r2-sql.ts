@@ -135,6 +135,78 @@ export const R2_SQL_OUTAGE_COOLDOWN_MS = 15_000;
 const SERVER_ERROR_FLOOR = 500;
 
 /**
+ * The largest response body this client will buffer, in bytes.
+ *
+ * ## A ROW LIMIT IS NOT A BYTE LIMIT
+ *
+ * Every query here is bounded by `LIMIT`, and that bounds ROWS. It does not
+ * bound bytes, because `chain.extrinsics.call_args` has no width: one
+ * `set_weights` carries a weight per UID, and a `utility.batch` carries every
+ * call inside it. A page of 200 such rows is not 200 small objects.
+ *
+ * On 2026-08-12 that produced a `TypeError: Memory limit exceeded before EOF`
+ * from this exact query:
+ *
+ *     SELECT block_number, ..., call_args, observed_at FROM chain.extrinsics
+ *     WHERE signer = ? ORDER BY ... LIMIT ?
+ *
+ * ## WHY A CAP AND NOT JUST A SMALLER LIMIT
+ *
+ * The module header promises "ANY failure (missing token, HTTP error,
+ * malformed body, timeout) returns null so the caller degrades to the
+ * schema-stable empty it already has, never a 5xx". An out-of-memory throw is
+ * the one failure that does not keep that promise: it is raised by the
+ * RUNTIME, not by a response this code inspected, and it does not decline one
+ * query -- it kills the isolate, taking every unrelated request sharing it.
+ *
+ * A cap converts that into an ordinary decline this module already knows how
+ * to report. Tuning `LIMIT` per caller would narrow the odds without closing
+ * the hole, and the next unbounded column would reopen it.
+ *
+ * 8 MiB of RAW body against a 128 MB isolate. Deliberately far below the
+ * ceiling rather than near it: the bytes are held once as chunks, again as a
+ * decoded string, and a third time as parsed objects, so the resident cost of
+ * a body is several times its wire size. Every legitimate result measured in
+ * this repo is orders of magnitude under it -- the widest documented read is
+ * the deregistrations lane's 33,386 rows over six narrow columns. Overridable
+ * per-deployment via R2_SQL_MAX_BODY_BYTES, because the right number follows
+ * the isolate's memory rather than this comment.
+ */
+export const R2_SQL_MAX_BODY_BYTES_ENV = "R2_SQL_MAX_BODY_BYTES";
+export const R2_SQL_MAX_BODY_BYTES_DEFAULT = 8 * 1024 * 1024;
+
+/**
+ * The `error_code` a response too large to buffer reports.
+ *
+ * DELIBERATELY NOT an EXPECTED_FAILURE_CODE, for the same reason `http_422`
+ * is not: this is correctness, not capacity. It says a query in THIS repo
+ * asked for more than a page, and the error inbox is exactly where that
+ * belongs. Filing it as expected would silence the only signal that an
+ * unbounded column had started returning unbounded data.
+ */
+const BODY_TOO_LARGE_CODE = "body_too_large";
+
+/**
+ * Thrown by the capped reader, so the call site can tell "too big" from "not
+ * JSON" by TYPE rather than by matching on a message. A string match would
+ * reclassify itself the first time the wording changed.
+ */
+class R2SqlBodyTooLargeError extends Error {
+  // Declared and assigned, NOT constructor parameter properties: this repo runs
+  // .ts through Node's strip-only mode, which rejects that syntax outright.
+  readonly received: number;
+  readonly maxBytes: number;
+  constructor(received: number, maxBytes: number) {
+    super(
+      `r2 sql: response exceeded ${maxBytes} bytes before EOF (${received} received) -- declining rather than buffering it`,
+    );
+    this.received = received;
+    this.maxBytes = maxBytes;
+    this.name = "R2SqlBodyTooLargeError";
+  }
+}
+
+/**
  * When the upstream-outage cooldown expires; 0 when closed.
  *
  * A SEPARATE breaker from the rate-limit one, not a widened version of it. They
@@ -211,6 +283,26 @@ export interface R2SqlDeps {
    * Optional and side-effect-only, so no existing caller changes behaviour.
    */
   onError?: (detail: string) => void;
+  /**
+   * The row schema to VALIDATE against, rather than cast to.
+   *
+   * `r2SqlQuery<ExtrinsicsRow>(...)` types the return and checks nothing: the
+   * generated interfaces in generated/lakehouse/types.ts are a compile-time
+   * claim about somebody else's engine. Pass the matching schema from
+   * generated/lakehouse/schemas.ts -- same catalog snapshot, same generator --
+   * and the claim is checked at the boundary where it can actually be wrong.
+   *
+   * A row that fails is a DECLINE, not a repair: the schemas are `.partial()`
+   * (a query selects a subset) and `.loose()` (it also selects aggregates that
+   * are not columns), so a rejection means a column arrived with a type the
+   * catalog says it cannot have. Serving that as though it were data is how a
+   * silent wrong number reaches a published figure.
+   *
+   * Optional, because 30 of the reads here select aggregates or hand-written
+   * subsets and are migrated one at a time -- see
+   * scripts/validate-untyped-lakehouse-reads.ts, the ratchet that counts them.
+   */
+  rowSchema?: { safeParse: (value: unknown) => { success: boolean } };
   /** Override the query ceiling. Tests use a tiny value so the abort path is
    * exercised in milliseconds rather than by waiting out the real ceiling. */
   timeoutMs?: number;
@@ -233,11 +325,36 @@ export interface R2SqlDeps {
   now?: () => number;
 }
 
-interface R2SqlBody {
-  result?: { rows?: unknown; metrics?: Record<string, unknown> } | null;
-  success?: boolean;
-  errors?: { code?: number; message?: string }[];
-}
+/**
+ * The engine's response envelope, PARSED rather than asserted.
+ *
+ * This used to be a hand-written interface behind a `JSON.parse(...) as
+ * R2SqlBody` cast -- a shape this repo declared about somebody else's API and
+ * then never checked. A cast is not a check: a body that had drifted, or an
+ * HTML error page from a proxy, satisfied the compiler and reached the row
+ * reader as `undefined` fields, which is how "no rows" and "we could not tell"
+ * became the same answer.
+ *
+ * Loose on purpose -- unknown keys pass, because this is Cloudflare's envelope
+ * and gaining a field is their business, not a fault here. What it pins is the
+ * three fields this module actually reads, so a body that cannot answer them
+ * is a classified decline instead of a silent empty.
+ */
+const R2SqlBodySchema = z.object({
+  result: z
+    .object({
+      rows: z.unknown().optional(),
+      metrics: z.record(z.string(), z.unknown()).optional(),
+    })
+    .nullish(),
+  success: z.boolean().optional(),
+  errors: z
+    .array(
+      z.object({ code: z.number().optional(), message: z.string().optional() }),
+    )
+    .optional(),
+});
+type R2SqlBody = z.infer<typeof R2SqlBodySchema>;
 
 /** True when this deployment can talk to R2 SQL at all. */
 export function isR2SqlConfigured(env: Env | null | undefined): boolean {
@@ -271,6 +388,72 @@ async function rejectionDetail(
   } catch {
     return "";
   }
+}
+
+// Same shape as the cooldown knob above, and disabled the same way: a real
+// "0" turns the cap off, because an operator must be able to open a safety
+// valve they have decided is in the way.
+const MaxBodyBytesSchema = z.coerce
+  .number()
+  .finite()
+  .nonnegative()
+  .catch(R2_SQL_MAX_BODY_BYTES_DEFAULT);
+
+/** The body-size ceiling for this deployment, or 0 when disabled. */
+export function maxBodyBytes(env: Env | null | undefined): number {
+  const raw = env?.[R2_SQL_MAX_BODY_BYTES_ENV as keyof Env];
+  if (raw === undefined || raw === null || String(raw).trim() === "") {
+    return R2_SQL_MAX_BODY_BYTES_DEFAULT;
+  }
+  return MaxBodyBytesSchema.parse(raw);
+}
+
+/**
+ * Read a response body, refusing to buffer more than `maxBytes` of it.
+ *
+ * Counts what has ALREADY been received rather than trusting `Content-Length`:
+ * the header is absent on a chunked response, and a body that lies about its
+ * length is exactly the one worth stopping. Cancels the stream on the way out,
+ * so a refused read does not keep pulling bytes nobody will look at.
+ *
+ * `Response.body` is nullable by spec, and `maxBytes <= 0` disables the cap.
+ * Either way there is no stream to meter, so the body is taken whole -- a
+ * response the runtime already materialised cannot be refused halfway through
+ * something that has finished arriving.
+ */
+async function readCappedBody(
+  res: Response,
+  maxBytes: number,
+): Promise<unknown> {
+  const reader = maxBytes > 0 ? res.body?.getReader?.() : undefined;
+  if (!reader) return await res.json();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) throw new R2SqlBodyTooLargeError(total, maxBytes);
+      chunks.push(value);
+    }
+  } finally {
+    // Best-effort: the read already failed or finished, and a cancel that
+    // throws must not replace the reason we are here.
+    try {
+      await reader.cancel();
+    } catch {
+      /* the stream is already done or errored */
+    }
+  }
+  const joined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    joined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(joined));
 }
 
 /**
@@ -527,7 +710,35 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
       );
     }
     r2SqlServerErrorStreak = 0;
-    const body = (await res.json()) as R2SqlBody;
+    // Read through the cap rather than `res.json()`, which buffers whatever
+    // arrives and hands an oversized body to the runtime to fail on. See
+    // R2_SQL_MAX_BODY_BYTES_DEFAULT: the throw below is an ordinary decline,
+    // where the out-of-memory it replaces killed the isolate.
+    let parsed: unknown;
+    try {
+      parsed = await readCappedBody(res as Response, maxBodyBytes(env));
+    } catch (err) {
+      // The cap's own refusal is a distinct fact from a body that was not
+      // JSON: one says the query asked for too much, the other that the far
+      // side answered with something else.
+      if (err instanceof R2SqlBodyTooLargeError) {
+        thrownCode = BODY_TOO_LARGE_CODE;
+        throw err;
+      }
+      thrownCode = "unparseable";
+      throw new Error("r2 sql: response body was not JSON");
+    }
+    // safeParse, not a cast: see R2SqlBodySchema. A body that does not carry
+    // the envelope becomes a decline the caller can read, where the cast made
+    // it an empty result indistinguishable from a real one.
+    const decoded = R2SqlBodySchema.safeParse(parsed);
+    if (!decoded.success) {
+      thrownCode = "unparseable";
+      throw new Error(
+        `r2 sql: response body did not match the engine envelope: ${decoded.error.issues[0]?.message ?? "unknown"}`,
+      );
+    }
+    const body: R2SqlBody = decoded.data;
     if (body?.success !== true) {
       const first = body?.errors?.[0];
       // `engine` unnumbered rather than `engine_undefined`: a rejection whose
@@ -540,7 +751,17 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
     const rows = body?.result?.rows;
     // A successful query with no rows is a legitimate answer (no such block),
     // and must not be conflated with a failure — hence [] rather than null.
-    return Array.isArray(rows) ? (rows as Row[]) : [];
+    if (!Array.isArray(rows)) return [];
+    if (deps.rowSchema) {
+      for (const row of rows) {
+        if (deps.rowSchema.safeParse(row).success) continue;
+        thrownCode = "row_schema";
+        throw new Error(
+          `r2 sql: a row did not match the catalog schema for ${r2SqlQueryKind(sql)}`,
+        );
+      }
+    }
+    return rows as Row[];
   } catch (error) {
     r2SqlFailureGeneration += 1;
     const detail = String((error as Error)?.message ?? error);

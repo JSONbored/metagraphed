@@ -42,10 +42,15 @@ import { sourceFiles } from "./validate-untyped-db-reads.ts";
  * 31 when this landed: 39 `r2SqlQuery` call sites, of which 8 select a full
  * generated column tuple and carry the matching row type. Lower it whenever a
  * read is given one.
+ *
+ * 30 (#11000). The extrinsics feed -- the read that produced `Memory limit
+ * exceeded before EOF` -- now carries both halves: the generated row TYPE and
+ * the generated row SCHEMA from generated/lakehouse/schemas.ts, so the claim
+ * is checked at runtime rather than asserted at compile time.
  */
 // Annotated `number` rather than left as the literal so the "none left" branch
 // below stays reachable code as the ceiling falls to zero.
-export const MAX_UNTYPED_LAKEHOUSE_READS: number = 31;
+export const MAX_UNTYPED_LAKEHOUSE_READS: number = 30;
 
 /** Where a read can live. `scripts/` is excluded: it does not serve traffic. */
 const SOURCE_DIRS = ["src", "workers"];

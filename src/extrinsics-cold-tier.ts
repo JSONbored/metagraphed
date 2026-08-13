@@ -56,6 +56,13 @@ import type {
   AccountEventsRow,
   ExtrinsicsRow,
 } from "../generated/lakehouse/types.ts";
+// The RUNTIME half of the same generated pair. types.ts is the compile-time
+// claim; these check it at the boundary.
+import {
+  AccountEventsRowSchema,
+  BlocksRowSchema,
+  ExtrinsicsRowSchema,
+} from "../generated/lakehouse/schemas.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -182,7 +189,12 @@ async function feedRows(
     (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
     ` ${FEED_ORDER} LIMIT ${limit + paged}`;
 
-  const rows = await r2SqlQuery(env, sql);
+  // VALIDATED, not cast. This is the read that produced `Memory limit
+  // exceeded before EOF` on 2026-08-12, and it selects the full generated
+  // column tuple -- so the generated schema for the same table applies exactly.
+  const rows = await r2SqlQuery<ExtrinsicsRow>(env, sql, {
+    rowSchema: ExtrinsicsRowSchema,
+  });
   if (rows === null) return null;
 
   const page = paged > 0 ? rows.slice(paged) : rows;
@@ -295,6 +307,9 @@ async function resolveBlockHeight(
   const rows = await r2SqlQuery(
     env,
     `SELECT block_number FROM ${chainTable("blocks", network)} WHERE block_hash = '${asHash}' LIMIT 1`,
+    // A one-column projection: the schema is `.partial()`, so it checks the
+    // column that IS there rather than demanding the ones that are not.
+    { rowSchema: BlocksRowSchema },
   );
   if (rows === null) return null;
   return safeBlockNumber(rows[0]?.block_number);
@@ -327,6 +342,7 @@ export async function loadExtrinsicColdTier(
   const rows = await r2SqlQuery<ExtrinsicsRow>(
     env,
     `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)} WHERE ${predicate} LIMIT 1`,
+    { rowSchema: ExtrinsicsRowSchema },
   );
   if (rows === null) return null;
   const row = rows[0];
@@ -343,6 +359,7 @@ export async function loadExtrinsicColdTier(
       `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
         `WHERE block_number = ${block} AND extrinsic_index = ${index} ` +
         `ORDER BY event_index LIMIT ${MAX_EMBEDDED_EVENTS}`,
+      { rowSchema: AccountEventsRowSchema },
     );
     // Events failing is NOT a reason to withhold the extrinsic: the Postgres
     // tier serves an empty event list for pre-migration rows too, so an empty

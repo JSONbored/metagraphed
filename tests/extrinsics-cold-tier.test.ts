@@ -250,7 +250,11 @@ describe("loadExtrinsicFeedColdTier", () => {
   });
 
   test("a full page whose last row has no usable height carries no cursor", async () => {
-    sqlFetch([{ ...row(9), block_number: "not-a-height" }]);
+    // `null`, not "not-a-height": the catalog types block_number as a long, and
+    // the read now VALIDATES against it, so a string there is a row the
+    // lakehouse cannot produce. Null is both legal and unusable, which is what
+    // this test is actually about.
+    sqlFetch([{ ...row(9), block_number: null }]);
     const data = await loadExtrinsicFeedColdTier(TOKEN as never, { limit: 1 });
     assert.equal(
       data!.next_cursor ?? null,
@@ -390,7 +394,9 @@ describe("loadExtrinsicColdTier", () => {
           coldkey: SIGNER,
           netuid: null,
           uid: null,
-          amount_tao: "1000000",
+          // A double in the catalog, and production serves 0 / 4.99 -- the
+          // string here described a row R2 SQL does not emit.
+          amount_tao: 1_000_000,
           alpha_amount: null,
           observed_at: 1_700_000_000_500,
         },
@@ -455,7 +461,7 @@ describe("loadExtrinsicColdTier", () => {
   });
 
   test("a row with no usable identity skips the event lookup", async () => {
-    const q = sqlFetch([{ ...row(4, 0), block_number: "bad" }]);
+    const q = sqlFetch([{ ...row(4, 0), block_number: null }]);
     const data = await loadExtrinsicColdTier(TOKEN as never, "0xcc33");
     assert.equal(
       q.length,

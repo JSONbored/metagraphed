@@ -25,8 +25,10 @@ import {
   emitTypes,
   readSnapshot,
   RUST_PATH,
+  ZOD_PATH,
   SNAPSHOT_PATH,
   TYPES_PATH,
+  emitZodSchemas,
 } from "./generate-lakehouse-types.ts";
 
 const snapshot = readSnapshot();
@@ -34,6 +36,7 @@ const stale = (
   [
     [TYPES_PATH, emitTypes(snapshot)],
     [RUST_PATH, emitRustTypes(snapshot)],
+    [ZOD_PATH, emitZodSchemas(snapshot)],
   ] as const
 ).filter(
   ([file, regenerated]) =>
@@ -42,7 +45,7 @@ const stale = (
 
 if (stale.length === 0) {
   process.stdout.write(
-    `${TYPES_PATH} and ${RUST_PATH} match ${SNAPSHOT_PATH}.\n`,
+    `${TYPES_PATH}, ${RUST_PATH} and ${ZOD_PATH} match ${SNAPSHOT_PATH}.\n`,
   );
   process.exit(0);
 }
