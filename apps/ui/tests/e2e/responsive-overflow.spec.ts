@@ -56,29 +56,35 @@ for (const route of ROUTES) {
       test(`no new overflow-escaping elements at ${viewport.name} (${viewport.width}px)`, async ({
         page,
       }) => {
-        // Replay the recorded API traffic instead of hitting live production
-        // data. NOTE: this covers the BROWSER's requests only. The app also
-        // fetches during SSR -- router.tsx wires
-        // `setupRouterSsrQueryIntegration`, so a route's `useSuspenseQuery`
-        // runs on the server -- and `page.routeFromHAR` cannot intercept
-        // that. Those requests still reach live production on every run (36
-        // endpoints, measured), which is why a real 503 there can surface as
-        // an SSR error mid-sweep. An earlier version of this comment claimed
-        // "this app fetches everything client-side -- no SSR loaders,
-        // confirmed empirically"; that is not true and cost real debugging
-        // time. Pointing the build at a local stub was tried and abandoned:
-        // workerd's outbound fetch to loopback fails under the parallel
-        // sweep far more often than production ever does.
+        // Replay the recorded API traffic instead of hitting live production.
         //
-        // `notFound: "fallback"`
-        // (not "abort"): a handful of background/retry requests genuinely
-        // fall outside any single recorded snapshot (react-query refetch
-        // intervals keep firing after the recording window closes) --
-        // aborting those wedges the page in an infinite request/retry loop
-        // instead of settling. Everything the initial render needs IS in the
-        // recording (the record script itself waits for networkidle before
-        // saving), so the fixture still fully determines what's on screen
-        // when this check reads the DOM.
+        // BOTH SIDES ARE COVERED NOW (#10938), and only one of them is covered
+        // here. The app fetches during SSR too -- router.tsx wires
+        // `setupRouterSsrQueryIntegration`, so a route's `useSuspenseQuery`
+        // runs in the worker -- and `page.routeFromHAR` cannot intercept a
+        // request the SERVER makes. Those reached live production on every run
+        // until the `:e2e` build pinned VITE_METAGRAPH_API_BASE at
+        // tests/e2e/api-stub.ts, which replays these same fixtures to the
+        // server. Playwright starts that stub as its first webServer.
+        //
+        // (An older version of this comment claimed the app "fetches
+        // everything client-side -- no SSR loaders, confirmed empirically".
+        // That was measured against `vite dev`, where the page issues no API
+        // requests at all, and it cost real debugging time.)
+        //
+        // This routeFromHAR therefore matters only for a build still pointed at
+        // api.metagraph.sh -- a local `npm run build:worker` run. Under the
+        // `:e2e` build the browser talks to the stub as well, so the two paths
+        // serve the same bytes either way.
+        //
+        // `notFound: "fallback"` (not "abort"): a handful of background/retry
+        // requests genuinely fall outside any single recorded snapshot
+        // (react-query refetch intervals keep firing after the recording window
+        // closes) -- aborting those wedges the page in an infinite
+        // request/retry loop instead of settling. Everything the initial render
+        // needs IS in the recording (the record script waits for networkidle
+        // before saving), so the fixture still fully determines what is on
+        // screen when this check reads the DOM.
         await page.routeFromHAR(harPath, {
           url: "**/api.metagraph.sh/**",
           notFound: "fallback",

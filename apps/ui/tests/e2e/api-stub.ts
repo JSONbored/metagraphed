@@ -67,10 +67,36 @@ function decode(entry: {
   };
 }
 
+/**
+ * A recorded response this server can actually replay.
+ *
+ * Playwright writes `status: -1` for a request that never completed -- an
+ * abort, a navigation that cancelled it, a connection dropped mid-flight. 28
+ * such entries sit across 8 committed fixtures, and they are not responses:
+ * there is nothing to replay.
+ *
+ * Skipping them is not tidiness. `res.writeHead(-1)` throws
+ * ERR_HTTP_INVALID_STATUS_CODE, which is UNCAUGHT here and kills the process --
+ * so the first aborted entry a sweep happened to request took the whole stub
+ * down, and every SSR fetch after it failed with "Network connection lost".
+ * That is what the run looked like from the outside: 68 of 92 overflow tests
+ * failing on "rendered an error state", which reads exactly like an unreliable
+ * loopback and is why this approach was abandoned once already.
+ */
+function replayable(entry: { response: { status: number } }): boolean {
+  const status = entry.response?.status;
+  return Number.isInteger(status) && status >= 100 && status <= 599;
+}
+
 let entryCount = 0;
+let skipped = 0;
 for (const file of readdirSync(HAR_DIR).filter((f) => f.endsWith(".har"))) {
   const har = JSON.parse(readFileSync(path.join(HAR_DIR, file), "utf8"));
   for (const entry of har.log.entries) {
+    if (!replayable(entry)) {
+      skipped += 1;
+      continue;
+    }
     const url = new URL(entry.request.url);
     const recorded = decode(entry);
     entryCount += 1;
@@ -229,6 +255,7 @@ server.on("clientError", (_error, socket) => {
 server.listen(port, "127.0.0.1", () => {
   console.log(
     `[api-stub] replaying ${entryCount} recorded responses ` +
-      `(${byUrl.size} urls, ${byPath.size} paths) on http://127.0.0.1:${port}`,
+      `(${byUrl.size} urls, ${byPath.size} paths) on http://127.0.0.1:${port}` +
+      (skipped ? ` -- ${skipped} unreplayable entr${skipped === 1 ? "y" : "ies"} skipped` : ""),
   );
 });

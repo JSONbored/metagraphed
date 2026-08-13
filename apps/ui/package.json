@@ -14,6 +14,7 @@
     "dev": "vite dev",
     "build": "NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "build:worker": "LOVABLE_SANDBOX=1 NITRO_PRESET=cloudflare-module npm run build",
+    "build:worker:e2e": "VITE_METAGRAPH_API_BASE=http://127.0.0.1:8081 VITE_ICON_PROXY_URL=http://127.0.0.1:8081/api/v1/icon npm run build:worker",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint . --cache",

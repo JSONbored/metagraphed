@@ -44,6 +44,18 @@
 // `npm run dev` also listens on 8080, and a recording made against it looks
 // like it worked.
 //
+// AND BUILD WITH `build:worker`, NOT `build:worker:e2e` (#10938). The `:e2e`
+// build bakes VITE_METAGRAPH_API_BASE at the local stub, so the app requests
+// 127.0.0.1:8081 and this recorder's `urlFilter: "**/api.metagraph.sh/**"`
+// matches nothing -- another silently-empty HAR, the same failure the vite-dev
+// trap above produces. Record against a production-pointed build; the stub is
+// what REPLAYS those recordings afterwards.
+//
+// A browser recording still cannot capture an SSR-only endpoint -- the server
+// makes those requests, and they never pass through a page. `node
+// tests/e2e/api-stub.ts 8081 --record` fills those from production into
+// har/ssr-supplement.json, which is the other half of the fixture set.
+//
 // Re-run whenever a page's real API surface changes (new query, new
 // endpoint) -- a stale HAR makes the replayed test abort loudly on a
 // request that isn't in the recording, which is the intended signal that a
