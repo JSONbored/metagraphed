@@ -12,6 +12,7 @@ import {
   createChainStreamSession,
   acquireSharedChainStream,
   activeSharedChainStreamCount,
+  sharedChainStreamTopics,
   createDebouncedHandler,
   parseChainStreamPayload,
 } from "./use-chain-stream";
@@ -416,7 +417,7 @@ describe("acquireSharedChainStream", () => {
     };
   }
 
-  function subscriber(overrides: Partial<Record<string, unknown>> = {}) {
+  function subscriber(topics: string[], overrides: Partial<Record<string, unknown>> = {}) {
     const seen: unknown[] = [];
     const statuses: string[] = [];
     let activity = 0;
@@ -427,6 +428,7 @@ describe("acquireSharedChainStream", () => {
         return activity;
       },
       sub: {
+        topics: new Set(topics),
         getMatches: () => undefined,
         setStatus: (s: string) => statuses.push(s),
         markActivity: () => {
@@ -443,94 +445,136 @@ describe("acquireSharedChainStream", () => {
     expectEq(activeSharedChainStreamCount(), 0, "a shared connection outlived its last subscriber");
   });
 
-  it("two consumers of the same topics share ONE socket", () => {
+  it("consumers of DIFFERENT topics share one socket", () => {
+    // The #10952 pool keyed by topic set, so a tab holding `blocks`,
+    // `account_events` and `chain_events` held three sockets. Against a 20
+    // per-IP cap that still breaks at seven tabs, and it did: refusals fell
+    // ~75% and did not stop.
     let opened = 0;
     const src = fakeSource();
     const open = () => {
       opened += 1;
       return src as never;
     };
-    const a = subscriber();
-    const b = subscriber();
-    const releaseA = acquireSharedChainStream("account_events|400", open, a.sub);
-    const releaseB = acquireSharedChainStream("account_events|400", open, b.sub);
-    expectEq(opened, 1, "the second consumer opened a second socket");
-    releaseA();
-    releaseB();
-  });
-
-  it("different topics still get their own socket", () => {
-    // Sharing must be keyed, not global: a consumer of `blocks` must not be
-    // silently subscribed to `account_events`.
-    let opened = 0;
-    const open = () => {
-      opened += 1;
-      return fakeSource() as never;
-    };
-    const a = subscriber();
-    const b = subscriber();
-    const releaseA = acquireSharedChainStream("account_events|400", open, a.sub);
-    const releaseB = acquireSharedChainStream("blocks|400", open, b.sub);
+    const a = subscriber(["blocks"]);
+    const b = subscriber(["account_events"]);
+    const releaseA = acquireSharedChainStream(open, a.sub);
+    const releaseB = acquireSharedChainStream(open, b.sub);
+    expectEq(activeSharedChainStreamCount(), 1, "a tab must hold ONE socket");
+    expectEq(sharedChainStreamTopics(), ["account_events", "blocks"]);
+    // Two opens, because the union GREW: the second consumer needed a topic
+    // the live URL did not carry.
     expectEq(opened, 2);
     releaseA();
     releaseB();
   });
 
+  it("a topic already carried joins the live socket without reopening", () => {
+    // The common case, and the one that must not churn: two consumers of the
+    // same topic (registry-ticker and live-block-rail both want `blocks`).
+    let opened = 0;
+    const src = fakeSource();
+    const open = () => {
+      opened += 1;
+      return src as never;
+    };
+    const a = subscriber(["blocks"]);
+    const b = subscriber(["blocks"]);
+    const releaseA = acquireSharedChainStream(open, a.sub);
+    const releaseB = acquireSharedChainStream(open, b.sub);
+    expectEq(opened, 1, "an already-covered topic must not reopen the socket");
+    releaseA();
+    releaseB();
+  });
+
+  it("the union never shrinks when a consumer leaves", () => {
+    // Shrinking would reopen on every navigation — a reconnect storm against
+    // a cap on CONCURRENT connections, which is the failure being fixed.
+    let opened = 0;
+    const src = fakeSource();
+    const open = () => {
+      opened += 1;
+      return src as never;
+    };
+    const a = subscriber(["blocks"]);
+    const b = subscriber(["account_events"]);
+    const releaseA = acquireSharedChainStream(open, a.sub);
+    const releaseB = acquireSharedChainStream(open, b.sub);
+    const openedAfterBoth = opened;
+    releaseA();
+    expectEq(sharedChainStreamTopics(), ["account_events", "blocks"]);
+    expectEq(opened, openedAfterBoth, "unmounting a consumer reopened the socket");
+    releaseB();
+  });
+
   it("the socket survives one consumer leaving and closes with the last", () => {
     const src = fakeSource();
-    const a = subscriber();
-    const b = subscriber();
-    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
-    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
+    const a = subscriber(["blocks"]);
+    const b = subscriber(["blocks"]);
+    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
+    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
     releaseA();
     expectEq(src.closed, 0, "unmounting one consumer closed the shared socket");
     releaseB();
     expectEq(src.closed, 1, "the last consumer left and the socket stayed open");
   });
 
-  it("every subscriber receives each frame", () => {
+  it("each subscriber receives only ITS OWN topics", () => {
+    // THE NEW OBLIGATION. The URL carries the union, so the topic filter the
+    // server used to apply now has to happen here — same rule as
+    // chainFirehoseMatchesTopics: `topics.has(payload.table)`.
     const src = fakeSource();
-    const a = subscriber();
-    const b = subscriber();
-    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
-    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
-    src.emit({ block: 1 });
-    expectEq(a.seen, [{ block: 1 }]);
-    expectEq(b.seen, [{ block: 1 }]);
+    const a = subscriber(["blocks"]);
+    const b = subscriber(["account_events"]);
+    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
+    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
+    src.emit({ table: "blocks", block_number: 1 });
+    src.emit({ table: "account_events", id: 7 });
+    expectEq(a.seen, [{ table: "blocks", block_number: 1 }]);
+    expectEq(b.seen, [{ table: "account_events", id: 7 }]);
+    // markActivity follows the same filter, so a consumer's LIVE chip is not
+    // refreshed by another consumer's traffic.
+    expectEq(a.activity, 1);
+    expectEq(b.activity, 1);
     releaseA();
     releaseB();
   });
 
-  it("each subscriber applies its OWN matches", () => {
-    // Pooling the socket must not pool the filtering, or a consumer starts
-    // seeing frames it explicitly excluded.
+  it("a frame for no subscribed topic is dropped by everyone", () => {
     const src = fakeSource();
-    const a = subscriber({
-      getMatches: () => (p: unknown) => (p as { block: number }).block > 5,
+    const a = subscriber(["blocks"]);
+    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
+    src.emit({ table: "something_else", id: 1 });
+    expectEq(a.seen, []);
+    releaseA();
+  });
+
+  it("each subscriber still applies its OWN matches", () => {
+    const src = fakeSource();
+    const a = subscriber(["blocks"], {
+      getMatches: () => (p: unknown) => (p as { block_number: number }).block_number > 5,
     });
-    const b = subscriber();
-    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
-    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
-    src.emit({ block: 1 });
-    src.emit({ block: 9 });
-    expectEq(a.seen, [{ block: 9 }], "a's own filter was not applied");
-    expectEq(b.seen, [{ block: 1 }, { block: 9 }]);
-    // markActivity follows the subscriber's own filter, not the socket's.
-    expectEq(a.activity, 1);
-    expectEq(b.activity, 2);
+    const b = subscriber(["blocks"]);
+    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
+    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
+    src.emit({ table: "blocks", block_number: 1 });
+    src.emit({ table: "blocks", block_number: 9 });
+    expectEq(a.seen, [{ table: "blocks", block_number: 9 }]);
+    expectEq(b.seen, [
+      { table: "blocks", block_number: 1 },
+      { table: "blocks", block_number: 9 },
+    ]);
     releaseA();
     releaseB();
   });
 
   it("a late subscriber is told the connection is already open", () => {
-    // Without the replay it would sit at whatever it initialised to while
-    // attached to a live socket, and the LIVE chip would lie by omission.
     const src = fakeSource();
-    const a = subscriber();
-    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
+    const a = subscriber(["blocks"]);
+    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
     src.open();
-    const b = subscriber();
-    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
+    const b = subscriber(["blocks"]);
+    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
     expectEq(b.statuses.at(-1), "open");
     releaseA();
     releaseB();
@@ -538,14 +582,14 @@ describe("acquireSharedChainStream", () => {
 
   it("a released subscriber stops receiving frames", () => {
     const src = fakeSource();
-    const a = subscriber();
-    const b = subscriber();
-    const releaseA = acquireSharedChainStream("blocks|400", () => src as never, a.sub);
-    const releaseB = acquireSharedChainStream("blocks|400", () => src as never, b.sub);
+    const a = subscriber(["blocks"]);
+    const b = subscriber(["blocks"]);
+    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
+    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
     releaseA();
-    src.emit({ block: 2 });
+    src.emit({ table: "blocks", block_number: 2 });
     expectEq(a.seen, [], "an unmounted consumer still received a frame");
-    expectEq(b.seen, [{ block: 2 }]);
+    expectEq(b.seen, [{ table: "blocks", block_number: 2 }]);
     releaseB();
   });
 });

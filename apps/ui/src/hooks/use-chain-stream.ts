@@ -324,6 +324,16 @@ export function createChainStreamSession(deps: ChainStreamSessionDeps): {
  * takes the default, so the six collapse to three.
  */
 interface ChainStreamSubscriber {
+  /**
+   * The topics this consumer actually asked for.
+   *
+   * Needed because the socket now carries the UNION of every consumer's
+   * topics, so a `blocks` consumer receives `account_events` frames and has to
+   * drop them. The server's own filter is `topics.has(payload.table)`
+   * (`chainFirehoseMatchesTopics`); this is the same rule applied on the side
+   * that now knows more than the URL says.
+   */
+  topics: Set<string>;
   getMatches: () => ((payload: unknown) => boolean) | undefined;
   setStatus: (s: SseStatus) => void;
   markActivity: () => void;
@@ -336,6 +346,8 @@ interface ChainStreamSubscriber {
 interface SharedChainStream {
   session: { connect: () => void; dispose: () => void };
   subscribers: Set<ChainStreamSubscriber>;
+  /** The union of every subscriber's topics. GROW-ONLY -- see acquire. */
+  topics: Set<string>;
   /** Last status the socket reported, replayed to a late subscriber so it
    * does not sit at "connecting" for a connection that is already open. */
   status: SseStatus;
@@ -343,46 +355,86 @@ interface SharedChainStream {
   offApiBase: () => void;
 }
 
+/**
+ * ONE SOCKET PER TAB. Not one per call site, and not one per topic set.
+ *
+ * ## WHY THIS GOT A SECOND PASS
+ *
+ * #10952 pooled by topic set, which took a fully-loaded tab from six sockets
+ * to three and cut refusals about 75% (measured: ~50-80 per 15 minutes before,
+ * 14 after). It did not close the problem, and the arithmetic says why: the
+ * server caps ONE IP at CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP = 20 concurrent
+ * SSE connections, so three sockets a tab still breaks at seven tabs. Every
+ * remaining refusal came back `chain_firehose_cap_sse_per_ip` -- the app
+ * refusing itself, just less often.
+ *
+ * One socket a tab makes the same cap mean twenty tabs.
+ *
+ * ## GROW-ONLY, WHICH IS THE WHOLE TRICK
+ *
+ * The socket's URL carries the union of its subscribers' topics, and that
+ * union NEVER SHRINKS. Shrinking on unmount would reopen the connection on
+ * every navigation -- a reconnect storm against a cap on concurrent
+ * connections, which is the failure this exists to avoid. Growing is bounded
+ * by the topic vocabulary (three values today), so a tab reopens at most
+ * twice in its life and then holds one stable connection.
+ *
+ * A superset subscription is always SAFE because the filter moved to the
+ * subscriber: receiving a frame you did not ask for costs one `Set.has` and a
+ * discard, while missing one you did ask for would be data loss.
+ */
 const SHARED_CHAIN_STREAMS = new Map<string, SharedChainStream>();
+
+/** The single pool entry. A constant, so the map holds at most one. */
+const SHARED_CHAIN_STREAM_KEY = "chain-stream";
 
 /** Exported for tests: no connection may outlive its last subscriber. */
 export function activeSharedChainStreamCount(): number {
   return SHARED_CHAIN_STREAMS.size;
 }
 
+/** Exported for tests: what the live socket is currently subscribed to. */
+export function sharedChainStreamTopics(): string[] {
+  return [...(SHARED_CHAIN_STREAMS.get(SHARED_CHAIN_STREAM_KEY)?.topics ?? [])].sort();
+}
+
 /**
- * Join (or open) the shared connection for `topicList`. Returns the release
+ * Join (or open) the tab's chain-stream connection. Returns the release
  * function; the socket closes when the last subscriber releases it.
  */
 export function acquireSharedChainStream(
-  key: string,
   /**
-   * Opens the socket. INJECTED, like `createChainStreamSession`'s own
-   * `openSource` and for the same reason: this suite runs in plain node with
-   * no `EventSource`, and a pool that could only be exercised in a browser is
-   * a pool whose ref-counting nobody checks.
+   * Opens the socket for a given topic union. INJECTED, like
+   * `createChainStreamSession`'s own `openSource` and for the same reason:
+   * this suite runs in plain node with no `EventSource`, and a pool that could
+   * only be exercised in a browser is a pool whose ref-counting nobody checks.
    */
-  openSource: () => ChainStreamSource,
+  openSource: (topics: string[]) => ChainStreamSource,
   subscriber: ChainStreamSubscriber,
 ): () => void {
+  const key = SHARED_CHAIN_STREAM_KEY;
   let shared = SHARED_CHAIN_STREAMS.get(key);
   if (!shared) {
     const subscribers = new Set<ChainStreamSubscriber>();
     const entry = {
       subscribers,
+      topics: new Set<string>(),
       status: "connecting" as SseStatus,
     } as SharedChainStream;
     const session = createChainStreamSession({
-      openSource,
-      // Every subscriber filters for itself below, so the socket accepts
-      // everything the server already topic-filtered.
+      openSource: () => openSource([...entry.topics].sort()),
+      // Every subscriber filters for itself below, both by topic and by its
+      // own `matches`.
       getMatches: () => undefined,
       // Unused: `deliverRaw` below takes the frame path instead, so nothing
       // coalesces at the socket.
       debounceMs: 0,
       getOnEvent: () => undefined,
       deliverRaw: (payload: unknown) => {
+        const table = (payload as { table?: unknown } | null)?.table;
         for (const sub of subscribers) {
+          // The topic filter the URL used to do for us.
+          if (!sub.topics.has(table as string)) continue;
           const match = sub.getMatches();
           if (match && !match(payload)) continue;
           sub.markActivity();
@@ -400,9 +452,19 @@ export function acquireSharedChainStream(
     entry.offApiBase = onApiBaseChange(session.connect);
     SHARED_CHAIN_STREAMS.set(key, entry);
     shared = entry;
-    session.connect();
   }
   shared.subscribers.add(subscriber);
+  // Grow the union, and reconnect ONLY if it actually grew. An existing
+  // subscriber's topics are already covered, so the common case (a second
+  // consumer of a topic already carried) joins a live socket untouched.
+  let grew = false;
+  for (const topic of subscriber.topics) {
+    if (!shared.topics.has(topic)) {
+      shared.topics.add(topic);
+      grew = true;
+    }
+  }
+  if (grew) shared.session.connect();
   // Replay the socket's current status, so a consumer joining an already-open
   // connection shows LIVE immediately rather than waiting for the next event.
   subscriber.setStatus(shared.status);
@@ -530,9 +592,12 @@ export function useChainStream(options: UseChainStreamOptions = {}): {
     }, debounceMs);
 
     const release = acquireSharedChainStream(
-      `${topicsKey || "chain_events"}|${debounceMs}`,
-      () => new EventSource(buildChainStreamUrl(topicList)),
+      // The socket's URL is the UNION of every consumer's topics, so it is
+      // built from what the pool asks for rather than from this consumer's
+      // own list.
+      (unionTopics) => new EventSource(buildChainStreamUrl(unionTopics)),
       {
+        topics: new Set(topicList),
         getMatches: () => matchesRef.current,
         setStatus,
         markActivity: () => setLastEventAt(new Date().toISOString()),
