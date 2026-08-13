@@ -127,11 +127,7 @@ import {
   buildSubnetValidatorEconomicsHistoryPayload,
   buildValidatorEconomicsRankingPayload,
 } from "../workers/request-handlers/entities.ts";
-import {
-  DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
-  VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
-  VALIDATOR_ECONOMICS_SORTS,
-} from "./validator-economics.ts";
+import { DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW } from "./validator-economics.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
 // routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
 // list_endpoint_incidents already call for MCP parity -- not a reimplementation.
@@ -307,7 +303,6 @@ import {
 import {
   buildConcentration,
   buildConcentrationHistory,
-  CONCENTRATION_HISTORY_WINDOWS,
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
 } from "./concentration.ts";
 import { loadGlobalIncidentsLedger } from "../workers/request-handlers/analytics.ts";
@@ -323,7 +318,6 @@ import {
 } from "./route-limits.ts";
 import {
   BLOCK_PAGINATION,
-  DAY_PATTERN,
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
@@ -331,7 +325,6 @@ import {
 import {
   buildGlobalHealth,
   formatLeaderboards,
-  LEADERBOARD_BOARDS,
   mergeFreshness,
   overlayOverviewHealth,
   loadSubnetReliability,
@@ -363,7 +356,6 @@ import {
   loadChainHolders,
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
-  CHAIN_HOLDERS_SORTS,
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "./chain-holders.ts";
 import { buildIndexerLag, loadIndexerLag } from "./indexer-lag.ts";
@@ -371,20 +363,17 @@ import {
   buildChainConcentrationHistory,
   declineChainConcentrationHistory,
   loadChainConcentrationHistory,
-  CHAIN_CONCENTRATION_HISTORY_WINDOWS,
 } from "./chain-concentration-history.ts";
 import { DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW } from "./route-limits.ts";
 import {
   buildPipelineHistory,
   declinePipelineHistory,
   loadPipelineHistory,
-  PIPELINE_HISTORY_WINDOWS,
 } from "./emission-pipeline-history.ts";
 import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "./route-limits.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
-  EMISSION_CHANGE_KINDS,
   EMISSION_CHANGES_LIMIT_DEFAULT,
   EMISSION_CHANGES_LIMIT_MAX,
 } from "./emission-gate-changes.ts";
@@ -392,13 +381,10 @@ import {
   buildFailureReasons,
   declineFailureReasons,
   loadFailureReasons,
-  FAILURE_REASONS_WINDOWS,
 } from "./failure-reasons.ts";
 import {
   DEFAULT_FAILURE_REASONS_WINDOW,
   EMISSION_PIPELINE_LIMIT_MAX,
-  BULK_HEALTH_TRENDS_LIMIT_MAX,
-  HEALTH_TREND_WINDOW_VALUES,
 } from "./route-limits.ts";
 import {
   buildTaoUsdSeries,
@@ -432,7 +418,6 @@ import {
   parseCompareNetuidList,
   parseUptimeWindow,
 } from "./analytics-live.ts";
-import { UPTIME_WINDOW_DAYS } from "../workers/config.ts";
 import {
   buildAccountExtrinsics,
   buildExtrinsic,
@@ -474,7 +459,6 @@ import {
 } from "./child-hotkey-delegation.ts";
 import {
   buildAccountWeightSetters,
-  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
 } from "./account-weight-setters.ts";
 import {
@@ -555,7 +539,6 @@ import {
 } from "./account-events.ts";
 import {
   DEFAULT_PROMETHEUS_WINDOW,
-  PROMETHEUS_WINDOWS,
   buildAccountPrometheus,
 } from "./account-prometheus.ts";
 import {
@@ -577,27 +560,22 @@ import { buildAccountPortfolio } from "./account-portfolio.ts";
 import { unavailableAccountPositions } from "./account-nominator-positions.ts";
 import {
   buildAccountRegistrations,
-  REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
 } from "./account-registrations.ts";
 import {
   buildAccountDeregistrations,
-  DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW,
 } from "./account-deregistrations.ts";
 import {
   buildAccountServing,
-  SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
 } from "./account-serving.ts";
 import {
   buildAccountAxonRemovals,
-  AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
 } from "./account-axon-removals.ts";
 import {
   buildAccountStakeMoves,
-  ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "./account-stake-moves.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
@@ -652,7 +630,6 @@ import {
   DEFAULT_MOVERS_SORT,
   DEFAULT_MOVERS_WINDOW,
   MOVERS_SORTS,
-  MOVERS_WINDOWS,
   buildMovers,
 } from "./movers.ts";
 import {
@@ -702,8 +679,6 @@ import {
   DEFAULT_NOMINATOR_SORT,
   DEFAULT_NOMINATOR_WINDOW,
   buildValidatorNominators,
-  NOMINATOR_SORTS,
-  NOMINATOR_WINDOWS,
 } from "./validator-nominators.ts";
 import {
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
@@ -759,7 +734,6 @@ import {
   CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
   CHAIN_TRANSFER_PAIR_LIMIT_MAX,
   CHAIN_TRANSFER_PAIR_SORTS,
-  CHAIN_TRANSFER_PAIR_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
 } from "./chain-transfer-pairs.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
@@ -3022,17 +2996,6 @@ const rootValue = {
   ) {
     // #9615. Shares the REST/MCP loader for #9540's reason.
     if (
-      kind != null &&
-      !EMISSION_CHANGE_KINDS.includes(
-        kind as (typeof EMISSION_CHANGE_KINDS)[number],
-      )
-    ) {
-      throw new GraphQLError(
-        `kind must be one of: ${EMISSION_CHANGE_KINDS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
-    if (
       limit != null &&
       (!Number.isInteger(limit) ||
         limit < 1 ||
@@ -3063,17 +3026,6 @@ const rootValue = {
     // reason #9540 exists: a resolver with its own ladder is free to drift into
     // answering a confident zero while its siblings serve rows.
     if (
-      sort != null &&
-      !CHAIN_HOLDERS_SORTS.includes(
-        sort as (typeof CHAIN_HOLDERS_SORTS)[number],
-      )
-    ) {
-      throw new GraphQLError(
-        `sort must be one of: ${CHAIN_HOLDERS_SORTS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
-    if (
       limit != null &&
       (!Number.isInteger(limit) || limit < 1 || limit > CHAIN_HOLDERS_LIMIT_MAX)
     ) {
@@ -3103,12 +3055,6 @@ const rootValue = {
     context: GqlContext,
   ) {
     // #9622. Shares the REST/MCP loader for #9540's reason.
-    if (window != null && !FAILURE_REASONS_WINDOWS.includes(window)) {
-      throw new GraphQLError(
-        `window must be one of: ${FAILURE_REASONS_WINDOWS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     if (
       netuid != null &&
       (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535)
@@ -3150,15 +3096,6 @@ const rootValue = {
     context: GqlContext,
   ) {
     // #9628. Shares the REST/MCP loader for #9540's reason.
-    if (
-      window != null &&
-      !CHAIN_CONCENTRATION_HISTORY_WINDOWS.includes(window)
-    ) {
-      throw new GraphQLError(
-        `window must be one of: ${CHAIN_CONCENTRATION_HISTORY_WINDOWS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const args = {
       window: window ?? DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW,
     };
@@ -3181,12 +3118,6 @@ const rootValue = {
     context: GqlContext,
   ) {
     // #9625. Shares the REST/MCP loader for #9540's reason.
-    if (window != null && !PIPELINE_HISTORY_WINDOWS.includes(window)) {
-      throw new GraphQLError(
-        `window must be one of: ${PIPELINE_HISTORY_WINDOWS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const args = { window: window ?? DEFAULT_PIPELINE_HISTORY_WINDOW };
     const rows = await loadPipelineHistory(
       readStore(
@@ -3507,12 +3438,6 @@ const rootValue = {
     // get_subnet_concentration_history use -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_CONCENTRATION_HISTORY_WINDOW;
-    if (!Object.hasOwn(CONCENTRATION_HISTORY_WINDOWS, windowParam)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(windowParam, CONCENTRATION_HISTORY_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildConcentrationHistory([])
     // empty-series fallback the neuron_daily-derived REST route + MCP tool use.
     const params = new URLSearchParams();
@@ -4977,12 +4902,6 @@ const rootValue = {
   ) {
     assertNetuidArgument(netuid);
     const windowLabel = window ?? DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW;
-    if (!Object.hasOwn(VALIDATOR_ECONOMICS_HISTORY_WINDOWS, windowLabel)) {
-      throw new GraphQLError(
-        `window must be one of: ${Object.keys(VALIDATOR_ECONOMICS_HISTORY_WINDOWS).join(", ")}`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
       context.env,
       netuid,
@@ -5000,15 +4919,6 @@ const rootValue = {
     },
     context: GqlContext,
   ) {
-    if (
-      args.sort != null &&
-      !VALIDATOR_ECONOMICS_SORTS.includes(args.sort as never)
-    ) {
-      throw new GraphQLError(
-        `sort must be one of: ${VALIDATOR_ECONOMICS_SORTS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same composer the REST route and the list_validator_economics MCP tool run.
     const { data } = await buildValidatorEconomicsRankingPayload(context.env, {
       sort: args.sort ?? undefined,
@@ -6215,28 +6125,11 @@ const rootValue = {
       });
     }
     const requestedWindow = window ?? DEFAULT_NOMINATOR_WINDOW;
-    if (!Object.hasOwn(NOMINATOR_WINDOWS, requestedWindow)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(requestedWindow, NOMINATOR_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
-    if (sort != null && !NOMINATOR_SORTS.includes(sort)) {
-      throw new GraphQLError(
-        `"${sort}" is not a supported sort. Supported: ${NOMINATOR_SORTS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // #7884: narrow to one nominator, mirroring the REST route's `coldkey` query
     // param + MCP get_validator_nominators. A supplied non-SS58 value is a
     // BAD_USER_INPUT error (same guard MCP applies), not a silent no-op. The
     // filter is applied at the Postgres tier's SQL WHERE, so it only needs to
     // ride the request params; the empty-rows builder fallback is unaffected.
-    if (coldkey != null && !isFinneySs58Address(coldkey)) {
-      throw new GraphQLError("coldkey must be a valid SS58 address.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     if (sort != null) params.set("sort", sort);
@@ -6550,12 +6443,6 @@ const rootValue = {
       });
     }
     const requestedWindow = window ?? DEFAULT_PROMETHEUS_WINDOW;
-    if (!Object.hasOwn(PROMETHEUS_WINDOWS, requestedWindow)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(requestedWindow, PROMETHEUS_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     // This account-footprint route's Postgres-tier body is { data, generatedAt }
@@ -6600,12 +6487,6 @@ const rootValue = {
       });
     }
     const requestedWindow = window ?? DEFAULT_STAKE_FLOW_WINDOW;
-    if (!Object.hasOwn(STAKE_FLOW_WINDOWS, requestedWindow)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(requestedWindow, STAKE_FLOW_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // No direction guard here -- same reasoning as subnet_stake_flow above:
     // the dispatch validator rejects against the published enum first (#10065),
     // and the copy this replaces was unreachable.
@@ -6784,12 +6665,6 @@ const rootValue = {
       });
     }
     const windowParam = window ?? DEFAULT_REGISTRATION_WINDOW;
-    if (!Object.hasOwn(REGISTRATION_WINDOWS, windowParam)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(windowParam, REGISTRATION_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountRegistrations([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no NeuronRegistered events in the window
@@ -6838,12 +6713,6 @@ const rootValue = {
       });
     }
     const windowParam = window ?? DEFAULT_DEREGISTRATION_WINDOW;
-    if (!Object.hasOwn(DEREGISTRATION_WINDOWS, windowParam)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(windowParam, DEREGISTRATION_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountDeregistrations([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no derived deregistration in the window
@@ -6899,12 +6768,6 @@ const rootValue = {
       });
     }
     const windowParam = window ?? DEFAULT_SERVING_WINDOW;
-    if (!Object.hasOwn(SERVING_WINDOWS, windowParam)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(windowParam, SERVING_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountServing([], ...) zeroed-card cold fallback) the REST
     // handler uses; an account with no AxonServed events in the window is a
@@ -6953,12 +6816,6 @@ const rootValue = {
       });
     }
     const windowParam = window ?? DEFAULT_AXON_REMOVAL_WINDOW;
-    if (!Object.hasOwn(AXON_REMOVAL_WINDOWS, windowParam)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(windowParam, AXON_REMOVAL_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountAxonRemovals([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no AxonInfoRemoved events in the window
@@ -7003,12 +6860,6 @@ const rootValue = {
       });
     }
     const windowParam = window ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
-    if (!Object.hasOwn(ACCOUNT_STAKE_MOVES_WINDOWS, windowParam)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(windowParam, ACCOUNT_STAKE_MOVES_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountStakeMoves([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no StakeMoved events in the window is a
@@ -7055,15 +6906,6 @@ const rootValue = {
       });
     }
     const requestedWindow = window ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
-    if (!Object.hasOwn(ACCOUNT_WEIGHT_SETTERS_WINDOWS, requestedWindow)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(
-          requestedWindow,
-          ACCOUNT_WEIGHT_SETTERS_WINDOWS,
-        ),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data, generatedAt }
@@ -7255,11 +7097,6 @@ const rootValue = {
     // The relationship drilldown needs a second, distinct SS58 -- the same two
     // guards the get_account_counterparties MCP tool applies to `counterparty`.
     if (counterparty != null) {
-      if (!isFinneySs58Address(counterparty)) {
-        throw new GraphQLError("counterparty must be a valid SS58 address.", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
       if (counterparty === ss58) {
         throw new GraphQLError("counterparty must differ from ss58.", {
           extensions: { code: "BAD_USER_INPUT" },
@@ -7620,14 +7457,6 @@ const rootValue = {
     // error. The message is REST's parseDateRange verbatim, so the two HTTP
     // surfaces agree. (MCP's optionalDayArg names the offending argument
     // instead -- its own file's validator convention, see #6355.)
-    if (
-      (from != null && !DAY_PATTERN.test(from)) ||
-      (to != null && !DAY_PATTERN.test(to))
-    ) {
-      throw new GraphQLError("from/to must be YYYY-MM-DD dates.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
     // Same FEED_PAGINATION bounds the /history route's clamp applies, so a
     // GraphQL caller cannot request a wider page than REST allows;
     // netuid/cursor are forwarded verbatim for the route to re-parse,
@@ -7841,12 +7670,6 @@ const rootValue = {
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_MOVERS_WINDOW;
-    if (!Object.hasOwn(MOVERS_WINDOWS, requestedWindow)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(requestedWindow, MOVERS_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const requestedSort = sort ?? DEFAULT_MOVERS_SORT;
     if (!MOVERS_SORTS.includes(requestedSort)) {
       throw new GraphQLError(
@@ -8522,12 +8345,6 @@ const rootValue = {
     // Same CHAIN_SIGNERS_SORTS allow-list REST validates against; sort is
     // optional (null -> the loader's tx_count default), so only a non-null
     // value is checked.
-    if (sort != null && !CHAIN_SIGNERS_SORTS.includes(sort)) {
-      throw new GraphQLError(
-        `"${sort}" is not a supported sort. Supported: ${CHAIN_SIGNERS_SORTS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     if (callModule != null && callModule.length > 100) {
       throw new GraphQLError("call_module must be at most 100 characters.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -8890,20 +8707,8 @@ const rootValue = {
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
-    if (!Object.hasOwn(CHAIN_TRANSFER_PAIR_WINDOWS, requestedWindow)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(requestedWindow, CHAIN_TRANSFER_PAIR_WINDOWS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same CHAIN_TRANSFER_PAIR_SORTS allow-list REST validates against; sort is
     // optional (null -> volume default), so only a non-null value is checked.
-    if (sort != null && !CHAIN_TRANSFER_PAIR_SORTS.includes(sort)) {
-      throw new GraphQLError(
-        `"${sort}" is not a supported sort. Supported: ${CHAIN_TRANSFER_PAIR_SORTS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const safeLimit = clampLimit(limit, {
       defaultLimit: CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
       maxLimit: CHAIN_TRANSFER_PAIR_LIMIT_MAX,
@@ -9024,22 +8829,6 @@ const rootValue = {
     // #10065: the three narrowing parameters #9989 gave the route. This field
     // took none of them, so a GraphQL caller always got every window for every
     // surface. Validated the same way the sibling fields validate an enum --
-    // a supplied bad window is BAD_USER_INPUT, not a silently full result.
-    if (
-      window != null &&
-      !HEALTH_TREND_WINDOW_VALUES.includes(window as "7d" | "30d")
-    ) {
-      throw new GraphQLError(
-        `window must be one of ${HEALTH_TREND_WINDOW_VALUES.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
-    if (limit != null && (limit < 1 || limit > BULK_HEALTH_TRENDS_LIMIT_MAX)) {
-      throw new GraphQLError(
-        `limit must be between 1 and ${BULK_HEALTH_TRENDS_LIMIT_MAX}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     if (offset != null && offset < 0) {
       throw new GraphQLError("offset must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -9211,16 +9000,11 @@ const rootValue = {
   ) {
     // Same 90d/1y window validation handleUptime / get_subnet_uptime use -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
-    // parseUptimeWindow(undefined) → "90d"; a supplied bad value → null.
-    const windowParam = parseUptimeWindow(window);
-    if (windowParam === null) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(window, UPTIME_WINDOW_DAYS),
-        {
-          extensions: { code: "BAD_USER_INPUT" },
-        },
-      );
-    }
+    // parseUptimeWindow(undefined) → "90d"; a bad value cannot reach here --
+    // parseArgumentsAtDispatch rejected it against the route's published enum
+    // before this resolver ran (#10993), so the null arm is an assertion, not
+    // a guard wearing a message no caller ever received.
+    const windowParam = parseUptimeWindow(window)!;
     // Same non-negative min_samples floor the REST route and MCP tool enforce
     // (GraphQL Int coercion already rejects non-integers at parse time).
     if (minSamples != null && minSamples < 0) {
@@ -9262,12 +9046,6 @@ const rootValue = {
 
   async rpc_usage({ window }: QueryRpc_UsageArgs, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_ANALYTICS_WINDOW;
-    if (!Object.hasOwn(ANALYTICS_WINDOW_DAYS, requestedWindow)) {
-      throw new GraphQLError(
-        unsupportedWindowMessage(requestedWindow, ANALYTICS_WINDOW_DAYS),
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     // The tier cascade is src/rpc-usage-answer.ts's, shared verbatim with
@@ -9323,12 +9101,6 @@ const rootValue = {
     // Same board allowlist handleLeaderboards enforces -- an unknown board is a
     // GraphQL BAD_USER_INPUT error, mirroring REST's invalid_query 400 rather
     // than silently resolving to an empty board.
-    if (board != null && !LEADERBOARD_BOARDS.includes(board)) {
-      throw new GraphQLError(
-        `Unknown board "${board}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // Same default 20 / max 100 parseLimitParam gives REST. A non-integer or
     // out-of-range limit is rejected there, so reject it here too instead of
     // silently clamping.
@@ -9511,13 +9283,9 @@ const rootValue = {
       });
     }
     const label = window ?? DEFAULT_BURN_HISTORY_WINDOW;
-    const windowDays = BURN_HISTORY_WINDOWS[label];
-    if (windowDays === undefined) {
-      throw new GraphQLError(
-        `window must be one of ${Object.keys(BURN_HISTORY_WINDOWS).join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
+    // Non-null by dispatch (#10993): a label outside BURN_HISTORY_WINDOWS was
+    // rejected against the route's published enum before this resolver ran.
+    const windowDays = BURN_HISTORY_WINDOWS[label]!;
     // A cold or unwritten table is an EMPTY series, never an error: "we have not
     // been recording this subnet" is a real state, and the same convention the
     // sibling history fields already follow.
