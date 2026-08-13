@@ -23,6 +23,7 @@
 // whose seven days are a burst followed by silence reads a max of ~48 minutes
 // against a 24-hour producer.
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
   LANE_PRODUCER,
@@ -105,6 +106,97 @@ describe("LANE_PRODUCER", () => {
       "neon:validator-nominator-counts",
     ]) {
       assert.equal(LANE_PRODUCER[lane], "validator_nominators", lane);
+    }
+  });
+
+  test("a lane's staleness watchdog and LANE_PRODUCER cannot disagree", () => {
+    // The SAME fact is written twice: `<lane>-staleness-watchdog.ts` names the
+    // producer in its own `*_STALENESS_THRESHOLD_MS`, and LANE_PRODUCER names
+    // it again for the silence bound. `neurons` had the first and not the
+    // second, so it got a staleness floor and NO silence floor -- and an
+    // unfloored silence bound is computed from the observed sample alone,
+    // which a burst-then-quiet sample makes tighter than one real tick.
+    //
+    // Matched on the lane's OWN threshold constant, not on any missedTicksMs
+    // call: table-freshness-watchdog.ts calls it for every table it WATCHES,
+    // and a looser rule read those as declarations about its own lane. The
+    // first draft of this test did exactly that and reported a lane that is
+    // correctly unmapped.
+    const declarations: [string, string][] = [];
+    for (const file of readdirSync("src")) {
+      const lane = /^(.+)-staleness-watchdog\.ts$/.exec(file)?.[1];
+      if (!lane) continue;
+      const producer =
+        /export const [A-Z0-9_]*STALENESS_THRESHOLD_MS = missedTicksMs\(\s*"([a-z_]+)"/.exec(
+          readFileSync(`src/${file}`, "utf8"),
+        )?.[1];
+      if (!producer) continue;
+      declarations.push([lane, producer]);
+    }
+    assert.ok(
+      declarations.length >= 4,
+      `expected several per-lane staleness watchdogs, found ${declarations.length}`,
+    );
+    for (const [lane, producer] of declarations) {
+      // Only where the watchdog's file name IS a lane the table knows: a
+      // watchdog may guard a lane under a different name, and asserting on a
+      // name the table never claimed would be inventing a rule.
+      if (!(lane in LANE_PRODUCER)) continue;
+      assert.equal(
+        LANE_PRODUCER[lane],
+        producer,
+        `${lane}-staleness-watchdog.ts declares "${producer}" but LANE_PRODUCER says ${String(LANE_PRODUCER[lane])}`,
+      );
+    }
+  });
+
+  test("a mapped `neon:` mirror means its bare lane is mapped too", () => {
+    // The reverse of the test above, and the one that was missing. Every
+    // assertion here was one-directional: values have cadences, listed mirrors
+    // resolve. Nothing said a lane that ALARMS must be in the table at all.
+    //
+    // `neon:nominator-positions` and `neon:validator-nominator-counts` were
+    // mapped; the bare sync-lane names that write the same rows from the same
+    // poller were not. So `lane nominator-positions is silent: 29.4h` reached
+    // Discord with no cadence beside it, reading as a dead producer when it is
+    // one missed pass of a 24h poller.
+    //
+    // Derived from the table itself rather than a list of the pairs that were
+    // fixed: a future `neon:` mirror added without its bare lane fails here.
+    const unmapped: string[] = [];
+    for (const lane of Object.keys(LANE_PRODUCER)) {
+      if (!lane.startsWith("neon:")) continue;
+      const bare = lane.slice("neon:".length).replace(/-(pass|prune)$/, "");
+      if (!(bare in LANE_PRODUCER)) continue; // never mapped either way: not this rule
+      assert.equal(
+        LANE_PRODUCER[bare],
+        LANE_PRODUCER[lane],
+        `${lane} and ${bare} are the same producer under two names`,
+      );
+    }
+    // Non-vacuity: the rule must actually be checking pairs.
+    const pairs = Object.keys(LANE_PRODUCER).filter(
+      (l) =>
+        l.startsWith("neon:") &&
+        l.slice("neon:".length).replace(/-(pass|prune)$/, "") in LANE_PRODUCER,
+    );
+    assert.ok(
+      pairs.length >= 6,
+      `expected several mirror/bare pairs, found ${pairs.length}`,
+    );
+    assert.deepEqual(unmapped, []);
+  });
+
+  test("the lanes that alarmed on 2026-08-13 resolve a cadence", () => {
+    // Regression: both were silent for ~29h and neither alarm could say against
+    // what interval, because neither name was in the table.
+    for (const lane of ["nominator-positions", "validator-nominator-counts"]) {
+      assert.equal(LANE_PRODUCER[lane], "validator_nominators", lane);
+      assert.equal(
+        laneSilenceCadenceMs(lane, null),
+        cadenceMs("validator_nominators"),
+        lane,
+      );
     }
   });
 
