@@ -48,7 +48,6 @@ import {
   freshnessQuery,
   healthQuery,
   subnetsQuery,
-  adapterQuery,
   registrySummaryQuery,
   coverageDepthQuery,
   changelogQuery,
@@ -254,17 +253,6 @@ export function OverviewPage() {
           </QueryErrorBoundary>
 
           <QuickActionsRow />
-
-          {/* #5171: featured pilots are schema-backed (registry `partnership.tier ===
-          "pilot"`), not a hardcoded slug/netuid list — adding or removing one is
-          a registry data change. Renders null until the list resolves (and stays
-          null if it's empty), so an empty/failed fetch never leaves a dangling
-          "Pilots" heading. */}
-          <QueryErrorBoundary fallback={() => null}>
-            <Suspense fallback={null}>
-              <PilotsSection />
-            </Suspense>
-          </QueryErrorBoundary>
 
           <section className="mt-section-gap">
             <div className="flex items-end justify-between mb-6">
@@ -763,151 +751,6 @@ function PerfCard({
         ) : null}
       </div>
     </Panel>
-  );
-}
-
-/* ----------------------------- pilot ----------------------------- */
-
-/**
- * Data-driven "Pilots" homepage section (#5171): the featured list comes from
- * the registry (`partnership.tier === "pilot"`) instead of a hardcoded
- * slug/netuid list, so adding or removing a pilot is a registry data change,
- * not a source edit. `limit: 200` covers the full registry (well above the
- * known subnet count) since a pilot can sit anywhere in netuid order; each
- * card still owns its own QueryErrorBoundary/Suspense pair (unchanged from
- * before) so one pilot's adapter failing never takes down the others. Renders
- * null when the filtered list is empty so the section never leaves a dangling
- * heading over an empty grid.
- */
-function PilotsSection() {
-  const { data } = useSuspenseQuery(subnetsQuery({ limit: 200 }));
-  const subnets = (data.data ?? []) as Subnet[];
-  const pilots = subnets
-    .filter((subnet) => subnet.partnership?.tier === "pilot")
-    .sort((a, b) => {
-      const bySince = (a.partnership?.since ?? "").localeCompare(b.partnership?.since ?? "");
-      return bySince !== 0 ? bySince : a.netuid - b.netuid;
-    });
-
-  if (pilots.length === 0) return null;
-
-  return (
-    <section className="mt-section-gap">
-      <SectionHeader
-        eyebrow="Pilots"
-        title="Adapter-backed subnets"
-        description="Subnets with live machine-verified data pulled directly through a maintained adapter."
-      />
-      <div className="grid gap-4 md:grid-cols-2">
-        {pilots.map((subnet) => {
-          const title = subnet.name ?? `Subnet ${subnet.netuid}`;
-          const subtitle = `SN${subnet.netuid}`;
-          const slug = subnet.slug ?? `sn-${subnet.netuid}`;
-          return (
-            <QueryErrorBoundary
-              key={subnet.netuid}
-              fallback={() => (
-                <PilotCardFallback netuid={subnet.netuid} title={title} subtitle={subtitle} />
-              )}
-            >
-              <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-                <PilotCard slug={slug} netuid={subnet.netuid} title={title} subtitle={subtitle} />
-              </Suspense>
-            </QueryErrorBoundary>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Error fallback for PilotCard, rendered by the QueryErrorBoundary in
- * PilotsSection when the adapter snapshot fails to load. Kept separate so
- * PilotCard can call useSuspenseQuery unconditionally (a try/catch around the
- * hook breaks the Rules of Hooks).
- */
-function PilotCardFallback({
-  netuid,
-  title,
-  subtitle,
-}: {
-  netuid: number;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <Link
-      to="/subnets/$netuid"
-      params={{ netuid }}
-      className="mg-hover-lift block rounded-xl border border-border bg-card p-4"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="mg-type-caption text-ink-muted">{subtitle}</div>
-          <div className="mt-1 font-display text-lg font-semibold text-ink-strong">{title}</div>
-        </div>
-        <CurationChip level="adapter-backed" />
-      </div>
-      <p className="mt-3 text-xs text-ink-muted">
-        Pilot adapter — open the subnet page for surfaces, endpoints, and evidence.
-      </p>
-    </Link>
-  );
-}
-
-function PilotCard({
-  slug,
-  netuid,
-  title,
-  subtitle,
-}: {
-  slug: string;
-  netuid: number;
-  title: string;
-  subtitle: string;
-}) {
-  // useSuspenseQuery must run unconditionally — a try/catch around it breaks the
-  // Rules of Hooks. Load errors are caught by the QueryErrorBoundary wrapper in
-  // OverviewPage, which renders PilotCardFallback.
-  const snapshot = useSuspenseQuery(adapterQuery(slug)).data;
-  const generated = snapshot.meta?.generated_at;
-  const metrics = (snapshot.data?.metrics ?? {}) as Record<string, unknown>;
-  const metricEntries = Object.entries(metrics).slice(0, 4);
-
-  return (
-    <Link
-      to="/subnets/$netuid"
-      params={{ netuid }}
-      className="mg-hover-lift block rounded-xl border border-border bg-card p-4"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="mg-type-caption text-ink-muted">{subtitle}</div>
-          <div className="mt-1 font-display text-lg font-semibold text-ink-strong">{title}</div>
-        </div>
-        <CurationChip level="adapter-backed" />
-      </div>
-      {metricEntries.length > 0 ? (
-        <dl className="grid grid-cols-2 gap-2">
-          {metricEntries.map(([k, v]) => (
-            <div key={k} className="rounded-md border border-border bg-surface/40 px-3 py-2">
-              <dt className="mg-type-caption text-ink-muted truncate">{k}</dt>
-              <dd className="font-mono mg-type-caption text-ink-strong truncate">
-                {typeof v === "object" ? JSON.stringify(v) : String(v)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      ) : (
-        <p className="text-xs text-ink-muted">Adapter connected. Open subnet for detail.</p>
-      )}
-      {generated ? (
-        <div className="mt-3 mg-type-data-sm text-ink-muted">
-          updated <TimeAgo at={generated} />
-        </div>
-      ) : null}
-    </Link>
   );
 }
 
