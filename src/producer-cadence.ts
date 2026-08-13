@@ -132,6 +132,11 @@ export type ProducerLane = keyof typeof PRODUCER_CADENCE_SECS;
  * configured one; the floor is what stops a sample that is a burst followed by
  * silence -- which is what a `-pass` mirror's seven days look like -- from
  * producing a bound tighter than a single tick.
+ *
+ * `chain-detail` is deliberately ABSENT: it follows the chain head continuously
+ * rather than on a poll interval, so it has no tick to miss and its own alarm
+ * measures a live-follow WINDOW instead. Inventing a cadence for it would put a
+ * floor under a bound that is not measured in cadences.
  */
 export const LANE_PRODUCER: Readonly<Record<string, ProducerLane>> = {
   "account-balances": "account_balances",
@@ -141,11 +146,23 @@ export const LANE_PRODUCER: Readonly<Record<string, ProducerLane>> = {
   "neon:hotkey-alpha": "hotkey_alpha",
   "neon:hotkey-alpha-pass": "hotkey_alpha",
   "validator-nominators": "validator_nominators",
+  // The SYNC lane names, unprefixed. Their `neon:` mirrors below were mapped
+  // and these were not, so `lane nominator-positions is silent: 29.4h` shipped
+  // to Discord with no cadence beside it -- 29.4h reads as a dead producer,
+  // and it is one missed pass of a 24h poller. The same misreading #10809 added
+  // the cadence suffix to prevent, reintroduced by a lane the map did not name.
+  "nominator-positions": "validator_nominators",
+  "validator-nominator-counts": "validator_nominators",
   "neon:validator-nominator-counts": "validator_nominators",
   "neon:validator-nominator-counts-pass": "validator_nominators",
   "neon:nominator-positions": "validator_nominators",
   "neon:nominator-positions-pass": "validator_nominators",
   "neon:nominator-positions-prune": "validator_nominators",
+  // Its own staleness watchdog already declares this producer --
+  // `missedTicksMs("metagraph", 3)` in neurons-staleness-watchdog.ts -- so the
+  // lane had a STALENESS floor and no SILENCE floor, which is the asymmetry
+  // `tests/lane-silence-cadence.test.ts` now forbids.
+  neurons: "metagraph",
   "account-identity": "account_identity",
   "neon:account-identity": "account_identity",
   "subnet-hyperparams": "subnet_hyperparams",
