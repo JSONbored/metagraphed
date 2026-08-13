@@ -153,6 +153,12 @@ export type VerifyIntegrationInput = z.infer<
  * Declaring the two missing fields made the copy field-for-field identical to
  * `SurfaceVerifyArtifactSchema`, which is the point at which a copy stops being
  * defensible: the gate said so, and this imports the original instead.
+ *
+ * INHERITS #11040 along with the schema: the route promises non-null for
+ * `surface_key`, `netuid` and `classification` while the producer writes each
+ * with a `?? null` fallback. That risk pre-dates this import -- it was already
+ * live on the route -- but one schema now governs two surfaces, so the issue
+ * says so rather than leaving it to be found by a 500.
  */
 export const VerifyIntegrationOutputSchema = SurfaceVerifyArtifactSchema;
 export type VerifyIntegrationOutput = z.infer<

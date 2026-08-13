@@ -205,13 +205,17 @@ export const DEFAULT_HISTORY_WINDOW = "30d";
  * apart is the point: they were never the same window, and the inline spelling
  * made that impossible to see.
  */
-export const TREND_WINDOW_DAYS: Record<string, number> = {
+// NOT exported, unlike its siblings: nothing outside this file converts a
+// trend window to days yet, and an export nothing imports is what the
+// unreferenced-exports ratchet counts. The map still earns its place -- it is
+// what TREND_WINDOWS is derived FROM, so the window list and the days it means
+// cannot drift apart. Export it the day a caller needs the conversion.
+const TREND_WINDOW_DAYS: Record<string, number> = {
   "7d": 7,
   "30d": 30,
   "90d": 90,
 };
 export const TREND_WINDOWS = Object.keys(TREND_WINDOW_DAYS);
-export const DEFAULT_TREND_WINDOW = "30d";
 
 /**
  * The feed families (`/api/v1/feeds/*`) -- page size and watchlist length.
