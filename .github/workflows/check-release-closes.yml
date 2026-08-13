@@ -1,0 +1,64 @@
+name: Release PR closing keywords
+
+# Stops a release PR from closing an issue nobody finished (#11052).
+#
+# release-please carries the generated changelog as the release PR's BODY, and
+# GitHub honours closing keywords anywhere in a body -- including inside
+# <details>. Its generator emits `closes #N` for any issue a commit referenced,
+# without distinguishing a deliberate `Refs #N`. So a PR that said `Refs #10606`
+# because the work was partial comes back in a release PR as `closes #10606`,
+# and merging the release closes an issue nobody finished. Measured on #11050:
+# 46 claimed closes, 45 already closed, and exactly one -- #10606 -- open on
+# purpose.
+#
+# Its own workflow rather than a step in validate.yml, for two reasons: this is
+# the only check whose input is the PR BODY rather than the tree (so it must
+# re-run on `edited`, which validate.yml deliberately does not listen for), and
+# it needs `issues: read` on the API, which validate.yml has no other use for.
+#
+# Scoped to release-please's branch, so it never runs on a contributor PR --
+# where a `Closes #N` naming an open issue is not a defect, it is the required
+# form.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: check-release-closes-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  closing-keywords:
+    # release-please names its branch per component; `.` (the platform release)
+    # is the one that carries the aggregate changelog. startsWith covers the
+    # component branches (release-please--branches--main--components--…) too.
+    if: startsWith(github.event.pull_request.head.ref, 'release-please--branches--main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5 # a parse plus one API call per referenced issue
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # Only the PR NUMBER crosses the workflow boundary. The script fetches the
+      # body itself with the token, so attacker-controllable text is never
+      # interpolated into a workflow expression at all -- not even via `env:`.
+      # scripts/validate-workflows.ts refuses `github.event.pull_request.body`
+      # outright, which is the right call and is what pushed this here.
+      - name: Check closing keywords against issue state
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/validate-release-closes.ts ${{ github.event.pull_request.number }}
