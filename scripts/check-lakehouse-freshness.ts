@@ -206,6 +206,13 @@ export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
     reason:
       "state mirror, digest-gated: this changes only when a subnet's declaration does",
   },
+  // The only table mirrored on a COMPOSITE watermark: observed_at alone ties
+  // 94,208 times here, so (observed_at, netuid) is what identifies a row.
+  // Burn is re-read every poller pass, so this moves continuously.
+  subnet_burn_history: {
+    maxAgeMs: 2 * DAY,
+    reason: "state mirror, composite watermark on (observed_at, netuid)",
+  },
   subnet_identity: {
     maxAgeMs: 2 * DAY,
     reason: "state mirror, digest-gated: identity changes are rare",

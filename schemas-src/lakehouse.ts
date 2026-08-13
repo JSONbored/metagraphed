@@ -970,6 +970,23 @@ export const TreasuryReadingsRowSchema = z
   .partial()
   .catchall(z.unknown());
 
+/**
+ * `chain.subnet_burn_history` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const SubnetBurnHistoryRowSchema = z
+  .object({
+    netuid: z.int().nullable(),
+    observed_at: z.int().nullable(),
+    burn_tao: z.number().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
 /** Every table's row schema, by table name. */
 export const LAKEHOUSE_ROW_SCHEMAS = {
   blocks: BlocksRowSchema,
@@ -1010,4 +1027,5 @@ export const LAKEHOUSE_ROW_SCHEMAS = {
   surface_uptime_daily: SurfaceUptimeDailyRowSchema,
   tao_usd_index: TaoUsdIndexRowSchema,
   treasury_readings: TreasuryReadingsRowSchema,
+  subnet_burn_history: SubnetBurnHistoryRowSchema,
 } as const;

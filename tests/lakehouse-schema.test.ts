@@ -110,6 +110,7 @@ describe("the committed snapshot", () => {
         "surface_uptime_daily",
         "tao_usd_index",
         "treasury_readings",
+        "subnet_burn_history",
       ].sort(),
     );
     // The TS side mirrors the snapshot -- it is the READER's list.
