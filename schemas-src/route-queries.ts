@@ -837,6 +837,15 @@ export const ROUTE_QUERY_SCHEMAS = {
   // #10929: same window vocabulary as its emission-split sibling, on purpose —
   // both series are read off neuron_daily over the same days, and two spellings
   // for one window is how two surfaces start disagreeing about one subnet.
+  // #10931: same window vocabulary again -- same table, same days, and two
+  // spellings for one window is how two surfaces start disagreeing about the
+  // same subnet.
+  "/api/v1/subnets/{netuid}/miner-fairness": z.object({
+    window: windowSchema(
+      SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],
+      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+    ).optional(),
+  }),
   "/api/v1/subnets/{netuid}/owner-capture": z.object({
     window: windowSchema(
       SUBNET_EMISSION_SPLIT_HISTORY_WINDOWS as [string, ...string[]],

@@ -3683,6 +3683,8 @@ export type Query = {
   subnet_lifecycle: SubnetLifecycle;
   /** One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph. */
   subnet_metagraph?: Maybe<Scalars['JSON']['output']>;
+  /** Whether a subnet's registered miners actually earn, over a 7d/30d/90d window (default 30d), from the neuron_daily rollup. Reports the daily zero-emission rate, how many days each miner UID earned on — persistent-zero and occasionally-zero are different facts a snapshot collapses — and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. Descriptive only: no fairness score and no grade, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. `days_covered` rides beside every distribution figure. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness. */
+  subnet_miner_fairness: SubnetMinerFairness;
   /** Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers. */
   subnet_movers: SubnetMovers;
   /** One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc. */
@@ -4947,6 +4949,12 @@ export type QuerySubnet_MetagraphArgs = {
   fields?: InputMaybe<Scalars['String']['input']>;
   netuid: Scalars['Int']['input'];
   validator_permit?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+
+export type QuerySubnet_Miner_FairnessArgs = {
+  netuid: Scalars['Int']['input'];
+  window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -6640,6 +6648,59 @@ export type SubnetList = {
   native_snapshot_captured_at?: Maybe<Scalars['String']['output']>;
   next_cursor?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
+};
+
+/** Whether a subnet's registered miners actually earn, measured over a 7d/30d/90d window rather than from a snapshot. Reports the daily zero-emission rate, how many days each miner UID earned on (persistent-zero and occasionally-zero are different facts a snapshot collapses), and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. DESCRIPTIVE ONLY — there is no fairness score and no grade: a high Gini on a subnet whose task genuinely has one best answer is not misconduct, and that context is not in this data. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness. */
+export type SubnetMinerFairness = {
+  __typename?: 'SubnetMinerFairness';
+  concentration?: Maybe<SubnetMinerFairnessConcentration>;
+  /** How many days the series actually covers. Published beside every distribution figure: a distribution over 3 days and one over 31 are not the same claim, and `neuron_daily` is only ~27-33 days deep, so a 90d window is answered with the depth found rather than refused. */
+  days_covered: Scalars['Int']['output'];
+  /** Distinct controlling addresses behind those UIDs, keyed on the `coldkey` field. A UID with no owner recorded counts as its own entity, so this never under-counts unknown owners — merging them would make a subnet look more concentrated than it is. */
+  entity_count: Scalars['Int']['output'];
+  /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+  field_sources?: Maybe<Scalars['JSON']['output']>;
+  /** Distinct non-validator UIDs seen anywhere in the window — the denominator for the persistence block. */
+  miner_uid_count: Scalars['Int']['output'];
+  netuid: Scalars['Int']['output'];
+  persistence?: Maybe<SubnetMinerFairnessPersistence>;
+  point_count: Scalars['Int']['output'];
+  points: Array<SubnetMinerFairnessPoint>;
+  schema_version: Scalars['Int']['output'];
+  /** Miner UIDs per controlling entity. 1.0 = every UID a distinct owner; higher = fewer operators each running many hotkeys. The network median is ~3.08 and the maximum ~21.3, so '256 miners' is routinely far fewer operators. */
+  uids_per_entity?: Maybe<Scalars['Float']['output']>;
+  /** The resolved window label (7d/30d/90d). */
+  window?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetMinerFairnessConcentration = {
+  __typename?: 'SubnetMinerFairnessConcentration';
+  /** THE HEADLINE LENS: emission concentration across controlling entities (coldkeys), with each entity's UIDs summed. A subnet with three operators behind 256 UIDs is not diverse, and the per-UID lens alone hides exactly that. */
+  entity?: Maybe<ConcentrationMetrics>;
+  /** The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator. */
+  uid?: Maybe<ConcentrationMetrics>;
+};
+
+export type SubnetMinerFairnessPersistence = {
+  __typename?: 'SubnetMinerFairnessPersistence';
+  /** Miner UIDs that earned on every day they were registered for. */
+  earned_every_day_count: Scalars['Int']['output'];
+  max_earning_days?: Maybe<Scalars['Float']['output']>;
+  /** The typical miner's earning days across the window. Null on an empty population — the median of nothing is not zero, and zero would read as 'the typical miner earned on no days'. */
+  median_earning_days?: Maybe<Scalars['Float']['output']>;
+  /** Miner UIDs that earned on ZERO days of the window. Distinct from the daily zero rate: this is the population that is not in the game at all, rather than the one that missed a tempo. */
+  never_earned_count: Scalars['Int']['output'];
+};
+
+export type SubnetMinerFairnessPoint = {
+  __typename?: 'SubnetMinerFairnessPoint';
+  /** How many of them recorded emission above zero. Against `miner_count` this is the fact a miner count alone hides — on the median subnet almost none of the registered miners earn on a given day. */
+  earning_miner_count: Scalars['Int']['output'];
+  /** Non-validator UIDs registered on this day. This is the number every leaderboard publishes as 'miners'. */
+  miner_count: Scalars['Int']['output'];
+  snapshot_date: Scalars['String']['output'];
+  /** Fraction of this day's miner UIDs that earned nothing. Null — never 0 — on a day with no miner UIDs at all, because 0% over an empty population reads as 'everybody earned'. A SINGLE DAY OVERSTATES this: emission is a per-tempo rate and a UID paid on a different tempo reads as a zero here. Use the persistence block for the durable version. */
+  zero_emission_pct?: Maybe<Scalars['Float']['output']>;
 };
 
 /** One subnet's stake/emission/validator/neuron movement between the window's start and end snapshots. */
@@ -8366,6 +8427,10 @@ export type ResolversTypes = ResolversObject<{
   SubnetLifecycle: ResolverTypeWrapper<SubnetLifecycle>;
   SubnetLifecycleEntry: ResolverTypeWrapper<SubnetLifecycleEntry>;
   SubnetList: ResolverTypeWrapper<SubnetList>;
+  SubnetMinerFairness: ResolverTypeWrapper<SubnetMinerFairness>;
+  SubnetMinerFairnessConcentration: ResolverTypeWrapper<SubnetMinerFairnessConcentration>;
+  SubnetMinerFairnessPersistence: ResolverTypeWrapper<SubnetMinerFairnessPersistence>;
+  SubnetMinerFairnessPoint: ResolverTypeWrapper<SubnetMinerFairnessPoint>;
   SubnetMover: ResolverTypeWrapper<SubnetMover>;
   SubnetMovers: ResolverTypeWrapper<SubnetMovers>;
   SubnetMoversNetwork: ResolverTypeWrapper<SubnetMoversNetwork>;
@@ -8810,6 +8875,10 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetLifecycle: SubnetLifecycle;
   SubnetLifecycleEntry: SubnetLifecycleEntry;
   SubnetList: SubnetList;
+  SubnetMinerFairness: SubnetMinerFairness;
+  SubnetMinerFairnessConcentration: SubnetMinerFairnessConcentration;
+  SubnetMinerFairnessPersistence: SubnetMinerFairnessPersistence;
+  SubnetMinerFairnessPoint: SubnetMinerFairnessPoint;
   SubnetMover: SubnetMover;
   SubnetMovers: SubnetMovers;
   SubnetMoversNetwork: SubnetMoversNetwork;
@@ -11730,6 +11799,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_lease_history?: Resolver<ResolversTypes['SubnetLeaseHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Lease_HistoryArgs, 'netuid'>>;
   subnet_lifecycle?: Resolver<ResolversTypes['SubnetLifecycle'], ParentType, ContextType, RequireFields<QuerySubnet_LifecycleArgs, 'netuid'>>;
   subnet_metagraph?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_MetagraphArgs, 'netuid'>>;
+  subnet_miner_fairness?: Resolver<ResolversTypes['SubnetMinerFairness'], ParentType, ContextType, RequireFields<QuerySubnet_Miner_FairnessArgs, 'netuid'>>;
   subnet_movers?: Resolver<ResolversTypes['SubnetMovers'], ParentType, ContextType, Partial<QuerySubnet_MoversArgs>>;
   subnet_ohlc?: Resolver<ResolversTypes['SubnetOhlc'], ParentType, ContextType, RequireFields<QuerySubnet_OhlcArgs, 'netuid'>>;
   subnet_overview?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_OverviewArgs, 'netuid'>>;
@@ -12869,6 +12939,40 @@ export type SubnetListResolvers<ContextType = GqlContext, ParentType extends Res
   native_snapshot_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetMinerFairnessResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairness'] = ResolversParentTypes['SubnetMinerFairness']> = ResolversObject<{
+  concentration?: Resolver<Maybe<ResolversTypes['SubnetMinerFairnessConcentration']>, ParentType, ContextType>;
+  days_covered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  entity_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  miner_uid_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  persistence?: Resolver<Maybe<ResolversTypes['SubnetMinerFairnessPersistence']>, ParentType, ContextType>;
+  point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['SubnetMinerFairnessPoint']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  uids_per_entity?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetMinerFairnessConcentrationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairnessConcentration'] = ResolversParentTypes['SubnetMinerFairnessConcentration']> = ResolversObject<{
+  entity?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
+  uid?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
+}>;
+
+export type SubnetMinerFairnessPersistenceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairnessPersistence'] = ResolversParentTypes['SubnetMinerFairnessPersistence']> = ResolversObject<{
+  earned_every_day_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  max_earning_days?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  median_earning_days?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  never_earned_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetMinerFairnessPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairnessPoint'] = ResolversParentTypes['SubnetMinerFairnessPoint']> = ResolversObject<{
+  earning_miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  zero_emission_pct?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetMoverResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMover'] = ResolversParentTypes['SubnetMover']> = ResolversObject<{
@@ -14244,6 +14348,10 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetLifecycle?: SubnetLifecycleResolvers<ContextType>;
   SubnetLifecycleEntry?: SubnetLifecycleEntryResolvers<ContextType>;
   SubnetList?: SubnetListResolvers<ContextType>;
+  SubnetMinerFairness?: SubnetMinerFairnessResolvers<ContextType>;
+  SubnetMinerFairnessConcentration?: SubnetMinerFairnessConcentrationResolvers<ContextType>;
+  SubnetMinerFairnessPersistence?: SubnetMinerFairnessPersistenceResolvers<ContextType>;
+  SubnetMinerFairnessPoint?: SubnetMinerFairnessPointResolvers<ContextType>;
   SubnetMover?: SubnetMoverResolvers<ContextType>;
   SubnetMovers?: SubnetMoversResolvers<ContextType>;
   SubnetMoversNetwork?: SubnetMoversNetworkResolvers<ContextType>;

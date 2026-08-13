@@ -92,6 +92,10 @@ import {
   OWNER_CAPTURE_HISTORY_ROW_CAP,
 } from "../src/owner-capture.ts";
 import {
+  buildSubnetMinerFairness,
+  MINER_FAIRNESS_ROW_CAP,
+} from "../src/miner-fairness.ts";
+import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
   SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
 } from "../src/route-limits.ts";
@@ -7440,6 +7444,53 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
           ),
           capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/miner-fairness -- whether the registered
+  // miners actually earn (#10931).
+  //
+  // Selects `uid` and `coldkey` on top of what the emission-split read takes:
+  // `uid` because persistence is per-UID across days, the owning address
+  // because the HEADLINE lens is per controlling entity and a per-UID Gini
+  // alone hides a subnet where three operators hold 256 UIDs. No snapshot
+  // join -- every figure here is a ratio within the day's own population, so
+  // the day's absolute emission is not needed and reading it would tie this
+  // route to a lane it does not depend on.
+  const minerFairnessMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/miner-fairness$/,
+  );
+  if (minerFairnessMatch) {
+    return async (sql) => {
+      const netuid = Number(minerFairnessMatch[1]);
+      const cutoff = windowCutoffDate(
+        url,
+        SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+        DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+      );
+      const rows = await sql<{
+        snapshot_date: NeuronDaily["snapshot_date"];
+        uid: NeuronDaily["uid"];
+        coldkey: NeuronDaily["coldkey"];
+        validator_permit: NeuronDaily["validator_permit"];
+        emission_tao: NeuronDaily["emission_tao"];
+      }>`
+        SELECT nd.snapshot_date, nd.uid, nd.coldkey, nd.validator_permit,
+               nd.emission_tao
+        FROM neuron_daily nd
+        WHERE nd.netuid = ${netuid} AND nd.snapshot_date >= ${cutoff}
+        ORDER BY nd.snapshot_date DESC, nd.uid ASC
+        LIMIT ${MINER_FAIRNESS_ROW_CAP}`;
+      return json(
+        buildSubnetMinerFairness(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+            DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= MINER_FAIRNESS_ROW_CAP,
         }),
       );
     };

@@ -216,13 +216,19 @@ export function computeConcentration(
 // (network-wide, potentially thousands of UIDs collapsing into one coldkey's
 // total) and converts to TAO once per entity, not per row (#2922). Returns
 // per-entity value arrays + the distinct-entity count, all consistent.
-interface EntityGroups {
+export interface EntityGroups {
   stake: number[];
   emission: number[];
   count: number;
 }
 
-function groupByEntity(rows: Array<Record<string, unknown>>): EntityGroups {
+// Exported since #10931: the miner-fairness card needs the SAME clustering,
+// and a second implementation of "one holder per coldkey, unknown owners as
+// singletons" is how two surfaces start disagreeing about how many operators a
+// subnet has.
+export function groupByEntity(
+  rows: Array<Record<string, unknown>>,
+): EntityGroups {
   const stakeRao = new Map<string | object, bigint>();
   const emissionRao = new Map<string | object, bigint>();
   for (const row of rows) {

@@ -1531,6 +1531,92 @@ test("owner-capture with no ownership row answers with nulls, not zeros", async 
   assert.equal(point.uid_alpha, 50);
 });
 
+// #10931: miner-fairness selects `uid` and the owning address on top of what
+// the emission-split read takes, and clusters by that address. Driven against
+// the real DDL because the entity grouping only means anything over rows the
+// store actually returned.
+test("GET /api/v1/subnets/:netuid/miner-fairness clusters by controlling entity", async () => {
+  const date = dayAgo(1);
+  // Three miner UIDs behind ONE address, one behind another, plus a validator
+  // that must not enter the miner population at all.
+  for (const uid of [0, 1, 2]) {
+    await insertDaily({
+      uid,
+      coldkey: "5Whale",
+      validator_permit: 0,
+      emission_tao: 1,
+      snapshot_date: date,
+    });
+  }
+  await insertDaily({
+    uid: 3,
+    coldkey: "5Solo",
+    validator_permit: 0,
+    emission_tao: 1,
+    snapshot_date: date,
+  });
+  await insertDaily({
+    uid: 4,
+    coldkey: "5Vali",
+    validator_permit: 1,
+    emission_tao: 99,
+    snapshot_date: date,
+  });
+
+  const res = await call(req("/api/v1/subnets/7/miner-fairness"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.netuid, 7);
+  assert.equal(body.days_covered, 1);
+  assert.equal(body.miner_uid_count, 4, "the validator is not a miner");
+  assert.equal(body.entity_count, 2);
+  assert.equal(body.uids_per_entity, 2);
+
+  const point = (body.points as Row[])[0];
+  assert.equal(point.miner_count, 4);
+  assert.equal(point.earning_miner_count, 4);
+  assert.equal(point.zero_emission_pct, 0);
+
+  // THE DIVERGENCE, over real rows: per-UID reads as perfectly equal, the
+  // entity lens does not.
+  const conc = body.concentration as Row;
+  const uidLens = conc.uid as Row;
+  const entityLens = conc.entity as Row;
+  assert.equal(uidLens.holders, 4);
+  assert.equal(entityLens.holders, 2);
+  assert.ok((entityLens.gini as number) > (uidLens.gini as number));
+});
+
+test("miner-fairness counts a registered UID that earns nothing", async () => {
+  // The headline fact: the population includes UIDs on zero, and a read that
+  // dropped them would report 100% of miners earning on every subnet.
+  const date = dayAgo(1);
+  await insertDaily({
+    uid: 0,
+    coldkey: "5A",
+    validator_permit: 0,
+    emission_tao: 1,
+    snapshot_date: date,
+  });
+  for (const uid of [1, 2, 3]) {
+    await insertDaily({
+      uid,
+      coldkey: `5Z${uid}`,
+      validator_permit: 0,
+      emission_tao: 0,
+      snapshot_date: date,
+    });
+  }
+  const body = (await (
+    await call(req("/api/v1/subnets/7/miner-fairness"))
+  ).json()) as Row;
+  const point = (body.points as Row[])[0];
+  assert.equal(point.miner_count, 4);
+  assert.equal(point.earning_miner_count, 1);
+  assert.equal(point.zero_emission_pct, 0.75);
+  assert.equal((body.persistence as Row).never_earned_count, 3);
+});
+
 // --- Turnover + movers (the date-arithmetic translations) --------------------
 
 test("GET /api/v1/chain/turnover compares the window's boundary snapshots", async () => {

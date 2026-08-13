@@ -298,6 +298,7 @@ import type {
   SubnetYieldNeuron,
   YieldHistoryPoint,
   SubnetEmissionSplitHistory,
+  SubnetMinerFairness,
   SubnetOwnerCapture,
   EmissionSplitPoint,
   SubnetYieldHistory,
@@ -8795,6 +8796,35 @@ export const subnetEmissionSplitHistoryQuery = (
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetEmissionSplitHistory>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Whether a subnet's registered miners actually earn, over the series (#10931). */
+export const subnetMinerFairnessQuery = (netuid: number, window: "7d" | "30d" | "90d" = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-miner-fairness", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetMinerFairness>>(
+        `/api/v1/subnets/${netuid}/miner-fairness`,
+        { params: { window }, signal },
+      );
+      return {
+        data: {
+          netuid,
+          window: res.data?.window,
+          days_covered: res.data?.days_covered ?? 0,
+          point_count: res.data?.point_count ?? 0,
+          points: Array.isArray(res.data?.points) ? res.data.points : [],
+          miner_uid_count: res.data?.miner_uid_count ?? 0,
+          persistence: res.data?.persistence ?? null,
+          entity_count: res.data?.entity_count ?? 0,
+          uids_per_entity: res.data?.uids_per_entity ?? null,
+          concentration: res.data?.concentration ?? null,
+        } as SubnetMinerFairness,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetMinerFairness>;
     },
     staleTime: STALE_MED,
   });

@@ -34,6 +34,7 @@
     "subnet-lease-history",
     "subnet-lifecycle",
     "subnet-metagraph",
+    "subnet-miner-fairness",
     "subnet-movers",
     "subnet-neuron",
     "subnet-neuron-history",

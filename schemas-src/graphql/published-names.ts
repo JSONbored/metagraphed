@@ -463,6 +463,16 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetYieldArtifactNeurons: "SubnetYieldNeuron",
   SubnetEmissionSplitHistoryArtifact: "SubnetEmissionSplitHistory",
   SubnetEmissionSplitHistoryArtifactPoints: "SubnetEmissionSplitHistoryPoint",
+  SubnetMinerFairnessArtifact: "SubnetMinerFairness",
+  SubnetMinerFairnessArtifactPoints: "SubnetMinerFairnessPoint",
+  SubnetMinerFairnessArtifactPersistence: "SubnetMinerFairnessPersistence",
+  SubnetMinerFairnessArtifactConcentration: "SubnetMinerFairnessConcentration",
+  // Both lenses collapse onto the ONE published component. The schema is
+  // already shared in source (ConcentrationMetricsSchema); these entries are
+  // what makes the reuse visible in the published contract rather than
+  // minting two look-alike types nothing can compare.
+  SubnetMinerFairnessArtifactConcentrationEntity: "ConcentrationMetrics",
+  SubnetMinerFairnessArtifactConcentrationUid: "ConcentrationMetrics",
   SubnetOwnerCaptureArtifact: "SubnetOwnerCapture",
   SubnetOwnerCaptureArtifactPoints: "SubnetOwnerCapturePoint",
   SubnetOwnerCaptureArtifactOwnerUids: "SubnetOwnerCaptureUid",
