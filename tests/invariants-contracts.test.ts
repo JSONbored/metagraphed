@@ -34,8 +34,13 @@ const FEED_OPENAPI_PATH_COUNT = FEED_ROUTES.reduce(
 const NETWORK_VARIANT_COUNT = API_ROUTES.filter(
   (route) => networkVariantPath(route.path) != null,
 ).length;
+// #11045: plus the realtime firehose path, published for its `topics` enum.
+const STREAM_OPENAPI_PATH_COUNT = 1;
 const EXPECTED_OPENAPI_PATHS =
-  API_ROUTES.length + FEED_OPENAPI_PATH_COUNT + NETWORK_VARIANT_COUNT;
+  API_ROUTES.length +
+  FEED_OPENAPI_PATH_COUNT +
+  STREAM_OPENAPI_PATH_COUNT +
+  NETWORK_VARIANT_COUNT;
 
 describe("contracts — route ⇄ artifact mapping invariants", () => {
   test("every API route's artifact_path resolves to a public artifact contract", async () => {

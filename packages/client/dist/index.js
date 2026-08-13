@@ -603,6 +603,9 @@ var QUERY_PARAMETER_ENUMS = {
     "format": ["json", "csv"],
     "window": ["7d", "30d"]
   },
+  "/api/v1/chain/stream": {
+    "topics": ["blocks", "extrinsics", "chain_events", "account_events"]
+  },
   "/api/v1/chain/subnet-lifecycle": {
     "format": ["json", "csv"],
     "window": ["7d", "30d", "90d", "1y", "all"]

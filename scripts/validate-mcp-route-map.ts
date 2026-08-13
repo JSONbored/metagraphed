@@ -36,6 +36,11 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "Identifier resolution (#9672). search_subnets and semantic_search are the agent-facing discovery paths; resolve is a UI affordance.",
   "/api/v1/subnets/{netuid}/overview":
     "The composed overview get_subnet already serves under its profile route.",
+  "/api/v1/chain/stream":
+    "The realtime firehose (#11045). A request/response tool cannot hold an " +
+    "event stream open; MCP sessions subscribe through the hub's own " +
+    "/mcp-subscribe channel (mcpSubscribedSessions), and the polled twin is " +
+    "list_chain_events.",
 };
 
 /** `.atom`/`.rss`/`.json` feed variants: get_feed serves the JSON one. */

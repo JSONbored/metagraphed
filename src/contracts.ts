@@ -31,6 +31,10 @@ import { stripSentinelIntegerBounds } from "./mcp-input-schema.ts";
 import { artifactStorageTierForPath } from "./artifact-storage.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.ts";
+import {
+  CHAIN_FIREHOSE_PUBLISHED_TABLES,
+  CHAIN_FIREHOSE_TOPICS,
+} from "./chain-firehose-topics.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { sampleFromSchema } from "./openapi-sample.ts";
 import {
@@ -5212,6 +5216,15 @@ export const FEED_ROUTES = [
   ),
 ];
 
+/**
+ * The realtime firehose's published path (#11045) -- a registry-of-one, like
+ * the feeds: an event stream, not the artifact envelope. The OpenAPI emitter,
+ * the contract-drift gate, and the exact path counts all read this one name;
+ * workers/api.ts dispatches the same string as a literal because the
+ * api-coverage sweep extracts dispatch paths lexically.
+ */
+export const CHAIN_STREAM_OPENAPI_PATH = "/api/v1/chain/stream";
+
 /** The network dimension, shared by the contract artifact and the API index. */
 function networkContractBlock() {
   return {
@@ -6290,6 +6303,77 @@ export function buildOpenApiArtifact(
       };
     }
   }
+
+  // #11045: the realtime chain firehose, modeled as its own path.
+  //
+  // Like the feeds above, this is NOT the success envelope: the 200 body is a
+  // server-sent event stream, and a WebSocket `Upgrade` on the same path gets
+  // the WS transport instead -- a handshake OpenAPI cannot describe, so prose
+  // does. Published so the `topics` vocabulary rides the contract: the UI (and
+  // any generated client) derives the four table names from
+  // QUERY_PARAMETER_ENUMS instead of restating them, which was the last pinned
+  // copy the #10994 repointing could not dissolve.
+  paths[CHAIN_STREAM_OPENAPI_PATH] = {
+    get: {
+      operationId: openApiOperationId("chain-stream"),
+      summary: "Realtime chain firehose (SSE; WebSocket on Upgrade)",
+      description:
+        "Subscribe to decoded chain activity as it is captured (#4982, ADR 0015). " +
+        "Server-sent events by default; send a WebSocket `Upgrade` header on this " +
+        "same path for the WS transport. No auth: this is the same public read-only " +
+        "data `/api/v1/chain-events` serves, pushed instead of polled. A filter " +
+        "naming only unpublished topics yields a well-formed stream that never " +
+        `emits (currently published: ${[...CHAIN_FIREHOSE_PUBLISHED_TABLES].join(", ")}); ` +
+        "the stream says so once, at connect.",
+      tags: ["chain"],
+      parameters: [
+        {
+          name: "topics",
+          in: "query",
+          required: false,
+          description:
+            "Comma-separated source tables to subscribe to. Omitted means every " +
+            "topic. Unrecognized names are dropped from the filter, and a filter " +
+            "that is ENTIRELY unrecognized matches nothing rather than falling " +
+            "back to everything -- a typo'd topic must not subscribe you to the " +
+            "full firehose.",
+          schema: {
+            type: "array",
+            items: { type: "string", enum: [...CHAIN_FIREHOSE_TOPICS] },
+          },
+          style: "form",
+          explode: false,
+        },
+        {
+          name: "netuid",
+          in: "query",
+          required: false,
+          description:
+            "Only deliver events for this subnet. Applies only to topics whose " +
+            "rows carry a `netuid` (`account_events`); un-scoped topics such as " +
+            "`blocks` pass through unfiltered. A malformed value degrades to no " +
+            "filter rather than an error.",
+          schema: parameterSchema(netuidSchema()),
+        },
+      ],
+      responses: {
+        200: {
+          description:
+            "The event stream. After a deploy restarts the hub, the stream is a " +
+            "200 that closes immediately carrying an SSE `retry:` interval -- " +
+            "the one signal `EventSource` honors -- rather than an error status " +
+            "it would treat as fatal.",
+          content: { "text/event-stream": { schema: { type: "string" } } },
+        },
+        503: {
+          description:
+            "A connection cap refused the subscription (every cap answers " +
+            "identically), the firehose is not bound to this deployment, or a " +
+            "WebSocket upgrade raced a deploy (with `Retry-After`).",
+        },
+      },
+    },
+  };
 
   return {
     openapi: "3.1.0",

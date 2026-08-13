@@ -14,6 +14,7 @@ import {
 } from "./lib.ts";
 import { promises as fs } from "node:fs";
 import {
+  CHAIN_STREAM_OPENAPI_PATH,
   CONTRACT_VERSION,
   FEED_CONTENT_TYPES_BY_FORMAT,
   FEED_ROUTES,
@@ -158,7 +159,13 @@ const OPENAPI_OPERATION_VERBS = new Set([
 for (const [routePath, methods] of Object.entries(
   (currentOpenApi.paths as Row | undefined) || {},
 )) {
-  if (FEED_OPENAPI_PATHS.has(routePath)) continue;
+  // #11045: the firehose serves an event stream, not the envelope -- it gets
+  // its own positive contract below, like the feeds.
+  if (
+    FEED_OPENAPI_PATHS.has(routePath) ||
+    routePath === CHAIN_STREAM_OPENAPI_PATH
+  )
+    continue;
   // Whichever verb this path publishes, DERIVED from the path item rather than
   // named. Reading `.get` here meant a POST path looked like a route with no
   // typed response at all -- the same "every route is a GET" assumption that
@@ -204,6 +211,39 @@ for (const routePath of FEED_OPENAPI_PATHS) {
     !mediaTypes.includes("application/json"),
     `Feed route ${routePath} claims application/json; feeds serve application/feed+json, not the API envelope.`,
   );
+}
+
+// #11045: the firehose path's own contract. It must exist (its `topics`
+// enum is what QUERY_PARAMETER_ENUMS derives the stream vocabulary from),
+// serve `text/event-stream` for its 200, and never claim application/json --
+// a generated client that believed that would parse an SSE stream as JSON.
+{
+  const operation = ((currentOpenApi.paths as Row | undefined) || {})[
+    CHAIN_STREAM_OPENAPI_PATH
+  ]?.get;
+  check(
+    Boolean(operation),
+    `Stream route ${CHAIN_STREAM_OPENAPI_PATH} is missing from OpenAPI. Run npm run build.`,
+  );
+  if (operation) {
+    const mediaTypes = Object.keys(operation.responses?.["200"]?.content || {});
+    check(
+      mediaTypes.includes("text/event-stream"),
+      `Stream route ${CHAIN_STREAM_OPENAPI_PATH} declares no text/event-stream 200 (got: ${mediaTypes.join(", ") || "none"}).`,
+    );
+    check(
+      !mediaTypes.includes("application/json"),
+      `Stream route ${CHAIN_STREAM_OPENAPI_PATH} claims application/json; it serves an event stream, not the API envelope.`,
+    );
+    const topics = (operation.parameters as Row[] | undefined)?.find(
+      (parameter) => parameter?.name === "topics",
+    );
+    check(
+      Array.isArray(topics?.schema?.items?.enum) &&
+        topics.schema.items.enum.length > 0,
+      `Stream route ${CHAIN_STREAM_OPENAPI_PATH} must declare its topics vocabulary as items.enum.`,
+    );
+  }
 }
 
 if (errors.length > 0) {

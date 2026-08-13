@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
 import { applyNetworkPrefix } from "@/lib/metagraphed/client";
 import { getApiBase, onApiBaseChange, onNetworkChange } from "@/lib/metagraphed/config";
 import type { SseStatus } from "@/hooks/use-registry-events";
@@ -18,18 +19,10 @@ export type { SseStatus };
 export const CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES = 3;
 export const CHAIN_STREAM_DOWNGRADE_RETRY_MS = 5 * 60_000;
 
-/** Tables the chain firehose can filter on via `?topics=` (#4980 / ADR 0015).
- * DELIBERATELY literal (#10994): the SSE firehose's `topics` parameter is not
- * published in openapi.json (a contract gap noted on the issue), and the
- * vocabulary's owner is the graphql/stream schema tree the UI cannot import
- * at runtime. When the parameter is published, derive this from
- * QUERY_PARAMETER_ENUMS like every other repointed site. */
-export const CHAIN_FIREHOSE_TOPICS = [
-  "blocks",
-  "extrinsics",
-  "chain_events",
-  "account_events",
-] as const;
+/** Tables the chain firehose can filter on via `?topics=` (#4980 / ADR 0015),
+ * derived from the published contract's `topics` parameter on
+ * `GET /api/v1/chain/stream` like every other repointed site (#11045). */
+export const CHAIN_FIREHOSE_TOPICS = QUERY_PARAMETER_ENUMS["/api/v1/chain/stream"].topics;
 
 export type ChainFirehoseTopic = (typeof CHAIN_FIREHOSE_TOPICS)[number];
 
