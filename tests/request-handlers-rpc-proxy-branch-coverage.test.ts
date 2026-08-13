@@ -13,6 +13,7 @@ import {
   rpcCachePolicy,
 } from "../workers/request-handlers/rpc-proxy.ts";
 import { MAX_STATE_QUERY_KEYS_PAGE_SIZE } from "../workers/config.ts";
+import { verifyCacheRequest } from "../src/surface-verify.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
@@ -1127,60 +1128,23 @@ describe("handleSurfaceVerify alias + cache branches", () => {
     assert.equal(body.error.code, "surface_not_found");
   });
 
-  test("a matched surface lacking a surface_key falls back to its surface_id", async () => {
-    // findSurface matches on surface_id; with no surface_key the canonical id
-    // is `surface.surface_key || surface.surface_id` → the surface_id arm.
-    const matchEnv = {
-      // No Cache API binding so the cache match/put path is skipped and the
-      // probe runs directly through the stubbed fetch.
-      ASSETS: {
-        async fetch(request: Request) {
-          const target = new URL(request.url);
-          if (target.pathname === "/metagraph/operational-surfaces.json") {
-            return Response.json({
-              surfaces: [
-                {
-                  surface_id: "keyless-surface",
-                  kind: "subnet-api",
-                  url: "https://keyless.example.com/health",
-                  provider: "fixture",
-                  auth_required: false,
-                  public_safe: true,
-                  probe: { expect: "json", method: "GET", timeout_ms: 10000 },
-                },
-              ],
-            });
-          }
-          return new Response("nope", { status: 404 });
-        },
-      },
-    } as unknown as Env;
-    const originalCaches = (globalThis as Row).caches;
-    const originalFetch = globalThis.fetch;
-    (globalThis as Row).caches = undefined; // no Cache API → skip the 60s cache layer
-    globalThis.fetch = async () =>
-      new Response("{}", {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    try {
-      const res = await handleSurfaceVerify(
-        req("/api/v1/surfaces/keyless-surface/verify", {
-          headers: { "cf-connecting-ip": "203.0.113.10" },
-        }),
-        matchEnv,
-        "keyless-surface",
-        {},
-      );
-      assert.equal(res.status, 200);
-      const body = (await res.json()) as Row;
-      assert.equal(body.ok, true);
-      assert.equal(body.data.surface_id, "keyless-surface");
-      assert.equal(body.data.surface_key, null);
-      assert.equal(body.data.from_cache, false);
-    } finally {
-      (globalThis as Row).caches = originalCaches;
-      globalThis.fetch = originalFetch;
-    }
+  // Covers both arms of `surface.surface_key || surface.surface_id` in
+  // verifyCacheRequest. This used to be driven through handleSurfaceVerify with
+  // a surface that had neither a surface_key nor a netuid -- an artifact
+  // OperationalSurfacesArtifactSchema itself rejects, since both are required
+  // there. That fixture then asserted `surface_key: null` came back on the
+  // wire, which is the contract violation #11040 was filed about: the served
+  // schema declares it non-nullable, so the response tripwire turns that into a
+  // 500 in production. verifySurface now parses against that schema, so the
+  // only honest way to reach this branch is the function that owns it.
+  test("verifyCacheRequest keys on surface_key, falling back to surface_id", () => {
+    const keyed = verifyCacheRequest({
+      surface_key: "srf-abc123",
+      surface_id: "7:subnet-api:x",
+    });
+    assert.equal(new URL(keyed.url).pathname, "/srf-abc123");
+
+    const keyless = verifyCacheRequest({ surface_id: "keyless-surface" });
+    assert.equal(new URL(keyless.url).pathname, "/keyless-surface");
   });
 });
