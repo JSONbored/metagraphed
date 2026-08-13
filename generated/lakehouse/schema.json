@@ -525,6 +525,13 @@
     "required": false
   },
   {
+    "table": "rpc_proxy_events",
+    "field_id": 11,
+    "column": "sample_interval",
+    "type": "int",
+    "required": false
+  },
+  {
     "table": "self_health_daily",
     "field_id": 1,
     "column": "day",
@@ -1635,6 +1642,489 @@
     "field_id": 27,
     "column": "pipeline_block_hash",
     "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_balances",
+    "field_id": 1,
+    "column": "ss58",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_balances",
+    "field_id": 2,
+    "column": "free_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_balances",
+    "field_id": 3,
+    "column": "reserved_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_balances",
+    "field_id": 4,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 2,
+    "column": "uid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 3,
+    "column": "hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 4,
+    "column": "coldkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 5,
+    "column": "active",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 6,
+    "column": "validator_permit",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 7,
+    "column": "rank",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 8,
+    "column": "trust",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 9,
+    "column": "validator_trust",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 10,
+    "column": "consensus",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 11,
+    "column": "incentive",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 12,
+    "column": "dividends",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 13,
+    "column": "emission_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 14,
+    "column": "stake_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 15,
+    "column": "registered_at_block",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 16,
+    "column": "is_immunity_period",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 17,
+    "column": "axon",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 18,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 19,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "neurons",
+    "field_id": 20,
+    "column": "take",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 2,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 3,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 4,
+    "column": "subnet_name",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 5,
+    "column": "symbol",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 6,
+    "column": "description",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 7,
+    "column": "github_repo",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 8,
+    "column": "subnet_url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 9,
+    "column": "discord",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 10,
+    "column": "logo_url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity",
+    "field_id": 11,
+    "column": "identity_hash",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership",
+    "field_id": 2,
+    "column": "owner_hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership",
+    "field_id": 3,
+    "column": "owner_coldkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership",
+    "field_id": 4,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnets",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnets",
+    "field_id": 2,
+    "column": "slug",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnets",
+    "field_id": 3,
+    "column": "name",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnets",
+    "field_id": 4,
+    "column": "source",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnets",
+    "field_id": 5,
+    "column": "overlay",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnets",
+    "field_id": 6,
+    "column": "source_commit",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnets",
+    "field_id": 7,
+    "column": "updated_at",
+    "type": "timestamptz",
+    "required": false
+  },
+  {
+    "table": "subnets",
+    "field_id": 9,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 1,
+    "column": "id",
+    "type": "uuid",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 2,
+    "column": "subnet_netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 3,
+    "column": "provider_id",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 4,
+    "column": "surface_key",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 5,
+    "column": "kind",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 6,
+    "column": "url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 7,
+    "column": "authority",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 8,
+    "column": "review_state",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 9,
+    "column": "probe_eligible",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 10,
+    "column": "public_safe",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 11,
+    "column": "overlay",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 12,
+    "column": "source_commit",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 13,
+    "column": "updated_at",
+    "type": "timestamptz",
+    "required": false
+  },
+  {
+    "table": "surfaces",
+    "field_id": 15,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "providers",
+    "field_id": 1,
+    "column": "id",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "providers",
+    "field_id": 2,
+    "column": "overlay",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "providers",
+    "field_id": 3,
+    "column": "source_commit",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "providers",
+    "field_id": 4,
+    "column": "updated_at",
+    "type": "timestamptz",
+    "required": false
+  },
+  {
+    "table": "providers",
+    "field_id": 6,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "validator_nominator_counts",
+    "field_id": 1,
+    "column": "hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "validator_nominator_counts",
+    "field_id": 2,
+    "column": "nominator_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "validator_nominator_counts",
+    "field_id": 3,
+    "column": "captured_at",
+    "type": "long",
     "required": false
   }
 ]

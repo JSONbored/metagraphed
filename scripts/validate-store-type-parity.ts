@@ -52,7 +52,12 @@ const LAKE_SNAPSHOT = "generated/lakehouse/schema.json";
 const FITS: Readonly<Record<string, ReadonlySet<string>>> = {
   int2: new Set(["int", "long"]),
   int4: new Set(["int", "long"]),
-  int8: new Set(["long"]),
+  // int8 also fits timestamptz/timestamp: the mirror converts epoch-ms to the
+  // instant Iceberg declares (align_epoch_columns), which is a representation
+  // change and not a reinterpretation -- same milliseconds either way. Three
+  // registry tables inherited timestamptz columns from the exodus load while
+  // Neon holds bigint, and that pairing is CORRECT rather than tolerated.
+  int8: new Set(["long", "timestamptz", "timestamp"]),
   float4: new Set(["float", "double"]),
   float8: new Set(["double"]),
   // Arbitrary precision on one side, 64-bit float on the other. `double` is
@@ -60,7 +65,11 @@ const FITS: Readonly<Record<string, ReadonlySet<string>>> = {
   // narrowing is inherent to the format, not a mistake this gate can fix.
   numeric: new Set(["double"]),
   bool: new Set(["boolean"]),
-  text: new Set(["string", "date"]),
+  // text -> uuid is enforced at write rather than assumed: chain.surfaces.id is
+  // uuid in Iceberg and text in Neon, and the mirror packs it to 16 bytes. A
+  // value that is not a uuid raises there instead of being silently truncated,
+  // which is what makes this a fit rather than a narrowing.
+  text: new Set(["string", "date", "uuid"]),
   varchar: new Set(["string", "date"]),
   date: new Set(["date", "string"]),
   json: new Set(["string"]),
