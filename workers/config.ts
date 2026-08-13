@@ -711,6 +711,11 @@ export const SUBNET_YIELD_HISTORY_PATH_PATTERN =
 // the neuron_daily rollup, no static file.
 export const SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/emission-split\/history$/;
+// How much of a subnet's emission reaches its owner (#10929) -- the protocol
+// cut plus emission on owner-held UIDs -- from the neuron_daily rollup joined
+// to subnet_ownership, no static file.
+export const SUBNET_OWNER_CAPTURE_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/owner-capture$/;
 // Reward-distribution + score-spread metrics over the current neurons snapshot
 // (reward concentration + trust/consensus percentiles), no static file.
 export const SUBNET_PERFORMANCE_PATH_PATTERN =

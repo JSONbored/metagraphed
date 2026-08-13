@@ -316,6 +316,11 @@ type Query {
   subnet_emission_split_history(netuid: Int!, window: String): SubnetEmissionSplitHistory!
 
   """
+  How much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window (default 30d), from the neuron_daily rollup joined to the declared \`owner_coldkey\`. Two CHAIN-VISIBLE layers only: the protocol owner cut (L1, 18% and identical everywhere) and emission landing on owner-held UIDs (L2, which varies enormously). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is not the owner's. It is NOT what the owner keeps — the identity of those nominators (L3) and any treasury cut in the subnet's own code (L4) are not observable here, and \`blind_spots\` states that in the response. Every other stakeholder address reports \`unresolved\`, which is the honest default and never a finding against them. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.
+  """
+  subnet_owner_capture(netuid: Int!, window: String): SubnetOwnerCapture!
+
+  """
   Per-subnet reward-distribution and score-spread card over the current neurons snapshot: incentive/dividends concentration plus p10–p90 trust/consensus/validator_trust; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/performance.
   """
   subnet_performance(netuid: Int!): SubnetPerformance!
@@ -2599,6 +2604,166 @@ type SubnetEmissionSplitHistoryPoint {
   \`total_alpha\` priced through \`alpha_price_tao\`. Reconstructed, and null whenever either input is.
   """
   total_tao: Float
+}
+
+"""
+How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and \`blind_spots\` states both in the response. Every other stakeholder address reports \`verdict: unresolved\`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.
+"""
+type SubnetOwnerCapture {
+  schema_version: Int!
+  netuid: Int!
+
+  """The resolved window label (7d/30d/90d)."""
+  window: String
+  point_count: Int!
+  points: [SubnetOwnerCapturePoint!]!
+
+  """
+  The subnet's declared owner coldkey, from SubtensorModule.SubnetOwner. Null when no ownership row has been captured — in which case every owner-derived field is null rather than 0.
+  """
+  owner_coldkey: String
+  owner_uid_count: Int
+
+  """
+  The owner-held UIDs on the NEWEST day only, and who is staked behind them. Newest-day rather than unioned across the window, because a UID set unioned over a month lists neurons that have since deregistered as though they were current.
+  """
+  owner_uids: [SubnetOwnerCaptureUid!]
+
+  """
+  Every stakeholder address staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked.
+  """
+  attribution: [SubnetOwnerCaptureStakeholder!]
+
+  """
+  The four defined verdicts, published beside the verdicts themselves so a caller can tell \`unresolved\` is a state rather than a missing value.
+  """
+  attribution_vocabulary: [String!]
+
+  """
+  What this measurement cannot see, in the payload rather than only in the docs — because the payload is what gets quoted. Covers the stake behind owner validators (L3), application-layer treasury cuts (L4), and root delegation (L5).
+  """
+  blind_spots: [SubnetOwnerCaptureBlindSpot!]
+
+  """
+  Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+  """
+  field_sources: JSON
+}
+
+type SubnetOwnerCapturePoint {
+  snapshot_date: String!
+  neuron_count: Int
+
+  """
+  L1 — the protocol owner cut applied to this day. \`SubnetOwnerCut\` is 11796/65535 (18%, not 1/6) and is UNSET on chain, so this is the runtime default rather than a read. Every subnet pays it and no subnet chooses it.
+  """
+  owner_cut_share: Float
+
+  """
+  The L1 leg in alpha, \`total_alpha x owner_cut_share\`. RECONSTRUCTED — it is not summed from per-UID rows, because the owner cut is paid outside the UID set entirely.
+  """
+  owner_cut_alpha: Float
+
+  """
+  How many UIDs on this day were held by the declared \`owner_coldkey\`. NULL when the \`owner_coldkey\` is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'.
+  """
+  owner_uid_count: Int
+
+  """
+  L2 — emission that landed on UIDs held by the \`owner_coldkey\`. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join.
+  """
+  owner_uid_alpha: Float
+
+  """
+  Emission across the whole UID set on this day. NOT the day's total — the owner cut is paid outside the UID set, so this is the distributable remainder. See \`total_alpha\`.
+  """
+  uid_alpha: Float
+
+  """
+  The whole day's alpha emission, \`alpha_out_emission x 7200 blocks\`. RECONSTRUCTED, and the same basis /owner-cut and /emission-split/history use, so the three cannot disagree about what a day of emission is.
+  """
+  total_alpha: Float
+
+  """
+  \`owner_uid_alpha / uid_alpha\`. MEASURED and parameter-free — a ratio of two observed sums this response also publishes, carrying no owner-cut assumption. Null when the day emitted nothing to any UID, never 0.
+  """
+  owner_attributed_share_of_uid: Float
+
+  """
+  L2 as a share of the WHOLE day, \`owner_uid_alpha / total_alpha\`. RECONSTRUCTED, because the denominator is. ATTRIBUTED, NOT CAPTURED: this is emission that landed on owner-held UIDs, not what the owner ultimately keeps — the stake behind those UIDs (L3) and any application-layer treasury cut (L4) are outside what the chain shows. See \`blind_spots\`.
+  """
+  owner_attributed_share: Float
+
+  """
+  \`owner_cut_share + owner_attributed_share\` — the two chain-visible layers over one denominator. Named for the arithmetic it is. It is NOT 'what the owner takes', and a caller reporting it as such is asserting L3 and L4 this surface explicitly does not measure.
+  """
+  owner_combined_share: Float
+}
+
+type SubnetOwnerCaptureUid {
+  uid: Float
+  hotkey: String
+  validator_permit: Boolean
+
+  """
+  This UID's emission on the newest day, alpha-denominated for every non-root subnet despite the column's \`_tao\` suffix.
+  """
+  emission_tao: Float
+
+  """
+  Validator take/commission (0..1) from SubtensorModule::Delegates. GLOBAL per hotkey, not per subnet. NULL means no Delegates entry at capture — which is not 0%, and must not be rendered as one.
+  """
+  take: Float
+
+  """
+  Fraction of the stake behind this hotkey held by the \`owner_coldkey\` itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see \`stake_split_reason\`.
+  """
+  owner_stake_share: Float
+
+  """
+  \`1 - owner_stake_share\`: the fraction of this validator's stake that is NOT the \`owner_coldkey\`'s. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here.
+  """
+  nominator_share: Float
+
+  """
+  Why the stake split is null, when it is. A short sentence rather than a code, because the reasons are not a closed set the caller should branch on.
+  """
+  stake_split_reason: String
+}
+
+type SubnetOwnerCaptureStakeholder {
+  coldkey: String!
+  verdict: String!
+  evidence: [AttributionEvidence!]!
+
+  """
+  This address's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids.
+  """
+  stake_share: Float!
+}
+
+type AttributionEvidence {
+  kind: String!
+
+  """
+  A public page a reader can open — the subnet's own docs, repo or site. Pin a repo citation to a commit SHA; a branch moves under the claim.
+  """
+  source_url: String
+
+  """
+  The extrinsic that carried the funding path or key rotation, so the link can be re-derived from chain rather than trusted.
+  """
+  extrinsic_hash: String
+
+  """
+  When this was established. Evidence goes stale: a wallet relationship true last quarter may not be true today, and a citation without a date cannot be aged out.
+  """
+  observed_at: String!
+}
+
+type SubnetOwnerCaptureBlindSpot {
+  layer: String!
+  summary: String!
 }
 
 """

@@ -3040,6 +3040,54 @@ export interface SubnetEmissionSplitHistory {
   points: EmissionSplitPoint[];
 }
 
+/**
+ * Owner capture, L1 + L2 (#10929).
+ *
+ * The render shape deliberately keeps `owner_attributed_share` and
+ * `owner_combined_share` separate from anything named for what an owner
+ * "takes". Both are measurements over layers the chain shows; what the owner
+ * KEEPS depends on L3/L4 and is not in this payload at all.
+ */
+export interface OwnerCapturePoint {
+  snapshot_date: string;
+  owner_cut_share?: number | null;
+  owner_uid_count?: number | null;
+  owner_uid_alpha?: number | null;
+  uid_alpha?: number | null;
+  total_alpha?: number | null;
+  owner_attributed_share_of_uid?: number | null;
+  owner_attributed_share?: number | null;
+  owner_combined_share?: number | null;
+}
+
+export interface OwnerCaptureUid {
+  uid?: number | null;
+  hotkey?: string | null;
+  validator_permit?: boolean;
+  emission_tao?: number | null;
+  /** Null means NO Delegates entry, never 0% — the render must not blur them. */
+  take?: number | null;
+  owner_stake_share?: number | null;
+  nominator_share?: number | null;
+  stake_split_reason?: string | null;
+}
+
+export interface OwnerCaptureBlindSpot {
+  layer: string;
+  summary: string;
+}
+
+export interface SubnetOwnerCapture {
+  netuid: number;
+  window?: string;
+  owner_coldkey?: string | null;
+  point_count?: number;
+  points: OwnerCapturePoint[];
+  owner_uid_count?: number | null;
+  owner_uids: OwnerCaptureUid[];
+  blind_spots: OwnerCaptureBlindSpot[];
+}
+
 // --- Compile-time contract enforcement ---------------------------------------
 //
 // These are type-only assertions (zero runtime cost). They tie this file's UI

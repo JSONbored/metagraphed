@@ -152,6 +152,10 @@ import {
   GetSubnetEmissionSplitHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-emission-split-history.ts";
 import {
+  GetSubnetOwnerCaptureInputSchema,
+  GetSubnetOwnerCaptureOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-owner-capture.ts";
+import {
   GetSubnetStakeFlowInputSchema,
   GetSubnetStakeFlowOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-stake-flow.ts";
@@ -1429,6 +1433,10 @@ import {
   buildSubnetEmissionSplitHistory,
   parseEmissionSplitHistoryWindow,
 } from "./emission-split.ts";
+import {
+  buildSubnetOwnerCapture,
+  parseOwnerCaptureWindow,
+} from "./owner-capture.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -7643,6 +7651,52 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           window: label,
           capped: false,
         })
+      );
+    },
+  },
+  {
+    name: "get_subnet_owner_capture",
+    title: "Get subnet owner capture (L1 + L2)",
+    description:
+      "Measure how much of one subnet's emission reaches its OWNER, per day " +
+      "over a 7d, 30d or 90d window (default 30d). Publishes the two layers " +
+      "the chain actually shows: the protocol owner cut (L1, 18%, identical " +
+      "for every subnet) and emission landing on UIDs held by the declared " +
+      "`owner_coldkey` (L2, which varies enormously -- the network median sits " +
+      "far above 18%). Also lists those UIDs, each validator's take, and the " +
+      "MEASURED fraction of stake behind them that is not the owner's. " +
+      "THIS IS NOT `WHAT THE OWNER TAKES`. Who those nominators are (L3) and " +
+      "any treasury cut inside the subnet's own code (L4) are not observable " +
+      "here, and `blind_spots` says so in the payload. Every other " +
+      "stakeholder address is reported `unresolved`, which is the honest " +
+      "default for a relationship nobody established -- a large nominator " +
+      "behind an " +
+      "owner-run validator is equally consistent with a custodial exchange, a " +
+      "delegation service, an unaffiliated whale or a DAO treasury, and those " +
+      "produce an identical on-chain shape. DO NOT REPORT AN UNRESOLVED " +
+      "COLDKEY AS TEAM-CONTROLLED, and do not describe a high " +
+      "`owner_combined_share` as misconduct: it is a measurement, not a " +
+      "finding. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.",
+    inputSchema: inputJsonSchema(GetSubnetOwnerCaptureInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetOwnerCaptureInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      const parsed = parseOwnerCaptureWindow(args?.window);
+      if (args?.window !== undefined && "error" in parsed && parsed.error) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      const { label } = parsed as { label: string };
+      return (
+        (await tryDataApiTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/owner-capture`, {
+            window: label,
+          }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildSubnetOwnerCapture([], netuid, { window: label, capped: false })
       );
     },
   },
@@ -14983,6 +15037,7 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   get_subnet_emission_split_history: outputJsonSchema(
     GetSubnetEmissionSplitHistoryOutputSchema,
   ),
+  get_subnet_owner_capture: outputJsonSchema(GetSubnetOwnerCaptureOutputSchema),
   get_subnet_stake_flow: outputJsonSchema(GetSubnetStakeFlowOutputSchema),
   get_subnet_event_summary: outputJsonSchema(GetSubnetEventSummaryOutputSchema),
   get_subnet_stake_moves: outputJsonSchema(GetSubnetStakeMovesOutputSchema),

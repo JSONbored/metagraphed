@@ -851,6 +851,32 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/owner-capture?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+      assert.equal(typeof body.data.field_sources, "object");
+      // THE SAFETY SHAPE, asserted against the live response rather than the
+      // schema. `blind_spots` is what stops a caller quoting a capture figure
+      // without the layers it cannot see, and a surface that dropped it would
+      // still validate against a schema where the field is optional.
+      assert.equal(Array.isArray(body.data.blind_spots), true);
+      assert.ok(
+        (body.data.blind_spots as Row[]).length >= 3,
+        "L3, L4 and L5 must each be stated in the payload",
+      );
+      // Nothing on this surface may report a verdict above `unresolved`
+      // except the declared owner, whose evidence is the chain read itself.
+      for (const row of (body.data.attribution ?? []) as Row[]) {
+        assert.ok(
+          row.verdict === "unresolved" || row.verdict === "owner",
+          `attribution verdict ${String(row.verdict)} is not derivable here`,
+        );
+      }
+    },
+  ],
+  [
     "/api/v1/validators?sort=uid_count&limit=3",
     (body) => {
       assert.equal(body.data.sort, "uid_count");

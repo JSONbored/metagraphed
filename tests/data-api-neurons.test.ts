@@ -51,6 +51,9 @@ const MIGRATIONS = [
   "migrations/neon/0002_probe_observations.sql",
   "migrations/neon/0005_remaining_d1_tables.sql",
   "migrations/neon/0007_hand_created_tables.sql",
+  // #10929: owner-capture joins the rollup to the declared owner, and
+  // `subnet_ownership` arrives in its own later migration.
+  "migrations/neon/0024_subnet_ownership.sql",
 ].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
 
 /** Tables a test may write, emptied between tests. */
@@ -64,6 +67,8 @@ const SEEDED_TABLES = [
   "subnet_snapshots",
   "surface_checks",
   "surface_status",
+  "subnet_ownership",
+  "nominator_positions",
 ];
 
 let db: PGlite;
@@ -1392,6 +1397,138 @@ test("GET /api/v1/subnets/:netuid/{concentration,performance,yield}/history serv
     assert.equal(body.netuid, 7, route);
     assert.equal((body.points as Row[]).length, 1, route);
   }
+});
+
+// #10929: owner-capture is the only route in this family that joins THREE
+// tables, and two of them (`subnet_ownership`, `nominator_positions`) are
+// touched by nothing else here. Driven against the real DDL because the
+// pinned-`captured_at` subquery and the coldkey join only fail at execution.
+test("GET /api/v1/subnets/:netuid/owner-capture joins the rollup to the declared owner", async () => {
+  const date = dayAgo(1);
+  await seed(
+    `INSERT INTO subnet_ownership (netuid, owner_hotkey, owner_coldkey, captured_at)
+     VALUES (?, ?, ?, ?)`,
+    [7, "5OwnerHot", "5OwnerCold", Date.now()],
+  );
+  // The owner's validator UID, and one unrelated miner.
+  await insertDaily({
+    uid: 0,
+    hotkey: "5OwnerHot",
+    coldkey: "5OwnerCold",
+    validator_permit: 1,
+    emission_tao: 30,
+    take: 0.18,
+    snapshot_date: date,
+  });
+  await insertDaily({
+    uid: 1,
+    hotkey: "5Other",
+    coldkey: "5Someone",
+    validator_permit: 0,
+    emission_tao: 70,
+    snapshot_date: date,
+  });
+  // Two captures of the stake behind the owner's hotkey. ONLY THE NEWER ONE
+  // may be read -- mixing two passes would produce fractions that sum past 1.
+  await seed(
+    `INSERT INTO nominator_positions (coldkey, hotkey, netuid, share_fraction, captured_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    ["5OwnerCold", "5OwnerHot", 7, 0.25, 2000],
+  );
+  await seed(
+    `INSERT INTO nominator_positions (coldkey, hotkey, netuid, share_fraction, captured_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    ["5Whale", "5OwnerHot", 7, 0.75, 2000],
+  );
+
+  const res = await call(req("/api/v1/subnets/7/owner-capture"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.netuid, 7);
+  assert.equal(body.owner_coldkey, "5OwnerCold");
+
+  const point = (body.points as Row[])[0];
+  assert.equal(point.uid_alpha, 100, "both UIDs are summed");
+  assert.equal(point.owner_uid_alpha, 30, "only the owner's UID is attributed");
+  assert.equal(point.owner_uid_count, 1);
+  assert.equal(point.owner_attributed_share_of_uid, 0.3);
+
+  const uid = (body.owner_uids as Row[])[0];
+  assert.equal(uid.uid, 0);
+  assert.equal(uid.take, 0.18);
+  assert.equal(uid.owner_stake_share, 0.25);
+  assert.equal(uid.nominator_share, 0.75);
+
+  // The whale is reported, and reported as UNRESOLVED. The coldkey holding
+  // three quarters of the owner's validator is exactly what a heuristic would
+  // promote; nothing in this lane may.
+  const whale = (body.attribution as Row[]).find(
+    (a) => a.coldkey === "5Whale",
+  ) as Row;
+  assert.equal(whale.verdict, "unresolved");
+  assert.deepEqual(whale.evidence, []);
+  const owner = (body.attribution as Row[]).find(
+    (a) => a.coldkey === "5OwnerCold",
+  ) as Row;
+  assert.equal(owner.verdict, "owner");
+});
+
+test("owner-capture reads only the newest nominator capture", async () => {
+  // The pinned-`captured_at` subquery, asserted rather than assumed. With both
+  // passes read the fractions would sum to 2 and the completeness guard would
+  // decline -- so a regression here is silent in the other direction: a null
+  // where a real split exists.
+  const date = dayAgo(1);
+  await seed(
+    `INSERT INTO subnet_ownership (netuid, owner_hotkey, owner_coldkey, captured_at)
+     VALUES (?, ?, ?, ?)`,
+    [7, "5OwnerHot", "5OwnerCold", Date.now()],
+  );
+  await insertDaily({
+    uid: 0,
+    hotkey: "5OwnerHot",
+    coldkey: "5OwnerCold",
+    validator_permit: 1,
+    emission_tao: 10,
+    snapshot_date: date,
+  });
+  // An older, DIFFERENT split for the same hotkey.
+  await seed(
+    `INSERT INTO nominator_positions (coldkey, hotkey, netuid, share_fraction, captured_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    ["5Stale", "5OwnerHot", 7, 1, 1000],
+  );
+  await seed(
+    `INSERT INTO nominator_positions (coldkey, hotkey, netuid, share_fraction, captured_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    ["5OwnerCold", "5OwnerHot", 7, 1, 3000],
+  );
+
+  const body = (await (
+    await call(req("/api/v1/subnets/7/owner-capture"))
+  ).json()) as Row;
+  const uid = (body.owner_uids as Row[])[0];
+  assert.equal(uid.owner_stake_share, 1, "the newest pass alone");
+  assert.equal(uid.nominator_share, 0);
+  assert.deepEqual(
+    (body.attribution as Row[]).map((a) => a.coldkey),
+    ["5OwnerCold"],
+    "the stale capture must not appear",
+  );
+});
+
+test("owner-capture with no ownership row answers with nulls, not zeros", async () => {
+  await insertDaily({ uid: 0, emission_tao: 50, snapshot_date: dayAgo(1) });
+  const body = (await (
+    await call(req("/api/v1/subnets/7/owner-capture"))
+  ).json()) as Row;
+  assert.equal(body.owner_coldkey, null);
+  assert.equal(body.owner_uid_count, null);
+  const point = (body.points as Row[])[0];
+  assert.equal(point.owner_uid_alpha, null);
+  assert.equal(point.owner_attributed_share, null);
+  // The leg that does not depend on knowing the owner still answers.
+  assert.equal(point.uid_alpha, 50);
 });
 
 // --- Turnover + movers (the date-arithmetic translations) --------------------

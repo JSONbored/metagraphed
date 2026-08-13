@@ -100,6 +100,7 @@ import {
   YIELD_HISTORY_WINDOWS,
 } from "../../src/subnet-yield.ts";
 import { buildSubnetEmissionSplitHistory } from "../../src/emission-split.ts";
+import { buildSubnetOwnerCapture } from "../../src/owner-capture.ts";
 import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
   DEFAULT_SUBNET_REVENUE_WINDOW,
@@ -2304,6 +2305,20 @@ export function canonicalSubnetEmissionSplitHistoryCachePath(
   );
 }
 
+// Canonical edge-cache key for the owner-capture route (#10929). Same
+// `?window=` vocabulary as its emission-split sibling and no CSV variant, so
+// this is the window alone -- two callers asking for the same window must not
+// be served from two cache entries.
+export function canonicalSubnetOwnerCaptureCachePath(url: URL) {
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = resolveWindow(
+    url,
+    SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+    DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  );
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
 // Canonical edge-cache key for the subnet-turnover route (?window= via
 // parseHistoryWindow). Distinct from canonicalSubnetConcentrationHistoryCachePath
 // which uses a different parse function (parseConcentrationHistoryWindow).
@@ -2699,6 +2714,52 @@ export async function handleSubnetEmissionSplitHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/emission-split/history.json`,
+        (data.points as unknown as Array<Record<string, unknown>>)[0]
+          ?.snapshot_date ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/owner-capture?window=7d|30d|90d (#10929): how
+// much of this subnet's emission reaches its owner -- the protocol cut (L1) and
+// emission on UIDs the `owner_coldkey` holds (L2), which are the two layers the
+// chain shows. A cold/absent store answers 200 with points:[] and
+// owner_coldkey:null rather than 404, for the same reason its emission-split
+// sibling does: a subnet with no daily rollup is a real state.
+//
+// No CSV variant. The payload is a series PLUS a UID list PLUS an attribution
+// list, and flattening three shapes into one sheet would have to drop two of
+// them -- most likely the two that carry the epistemics.
+export async function handleSubnetOwnerCapture(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  const { label } = resolveWindow(
+    url,
+    SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+    DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  );
+  const data =
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetOwnerCapture> | null) ??
+    buildSubnetOwnerCapture([], Number(netuid), {
+      window: label,
+      capped: false,
+    });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/owner-capture.json`,
         (data.points as unknown as Array<Record<string, unknown>>)[0]
           ?.snapshot_date ?? null,
       ),

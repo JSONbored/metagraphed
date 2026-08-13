@@ -463,6 +463,14 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetYieldArtifactNeurons: "SubnetYieldNeuron",
   SubnetEmissionSplitHistoryArtifact: "SubnetEmissionSplitHistory",
   SubnetEmissionSplitHistoryArtifactPoints: "SubnetEmissionSplitHistoryPoint",
+  SubnetOwnerCaptureArtifact: "SubnetOwnerCapture",
+  SubnetOwnerCaptureArtifactPoints: "SubnetOwnerCapturePoint",
+  SubnetOwnerCaptureArtifactOwnerUids: "SubnetOwnerCaptureUid",
+  SubnetOwnerCaptureArtifactAttribution: "SubnetOwnerCaptureStakeholder",
+  // Real evidence objects now, not `z.unknown()` -- the array reuses the
+  // shared AttributionEvidence shape, so it publishes a nested component.
+  SubnetOwnerCaptureArtifactAttributionEvidence: "AttributionEvidence",
+  SubnetOwnerCaptureArtifactBlindSpots: "SubnetOwnerCaptureBlindSpot",
   SubnetYieldHistoryArtifact: "SubnetYieldHistory",
   SubnetYieldHistoryArtifactPoints: "SubnetYieldHistoryPoint",
   SudoKeyArtifact: "SudoKey",

@@ -495,6 +495,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Per-subnet per-day emission split by recipient class from the neuron_daily rollup over a 7d/30d/90d window (default 30d): the owner, validator and miner legs, the exact measured validator/miner ratio, and how many UIDs of each class actually earned, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. The owner leg and every absolute figure are reconstructed — the owner cut is paid outside the UID set. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history.",
   },
   {
+    field: "subnet_owner_capture",
+    operation: "subnet-owner-capture",
+    returns: "SubnetOwnerCapture!",
+    description:
+      "How much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window (default 30d), from the neuron_daily rollup joined to the declared `owner_coldkey`. Two CHAIN-VISIBLE layers only: the protocol owner cut (L1, 18% and identical everywhere) and emission landing on owner-held UIDs (L2, which varies enormously). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is not the owner's. It is NOT what the owner keeps — the identity of those nominators (L3) and any treasury cut in the subnet's own code (L4) are not observable here, and `blind_spots` states that in the response. Every other stakeholder address reports `unresolved`, which is the honest default and never a finding against them. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.",
+  },
+  {
     field: "subnet_performance",
     operation: "subnet-performance",
     returns: "SubnetPerformance!",

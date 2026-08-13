@@ -278,6 +278,8 @@ import {
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
   handleSubnetEmissionSplitHistory,
+  handleSubnetOwnerCapture,
+  canonicalSubnetOwnerCaptureCachePath,
   handleSubnetYieldHistory,
   handleChainConcentration,
   handleChainConcentrationSubnets,
@@ -721,6 +723,7 @@ import {
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
   SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN,
   SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN,
+  SUBNET_OWNER_CAPTURE_PATH_PATTERN,
   SUBNET_YIELD_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
@@ -6206,6 +6209,28 @@ async function dispatchRequest(
       );
     }
 
+    const ownerCaptureMatch = SUBNET_OWNER_CAPTURE_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (ownerCaptureMatch) {
+      // Same rollup, same cron cadence, same edge-cache treatment as its
+      // emission-split sibling.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-owner-capture",
+        () =>
+          handleSubnetOwnerCapture(
+            request,
+            env,
+            Number(ownerCaptureMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetOwnerCaptureCachePath(resolved.url),
+      );
+    }
+
     const yieldHistoryMatch = SUBNET_YIELD_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -7508,6 +7533,10 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_YIELD_HISTORY_PATH_PATTERN.test(pathname) ||
     // neuron_daily carries no network dimension, same as its yield twin.
     SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN.test(pathname) ||
+    // Same rollup, plus subnet_ownership -- which has no network column
+    // either, so a testnet-addressed request would be answered with the
+    // mainnet owner.
+    SUBNET_OWNER_CAPTURE_PATH_PATTERN.test(pathname) ||
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||

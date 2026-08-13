@@ -39,6 +39,7 @@
     "subnet-neuron-history",
     "subnet-ohlc",
     "subnet-overview",
+    "subnet-owner-capture",
     "subnet-owner-cut",
     "subnet-ownership-history",
     "subnet-performance",
