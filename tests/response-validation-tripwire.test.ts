@@ -431,3 +431,55 @@ describe("workers/api.ts fails the request on drift", () => {
     }
   });
 });
+
+// ── The REST tripwire validates the wire too (#10972) ───────────────────────
+//
+// It does not currently trip on an undefined-valued key, and only because the
+// components involved happen to declare those fields optional. That is which
+// fields drifted first, not a difference in kind — so the same round-trip
+// applies here, and these pin it rather than leaving it to luck.
+describe("the REST tripwire validates what is sent", () => {
+  const envelope = (data: unknown) => ({
+    ok: true,
+    schema_version: 1,
+    data,
+    meta: { contract_version: "x" },
+  });
+
+  test("an undefined-valued key does not fail a response that serializes clean", async () => {
+    const built = {
+      schema_version: 1,
+      generated_at: "2026-08-13T00:00:00.000Z",
+      gaps: [],
+      // The shape a `{...spread}` of an absent artifact produces.
+      notes: undefined,
+    };
+    assert.equal(
+      JSON.stringify(built).includes("notes"),
+      false,
+      "the premise: serialization drops the key, so the client never sees it",
+    );
+    await assert.doesNotReject(
+      validateResponseTripwire("gaps", envelope(built), "/metagraph/gaps.json"),
+    );
+  });
+
+  test("a payload that cannot be serialized is left to the parse", async () => {
+    // Swallowing a circular structure would make the tripwire report success
+    // on something it never checked.
+    const circular: Record<string, unknown> = {
+      schema_version: 1,
+      generated_at: "2026-08-13T00:00:00.000Z",
+      gaps: [],
+    };
+    circular.self = circular;
+    await assert.rejects(
+      validateResponseTripwire(
+        "gaps",
+        envelope(circular),
+        "/metagraph/gaps.json",
+      ),
+      ResponseSchemaDriftError,
+    );
+  });
+});
