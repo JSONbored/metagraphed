@@ -11,6 +11,8 @@
 // createLocalArtifactEnv(), so a "matching" case is grounded in an actual
 // handler response rather than a hand-built envelope that may already be wrong.
 import assert from "node:assert/strict";
+import { z } from "zod";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { afterEach, describe, test, vi } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -481,5 +483,100 @@ describe("the REST tripwire validates what is sent", () => {
       ),
       ResponseSchemaDriftError,
     );
+  });
+});
+
+// ── A projection is shorter on purpose (#10975) ─────────────────────────────
+//
+// `?fields=` returned 500 on EVERY route that advertises it. Measured against
+// production before the fix: `?fields=name` gave 500 on gaps, curation,
+// candidates, profiles, subnets and providers. Selecting fewer fields is the
+// entire point of the parameter, and it was the thing that broke it.
+//
+// The component describes the whole row, so a projected response is missing
+// keys by design. Only ABSENCE is forgiven, and only where the value really is
+// missing: a projection can remove a key, it cannot add one and it cannot
+// change a type.
+describe("the tripwire tolerates a projection, and nothing else", () => {
+  const Row = z.object({ netuid: z.int(), name: z.string() }).strict();
+  const Envelope = successEnvelopeSchema(
+    z.object({ rows: z.array(Row) }).strict(),
+  );
+
+  function parse(payload: unknown, projected: boolean) {
+    const result = Envelope.safeParse(payload);
+    if (result.success) return [];
+    return projected
+      ? result.error.issues.filter((issue) => {
+          let node: unknown = payload;
+          for (const key of issue.path)
+            node =
+              node == null || typeof node !== "object"
+                ? undefined
+                : (node as Record<PropertyKey, unknown>)[key];
+          return node !== undefined;
+        })
+      : result.error.issues;
+  }
+
+  const meta = { contract_version: "x" };
+
+  test("a projected row missing a declared key is accepted", () => {
+    const projectedBody = {
+      ok: true,
+      schema_version: 1,
+      data: { rows: [{ name: "root" }] },
+      meta,
+    };
+    assert.deepEqual(parse(projectedBody, true), []);
+    // ...and would have been refused without the projection flag, which is
+    // exactly the 500 every route was serving.
+    assert.equal(parse(projectedBody, false).length > 0, true);
+  });
+
+  test("an UNRECOGNIZED key still fails under a projection", () => {
+    // A projection can only remove. A key nobody declared is a real drift and
+    // forgiving it would give up the guarantee on the responses a caller is
+    // most likely to be surprised by.
+    const issues = parse(
+      {
+        ok: true,
+        schema_version: 1,
+        data: { rows: [{ netuid: 0, name: "root", surprise: "shipped" }] },
+        meta,
+      },
+      true,
+    );
+    assert.equal(issues.length, 1);
+    assert.equal(issues[0].code, "unrecognized_keys");
+  });
+
+  test("a WRONG TYPE on a present value still fails under a projection", () => {
+    const issues = parse(
+      {
+        ok: true,
+        schema_version: 1,
+        data: { rows: [{ netuid: "zero", name: "root" }] },
+        meta,
+      },
+      true,
+    );
+    assert.equal(issues.length, 1);
+    assert.equal(issues[0].code, "invalid_type");
+  });
+
+  test("a null is present, not absent, and still fails", () => {
+    // The distinction the path-walk has to get right: `null` is a VALUE a
+    // producer chose, not a field a projection removed.
+    const issues = parse(
+      {
+        ok: true,
+        schema_version: 1,
+        data: { rows: [{ netuid: null, name: "root" }] },
+        meta,
+      },
+      true,
+    );
+    assert.equal(issues.length, 1);
   });
 });
