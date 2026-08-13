@@ -11,6 +11,7 @@
 // (wrangler dev) with output identical to node:crypto's blake2b512.
 import { blake2b } from "@noble/hashes/blake2.js";
 import type { FieldSources } from "./field-provenance.ts";
+import { RAO_PER_TAO } from "./lib/rao.ts";
 import {
   type ChainNetworkId,
   networkKvKey,
@@ -60,8 +61,6 @@ const ACCOUNT_INFO_U128_MIN_LENGTH = ACCOUNT_INFO_HEADER_BYTES + 2 * U128_BYTES;
 // header + free/reserved/frozen/flags (u128 each) — a full u128 AccountData.
 const ACCOUNT_INFO_U128_FULL_LENGTH =
   ACCOUNT_INFO_HEADER_BYTES + 4 * U128_BYTES; // 80
-const RAO_PER_TAO = 1_000_000_000n;
-
 function decodeBase58(value: string): Uint8Array | null {
   const bytes = [0];
   for (const char of value) {

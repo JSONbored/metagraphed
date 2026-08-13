@@ -8,30 +8,16 @@
 // Null-safe: a cold/empty subnet yields a zeroed, empty-neuron card (never throws).
 
 import { median, percentile } from "./lib/stats.ts";
-import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
+import { raoBigToTao, round9OrZero, toRaoBig } from "./lib/rao.ts";
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
-
-// 1 TAO = 1e9 rao; round every tao + ratio output to that precision to shed IEEE-754
-// noise below the rao floor while keeping small yields (emission/stake) meaningful.
-const SCALE = 1e9;
-function round9(value: unknown): number {
-  const n = toNumber(value);
-  return Math.round(n * SCALE) / SCALE;
-}
 
 // The shared median() returns its raw, unrounded value -- round it to rao precision
 // here, preserving null (an empty yield set) rather than coercing it to 0.
 function roundedMedian(ascending: number[]): number | null {
   const m = median(ascending);
-  return m == null ? null : round9(m);
-}
-
-// Coerce a D1 numeric cell (number, numeric string, or null) to a finite number.
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return m == null ? null : round9OrZero(m);
 }
 
 // A finite TAO cell, or null when absent/blank/non-numeric. Blank cells coerce via
@@ -83,7 +69,7 @@ function computeYieldValue(
 ): number | null {
   if (!(stake != null && stake > 0)) return null;
   if (emission == null) return null;
-  return round9(emission / stake);
+  return round9OrZero(emission / stake);
 }
 
 interface YieldNeuron {
@@ -149,8 +135,8 @@ export function buildSubnetYield(
       uid,
       hotkey: row?.hotkey ?? null,
       role: isValidator ? "validator" : "miner",
-      stake_tao: round9(stake),
-      emission_tao: emission != null ? round9(emission) : null,
+      stake_tao: round9OrZero(stake),
+      emission_tao: emission != null ? round9OrZero(emission) : null,
       yield: computeYieldValue(emission, stake),
     });
   }
@@ -169,7 +155,7 @@ export function buildSubnetYield(
   const medianYield = roundedMedian(definedYields);
   const meanYield =
     definedYields.length > 0
-      ? round9(
+      ? round9OrZero(
           definedYields.reduce((sum, y) => sum + y, 0) / definedYields.length,
         )
       : null;
@@ -201,11 +187,12 @@ export function buildSubnetYield(
     neuron_count: neurons.length,
     validator_count: validatorCount,
     miner_count: neurons.length - validatorCount,
-    total_stake_alpha: round9(totalStake),
-    total_emission_alpha: round9(totalEmission),
+    total_stake_alpha: round9OrZero(totalStake),
+    total_emission_alpha: round9OrZero(totalEmission),
     // Subnet-wide return over UIDs with known stake + emission only — blank-emission
     // rows stay in the neuron list but must not dilute the aggregate as if emission were 0.
-    subnet_yield: yieldStake > 0 ? round9(yieldEmission / yieldStake) : null,
+    subnet_yield:
+      yieldStake > 0 ? round9OrZero(yieldEmission / yieldStake) : null,
     mean_yield: meanYield,
     median_yield: medianYield,
     p25_yield: percentile(definedYields, 25),
@@ -299,7 +286,7 @@ function yieldHistoryPoint(date: string, dayRows: Row[]): Row {
   const yieldEmission = raoBigToTao(yieldEmissionRao);
   const meanYield =
     definedYields.length > 0
-      ? round9(
+      ? round9OrZero(
           definedYields.reduce((sum, y) => sum + y, 0) / definedYields.length,
         )
       : null;
@@ -308,7 +295,8 @@ function yieldHistoryPoint(date: string, dayRows: Row[]): Row {
     neuron_count: neuronCount,
     validator_count: validatorCount,
     yield_count: definedYields.length,
-    subnet_yield: yieldStake > 0 ? round9(yieldEmission / yieldStake) : null,
+    subnet_yield:
+      yieldStake > 0 ? round9OrZero(yieldEmission / yieldStake) : null,
     mean_yield: meanYield,
     median_yield: roundedMedian(definedYields),
     p25_yield: percentile(definedYields, 25),

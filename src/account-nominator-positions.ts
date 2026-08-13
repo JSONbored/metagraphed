@@ -1,3 +1,4 @@
+import { RAO_PER_TAO_NUMBER } from "./lib/rao.ts";
 // Nominator-side (coldkey) position reconstruction (#5233): "what does this
 // coldkey actually hold, across every hotkey/subnet it delegates to" — the
 // coldkey-scoped counterpart to buildAccountPortfolio's hotkey-scoped view
@@ -76,10 +77,9 @@ function nullableFraction(value: unknown): number | null {
 
 // 1 TAO = 1e9 rao; round tao outputs to that precision (matches the sibling
 // account-tier modules' own round9/roundTao helpers).
-const RAO_PER_TAO = 1e9;
 function roundTao(value: number | null): number | null {
   if (value == null || !Number.isFinite(value)) return null;
-  return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
+  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
 }
 
 function round6(value: number | null): number | null {

@@ -1,3 +1,4 @@
+import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
 // Network-wide native-TAO transfer-pair analytics: over a recent window, which
 // sender -> receiver corridors dominate Balances.Transfer flow. This is the pair
 // companion to /chain/transfers (top individual senders/receivers) and
@@ -9,16 +10,8 @@ export const DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW = "7d";
 export const CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT = 25;
 export const CHAIN_TRANSFER_PAIR_LIMIT_MAX = 100;
 export const CHAIN_TRANSFER_PAIR_SORTS = ["volume", "count"];
-
-const RAO_PER_TAO = 1e9;
-
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function toCount(value: unknown): number {
-  return Math.max(0, Math.trunc(toNumber(value)));
+  return Math.max(0, Math.trunc(numberOrZero(value)));
 }
 
 function toBlockNumber(value: unknown): number | null {
@@ -30,8 +23,8 @@ function toBlockNumber(value: unknown): number | null {
 }
 
 function roundTao(value: unknown): number {
-  const n = toNumber(value);
-  return Math.round(n * RAO_PER_TAO) / RAO_PER_TAO;
+  const n = numberOrZero(value);
+  return Math.round(n * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
 }
 
 function toNonNegativeTao(value: unknown): number {

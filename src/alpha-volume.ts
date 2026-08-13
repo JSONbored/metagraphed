@@ -1,3 +1,4 @@
+import { numberOrZero } from "./lib/rao.ts";
 // Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), plus a
 // buy/sell sentiment indicator derived from it (#4339/8.2 — net/gross alpha
 // lean, no new capture or query): how much subnet alpha was bought
@@ -20,13 +21,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // amount_tao, so one query yields both units without a second read.
 export const STAKE_ADDED_KIND = "StakeAdded";
 export const STAKE_REMOVED_KIND = "StakeRemoved";
-
-// Coerce a SUM()/COUNT() cell (number, numeric string, or null) to a finite
-// number, defaulting to 0.
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 // A finite amount aggregate cell, or null when absent/blank/non-numeric.
 function nullableAmount(value: unknown): number | null {
@@ -179,7 +173,7 @@ export function buildAlphaVolume(
     const kind = row?.event_kind;
     const alpha = nullableAmount(row?.alpha_volume) ?? 0;
     const tao = nullableAmount(row?.tao_volume) ?? 0;
-    const count = toNumber(row?.event_count);
+    const count = numberOrZero(row?.event_count);
     if (kind === STAKE_ADDED_KIND) {
       buyAlpha += alpha;
       buyTao += tao;

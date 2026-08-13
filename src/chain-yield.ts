@@ -9,7 +9,7 @@
 // envelope. Null-safe: an empty snapshot yields a schema-stable zeroed card.
 
 import { median, percentile } from "./lib/stats.ts";
-import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
+import { raoBigToTao, round9, toRaoBig } from "./lib/rao.ts";
 
 // The neurons-tier columns the network yield handler reads. `netuid` lets the
 // artifact report how many subnets the snapshot spans (mirrors
@@ -20,13 +20,6 @@ export const CHAIN_YIELD_READ_COLUMNS =
 
 // The return-rate spread reported alongside the conventional median.
 const YIELD_PERCENTILES = [10, 25, 75, 90];
-
-// 1 TAO = 1e9 rao; round tao + yield outputs to that precision to shed IEEE-754
-// noise below the rao floor while keeping small emission/stake ratios meaningful.
-const SCALE = 1e9;
-function round9(value: unknown): number {
-  return Math.round(Number(value) * SCALE) / SCALE;
-}
 
 // A finite TAO cell, or null when absent/blank/non-numeric. Blank cells coerce via
 // Number("") → 0; skip those rows rather than fabricating zero-stake neurons or

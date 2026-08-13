@@ -42,7 +42,7 @@
 // tier owns the SQL for every neuron_daily-derived series); this module never
 // touches a store, so the same rows always produce the same payload.
 
-import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
+import { raoBigToTao, round9, toRaoBig } from "./lib/rao.ts";
 import { BLOCKS_PER_DAY, OWNER_CUT } from "./revenue-coverage.ts";
 import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
@@ -66,13 +66,6 @@ type Row = Record<string, unknown>;
  * point covers a whole day. Mirrors YIELD_HISTORY_ROW_CAP, whose read is the
  * same shape over the same table. */
 export const EMISSION_SPLIT_HISTORY_ROW_CAP = 50_000;
-
-// Round every alpha/TAO/ratio output to the rao floor (1e-9) to shed IEEE-754
-// noise below the precision the chain itself carries.
-const SCALE = 1e9;
-function round9(value: number): number {
-  return Math.round(value * SCALE) / SCALE;
-}
 
 // A finite, non-negative numeric cell, or null when absent/blank/non-numeric.
 // Blank cells coerce via Number("") -> 0, and a fabricated zero is a

@@ -1,4 +1,5 @@
 import { clampRowLimit } from "../workers/request-params.ts";
+import { RAO_PER_TAO_NUMBER } from "./lib/rao.ts";
 // Nominator list for one validator hotkey (#4334/7.2): who has staked to this
 // validator (across every subnet it operates in), derived from the same
 // StakeAdded/StakeRemoved account_events flow src/account-stake-flow.ts
@@ -26,12 +27,10 @@ export const NOMINATOR_SORTS = ["net_staked", "gross_staked", "last_activity"];
 export const DEFAULT_NOMINATOR_SORT = "net_staked";
 export const NOMINATOR_LIMIT_DEFAULT = 20;
 export const NOMINATOR_LIMIT_MAX = 100;
-
-const RAO_PER_TAO = 1e9;
 function roundTao(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
+  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
 }
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank D1
