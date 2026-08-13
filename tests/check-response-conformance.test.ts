@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildValidator,
+  driftRefusal,
   evaluateResponse,
 } from "../scripts/check-response-conformance.ts";
 
@@ -164,6 +165,84 @@ describe("the response-conformance rule (#9141)", () => {
       verdict.violations.length > 0,
       "a body missing a required property must be reported -- a validator " +
         "that never reports is indistinguishable from a healthy API",
+    );
+  });
+});
+
+describe("a tripwire refusal is drift wearing a 500 (#10987)", () => {
+  // On 2026-08-13 this check reported "OK: all 204 checked routes match their
+  // published schemas" while /api/v1/subnets/{netuid}/overview answered 500 to
+  // every caller -- for the exact drift it exists to find. The serve-time
+  // tripwire turns drift into a 500, and "skip non-200" then hid the route
+  // that was hardest down. Both rules were individually right.
+  const refusalBody = (message: string) => ({
+    ok: false,
+    schema_version: 1,
+    data: null,
+    error: { code: "response_schema_drift", message },
+  });
+
+  test("a refusal is a VIOLATION, not a skip", () => {
+    const verdict = evaluateResponse({
+      status: 500,
+      body: refusalBody("The subnet-overview response did not match."),
+      validator,
+      route: "/api/v1/subnets/{netuid}/overview",
+    });
+    assert.equal(verdict.skipped, null, "a refusal must not be skipped");
+    assert.equal(verdict.violations.length, 1);
+    assert.equal(
+      verdict.violations[0]!.route,
+      "/api/v1/subnets/{netuid}/overview",
+      "the violation must name the route -- no validator produced it",
+    );
+  });
+
+  test("the refusal's own message rides along, because it IS the diagnosis", () => {
+    const verdict = evaluateResponse({
+      status: 500,
+      body: refusalBody("unrecognized_keys: name, latency_sample_count"),
+      validator,
+    });
+    assert.match(verdict.violations[0]!.message, /latency_sample_count/);
+  });
+
+  test("a refusal with no message still reports, naming the code", () => {
+    const verdict = evaluateResponse({
+      status: 500,
+      body: { error: { code: "response_schema_drift" } },
+      validator,
+    });
+    assert.equal(verdict.violations.length, 1);
+    assert.match(verdict.violations[0]!.message, /response_schema_drift/);
+  });
+
+  test("availability is STILL not this monitor's job", () => {
+    // The original rule, preserved: a 503 or a non-drift 500 is an outage, and
+    // going red for it is what makes a monitor ignorable.
+    for (const body of [
+      { ok: false, error: { code: "unavailable", message: "cold store" } },
+      { ok: false, error: { code: "internal_error", message: "boom" } },
+    ]) {
+      const verdict = evaluateResponse({ status: 503, body, validator });
+      assert.equal(verdict.skipped, "http 503");
+      assert.deepEqual(verdict.violations, []);
+    }
+  });
+
+  test("driftRefusal reads only a real refusal envelope", () => {
+    // Every shape a live 500 body can arrive in, including the edge error page
+    // that parses to null.
+    assert.equal(driftRefusal(null), null);
+    assert.equal(driftRefusal("<!doctype html>"), null);
+    assert.equal(driftRefusal({}), null);
+    assert.equal(driftRefusal({ error: null }), null);
+    assert.equal(driftRefusal({ error: "boom" }), null);
+    assert.equal(driftRefusal({ error: { code: "not_found" } }), null);
+    assert.equal(
+      driftRefusal({ error: { code: "response_schema_drift", message: 42 } }),
+      "the route refused its own response (response_schema_drift)",
+      "a non-string message falls back to the code rather than throwing",
     );
   });
 });

@@ -99,28 +99,71 @@ export function buildValidator(
 }
 
 /**
+ * The envelope's own admission that it refused itself.
+ *
+ * `workers/api.ts` answers a tripwire refusal with a 500 whose body is a normal
+ * error envelope carrying `response_schema_drift` -- and the detail rides in
+ * the message, because the drifted keys ARE the diagnosis. Reading it here is
+ * what lets a refusal be reported as the drift it is rather than skipped as an
+ * outage.
+ */
+export function driftRefusal(body: unknown): string | null {
+  if (typeof body !== "object" || body === null) return null;
+  const error = (body as { error?: unknown }).error;
+  if (typeof error !== "object" || error === null) return null;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  if (code !== "response_schema_drift") return null;
+  return typeof message === "string" && message.length > 0
+    ? `the route refused its own response: ${message}`
+    : "the route refused its own response (response_schema_drift)";
+}
+
+/**
  * The verdict for one fetched route, as a pure function (#9141).
  *
- * Split out so the rule is testable without a network or a spec. The edges are
- * the entire point, and every one of them is a decision to SKIP rather than to
- * fail -- a conformance check that also reports availability becomes a check
- * nobody trusts, because it goes red for reasons that are not drift.
+ * Split out so the rule is testable without a network or a spec. Every edge
+ * here is a decision to SKIP rather than to fail -- a conformance check that
+ * also reports availability becomes a check nobody trusts, because it goes red
+ * for reasons that are not drift. The ONE exception is a tripwire refusal,
+ * which arrives wearing a 500 but is this monitor's own subject.
  */
 export function evaluateResponse({
   status,
   body,
   validator,
+  route = "",
 }: {
   status: number;
   body: unknown;
   // Carries its own route path, so violations name it without this function
   // needing to know it.
   validator: Validator | null;
+  /** Only needed to name a refusal, which no validator produced. */
+  route?: string;
 }): { skipped: string | null; violations: Violation[] } {
   // No declared JSON schema means nothing to check -- not a failure.
   if (!validator) return { skipped: "no declared 200 schema", violations: [] };
-  // Only a 200 is judged. Availability is check-self-health's job; a 503 here
-  // would make this monitor red for something it is not measuring.
+  // A route the TRIPWIRE already refused is this monitor's subject, not an
+  // availability blip -- and it arrives as a 500, which the rule below would
+  // otherwise skip.
+  //
+  // That combination is how this check reported "OK: all 204 checked routes
+  // match their published schemas" on 2026-08-13 while
+  // /api/v1/subnets/{netuid}/overview was answering 500 to EVERY caller,
+  // for the exact drift this monitor exists to find. The serve-time tripwire
+  // (src/response-validation-tripwire.ts) turns drift into a 500; skipping
+  // non-200 then blinds the sweep to precisely the routes that are hardest
+  // down. Two correct rules, and between them a route can be completely
+  // broken by drift and reported green.
+  const refusal = driftRefusal(body);
+  if (refusal) {
+    return {
+      skipped: null,
+      violations: [{ route, path: "(response)", message: refusal }],
+    };
+  }
+  // Only a 200 is judged otherwise. Availability is check-self-health's job; a
+  // 503 here would make this monitor red for something it is not measuring.
   if (status !== 200) return { skipped: `http ${status}`, violations: [] };
   // NOTE a degraded tier answers with a schema-stable EMPTY body, and that
   // passes -- correctly. This checks shape, not content.
@@ -156,9 +199,13 @@ async function main(): Promise<void> {
       const response = await fetch(new URL(url, BASE), {
         signal: AbortSignal.timeout(30_000),
       });
+      // The body is read whatever the status: a tripwire refusal arrives as a
+      // 500 whose envelope names the drift, and discarding it was half of why
+      // a fully-broken route reported green. Non-JSON (an edge error page) is
+      // still nothing to judge.
       fetched = {
         status: response.status,
-        body: response.status === 200 ? await response.json() : null,
+        body: await response.json().catch(() => null),
       };
     } catch {
       skipped += 1; // network/timeout: not drift
@@ -168,6 +215,7 @@ async function main(): Promise<void> {
     const verdict = evaluateResponse({
       ...fetched,
       validator: buildValidator(spec, route.path),
+      route: route.path,
     });
     if (verdict.skipped) {
       skipped += 1;
