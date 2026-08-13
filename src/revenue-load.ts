@@ -111,8 +111,22 @@ export interface LoadSubnetRevenueInput {
   surfaces: Row[] | null;
   usd_per_tao: number | null;
   searched_at?: string | null;
-  /** The observation SERIES per surface, newest period in any order. */
-  observations?: Map<string, RevenueObservation[]>;
+  /**
+   * The observation SERIES per surface, newest period in any order.
+   *
+   * REQUIRED, and explicitly nullable, since #10926. It was
+   * `observations?:` with `?? new Map()` downstream, and that default was the
+   * bug's hiding place: three MCP tools simply never passed it, so every
+   * source reported `excluded_reason: "not observed"` and `revenue_usd` was
+   * null for every subnet forever -- a correct-looking decline standing in for
+   * a read that never happened, invisible because the decline is the
+   * documented normal answer.
+   *
+   * A caller with genuinely nothing to pass now has to SAY so (`observations:
+   * null`), which is a sentence somebody can read and check. Omission is a
+   * compile error.
+   */
+  observations: Map<string, RevenueObservation[]> | null;
 }
 
 /** Compose the served body. Never throws on missing pieces. */

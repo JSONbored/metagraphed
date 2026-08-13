@@ -121,6 +121,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
       surfaces: SURFACES,
       usd_per_tao: 204.03,
       searched_at: "2026-08-10T00:00:00Z",
+      observations: null,
     });
     assert.equal(r.revenue_usd, null);
     assert.equal(r.coverage_ratio, null);
@@ -164,6 +165,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
       economics: null,
       surfaces: null,
       usd_per_tao: 204.03,
+      observations: null,
     });
     assert.equal(r.emission.tao, 0);
     assert.equal(r.coverage_ratio, null);
@@ -210,6 +212,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
       economics: ECONOMICS,
       surfaces: SURFACES,
       usd_per_tao: 200.25489144597697,
+      observations: null,
     });
     assert.ok((r.emission.usd ?? 0) > 0, `${r.emission.usd}`);
     assert.ok((r.emission.alternates.owner_take.usd ?? 0) > 0);

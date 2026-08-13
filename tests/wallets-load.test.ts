@@ -201,6 +201,7 @@ describe("the owner-cut view", () => {
       netuid: 64,
       economics: ECONOMICS,
       owner_cut: OWNER_CUT,
+      usd_per_tao: null,
     });
     assert.equal(v.disposition.buckets["held-as-stake"], null);
     assert.ok((v.disposition.buckets.unresolved as number) > 0);
@@ -213,6 +214,7 @@ describe("the owner-cut view", () => {
       netuid: 64,
       economics: ECONOMICS,
       owner_cut: null,
+      usd_per_tao: null,
     });
     assert.equal(v.accrual.alpha, null);
     assert.match(String(v.accrual.reason), /owner cut share not read/);
@@ -223,6 +225,7 @@ describe("the owner-cut view", () => {
       netuid: 999,
       economics: null,
       owner_cut: OWNER_CUT,
+      usd_per_tao: null,
     });
     assert.equal(v.owner_coldkey, null);
     assert.equal(v.owner_hotkey, null);
@@ -234,6 +237,7 @@ describe("the owner-cut view", () => {
       netuid: 64,
       economics: ECONOMICS,
       owner_cut: OWNER_CUT,
+      usd_per_tao: null,
     });
     assert.equal("netuid" in v.accrual, false);
     assert.equal("window_days" in v.accrual, false);

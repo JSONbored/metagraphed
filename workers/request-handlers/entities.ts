@@ -194,9 +194,9 @@ import {
 } from "../../src/failure-reasons.ts";
 import {
   buildTaoUsdSeries,
-  loadLatestTaoUsdReading,
   loadTaoUsdSeries,
   TAO_USD_WINDOWS,
+  usdPerTaoOrNull as sharedUsdPerTaoOrNull,
 } from "../../src/tao-usd-series.ts";
 import {
   buildSurfaceHistory,
@@ -429,7 +429,6 @@ import {
 import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { withUsdAtTx } from "../../src/price-at-tx.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
-import { taoUsdUsable } from "../../src/alpha-usd.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
 import { loadSubnetStakeFlowFromArtifact } from "../../src/subnet-stake-flow-artifact.ts";
 import {
@@ -7217,7 +7216,7 @@ export async function handleSubnetRevenue(
     economics: row,
     surfaces: await subnetSurfacesFor(env, netuid),
     usd_per_tao: await usdPerTaoOrNull(env),
-    observations: observations ?? undefined,
+    observations: observations ?? null,
   });
   return envelopeResponse(
     request,
@@ -7267,7 +7266,7 @@ export async function handleChainRevenueCoverage(request: Request, env: Env) {
         economics: row,
         surfaces: await subnetSurfacesFor(env, netuid),
         usd_per_tao: usd,
-        observations: allObservations ?? undefined,
+        observations: allObservations ?? null,
       }),
     );
   }
@@ -7325,14 +7324,9 @@ async function subnetSurfacesFor(
  * correctly converge on "no rate" -- and none of them is a rate of zero.
  */
 async function usdPerTaoOrNull(env: Env): Promise<number | null> {
-  const reading = await loadLatestTaoUsdReading(
+  return sharedUsdPerTaoOrNull(
     readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
-      typeof loadLatestTaoUsdReading
+      typeof sharedUsdPerTaoOrNull
     >[0],
   );
-  // Not `reading?.usd_per_tao ?? null` behind the grade: `taoUsdUsable` only
-  // returns ok for a non-null, finite, positive rate, so that `??` arm is
-  // unreachable -- and an unreachable branch reads as a tested one.
-  if (!reading || !taoUsdUsable(reading, Date.now()).ok) return null;
-  return reading.usd_per_tao;
 }

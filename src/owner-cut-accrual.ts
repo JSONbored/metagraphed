@@ -40,8 +40,16 @@ export interface OwnerCutAccrualInput {
   alpha_out_per_block: number | null | undefined;
   /** The subnet's alpha price in TAO, for pricing the alpha share. */
   alpha_price_tao: number | null | undefined;
-  /** TAO/USD at the instant being priced. Null yields a null USD leg only. */
-  usd_per_tao?: number | null;
+  /**
+   * TAO/USD at the instant being priced. Null yields a null USD leg only.
+   *
+   * REQUIRED and explicitly nullable (#10926). As `usd_per_tao?:` it was
+   * simply not passed by the MCP mirror of this loader, so `accrual.usd` was
+   * null on every MCP call while REST priced the same subnet from the same
+   * index -- a decline that reads as a stated outcome rather than a dropped
+   * argument. A caller with no rate now has to say `usd_per_tao: null`.
+   */
+  usd_per_tao: number | null;
   /**
    * The share the runtime applies -- network-parameters'
    * `subnet_owner_cut_effective`, NOT the raw numerator. Null when the
@@ -167,7 +175,8 @@ export function computeOwnerCutAccrualSeries(
   rows: Array<Record<string, unknown>> | null | undefined,
   options: {
     owner_cut: number | null | undefined;
-    usd_per_tao?: number | null;
+    /** Required and explicitly nullable (#10926) -- see the sibling input. */
+    usd_per_tao: number | null;
     window_days?: number;
     /** netuid -> owner_cut_enabled, where it was read. */
     enabledByNetuid?: Map<number, boolean>;

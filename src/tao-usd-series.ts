@@ -33,7 +33,11 @@
 // young series read as a complete one is how a four-day chart becomes a claim
 // about the month.
 
-import { TAO_USD_MAX_AGE_MS, type TaoUsdReading } from "./alpha-usd.ts";
+import {
+  TAO_USD_MAX_AGE_MS,
+  taoUsdUsable,
+  type TaoUsdReading,
+} from "./alpha-usd.ts";
 
 type Row = Record<string, unknown>;
 
@@ -327,4 +331,38 @@ function toIsoOrNull(value: unknown): string | null {
 
 function round(value: number): number {
   return Math.round(value * 1e9) / 1e9;
+}
+
+/**
+ * The current TAO/USD rate for pricing a TAO-denominated figure, or null.
+ *
+ * ONE IMPLEMENTATION, FOR EVERY SURFACE. REST had this as a private helper in
+ * workers/request-handlers/entities.ts and MCP grew its own, which read a
+ * DIFFERENT source: the `/metagraph/network/tao-usd.json` artifact rather than
+ * the live index. That copy answered null in production while REST priced the
+ * same subnet in the same second (measured 2026-08-12 on netuid 64: REST
+ * `emission.usd` 86,917.23, MCP `emission.usd` null, "no TAO/USD rate") -- so
+ * every USD leg on every MCP revenue and owner-cut response was null, and the
+ * response said so in a way that reads as a stated outcome rather than a bug.
+ *
+ * The sibling MCP tool `get_tao_usd` was already reading the store correctly,
+ * which is what makes this a copy problem rather than a missing capability:
+ * the surface could always answer, and one hand-written mirror asked the wrong
+ * thing.
+ *
+ * `taoUsdUsable` grades the reading rather than this function re-deriving the
+ * bound: an unpriced reading (`insufficient_pools`), one past
+ * TAO_USD_MAX_AGE_MS, and an empty table are three distinct outcomes that all
+ * correctly converge on "no rate" -- and none of them is a rate of zero.
+ */
+export async function usdPerTaoOrNull(
+  store: Parameters<typeof loadLatestTaoUsdReading>[0],
+  nowMs: number = Date.now(),
+): Promise<number | null> {
+  const reading = await loadLatestTaoUsdReading(store);
+  // Not `reading?.usd_per_tao ?? null` behind the grade: `taoUsdUsable` only
+  // returns ok for a non-null, finite, positive rate, so that `??` arm is
+  // unreachable -- and an unreachable branch reads as a tested one.
+  if (!reading || !taoUsdUsable(reading, nowMs).ok) return null;
+  return reading.usd_per_tao;
 }

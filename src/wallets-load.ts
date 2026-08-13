@@ -159,7 +159,9 @@ export interface LoadSubnetOwnerCutInput {
   /** network-parameters' `subnet_owner_cut_effective`. Null makes the accrual
    * null rather than silently 18% (#10484). */
   owner_cut: number | null;
-  usd_per_tao?: number | null;
+  /** Required and explicitly nullable (#10926) -- an omitted rate is how
+   * `accrual.usd` became permanently null on a whole surface. */
+  usd_per_tao: number | null;
   /** The subnet's own hyperparameter. Null means unread, not false. */
   owner_cut_enabled?: boolean | null;
   /** Standing stake on the owner hotkey, from the HOTKEY-SCOPED portfolio view

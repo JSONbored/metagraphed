@@ -168,7 +168,10 @@ describe("the network series", () => {
 
   test("includes the unmeasurable rather than dropping them", () => {
     // Omitting a row would make the measured set look like the whole network.
-    const out = computeOwnerCutAccrualSeries(ROWS, { owner_cut: OWNER_CUT });
+    const out = computeOwnerCutAccrualSeries(ROWS, {
+      owner_cut: OWNER_CUT,
+      usd_per_tao: null,
+    });
     assert.equal(
       out.length,
       3,
@@ -183,6 +186,7 @@ describe("the network series", () => {
   test("applies a per-subnet enabled flag where it was read", () => {
     const out = computeOwnerCutAccrualSeries(ROWS, {
       owner_cut: OWNER_CUT,
+      usd_per_tao: null,
       enabledByNetuid: new Map([[51, false]]),
     });
     const disabled = out.find((r) => r.netuid === 51);
@@ -195,7 +199,10 @@ describe("the network series", () => {
   test("junk input yields no rows rather than throwing", () => {
     for (const rows of [null, undefined, [], "no" as unknown as []]) {
       assert.deepEqual(
-        computeOwnerCutAccrualSeries(rows as never, { owner_cut: OWNER_CUT }),
+        computeOwnerCutAccrualSeries(rows as never, {
+          owner_cut: OWNER_CUT,
+          usd_per_tao: null,
+        }),
         [],
       );
     }

@@ -1567,7 +1567,7 @@ async function revenueForNetuid(
     economics,
     surfaces: await surfacesForNetuid(context, netuid),
     usd_per_tao: await taoUsdForRevenue(context),
-    observations: observations ?? undefined,
+    observations: observations ?? null,
   });
 }
 
@@ -7713,7 +7713,7 @@ const rootValue = {
           economics: row,
           surfaces: await surfacesForNetuid(context, netuid),
           usd_per_tao: usd,
-          observations: observations ?? undefined,
+          observations: observations ?? null,
         }),
       );
     }
