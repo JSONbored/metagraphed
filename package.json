@@ -162,6 +162,7 @@
     "smoke:mcp": "node scripts/mcp-smoke-sweep.ts",
     "conformance:cross-surface": "node scripts/check-cross-surface-values.ts",
     "conformance:latency": "node scripts/check-operation-latency.ts",
+    "conformance:tripwire": "node scripts/check-tripwire-conformance.ts",
     "conformance:adversarial": "node scripts/check-adversarial-surface.ts",
     "conformance:graphql": "node scripts/check-graphql-conformance.ts",
     "conformance:mcp": "node scripts/check-mcp-conformance.ts",
