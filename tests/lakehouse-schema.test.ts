@@ -48,10 +48,11 @@ describe("the committed snapshot", () => {
     // decision is recorded. The cost is that adding a table is two edits; that
     // cost IS the check.
     //
-    // account_events_daily is NOT here on purpose: it is named in four
-    // comments and a route description and queried by nothing, because
-    // src/account-history-cold-tier.ts computes its own day bucket from
-    // account_events instead.
+    // account_events_daily WAS excluded on the grounds that it is "queried by
+    // nothing" -- src/account-history-cold-tier.ts computes its own day bucket
+    // from account_events instead. That held while nothing produced it. It has
+    // a producer now (metagraphed-infra#544, backfilling 1,241 days), and a
+    // table we WRITE needs drift coverage whether or not a route reads it.
     assert.deepEqual(
       [...new Set(snapshot.map((c) => c.table))].sort(),
       [
@@ -111,6 +112,11 @@ describe("the committed snapshot", () => {
         "tao_usd_index",
         "treasury_readings",
         "subnet_burn_history",
+        // Derived here rather than mirrored: rolled up from chain.account_events
+        // by metagraphed-infra#544. The list once excluded it as "queried by
+        // nothing", which was true only while nothing produced it -- we write it
+        // every tick now, so it belongs under the same drift coverage.
+        "account_events_daily",
       ].sort(),
     );
     // The TS side mirrors the snapshot -- it is the READER's list.

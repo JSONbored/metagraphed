@@ -2924,5 +2924,61 @@
     "column": "burn_tao",
     "type": "double",
     "required": false
+  },
+  {
+    "table": "account_events_daily",
+    "field_id": 1,
+    "column": "hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_events_daily",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "account_events_daily",
+    "field_id": 3,
+    "column": "day",
+    "type": "date",
+    "required": false
+  },
+  {
+    "table": "account_events_daily",
+    "field_id": 4,
+    "column": "event_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "account_events_daily",
+    "field_id": 5,
+    "column": "event_kinds",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_events_daily",
+    "field_id": 6,
+    "column": "first_block",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "account_events_daily",
+    "field_id": 7,
+    "column": "last_block",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "account_events_daily",
+    "field_id": 8,
+    "column": "updated_at",
+    "type": "long",
+    "required": false
   }
 ]
