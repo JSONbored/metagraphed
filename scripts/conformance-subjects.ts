@@ -61,6 +61,22 @@ export const SUBJECTS: Readonly<
   crowdloan_id: 0,
   query: "inference",
   q: "inference",
+  // A decoded extrinsic (block 8,832,459). Decode history is complete and
+  // immutable, so a hash once served is served forever -- this cannot rotate
+  // out of a window the way a "latest" subject would.
+  hash: "0x3e59f2cdc12f4a47ad37b02aa04d9de650caa405d58f58b4e3c2ed50996ca450",
+  // A domain tag from the fixed 14-tag taxonomy (src/domain-tags.ts).
+  tag: "agents",
+  // A registered surface with probe history (SN7 allways, the api-health
+  // surface) -- the id `surface:add` derives, stable while the surface stays
+  // registered.
+  surface_id: "allways-api-health",
+  // Shape-valid and UNMAPPED on purpose: /evm/address/{h160} answers a mapping
+  // lookup, and "no mapping" is a real 200 answer with the full response
+  // shape. No stable real mapping exists to pin instead -- an H160 that is
+  // mapped today can unmap tomorrow, which would turn the sweep's subject
+  // stale in a way this one cannot be.
+  h160: `0x${"12".repeat(20)}`,
   // The two PLURAL arguments, which only the comparison tools take. No route
   // spells either as a path parameter, so they exist for
   // `argumentsForRequired` alone.
