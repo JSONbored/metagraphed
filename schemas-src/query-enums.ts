@@ -77,6 +77,10 @@ export const QUERY_ENUMS = {
   // (contracts.ts) cannot afford a schema import: the data-api Worker sits at
   // the startup CPU limit, and this module is the one place guaranteed free.
   responseEnvelopeField: ["ok", "data", "meta", "error"],
+  // The CALLABLE machine-interface subset of surfaceKind -- what integration
+  // readiness, the apis badge metric and the agent catalog count. Declared six
+  // times before this (#10996), one admitting to be an unenforced mirror.
+  callableServiceKind: ["subnet-api", "openapi", "sse", "data-artifact"],
   stakeFlowDirection: ["all", "in", "out"],
   surfaceHistoryAction: ["insert", "update", "delete"],
   providerAuthority: [

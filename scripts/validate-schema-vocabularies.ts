@@ -37,6 +37,10 @@ const SCHEMA_DIRS = [
   "src/graphql",
   "workers",
   "workers/request-handlers",
+  // And the producers (#10996): a script consuming a vocabulary operationally
+  // must import the owner. Validator assertion-pins are declaration-invisible
+  // here by design -- see the allowlist note below.
+  "scripts",
 ];
 
 /** Vocabularies allowed to coincide, pinned to the EXACT files that do.
@@ -79,10 +83,6 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
     "schemas-src/routes/subnet-detail.ts",
     "schemas-src/routes/subnets.ts",
   ],
-  "bearish|bullish|neutral": [
-    "schemas-src/routes/chain-alpha-volume.ts",
-    "schemas-src/routes/subnet-alpha-volume.ts",
-  ],
   "dual|git|r2": [
     "schemas-src/artifacts/r2-manifest.ts",
     "schemas-src/routes/meta-contracts.ts",
@@ -95,6 +95,15 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
   // nominator_positions primary-key column list -- the same three words
   // naming two unrelated things. A shared owner would couple an on-chain ABI
   // to a database index.
+  // Inline `[...].includes(...)` assertions in scripts/validate*.ts are PINS:
+  // literal on purpose, and invisible here because this gate matches
+  // declaration forms only -- the right blindness, since deriving a
+  // validator's expectation from the module it validates could never fail
+  // (#10996).
+  "bearish|bullish|neutral": [
+    "schemas-src/routes/chain-alpha-volume.ts",
+    "schemas-src/routes/subnet-alpha-volume.ts",
+  ],
   "coldkey|hotkey|netuid": [
     "src/evm-precompiles.ts",
     "src/nominator-positions-neon-write.ts",
@@ -158,8 +167,13 @@ for (const dir of SCHEMA_DIRS) {
     // `surfaceKind` sat there restating `SURFACE_KIND_VALUES` in a different
     // order: the routes published one and the MCP tools the other, which is 32
     // of the tool-vs-route enum divergences #10060 was counting.
-    for (const match of source.matchAll(/\b\w+:\s*\[([^\]]*)\][,;]/g))
-      push(match[1]);
+    for (const match of source.matchAll(/\b(\w+):\s*\[([^\]]*)\][,;]/g)) {
+      // `stdio: ["pipe", "pipe", "ignore"]` is Node's spawn wiring, not a
+      // domain vocabulary -- five scripts legitimately configure it and no
+      // owner could exist (#10996).
+      if (match[1] === "stdio") continue;
+      push(match[2]);
+    }
   }
 }
 
