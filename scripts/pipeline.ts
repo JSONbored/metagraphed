@@ -158,6 +158,7 @@ function checkCommands(): Step[] {
     step("validate:unreferenced-exports"),
     step("validate:module-state-resets"),
     step("validate:pg-json-binds"),
+    step("validate:retired-store-vocabulary"),
     step("validate:private-boundary"),
     step("test"),
   ];
@@ -280,6 +281,7 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("validate:unreferenced-exports"),
     step("validate:module-state-resets"),
     step("validate:pg-json-binds"),
+    step("validate:retired-store-vocabulary"),
     step("validate:private-boundary"),
     step("test"),
   ];

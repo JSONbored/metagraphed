@@ -731,6 +731,7 @@ jobs:
           run_step npm run validate:unreferenced-exports
           run_step npm run validate:module-state-resets
           run_step npm run validate:pg-json-binds
+          run_step npm run validate:retired-store-vocabulary
           report_steps
 
       - name: Validate Cloudflare config
