@@ -5010,13 +5010,13 @@ type ChainSpecReading {
 
 type SubtensorRelease {
   tag: String!
-  spec_version: Int!
+  name: String
   published_at: String
 
   """GitHub's own html_url -- never constructed."""
   url: String
-  name: String
   prerelease: Boolean!
+  spec_version: Int!
 }
 
 type ValidatorList {
@@ -5507,11 +5507,13 @@ One account's per-subnet position history over a lookback window, one point per 
 """
 type AccountPositionHistory {
   schema_version: Int!
-  ss58: String!
   netuid: Int!
+
+  """The resolved window label (7d/30d/90d)."""
   window: String
   point_count: Int!
   points: [AccountPositionHistoryPoint!]!
+  ss58: String!
 }
 
 """
@@ -7185,13 +7187,13 @@ Distribution of the per-neuron emission/stake return rate across the network.
 type YieldDistribution {
   count: Int!
   mean: Float!
-  median: Float!
   min: Float!
-  max: Float!
-  p10: Float!
   p25: Float!
+  median: Float!
   p75: Float!
   p90: Float!
+  max: Float!
+  p10: Float!
 }
 
 """

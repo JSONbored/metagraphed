@@ -16,6 +16,7 @@
 // (.passthrough()) so this is a pure completeness gain, not a tightening.
 import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
+import { OverlaidSubnetHealthSchema } from "./health.ts";
 import {
   CurationMetadataSchema,
   GapsSchema,
@@ -23,21 +24,12 @@ import {
 } from "./subnet-detail.ts";
 import { SubnetProfileSchema } from "./subnet-profile.ts";
 
-const SubnetOverviewHealthSchema = z
-  .object({
-    netuid: z.int().min(0).optional(),
-    status: z.string().optional(),
-    surface_count: z.int().min(0).optional(),
-    ok_count: z.int().min(0).optional(),
-    degraded_count: z.int().min(0).optional(),
-    failed_count: z.int().min(0).optional(),
-    unknown_count: z.int().min(0).optional(),
-    last_checked: z.string().nullable().optional(),
-    last_ok: z.string().nullable().optional(),
-    avg_latency_ms: z.number().nullable().optional(),
-    observed_by: z.string().optional(),
-  })
-  .strict();
+// The overlaid health block has ONE declaration, in routes/health.ts next to
+// the summary the overlay spreads. Re-listing it here dropped
+// `latency_sample_count` and `name` -- both of which the overlay copies through
+// and production serves -- so this route served two keys its own `.strict()`
+// schema forbade, which the daily conformance sweep reported against
+// `/data/health`.
 
 export const SubnetOverviewArtifactSchema = ArtifactBaseSchema.extend({
   netuid: z.int().min(0),
@@ -45,7 +37,7 @@ export const SubnetOverviewArtifactSchema = ArtifactBaseSchema.extend({
   name: z.string().optional(),
   status: z.string().optional(),
   profile: SubnetProfileSchema.nullable(),
-  health: SubnetOverviewHealthSchema.nullable(),
+  health: OverlaidSubnetHealthSchema.nullable(),
   ...LIVE_HEALTH_OVERLAY,
   curation: CurationMetadataSchema.nullable().optional(),
   gaps: GapsSchema.nullable().optional(),

@@ -30,6 +30,7 @@
 // against a live get_subnet response.
 import { z } from "zod";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
+import { OverlaidSubnetHealthSchema } from "../routes/health.ts";
 import { netuidSchema } from "./shared.ts";
 import { ReviewGapPrioritySchema } from "../routes/review-gaps-profile.ts";
 // The route's OWN curation block (#10790). The copy typed `level` and
@@ -45,25 +46,19 @@ export const GetSubnetInputSchema = z
   .strict();
 export type GetSubnetInput = z.infer<typeof GetSubnetInputSchema>;
 
-/** The composed health card. Probe-derived (#health): counts of surfaces by
- * verdict, the newest check, and the observed latency sample behind it. */
-const SubnetOverviewHealthSchema = z
-  .object({
-    netuid: netuidSchema().optional(),
-    name: z.string().nullable().optional(),
-    status: z.string().nullable().optional(),
-    surface_count: z.int().optional(),
-    ok_count: z.int().optional(),
-    degraded_count: z.int().optional(),
-    failed_count: z.int().optional(),
-    unknown_count: z.int().optional(),
-    last_checked: z.string().nullable().optional(),
-    last_ok: z.string().nullable().optional(),
-    avg_latency_ms: z.number().nullable().optional(),
-    latency_sample_count: z.int().nullable().optional(),
-    observed_by: z.string().nullable().optional(),
-  })
-  .strict();
+/**
+ * The composed health card. Probe-derived (#health): counts of surfaces by
+ * verdict, the newest check, and the observed latency sample behind it.
+ *
+ * The SAME block /api/v1/subnets/{netuid}/overview serves, from the same
+ * `overlayOverviewHealth()` call, so it is imported rather than re-listed. The
+ * copy that used to sit here declared `name`, `status`, `latency_sample_count`,
+ * and `observed_by` nullable; the overlay spreads a `HealthSubnetSummary` and
+ * stamps `observed_by` from a constant, so nothing in the producer can write a
+ * null into any of them -- the tolerance described no writer. Confirmed against
+ * the live tool before removing it.
+ */
+const SubnetOverviewHealthSchema = OverlaidSubnetHealthSchema;
 
 /** How many of each thing this subnet has registered. */
 const SubnetOverviewCountsSchema = z
