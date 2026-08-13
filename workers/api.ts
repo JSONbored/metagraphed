@@ -8982,6 +8982,13 @@ async function handleApiRequest(
   // value the contract had already checked, and would make this the second
   // place that decides what a section name is.
   const sectionVocabulary = SECTION_VOCABULARIES[matched.id];
+  // Held for the response tripwire below: a `?sections=` document is SHORTER
+  // than its component on purpose, exactly as a `?fields=` row is, so it needs
+  // the same "absence is not drift" signal (#10960). Load-bearing the moment
+  // the tripwire could resolve this route's templated artifact path (#10965):
+  // without it, `?sections=economics` is a 500 on a documented request --
+  // which is why the signal and that lookup fix ship in the same change.
+  let sectionsProjected = false;
   if (sectionVocabulary && baseData && typeof baseData === "object") {
     const requested = parseSectionsParam(
       routeText(url, "sections"),
@@ -8992,6 +8999,7 @@ async function handleApiRequest(
         baseData as Record<string, unknown>,
         requested.sections,
       ) as typeof baseData;
+      sectionsProjected = true;
     }
   }
   const transformed = applyQueryFilters(
@@ -9148,11 +9156,12 @@ async function handleApiRequest(
       await validateResponseTripwire(
         matched.id,
         { ok: true, schema_version: 1, ...envelopePayload },
-        matched.artifactPath,
+        matched.artifactTemplate,
         // #10975: a `?fields=` response is SHORTER than its component on
         // purpose, so absence is not drift here. The projection metadata the
-        // CSV branch already reads is the same signal.
-        Boolean(transformed.meta?.projection),
+        // CSV branch already reads is the same signal; `?sections=` narrows
+        // the document the same way and carries the same meaning (#10960).
+        Boolean(transformed.meta?.projection) || sectionsProjected,
       );
     } catch (err) {
       if (err instanceof ResponseSchemaDriftError) {
@@ -9246,6 +9255,15 @@ function matchRoute(pathname: string) {
     return {
       id: candidate.id,
       artifactPath: candidate.artifactPath(params),
+      // The TEMPLATE the concrete path above was filled from. The response
+      // tripwire resolves its component through `schemaRefForArtifactPath`,
+      // which compares path templates for equality -- a concrete instance
+      // (`/metagraph/subnets/1.json`) never equals one, so passing the
+      // instance left the tripwire silently inert on every parameterised
+      // route, 109 of 225 contracts (#10965). The other tripwire call site
+      // (workers/request-handlers/entities.ts) already passes its template
+      // as a literal; this is the same convention, from the route table.
+      artifactTemplate: candidate.artifact_path,
       cache: candidate.cache,
       params,
       queryCollection: candidate.query_collection,

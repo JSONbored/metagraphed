@@ -7515,8 +7515,8 @@ export interface components {
             contract_version?: string;
             curated_overlay_count: number;
             curation_level_counts: components["schemas"]["CountMap"];
-            domain_coverage: components["schemas"]["CountMap"];
-            first_party_subnet_count: number;
+            domain_coverage?: components["schemas"]["CountMap"];
+            first_party_subnet_count?: number;
             generated_at: string;
             manifested_count: number;
             native_only_count: number;
@@ -7526,10 +7526,10 @@ export interface components {
             network: components["schemas"]["BittensorNetwork"];
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
-            official_surface_count: number;
+            official_surface_count?: number;
             probed_count: number;
             probed_surface_count: number;
-            registry_observed_surface_count: number;
+            registry_observed_surface_count?: number;
             root_subnet_count: number;
             /** @constant */
             schema_version: 1;
@@ -7545,7 +7545,7 @@ export interface components {
                 };
                 overlays: string;
             };
-            subnets_without_official_surface: number;
+            subnets_without_official_surface?: number;
             surface_count: number;
         };
         CoverageCompleteness: {
@@ -10860,7 +10860,7 @@ export interface components {
             verified_surfaces?: components["schemas"]["Surface"][];
         };
         SubnetEconomics: {
-            alpha_fdv_tao: number | null;
+            alpha_fdv_tao?: number | null;
             /** @description alpha_fdv_tao converted at the blob's tao_usd reading. */
             alpha_fdv_usd?: number;
             alpha_in_emission?: number | null;
@@ -10870,7 +10870,7 @@ export interface components {
              * @constant
              */
             alpha_market_cap_basis?: "total_stake_alpha";
-            alpha_market_cap_tao: number | null;
+            alpha_market_cap_tao?: number | null;
             /** @description alpha_market_cap_tao converted at the blob's tao_usd reading. */
             alpha_market_cap_usd?: number;
             alpha_out_emission?: number | null;
@@ -10889,7 +10889,7 @@ export interface components {
             alpha_price_usd?: number;
             block?: number | null;
             emission_enabled?: boolean | null;
-            emission_share: number | null;
+            emission_share?: number | null;
             excess_tao?: number | null;
             first_emission_block?: number | null;
             max_stake_alpha: number | null;
@@ -10899,8 +10899,8 @@ export interface components {
             miner_count: number;
             miner_readiness?: number | null;
             moving_price_pinned?: number | null;
-            name: string;
-            netuid: number;
+            name?: string;
+            netuid?: number;
             open_slots?: number | null;
             owner_coldkey: string | null;
             owner_hotkey: string | null;
@@ -10909,7 +10909,7 @@ export interface components {
             registration_allowed: boolean;
             registration_allowed_pinned?: boolean | null;
             registration_cost_tao: number | null;
-            slug: string;
+            slug?: string;
             /** @description The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
             spot_price_tao?: number | null;
             /** @description SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom. */
@@ -17122,23 +17122,17 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "subnets": [
                      *           {
-                     *             "alpha_fdv_tao": 0.5,
                      *             "alpha_in_pool": 0.5,
-                     *             "alpha_market_cap_tao": 0.5,
                      *             "alpha_out_pool": 0.5,
                      *             "alpha_price_tao": 0.5,
-                     *             "emission_share": 0.5,
                      *             "max_stake_alpha": 0.5,
                      *             "max_uids": 1,
                      *             "max_validators": 1,
                      *             "miner_count": 1,
-                     *             "name": "Example Subnet",
-                     *             "netuid": 7,
                      *             "owner_coldkey": "example",
                      *             "owner_hotkey": "example",
                      *             "registration_allowed": false,
                      *             "registration_cost_tao": 0.5,
-                     *             "slug": "example-subnet",
                      *             "subnet_volume_tao": 0.5,
                      *             "tao_in_pool_tao": 0.5,
                      *             "total_stake_alpha": 0.5,
@@ -30895,23 +30889,17 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "subnets": [
                      *           {
-                     *             "alpha_fdv_tao": 0.5,
                      *             "alpha_in_pool": 0.5,
-                     *             "alpha_market_cap_tao": 0.5,
                      *             "alpha_out_pool": 0.5,
                      *             "alpha_price_tao": 0.5,
-                     *             "emission_share": 0.5,
                      *             "max_stake_alpha": 0.5,
                      *             "max_uids": 1,
                      *             "max_validators": 1,
                      *             "miner_count": 1,
-                     *             "name": "Example Subnet",
-                     *             "netuid": 7,
                      *             "owner_coldkey": "example",
                      *             "owner_hotkey": "example",
                      *             "registration_allowed": false,
                      *             "registration_cost_tao": 0.5,
-                     *             "slug": "example-subnet",
                      *             "subnet_volume_tao": 0.5,
                      *             "tao_in_pool_tao": 0.5,
                      *             "total_stake_alpha": 0.5,

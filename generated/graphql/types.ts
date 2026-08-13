@@ -2176,8 +2176,8 @@ export type CoverageArtifact = {
   contract_version?: Maybe<Scalars['String']['output']>;
   curated_overlay_count: Scalars['Int']['output'];
   curation_level_counts: Scalars['JSON']['output'];
-  domain_coverage: Scalars['JSON']['output'];
-  first_party_subnet_count: Scalars['Int']['output'];
+  domain_coverage?: Maybe<Scalars['JSON']['output']>;
+  first_party_subnet_count?: Maybe<Scalars['Int']['output']>;
   generated_at: Scalars['String']['output'];
   manifested_count: Scalars['Int']['output'];
   native_only_count: Scalars['Int']['output'];
@@ -2187,14 +2187,14 @@ export type CoverageArtifact = {
   network: Scalars['String']['output'];
   /** Public-safe notes; may be a string or a string list depending on the adapter. */
   notes?: Maybe<Scalars['JSON']['output']>;
-  official_surface_count: Scalars['Int']['output'];
+  official_surface_count?: Maybe<Scalars['Int']['output']>;
   probed_count: Scalars['Int']['output'];
   probed_surface_count: Scalars['Int']['output'];
-  registry_observed_surface_count: Scalars['Int']['output'];
+  registry_observed_surface_count?: Maybe<Scalars['Int']['output']>;
   root_subnet_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
   source: CoverageArtifactSource;
-  subnets_without_official_surface: Scalars['Int']['output'];
+  subnets_without_official_surface?: Maybe<Scalars['Int']['output']>;
   surface_count: Scalars['Int']['output'];
 };
 
@@ -3250,12 +3250,12 @@ export type OpportunityEntry = {
   max_uids?: Maybe<Scalars['Int']['output']>;
   max_validators?: Maybe<Scalars['Int']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;
-  name: Scalars['String']['output'];
-  netuid: Scalars['Int']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  netuid?: Maybe<Scalars['Int']['output']>;
   open_slots?: Maybe<Scalars['Int']['output']>;
   registration_allowed?: Maybe<Scalars['Boolean']['output']>;
   registration_cost_tao?: Maybe<Scalars['Float']['output']>;
-  slug: Scalars['String']['output'];
+  slug?: Maybe<Scalars['String']['output']>;
   total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
   validator_headroom?: Maybe<Scalars['Int']['output']>;
@@ -6198,8 +6198,8 @@ export type SubnetEconomics = {
   miner_count: Scalars['Int']['output'];
   miner_readiness?: Maybe<Scalars['Int']['output']>;
   moving_price_pinned?: Maybe<Scalars['Float']['output']>;
-  name: Scalars['String']['output'];
-  netuid: Scalars['Int']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  netuid?: Maybe<Scalars['Int']['output']>;
   open_slots?: Maybe<Scalars['Int']['output']>;
   owner_coldkey?: Maybe<Scalars['String']['output']>;
   owner_hotkey?: Maybe<Scalars['String']['output']>;
@@ -6208,7 +6208,7 @@ export type SubnetEconomics = {
   registration_allowed: Scalars['Boolean']['output'];
   registration_allowed_pinned?: Maybe<Scalars['Boolean']['output']>;
   registration_cost_tao?: Maybe<Scalars['Float']['output']>;
-  slug: Scalars['String']['output'];
+  slug?: Maybe<Scalars['String']['output']>;
   /** The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
   spot_price_tao?: Maybe<Scalars['Float']['output']>;
   /** SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom. */
@@ -10490,8 +10490,8 @@ export type CoverageArtifactResolvers<ContextType = GqlContext, ParentType exten
   contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   curated_overlay_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   curation_level_counts?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
-  domain_coverage?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
-  first_party_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  domain_coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  first_party_subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   generated_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   manifested_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   native_only_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10500,14 +10500,14 @@ export type CoverageArtifactResolvers<ContextType = GqlContext, ParentType exten
   native_snapshot_captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   network?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  official_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  official_surface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   probed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   probed_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  registry_observed_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  registry_observed_surface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   root_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   source?: Resolver<ResolversTypes['CoverageArtifactSource'], ParentType, ContextType>;
-  subnets_without_official_surface?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnets_without_official_surface?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -11359,12 +11359,12 @@ export type OpportunityEntryResolvers<ContextType = GqlContext, ParentType exten
   max_uids?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   max_validators?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   open_slots?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   registration_allowed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_headroom?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -12418,8 +12418,8 @@ export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extend
   miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   miner_readiness?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   moving_price_pinned?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   open_slots?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   owner_coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   owner_hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -12427,7 +12427,7 @@ export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extend
   registration_allowed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   registration_allowed_pinned?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   spot_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   subnet_mechanism?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   subnet_volume_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
