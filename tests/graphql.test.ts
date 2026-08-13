@@ -17496,7 +17496,7 @@ describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback
     return `{ chain_turnover${argsClause} {
       schema_version window start_date end_date comparable subnet_count
       network { validators_start validators_end validators_entered validators_exited validator_retention stability_score }
-      stability_distribution { count mean min p25 median p75 p90 max }
+      stability_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid validators_start validators_end validators_entered validators_exited validator_retention stability_score }
     } }`;
   }
@@ -17551,7 +17551,7 @@ describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback
               mean: 67,
               min: 67,
               p25: 67,
-              median: 67,
+              p50: 67,
               p75: 67,
               p90: 67,
               max: 67,
@@ -17583,7 +17583,7 @@ describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback
     assert.equal(body.data.chain_turnover.comparable, true);
     assert.equal(body.data.chain_turnover.subnet_count, 1);
     assert.equal(body.data.chain_turnover.network.validators_entered, 4);
-    assert.equal(body.data.chain_turnover.stability_distribution.median, 67);
+    assert.equal(body.data.chain_turnover.stability_distribution.p50, 67);
     assert.equal(body.data.chain_turnover.subnets[0].netuid, 3);
   });
 
@@ -17617,7 +17617,7 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
     return `{ chain_weights${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_setters weight_sets sets_per_setter }
-      intensity_distribution { count mean min p25 median p75 p90 max }
+      intensity_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid distinct_setters weight_sets sets_per_setter }
     } }`;
   }
@@ -18237,7 +18237,7 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
     return `{ chain_serving${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_servers announcements announcements_per_server }
-      intensity_distribution { count mean min p25 median p75 p90 max }
+      intensity_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid distinct_servers announcements announcements_per_server }
     } }`;
   }
@@ -18445,7 +18445,7 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
         buy_volume_tao sell_volume_tao total_volume_tao
         buy_count sell_count net_volume_alpha sentiment_ratio sentiment
       }
-      volume_distribution { count mean min p25 median p75 p90 max }
+      volume_distribution { count mean min p25 p50 p75 p90 max }
       subnets {
         schema_version netuid window
         buy_volume_alpha sell_volume_alpha total_volume_alpha
@@ -20169,7 +20169,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
           schema_version subnet_count neuron_count validator_count miner_count
           captured_at total_stake_alpha total_emission_alpha
           network_yield validator_yield miner_yield
-          distribution { count mean median min max p10 p25 p75 p90 }
+          distribution { count mean p50 min max p10 p25 p75 p90 }
         } }`,
     );
     assert.equal(status, 200);
@@ -20300,14 +20300,14 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
       ),
     };
     const { status, body } = await gql(
-      `{ chain_yield { distribution { count mean median min max p10 p25 p75 p90 } } }`,
+      `{ chain_yield { distribution { count mean p50 min max p10 p25 p75 p90 } } }`,
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_yield.distribution, {
       count: 0,
       mean: 0,
-      median: 0,
+      p50: 0,
       min: 0,
       max: 0,
       p10: 0,
@@ -21592,7 +21592,7 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     return `{ chain_prometheus${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_exporters announcements announcements_per_exporter }
-      intensity_distribution { count mean min p25 median p75 p90 max }
+      intensity_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid distinct_exporters announcements announcements_per_exporter }
     } }`;
   }
@@ -21771,7 +21771,7 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     return `{ chain_axon_removals${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_removers removals removals_per_remover }
-      intensity_distribution { count mean min p25 median p75 p90 max }
+      intensity_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid distinct_removers removals removals_per_remover }
     } }`;
   }
@@ -21950,7 +21950,7 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     return `{ chain_registrations${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_registrants registrations registrations_per_registrant }
-      intensity_distribution { count mean min p25 median p75 p90 max }
+      intensity_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid distinct_registrants registrations registrations_per_registrant }
     } }`;
   }
@@ -22127,7 +22127,7 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     return `{ chain_deregistrations${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey }
-      intensity_distribution { count mean min p25 median p75 p90 max }
+      intensity_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey }
     } }`;
   }
@@ -22622,7 +22622,7 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
         total_staked_tao total_unstaked_tao net_flow_tao gross_flow_tao
         stake_events unstake_events gaining losing flat
       }
-      net_flow_distribution { count mean min p25 median p75 p90 max }
+      net_flow_distribution { count mean min p25 p50 p75 p90 max }
       subnets {
         netuid total_staked_tao total_unstaked_tao net_flow_tao gross_flow_tao
         stake_events unstake_events direction
@@ -22718,7 +22718,7 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
     return `{ chain_stake_moves${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_movers movements movements_per_mover }
-      intensity_distribution { count mean min p25 median p75 p90 max }
+      intensity_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid distinct_movers movements movements_per_mover }
     } }`;
   }
@@ -22799,7 +22799,7 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
     return `{ chain_stake_transfers${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_senders transfers transfers_per_sender }
-      intensity_distribution { count mean min p25 median p75 p90 max }
+      intensity_distribution { count mean min p25 p50 p75 p90 max }
       subnets { netuid distinct_senders transfers transfers_per_sender }
     } }`;
   }
