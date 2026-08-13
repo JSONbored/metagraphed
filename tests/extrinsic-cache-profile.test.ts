@@ -71,3 +71,56 @@ describe("extrinsic detail names the immutability its tier knows (#11001)", () =
     assert.equal(res.headers.get("x-metagraph-cache-profile"), "short");
   });
 });
+
+// #11018. The two block sub-resources got the same treatment, and the
+// non-empty half of the condition matters more here than anywhere: an empty
+// extrinsics/events array and a block that genuinely had none are the same
+// bytes (#9208), so caching the empty one manufactures a measurement.
+import {
+  handleBlockEvents,
+  handleBlockExtrinsics,
+} from "../workers/request-handlers/entities.ts";
+
+const BLOCK = "8281545";
+const blockUrl = (sub: string) =>
+  new URL(`https://api.metagraph.sh/api/v1/blocks/${BLOCK}/${sub}`);
+const blockReq = (sub: string) => new Request(blockUrl(sub).toString());
+
+describe("block sub-resources name their settledness (#11018)", () => {
+  test("a lakehouse answer WITH rows is settled", async () => {
+    sqlFetch([extrinsicRow()], []);
+    const res = await handleBlockExtrinsics(
+      blockReq("extrinsics"),
+      TOKEN as never,
+      BLOCK,
+      blockUrl("extrinsics"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-cache-profile"), "static");
+  });
+
+  test("a lakehouse answer with NO rows is NOT storable", async () => {
+    // The one that matters. Pinning this for an hour would answer a later
+    // caller with a confident "this block had no extrinsics" nobody measured.
+    sqlFetch([]);
+    const res = await handleBlockExtrinsics(
+      blockReq("extrinsics"),
+      TOKEN as never,
+      BLOCK,
+      blockUrl("extrinsics"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-cache-profile"), "short");
+  });
+
+  test("the events sub-resource follows the identical rule", async () => {
+    sqlFetch([]);
+    const empty = await handleBlockEvents(
+      blockReq("events"),
+      TOKEN as never,
+      BLOCK,
+      blockUrl("events"),
+    );
+    assert.equal(empty.headers.get("x-metagraph-cache-profile"), "short");
+  });
+});

@@ -8159,19 +8159,17 @@ async function dispatchChainHistoryRoute(
       "block-extrinsics",
     );
     if (limited) return limited;
-    return handleBlockExtrinsics(
-      request,
-      env,
-      blockExtrinsicsMatch[1],
-      url,
-      chain,
+    return withChainDetailEdgeCache(request, env, url, chain, ctx, () =>
+      handleBlockExtrinsics(request, env, blockExtrinsicsMatch[1], url, chain),
     );
   }
   const blockEventsMatch = BLOCK_EVENTS_PATH_PATTERN.exec(pathname);
   if (blockEventsMatch) {
     const limited = await dataRouteRateLimit(request, env, ctx, "block-events");
     if (limited) return limited;
-    return handleBlockEvents(request, env, blockEventsMatch[1], url, chain);
+    return withChainDetailEdgeCache(request, env, url, chain, ctx, () =>
+      handleBlockEvents(request, env, blockEventsMatch[1], url, chain),
+    );
   }
   const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(pathname);
   if (blockDetailMatch) {
