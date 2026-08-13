@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Database,
   ExternalLink as ExternalLinkIcon,
+  Hourglass,
   WifiOff,
 } from "lucide-react";
 import { useState } from "react";
@@ -55,6 +56,34 @@ function OfflineNotice({ context }: { context?: string }) {
       <p className="mt-2 text-xs leading-relaxed text-ink-muted">
         Couldn't load {context ?? "this data"} — you're offline. It'll refresh automatically once
         you're back online.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * A 429 is not a fault (#11000).
+ *
+ * The API meters anonymous callers at 60 requests/minute, and a page render
+ * spends several of them, so an ordinary visitor moving fast — and every
+ * crawler — will meet this ceiling. Until now it fell through to the red
+ * "Couldn't load this data / HTTP 429" card, which says the wrong thing twice:
+ * nothing is broken, and the data is not unavailable. It is throttled, it is
+ * the caller's own budget, and it works again shortly.
+ *
+ * Every interactive surface already drew this distinction (search-box.tsx,
+ * ask-box.tsx, watch-alert-form.tsx, api-keys-manager.tsx); the read paths were
+ * the ones left saying "couldn't load". `role="status"` rather than
+ * `role="alert"` for the same reason the copy changed — this is not an error
+ * condition to announce as one.
+ */
+function RateLimitedNotice({ context }: { context?: string }) {
+  return (
+    <div role="status" className="rounded border border-border bg-surface p-4 text-center">
+      <Hourglass className="mx-auto size-4 text-ink-muted" />
+      <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+        Rate-limited while loading {context ?? "this data"} — you've hit the public API's per-minute
+        ceiling. It'll work again in under a minute.
       </p>
     </div>
   );
@@ -116,6 +145,10 @@ export function ErrorState({
   // function's catch block in client.ts.
   if (isApi && error.status === 0) {
     return <OfflineNotice context={context} />;
+  }
+  // #11000: throttled, not broken. See RateLimitedNotice.
+  if (isApi && error.status === 429) {
+    return <RateLimitedNotice context={context} />;
   }
   const message = (error as Error)?.message ?? "Unknown error";
   const url = isApi ? error.url : undefined;

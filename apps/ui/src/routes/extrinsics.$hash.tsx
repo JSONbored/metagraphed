@@ -6,6 +6,7 @@ import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall, isValidExtrinsicHash } from "@/lib/metagraphed/extrinsics";
 import { ExtrinsicDetailPage } from "./-extrinsics-hash-page";
 import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
+import { rateLimitedResponse } from "@/lib/metagraphed/rate-limited-response";
 
 export const Route = createFileRoute("/extrinsics/$hash")({
   // #3422: validate the hash at the router level so an invalid one renders the
@@ -26,6 +27,13 @@ export const Route = createFileRoute("/extrinsics/$hash")({
         call: data ? extrinsicCall(data.call_module, data.call_function) : null,
       };
     } catch (error) {
+      // #11000: a throttled PRIMARY query has no page to render, and answering
+      // 200-with-an-error-card tells a crawler the render succeeded. Throw the
+      // 429 + Retry-After instead, which is the signal that makes it back off
+      // and keep the URL. Panel-level 429s inside an otherwise-good page are
+      // untouched and still render states.tsx's in-place notice.
+      const throttled = rateLimitedResponse(error);
+      if (throttled) throw throttled;
       // #8624: only a 404 from our own API means "no such entity". Any other
       // failure keeps returning null so the page still renders and the
       // component's own query drives the error path -- marking a page noindex
