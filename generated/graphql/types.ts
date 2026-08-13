@@ -4697,6 +4697,7 @@ export type QuerySource_SnapshotsArgs = {
 export type QuerySubnetArgs = {
   netuid: Scalars['Int']['input'];
   network?: InputMaybe<Network>;
+  sections?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4955,6 +4956,7 @@ export type QuerySubnet_Performance_HistoryArgs = {
 
 export type QuerySubnet_ProfileArgs = {
   netuid: Scalars['Int']['input'];
+  sections?: InputMaybe<Scalars['String']['input']>;
 };
 
 

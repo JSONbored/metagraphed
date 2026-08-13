@@ -335,6 +335,7 @@ import {
   SITE_ORIGIN,
   QUERY_ENUMS,
 } from "./contracts.ts";
+import { projectToolSections } from "./section-projection.ts";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
   GET_ECONOMICS_MCP_TOOL,
@@ -5697,9 +5698,22 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // record would report mainnet numbers against a testnet subnet (the
       // exact leak tests/network-routing.test.ts guards on the REST side).
       // Testnet carries its own chain economics inside `subnet.economics`.
-      if (network && network !== "finney") return detail;
+      if (network && network !== "finney")
+        return projectToolSections(
+          detail,
+          args,
+          QUERY_ENUMS.subnetDetailSection,
+        );
       const { economics } = await loadSubnetEconomics(ctx, netuid);
-      return economics ? { ...detail, economics } : detail;
+      // Projected LAST, after the economics overlay, for the same reason the
+      // REST seam does: `economics` is itself a selectable section, so
+      // projecting before the overlay would drop the very card a caller asked
+      // for -- a smaller answer that is also a wrong one.
+      return projectToolSections(
+        economics ? { ...detail, economics } : detail,
+        args,
+        QUERY_ENUMS.subnetDetailSection,
+      );
     },
   },
   {
@@ -8185,9 +8199,17 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       try {
-        return await loadSubnetProfile(asMcpLoaderCtx(ctx), netuid, {
-          readArtifact: loadArtifactData,
-        });
+        // #10600: the same projection the route applies. This tool serves
+        // /metagraph/profiles/{netuid}.json, whose top-level keys ARE the
+        // profile vocabulary -- unlike get_subnet, which serves the overview
+        // artifact and therefore declares the divergence instead.
+        return projectToolSections(
+          await loadSubnetProfile(asMcpLoaderCtx(ctx), netuid, {
+            readArtifact: loadArtifactData,
+          }),
+          args,
+          QUERY_ENUMS.subnetProfileSection,
+        );
       } catch (rawErr) {
         const tagged = taggedLoaderError(rawErr, "profilesMcp");
         if (tagged) throw toolError(tagged.code, tagged.message);

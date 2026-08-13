@@ -177,6 +177,24 @@ import {
   paginationLinkHeader,
   queryCollectionConfig,
 } from "./list-query.ts";
+import {
+  parseSectionsParam,
+  projectSections,
+} from "../src/section-projection.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
+
+/**
+ * Route id -> the sections that route serves (#10600).
+ *
+ * Keyed on the matched route id rather than the path so the lookup cannot drift
+ * from the router, and derived from QUERY_ENUMS rather than restated -- the same
+ * vocabulary the published schema validates against, so the edge and the handler
+ * cannot disagree about what `sections=economics` means.
+ */
+const SECTION_VOCABULARIES: Record<string, readonly string[] | undefined> = {
+  "subnet-detail": QUERY_ENUMS.subnetDetailSection,
+  "subnet-profile": QUERY_ENUMS.subnetProfileSection,
+};
 import { csvRequested, csvResponse } from "./csv.ts";
 import {
   apiHeaders,
@@ -8924,6 +8942,31 @@ async function handleApiRequest(
     });
   }
 
+  // `?sections=` on the two composite subnet documents (#10600). AFTER every
+  // overlay above and BEFORE the envelope below: the live economics overlay,
+  // the USD twins and the alias overlay all write INTO `subnet`/`economics`, so
+  // projecting earlier would return a section the overlays had not reached yet
+  // -- a smaller answer that is also a staler one.
+  //
+  // `routeText`, not `url.searchParams.get` (#10060): the value has already
+  // been parsed against this route's published schema, so an unknown section
+  // never arrives here -- the router answered it 400 before dispatch, quoting
+  // the vocabulary out of the pattern. Reading the raw string would re-read a
+  // value the contract had already checked, and would make this the second
+  // place that decides what a section name is.
+  const sectionVocabulary = SECTION_VOCABULARIES[matched.id];
+  if (sectionVocabulary && baseData && typeof baseData === "object") {
+    const requested = parseSectionsParam(
+      routeText(url, "sections"),
+      sectionVocabulary,
+    );
+    if (requested) {
+      baseData = projectSections(
+        baseData as Record<string, unknown>,
+        requested.sections,
+      ) as typeof baseData;
+    }
+  }
   const transformed = applyQueryFilters(
     baseData,
     url,

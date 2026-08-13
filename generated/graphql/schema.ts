@@ -48,7 +48,7 @@ type Query {
   """
   One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. Mirrors GET /api/v1/subnets/{netuid}.
   """
-  subnet(netuid: Int!, network: Network): Subnet
+  subnet(netuid: Int!, sections: String, network: Network): Subnet
 
   """
   Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations.
@@ -408,7 +408,7 @@ type Query {
   """
   One subnet's contributor-review profile: candidate surfaces, contract version, endpoints, and completeness/curation metadata. Null when no profile has been baked for that netuid (rather than a GraphQL error); a negative netuid is a BAD_USER_INPUT error. Opaque JSON passed through verbatim, matching the get_subnet_profile MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/profile.
   """
-  subnet_profile(netuid: Int!): JSON
+  subnet_profile(netuid: Int!, sections: String): JSON
 
   """
   Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers). Mirrors GET /api/v1/providers.

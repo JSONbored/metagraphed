@@ -56,6 +56,7 @@
 // worth guessing now. The gate compares `properties`, so this does not affect
 // what 3/5 publishes either way.
 import { z } from "zod";
+import { QUERY_ENUMS } from "./query-enums.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
@@ -213,6 +214,7 @@ import {
   orderSchema,
   feedInstantSchema,
   querySchema,
+  sectionsSchema,
   SERVING_BOUND,
   sortSchema,
   stakeActionSchema,
@@ -266,8 +268,6 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // null schema means the router validates nothing at all -- so the route
   // would silently ACCEPT any query string instead of rejecting it.
   "/api/v1/chain/deregistration-ranking",
-  "/api/v1/subnets/{netuid}",
-  "/api/v1/subnets/{netuid}/profile",
   "/api/v1/subnets/{netuid}/overview",
   "/api/v1/agent-catalog/{netuid}",
   "/api/v1/providers/{slug}",
@@ -395,6 +395,22 @@ export const FEED_QUERY_SCHEMAS = {
 } as const;
 
 export const ROUTE_QUERY_SCHEMAS = {
+  // #10600: the two composite subnet routes. They took NO parameters until
+  // now -- not for want of size (272,825 B and 202,948 B) but because the
+  // ordinary lever does not fit: a query collection pages ONE data_key, and
+  // their bulk is four parallel arrays over the same subject, so paging one
+  // would narrow a quarter of the payload and leave the rest.
+  //
+  // `sections` rather than `fields`, decided on #10600: `fields` means "pick
+  // columns out of the rows of a list" on all five routes that carry it, and
+  // its published description says so. One name with two units of selection
+  // would give a caller a different KIND of answer with nothing telling them.
+  "/api/v1/subnets/{netuid}": z.object({
+    sections: sectionsSchema(QUERY_ENUMS.subnetDetailSection).optional(),
+  }),
+  "/api/v1/subnets/{netuid}/profile": z.object({
+    sections: sectionsSchema(QUERY_ENUMS.subnetProfileSection).optional(),
+  }),
   "/api/v1/search/semantic": z.object({
     // Both were wrong before #10075: `q` published no ceiling though the
     // handler rejects one over SEMANTIC_QUERY_MAX_LENGTH, and `limit`

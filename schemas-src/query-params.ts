@@ -849,3 +849,48 @@ export const uidSchema = () =>
         "after deregistration.",
     )
     .meta({ examples: [0, 128] });
+
+/**
+ * A comma-separated selection from a CLOSED set of top-level document sections
+ * (#10600).
+ *
+ * PUBLISHES THE SET IN THE PATTERN, not only in the prose. `fields` cannot do
+ * that -- its column names differ per route and are checked at runtime -- but a
+ * section list is fixed per route, so the regex can name every member and a
+ * generated client rejects `?sections=bogus` without a round trip. That is the
+ * difference the separate parameter buys: `fields` is open and validated late,
+ * `sections` is closed and validated at the edge.
+ *
+ * STRICTER THAN `fields` ON WHITESPACE, deliberately. `fieldsSchema` is
+ * permissive because `parseFieldsParam` already accepts `"a, b"` and `"a,,b"`
+ * in production, and publishing a tighter regex than the server enforces makes
+ * a generated client reject input the server takes. Nothing accepts `sections`
+ * yet, so its parser and its pattern are written to agree from the start rather
+ * than being reconciled after the fact.
+ *
+ * An unknown name is REJECTED, not ignored: silently dropping it would answer
+ * a request for `?sections=eeconomics` with a document missing the one section
+ * the caller asked for, and a 200 that omits what was requested is worse than
+ * a 400 that says why.
+ */
+export const sectionsSchema = (allowed: readonly [string, ...string[]]) => {
+  const alternation = `(?:${allowed.join("|")})`;
+  // `slice(0, 2)` rather than a `allowed[1] ? ... : ...` ternary: every
+  // vocabulary this takes is a fixed list of 7+ names, so the one-element arm
+  // is a branch nothing can reach -- and an unreachable branch is a partial
+  // that no test can honestly close.
+  const example = allowed.slice(0, 2).join(",");
+  return z
+    .string()
+    .regex(new RegExp(`^${alternation}(?:,${alternation})*$`))
+    .describe(
+      `Comma-separated top-level sections to return, e.g. \`${example}\`. ` +
+        `One of: ${allowed.join(", ")}. Selecting sections never removes the ` +
+        `response envelope (schema_version, contract_version, generated_at, ` +
+        `operational_observed_at, health_source) -- a smaller document still has ` +
+        `to say what it is. An unknown name is rejected rather than ignored. ` +
+        `NOT the same parameter as \`fields\`, which projects columns out of the ` +
+        `rows of a list.`,
+    )
+    .meta({ examples: [allowed[0], example] });
+};
