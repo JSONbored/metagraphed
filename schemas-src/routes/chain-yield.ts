@@ -7,20 +7,25 @@
 // ChainYieldArtifact is its only referrer (verified via repo-wide $ref
 // grep), so the hand-edited component key becomes fully orphaned.
 import { z } from "zod";
+import { distributionStatsSchema } from "../shared.ts";
 
-const YieldDistributionSchema = z
-  .object({
-    count: z.int().min(0),
-    mean: z.number(),
-    median: z.number(),
-    min: z.number(),
-    max: z.number(),
-    p10: z.number(),
-    p25: z.number(),
-    p75: z.number(),
-    p90: z.number(),
-  })
-  .strict()
+/**
+ * The shared count-and-spread summary, plus the one percentile this domain
+ * reports that the others do not.
+ *
+ * #10790 collapsed that eight-key summary from four hand-written copies into
+ * `distributionStatsSchema()`. This was a FIFTH copy and survived the collapse
+ * for a single reason: it carries `p10`, so its key set is not equal to the
+ * others', and the duplicate gate matches key sets exactly. A copy that has
+ * gained a field stops looking like a copy at precisely the moment it has
+ * started to drift.
+ *
+ * The eight shared fields were field-for-field identical to
+ * `distributionStatsSchema(z.number())` at the point of collapse -- an
+ * unbounded measure with unbounded percentiles -- so nothing published moves.
+ */
+const YieldDistributionSchema = distributionStatsSchema(z.number())
+  .extend({ p10: z.number() })
   .describe(
     "Distribution of the per-neuron emission/stake return rate across the network.",
   )

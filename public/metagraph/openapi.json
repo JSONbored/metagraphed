@@ -10549,9 +10549,12 @@
               "failed_count": 1,
               "last_checked": "2026-06-01T00:00:00.000Z",
               "last_ok": "2026-06-01T00:00:00.000Z",
+              "latency_sample_count": 120,
+              "name": "Example Subnet",
               "netuid": 7,
               "observed_by": "2026-06-01T00:00:00.000Z",
               "ok_count": 1,
+              "slug": "example-subnet",
               "status": "ok",
               "surface_count": 1,
               "unknown_count": 1
@@ -15589,15 +15592,16 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "The resolved window label (7d/30d/90d)."
           }
         },
         "required": [
           "schema_version",
-          "ss58",
           "netuid",
           "point_count",
-          "points"
+          "points",
+          "ss58"
         ],
         "type": "object"
       },
@@ -26637,13 +26641,13 @@
                 "required": [
                   "count",
                   "mean",
-                  "median",
                   "min",
-                  "max",
-                  "p10",
                   "p25",
+                  "median",
                   "p75",
-                  "p90"
+                  "p90",
+                  "max",
+                  "p10"
                 ],
                 "type": "object"
               },
@@ -42609,11 +42613,11 @@
                     },
                     "required": [
                       "tag",
-                      "spec_version",
+                      "name",
                       "published_at",
                       "url",
-                      "name",
-                      "prerelease"
+                      "prerelease",
+                      "spec_version"
                     ],
                     "type": "object"
                   },
@@ -50903,7 +50907,9 @@
                   "avg_latency_ms": {
                     "anyOf": [
                       {
-                        "type": "number"
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
                       },
                       {
                         "type": "null"
@@ -50940,12 +50946,21 @@
                       }
                     ]
                   },
+                  "latency_sample_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
                   "netuid": {
                     "maximum": 9007199254740991,
                     "minimum": 0,
                     "type": "integer"
                   },
                   "observed_by": {
+                    "description": "Which prober observed this card -- stamped by the serve-time overlay, never baked.",
                     "type": "string"
                   },
                   "ok_count": {
@@ -50953,8 +50968,11 @@
                     "minimum": 0,
                     "type": "integer"
                   },
-                  "status": {
+                  "slug": {
                     "type": "string"
+                  },
+                  "status": {
+                    "$ref": "#/components/schemas/HealthStatus"
                   },
                   "surface_count": {
                     "maximum": 9007199254740991,

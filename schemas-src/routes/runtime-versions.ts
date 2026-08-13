@@ -8,6 +8,7 @@
 // repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
+import { GithubReleaseSchema } from "../shared.ts";
 
 const RuntimeVersionTransitionSchema = z
   .object({
@@ -48,19 +49,27 @@ const ChainSpecReadingSchema = z
   })
   .strict();
 
-const SubtensorReleaseSchema = z
-  .object({
-    tag: z.string(),
-    spec_version: z.int().min(0),
-    published_at: z.string().nullable(),
-    url: z
-      .string()
-      .nullable()
-      .describe("GitHub's own html_url -- never constructed."),
-    name: z.string().nullable(),
-    prerelease: z.boolean(),
-  })
-  .strict();
+/**
+ * A GitHub release, plus the runtime version it shipped.
+ *
+ * #10790 collapsed `GithubReleaseSchema` from three hand-written copies into
+ * one declaration in shared.ts. This was a fourth, and it survived because it
+ * carries `spec_version` -- one extra key is enough for a key-set comparison to
+ * stop seeing a copy.
+ *
+ * The two ways this reading is genuinely weaker are stated rather than
+ * restated: `published_at` and `url` are nullable here because this release is
+ * READ from the GitHub API at serve time and the read can come back empty,
+ * where the shared schema describes a release already known to exist.
+ */
+const SubtensorReleaseSchema = GithubReleaseSchema.extend({
+  spec_version: z.int().min(0),
+  published_at: z.string().nullable(),
+  url: z
+    .string()
+    .nullable()
+    .describe("GitHub's own html_url -- never constructed."),
+}).strict();
 
 /**
  * The forward-looking half of GET /api/v1/runtime, undeclared until #10790.

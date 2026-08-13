@@ -5405,6 +5405,7 @@ export interface components {
             }[];
             schema_version: number;
             ss58: string;
+            /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
         };
         /** @description This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions. */
@@ -11568,10 +11569,14 @@ export interface components {
                 failed_count?: number;
                 last_checked?: string | null;
                 last_ok?: string | null;
+                latency_sample_count?: number;
+                name?: string;
                 netuid?: number;
+                /** @description Which prober observed this card -- stamped by the serve-time overlay, never baked. */
                 observed_by?: string;
                 ok_count?: number;
-                status?: string;
+                slug?: string;
+                status?: components["schemas"]["HealthStatus"];
                 surface_count?: number;
                 unknown_count?: number;
             } | null;
@@ -44393,9 +44398,12 @@ export interface operations {
                      *           "failed_count": 1,
                      *           "last_checked": "2026-06-01T00:00:00.000Z",
                      *           "last_ok": "2026-06-01T00:00:00.000Z",
+                     *           "latency_sample_count": 120,
+                     *           "name": "Example Subnet",
                      *           "netuid": 7,
                      *           "observed_by": "2026-06-01T00:00:00.000Z",
                      *           "ok_count": 1,
+                     *           "slug": "example-subnet",
                      *           "status": "ok",
                      *           "surface_count": 1,
                      *           "unknown_count": 1

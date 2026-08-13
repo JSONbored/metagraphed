@@ -29,6 +29,43 @@ export const HealthSubnetSummarySchema = z
   .strict();
 export type HealthSubnetSummary = z.infer<typeof HealthSubnetSummarySchema>;
 
+/**
+ * The same summary once `overlayOverviewHealth()` has stamped it onto a subnet
+ * card -- the ONE declaration of that shape, for every surface that serves it.
+ *
+ * `overlayOverviewHealth()` (src/health-serving.ts) builds the block as
+ * `{ netuid, ...summary, observed_by }`, where `summary` is an element of the
+ * live health artifact's `subnets` array -- the array typed above. The shape is
+ * therefore not modelled after this summary, it IS this summary plus one field,
+ * and every consumer that re-listed it was restating a vocabulary it does not
+ * own.
+ *
+ * Three of them did, each with a different subset:
+ *
+ *   routes/subnet-overview.ts     dropped `latency_sample_count` and `name`
+ *   mcp-tools/get-subnet.ts       kept both, added nullability no writer emits
+ *   (this)                        the actual vocabulary
+ *
+ * The first is not a style problem: /api/v1/subnets/{netuid}/overview served
+ * two keys its own `.strict()` schema forbade, which the daily conformance
+ * sweep reported against `/data/health`.
+ *
+ * `.partial()` because the overlay has a SECOND arm -- a subnet with no probed
+ * surfaces gets `{ netuid, status: "unknown", surface_count: 0 }`, which does
+ * not carry the counts required above. That arm is the one thing both copies
+ * had right, and it is why this cannot simply be the summary itself.
+ */
+export const OverlaidSubnetHealthSchema = HealthSubnetSummarySchema.partial()
+  .extend({
+    observed_by: z
+      .string()
+      .optional()
+      .describe(
+        "Which prober observed this card -- stamped by the serve-time overlay, never baked.",
+      ),
+  })
+  .strict();
+
 export const HealthSummaryArtifactSchema = z
   .object({
     contract_version: z.string().optional(),

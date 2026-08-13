@@ -429,6 +429,7 @@ export type AccountPositionHistory = {
   points: Array<AccountPositionHistoryPoint>;
   schema_version: Scalars['Int']['output'];
   ss58: Scalars['String']['output'];
+  /** The resolved window label (7d/30d/90d). */
   window?: Maybe<Scalars['String']['output']>;
 };
 

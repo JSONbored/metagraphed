@@ -208,6 +208,11 @@ import { ChainAlphaVolumeArtifactSchema } from "../schemas-src/routes/chain-alph
 import { ChainConcentrationArtifactSchema } from "../schemas-src/routes/chain-concentration.ts";
 import { ChainConcentrationScorecardSchema } from "../schemas-src/routes/chain-concentration-history.ts";
 import {
+  HealthSubnetSummarySchema,
+  OverlaidSubnetHealthSchema,
+} from "../schemas-src/routes/health.ts";
+import { GetSubnetOutputSchema } from "../schemas-src/mcp-tools/get-subnet.ts";
+import {
   ChainEventsFeedArtifactSchema,
   ChainEventsStatsArtifactSchema,
 } from "../schemas-src/routes/chain-events.ts";
@@ -4993,6 +4998,84 @@ describe("chain-concentration-history: the scorecard is derived, not re-listed (
         entropy_normalized: 0,
         top_50pct_share: 0,
       }),
+    );
+  });
+});
+
+describe("overlaid subnet health: one vocabulary, every surface that serves it (#10983)", () => {
+  // `overlayOverviewHealth()` builds this block as `{ netuid, ...summary,
+  // observed_by }` -- the summary being a HealthSubnetSummary. Three schemas
+  // described that one shape, each with a different subset: the REST route
+  // dropped `latency_sample_count` and `name` (and so served two keys its own
+  // .strict() schema forbade), and the MCP tool declared nullability no
+  // producer can write. These assertions are what stops a fourth copy.
+  // Peels the `.nullable()`/`.optional()` each surface wraps the block in --
+  // the REST route uses one, the MCP tool both -- down to the object itself.
+  const healthKeys = (schema: z.ZodType) => {
+    let node = schema as unknown as {
+      shape?: Record<string, unknown>;
+      unwrap?: () => z.ZodType;
+    };
+    while (!node.shape && typeof node.unwrap === "function") {
+      node = node.unwrap() as typeof node;
+    }
+    assert.ok(node.shape, "expected an object schema under the wrappers");
+    return Object.keys(node.shape).sort();
+  };
+
+  test("the shared block is exactly the summary's vocabulary plus observed_by", () => {
+    assert.deepEqual(
+      healthKeys(OverlaidSubnetHealthSchema),
+      [...healthKeys(HealthSubnetSummarySchema), "observed_by"].sort(),
+    );
+  });
+
+  test("the REST route and the MCP tool serve THE SAME declaration, not two copies", () => {
+    const shared = healthKeys(OverlaidSubnetHealthSchema);
+    assert.deepEqual(
+      healthKeys(SubnetOverviewArtifactSchema.shape.health),
+      shared,
+    );
+    assert.deepEqual(
+      healthKeys(
+        (GetSubnetOutputSchema.shape as unknown as Record<string, z.ZodType>)
+          .health!,
+      ),
+      shared,
+    );
+  });
+
+  test("the block production actually serves parses -- both fields the route's copy dropped", () => {
+    // Verbatim from live /api/v1/subnets/7/overview.
+    const parsed = OverlaidSubnetHealthSchema.parse({
+      netuid: 7,
+      name: "Allways",
+      status: "ok",
+      surface_count: 29,
+      ok_count: 29,
+      degraded_count: 0,
+      failed_count: 0,
+      unknown_count: 0,
+      last_checked: "2026-08-13T04:45:29.743Z",
+      last_ok: "2026-08-13T04:45:29.743Z",
+      avg_latency_ms: 287,
+      latency_sample_count: 29,
+      observed_by: "live-cron-prober",
+    });
+    assert.equal(parsed.latency_sample_count, 29);
+    assert.equal(parsed.name, "Allways");
+  });
+
+  test("the no-probed-surfaces arm still parses -- it carries none of the counts", () => {
+    // overlayOverviewHealth()'s second arm. This is why the block is .partial()
+    // rather than the summary itself.
+    assert.deepEqual(
+      OverlaidSubnetHealthSchema.parse({
+        netuid: 42,
+        status: "unknown",
+        surface_count: 0,
+      }),
+      { netuid: 42, status: "unknown", surface_count: 0 },
     );
   });
 });

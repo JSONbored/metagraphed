@@ -26,6 +26,7 @@
 // Bucket (c): captured_at fields drop format:date-time in favor of plain
 // z.string().nullable(), matching this epic's established convention.
 import { z } from "zod";
+import { subnetHistoryArtifactSchema } from "../shared.ts";
 import { POSITIONS_DEGRADED_REASONS } from "../../src/account-nominator-positions.ts";
 
 const NominatorPositionSchema = z
@@ -134,16 +135,19 @@ const AccountPositionHistoryPointSchema = z
     "One day's position for an account in one subnet: the neuron's uid/role/active plus stake/emission and its rank/trust/incentive/dividends scores and emission-per-stake yield.",
   );
 
-export const AccountPositionHistoryArtifactSchema = z
-  .object({
-    schema_version: z.int(),
-    ss58: z.string(),
-    netuid: z.int().min(0),
-    window: z.string().nullable().optional(),
-    point_count: z.int().min(0),
-    points: z.array(AccountPositionHistoryPointSchema),
-  })
-  .strict()
+/**
+ * The shared per-subnet history envelope, scoped to one account.
+ *
+ * `subnetHistoryArtifactSchema()` (shared.ts) already owns
+ * schema_version/netuid/window/point_count/points -- #10790 collapsed three
+ * copies of it into that factory. This was a fourth, invisible to the duplicate
+ * gate because it adds `ss58`: the envelope is the same, the scope is one field
+ * narrower.
+ */
+export const AccountPositionHistoryArtifactSchema = subnetHistoryArtifactSchema(
+  AccountPositionHistoryPointSchema,
+)
+  .extend({ ss58: z.string() })
   .describe(
     "One account's per-subnet position history over a lookback window, one point per neuron_daily snapshot. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history.",
   );
