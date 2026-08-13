@@ -12,6 +12,7 @@ import {
   classifyOwnerCutDisposition,
   DISPOSITION_BUCKETS,
   DISPOSITION_TOLERANCE_ALPHA,
+  ownerCutFlowLegs,
 } from "../src/owner-cut-disposition.ts";
 
 const BASE = { netuid: 64, accrued_alpha: 1000, flows_observed: true };
@@ -153,5 +154,146 @@ describe("five buckets, not six", () => {
     assert.equal(r.buckets.unstaked, 1000);
     assert.equal(r.buckets["held-as-stake"], 0);
     assert.equal(r.reconciles, true);
+  });
+});
+
+// ── #10930: the flow legs, and what a populated disposition may not say ─────
+describe("ownerCutFlowLegs", () => {
+  const rows = [
+    { netuid: 64, event_kind: "StakeAdded", total_alpha: 100, total_tao: 9 },
+    { netuid: 64, event_kind: "StakeRemoved", total_alpha: 40, total_tao: 3.5 },
+    { netuid: 7, event_kind: "StakeRemoved", total_alpha: 999, total_tao: 80 },
+  ];
+
+  test("picks ONE subnet's alpha legs out of the grouped rows", () => {
+    const legs = ownerCutFlowLegs(rows, 64);
+    assert.equal(legs.observed, true);
+    assert.equal(legs.staked_alpha, 100);
+    assert.equal(legs.unstaked_alpha, 40);
+  });
+
+  test("READS ALPHA, NOT TAO", () => {
+    // The buckets are alpha-denominated. Pricing the TAO column into them
+    // would make the residual an artefact of the price rather than a
+    // statement about the owner -- and the two columns differ by ~11x here,
+    // so a mix-up is not subtle once you look for it.
+    const legs = ownerCutFlowLegs(rows, 64);
+    assert.notEqual(legs.unstaked_alpha, 3.5, "that is the TAO column");
+    assert.equal(legs.unstaked_alpha, 40);
+  });
+
+  test("another subnet's rows never leak in", () => {
+    // netuid 7 unstaked 999 alpha in the same read. Attributing that to 64
+    // would report a sale the owner did not make on this subnet.
+    assert.equal(ownerCutFlowLegs(rows, 64).unstaked_alpha, 40);
+    assert.equal(ownerCutFlowLegs(rows, 7).unstaked_alpha, 999);
+  });
+
+  test("AN EMPTY READ IS OBSERVED; A FAILED READ IS NOT", () => {
+    // The distinction the whole surface turns on. An owner who moved nothing
+    // is a MEASUREMENT and must reach a 0 bucket; a read that did not happen
+    // must reach `unresolved`. Both look like "no rows for this subnet".
+    assert.deepEqual(ownerCutFlowLegs([], 64), {
+      observed: true,
+      staked_alpha: 0,
+      unstaked_alpha: 0,
+    });
+    assert.equal(ownerCutFlowLegs(null, 64).observed, false);
+    assert.equal(ownerCutFlowLegs(undefined, 64).observed, false);
+  });
+
+  test("unusable amounts are skipped rather than read as zero", () => {
+    const legs = ownerCutFlowLegs(
+      [
+        { netuid: 64, event_kind: "StakeRemoved", total_alpha: null },
+        { netuid: 64, event_kind: "StakeRemoved", total_alpha: -5 },
+        { netuid: 64, event_kind: "StakeRemoved", total_alpha: "nope" },
+        { netuid: 64, event_kind: "StakeRemoved", total_alpha: 10 },
+        { netuid: 64, event_kind: "SomethingElse", total_alpha: 500 },
+      ],
+      64,
+    );
+    assert.equal(legs.unstaked_alpha, 10);
+  });
+});
+
+describe("a populated disposition (#10930)", () => {
+  const observed = (over = {}) =>
+    classifyOwnerCutDisposition({
+      netuid: 64,
+      window_days: 30,
+      accrued_alpha: 100,
+      flows_observed: true,
+      unstaked_alpha: 40,
+      held_alpha: 60,
+      ...over,
+    });
+
+  test("reconciles when the buckets cover the accrual", () => {
+    const out = observed();
+    assert.equal(out.buckets.unstaked, 40);
+    assert.equal(out.buckets["held-as-stake"], 60);
+    assert.equal(out.buckets.unresolved, 0);
+    assert.equal(out.residual_alpha, 0);
+    assert.equal(out.reconciles, true);
+  });
+
+  test("A PARTIAL ATTRIBUTION LEAVES THE REMAINDER UNRESOLVED", () => {
+    // Requirement 3: `unresolved` is not a bucket of last resort to minimise,
+    // and the remainder is never redistributed to make the row look complete.
+    const out = observed({ held_alpha: null });
+    assert.equal(out.buckets.unstaked, 40);
+    assert.equal(out.buckets["held-as-stake"], null);
+    assert.equal(out.buckets.unresolved, 60);
+    assert.equal(out.reconciles, false);
+    // ...and it is NOT proportionally spread across the other buckets.
+    assert.equal(out.buckets["transferred-out"], 0);
+    assert.equal(out.buckets.burned, 0);
+  });
+
+  test("A ZERO-MOVEMENT OWNER IS MEASURED 0, NOT null", () => {
+    // The issue's second falsifiable claim: an owner who moved nothing and an
+    // unread window must be distinguishable in the payload.
+    const moved = observed({ unstaked_alpha: 0, held_alpha: 100 });
+    assert.equal(moved.buckets.unstaked, 0, "measured zero");
+    assert.equal(moved.reconciles, true);
+
+    const unread = classifyOwnerCutDisposition({
+      netuid: 64,
+      window_days: 30,
+      accrued_alpha: 100,
+      flows_observed: false,
+    });
+    assert.equal(unread.buckets.unstaked, null, "unread stays null");
+    assert.equal(unread.buckets.unresolved, 100);
+    assert.equal(unread.reconciles, false);
+  });
+
+  test("THE NOTES REFUSE THE TWO READINGS THE NUMBERS INVITE", () => {
+    // Requirement 5 (movement, not intent) and 6 (one address only), in the
+    // payload rather than the docs -- on the populated row, which is the one
+    // that gets quoted.
+    const notes = observed().notes.join(" ");
+    assert.match(notes, /does NOT mean sold/i);
+    assert.match(notes, /owner_coldkey only/);
+  });
+
+  test("the stale 'not read' note is gone once they are read", () => {
+    // Requirement: keep notes[] truthful. Leaving "streams not read for this
+    // window" beside populated buckets is a payload contradicting itself.
+    assert.equal(
+      observed().notes.some((n) => n.includes("not read for this window")),
+      false,
+    );
+    assert.equal(
+      classifyOwnerCutDisposition({
+        netuid: 64,
+        window_days: 30,
+        accrued_alpha: 100,
+        flows_observed: false,
+      }).notes.some((n) => n.includes("not read for this window")),
+      true,
+      "and it is still there when they genuinely were not",
+    );
   });
 });

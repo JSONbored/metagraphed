@@ -198,10 +198,13 @@ describe("GET /api/v1/subnets/{netuid}/owner-cut", () => {
     assert.equal(((await jsonBody(res)).error as Row)?.code, "invalid_netuid");
   });
 
-  test("prices the accrual and reports the disposition as UNRESOLVED", async () => {
-    // The route does not read the stake streams, so every accrued alpha is
-    // unresolved. Reporting `held-as-stake` from a read we did not perform is
-    // the false negative #10485 exists to prevent.
+  test("an UNAVAILABLE flow read leaves the accrual unresolved", async () => {
+    // The route DOES read the stake streams now (#10930) -- but this env binds
+    // no lakehouse, so the cold-tier read answers null and the disposition
+    // stays unresolved. That is the correct answer for a read that could not
+    // happen: reporting `held-as-stake` from a read we did not perform is the
+    // false negative #10485 exists to prevent, and it must survive the streams
+    // being wired.
     const res = await handleSubnetOwnerCut(
       req("/api/v1/subnets/64/owner-cut"),
       artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
@@ -220,6 +223,70 @@ describe("GET /api/v1/subnets/{netuid}/owner-cut", () => {
     assert.equal((disposition.buckets as Row)["held-as-stake"], null);
     assert.ok(((disposition.buckets as Row).unresolved as number) > 0);
     assert.equal(disposition.reconciles, false);
+  });
+
+  test("A REAL FLOW READ POPULATES THE UNSTAKED BUCKET", async () => {
+    // #10930's headline: the classifier has been complete since #10485 and was
+    // handed nothing. `loadFlows` is injected the same way `loadParams` is, so
+    // the wiring is driven without a lakehouse binding.
+    const res = await handleSubnetOwnerCut(
+      req("/api/v1/subnets/64/owner-cut"),
+      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      64,
+      {
+        ...params(OWNER_CUT_EFFECTIVE),
+        loadFlows: async () =>
+          ({
+            data: null,
+            generatedAt: null,
+            rows: [
+              { netuid: 64, event_kind: "StakeAdded", total_alpha: 900 },
+              { netuid: 64, event_kind: "StakeRemoved", total_alpha: 250 },
+              // Another subnet in the same read, which must not leak in.
+              { netuid: 7, event_kind: "StakeRemoved", total_alpha: 5000 },
+            ],
+          }) as never,
+      },
+    );
+    assert.equal(res.status, 200);
+    const disposition = ((await jsonBody(res)).data as Row).disposition as Row;
+    const buckets = disposition.buckets as Row;
+    assert.equal(buckets.unstaked, 250, "netuid 7's 5000 must not appear");
+    // Held is still unread on this surface, so the remainder is unresolved
+    // rather than assumed -- a partial attribution is a real answer.
+    assert.equal(buckets["held-as-stake"], null);
+    assert.ok((buckets.unresolved as number) > 0);
+    assert.equal(disposition.reconciles, false);
+  });
+
+  test("an owner who moved NOTHING reports a measured 0", async () => {
+    // The distinction the payload has to carry: a read that returned no rows
+    // for this subnet is a measurement, and it must not sit in `unresolved`
+    // alongside a read that never happened.
+    const res = await handleSubnetOwnerCut(
+      req("/api/v1/subnets/64/owner-cut"),
+      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      64,
+      {
+        ...params(OWNER_CUT_EFFECTIVE),
+        loadFlows: async () =>
+          ({ data: null, generatedAt: null, rows: [] }) as never,
+      },
+    );
+    const disposition = ((await jsonBody(res)).data as Row).disposition as Row;
+    assert.equal(
+      (disposition.buckets as Row).unstaked,
+      0,
+      "measured, not null",
+    );
+    const notes = (disposition.notes as string[]).join(" ");
+    assert.equal(
+      notes.includes("not read for this window"),
+      false,
+      "the streams WERE read; the note would contradict the payload",
+    );
+    assert.match(notes, /does NOT mean sold/i);
+    assert.match(notes, /owner_coldkey only/);
   });
 
   test("reconstructs the share from the runtime default, and accrues", async () => {
@@ -320,6 +387,34 @@ describe("MCP get_subnet_owner_cut", () => {
     // become a zero-dollar accrual.
     assert.equal((out.accrual as Row).usd, null);
     assert.equal(((out.disposition as Row).buckets as Row).unstaked, null);
+  });
+
+  test("THE MCP TOOL READS THE SAME FLOWS AS REST", async () => {
+    // #10930's deliverable: not a REST-only disposition. Same cold-tier
+    // function, same window, same classifier -- so an agent and a browser
+    // cannot disagree about whether a subnet's owner has moved anything.
+    const out = (await tool("get_subnet_owner_cut").handler({ netuid: 64 }, {
+      ...(mcpCtx({
+        [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] },
+      }) as object),
+      loadStakeFlow: async () => ({
+        data: null,
+        generatedAt: null,
+        rows: [
+          { netuid: 64, event_kind: "StakeRemoved", total_alpha: 250 },
+          { netuid: 7, event_kind: "StakeRemoved", total_alpha: 5000 },
+        ],
+      }),
+    } as never)) as Row;
+    const disposition = out.disposition as Row;
+    assert.equal(
+      (disposition.buckets as Row).unstaked,
+      250,
+      "netuid 7's rows must not leak into this subnet",
+    );
+    const notes = (disposition.notes as string[]).join(" ");
+    assert.match(notes, /does NOT mean sold/i);
+    assert.equal(notes.includes("not read for this window"), false);
   });
 
   test("reconstructs the share rather than reporting it unread", async () => {

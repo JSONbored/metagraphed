@@ -80,6 +80,16 @@ export interface DispositionResult {
   notes: string[];
 }
 
+/**
+ * The flow window the disposition reads, as a stake-flow window LABEL.
+ *
+ * Must resolve to the same span as the accrual's `ATTRIBUTION_WINDOW_DAYS`
+ * (30). Named here, beside the classifier that depends on the alignment,
+ * rather than spelled at the call site -- requirement 4 of #10930 is that the
+ * windows line up, and a literal at one of two call sites is how they stop.
+ */
+export const OWNER_CUT_FLOW_WINDOW = "30d";
+
 /** Alpha is 9dp on chain; anything under this is rounding, not a gap. */
 export const DISPOSITION_TOLERANCE_ALPHA = 1e-6;
 
@@ -144,6 +154,21 @@ export function classifyOwnerCutDisposition(
     };
   }
 
+  // #10930: the two things a reader must not conclude from a populated
+  // disposition, stated in the payload rather than left to the field names.
+  // These ride on EVERY observed classification, because the row that gets
+  // quoted is the one with numbers in it.
+  notes.push(
+    "`unstaked` means alpha left stake over this window. It does NOT mean " +
+      "sold: on dTAO removing stake returns TAO through the subnet's own " +
+      "pool, and this surface reports the movement, not an intent behind it",
+  );
+  notes.push(
+    "scoped to the subnet's declared owner_coldkey only. An owner operating " +
+      "several addresses would show less movement here than they made, and " +
+      "resolving which other addresses are theirs is not done on this surface",
+  );
+
   const unstaked = finite(input.unstaked_alpha) ?? 0;
   const transferred = finite(input.transferred_alpha) ?? 0;
   const burned = finite(input.burned_alpha) ?? 0;
@@ -204,5 +229,49 @@ export function classifyOwnerCutDisposition(
     residual_alpha: round9(residual),
     reconciles: Math.abs(residual) <= DISPOSITION_TOLERANCE_ALPHA,
     notes,
+  };
+}
+
+/**
+ * The alpha legs of one subnet's stake flow for the owner address (#10930).
+ *
+ * PURE. Takes the grouped `(netuid, event_kind)` rows the stake-flow cold-tier
+ * read already returns and picks the ONE subnet's alpha sums out of them —
+ * there is no second flow reader here, because a second reader is a second
+ * window, a second filter and a second chance to disagree.
+ *
+ * ALPHA, NOT TAO. `account_events` carries both units per row and the buckets
+ * are alpha-denominated, so this reads `alpha_amount`. Pricing the TAO column
+ * into an alpha bucket would put a reconstruction where the reconciliation
+ * needs a reading, and the residual would then be an artefact of the price
+ * rather than a statement about the owner.
+ *
+ * `observed: false` when the read returned nothing AT ALL — which is different
+ * from a subnet whose owner moved nothing, and the caller must keep them
+ * apart: the first resolves to `unresolved`, the second to a measured 0.
+ */
+export function ownerCutFlowLegs(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  netuid: number,
+): { observed: boolean; staked_alpha: number; unstaked_alpha: number } {
+  if (!Array.isArray(rows)) {
+    return { observed: false, staked_alpha: 0, unstaked_alpha: 0 };
+  }
+  let staked = 0;
+  let unstaked = 0;
+  for (const row of rows) {
+    if (Number(row?.netuid) !== netuid) continue;
+    const alpha = Number(row?.total_alpha);
+    if (!Number.isFinite(alpha) || alpha < 0) continue;
+    if (row?.event_kind === "StakeAdded") staked += alpha;
+    else if (row?.event_kind === "StakeRemoved") unstaked += alpha;
+  }
+  // The READ happened even when this subnet has no rows in it — an owner who
+  // moved nothing is a measurement, and reporting it as unread would leave a
+  // real answer sitting in `unresolved` forever.
+  return {
+    observed: true,
+    staked_alpha: round9(staked),
+    unstaked_alpha: round9(unstaked),
   };
 }

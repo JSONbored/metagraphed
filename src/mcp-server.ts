@@ -1661,6 +1661,10 @@ import {
   SUBNET_WALLETS_FIELD_SOURCES,
 } from "./wallets-load.ts";
 import {
+  ownerCutFlowLegs,
+  OWNER_CUT_FLOW_WINDOW,
+} from "./owner-cut-disposition.ts";
+import {
   GetSubnetOwnerCutInputSchema,
   GetSubnetOwnerCutOutputSchema,
   GetSubnetWalletsInputSchema,
@@ -9607,6 +9611,28 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           .loadNetworkParameters ?? loadNetworkParameters;
       const parameters = await loadParams(ctx.env as never);
       const ownerCut = parameters?.subnet_owner_cut_effective;
+      // #10930: the same flow read REST does, from the same cold-tier
+      // function over the same window. Wiring this on one surface only would
+      // have left an agent and a browser disagreeing about whether a subnet's
+      // owner has moved anything -- the divergence class this repo keeps
+      // finding, and the issue names it as a deliverable.
+      const ownerColdkey =
+        typeof economics?.owner_coldkey === "string" && economics.owner_coldkey
+          ? economics.owner_coldkey
+          : null;
+      // Injected off ctx exactly like loadNetworkParameters above, so a test
+      // drives the flow read without a lakehouse binding -- the same seam REST
+      // gets through its `deps` argument. Without it this arm is unreachable
+      // in the suite, and an unreachable arm reads as a tested one.
+      const loadFlows =
+        (ctx as { loadStakeFlow?: typeof loadAccountStakeFlowColdTier })
+          .loadStakeFlow ?? loadAccountStakeFlowColdTier;
+      const flows = ownerColdkey
+        ? await loadFlows(ctx.env as never, ownerColdkey, {
+            window: OWNER_CUT_FLOW_WINDOW,
+          })
+        : null;
+      const legs = ownerCutFlowLegs(flows?.rows ?? null, netuid);
       const view = loadSubnetOwnerCut({
         netuid,
         window_days: ATTRIBUTION_WINDOW_DAYS,
@@ -9615,6 +9641,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // #10926: the rate. Without it `accrual.usd` was null on every MCP
         // call while REST priced the same subnet from the same index.
         usd_per_tao: await mcpUsdPerTao(ctx),
+        unstaked_alpha: legs.observed ? legs.unstaked_alpha : null,
+        flows_observed: legs.observed,
       });
       return {
         schema_version: 1,
