@@ -36,7 +36,12 @@ function emitQueryParameterEnums(): string {
       string,
       Record<
         string,
-        { parameters?: Array<{ name: string; schema?: { enum?: unknown[] } }> }
+        {
+          parameters?: Array<{
+            name: string;
+            schema?: { enum?: unknown[]; items?: { enum?: unknown[] } };
+          }>;
+        }
       >
     >;
   };
@@ -45,7 +50,9 @@ function emitQueryParameterEnums(): string {
     for (const operation of Object.values(operations)) {
       if (typeof operation !== "object" || operation === null) continue;
       for (const parameter of operation.parameters ?? []) {
-        const values = parameter.schema?.enum;
+        // A CSV parameter (`style: form`, `explode: false`) declares its
+        // vocabulary on `items.enum`; a scalar declares it on `enum` (#11045).
+        const values = parameter.schema?.enum ?? parameter.schema?.items?.enum;
         if (
           !Array.isArray(values) ||
           values.length === 0 ||

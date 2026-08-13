@@ -2034,6 +2034,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Realtime chain firehose (SSE; WebSocket on Upgrade)
+         * @description Subscribe to decoded chain activity as it is captured (#4982, ADR 0015). Server-sent events by default; send a WebSocket `Upgrade` header on this same path for the WS transport. No auth: this is the same public read-only data `/api/v1/chain-events` serves, pushed instead of polled. A filter naming only unpublished topics yields a well-formed stream that never emits (currently published: blocks); the stream says so once, at connect.
+         */
+        get: operations["chainStream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/subnet-lifecycle": {
         parameters: {
             query?: never;
@@ -28795,6 +28815,38 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+        };
+    };
+    chainStream: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated source tables to subscribe to. Omitted means every topic. Unrecognized names are dropped from the filter, and a filter that is ENTIRELY unrecognized matches nothing rather than falling back to everything -- a typo'd topic must not subscribe you to the full firehose. */
+                topics?: ("blocks" | "extrinsics" | "chain_events" | "account_events")[];
+                /** @description Only deliver events for this subnet. Applies only to topics whose rows carry a `netuid` (`account_events`); un-scoped topics such as `blocks` pass through unfiltered. A malformed value degrades to no filter rather than an error. */
+                netuid?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event stream. After a deploy restarts the hub, the stream is a 200 that closes immediately carrying an SSE `retry:` interval -- the one signal `EventSource` honors -- rather than an error status it would treat as fatal. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description A connection cap refused the subscription (every cap answers identically), the firehose is not bound to this deployment, or a WebSocket upgrade raced a deploy (with `Retry-After`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -30,6 +30,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
+import { CHAIN_FIREHOSE_TOPICS } from "../src/chain-firehose-topics.ts";
 
 export const SNAPSHOT_PATH = "generated/lakehouse/schema.json";
 export const TYPES_PATH = "generated/lakehouse/types.ts";
@@ -187,13 +188,11 @@ const RUST_TYPE: Readonly<Record<string, string>> = {
  * Exported so the test can assert it stays a subset: a name here that the
  * snapshot does not carry would emit a struct for a table nobody has the schema
  * of, which is the failure this whole generator exists to prevent.
+ *
+ * Derived from the firehose topic vocabulary (#11045): the decoder's four
+ * tables ARE the four topics, one declaration.
  */
-export const DECODER_TABLES: readonly string[] = [
-  "blocks",
-  "extrinsics",
-  "chain_events",
-  "account_events",
-];
+export const DECODER_TABLES: readonly string[] = CHAIN_FIREHOSE_TOPICS;
 
 /**
  * The Rust mirror of `emitTypes`, for the decoder that writes these tables.

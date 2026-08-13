@@ -118,18 +118,6 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
     "schemas-src/routes/chain-alpha-volume.ts",
     "schemas-src/routes/subnet-alpha-volume.ts",
   ],
-  // The four decoder tables: one chain fact named by the decode lane's
-  // watermark list and the UI's firehose topics -- the SSE `topics` parameter
-  // is unpublished in openapi.json (the contract gap noted on #10994), so the
-  // UI cannot derive it yet. graphql-only.ts and the lakehouse generator name
-  // the same set in forms this gate's extraction does not currently match.
-  "account_events|blocks|chain_events|extrinsics": [
-    "src/decode-watermark.ts",
-    "apps/ui/src/hooks/use-chain-stream.ts",
-    // Visible since the extraction learned annotated consts (#11045 tracks
-    // publishing the topics parameter so the UI copy can derive).
-    "scripts/generate-lakehouse-types.ts",
-  ],
   "coldkey|hotkey|netuid": [
     "src/evm-precompiles.ts",
     "src/nominator-positions-neon-write.ts",

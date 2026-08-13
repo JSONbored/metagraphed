@@ -21,7 +21,11 @@ import type { Row } from "./row-type.ts";
 import { parseFieldsParam } from "../src/field-projection.ts";
 import { describe, test } from "vitest";
 import { parseRouteQuery, validateRouteArgs } from "../src/route-query.ts";
-import { API_ROUTES, routeQuerySchemasForPathname } from "../src/contracts.ts";
+import {
+  API_ROUTES,
+  CHAIN_STREAM_OPENAPI_PATH,
+  routeQuerySchemasForPathname,
+} from "../src/contracts.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
 
@@ -538,6 +542,18 @@ describe("every published constraint is enforced (#10218)", () => {
     for (const [routePath, item] of Object.entries(openapi.paths as Row)) {
       const op = (item as Row).get;
       if (!op || routePath.includes("{network}")) continue;
+      // #11045: the firehose's filters are deliberately NON-REJECTING -- a 400
+      // permanently kills `EventSource` reconnection (the same spec behavior
+      // chainFirehoseReconnect exists for), so the hub FILTERS instead of
+      // erroring: unrecognized topics are dropped (all-unrecognized matches
+      // nothing), a malformed netuid degrades to no filter. That enforcement
+      // lives in workers/chain-firehose-hub.ts, not the route-query boundary
+      // this sweep probes, and is pinned by tests/chain-firehose-hub.test.ts
+      // ("drops unknown table names silently", "an all-unrecognized list
+      // yields an empty Set", "absent, blank, non-integer, and negative all
+      // read as unfiltered"). The published schema states the vocabulary and
+      // the prose states the degrade semantics.
+      if (routePath === CHAIN_STREAM_OPENAPI_PATH) continue;
       let path = routePath;
       for (const [token, value] of Object.entries(PATH_FIXTURES)) {
         path = path.split(token).join(value);

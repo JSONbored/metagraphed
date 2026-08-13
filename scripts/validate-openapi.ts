@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import {
   API_ROUTES,
+  CHAIN_STREAM_OPENAPI_PATH,
   FEED_ROUTES,
   networkVariantPath,
   CONTRACT_VERSION,
@@ -152,6 +153,17 @@ for (const feedPath of FEED_OPENAPI_ROUTES) {
   );
 }
 
+// #11045: the realtime firehose is a third registry-of-one -- an event stream,
+// not an artifact envelope, published so the `topics` vocabulary rides the
+// contract. Claimed here for the same reason the feeds are counted.
+const STREAM_OPENAPI_ROUTES = [CHAIN_STREAM_OPENAPI_PATH];
+for (const streamPath of STREAM_OPENAPI_ROUTES) {
+  check(
+    documentedRoutes.has(`GET ${streamPath}`),
+    `OpenAPI is missing stream route GET ${streamPath}`,
+  );
+}
+
 // #8698: plus one /{network}/ twin per network-addressable route.
 const NETWORK_VARIANT_PATHS = API_ROUTES.map((route) =>
   networkVariantPath(route.path),
@@ -164,10 +176,13 @@ for (const variantPath of NETWORK_VARIANT_PATHS) {
 }
 
 const expectedRoutes =
-  API_ROUTES.length + FEED_OPENAPI_ROUTES.length + NETWORK_VARIANT_PATHS.length;
+  API_ROUTES.length +
+  FEED_OPENAPI_ROUTES.length +
+  STREAM_OPENAPI_ROUTES.length +
+  NETWORK_VARIANT_PATHS.length;
 assert.equal(documentedRoutes.size, expectedRoutes);
 console.log(
-  `OpenAPI validation passed for ${API_ROUTES.length} route(s) + ${FEED_OPENAPI_ROUTES.length} feed route(s) + ${NETWORK_VARIANT_PATHS.length} network variant(s).`,
+  `OpenAPI validation passed for ${API_ROUTES.length} route(s) + ${FEED_OPENAPI_ROUTES.length} feed route(s) + ${STREAM_OPENAPI_ROUTES.length} stream route(s) + ${NETWORK_VARIANT_PATHS.length} network variant(s).`,
 );
 
 function check(condition: unknown, message: string): void {

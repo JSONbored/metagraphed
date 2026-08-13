@@ -22,20 +22,34 @@
 // means a validator can ask "is this a real topic" without importing a server.
 
 /**
- * Every topic the firehose accepts.
+ * Every topic the firehose accepts -- the four decoded chain tables, in the
+ * order every derivation publishes them.
  *
  * Matched the retired `notify_chain_firehose()` Postgres trigger (#9426) -- the
  * only four tables it ever fired `table:` for. `account_events` (#4984
  * prerequisite) carries netuid/hotkey/coldkey/amount_tao directly, unlike the
  * other three, because the alerter's trigger conditions need those columns
  * without a per-event round-trip.
+ *
+ * This tuple is the ONLY place the four names are written (#11045). The decode
+ * lane's watermark list (`DECODE_TABLES`), the lakehouse type generator
+ * (`DECODER_TABLES`), the GraphQL `ChainFirehoseTable` enum, and the published
+ * `topics` query parameter on `GET /api/v1/chain/stream` -- which is where the
+ * UI's `QUERY_PARAMETER_ENUMS` copy comes from -- all derive from it.
  */
-export const CHAIN_FIREHOSE_TABLES: ReadonlySet<string> = new Set([
+export const CHAIN_FIREHOSE_TOPICS = [
   "blocks",
   "extrinsics",
   "chain_events",
   "account_events",
-]);
+] as const;
+
+export type ChainFirehoseTopic = (typeof CHAIN_FIREHOSE_TOPICS)[number];
+
+/** The same vocabulary as a membership check, for validators. */
+export const CHAIN_FIREHOSE_TABLES: ReadonlySet<string> = new Set(
+  CHAIN_FIREHOSE_TOPICS,
+);
 
 /**
  * The subset that actually has a producer today.
@@ -53,4 +67,4 @@ export const CHAIN_FIREHOSE_TABLES: ReadonlySet<string> = new Set([
  */
 export const CHAIN_FIREHOSE_PUBLISHED_TABLES: ReadonlySet<string> = new Set([
   "blocks",
-]);
+] as const satisfies readonly ChainFirehoseTopic[]);

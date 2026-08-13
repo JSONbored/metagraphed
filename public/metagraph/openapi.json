@@ -78347,6 +78347,64 @@
         ]
       }
     },
+    "/api/v1/chain/stream": {
+      "get": {
+        "description": "Subscribe to decoded chain activity as it is captured (#4982, ADR 0015). Server-sent events by default; send a WebSocket `Upgrade` header on this same path for the WS transport. No auth: this is the same public read-only data `/api/v1/chain-events` serves, pushed instead of polled. A filter naming only unpublished topics yields a well-formed stream that never emits (currently published: blocks); the stream says so once, at connect.",
+        "operationId": "chainStream",
+        "parameters": [
+          {
+            "description": "Comma-separated source tables to subscribe to. Omitted means every topic. Unrecognized names are dropped from the filter, and a filter that is ENTIRELY unrecognized matches nothing rather than falling back to everything -- a typo'd topic must not subscribe you to the full firehose.",
+            "explode": false,
+            "in": "query",
+            "name": "topics",
+            "required": false,
+            "schema": {
+              "items": {
+                "enum": [
+                  "blocks",
+                  "extrinsics",
+                  "chain_events",
+                  "account_events"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only deliver events for this subnet. Applies only to topics whose rows carry a `netuid` (`account_events`); un-scoped topics such as `blocks` pass through unfiltered. A malformed value degrades to no filter rather than an error.",
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The event stream. After a deploy restarts the hub, the stream is a 200 that closes immediately carrying an SSE `retry:` interval -- the one signal `EventSource` honors -- rather than an error status it would treat as fatal."
+          },
+          "503": {
+            "description": "A connection cap refused the subscription (every cap answers identically), the firehose is not bound to this deployment, or a WebSocket upgrade raced a deploy (with `Retry-After`)."
+          }
+        },
+        "summary": "Realtime chain firehose (SSE; WebSocket on Upgrade)",
+        "tags": [
+          "chain"
+        ]
+      }
+    },
     "/api/v1/chain/subnet-lifecycle": {
       "get": {
         "operationId": "chainSubnetLifecycle",

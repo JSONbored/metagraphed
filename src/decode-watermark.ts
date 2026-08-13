@@ -33,6 +33,7 @@
 
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { CHAIN_FIREHOSE_TOPICS } from "./chain-firehose-topics.ts";
 
 /**
  * The published watermark object, in the bucket bound as `METAGRAPH_ARCHIVE`
@@ -80,13 +81,12 @@ export function decodeWatermarkKey(
  */
 export const DECODE_WATERMARK_TTL_MS = 5 * 60 * 1000;
 
-/** The four lakehouse tables the decode lane feeds, in the decoder's order. */
-export const DECODE_TABLES = [
-  "blocks",
-  "extrinsics",
-  "chain_events",
-  "account_events",
-] as const;
+/**
+ * The four lakehouse tables the decode lane feeds, in the decoder's order --
+ * the same fact the firehose topic vocabulary names (#11045), so it is derived
+ * rather than restated.
+ */
+export const DECODE_TABLES = CHAIN_FIREHOSE_TOPICS;
 
 export interface DecodeWatermark {
   /**
