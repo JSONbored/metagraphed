@@ -116,7 +116,7 @@ const SITEMAP_STATIC_PATHS = [
 // else (the request falls through to the SSR app).
 async function handleDiscovery(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
-  if (url.pathname === "/robots.txt") return buildRobots();
+  if (url.pathname === "/robots.txt") return buildRobots(url.host);
   if (url.pathname === "/sitemap.xml") return buildSitemap();
   if (!DISCOVERY_PROXY_PATHS.has(url.pathname)) return null;
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -158,20 +158,79 @@ function buildDiscoveryResponseHeaders(pathname: string, upstreamHeaders: Header
   return headers;
 }
 
-// robots.txt for the apex. metagraphed is a public, agent-ready registry, so all
-// crawlers (including AI agents) are welcome — the machine API + discovery
-// surfaces live on api.metagraph.sh (which serves its own robots.txt). Served
-// here by the Worker because Cloudflare Managed robots.txt is disabled for the
-// zone; advertises the human-page sitemap so crawlers can find it.
-function buildRobots(): Response {
-  const body =
+/**
+ * The one host whose pages are canonical.
+ *
+ * This Worker answers on more than one hostname — `testnet.metagraph.sh` today,
+ * and historically the account's leftover `*.workers.dev` subdomain, which #9004
+ * found serving the entire site in parallel. Every non-canonical hostname is
+ * duplicate content of the apex by construction: same routes, same Worker, and
+ * (for testnet) data nobody searches for.
+ *
+ * Derived from SITE_ORIGIN rather than written out again so the two can never
+ * drift, and matched as an exact host so a NEW hostname is non-canonical by
+ * default. That default is the point: #9004's duplicate host was live and
+ * indexable for as long as it took someone to notice, and an allowlist-of-one
+ * is what makes the next one fail closed instead.
+ */
+const CANONICAL_HOST = new URL(SITE_ORIGIN).host;
+
+/**
+ * robots.txt. Served here by the Worker because Cloudflare Managed robots.txt is
+ * disabled for the zone.
+ *
+ * metagraphed is a public, agent-ready registry, so on the canonical host all
+ * crawlers (including AI agents) stay welcome — `Allow: /` is the posture and
+ * #11002 does not retreat from it. What it withholds is the three UNBOUNDED
+ * per-entity spaces: ~8.8M blocks at the head growing ~7,200/day, every
+ * extrinsic inside each of them, and every ss58 that has ever touched the chain.
+ * None of the three is in the sitemap, each render fans out to the most
+ * expensive query in the project (#11001), and the crawl was measured driving
+ * the SSR rate-limit rejections in #11000. Crawling all of it is a crawl-budget
+ * sink that competes with the registry pages that ARE worth ranking.
+ *
+ * The prefixes are exact, and the three do not behave identically:
+ *   - `/blocks/` and `/extrinsics/` are safe to withhold whole. Their index
+ *     routes are `/chain/blocks` and `/chain/extrinsics` (both in
+ *     SITEMAP_STATIC_PATHS); the bare `/blocks/` and `/extrinsics/` paths are
+ *     permanent redirect stubs into that hub (routes/blocks.index.tsx et al), so
+ *     no live page is lost.
+ *   - `/accounts/` is NOT a stub — it is a real index page, and the one a pasted
+ *     EVM address lands on (`/accounts?h160=…`, metagraphed-infra#373). So the
+ *     index is re-permitted by an end-anchored `Allow`, which beats the broader
+ *     `Disallow` under RFC 9309's longest-match precedence, while every
+ *     `/accounts/<ss58>` below it stays withheld.
+ */
+export function robotsBody(host: string): string {
+  if (host !== CANONICAL_HOST) {
+    // No Sitemap line: a robots.txt may only advertise sitemaps for its OWN
+    // host, so the apex's sitemap URL was never valid here in the first place.
+    return (
+      `# Non-canonical host — this is a duplicate of ${SITE_ORIGIN}, which is\n` +
+      `# the only hostname whose pages should be crawled or indexed.\n` +
+      `User-agent: *\n` +
+      `Disallow: /\n`
+    );
+  }
+  return (
     `# metagraph.sh — public Bittensor subnet integration registry.\n` +
     `# AI agents welcome; the machine API + discovery live on api.metagraph.sh.\n` +
     `User-agent: *\n` +
     `Allow: /\n` +
+    `# Unbounded per-entity detail: not in the sitemap, one uncached scan per URL.\n` +
+    `# The hub indexes (/chain/blocks, /chain/extrinsics) stay crawlable, as does\n` +
+    `# the /accounts index itself — only the per-account pages below it do not.\n` +
+    `Disallow: /blocks/\n` +
+    `Disallow: /extrinsics/\n` +
+    `Disallow: /accounts/\n` +
+    `Allow: /accounts/$\n` +
     `\n` +
-    `Sitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
-  return new Response(body, {
+    `Sitemap: ${SITE_ORIGIN}/sitemap.xml\n`
+  );
+}
+
+function buildRobots(host: string): Response {
+  return new Response(robotsBody(host), {
     status: 200,
     headers: {
       "content-type": "text/plain; charset=utf-8",

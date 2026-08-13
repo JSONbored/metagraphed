@@ -2341,9 +2341,37 @@ await fs.writeFile(
   sitemapXml,
   "utf8",
 );
+// #11002: allow-all EXCEPT the three unbounded per-entity history spaces,
+// mirroring the apex's own rule in apps/ui/src/server.ts's robotsBody(). Same
+// reasoning: /api/v1/blocks/{ref} (+ its /extrinsics, /events, /chain-events
+// sub-resources), /api/v1/extrinsics/{hash} and /api/v1/accounts/{ss58} (+ its
+// 20 sub-resources) are unbounded, and each request is a full uncached lakehouse
+// scan (#11001) — so a crawl of that space is billed per URL, for pages no one
+// searches for.
+//
+// The COLLECTION routes are what the sitemap and llms.txt advertise and they all
+// stay open, because a trailing-slash prefix does not match the collection
+// itself: `Disallow: /api/v1/blocks/` leaves `/api/v1/blocks` crawlable. The two
+// BOUNDED routes that do sit under a disallowed prefix — /api/v1/blocks/summary
+// and /api/v1/accounts/top-holders — are re-permitted by a longer `Allow`, which
+// wins under RFC 9309's longest-match precedence.
+//
+// BOTH hosts need this. The apex is where the amplification happens (a crawled
+// page SSR-fans-out into these same routes); the API is where the cost lands.
+// Changing one and not the other leaves the walk fully open.
 await fs.writeFile(
   path.join(repoRoot, "public/robots.txt"),
-  `User-agent: *\nAllow: /\nSitemap: ${llmsApiBase}/sitemap.xml\n`,
+  `User-agent: *\n` +
+    `Allow: /\n` +
+    `# Unbounded per-entity detail: one uncached scan per URL, not in the sitemap.\n` +
+    `# The collection routes (/api/v1/blocks, /api/v1/extrinsics,\n` +
+    `# /api/v1/accounts) stay crawlable, as do the bounded rollups below them.\n` +
+    `Disallow: /api/v1/blocks/\n` +
+    `Allow: /api/v1/blocks/summary\n` +
+    `Disallow: /api/v1/extrinsics/\n` +
+    `Disallow: /api/v1/accounts/\n` +
+    `Allow: /api/v1/accounts/top-holders\n` +
+    `Sitemap: ${llmsApiBase}/sitemap.xml\n`,
   "utf8",
 );
 
