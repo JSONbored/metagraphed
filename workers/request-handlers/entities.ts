@@ -6742,6 +6742,26 @@ export async function handleBlockExtrinsics(
     answer?.kind === "answer"
       ? answer.data
       : buildBlockExtrinsics([], ref, null, { limit, offset });
+  // #11018: name the settledness withChainDetailEdgeCache reads off this
+  // response. COLD *and* NON-EMPTY, and the second half is the one that matters
+  // here. answerBlockDetail returns `tier: "cold"` whenever the lakehouse
+  // loader returned anything, and that loader answers a confirmed absence with
+  // the schema-stable empty payload rather than null (#11016 found the same
+  // trap on handleExtrinsic) -- so `cold` alone is also true for "the lakehouse
+  // looked and this block is not there".
+  //
+  // On THIS route that distinction is the whole point of #9208: an empty
+  // extrinsics array and a block that genuinely had none are the same bytes.
+  // Pinning an empty answer for an hour would convert "we cannot see it yet"
+  // into "this block had none", which is exactly what chainDetailGapResponse
+  // exists to prevent. isEmptyExtrinsicPayload is already in scope for the
+  // ladder's own use, so the condition is expressible without inventing one.
+  const cacheProfile =
+    answer?.kind === "answer" &&
+    answer.tier === "cold" &&
+    !isEmptyExtrinsicPayload(answer.data)
+      ? "static"
+      : "short";
   // CSV reuses handleExtrinsics's transform + columns — buildBlockExtrinsics maps
   // the same formatExtrinsic row shape (#5746). Cold block → empty → header-only.
   if (csvRequested(url, request)) {
@@ -6766,7 +6786,7 @@ export async function handleBlockExtrinsics(
           ?.observed_at ?? null,
       ),
     },
-    "short",
+    cacheProfile,
   );
 }
 
@@ -6807,6 +6827,16 @@ export async function handleBlockEvents(
     answer?.kind === "answer"
       ? answer.data
       : buildBlockEvents([], ref, null, { limit, offset });
+  // #11018, same rule and same reason as handleBlockExtrinsics above: cold AND
+  // non-empty. An empty event list and a block that genuinely emitted none are
+  // the same bytes, so caching the empty one would answer a later caller with a
+  // confident "this block had no events" we never measured.
+  const cacheProfile =
+    answer?.kind === "answer" &&
+    answer.tier === "cold" &&
+    !isEmptyEventPayload(answer.data)
+      ? "static"
+      : "short";
   // CSV reuses the account-events EVENTS_CSV_COLUMNS — buildBlockEvents maps the
   // same formatAccountEvent row shape (#5746). Cold block → empty → header-only.
   if (csvRequested(url, request)) {
@@ -6829,7 +6859,7 @@ export async function handleBlockEvents(
           ?.observed_at ?? null,
       ),
     },
-    "short",
+    cacheProfile,
   );
 }
 

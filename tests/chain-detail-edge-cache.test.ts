@@ -290,6 +290,9 @@ describe("the dispatch actually routes through the cache (#11001)", () => {
       "extrinsic",
       "/api/v1/extrinsics/0x58e19156f8fdadbf60f70aaf664e80aa80c9ebb705dffe6a919048798c5c7af0",
     ],
+    // #11018: the two sub-resources #11010 left behind.
+    ["block-extrinsics", "/api/v1/blocks/777/extrinsics"],
+    ["block-events", "/api/v1/blocks/777/events"],
   ] as const) {
     test(`${label} detail consults the edge cache, and a cold ref is not stored`, async () => {
       const cache = mockCaches();
