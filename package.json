@@ -104,6 +104,7 @@
     "validate:unreferenced-exports": "node scripts/validate-unreferenced-exports.ts",
     "validate:module-state-resets": "node scripts/validate-module-state-resets.ts",
     "validate:pg-json-binds": "node scripts/validate-pg-json-binds.ts",
+    "validate:retired-store-vocabulary": "node scripts/validate-retired-store-vocabulary.ts",
     "openapi:generate": "node scripts/generate-openapi.ts --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.ts",
     "types:generate": "node scripts/generate-types.ts",
