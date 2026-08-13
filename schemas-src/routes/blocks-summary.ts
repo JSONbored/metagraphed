@@ -48,7 +48,9 @@ export const BlocksSummaryArtifactSchema = z
       )
       .nullable(),
     distinct_authors: z.int().min(0),
-    author_concentration: ConcentrationMetricsSchema.nullable(),
+    author_concentration: ConcentrationMetricsSchema.nullable().describe(
+      "Block-authorship decentralization: the shared concentration measures over each distinct author's BLOCK COUNT in the window (`total` is the counted blocks). Null when no block in the window carried an author.",
+    ),
     distinct_spec_versions: z.int().min(0),
     latest_spec_version: z.int().min(0).nullable(),
   })
