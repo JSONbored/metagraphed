@@ -14,6 +14,7 @@
 // catalog returns it as `overrides.prefix` and it is a UUID, so a literal here
 // would be a second copy of a value the server already publishes.
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
 import {
@@ -40,12 +41,21 @@ const WAREHOUSE =
  * READ, rather than "all 26", on purpose. A type for a table nothing queries is
  * dead code the moment it is generated -- `DatabaseTables` and `TableName` on
  * the Neon side are the standing example, generated and imported by nothing.
- * The ten unlisted tables (account_balances, featured_validators, neurons,
- * providers, rehearsal, subnet_ownership, subnet_snapshots, subnets, surfaces,
+ * The unlisted tables (account_balances, featured_validators, neurons,
+ * providers, rehearsal, subnet_ownership, subnets, surfaces,
  * validator_nominator_counts) are written by producers outside this repo and
  * never read through R2 SQL here; add one here the moment a reader does.
+ *
+ * `subnet_snapshots` WAS on that list and should not have been (#11008). It is
+ * joined by src/neuron-daily-cold-tier.ts, and not incidentally: the join
+ * prices stake and emission in TAO through
+ * `nd.stake_tao * s.tao_in_pool_tao / s.alpha_in_pool`, so three of its columns
+ * feed a published figure while having no snapshot, no generated tuple, no Zod
+ * schema and no drift coverage. The rule above was right and simply was not
+ * followed, which is why scripts/validate-lakehouse-readers.ts now checks it
+ * rather than leaving it to a comment.
  */
-const TABLES = [
+export const TABLES = [
   // The four the decoder appends to.
   "blocks",
   "extrinsics",
@@ -78,76 +88,89 @@ const TABLES = [
   // distinction honest.
   "neuron_daily",
   "account_position_daily",
+  // Joined by src/neuron-daily-cold-tier.ts to price stake and emission in TAO.
+  "subnet_snapshots",
 ];
 
-const token = process.env.R2_CATALOG_TOKEN ?? "";
-if (!token) {
-  process.stderr.write(
-    "R2_CATALOG_TOKEN is required -- this reads the live catalog.\n",
-  );
-  process.exit(1);
-}
-
-const auth = { Authorization: `Bearer ${token}` };
-
-const config = (await (
-  await fetch(`${BASE}/v1/config?warehouse=${encodeURIComponent(WAREHOUSE)}`, {
-    headers: auth,
-  })
-).json()) as { overrides?: { prefix?: string } };
-const prefix = config.overrides?.prefix;
-if (!prefix) {
-  process.stderr.write("catalog /v1/config returned no prefix\n");
-  process.exit(1);
-}
-
-const columns: LakehouseColumn[] = [];
-for (const table of TABLES) {
-  const res = await fetch(
-    `${BASE}/v1/${prefix}/namespaces/chain/tables/${table}`,
-    { headers: auth },
-  );
-  if (!res.ok) {
-    process.stderr.write(`chain.${table}: HTTP ${res.status}\n`);
+// Guarded, so importing TABLES does not reach for the catalog. Before this the
+// module fetched at IMPORT time, which meant any tool that wanted the table
+// list -- scripts/validate-lakehouse-readers.ts, for one -- had to have a
+// catalog token to read a constant.
+async function main(): Promise<void> {
+  const token = process.env.R2_CATALOG_TOKEN ?? "";
+  if (!token) {
+    process.stderr.write(
+      "R2_CATALOG_TOKEN is required -- this reads the live catalog.\n",
+    );
     process.exit(1);
   }
-  const body = (await res.json()) as {
-    metadata?: {
-      "current-schema-id"?: number;
-      schemas?: { "schema-id"?: number; fields?: unknown[] }[];
-    };
-  };
-  const schemas = body.metadata?.schemas ?? [];
-  // The CURRENT schema, not the newest in the list: Iceberg keeps every
-  // historical schema, and reading the last one would pin whichever happened
-  // to be appended most recently rather than the one in force.
-  const current =
-    schemas.find(
-      (s) => s["schema-id"] === body.metadata?.["current-schema-id"],
-    ) ?? schemas[schemas.length - 1];
-  for (const field of (current?.fields ?? []) as {
-    id: number;
-    name: string;
-    type: unknown;
-    required?: boolean;
-  }[]) {
-    columns.push({
-      table,
-      field_id: field.id,
-      column: field.name,
-      type:
-        typeof field.type === "string"
-          ? field.type
-          : JSON.stringify(field.type),
-      required: Boolean(field.required),
-    });
+
+  const auth = { Authorization: `Bearer ${token}` };
+
+  const config = (await (
+    await fetch(
+      `${BASE}/v1/config?warehouse=${encodeURIComponent(WAREHOUSE)}`,
+      {
+        headers: auth,
+      },
+    )
+  ).json()) as { overrides?: { prefix?: string } };
+  const prefix = config.overrides?.prefix;
+  if (!prefix) {
+    process.stderr.write("catalog /v1/config returned no prefix\n");
+    process.exit(1);
   }
+
+  const columns: LakehouseColumn[] = [];
+  for (const table of TABLES) {
+    const res = await fetch(
+      `${BASE}/v1/${prefix}/namespaces/chain/tables/${table}`,
+      { headers: auth },
+    );
+    if (!res.ok) {
+      process.stderr.write(`chain.${table}: HTTP ${res.status}\n`);
+      process.exit(1);
+    }
+    const body = (await res.json()) as {
+      metadata?: {
+        "current-schema-id"?: number;
+        schemas?: { "schema-id"?: number; fields?: unknown[] }[];
+      };
+    };
+    const schemas = body.metadata?.schemas ?? [];
+    // The CURRENT schema, not the newest in the list: Iceberg keeps every
+    // historical schema, and reading the last one would pin whichever happened
+    // to be appended most recently rather than the one in force.
+    const current =
+      schemas.find(
+        (s) => s["schema-id"] === body.metadata?.["current-schema-id"],
+      ) ?? schemas[schemas.length - 1];
+    for (const field of (current?.fields ?? []) as {
+      id: number;
+      name: string;
+      type: unknown;
+      required?: boolean;
+    }[]) {
+      columns.push({
+        table,
+        field_id: field.id,
+        column: field.name,
+        type:
+          typeof field.type === "string"
+            ? field.type
+            : JSON.stringify(field.type),
+        required: Boolean(field.required),
+      });
+    }
+  }
+
+  writeFileSync(
+    path.join(repoRoot, SNAPSHOT_PATH),
+    `${JSON.stringify(columns, null, 2)}\n`,
+  );
+  process.stdout.write(
+    `snapshotted ${columns.length} columns across ${TABLES.length} tables\n`,
+  );
 }
 
-writeFileSync(
-  path.join(repoRoot, SNAPSHOT_PATH),
-  `${JSON.stringify(columns, null, 2)}\n`,
-);
-process.stdout.write(
-  `snapshotted ${columns.length} columns across ${TABLES.length} tables\n`,
-);
+if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
