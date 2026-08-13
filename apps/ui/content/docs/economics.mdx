@@ -64,4 +64,10 @@ data = requests.get(
 
 Both routes are cached 60s. `/economics` prefers a live KV snapshot (falling back to the last published R2 artifact, so it never 404s); `/economics/trends` is edge-cached and busts on the same publish stamp as the sibling history/trajectory routes.
 
+## Who receives it
+
+These routes say how much emission a subnet gets. They do not say who inside it received the money — that is the recipient split, and the surfaces built on it touch a question the chain does not answer on its own: whether a wallet belongs to the subnet's team.
+
+[Attribution method](/docs/attribution-method) is the standard those surfaces publish under — what we will say about wallet control, what we will not, and how to check us. Read it before quoting an owner-capture figure.
+
 <ApiSourceFooter paths={["/api/v1/economics", "/api/v1/economics/trends"]} />
