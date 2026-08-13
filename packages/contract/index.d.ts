@@ -6286,6 +6286,7 @@ export interface components {
         };
         /** @description Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary. */
         BlocksSummaryArtifact: {
+            /** @description Block-authorship decentralization: the shared concentration measures over each distinct author's BLOCK COUNT in the window (`total` is the counted blocks). Null when no block in the window carried an author. */
             author_concentration: components["schemas"]["ConcentrationMetrics"] | null;
             block_count: number;
             block_time: {
@@ -6648,6 +6649,7 @@ export interface components {
             top_1pct_share: number | null;
             top_20pct_share: number | null;
             top_5pct_share: number | null;
+            /** @description The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit. */
             total: number | null;
         };
         ChainConcentrationSubnetsArtifact: {
@@ -7521,6 +7523,7 @@ export interface components {
             top_1pct_share?: number | null;
             top_20pct_share?: number | null;
             top_5pct_share?: number | null;
+            /** @description The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit. */
             total?: number | null;
         } | null;
         ContractsArtifact: {
@@ -7903,6 +7906,7 @@ export interface components {
                 top_1pct_share: number | null;
                 top_20pct_share: number | null;
                 top_5pct_share: number | null;
+                /** @description The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit. */
                 total: number | null;
             } | null;
             netuids: number[];
@@ -11746,9 +11750,9 @@ export interface components {
         /** @description Whether a subnet's registered miners actually earn, measured over a 7d/30d/90d window rather than from a snapshot. Reports the daily zero-emission rate, how many days each miner UID earned on (persistent-zero and occasionally-zero are different facts a snapshot collapses), and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. DESCRIPTIVE ONLY — there is no fairness score and no grade: a high Gini on a subnet whose task genuinely has one best answer is not misconduct, and that context is not in this data. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness. */
         SubnetMinerFairnessArtifact: {
             concentration?: {
-                /** @description THE HEADLINE LENS: emission concentration across controlling entities (coldkeys), with each entity's UIDs summed. A subnet with three operators behind 256 UIDs is not diverse, and the per-UID lens alone hides exactly that. */
+                /** @description THE HEADLINE LENS: emission concentration across controlling entities (coldkeys), with each entity's UIDs summed. A subnet with three operators behind 256 UIDs is not diverse, and the per-UID lens alone hides exactly that. The distribution is each entity's miner emission summed across the window's `days_covered` days, where each day contributes that day's captured PER-TEMPO alpha rate (the `emission_tao` convention) -- so `total` is a within-subnet ranking mass, not a window payout total, and never TAO. */
                 entity?: components["schemas"]["ConcentrationMetrics"];
-                /** @description The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator. */
+                /** @description The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator. Same distribution and unit as the entity lens: window-summed daily per-tempo alpha samples. */
                 uid?: components["schemas"]["ConcentrationMetrics"];
             };
             /** @description How many days the series actually covers. Published beside every distribution figure: a distribution over 3 days and one over 31 are not the same claim, and `neuron_daily` is only ~27-33 days deep, so a 90d window is answered with the depth found rather than refused. */

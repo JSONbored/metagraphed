@@ -866,6 +866,7 @@ export type BlockTimeDistribution = {
 /** Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary. */
 export type BlocksSummary = {
   __typename?: 'BlocksSummary';
+  /** Block-authorship decentralization: the shared concentration measures over each distinct author's BLOCK COUNT in the window (`total` is the counted blocks). Null when no block in the window carried an author. */
   author_concentration?: Maybe<ConcentrationMetrics>;
   block_count: Scalars['Int']['output'];
   block_time?: Maybe<BlockTimeDistribution>;
@@ -1205,6 +1206,7 @@ export type ChainConcentrationScorecard = {
   top_5pct_share?: Maybe<Scalars['Float']['output']>;
   top_10pct_share?: Maybe<Scalars['Float']['output']>;
   top_20pct_share?: Maybe<Scalars['Float']['output']>;
+  /** The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit. */
   total?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -2107,6 +2109,7 @@ export type ConcentrationMetrics = {
   top_5pct_share?: Maybe<Scalars['Float']['output']>;
   top_10pct_share?: Maybe<Scalars['Float']['output']>;
   top_20pct_share?: Maybe<Scalars['Float']['output']>;
+  /** The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit. */
   total?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -6802,9 +6805,9 @@ export type SubnetMinerFairness = {
 
 export type SubnetMinerFairnessConcentration = {
   __typename?: 'SubnetMinerFairnessConcentration';
-  /** THE HEADLINE LENS: emission concentration across controlling entities (coldkeys), with each entity's UIDs summed. A subnet with three operators behind 256 UIDs is not diverse, and the per-UID lens alone hides exactly that. */
+  /** THE HEADLINE LENS: emission concentration across controlling entities (coldkeys), with each entity's UIDs summed. A subnet with three operators behind 256 UIDs is not diverse, and the per-UID lens alone hides exactly that. The distribution is each entity's miner emission summed across the window's `days_covered` days, where each day contributes that day's captured PER-TEMPO alpha rate (the `emission_tao` convention) -- so `total` is a within-subnet ranking mass, not a window payout total, and never TAO. */
   entity?: Maybe<ConcentrationMetrics>;
-  /** The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator. */
+  /** The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator. Same distribution and unit as the entity lens: window-summed daily per-tempo alpha samples. */
   uid?: Maybe<ConcentrationMetrics>;
 };
 

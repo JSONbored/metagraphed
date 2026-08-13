@@ -650,7 +650,13 @@ export const ConcentrationMetricsSchema = z
     // old `.nullable().optional()` spelling predates the typed producers and
     // described no writer.
     holders: z.int().min(0),
-    total: z.number().nullable().optional(),
+    total: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit.",
+      ),
     gini: z.number().nullable().optional(),
     hhi: z.number().nullable().optional(),
     hhi_normalized: z.number().nullable().optional(),
