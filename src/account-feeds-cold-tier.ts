@@ -262,6 +262,7 @@ export async function loadAccountStakeFlowColdTier(
 ): Promise<{
   data: ReturnType<typeof buildAccountStakeFlow>;
   generatedAt: string | null;
+  rows: Array<Record<string, unknown>>;
 } | null> {
   const addr = safeSs58Literal(ss58);
   if (addr === null) return null;
@@ -290,9 +291,17 @@ export async function loadAccountStakeFlowColdTier(
     DEFAULT_STAKE_FLOW_WINDOW,
     query.window,
   );
+  // ALSO SUMS alpha_amount (#10930). `account_events` carries both units on
+  // every StakeAdded/StakeRemoved row, so one query yields both -- the same
+  // rationale src/alpha-volume.ts states for its own read. The owner-cut
+  // disposition needs the ALPHA leg specifically: its buckets are alpha, and
+  // pricing a TAO figure into them would put a reconstruction where the
+  // reconciliation needs a reading. `buildAccountStakeFlow` ignores the extra
+  // column, so the published stake-flow card is unchanged.
   const rows = await r2SqlQuery(
     env,
     `SELECT netuid, event_kind, SUM(amount_tao) AS total_tao, ` +
+      `SUM(alpha_amount) AS total_alpha, ` +
       `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
       `FROM chain.account_events ` +
       `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') AND ${kind} ` +
@@ -309,6 +318,10 @@ export async function loadAccountStakeFlowColdTier(
   return {
     data: buildAccountStakeFlow(coalesced, ss58, { window: label }),
     generatedAt: latestObservedIso(rows),
+    // The raw grouped rows, so a caller needing the alpha leg does not have to
+    // re-read the table. Returned beside the card rather than folded into it,
+    // because the card's shape is a published contract.
+    rows,
   };
 }
 

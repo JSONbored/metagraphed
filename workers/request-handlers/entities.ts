@@ -101,6 +101,10 @@ import {
 } from "../../src/subnet-yield.ts";
 import { buildSubnetEmissionSplitHistory } from "../../src/emission-split.ts";
 import { buildSubnetOwnerCapture } from "../../src/owner-capture.ts";
+import {
+  ownerCutFlowLegs,
+  OWNER_CUT_FLOW_WINDOW,
+} from "../../src/owner-cut-disposition.ts";
 import { buildSubnetMinerFairness } from "../../src/miner-fairness.ts";
 import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
@@ -7372,7 +7376,10 @@ export async function handleSubnetOwnerCut(
   netuid: number,
   // Injected the same way /network/parameters' own siblings inject it, so the
   // share can be driven in a test without a KV binding or an RPC.
-  deps: { loadParams?: typeof loadNetworkParameters } = {},
+  deps: {
+    loadParams?: typeof loadNetworkParameters;
+    loadFlows?: typeof loadAccountStakeFlowColdTier;
+  } = {},
 ) {
   if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535) {
     return errorResponse(
@@ -7392,12 +7399,42 @@ export async function handleSubnetOwnerCut(
   // rather than an RPC per request.
   const parameters = await (deps.loadParams ?? loadNetworkParameters)(env);
   const ownerCut = parameters?.subnet_owner_cut_effective;
+  // #10930: THE FLOW STREAMS, FINALLY READ. The disposition classifier has been
+  // complete since #10485 and was handed nothing, so every subnet answered
+  // `unresolved` with a note saying the streams "were not read for this
+  // window" -- accurate about the handler and wrong about what was possible.
+  //
+  // Reuses the stake-flow cold-tier read rather than adding a second one, and
+  // takes its ALPHA leg: the buckets are alpha-denominated, and pricing the TAO
+  // column into them would make the residual an artefact of the price rather
+  // than a statement about the owner.
+  //
+  // ONE COLDKEY, the declared one. An owner operating several addresses is out
+  // of scope and the payload says so rather than quietly under-reporting.
+  const ownerColdkey =
+    typeof row?.owner_coldkey === "string" && row.owner_coldkey
+      ? row.owner_coldkey
+      : null;
+  const flows = ownerColdkey
+    ? await (deps.loadFlows ?? loadAccountStakeFlowColdTier)(
+        env,
+        ownerColdkey,
+        {
+          // The SAME window as the accrual. A 30-day accrual against a 7-day flow
+          // read is a reconciliation that cannot balance.
+          window: OWNER_CUT_FLOW_WINDOW,
+        },
+      )
+    : null;
+  const legs = ownerCutFlowLegs(flows?.rows ?? null, netuid);
   const view = loadSubnetOwnerCut({
     netuid,
     window_days: ATTRIBUTION_WINDOW_DAYS,
     economics: row,
     owner_cut: typeof ownerCut === "number" ? ownerCut : null,
     usd_per_tao: await usdPerTaoOrNull(env),
+    unstaked_alpha: legs.observed ? legs.unstaked_alpha : null,
+    flows_observed: legs.observed,
   });
   return envelopeResponse(
     request,
