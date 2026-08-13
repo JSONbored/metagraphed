@@ -1169,13 +1169,16 @@ const CHAIN_REGISTRATIONS_CSV_COLUMNS = [
 ];
 
 // The whole row (#10263): five flat scalars, no nested object to serialize.
-const CHAIN_SUBNET_LIFECYCLE_CSV_COLUMNS = [
+// Exported: the per-subnet lifecycle route serves the SAME row shape and
+// restated this list by hand (#10987 follow-up).
+export const LIFECYCLE_CSV_COLUMNS = [
   "netuid",
   "event",
   "block_number",
   "observed_at",
   "predates_capture",
 ];
+const CHAIN_SUBNET_LIFECYCLE_CSV_COLUMNS = LIFECYCLE_CSV_COLUMNS;
 const CHAIN_DEREGISTRATIONS_CSV_COLUMNS = [
   "netuid",
   "distinct_deregistered_hotkeys",

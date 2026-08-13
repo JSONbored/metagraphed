@@ -52,7 +52,7 @@ const repoRoot = path.resolve(
 // hand in src/ and stay green forever -- the same blindness #10987 fixed for
 // the enum-vocabulary gate. ts.sys.readDirectory recurses, so "src" covers
 // src/graphql/ and "workers" covers workers/request-handlers/.
-const SCAN_ROOTS = ["schemas-src", "src", "workers"];
+export const SCAN_ROOTS = ["schemas-src", "src", "workers"];
 /** Below this, a shared key set is coincidence rather than lineage. */
 const MIN_KEYS = 4;
 

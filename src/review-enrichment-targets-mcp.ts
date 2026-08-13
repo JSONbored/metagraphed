@@ -17,6 +17,14 @@ import {
   ListReviewEnrichmentTargetsOutputSchema,
 } from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import { IDENTITY_LEVEL_VALUES } from "../schemas-src/shared.ts";
+import {
+  REVIEW_ENRICHMENT_TARGET_TYPE_VALUES,
+  REVIEW_ENRICHMENT_TARGET_ACTION_VALUES,
+  REVIEW_EVIDENCE_ACTION_VALUES,
+  REVIEW_ENRICHMENT_LANE_VALUES,
+  REVIEW_ENRICHMENT_SUBMISSION_ROUTE_VALUES,
+} from "../schemas-src/routes/review-enrichment.ts";
 
 export const REVIEW_ENRICHMENT_TARGETS_ARTIFACT =
   "/metagraph/review/enrichment-targets.json";
@@ -25,43 +33,12 @@ const TARGET_SORT_FIELDS =
   API_QUERY_COLLECTIONS["enrichment-targets"].sort_fields;
 const PROFILE_LEVELS = QUERY_ENUMS.profileLevel;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
-const EVIDENCE_ACTIONS = [
-  "submit-new-evidence",
-  "verify-existing-evidence",
-  "replace-stale-evidence",
-  "review-existing-evidence",
-  "maintainer-review-existing-evidence",
-  "monitor",
-];
-const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"];
-const LANES = [
-  "direct-submission",
-  "maintainer-review",
-  "adapter-candidate",
-  "monitoring-followup",
-  "baseline-monitoring",
-];
-const SUBMISSION_ROUTES = [
-  "direct-candidate-pr",
-  "adapter-request",
-  "maintainer-review",
-  "status-report",
-];
-const TARGET_ACTIONS = [
-  "submit-new-candidate",
-  "replace-stale-candidate",
-  "verify-existing-candidate",
-  "review-existing-candidate",
-  "adapter-review",
-  "maintainer-review",
-  "monitoring-followup",
-];
-const TARGET_TYPES = [
-  "surface-candidate",
-  "adapter-review",
-  "maintainer-review",
-  "monitoring-followup",
-];
+const EVIDENCE_ACTIONS = REVIEW_EVIDENCE_ACTION_VALUES;
+const IDENTITY_LEVELS = IDENTITY_LEVEL_VALUES;
+const LANES = REVIEW_ENRICHMENT_LANE_VALUES;
+const SUBMISSION_ROUTES = REVIEW_ENRICHMENT_SUBMISSION_ROUTE_VALUES;
+const TARGET_ACTIONS = REVIEW_ENRICHMENT_TARGET_ACTION_VALUES;
+const TARGET_TYPES = REVIEW_ENRICHMENT_TARGET_TYPE_VALUES;
 
 export interface ReviewEnrichmentTargetsMcpError extends Error {
   toolError: true;

@@ -12,6 +12,11 @@ import {
   ListProfileCompletenessOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import {
+  IDENTITY_LEVEL_VALUES,
+  NATIVE_NAME_QUALITY_VALUES,
+  CONFIDENCE_LEVEL_VALUES,
+} from "../schemas-src/shared.ts";
 
 export const PROFILE_COMPLETENESS_ARTIFACT =
   "/metagraph/review/profile-completeness.json";
@@ -20,9 +25,9 @@ const PROFILE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["profile-completeness"].sort_fields;
 const PROFILE_LEVELS = QUERY_ENUMS.profileLevel;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
-const CONFIDENCE_LEVELS = ["low", "medium", "high"];
-const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"];
-const NATIVE_NAME_QUALITIES = ["chain", "placeholder", "empty"];
+const CONFIDENCE_LEVELS = CONFIDENCE_LEVEL_VALUES;
+const IDENTITY_LEVELS = IDENTITY_LEVEL_VALUES;
+const NATIVE_NAME_QUALITIES = NATIVE_NAME_QUALITY_VALUES;
 
 export interface ProfileCompletenessMcpError extends Error {
   toolError: true;

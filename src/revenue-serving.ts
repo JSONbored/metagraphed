@@ -27,6 +27,7 @@
 // consistent while the number was 200x wrong. That is why the checks below
 // assert things a wrong SUM would fail, not only things a wrong RATIO would.
 import { computeCoverage, type CoverageResult } from "./revenue-coverage.ts";
+import { REVENUE_PROVENANCE_VALUES } from "../schemas-src/routes/revenue-coverage.ts";
 
 /** One observed figure, for one surface, for one period. The probe lane writes
  * these to `revenue_observations` keyed on (surface_id, period). */
@@ -99,7 +100,20 @@ const PROVENANCE_RANK = [
   "third-party-reported",
   "proxy-only",
   "none",
-];
+  // The ORDER is this module's meaning -- strongest evidence first -- so this
+  // cannot simply alias the owner's set. The satisfies clause pins every
+  // member to REVENUE_PROVENANCE_VALUES (a rename or removal fails to
+  // compile), and RankIsComplete makes a MISSING member a type error too.
+] as const satisfies readonly (typeof REVENUE_PROVENANCE_VALUES)[number][];
+type RankIsComplete =
+  Exclude<
+    (typeof REVENUE_PROVENANCE_VALUES)[number],
+    (typeof PROVENANCE_RANK)[number]
+  > extends never
+    ? true
+    : never;
+const _rankIsComplete: RankIsComplete = true;
+void _rankIsComplete;
 
 /**
  * Days one period of each grain covers.

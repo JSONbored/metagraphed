@@ -18,11 +18,12 @@ import {
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 import { LIVE_CRON_PROBER } from "./field-provenance.ts";
+import { RPC_POOL_KIND_VALUES } from "../schemas-src/query-params.ts";
 
 export const RPC_POOLS_ARTIFACT = "/metagraph/rpc/pools.json";
 
 const POOL_SORT_FIELDS = API_QUERY_COLLECTIONS["rpc-pools"].sort_fields;
-const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"];
+const POOL_KINDS = RPC_POOL_KIND_VALUES;
 
 export interface RpcPoolsMcpError extends Error {
   toolError: true;

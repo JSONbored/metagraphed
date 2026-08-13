@@ -10,11 +10,12 @@ import {
   ListEndpointPoolsOutputSchema,
 } from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import { RPC_POOL_KIND_VALUES } from "../schemas-src/query-params.ts";
 
 export const ENDPOINT_POOLS_ARTIFACT = "/metagraph/endpoint-pools.json";
 
 const POOL_SORT_FIELDS = API_QUERY_COLLECTIONS["endpoint-pools"].sort_fields;
-const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"];
+const POOL_KINDS = RPC_POOL_KIND_VALUES;
 
 export interface EndpointPoolsMcpError extends Error {
   toolError: true;

@@ -27,6 +27,7 @@ import { buildEconomicsArtifact } from "./lib/economics-artifacts.ts";
 // in the matrix (or the reverse) fails CI instead of silently skewing what we
 // tell agents is available.
 import {
+  EXPECTED_GAP_KINDS,
   artifactOutputPath,
   backfilledIdentityUrl,
   buildTimestamp,
@@ -60,17 +61,7 @@ export const NETWORK_REGISTRIES: NetworkRegistryConfig[] = [
 ];
 
 const SCHEMA_VERSION = 1;
-// Mirrors buildGaps' expected-kinds list in build-artifacts.ts.
-const EXPECTED_GAP_KINDS = [
-  "docs",
-  "source-repo",
-  "website",
-  "dashboard",
-  "openapi",
-  "subnet-api",
-  "sse",
-  "data-artifact",
-];
+// THE list, imported from the gap computation it used to mirror by hand.
 
 function nativeSlug(subnet: Row): string {
   const quality = nativeNameQuality(subnet);

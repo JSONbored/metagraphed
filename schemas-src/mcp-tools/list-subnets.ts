@@ -32,7 +32,11 @@ import {
   McpNetworkSchema,
 } from "../shared.ts";
 
-const LIST_SUBNETS_SORT_FIELDS = [
+// The DELIBERATE MCP-narrowed subset of the subnets collection's fourteen
+// sort fields (a tool pays for width in context, cf. the limit-ceiling rule:
+// the narrowing is a declaration, not drift). Exported as the subset's one
+// owner -- graphql and the dispatcher restated it by hand (#10987 follow-up).
+export const LIST_SUBNETS_SORT_FIELDS = [
   "netuid",
   "integration_readiness",
   "surface_count",

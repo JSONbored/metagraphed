@@ -15,8 +15,12 @@
 // now publishes.
 import { z } from "zod";
 import { CompareArtifactSchema } from "../routes/compare.ts";
+import { COMPARE_DIMENSIONS as LIVE_COMPARE_DIMENSIONS } from "../../src/analytics-live.ts";
 
-const COMPARE_DIMENSIONS = ["structure", "economics", "health"] as const;
+// The dimensions the live comparator computes, imported from it rather than
+// restated (#10987 follow-up) -- a dimension added there is publishable here
+// the same moment.
+const COMPARE_DIMENSIONS = LIVE_COMPARE_DIMENSIONS;
 
 export const CompareSubnetsInputSchema = z
   .object({

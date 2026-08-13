@@ -75,6 +75,11 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
     "schemas-src/routes/subnet-turnover.ts",
   ],
   "30d|7d|90d": [
+    // The UI's two deliberate literals, each with its reason in-file: the
+    // subnet page's control drives several routes at once, and the APY
+    // basis's overlap with route windows is coincidence, not lineage (#10994).
+    "apps/ui/src/lib/metagraphed/subnet-window-helpers.ts",
+    "apps/ui/src/routes/-validators-hotkey-page.tsx",
     "schemas-src/routes/account-activity-registrations.ts",
     "schemas-src/routes/account-activity.ts",
     "schemas-src/routes/chain-turnover.ts",
@@ -121,6 +126,9 @@ const COINCIDENT_BY_DOMAIN: Record<string, string[]> = {
   "account_events|blocks|chain_events|extrinsics": [
     "src/decode-watermark.ts",
     "apps/ui/src/hooks/use-chain-stream.ts",
+    // Visible since the extraction learned annotated consts (#11045 tracks
+    // publishing the topics parameter so the UI copy can derive).
+    "scripts/generate-lakehouse-types.ts",
   ],
   "coldkey|hotkey|netuid": [
     "src/evm-precompiles.ts",
@@ -182,7 +190,12 @@ for (const dir of SCHEMA_DIRS) {
     for (const match of source.matchAll(/z\s*\.enum\(\s*\[([^\]]*)\]\s*\)/g))
       push(match[1]);
     for (const match of source.matchAll(
-      /(?:export )?const \w+\s*=\s*\[([^\]]*)\]\s*as const;/g,
+      // The optional type annotation matters: `const X: readonly string[] =`
+      // broke the unannotated form and made DECODER_TABLES invisible -- a
+      // vocabulary could hide from this gate by stating its own type (#11045
+      // records the pair that did). `as const` is optional for the same
+      // reason: an annotated tuple does not need it.
+      /(?:export )?const \w+(?:\s*:[^=]+)?\s*=\s*\[([^\]]*)\]\s*(?:as const)?;/g,
     ))
       push(match[1]);
     // A vocabulary declared as an OBJECT PROPERTY (#10060). This gate matched

@@ -347,7 +347,6 @@ import {
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
-  TOP_HOLDERS_SORTS,
 } from "./top-holders.ts";
 import {
   buildSubnetHolders,
@@ -524,7 +523,6 @@ import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
-  ACCOUNTS_LIST_SORTS,
   DEFAULT_ACCOUNTS_LIST_SORT,
   buildAccountsList,
 } from "./accounts-list.ts";
@@ -633,7 +631,6 @@ import {
 import {
   DEFAULT_MOVERS_SORT,
   DEFAULT_MOVERS_WINDOW,
-  MOVERS_SORTS,
   buildMovers,
 } from "./movers.ts";
 import {
@@ -1942,13 +1939,6 @@ async function loadProviderSubnets(context: GqlContext, netuids: number[]) {
 // delegated wholesale to list_subnets' own categoricalFilterSubnets/
 // rangeFilterSubnets (imported), so the earlier hand-rolled inclusion-only
 // matchesSubnetListFilters is retired in favor of that shared, negation-aware
-// helper -- keeping the two surfaces from drifting.
-const SUBNET_SORT_FIELDS = [
-  "netuid",
-  "integration_readiness",
-  "surface_count",
-  "name",
-];
 
 // Shared list shape: load → optional netuid filter → paginate → wrap. `map`
 // node-wraps rows; `resultKey` is the list field's name (economics uses
@@ -2232,15 +2222,6 @@ const rootValue = {
     // inclusion + negation, min_/max_ range bounds, and sort/order -- by reusing
     // its exact shared helpers rather than reimplementing the filter logic.
     const { netuid, network, limit, cursor, sort, order } = args;
-    // Same allow-lists list_subnets validates against (LIST_SUBNETS_SORT_FIELDS /
-    // asc|desc); an unsupported value is a GraphQL BAD_USER_INPUT error, not a
-    // silently ignored arg.
-    if (sort != null && !SUBNET_SORT_FIELDS.includes(sort)) {
-      throw new GraphQLError(
-        `"${sort}" is not a supported sort. Supported: ${SUBNET_SORT_FIELDS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     if (order != null && order !== "asc" && order !== "desc") {
       throw new GraphQLError(
         `"${order}" is not a supported order. Supported: asc, desc.`,
@@ -2580,16 +2561,6 @@ const rootValue = {
     { sort, limit }: QueryTop_HoldersArgs,
     context: GqlContext,
   ) {
-    // Same allowlist REST enforces -- an unknown sort is BAD_USER_INPUT rather
-    // than silently falling back, mirroring the route's invalid_query 400.
-    if (sort != null && !TOP_HOLDERS_SORTS.includes(sort)) {
-      throw new GraphQLError(
-        `sort must be one of: ${TOP_HOLDERS_SORTS.join(", ")}.`,
-        {
-          extensions: { code: "BAD_USER_INPUT" },
-        },
-      );
-    }
     const safeSort = sort ?? DEFAULT_TOP_HOLDERS_SORT;
     const safeLimit = clampLimit(limit, {
       defaultLimit: TOP_HOLDERS_LIMIT_DEFAULT,
@@ -6379,12 +6350,6 @@ const rootValue = {
 
   async accounts({ sort, limit }: QueryAccountsArgs, context: GqlContext) {
     const requestedSort = sort ?? DEFAULT_ACCOUNTS_LIST_SORT;
-    if (!ACCOUNTS_LIST_SORTS.includes(requestedSort)) {
-      throw new GraphQLError(
-        `"${requestedSort}" is not a supported sort. Supported: ${ACCOUNTS_LIST_SORTS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const safeLimit = clampLimit(limit, {
       defaultLimit: ACCOUNTS_LIST_LIMIT_DEFAULT,
       maxLimit: ACCOUNTS_LIST_LIMIT_MAX,
@@ -7713,12 +7678,6 @@ const rootValue = {
   ) {
     const requestedWindow = window ?? DEFAULT_MOVERS_WINDOW;
     const requestedSort = sort ?? DEFAULT_MOVERS_SORT;
-    if (!MOVERS_SORTS.includes(requestedSort)) {
-      throw new GraphQLError(
-        `"${requestedSort}" is not a supported sort. Supported: ${MOVERS_SORTS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     // `limit` arrives clamped and defaulted by the dispatch parse (#10316), so
     // neither the `?? MOVERS_LIMIT_DEFAULT` nor the range check that used to
     // stand here can do anything: the value is already inside the range the

@@ -12,11 +12,12 @@ import {
   ListSubnetCandidatesOutputSchema,
 } from "../schemas-src/mcp-tools/subnet-registry-lists.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import { CONFIDENCE_LEVEL_VALUES } from "../schemas-src/shared.ts";
 
 const CANDIDATE_SORT_FIELDS = API_QUERY_COLLECTIONS.candidates.sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
 const CANDIDATE_STATES = QUERY_ENUMS.candidateState;
-const CONFIDENCE_LEVELS = ["low", "medium", "high"];
+const CONFIDENCE_LEVELS = CONFIDENCE_LEVEL_VALUES;
 // netuid is the path param (excluded from the REST list query); the remaining
 // candidates filters are all query-string filters, applied over the artifact.
 const SUBNET_CANDIDATES_QUERY_FILTER_NAMES = [

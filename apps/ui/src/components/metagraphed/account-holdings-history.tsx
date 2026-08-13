@@ -7,6 +7,7 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { accountPortfolioQuery, accountPositionHistoryQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { AccountPositionHistory, PortfolioPosition } from "@/lib/metagraphed/types";
+import { CHART_PALETTE } from "@/lib/metagraphed/chart-palette";
 
 // The issue's 30d/90d/1y/max control, mapped onto the position-history API's
 // own window enum ("all" is the API spelling of "max").
@@ -35,14 +36,7 @@ const TOP_POSITIONS = 6;
  */
 const POSITIONS_PAGE_SIZE = 6;
 
-const CHART_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-6)",
-] as const;
+const CHART_COLORS = CHART_PALETTE;
 
 function taoStr(v?: number | null) {
   if (v == null || !Number.isFinite(v)) return "—";

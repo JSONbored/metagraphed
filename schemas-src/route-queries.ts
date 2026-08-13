@@ -709,7 +709,10 @@ export const ROUTE_QUERY_SCHEMAS = {
     // recomputed daily. The route's own 400 has always named all six.
     // The enum IS TOP_HOLDERS_SORTS, read from the module that owns it.
     sort: sortSchema(
-      TOP_HOLDERS_SORTS as [string, ...string[]],
+      // Spread, not cast: the owner's tuple is readonly now that it derives
+      // from the route's declaration, and a copy for the schema builder is
+      // exactly what a mutable-cast would have pretended not to make.
+      [...TOP_HOLDERS_SORTS] as [string, ...string[]],
       "total_tao",
     ).optional(),
     limit: limitSchema(

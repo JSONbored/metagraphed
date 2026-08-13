@@ -3,14 +3,10 @@
 // from src/movers.ts's buildMovers()/buildNetworkSummary(), cross-checked
 // against the hand-edited SubnetMoversArtifact component it replaces.
 import { z } from "zod";
+import { MOVERS_SORTS } from "../../src/movers.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
-export const SUBNET_MOVERS_MOVERS_SORTS_VALUES = [
-  "stake",
-  "emission",
-  "validators",
-  "neurons",
-] as const;
+export const SUBNET_MOVERS_MOVERS_SORTS_VALUES = MOVERS_SORTS;
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_MOVERS_WINDOW_VALUES = ["7d", "30d", "90d"] as const;

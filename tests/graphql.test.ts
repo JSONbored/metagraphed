@@ -25008,6 +25008,11 @@ describe("revenue coverage over GraphQL (#10476)", () => {
 // never did).
 describe("deleted resolver guards: the dispatch still refuses, with its own sentence (#10993)", () => {
   const CASES: Array<[string, string]> = [
+    // sort guards found dead in the annotated-consts sweep (4 more deleted)
+    ["subnets", `subnets(sort: "__bogus__") { __typename }`],
+    ["accounts", `accounts(sort: "__bogus__") { __typename }`],
+    ["top_holders_sort", `top_holders(sort: "__bogus__")`],
+    ["subnet_movers_sort", `subnet_movers(sort: "__bogus__") { __typename }`],
     // window guards (27 deleted)
     ["subnet_movers", `subnet_movers(window: "__bogus__") { __typename }`],
     [

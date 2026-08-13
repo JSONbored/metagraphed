@@ -12,17 +12,10 @@
 // GlobalValidatorEntry is its only referrer -- so that hand-edited key also
 // becomes fully orphaned.
 import { z } from "zod";
+import { GLOBAL_VALIDATOR_SORTS } from "../../src/metagraph-neurons.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
-export const GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES = [
-  "avg_validator_trust",
-  "max_validator_trust",
-  "stake_dominance",
-  "subnet_count",
-  "total_emission",
-  "total_stake",
-  "uid_count",
-] as const;
+export const GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES = GLOBAL_VALIDATOR_SORTS;
 
 export const ColdkeyIdentitySchema = z
   .object({

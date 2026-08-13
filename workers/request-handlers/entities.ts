@@ -52,6 +52,7 @@ import {
   validateResponseTripwire,
 } from "../../src/response-validation-tripwire.ts";
 import {
+  LIFECYCLE_CSV_COLUMNS,
   analyticsQueryError,
   markDataApiTierFallbackResponse,
 } from "./analytics.ts";
@@ -731,13 +732,7 @@ const SUBNET_HYPERPARAMS_HISTORY_CSV_COLUMNS = [
 // `netuid` is kept even on the per-subnet route, so a CSV saved from
 // /subnets/7/lifecycle still says which subnet it describes once detached from
 // the URL it came from.
-const SUBNET_LIFECYCLE_CSV_COLUMNS = [
-  "netuid",
-  "event",
-  "block_number",
-  "observed_at",
-  "predates_capture",
-];
+const SUBNET_LIFECYCLE_CSV_COLUMNS = LIFECYCLE_CSV_COLUMNS;
 const ACCOUNT_EXTRINSICS_CSV_COLUMNS = [
   "extrinsic_id",
   "block_number",

@@ -2843,6 +2843,20 @@ export function extractAuth(spec: Row): Row {
  * be compared against itself is a bug generator, not a safety net. That is the
  * same shape subnetDisplayName was extracted for in #9767.
  */
+/** The surface kinds a subnet is EXPECTED to publish, whose absence is a gap.
+ * Owned here beside the gap computation; build-network-registry.ts restated
+ * it by hand with a comment admitting the mirror (#10987 follow-up). */
+export const EXPECTED_GAP_KINDS = [
+  "docs",
+  "source-repo",
+  "website",
+  "dashboard",
+  "openapi",
+  "subnet-api",
+  "sse",
+  "data-artifact",
+];
+
 export function buildSubnetGaps(
   surfaces: Row[],
   overlay: (Row & { curation?: Row }) | null | undefined,
@@ -2852,18 +2866,8 @@ export function buildSubnetGaps(
   if (overlay?.source_repo) kinds.add("source-repo");
   if (overlay?.website_url) kinds.add("website");
   if (overlay?.dashboard_url) kinds.add("dashboard");
-  const expectedKinds = [
-    "docs",
-    "source-repo",
-    "website",
-    "dashboard",
-    "openapi",
-    "subnet-api",
-    "sse",
-    "data-artifact",
-  ];
   return {
-    missing_kinds: expectedKinds.filter((kind) => !kinds.has(kind)),
+    missing_kinds: EXPECTED_GAP_KINDS.filter((kind) => !kinds.has(kind)),
     supported_kinds: [...kinds].sort(),
     // #9746: surfaces whose URL names a moving target, so the operator may
     // publish a parameterized sibling beside them that this registry does not
