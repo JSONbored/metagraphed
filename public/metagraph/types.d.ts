@@ -3966,6 +3966,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/cost-to-participate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter. THREE KINDS OF NUMBER, NOT INTERCHANGEABLE. entry_cost is MEASURED on chain and exact -- the registration burn from the burn tier and the validator permit and earning floors from validator-economics, re-served here rather than recomputed. declared_compute is what the subnet's own min_compute file SAYS, which is a declaration and not a measurement of anything: the file is an upstream template and it is filled in inconsistently across the fleet. earnings is what miners on this subnet actually earned, projected from miner-fairness, so a floor-to-run never appears on the page without the distribution that says whether running is worth it. NO COST PER DAY IS PUBLISHED. Of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate prices hardware most subnets never asked for. THE GPU ANSWER IS FOUR-VALUED: required, not-required, declared-inconsistently (a declared required:False sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape an unedited template field takes, never coerced to either boolean), and null, which means no declaration has been read and is the state 111 of 128 subnets are in. A declared minimum is the floor to RUN, not the spec to EARN, and what the card does not model is served in the payload rather than left on a docs page. */
+        get: operations["subnetCostToParticipate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/deregistrations": {
         parameters: {
             query?: never;
@@ -10730,6 +10747,202 @@ export interface components {
             queried_at_block?: number | null;
             schema_version: number;
             unlock_rate?: components["schemas"]["ChainU64"] | null;
+        };
+        /** @description What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number, not interchangeable: `entry_cost` is measured on chain and exact; `declared_compute` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; `earnings` is what miners there actually earned. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. A declared minimum is the floor to RUN, not the spec to EARN. Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate. */
+        SubnetCostToParticipateArtifact: {
+            /** @description Every declaration read for this subnet. A subnet registering two files that disagree keeps both here rather than being collapsed to whichever was read last. */
+            declarations: {
+                /** @description The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at `main`, which moves under the claim. */
+                evidence: {
+                    /** @description When this file was first read, preserved across re-reads. */
+                    first_seen?: string | null;
+                    /** @description When this reading was taken. A declared minimum with no date cannot be aged out. */
+                    observed_at: string;
+                    /** @description The commit that was HEAD when the file was read. THE CITATION: it is what a re-read diffs against to know the declaration moved. */
+                    read_at_sha: string;
+                    /** @description The registered min_compute surface that was read. Points at a branch, correctly — a human clicks this and wants the current file. The pinned half is `read_at_sha`. */
+                    source_url: string;
+                    /** @description The file's own `version:` key. Worth seeing beside the spec: a subnet that has bumped it has revisited the declaration, one still on the template's default has not. */
+                    spec_version?: string | null;
+                };
+                /** @description Did the fetch yield a parseable compute_spec? `false` IS A MEASUREMENT — the file was read at that commit and declared nothing — and is distinct from a subnet that registers no min_compute surface at all, which has no declaration here. */
+                found: boolean;
+                miner: {
+                    cpu: {
+                        architecture?: string | null;
+                        min_cores?: number | null;
+                        min_speed_ghz?: number | null;
+                    };
+                    gpu: {
+                        declared_min_count?: number | null;
+                        /** @description The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration. */
+                        declared_min_vram_gb?: number | null;
+                        /** @description The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own. */
+                        declared_model?: string | null;
+                        /** @description The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it. */
+                        declared_required?: boolean | null;
+                        /** @description Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'. */
+                        requirement: ("required" | "not-required" | "declared-inconsistently") | null;
+                    };
+                    memory: {
+                        min_ram_gb?: number | null;
+                        min_swap_gb?: number | null;
+                    };
+                    network: {
+                        min_download_speed_mbps?: number | null;
+                        min_upload_speed_mbps?: number | null;
+                    };
+                    storage: {
+                        min_iops?: number | null;
+                        min_space_gb?: number | null;
+                        type?: string | null;
+                    };
+                } | null;
+                validator: {
+                    cpu: {
+                        architecture?: string | null;
+                        min_cores?: number | null;
+                        min_speed_ghz?: number | null;
+                    };
+                    gpu: {
+                        declared_min_count?: number | null;
+                        /** @description The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration. */
+                        declared_min_vram_gb?: number | null;
+                        /** @description The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own. */
+                        declared_model?: string | null;
+                        /** @description The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it. */
+                        declared_required?: boolean | null;
+                        /** @description Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'. */
+                        requirement: ("required" | "not-required" | "declared-inconsistently") | null;
+                    };
+                    memory: {
+                        min_ram_gb?: number | null;
+                        min_swap_gb?: number | null;
+                    };
+                    network: {
+                        min_download_speed_mbps?: number | null;
+                        min_upload_speed_mbps?: number | null;
+                    };
+                    storage: {
+                        min_iops?: number | null;
+                        min_space_gb?: number | null;
+                        type?: string | null;
+                    };
+                } | null;
+            }[];
+            /** @description How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 128 subnets register none, and a card with `declarations_read: 0` makes no claim about what running here takes. */
+            declarations_read: number;
+            /** @description The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. */
+            declared_compute: {
+                evidence: {
+                    /** @description When this file was first read, preserved across re-reads. */
+                    first_seen?: string | null;
+                    /** @description When this reading was taken. A declared minimum with no date cannot be aged out. */
+                    observed_at: string;
+                    /** @description The commit that was HEAD when the file was read. THE CITATION: it is what a re-read diffs against to know the declaration moved. */
+                    read_at_sha: string;
+                    /** @description The registered min_compute surface that was read. Points at a branch, correctly — a human clicks this and wants the current file. The pinned half is `read_at_sha`. */
+                    source_url: string;
+                    /** @description The file's own `version:` key. Worth seeing beside the spec: a subnet that has bumped it has revisited the declaration, one still on the template's default has not. */
+                    spec_version?: string | null;
+                } | null;
+                miner: {
+                    cpu: {
+                        architecture?: string | null;
+                        min_cores?: number | null;
+                        min_speed_ghz?: number | null;
+                    };
+                    gpu: {
+                        declared_min_count?: number | null;
+                        /** @description The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration. */
+                        declared_min_vram_gb?: number | null;
+                        /** @description The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own. */
+                        declared_model?: string | null;
+                        /** @description The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it. */
+                        declared_required?: boolean | null;
+                        /** @description Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'. */
+                        requirement: ("required" | "not-required" | "declared-inconsistently") | null;
+                    };
+                    memory: {
+                        min_ram_gb?: number | null;
+                        min_swap_gb?: number | null;
+                    };
+                    network: {
+                        min_download_speed_mbps?: number | null;
+                        min_upload_speed_mbps?: number | null;
+                    };
+                    storage: {
+                        min_iops?: number | null;
+                        min_space_gb?: number | null;
+                        type?: string | null;
+                    };
+                } | null;
+                validator: {
+                    cpu: {
+                        architecture?: string | null;
+                        min_cores?: number | null;
+                        min_speed_ghz?: number | null;
+                    };
+                    gpu: {
+                        declared_min_count?: number | null;
+                        /** @description The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration. */
+                        declared_min_vram_gb?: number | null;
+                        /** @description The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own. */
+                        declared_model?: string | null;
+                        /** @description The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it. */
+                        declared_required?: boolean | null;
+                        /** @description Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'. */
+                        requirement: ("required" | "not-required" | "declared-inconsistently") | null;
+                    };
+                    memory: {
+                        min_ram_gb?: number | null;
+                        min_swap_gb?: number | null;
+                    };
+                    network: {
+                        min_download_speed_mbps?: number | null;
+                        min_upload_speed_mbps?: number | null;
+                    };
+                    storage: {
+                        min_iops?: number | null;
+                        min_space_gb?: number | null;
+                        type?: string | null;
+                    };
+                } | null;
+            };
+            /** @description What miners here actually earned, projected from /api/v1/subnets/{netuid}/miner-fairness — never recomputed. Present so a floor-to-run can never sit on the page without the distribution that says whether running is worth it. Deliberately carries NO mean earning: that would invite exactly the cost-minus-revenue arithmetic these numbers do not support. */
+            earnings: {
+                /** @description How many days the distribution beside it was measured over. A zero-rate over 3 days and one over 31 are not the same claim. */
+                days_covered?: number | null;
+                median_earning_days?: number | null;
+                miner_uid_count?: number | null;
+                never_earned_count?: number | null;
+                /** @description The share of this subnet's miner UIDs that earned nothing on the most recent day, as a fraction. The network median is 0.992. */
+                zero_emission_pct?: number | null;
+            } | null;
+            /** @description What the CHAIN charges to enter. Exact, measured, and the only hard numbers in this card. */
+            entry_cost: {
+                /** @description What one registration costs on this subnet right now, from `subnet_burn_history` — the same value /api/v1/subnets/{netuid}/burn serves, re-served rather than recomputed. EXACT and on-chain. Null means not read; zero is a real price (netuid 76 reads a true zero), so the two are never conflated. */
+                registration_cost_tao?: number | null;
+                /** @description The stake at which a validator actually starts earning dividends here. Differs from the permit floor by a median of ~7x across subnets. */
+                validator_earning_floor_tao?: number | null;
+                /** @description The stake that would currently buy a validator permit, from /api/v1/subnets/{netuid}/validator-economics. A permit is not income — see the earning floor beside it. */
+                validator_permit_floor_tao?: number | null;
+            };
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources?: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            netuid: number;
+            /** @description What this card does NOT account for, served in the payload rather than left on a docs page — so an agent quoting the numbers carries the caveats with them. */
+            not_modelled: string[];
+            /** @constant */
+            schema_version: 1;
         };
         SubnetDeregistrationRankingArtifact: {
             block: number;
@@ -41204,6 +41417,183 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetConvictionArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetCostToParticipate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "declarations": [
+                     *           {
+                     *             "evidence": {
+                     *               "observed_at": "2026-06-01T00:00:00.000Z",
+                     *               "read_at_sha": "example",
+                     *               "source_url": "https://api.metagraph.sh/example"
+                     *             },
+                     *             "found": false,
+                     *             "miner": {
+                     *               "cpu": {},
+                     *               "gpu": {
+                     *                 "requirement": "required"
+                     *               },
+                     *               "memory": {},
+                     *               "network": {},
+                     *               "storage": {}
+                     *             },
+                     *             "validator": {
+                     *               "cpu": {},
+                     *               "gpu": {
+                     *                 "requirement": "required"
+                     *               },
+                     *               "memory": {},
+                     *               "network": {},
+                     *               "storage": {}
+                     *             }
+                     *           }
+                     *         ],
+                     *         "declarations_read": 1,
+                     *         "declared_compute": {
+                     *           "evidence": {
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "read_at_sha": "example",
+                     *             "source_url": "https://api.metagraph.sh/example"
+                     *           },
+                     *           "miner": {
+                     *             "cpu": {},
+                     *             "gpu": {
+                     *               "requirement": "required"
+                     *             },
+                     *             "memory": {},
+                     *             "network": {},
+                     *             "storage": {}
+                     *           },
+                     *           "validator": {
+                     *             "cpu": {},
+                     *             "gpu": {
+                     *               "requirement": "required"
+                     *             },
+                     *             "memory": {},
+                     *             "network": {},
+                     *             "storage": {}
+                     *           }
+                     *         },
+                     *         "earnings": {
+                     *           "days_covered": 0.5,
+                     *           "median_earning_days": 0.5,
+                     *           "miner_uid_count": 1,
+                     *           "never_earned_count": 1,
+                     *           "zero_emission_pct": 0.5
+                     *         },
+                     *         "entry_cost": {
+                     *           "registration_cost_tao": 0.5,
+                     *           "validator_earning_floor_tao": 0.5,
+                     *           "validator_permit_floor_tao": 0.5
+                     *         },
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "netuid": 7,
+                     *         "not_modelled": [
+                     *           "example"
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetCostToParticipateArtifact"];
                     };
                 };
             };

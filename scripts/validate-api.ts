@@ -8,6 +8,7 @@ import {
   compileRoutePattern,
 } from "../src/contracts.ts";
 import { buildSubnetConviction } from "../src/subnet-conviction.ts";
+import { GPU_REQUIREMENT_STATES } from "../schemas-src/compute.ts";
 import { handleRequest } from "../workers/api.ts";
 import {
   createLocalArtifactEnv,
@@ -868,6 +869,42 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
           `miner-fairness must not publish a ${forbidden}`,
         );
       }
+    },
+  ],
+  [
+    "/api/v1/subnets/7/cost-to-participate",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.declarations), true);
+      assert.equal(typeof body.data.declarations_read, "number");
+      // WHAT MUST NOT BE SAID, against the live response. A subnet whose
+      // min_compute file nobody has read -- 111 of 128 of them -- must publish
+      // null specs rather than an empty one, because an empty spec reads as
+      // "needs nothing" and a schema cannot say the difference.
+      if (body.data.declarations_read === 0) {
+        assert.equal((body.data.declared_compute as Row).miner, null);
+        assert.equal((body.data.declared_compute as Row).validator, null);
+        assert.equal((body.data.declared_compute as Row).evidence, null);
+      }
+      // The GPU answer is four-valued and every value is declared. A fifth one
+      // reaching production would be a state no consumer knows how to render.
+      for (const declaration of (body.data.declarations ?? []) as Row[]) {
+        for (const role of ["miner", "validator"] as const) {
+          const spec = declaration[role] as Row | null;
+          if (!spec) continue;
+          const requirement = (spec.gpu as Row).requirement;
+          assert.ok(
+            requirement === null ||
+              (GPU_REQUIREMENT_STATES as readonly string[]).includes(
+                String(requirement),
+              ),
+            `gpu.requirement ${String(requirement)} is served but not declared`,
+          );
+        }
+      }
+      // The caveats travel with the numbers rather than living on a docs page.
+      assert.equal(Array.isArray(body.data.not_modelled), true);
+      assert.ok((body.data.not_modelled as string[]).length > 0);
     },
   ],
   [

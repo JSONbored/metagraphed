@@ -271,6 +271,10 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // #10933: per-netuid card, no window and no paging -- a subnet has a handful
   // of source repos, not a series.
   "/api/v1/subnets/{netuid}/treasury",
+  // #10932: per-netuid card. The earnings block it carries is projected from
+  // miner-fairness at that route's own default window, so exposing a window
+  // here would be a second place to set one.
+  "/api/v1/subnets/{netuid}/cost-to-participate",
   "/api/v1",
   // #10285. Declaring nothing here is NOT the same as taking no parameters:
   // querySchemaForRoute returns null for a route absent from this list, and a

@@ -3081,6 +3081,75 @@ export interface SubnetMinerFairness {
 }
 
 /**
+ * What it costs to participate (#10932 phase 1). FOUR-VALUED GPU ANSWER, and
+ * `null` -- no declaration read at all -- is the state 111 of 128 subnets are
+ * in. The render must never collapse it into "needs no GPU".
+ */
+export interface DeclaredGpu {
+  requirement: "required" | "not-required" | "declared-inconsistently" | null;
+  declared_required?: boolean | null;
+  declared_min_vram_gb?: number | null;
+  declared_min_count?: number | null;
+  declared_model?: string | null;
+}
+
+export interface DeclaredComputeSpec {
+  gpu: DeclaredGpu;
+  cpu: {
+    min_cores?: number | null;
+    min_speed_ghz?: number | null;
+    architecture?: string | null;
+  };
+  memory: { min_ram_gb?: number | null; min_swap_gb?: number | null };
+  storage: {
+    min_space_gb?: number | null;
+    min_iops?: number | null;
+    type?: string | null;
+  };
+  network: {
+    min_download_speed_mbps?: number | null;
+    min_upload_speed_mbps?: number | null;
+  };
+}
+
+export interface ComputeDeclaration {
+  evidence: {
+    source_url?: string | null;
+    read_at_sha?: string | null;
+    spec_version?: string | null;
+    observed_at?: string | null;
+    first_seen?: string | null;
+  };
+  found: boolean;
+  miner: DeclaredComputeSpec | null;
+  validator: DeclaredComputeSpec | null;
+}
+
+export interface SubnetCostToParticipate {
+  netuid: number;
+  entry_cost: {
+    registration_cost_tao?: number | null;
+    validator_permit_floor_tao?: number | null;
+    validator_earning_floor_tao?: number | null;
+  };
+  declarations_read: number;
+  declared_compute: {
+    miner: DeclaredComputeSpec | null;
+    validator: DeclaredComputeSpec | null;
+    evidence: ComputeDeclaration["evidence"] | null;
+  };
+  declarations: ComputeDeclaration[];
+  earnings: {
+    days_covered?: number | null;
+    miner_uid_count?: number | null;
+    zero_emission_pct?: number | null;
+    never_earned_count?: number | null;
+    median_earning_days?: number | null;
+  } | null;
+  not_modelled: string[];
+}
+
+/**
  * Treasury readings (#10933). THREE STATES: `repos_read: 0` (nobody looked),
  * a reading with `found: false` (read, found nothing), and a reviewed share.
  * The render must never collapse the first into the second.

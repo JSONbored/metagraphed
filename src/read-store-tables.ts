@@ -104,6 +104,7 @@ export const ATTRIBUTION_SWEEP_TABLES = [
   "attribution_sweeps",
   "attribution_candidates",
   "treasury_readings",
+  "compute_declarations",
 ] as const;
 
 /** loadRevenueFeedItems (#10480). The observation pair plus the two tables the

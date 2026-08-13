@@ -502,6 +502,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Whether a subnet's registered miners actually earn, over a 7d/30d/90d window (default 30d), from the neuron_daily rollup. Reports the daily zero-emission rate, how many days each miner UID earned on — persistent-zero and occasionally-zero are different facts a snapshot collapses — and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. Descriptive only: no fairness score and no grade, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. `days_covered` rides beside every distribution figure. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness.",
   },
   {
+    field: "subnet_cost_to_participate",
+    operation: "subnet-cost-to-participate",
+    returns: "SubnetCostToParticipate!",
+    description:
+      "What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number that are not interchangeable: `entry_cost` is measured on chain and exact (the registration burn and the validator permit/earning floors, re-served from the routes that already compute them); `declared_compute` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; `earnings` is what miners there actually earned, projected from miner-fairness so a floor-to-run never appears without it. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued: required, not-required, declared-inconsistently (a `required: False` beside a non-zero minimum VRAM, never coerced to either boolean) and null (no declaration read at all, which is the state 111 of 128 subnets are in). Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.",
+  },
+  {
     field: "subnet_treasury",
     operation: "subnet-treasury",
     returns: "SubnetTreasury!",

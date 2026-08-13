@@ -96,6 +96,10 @@ import {
   type TreasuryReadingRow,
 } from "../src/treasury-readings.ts";
 import {
+  buildSubnetCostToParticipate,
+  type ComputeDeclarationRow,
+} from "../src/cost-to-participate.ts";
+import {
   buildSubnetMinerFairness,
   MINER_FAIRNESS_ROW_CAP,
 } from "../src/miner-fairness.ts";
@@ -7495,6 +7499,61 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
           ),
           capped: rows.length >= MINER_FAIRNESS_ROW_CAP,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/cost-to-participate -- what this subnet says
+  // it takes to run, beside what miners there actually earn (#10932).
+  //
+  // TWO READS, and the second is shared. The neuron_daily window feeds
+  // buildSubnetMinerFairness, whose card the builder projects three fields out
+  // of -- never recomputing a distribution src/miner-fairness.ts already owns.
+  //
+  // The ENTRY COSTS are deliberately absent from this tier. They come from
+  // buildSubnetValidatorEconomicsPayload in the API worker, which is the exact
+  // composer /validator-economics serves, so the burn and the two floors are
+  // the same numbers rather than a second derivation of them.
+  const costToParticipateMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/cost-to-participate$/,
+  );
+  if (costToParticipateMatch) {
+    return async (sql) => {
+      const netuid = Number(costToParticipateMatch[1]);
+      const rows = await sql<ComputeDeclarationRow>`
+        SELECT netuid, source_url, read_at_sha, observed_at, first_seen,
+               found, spec_version, miner, validator
+        FROM compute_declarations
+        WHERE netuid = ${netuid}
+        ORDER BY source_url ASC`;
+      const cutoff = new Date(
+        Date.now() -
+          SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS[
+            DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW
+          ] *
+            86_400_000,
+      )
+        .toISOString()
+        .slice(0, 10);
+      const fairnessRows = await sql<{
+        snapshot_date: NeuronDaily["snapshot_date"];
+        uid: NeuronDaily["uid"];
+        coldkey: NeuronDaily["coldkey"];
+        emission_tao: NeuronDaily["emission_tao"];
+        validator_permit: NeuronDaily["validator_permit"];
+      }>`
+        SELECT snapshot_date, uid, coldkey, emission_tao, validator_permit
+        FROM neuron_daily
+        WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+        ORDER BY snapshot_date DESC
+        LIMIT ${MINER_FAIRNESS_ROW_CAP}`;
+      return json(
+        buildSubnetCostToParticipate(rows, netuid, {
+          minerFairness: buildSubnetMinerFairness(fairnessRows, netuid, {
+            window: DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+            capped: fairnessRows.length >= MINER_FAIRNESS_ROW_CAP,
+          }),
         }),
       );
     };

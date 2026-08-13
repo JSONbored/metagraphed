@@ -170,6 +170,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^subnets\/(?:\d+|\{netuid\})\/miner-fairness\.json$/,
   // Treasury readings: computed live from the treasury_readings store.
   /^subnets\/(?:\d+|\{netuid\})\/treasury\.json$/,
+  // Cost to participate: computed live from compute_declarations plus the
+  // burn and validator-economics tiers.
+  /^subnets\/(?:\d+|\{netuid\})\/cost-to-participate\.json$/,
   // Owner-capture index (L1 + L2): computed live from the same rollup.
   /^subnets\/(?:\d+|\{netuid\})\/owner-capture\.json$/,
   // Cross-subnet movers leaderboard: computed live from neuron_daily.

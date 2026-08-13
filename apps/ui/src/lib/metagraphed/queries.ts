@@ -302,6 +302,7 @@ import type {
   SubnetMinerFairness,
   SubnetOwnerCapture,
   SubnetTreasury,
+  SubnetCostToParticipate,
   EmissionSplitPoint,
   SubnetYieldHistory,
   SubnetProfile,
@@ -8814,6 +8815,43 @@ export const subnetMinerFairnessQuery = (netuid: number, window: "7d" | "30d" | 
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetMinerFairness>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** What a subnet says it takes to participate, and what entry costs (#10932). */
+export const subnetCostToParticipateQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-cost-to-participate", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetCostToParticipate>>(
+        `/api/v1/subnets/${netuid}/cost-to-participate`,
+        { signal },
+      );
+      return {
+        data: {
+          netuid,
+          entry_cost: res.data?.entry_cost ?? {
+            registration_cost_tao: null,
+            validator_permit_floor_tao: null,
+            validator_earning_floor_tao: null,
+          },
+          declarations_read: res.data?.declarations_read ?? 0,
+          // NOT `?? {}` with empty specs. A missing declaration is null, and an
+          // empty spec object would render as a row of dashes that reads like
+          // "declared, and needs nothing".
+          declared_compute: res.data?.declared_compute ?? {
+            miner: null,
+            validator: null,
+            evidence: null,
+          },
+          declarations: Array.isArray(res.data?.declarations) ? res.data.declarations : [],
+          earnings: res.data?.earnings ?? null,
+          not_modelled: Array.isArray(res.data?.not_modelled) ? res.data.not_modelled : [],
+        } as SubnetCostToParticipate,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetCostToParticipate>;
     },
     staleTime: STALE_MED,
   });

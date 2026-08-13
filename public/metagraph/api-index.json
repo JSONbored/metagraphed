@@ -914,6 +914,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-cost-to-participate",
+      "path": "/metagraph/subnets/{netuid}/cost-to-participate.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetCostToParticipateArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-treasury",
       "path": "/metagraph/subnets/{netuid}/treasury.json",
       "retirement": null,
@@ -2543,7 +2552,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 172,
+    "mainnet_only_route_count": 173,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8661,6 +8670,22 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/cost-to-participate.json",
+      "cache": "short",
+      "description": "Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter. THREE KINDS OF NUMBER, NOT INTERCHANGEABLE. entry_cost is MEASURED on chain and exact -- the registration burn from the burn tier and the validator permit and earning floors from validator-economics, re-served here rather than recomputed. declared_compute is what the subnet's own min_compute file SAYS, which is a declaration and not a measurement of anything: the file is an upstream template and it is filled in inconsistently across the fleet. earnings is what miners on this subnet actually earned, projected from miner-fairness, so a floor-to-run never appears on the page without the distribution that says whether running is worth it. NO COST PER DAY IS PUBLISHED. Of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate prices hardware most subnets never asked for. THE GPU ANSWER IS FOUR-VALUED: required, not-required, declared-inconsistently (a declared required:False sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape an unedited template field takes, never coerced to either boolean), and null, which means no declaration has been read and is the state 111 of 128 subnets are in. A declared minimum is the floor to RUN, not the spec to EARN, and what the card does not model is served in the payload rather than left on a docs page.",
+      "id": "subnet-cost-to-participate",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/cost-to-participate",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/treasury.json",

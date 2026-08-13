@@ -473,6 +473,62 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   // minting two look-alike types nothing can compare.
   SubnetMinerFairnessArtifactConcentrationEntity: "ConcentrationMetrics",
   SubnetMinerFairnessArtifactConcentrationUid: "ConcentrationMetrics",
+  SubnetCostToParticipateArtifact: "SubnetCostToParticipate",
+  SubnetCostToParticipateArtifactEntryCost: "SubnetEntryCost",
+  SubnetCostToParticipateArtifactDeclaredCompute: "SubnetDeclaredCompute",
+  SubnetCostToParticipateArtifactDeclarations: "SubnetComputeDeclaration",
+  // ONE ROLE SPEC, FOUR USE SITES. `declared_compute.miner`,
+  // `declared_compute.validator` and both of their twins inside `declarations`
+  // are the same Zod object, so the generator would mint four identical types
+  // (and five nested ones each) that no consumer could compare. Every use site
+  // is aliased to the one published name for the same reason the two
+  // miner-fairness concentration lenses are.
+  SubnetCostToParticipateArtifactDeclarationsEvidence:
+    "SubnetComputeDeclarationEvidence",
+  SubnetCostToParticipateArtifactDeclarationsMiner: "SubnetDeclaredComputeSpec",
+  SubnetCostToParticipateArtifactDeclarationsMinerCpu: "SubnetDeclaredCpu",
+  SubnetCostToParticipateArtifactDeclarationsMinerGpu: "SubnetDeclaredGpu",
+  SubnetCostToParticipateArtifactDeclarationsMinerMemory:
+    "SubnetDeclaredMemory",
+  SubnetCostToParticipateArtifactDeclarationsMinerNetwork:
+    "SubnetDeclaredNetwork",
+  SubnetCostToParticipateArtifactDeclarationsMinerStorage:
+    "SubnetDeclaredStorage",
+  SubnetCostToParticipateArtifactDeclarationsValidator:
+    "SubnetDeclaredComputeSpec",
+  SubnetCostToParticipateArtifactDeclarationsValidatorCpu: "SubnetDeclaredCpu",
+  SubnetCostToParticipateArtifactDeclarationsValidatorGpu: "SubnetDeclaredGpu",
+  SubnetCostToParticipateArtifactDeclarationsValidatorMemory:
+    "SubnetDeclaredMemory",
+  SubnetCostToParticipateArtifactDeclarationsValidatorNetwork:
+    "SubnetDeclaredNetwork",
+  SubnetCostToParticipateArtifactDeclarationsValidatorStorage:
+    "SubnetDeclaredStorage",
+  SubnetCostToParticipateArtifactDeclaredComputeEvidence:
+    "SubnetComputeDeclarationEvidence",
+  SubnetCostToParticipateArtifactDeclaredComputeMiner:
+    "SubnetDeclaredComputeSpec",
+  SubnetCostToParticipateArtifactDeclaredComputeMinerCpu: "SubnetDeclaredCpu",
+  SubnetCostToParticipateArtifactDeclaredComputeMinerGpu: "SubnetDeclaredGpu",
+  SubnetCostToParticipateArtifactDeclaredComputeMinerMemory:
+    "SubnetDeclaredMemory",
+  SubnetCostToParticipateArtifactDeclaredComputeMinerNetwork:
+    "SubnetDeclaredNetwork",
+  SubnetCostToParticipateArtifactDeclaredComputeMinerStorage:
+    "SubnetDeclaredStorage",
+  SubnetCostToParticipateArtifactDeclaredComputeValidator:
+    "SubnetDeclaredComputeSpec",
+  SubnetCostToParticipateArtifactDeclaredComputeValidatorCpu:
+    "SubnetDeclaredCpu",
+  SubnetCostToParticipateArtifactDeclaredComputeValidatorGpu:
+    "SubnetDeclaredGpu",
+  SubnetCostToParticipateArtifactDeclaredComputeValidatorMemory:
+    "SubnetDeclaredMemory",
+  SubnetCostToParticipateArtifactDeclaredComputeValidatorNetwork:
+    "SubnetDeclaredNetwork",
+  SubnetCostToParticipateArtifactDeclaredComputeValidatorStorage:
+    "SubnetDeclaredStorage",
+  SubnetCostToParticipateArtifactEarnings: "SubnetParticipationEarnings",
   SubnetTreasuryArtifact: "SubnetTreasury",
   SubnetTreasuryArtifactReadings: "SubnetTreasuryReading",
   SubnetTreasuryArtifactReadingsEvidence: "SubnetTreasuryEvidence",
