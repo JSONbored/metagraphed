@@ -19,6 +19,7 @@ import path from "node:path";
 import { repoRoot } from "./lib.ts";
 type Row = Record<string, unknown>;
 
+import { CHAIN_FIREHOSE_TOPICS } from "../src/chain-firehose-topics.ts";
 import {
   SNAPSHOT_PATH,
   type LakehouseColumn,
@@ -239,7 +240,12 @@ async function main(): Promise<void> {
   // describes them -- silently, because the row schema would still parse the
   // fields it recognises. So the claim is asserted here, where the catalog is
   // already in hand, rather than left in a comment.
-  const DECODED = ["blocks", "extrinsics", "chain_events", "account_events"];
+  // CHAIN_FIREHOSE_TOPICS, not a fifth copy of the same four names. The
+  // vocabulary gate caught the restatement immediately, which is the gate doing
+  // exactly its job: src/chain-firehose-topics.ts already owns this set, and
+  // the decoder's tables, the GraphQL enum and the published `topics` parameter
+  // all derive from it.
+  const DECODED: readonly string[] = CHAIN_FIREHOSE_TOPICS;
   const divergent: string[] = [];
   for (const table of DECODED) {
     const [main, test] = await Promise.all([
