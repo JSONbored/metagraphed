@@ -45,7 +45,7 @@ function transferRow(block: number, index = 0) {
     coldkey: OTHER,
     netuid: null,
     uid: null,
-    amount_tao: "12.5",
+    amount_tao: 12.5,
     alpha_amount: null,
     observed_at: 1_700_000_000_000 + block,
   };
@@ -232,7 +232,7 @@ describe("loadAccountTransfersColdTier", () => {
     });
     assert.equal(short!.next_cursor, null);
 
-    sqlFetch([{ ...transferRow(3), block_number: "bad" }]);
+    sqlFetch([{ ...transferRow(3), block_number: null }]);
     const odd = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
       limit: 1,
     });
@@ -251,7 +251,7 @@ describe("loadAccountStakeFlowColdTier", () => {
     netuid: 7,
     event_kind: "StakeAdded",
     total_tao: "100",
-    event_count: "2",
+    event_count: 2,
     last_observed: 1_700_000_000_500,
   };
 

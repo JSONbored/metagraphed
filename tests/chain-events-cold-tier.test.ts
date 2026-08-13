@@ -580,10 +580,25 @@ describe("chainEventsQueryError names the unusable parameter", () => {
 // must not drop a row it cannot format, because a silently shorter page is
 // indistinguishable from a quieter chain.
 describe("an unformattable row is passed through, never dropped", () => {
-  test("the page keeps its count when a row cannot be formatted", async () => {
-    sqlFetch([null as unknown as Record<string, unknown>]);
+  test("a row the formatter cannot read still survives the page", async () => {
+    // An object, so it is a legal catalog row, but carrying nothing the
+    // formatter recognises. THIS is the case the pass-through exists for, and
+    // it must still hold: the page keeps its count rather than quietly
+    // shortening.
+    sqlFetch([{} as Record<string, unknown>]);
     const page = await loadChainEventsColdTier(TOKEN, { limit: 50 });
     assert.equal(page?.count, 1, "the row must survive, unformatted");
     assert.equal(page?.events.length, 1);
+  });
+
+  test("a NON-OBJECT row declines the read rather than riding along", async () => {
+    // The old fixture here was `null`, and its own comment said R2 SQL will not
+    // produce that. It cannot ride the pass-through any more: the read
+    // validates against the catalog, and `null` is not a row. Declining is not
+    // the silent shortening this suite guards against -- it degrades the whole
+    // answer explicitly, which the caller already handles.
+    sqlFetch([null as unknown as Record<string, unknown>]);
+    const page = await loadChainEventsColdTier(TOKEN, { limit: 50 });
+    assert.equal(page, null, "a corrupt row declines, never half-serves");
   });
 });

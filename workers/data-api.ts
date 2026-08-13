@@ -28,7 +28,7 @@ import {
   subnetIdentitySyncRowSchema,
   subnetOwnershipSyncRowSchema,
   validateSyncRows,
-} from "../src/sync-row-schemas.ts";
+} from "../schemas-src/sync-rows.ts";
 import { spotPriceTao } from "../src/stake-quote.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { isPathUnder } from "./http.ts";

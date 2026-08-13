@@ -36,11 +36,13 @@ function sqlFetch(rows: unknown[]) {
   const queries: string[] = [];
   const impl = (async (_u: string, init: RequestInit) => {
     queries.push(JSON.parse(String(init.body)).query);
-    return {
-      ok: true,
+    // A real Response: the client reads through a byte cap now, which needs
+    // `res.body` to be an actual stream. A `{ ok, status, json }` double takes
+    // a path production never runs.
+    return new Response(JSON.stringify({ success: true, result: { rows } }), {
       status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
+      headers: { "content-type": "application/json" },
+    });
   }) as unknown as typeof fetch;
   return { impl, queries };
 }

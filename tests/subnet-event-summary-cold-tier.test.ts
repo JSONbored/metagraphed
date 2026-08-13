@@ -39,7 +39,7 @@ const BASE: Row[] = [
     last_block: 8_765_646,
     first_observed_at: NOW - 2_000_000,
     last_observed_at: NOW,
-    amount_tao: "1234.5",
+    amount_tao: 1234.5,
   },
 ];
 // WeightsSet IS present in the actor read and absent from the coldkey one --

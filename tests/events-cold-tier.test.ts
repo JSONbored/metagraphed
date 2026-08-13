@@ -26,7 +26,12 @@ function eventRow(block: number, index = 0) {
     coldkey: null,
     netuid: 7,
     uid: 3,
-    amount_tao: "1000000",
+    // A NUMBER, not a string. R2 SQL answers JSON, so a `double` arrives as a
+    // JS number -- production serves 4.99 and 213744.676471047 alike. The
+    // string here was a Postgres-era shape (node-postgres leaves int8 a
+    // string); the lakehouse read now validates against the catalog and
+    // refuses it.
+    amount_tao: 1_000_000,
     alpha_amount: null,
     observed_at: 1_700_000_000_000 + block,
   };
@@ -238,7 +243,10 @@ describe("loadAccountEventsColdTier", () => {
     });
     assert.equal(short!.next_cursor ?? null, null);
 
-    sqlFetch([{ ...eventRow(3), block_number: "bad" }]);
+    // `null`, not "bad": block_number is a `long` in the catalog and the read
+    // validates against it, so a string is a row R2 SQL cannot emit. Null is
+    // legal AND unusable, which is what "emits no cursor" is about.
+    sqlFetch([{ ...eventRow(3), block_number: null }]);
     const odd = await loadAccountEventsColdTier(TOKEN as never, ADDR, {
       limit: 1,
     });

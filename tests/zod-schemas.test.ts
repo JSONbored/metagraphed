@@ -213,6 +213,8 @@ import {
   OverlaidSubnetHealthSchema,
 } from "../schemas-src/routes/health.ts";
 import { GetSubnetOutputSchema } from "../schemas-src/mcp-tools/get-subnet.ts";
+import { VerifyIntegrationOutputSchema } from "../schemas-src/mcp-tools/ai-integration.ts";
+import { GetFixtureOutputSchema } from "../schemas-src/mcp-tools/catalog-detail.ts";
 import {
   ChainEventsFeedArtifactSchema,
   ChainEventsStatsArtifactSchema,
@@ -5130,6 +5132,88 @@ describe("one percentile vocabulary across the published contract (#10989)", () 
       offenders,
       [],
       "a percentile ladder must spell its middle `p50`, beside p25/p75/p90",
+    );
+  });
+});
+
+describe("two MCP tools declared less than they served (#11008)", () => {
+  // Both were refused by the outbound tripwire in production on 2026-08-13 --
+  // `verify_integration` returned `response_schema_drift` to EVERY caller
+  // rather than a result. Under-declaration is not a documentation gap once a
+  // tripwire is watching: it is an outage.
+  test("verify_integration declares the two fields its producer always sets", () => {
+    // Verbatim from src/surface-verify.ts's return, which sets
+    // `schema_version: 1` and `auth_required: Boolean(...)` unconditionally.
+    const served = {
+      schema_version: 1 as const,
+      surface_id: "allways-api-health",
+      surface_key: "srf-e81528d66302ee51",
+      netuid: 7,
+      kind: "subnet-api",
+      url: "https://api.all-ways.io/health",
+      provider: "allways",
+      auth_required: false,
+      status: "ok",
+      classification: "live",
+      callable: true,
+      latency_ms: 118,
+      status_code: 200,
+      error: null,
+      probed_at: "2026-08-13T06:15:59.123Z",
+      // Stamped on BOTH branches of the cache wrapper, so it is required.
+      from_cache: false,
+    };
+    assert.deepEqual(VerifyIntegrationOutputSchema.parse(served), served);
+  });
+
+  test("get_fixture declares the artifact it returns whole, not one key of it", () => {
+    // Shape measured across twelve live fixtures; the handler returns the
+    // artifact unmodified, so a one-key schema refused all of them.
+    const served = {
+      schema_version: 1,
+      surface_id: "allways-api-health",
+      subnet_slug: "allways",
+      subnet_name: "Allways",
+      netuid: 7,
+      kind: "subnet-api",
+      captured_at: "2026-08-12T08:50:50.611Z",
+      generated_at: "2026-08-12T08:41:21.940Z",
+      request: { method: "GET", url: "https://api.all-ways.io/health" },
+      response: {
+        status: 200,
+        content_type: "application/json",
+        body: { ok: true },
+      },
+    };
+    assert.deepEqual(GetFixtureOutputSchema.parse(served), served);
+    // `response.body` is the SURFACE's payload -- an array is as valid as an
+    // object, and this repo does not own either shape.
+    assert.equal(
+      GetFixtureOutputSchema.safeParse({
+        ...served,
+        response: { ...served.response, body: [1, 2, 3] },
+      }).success,
+      true,
+    );
+  });
+
+  test("both stay STRICT -- a new served key must fail, not ride along", () => {
+    const base = {
+      schema_version: 1,
+      surface_id: "x",
+      surface_key: "srf-x",
+      netuid: 0,
+      kind: "subnet-api",
+      url: "https://example.invalid",
+      status: "ok",
+      classification: "live",
+      callable: true,
+      auth_required: false,
+      from_cache: false,
+    };
+    assert.equal(
+      VerifyIntegrationOutputSchema.safeParse({ ...base, surprise: 1 }).success,
+      false,
     );
   });
 });

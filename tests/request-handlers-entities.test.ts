@@ -2639,7 +2639,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     coldkey: null,
     netuid: 7,
     uid: 3,
-    amount_tao: "5000",
+    amount_tao: 5000,
     alpha_amount: null,
     observed_at: 1_700_000_004_200,
   };
@@ -2709,7 +2709,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     ...EVENT_ROW,
     event_kind: "Transfer",
     coldkey: COUNTERPARTY,
-    amount_tao: "2.5",
+    amount_tao: 2.5,
   };
 
   test("handleAccountTransfers serves the Transfer feed from the lakehouse", async () => {
@@ -2734,7 +2734,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
         netuid: 7,
         event_kind: "StakeAdded",
         total_tao: "100",
-        event_count: "2",
+        event_count: 2,
         last_observed: 1_700_000_004_200,
       },
     ]);

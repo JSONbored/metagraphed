@@ -36,11 +36,16 @@ function ownershipRow(overrides: Record<string, unknown> = {}) {
     method: "SubnetOwnerChanged",
     block_number: 8_587_754,
     observed_at: 1_783_600_000_000,
-    args: {
+    // A JSON STRING, because that is what `chain_events.args` is in the
+    // catalog -- the object form is the driver shape this tier RESTORES it to
+    // (see the test below), never what R2 SQL answers. The read validates
+    // against the catalog now, so the object form is a row the lakehouse
+    // cannot emit.
+    args: JSON.stringify({
       netuid: 7,
       old_coldkey: OLD_COLDKEY_BYTES,
       new_coldkey: NEW_COLDKEY_BYTES,
-    },
+    }),
     ...overrides,
   };
 }
@@ -139,11 +144,11 @@ describe("loadSubnetOwnershipHistoryColdTier", () => {
       ownershipRow(),
       ownershipRow({
         block_number: 8_600_000,
-        args: {
+        args: JSON.stringify({
           netuid: 18,
           old_coldkey: OLD_COLDKEY_BYTES,
           new_coldkey: NEW_COLDKEY_BYTES,
-        },
+        }),
       }),
     ]);
     const data = (await loadSubnetOwnershipHistoryColdTier(
@@ -164,7 +169,7 @@ describe("loadSubnetOwnershipHistoryColdTier", () => {
   // A subnet that has never changed hands is the common case, so an empty
   // match set is a real answer -- distinct from a decline.
   test("a subnet with no transfers is an empty list, not a decline", async () => {
-    sqlFetch([ownershipRow({ args: { netuid: 18 } })]);
+    sqlFetch([ownershipRow({ args: JSON.stringify({ netuid: 18 }) })]);
     const data = (await loadSubnetOwnershipHistoryColdTier(
       TOKEN as never,
       7,

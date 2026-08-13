@@ -4,6 +4,7 @@
 // schemas-src/routes/ REST schema -- modeled fresh, matching each
 // hand-written literal field-for-field.
 import { z } from "zod";
+import { SurfaceVerifyArtifactSchema } from "../routes/ai-native.ts";
 import {
   OpenArraySchema,
   OpenObjectSchema,
@@ -137,24 +138,29 @@ export type VerifyIntegrationInput = z.infer<
 // fields in the hand-written original -- present in `properties` but absent
 // from `required`, unlike every NULLABLE_* field here which is both
 // optional AND nullable. Preserved as-is.
-export const VerifyIntegrationOutputSchema = z
-  .object({
-    surface_id: z.string(),
-    surface_key: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    kind: z.string().optional(),
-    url: z.string().optional(),
-    provider: z.string().nullable().optional(),
-    status: z.string(),
-    classification: z.string().nullable().optional(),
-    callable: z.boolean(),
-    latency_ms: z.int().nullable().optional(),
-    status_code: z.int().nullable().optional(),
-    error: z.string().nullable().optional(),
-    probed_at: z.string().nullable().optional(),
-    from_cache: z.boolean().optional(),
-  })
-  .strict();
+/**
+ * THE ROUTE'S OWN SCHEMA, not a copy (#11008).
+ *
+ * `verify_integration` and GET /api/v1/surfaces/{surface_id}/verify are the
+ * same answer from the same producer -- src/surface-verify.ts's
+ * `verifySurface`, behind the cache wrapper that stamps `from_cache` on both
+ * of its branches. This file declared it a second time and the copy drifted the
+ * way #10790 predicts: it omitted `schema_version` and `auth_required`, which
+ * the producer sets unconditionally, so the outbound tripwire refused EVERY
+ * call to this tool with `response_schema_drift` rather than returning a
+ * result.
+ *
+ * Declaring the two missing fields made the copy field-for-field identical to
+ * `SurfaceVerifyArtifactSchema`, which is the point at which a copy stops being
+ * defensible: the gate said so, and this imports the original instead.
+ *
+ * INHERITS #11040 along with the schema: the route promises non-null for
+ * `surface_key`, `netuid` and `classification` while the producer writes each
+ * with a `?? null` fallback. That risk pre-dates this import -- it was already
+ * live on the route -- but one schema now governs two surfaces, so the issue
+ * says so rather than leaving it to be found by a 500.
+ */
+export const VerifyIntegrationOutputSchema = SurfaceVerifyArtifactSchema;
 export type VerifyIntegrationOutput = z.infer<
   typeof VerifyIntegrationOutputSchema
 >;

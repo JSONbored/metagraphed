@@ -121,7 +121,7 @@ describe("loadSubnetIdentityHistoryColdTier", () => {
   });
 
   test("an unusable last row emits no cursor; a failed query yields null", async () => {
-    sqlFetch([{ ...identityRow(3), observed_at: "bad" }]);
+    sqlFetch([{ ...identityRow(3), observed_at: null }]);
     const odd = await loadSubnetIdentityHistoryColdTier(TOKEN as never, 3, {
       limit: 1,
     });

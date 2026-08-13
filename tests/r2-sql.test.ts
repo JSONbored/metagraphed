@@ -18,6 +18,8 @@ import {
   r2SqlRateLimitRemainingMs,
   R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS,
   R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV,
+  R2_SQL_MAX_BODY_BYTES_DEFAULT,
+  R2_SQL_MAX_BODY_BYTES_ENV,
   R2_SQL_TOKEN_ENV,
   safeBlockNumber,
   safeHexLiteral,
@@ -26,6 +28,10 @@ import {
 } from "../src/r2-sql.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 import { mockEnv } from "./row-type.ts";
+import {
+  AccountEventsRowSchema,
+  BlocksRowSchema,
+} from "../schemas-src/lakehouse.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 
@@ -36,11 +42,20 @@ const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 // unrelated test failing on a capture that never happened.
 afterEach(() => resetModuleState());
 
-function jsonFetch(body: unknown, ok = true, status = 200) {
+// A REAL Response, not a `{ ok, status, json }` stand-in. The client reads
+// through a byte cap now (R2_SQL_MAX_BODY_BYTES), which needs `res.body` to be
+// an actual stream -- a hand-rolled double with only `json()` would take the
+// uncapped path and leave every test here exercising a branch production never
+// runs. `ok` is derived from `status` because a Response derives it too; every
+// call site that passed `false` paired it with a 4xx/5xx anyway.
+function jsonFetch(body: unknown, _ok = true, status = 200) {
   const calls: { url: string; init: RequestInit }[] = [];
   const impl = (async (url: string, init: RequestInit) => {
     calls.push({ url, init });
-    return { ok, status, json: async () => body } as unknown as Response;
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
   }) as unknown as typeof fetch;
   return { impl, calls };
 }
@@ -311,11 +326,10 @@ describe("r2SqlQuery", () => {
     let hit = false;
     globalThis.fetch = (async () => {
       hit = true;
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows: [{ n: 1 }] } }),
-      } as unknown as Response;
+      return new Response(
+        JSON.stringify({ success: true, result: { rows: [{ n: 1 }] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
     }) as unknown as typeof fetch;
     try {
       const rows = await r2SqlQuery(mockEnv(TOKEN), "SELECT 1");
@@ -1103,5 +1117,268 @@ describe("the upstream-outage breaker (#10741)", () => {
     // as errors, while a first 500 still reaches the inbox.
     assert.equal(isExpectedR2SqlFailure("upstream_down"), true);
     assert.equal(isExpectedR2SqlFailure("http_500"), false);
+  });
+});
+
+describe("a row limit is not a byte limit (#11000)", () => {
+  // Keeps these assertions about the READ, not about telemetry.
+  const noCapture = { recordException: (async () => true) as never };
+  // 2026-08-12: `TypeError: Memory limit exceeded before EOF` from
+  //   SELECT block_number, ..., call_args, observed_at FROM chain.extrinsics
+  //   WHERE signer = ? ORDER BY ... LIMIT ?
+  // The LIMIT bounds ROWS. `call_args` has no width -- one set_weights carries
+  // a weight per UID -- so a bounded page is an unbounded body. An OOM is not
+  // a decline: it is raised by the runtime and it kills the ISOLATE, taking
+  // every unrelated request sharing it, which is the one failure this module's
+  // header promises cannot happen.
+  const streamOf = (chunks: string[], status = 200) =>
+    (async () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            for (const c of chunks)
+              controller.enqueue(new TextEncoder().encode(c));
+            controller.close();
+          },
+        }),
+        { status },
+      )) as unknown as typeof fetch;
+
+  test("a body over the cap is declined, not buffered", async () => {
+    // 3 x 8 bytes against a 16-byte cap: refused on the chunk that crosses it,
+    // never assembled.
+    const impl = streamOf(["12345678", "12345678", "12345678"]);
+    const rows = await r2SqlQuery(
+      mockEnv({ ...TOKEN, [R2_SQL_MAX_BODY_BYTES_ENV]: "16" }),
+      "SELECT call_args FROM chain.extrinsics LIMIT 200",
+      { fetch: impl, ...noCapture },
+    );
+    assert.equal(
+      rows,
+      null,
+      "a declined read degrades like every other failure",
+    );
+  });
+
+  test("a body UNDER the cap still parses -- the guard is not a blanket refusal", async () => {
+    const body = JSON.stringify({
+      success: true,
+      result: { rows: [{ n: 7 }] },
+    });
+    const rows = await r2SqlQuery(
+      mockEnv({
+        ...TOKEN,
+        [R2_SQL_MAX_BODY_BYTES_ENV]: String(body.length + 1),
+      }),
+      "SELECT 1",
+      { fetch: streamOf([body]), ...noCapture },
+    );
+    assert.deepEqual(rows, [{ n: 7 }]);
+  });
+
+  test("the cap counts BYTES RECEIVED, not Content-Length", async () => {
+    // A chunked response carries no length, and a body that lies about its
+    // length is exactly the one worth stopping. Split so no single chunk
+    // exceeds the cap -- only the running total does.
+    const impl = streamOf(["aaaa", "bbbb", "cccc", "dddd", "eeee"]);
+    assert.equal(
+      await r2SqlQuery(
+        mockEnv({ ...TOKEN, [R2_SQL_MAX_BODY_BYTES_ENV]: "12" }),
+        "SELECT 1",
+        { fetch: impl, ...noCapture },
+      ),
+      null,
+    );
+  });
+
+  test("`0` disables the cap -- an operator can open a valve they judge wrong", async () => {
+    const body = JSON.stringify({
+      success: true,
+      result: { rows: [{ n: 1 }] },
+    });
+    const rows = await r2SqlQuery(
+      mockEnv({ ...TOKEN, [R2_SQL_MAX_BODY_BYTES_ENV]: "0" }),
+      "SELECT 1",
+      { fetch: streamOf([body]), ...noCapture },
+    );
+    assert.deepEqual(
+      rows,
+      [{ n: 1 }],
+      "0 must mean off, not 'reject everything'",
+    );
+  });
+
+  test("an unset knob takes the default rather than disabling the cap", async () => {
+    // The failure direction that matters: an absent env var must not read as 0.
+    assert.ok(R2_SQL_MAX_BODY_BYTES_DEFAULT > 0);
+    const rows = await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+      fetch: streamOf([
+        JSON.stringify({ success: true, result: { rows: [{ n: 2 }] } }),
+      ]),
+      ...noCapture,
+    });
+    assert.deepEqual(rows, [{ n: 2 }]);
+  });
+
+  test("a non-JSON body is a decline, not a throw into the caller", async () => {
+    assert.equal(
+      await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+        fetch: streamOf(["<html>gateway</html>"]),
+        ...noCapture,
+      }),
+      null,
+    );
+  });
+});
+
+describe("a lakehouse read is VALIDATED, not cast (#11000)", () => {
+  const noCapture = { recordException: (async () => true) as never };
+  const streamOf = (payload: unknown) =>
+    (async () =>
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })) as unknown as typeof fetch;
+
+  // `generated/lakehouse/types.ts` gives every read a row TYPE, and
+  // `r2SqlQuery<BlocksRow>(...)` is a cast -- nothing checks the engine
+  // answered those columns with those types. `generated/lakehouse/schemas.ts`
+  // is the runtime half, generated from the same catalog snapshot.
+  test("a row whose column violates the catalog is refused, not served", async () => {
+    const rows = await r2SqlQuery(
+      mockEnv(TOKEN),
+      "SELECT block_number FROM chain.blocks LIMIT 1",
+      {
+        // block_number is a `long`; a string is a row the catalog cannot emit.
+        fetch: streamOf({
+          success: true,
+          result: { rows: [{ block_number: "not-a-height" }] },
+        }),
+        rowSchema: BlocksRowSchema,
+        ...noCapture,
+      },
+    );
+    assert.equal(rows, null, "a corrupt row degrades like any other failure");
+  });
+
+  test("a legal row still passes -- the guard is not a blanket refusal", async () => {
+    assert.deepEqual(
+      await r2SqlQuery(
+        mockEnv(TOKEN),
+        "SELECT block_number FROM chain.blocks",
+        {
+          fetch: streamOf({
+            success: true,
+            result: { rows: [{ block_number: 8_810_877 }] },
+          }),
+          rowSchema: BlocksRowSchema,
+          ...noCapture,
+        },
+      ),
+      [{ block_number: 8_810_877 }],
+    );
+  });
+
+  test("an AGGREGATE alias survives -- most reads select things that are not columns", async () => {
+    // The failure this nearly shipped with: Zod strips unknown keys by
+    // default, so a plain object schema would have deleted `n` and `total_tao`
+    // from every rollup that reads one.
+    const row = { netuid: 7, n: 42, total_tao: 1.5 };
+    assert.deepEqual(
+      await r2SqlQuery(
+        mockEnv(TOKEN),
+        "SELECT netuid, COUNT(*) AS n FROM chain.account_events GROUP BY netuid",
+        {
+          fetch: streamOf({ success: true, result: { rows: [row] } }),
+          rowSchema: AccountEventsRowSchema,
+          ...noCapture,
+        },
+      ),
+      [row],
+    );
+  });
+
+  test("validation is the DEFAULT, resolved from the statement's own table", async () => {
+    // No `rowSchema` passed, and the row is still refused: the table comes from
+    // the SQL, so a read cannot be left unvalidated by forgetting to opt in.
+    // This test asserted the opposite while validation was opt-in.
+    assert.equal(
+      await r2SqlQuery(
+        mockEnv(TOKEN),
+        "SELECT block_number FROM chain.blocks",
+        {
+          fetch: streamOf({
+            success: true,
+            result: { rows: [{ block_number: "still-untyped" }] },
+          }),
+          ...noCapture,
+        },
+      ),
+      null,
+    );
+  });
+
+  test("a stream chunk with no bytes is skipped, not counted", async () => {
+    // A ReadableStream may hand back `{ done: false, value: undefined }`. The
+    // guard exists so `value.byteLength` cannot throw on it; a real stream
+    // rarely does this, so the reader is driven directly rather than pretending
+    // a well-behaved stream will produce it.
+    const payload = JSON.stringify({
+      success: true,
+      result: { rows: [{ block_number: 1 }] },
+    });
+    const chunks = [
+      { done: false, value: undefined },
+      { done: false, value: new TextEncoder().encode(payload) },
+      { done: true, value: undefined },
+    ];
+    let i = 0;
+    const body = {
+      getReader: () => ({
+        read: async () => chunks[i++]!,
+        cancel: async () => undefined,
+      }),
+    };
+    const rows = await r2SqlQuery(
+      mockEnv(TOKEN),
+      "SELECT block_number FROM chain.blocks",
+      {
+        fetch: (async () => ({
+          ok: true,
+          status: 200,
+          body,
+        })) as unknown as typeof fetch,
+        ...noCapture,
+      },
+    );
+    assert.deepEqual(
+      rows,
+      [{ block_number: 1 }],
+      "the empty chunk must not end the read",
+    );
+  });
+
+  test("a JSON body that is not the ENGINE envelope is a decline", () => {
+    // Parses fine, fails the envelope: `success` must be a boolean. Before the
+    // safeParse this was a cast, so a body shaped like this reached the row
+    // reader with `undefined` fields -- "no rows" and "we could not tell"
+    // became the same answer.
+    return r2SqlQuery(mockEnv(TOKEN), "SELECT 1 FROM chain.blocks", {
+      fetch: streamOf({ success: "yes", result: { rows: [] } }),
+      ...noCapture,
+    }).then((rows) => assert.equal(rows, null));
+  });
+
+  test("a table outside the catalog is unvalidated, not rejected", async () => {
+    // The honest limit of the automatic lookup: a statement can read something
+    // the snapshot does not describe, and inventing a schema there would refuse
+    // data this repo has no description of.
+    assert.deepEqual(
+      await r2SqlQuery(mockEnv(TOKEN), "SELECT x FROM other.thing", {
+        fetch: streamOf({ success: true, result: { rows: [{ x: "free" }] } }),
+        ...noCapture,
+      }),
+      [{ x: "free" }],
+    );
   });
 });

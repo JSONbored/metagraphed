@@ -105,7 +105,7 @@ test("GET /api/v1/governance/config-changes?format=csv exports the filtered rows
       success: true,
       fee_tao: 0.000123,
       tip_tao: 0,
-      observed_at: new Date(1750009000000).toISOString(),
+      observed_at: 1750009000000,
     },
   ]);
   const env = { ...LAKEHOUSE_ENV };

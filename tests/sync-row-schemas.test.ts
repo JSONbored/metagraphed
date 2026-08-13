@@ -26,7 +26,7 @@ import {
   subnetHyperparamsSyncRowSchema,
   subnetOwnershipSyncRowSchema,
   validateSyncRows,
-} from "../src/sync-row-schemas.ts";
+} from "../schemas-src/sync-rows.ts";
 
 /** Well clear of the seconds/milliseconds floor the real routes use. */
 const CAPTURED_AT = 1_785_715_160_521;

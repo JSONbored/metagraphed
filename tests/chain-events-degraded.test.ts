@@ -242,7 +242,9 @@ describe("coldTierChainEventsPayload", () => {
     method: "SubnetOwnerChanged",
     block_number: 8_587_754,
     observed_at: 1_783_600_000_000,
-    args: {
+    // A JSON STRING: `chain_events.args` is a `string` in the catalog,
+    // and this tier RESTORES it to the object form below.
+    args: JSON.stringify({
       netuid: 7,
       old_coldkey: [
         [
@@ -257,7 +259,7 @@ describe("coldTierChainEventsPayload", () => {
           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ],
       ],
-    },
+    }),
   };
 
   function lakehouse(rows: unknown[]) {
@@ -415,7 +417,7 @@ describe("handleChainEventsFamily", () => {
                 method: "SubnetOwnerChanged",
                 block_number: 8_587_754,
                 observed_at: 1_783_600_000_000,
-                args: { netuid: 7 },
+                args: JSON.stringify({ netuid: 7 }),
               },
             ],
           },

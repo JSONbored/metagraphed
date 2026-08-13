@@ -183,7 +183,7 @@ describe("loadAccountIdentityHistoryColdTier", () => {
   });
 
   test("an unusable last row emits no cursor; a failed query yields null", async () => {
-    sqlFetch([{ ...historyRow(3), observed_at: "bad" }]);
+    sqlFetch([{ ...historyRow(3), observed_at: null }]);
     const odd = await loadAccountIdentityHistoryColdTier(TOKEN as never, ADDR, {
       limit: 1,
     });

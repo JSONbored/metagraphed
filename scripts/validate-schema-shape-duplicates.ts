@@ -223,6 +223,21 @@ const COINCIDENT_BY_DESIGN: Record<string, string[]> = {
     "schemas-src/mcp-tools/feed.ts",
     "schemas-src/route-queries.ts",
   ],
+  // STORAGE and WIRE, not a copy (#11008). `schemas-src/lakehouse.ts` is
+  // GENERATED from the Iceberg catalog and declares what the WAREHOUSE holds;
+  // the file beside each entry declares what we SERVE. A table and the route
+  // over it share a key set by construction -- that is the route doing its
+  // job, not a second declaration -- and the types say so: `observed_at` is
+  // epoch millis as stored and an ISO string as served; `amount_tao` is a
+  // double as stored and opaque on the MCP surface. Collapsing either would
+  // erase the formatting seam between the warehouse and the wire.
+  //
+  // Declared as PAIRS rather than by excluding the generated file, so a third
+  // declaration of the same vocabulary still fails.
+  "author,block_hash,block_number,event_count,extrinsic_count,observed_at,parent_hash,spec_version":
+    ["schemas-src/lakehouse.ts", "schemas-src/routes/blocks.ts"],
+  "alpha_amount,amount_tao,block_number,coldkey,event_index,event_kind,extrinsic_index,hotkey,netuid,observed_at,uid":
+    ["schemas-src/lakehouse.ts", "schemas-src/mcp-tools/shared.ts"],
 };
 
 function main(): void {

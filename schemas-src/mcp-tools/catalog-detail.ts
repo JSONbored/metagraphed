@@ -89,9 +89,37 @@ export type GetFixtureInput = z.infer<typeof GetFixtureInputSchema>;
 // The hand-written original declares only surface_id -- the actual fixture
 // payload has many more fields, deliberately left undeclared (loose
 // additionalProperties:true), not "improved" with a guessed shape here.
+/**
+ * The captured fixture artifact, as `loadFixture` returns it (#11008).
+ *
+ * It declared ONE key -- `surface_id` -- against a payload of ten, so the
+ * outbound tripwire refused every call the moment it could see this tool. The
+ * handler returns the artifact whole (src/fixtures-mcp.ts: `return data`), so
+ * the schema has to describe the artifact rather than a projection of it.
+ *
+ * Measured across twelve live fixtures on 2026-08-13: all ten top-level keys
+ * present on all twelve, types stable. `response.body` is the SURFACE's own
+ * payload -- an object for most, an array for some -- so it is `unknown`
+ * rather than a shape this repo does not own and cannot promise.
+ */
 export const GetFixtureOutputSchema = z
   .object({
+    schema_version: z.int(),
     surface_id: z.string(),
+    subnet_slug: z.string(),
+    subnet_name: z.string(),
+    netuid: z.int().min(0),
+    kind: z.string(),
+    captured_at: z.string(),
+    generated_at: z.string(),
+    request: z.object({ method: z.string(), url: z.string() }).strict(),
+    response: z
+      .object({
+        status: z.int(),
+        content_type: z.string(),
+        body: z.unknown(),
+      })
+      .strict(),
   })
   .strict();
 export type GetFixtureOutput = z.infer<typeof GetFixtureOutputSchema>;

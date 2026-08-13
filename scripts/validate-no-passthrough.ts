@@ -50,7 +50,14 @@ export interface PassthroughSite {
 }
 
 /**
- * Every `.passthrough()` CALL under `schemas-src/`.
+ * Every unreasoned-open CALL under `schemas-src/`.
+ *
+ * `.passthrough()` AND `.loose()`. Zod 4 renamed the method; the ban is on the
+ * SPELLING THAT CARRIES NO DECISION, and a rename does not change what the
+ * spelling fails to say. Banning only the Zod 3 name would have let the same
+ * hole reopen under a new word -- which is exactly what happened in
+ * generated/lakehouse/schemas.ts, written `.loose()` and passing this gate
+ * clean.
  *
  * Read through the AST rather than by grepping the text: fifteen of the
  * mentions in this tree are prose in comments explaining why a site was
@@ -74,7 +81,8 @@ export function findPassthroughCalls(
       if (
         ts.isCallExpression(node) &&
         ts.isPropertyAccessExpression(node.expression) &&
-        node.expression.name.text === "passthrough"
+        (node.expression.name.text === "passthrough" ||
+          node.expression.name.text === "loose")
       ) {
         out.push({
           file,
@@ -91,6 +99,9 @@ export function findPassthroughCalls(
 }
 
 function schemaFiles(): string[] {
+  // schemas-src/lakehouse.ts is GENERATED and lives here with every other
+  // schema, so it is in scope by construction -- no allowlist needed for the
+  // one file most likely to regress unnoticed.
   return ts.sys
     .readDirectory(path.join(repoRoot, SCHEMA_ROOT), [".ts"], ["node_modules"])
     .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
