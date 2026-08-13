@@ -293,6 +293,7 @@ import {
   buildSubnetOwnerCapture,
   ownerCaptureWindowLabel,
 } from "./owner-capture.ts";
+import { buildSubnetTreasury } from "./treasury-readings.ts";
 import {
   buildSubnetMinerFairness,
   minerFairnessWindowLabel,
@@ -945,6 +946,7 @@ import type {
   QuerySubnet_YieldArgs,
   QuerySubnet_Emission_Split_HistoryArgs,
   QuerySubnet_Owner_CaptureArgs,
+  QuerySubnet_TreasuryArgs,
   QuerySubnet_Miner_FairnessArgs,
   QuerySubnet_Yield_HistoryArgs,
   QuerySubnetsArgs,
@@ -3391,6 +3393,33 @@ const rootValue = {
       entity_count: data.entity_count ?? 0,
       uids_per_entity: data.uids_per_entity ?? null,
       concentration: data.concentration ?? null,
+    };
+  },
+  async subnet_treasury(
+    { netuid }: QuerySubnet_TreasuryArgs,
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    const data =
+      ((await tryDataApiTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/treasury`,
+          new URLSearchParams(),
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) as Row | null) ?? buildSubnetTreasury([], netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      repos_read: data.repos_read ?? 0,
+      reviewed_count: data.reviewed_count ?? 0,
+      pending_review_count: data.pending_review_count ?? 0,
+      declared_share: data.declared_share ?? null,
+      observed_share: data.observed_share ?? null,
+      declared_matches_observed: data.declared_matches_observed ?? null,
+      readings: data.readings ?? [],
     };
   },
   async subnet_owner_capture(

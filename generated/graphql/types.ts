@@ -3723,6 +3723,8 @@ export type Query = {
   subnet_surface_history: SubnetSurfaceHistory;
   /** One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory. */
   subnet_trajectory: SubnetTrajectory;
+  /** What one subnet's own published source declares it allocates to a treasury, against what the chain shows. A cut disclosed in a public repo is a business model, not a discovery, and agreement between declared and observed is the expected result — published as prominently as any divergence. Three states are kept apart: no reading (nobody looked, and the response claims nothing), `found: false` (read at a commit and found nothing — evidence), and a reviewed share. `declared_matches_observed` is tri-state and null is the normal answer today; null must never render as false. Machine readings publish their read status and withhold their finding until reviewed. Mirrors GET /api/v1/subnets/{netuid}/treasury. */
+  subnet_treasury: SubnetTreasury;
   /** One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover. */
   subnet_turnover: SubnetTurnover;
   /** One subnet's long-term daily uptime history for its operational surfaces from the live surface_uptime_daily rollup: per-surface day series, window-wide uptime ratios, and reliability scores for the requested window (90d or 1y, default 90d). Optional min_samples drops day rows whose daily probe count is below the threshold (including zero-sample 'unknown' days). A subnet with no history resolves to a schema-stable empty card (surfaces []), never null. Mirrors GET /api/v1/subnets/{netuid}/uptime. */
@@ -5074,6 +5076,11 @@ export type QuerySubnet_TrajectoryArgs = {
   netuid: Scalars['Int']['input'];
   order?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySubnet_TreasuryArgs = {
+  netuid: Scalars['Int']['input'];
 };
 
 
@@ -7319,6 +7326,58 @@ export type SubnetTrajectoryPoint = {
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
+/** What one subnet's own published source says it allocates to a treasury, against what the chain shows. Some subnets take a share of miner emission in their own validator code, applied before emission is ever assigned — that is not a chain event and no indexer can see it. A cut disclosed in a public repo is a BUSINESS MODEL, not a finding, and for most subnets the answer is that declared matches observed. THREE STATES MUST NOT BE COLLAPSED: no reading at all (nobody looked), a reading with `found: false` (read at a commit, found nothing — evidence), and a reading with a share. Machine readings are published as `candidate` with their finding withheld until a maintainer reviews them. Mirrors GET /api/v1/subnets/{netuid}/treasury. */
+export type SubnetTreasury = {
+  __typename?: 'SubnetTreasury';
+  /** Does the declared allocation agree with what the chain shows? TRI-STATE, and `null` — the comparison was not possible because one side is unread — is the normal answer today. Null must never be rendered as `false`: that reads as 'the team is not doing what they said', which is precisely the claim an unread repo cannot support. AGREEMENT IS THE EXPECTED RESULT and is published as prominently as divergence. */
+  declared_matches_observed?: Maybe<Scalars['Boolean']['output']>;
+  /** The total REVIEWED allocation taken from miner emission, as a fraction. Null when nothing reviewed applies. A treasury cut written into a public repo is a DISCLOSED BUSINESS MODEL, not a discovery. */
+  declared_share?: Maybe<Scalars['Float']['output']>;
+  /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+  field_sources?: Maybe<Scalars['JSON']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** What the chain shows reaching the owner, from the owner-capture index. Null when it cannot be measured for this subnet. */
+  observed_share?: Maybe<Scalars['Float']['output']>;
+  /** Readings a machine produced that no maintainer has checked. Their findings are deliberately withheld from this payload — a model's or a regex's summary of source code is not evidence. */
+  pending_review_count: Scalars['Int']['output'];
+  /** One entry per repository read. An empty list means nobody has read this subnet's sources — not that it takes no treasury cut. */
+  readings: Array<SubnetTreasuryReading>;
+  /** How many of this subnet's registered source repositories have been read. ZERO IS THE IMPORTANT VALUE: it means nobody has looked, which is NOT the same as looking and finding no treasury cut. A card with `repos_read: 0` makes no claim about this subnet at all. */
+  repos_read: Scalars['Int']['output'];
+  reviewed_count: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+};
+
+/** The citation. `read_at_sha` is the commit that was HEAD when the repo was read, which is what makes the finding re-derivable by someone who does not trust us. */
+export type SubnetTreasuryEvidence = {
+  __typename?: 'SubnetTreasuryEvidence';
+  /** Where in the repo, so a reviewer opens the right file rather than the whole project. */
+  evidence_path?: Maybe<Scalars['String']['output']>;
+  /** When this repo was first read, preserved across re-reads — so 'we have been watching this since' survives a repo that moves weekly. */
+  first_seen?: Maybe<Scalars['String']['output']>;
+  /** When this reading was taken. A citation without a date cannot be aged out, and a repo that has moved since is exactly what re-reading exists to catch. */
+  observed_at: Scalars['String']['output'];
+  /** The commit that was HEAD when this repo was read. THE CITATION: it is what makes the finding re-derivable by someone who does not trust us, and what a re-read diffs against to know the repo moved. */
+  read_at_sha: Scalars['String']['output'];
+  /** The public repository surface that was read. Points at a branch, correctly — a human clicks this and wants the current code. The pinned half is `read_at_sha`. */
+  source_url: Scalars['String']['output'];
+};
+
+export type SubnetTreasuryReading = {
+  __typename?: 'SubnetTreasuryReading';
+  /** What the allocation is taken out of. Shares with different bases are never summed — a payout fee and an emission cut are not the same quantity. */
+  applies_to?: Maybe<Scalars['String']['output']>;
+  /** The declared allocation as a FRACTION (0..1), never a percentage. Null when the reading found nothing or has not been reviewed. */
+  declared_share?: Maybe<Scalars['Float']['output']>;
+  /** The citation. `read_at_sha` is the commit that was HEAD when the repo was read, which is what makes the finding re-derivable by someone who does not trust us. */
+  evidence: SubnetTreasuryEvidence;
+  /** Did this read find an allocation? THREE STATES: `true` (found, reviewed), `false` (READ AT A COMMIT AND FOUND NOTHING — a measurement, and the expected answer for most subnets), and `null` (not yet reviewed, so no finding is published). A subnet nobody has read has no reading at all rather than a `false`. */
+  found?: Maybe<Scalars['Boolean']['output']>;
+  /** How far this reading has got through the human gate. A `candidate` is a machine reading nobody has checked: its READ STATUS is published (which repo, which commit, when) and its FINDING is not. Only `reviewed` rows publish a share. */
+  review_state: Scalars['String']['output'];
+  treasury_address?: Maybe<Scalars['String']['output']>;
+};
+
 /** One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard. */
 export type SubnetTurnover = {
   __typename?: 'SubnetTurnover';
@@ -8472,6 +8531,9 @@ export type ResolversTypes = ResolversObject<{
   SubnetTrajectory: ResolverTypeWrapper<SubnetTrajectory>;
   SubnetTrajectoryDelta: ResolverTypeWrapper<SubnetTrajectoryDelta>;
   SubnetTrajectoryPoint: ResolverTypeWrapper<SubnetTrajectoryPoint>;
+  SubnetTreasury: ResolverTypeWrapper<SubnetTreasury>;
+  SubnetTreasuryEvidence: ResolverTypeWrapper<SubnetTreasuryEvidence>;
+  SubnetTreasuryReading: ResolverTypeWrapper<SubnetTreasuryReading>;
   SubnetTurnover: ResolverTypeWrapper<SubnetTurnover>;
   SubnetTurnoverChanges: ResolverTypeWrapper<SubnetTurnoverChanges>;
   SubnetUptime: ResolverTypeWrapper<SubnetUptime>;
@@ -8920,6 +8982,9 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetTrajectory: SubnetTrajectory;
   SubnetTrajectoryDelta: SubnetTrajectoryDelta;
   SubnetTrajectoryPoint: SubnetTrajectoryPoint;
+  SubnetTreasury: SubnetTreasury;
+  SubnetTreasuryEvidence: SubnetTreasuryEvidence;
+  SubnetTreasuryReading: SubnetTreasuryReading;
   SubnetTurnover: SubnetTurnover;
   SubnetTurnoverChanges: SubnetTurnoverChanges;
   SubnetUptime: SubnetUptime;
@@ -11819,6 +11884,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_stake_transfers?: Resolver<ResolversTypes['SubnetStakeTransfers'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_TransfersArgs, 'netuid'>>;
   subnet_surface_history?: Resolver<ResolversTypes['SubnetSurfaceHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Surface_HistoryArgs, 'netuid'>>;
   subnet_trajectory?: Resolver<ResolversTypes['SubnetTrajectory'], ParentType, ContextType, RequireFields<QuerySubnet_TrajectoryArgs, 'netuid'>>;
+  subnet_treasury?: Resolver<ResolversTypes['SubnetTreasury'], ParentType, ContextType, RequireFields<QuerySubnet_TreasuryArgs, 'netuid'>>;
   subnet_turnover?: Resolver<ResolversTypes['SubnetTurnover'], ParentType, ContextType, RequireFields<QuerySubnet_TurnoverArgs, 'netuid'>>;
   subnet_uptime?: Resolver<ResolversTypes['SubnetUptime'], ParentType, ContextType, RequireFields<QuerySubnet_UptimeArgs, 'netuid'>>;
   subnet_validator_economics?: Resolver<ResolversTypes['SubnetValidatorEconomics'], ParentType, ContextType, RequireFields<QuerySubnet_Validator_EconomicsArgs, 'netuid'>>;
@@ -13475,6 +13541,36 @@ export type SubnetTrajectoryPointResolvers<ContextType = GqlContext, ParentType 
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type SubnetTreasuryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTreasury'] = ResolversParentTypes['SubnetTreasury']> = ResolversObject<{
+  declared_matches_observed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  declared_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  pending_review_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  readings?: Resolver<Array<ResolversTypes['SubnetTreasuryReading']>, ParentType, ContextType>;
+  repos_read?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reviewed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetTreasuryEvidenceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTreasuryEvidence'] = ResolversParentTypes['SubnetTreasuryEvidence']> = ResolversObject<{
+  evidence_path?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  first_seen?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  read_at_sha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SubnetTreasuryReadingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTreasuryReading'] = ResolversParentTypes['SubnetTreasuryReading']> = ResolversObject<{
+  applies_to?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  declared_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  evidence?: Resolver<ResolversTypes['SubnetTreasuryEvidence'], ParentType, ContextType>;
+  found?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  review_state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  treasury_address?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type SubnetTurnoverResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTurnover'] = ResolversParentTypes['SubnetTurnover']> = ResolversObject<{
   changes?: Resolver<Maybe<ResolversTypes['SubnetTurnoverChanges']>, ParentType, ContextType>;
   comparable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
@@ -14393,6 +14489,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetTrajectory?: SubnetTrajectoryResolvers<ContextType>;
   SubnetTrajectoryDelta?: SubnetTrajectoryDeltaResolvers<ContextType>;
   SubnetTrajectoryPoint?: SubnetTrajectoryPointResolvers<ContextType>;
+  SubnetTreasury?: SubnetTreasuryResolvers<ContextType>;
+  SubnetTreasuryEvidence?: SubnetTreasuryEvidenceResolvers<ContextType>;
+  SubnetTreasuryReading?: SubnetTreasuryReadingResolvers<ContextType>;
   SubnetTurnover?: SubnetTurnoverResolvers<ContextType>;
   SubnetTurnoverChanges?: SubnetTurnoverChangesResolvers<ContextType>;
   SubnetUptime?: SubnetUptimeResolvers<ContextType>;

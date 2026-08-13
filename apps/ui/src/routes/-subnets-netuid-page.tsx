@@ -62,6 +62,7 @@ import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { SubnetEmissionPanel } from "@/components/metagraphed/subnet-emission-panel";
 import { SubnetEmissionSplitPanel } from "@/components/metagraphed/subnet-emission-split-panel";
 import { SubnetOwnerCapturePanel } from "@/components/metagraphed/subnet-owner-capture-panel";
+import { SubnetTreasuryPanel } from "@/components/metagraphed/subnet-treasury-panel";
 import { SubnetMinerFairnessPanel } from "@/components/metagraphed/subnet-miner-fairness-panel";
 import { SubnetRevenuePanel } from "@/components/metagraphed/subnet-revenue-panel";
 import { SubnetMoneyMapPanel } from "@/components/metagraphed/subnet-money-map-panel";
@@ -681,6 +682,7 @@ function EconomicsTabPanel({ netuid }: { netuid: number }) {
           <SubnetEmissionPanel netuid={netuid} />
           <SubnetEmissionSplitPanel netuid={netuid} />
           <SubnetOwnerCapturePanel netuid={netuid} />
+          <SubnetTreasuryPanel netuid={netuid} />
           <SubnetMinerFairnessPanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>

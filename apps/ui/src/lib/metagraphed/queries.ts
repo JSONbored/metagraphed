@@ -300,6 +300,7 @@ import type {
   SubnetEmissionSplitHistory,
   SubnetMinerFairness,
   SubnetOwnerCapture,
+  SubnetTreasury,
   EmissionSplitPoint,
   SubnetYieldHistory,
   SubnetProfile,
@@ -8819,6 +8820,34 @@ export const subnetMinerFairnessQuery = (netuid: number, window: "7d" | "30d" | 
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetMinerFairness>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** What a subnet's own source declares it allocates to a treasury (#10933). */
+export const subnetTreasuryQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-treasury", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetTreasury>>(`/api/v1/subnets/${netuid}/treasury`, {
+        signal,
+      });
+      return {
+        data: {
+          netuid,
+          repos_read: res.data?.repos_read ?? 0,
+          reviewed_count: res.data?.reviewed_count ?? 0,
+          pending_review_count: res.data?.pending_review_count ?? 0,
+          declared_share: res.data?.declared_share ?? null,
+          observed_share: res.data?.observed_share ?? null,
+          // NOT `?? false`. Null is "not compared" and false is "they
+          // disagree" — coalescing would accuse a team over an unread repo.
+          declared_matches_observed: res.data?.declared_matches_observed ?? null,
+          readings: Array.isArray(res.data?.readings) ? res.data.readings : [],
+        } as SubnetTreasury,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetTreasury>;
     },
     staleTime: STALE_MED,
   });

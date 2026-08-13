@@ -54,6 +54,10 @@ const MIGRATIONS = [
   // #10929: owner-capture joins the rollup to the declared owner, and
   // `subnet_ownership` arrives in its own later migration.
   "migrations/neon/0024_subnet_ownership.sql",
+  // #10933: the treasury readings store, exercised end to end because its
+  // CHECK constraints are the only thing standing between a private extractor
+  // and a published contradiction.
+  "migrations/neon/0028_treasury_readings.sql",
 ].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
 
 /** Tables a test may write, emptied between tests. */
@@ -69,6 +73,7 @@ const SEEDED_TABLES = [
   "surface_status",
   "subnet_ownership",
   "nominator_positions",
+  "treasury_readings",
 ];
 
 let db: PGlite;
@@ -1615,6 +1620,106 @@ test("miner-fairness counts a registered UID that earns nothing", async () => {
   assert.equal(point.earning_miner_count, 1);
   assert.equal(point.zero_emission_pct, 0.75);
   assert.equal((body.persistence as Row).never_earned_count, 3);
+});
+
+// #10933: the treasury read, against the real DDL. The CHECK constraints are
+// the enforcement here -- the extractor writes from a private lane with no
+// route in front of it -- so they are asserted to actually fire.
+test("GET /api/v1/subnets/:netuid/treasury withholds an unreviewed finding", async () => {
+  await seed(
+    `INSERT INTO treasury_readings (netuid, source_url, read_at_sha, observed_at,
+       first_seen, found, declared_share, treasury_address, applies_to,
+       evidence_path, review_state)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      7,
+      "https://github.com/a/b",
+      "abc1234",
+      1760000000000,
+      1760000000000,
+      true,
+      0.1,
+      "5T",
+      "miner-emission",
+      "validator.py",
+      "reviewed",
+    ],
+  );
+  await seed(
+    `INSERT INTO treasury_readings (netuid, source_url, read_at_sha, observed_at,
+       first_seen, found, declared_share, treasury_address, applies_to,
+       evidence_path, review_state)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      7,
+      "https://github.com/c/d",
+      "def5678",
+      1760000000000,
+      1760000000000,
+      true,
+      0.6,
+      "5X",
+      "miner-emission",
+      null,
+      "candidate",
+    ],
+  );
+
+  const res = await call(req("/api/v1/subnets/7/treasury"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.repos_read, 2);
+  assert.equal(body.reviewed_count, 1);
+  assert.equal(body.pending_review_count, 1);
+  // Only the REVIEWED cut reaches the headline. The 0.6 candidate does not.
+  assert.equal(body.declared_share, 0.1);
+  const candidate = (body.readings as Row[]).find(
+    (r) => r.review_state === "candidate",
+  ) as Row;
+  assert.equal(candidate.found, null);
+  assert.equal(candidate.declared_share, null);
+  assert.equal((candidate.evidence as Row).read_at_sha, "def5678");
+});
+
+test("a subnet nobody has read answers with repos_read 0", async () => {
+  const body = (await (
+    await call(req("/api/v1/subnets/7/treasury"))
+  ).json()) as Row;
+  assert.equal(body.repos_read, 0);
+  assert.deepEqual(body.readings, []);
+  assert.equal(body.declared_matches_observed, null);
+});
+
+test("THE CHECK CONSTRAINTS REFUSE A SELF-CONTRADICTING ROW", async () => {
+  // The extractor writes directly with no Zod in front of it, so these are the
+  // enforcement. Proven to fire rather than assumed.
+  await assert.rejects(
+    seed(
+      `INSERT INTO treasury_readings (netuid, source_url, read_at_sha, observed_at,
+         first_seen, found, declared_share) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [7, "u1", "sha", 1760000000000, 1760000000000, false, 0.1],
+    ),
+    /nothing_found_declares_nothing/,
+    "found:false may not carry a share",
+  );
+  await assert.rejects(
+    seed(
+      `INSERT INTO treasury_readings (netuid, source_url, read_at_sha, observed_at,
+         first_seen, found) VALUES (?, ?, ?, ?, ?, ?)`,
+      [7, "u2", "sha", 1760000000000, 1760000000000, true],
+    ),
+    /finding_needs_a_share/,
+    "found:true must say what it found",
+  );
+  await assert.rejects(
+    seed(
+      `INSERT INTO treasury_readings (netuid, source_url, read_at_sha, observed_at,
+         first_seen, found, declared_share) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [7, "u3", "sha", 1760000000000, 1760000000000, true, 10],
+    ),
+    /share_is_a_fraction/,
+    "a percentage written where a fraction belongs must not land",
+  );
 });
 
 // --- Turnover + movers (the date-arithmetic translations) --------------------

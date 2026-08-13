@@ -871,6 +871,32 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/treasury",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.readings), true);
+      assert.equal(typeof body.data.repos_read, "number");
+      // THE THREE STATES, against the live response. `repos_read: 0` must not
+      // come with a declared_share or a `false` match verdict -- a subnet
+      // nobody has read makes no claim, and a schema cannot say that.
+      if (body.data.repos_read === 0) {
+        assert.equal(body.data.declared_share, null);
+        assert.equal(
+          body.data.declared_matches_observed,
+          null,
+          "an unread subnet must not report a mismatch",
+        );
+      }
+      // A candidate reading never publishes its finding.
+      for (const r of (body.data.readings ?? []) as Row[]) {
+        if (r.review_state !== "reviewed") {
+          assert.equal(r.found, null, "an unreviewed finding must be withheld");
+          assert.equal(r.declared_share, null);
+        }
+      }
+    },
+  ],
+  [
     "/api/v1/subnets/7/owner-capture?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);

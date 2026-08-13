@@ -267,6 +267,9 @@ const unboundedOffsetSchema = () =>
  * a new route must appear in one place or the other.
  */
 export const NO_QUERY_PARAMETERS: readonly string[] = [
+  // #10933: per-netuid card, no window and no paging -- a subnet has a handful
+  // of source repos, not a series.
+  "/api/v1/subnets/{netuid}/treasury",
   "/api/v1",
   // #10285. Declaring nothing here is NOT the same as taking no parameters:
   // querySchemaForRoute returns null for a route absent from this list, and a

@@ -92,6 +92,10 @@ import {
   OWNER_CAPTURE_HISTORY_ROW_CAP,
 } from "../src/owner-capture.ts";
 import {
+  buildSubnetTreasury,
+  type TreasuryReadingRow,
+} from "../src/treasury-readings.ts";
+import {
   buildSubnetMinerFairness,
   MINER_FAIRNESS_ROW_CAP,
 } from "../src/miner-fairness.ts";
@@ -7493,6 +7497,31 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
           capped: rows.length >= MINER_FAIRNESS_ROW_CAP,
         }),
       );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/treasury -- what this subnet's own published
+  // source declares it allocates (#10933).
+  //
+  // Selects CANDIDATE rows as well as reviewed ones on purpose: the builder
+  // publishes a candidate's read status and withholds its finding, and that
+  // read status is the only thing that keeps an empty card from reading as
+  // "this subnet takes no treasury cut". Filtering to reviewed here would
+  // delete the distinction before the builder could make it.
+  const treasuryMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/treasury$/,
+  );
+  if (treasuryMatch) {
+    return async (sql) => {
+      const netuid = Number(treasuryMatch[1]);
+      const rows = await sql<TreasuryReadingRow>`
+        SELECT netuid, source_url, read_at_sha, observed_at, first_seen,
+               found, declared_share, treasury_address, applies_to,
+               evidence_path, review_state, reviewed_at
+        FROM treasury_readings
+        WHERE netuid = ${netuid}
+        ORDER BY source_url ASC`;
+      return json(buildSubnetTreasury(rows, netuid));
     };
   }
 

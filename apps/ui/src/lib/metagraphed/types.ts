@@ -3081,6 +3081,38 @@ export interface SubnetMinerFairness {
 }
 
 /**
+ * Treasury readings (#10933). THREE STATES: `repos_read: 0` (nobody looked),
+ * a reading with `found: false` (read, found nothing), and a reviewed share.
+ * The render must never collapse the first into the second.
+ */
+export interface TreasuryReading {
+  review_state: "candidate" | "reviewed" | "rejected";
+  evidence: {
+    source_url?: string | null;
+    read_at_sha?: string | null;
+    evidence_path?: string | null;
+    observed_at?: string | null;
+    first_seen?: string | null;
+  };
+  found?: boolean | null;
+  declared_share?: number | null;
+  treasury_address?: string | null;
+  applies_to?: string | null;
+}
+
+export interface SubnetTreasury {
+  netuid: number;
+  repos_read: number;
+  reviewed_count: number;
+  pending_review_count: number;
+  declared_share?: number | null;
+  observed_share?: number | null;
+  /** Tri-state. Null must never render as a mismatch. */
+  declared_matches_observed?: boolean | null;
+  readings: TreasuryReading[];
+}
+
+/**
  * Owner capture, L1 + L2 (#10929).
  *
  * The render shape deliberately keeps `owner_attributed_share` and

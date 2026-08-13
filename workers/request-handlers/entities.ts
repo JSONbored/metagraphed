@@ -101,6 +101,7 @@ import {
 } from "../../src/subnet-yield.ts";
 import { buildSubnetEmissionSplitHistory } from "../../src/emission-split.ts";
 import { buildSubnetOwnerCapture } from "../../src/owner-capture.ts";
+import { buildSubnetTreasury } from "../../src/treasury-readings.ts";
 import {
   ownerCutFlowLegs,
   OWNER_CUT_FLOW_WINDOW,
@@ -2775,6 +2776,33 @@ export async function handleSubnetMinerFairness(
         (data.points as unknown as Array<Record<string, unknown>>)[0]
           ?.snapshot_date ?? null,
       ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/treasury (#10933): what this subnet's own
+// published source declares it allocates to a treasury. A cold/absent store
+// answers 200 with repos_read:0 and an empty readings list -- which is the
+// correct answer for a subnet nobody has read, and is distinguishable in the
+// payload from one read with nothing found.
+export async function handleSubnetTreasury(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const data =
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetTreasury> | null) ??
+    buildSubnetTreasury([], Number(netuid));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: { contract_version: contractVersion(env) },
     },
     "short",
   );

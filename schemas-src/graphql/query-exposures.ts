@@ -502,6 +502,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Whether a subnet's registered miners actually earn, over a 7d/30d/90d window (default 30d), from the neuron_daily rollup. Reports the daily zero-emission rate, how many days each miner UID earned on — persistent-zero and occasionally-zero are different facts a snapshot collapses — and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. Descriptive only: no fairness score and no grade, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. `days_covered` rides beside every distribution figure. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness.",
   },
   {
+    field: "subnet_treasury",
+    operation: "subnet-treasury",
+    returns: "SubnetTreasury!",
+    description:
+      "What one subnet's own published source declares it allocates to a treasury, against what the chain shows. A cut disclosed in a public repo is a business model, not a discovery, and agreement between declared and observed is the expected result — published as prominently as any divergence. Three states are kept apart: no reading (nobody looked, and the response claims nothing), `found: false` (read at a commit and found nothing — evidence), and a reviewed share. `declared_matches_observed` is tri-state and null is the normal answer today; null must never render as false. Machine readings publish their read status and withhold their finding until reviewed. Mirrors GET /api/v1/subnets/{netuid}/treasury.",
+  },
+  {
     field: "subnet_owner_capture",
     operation: "subnet-owner-capture",
     returns: "SubnetOwnerCapture!",
