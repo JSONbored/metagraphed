@@ -1,0 +1,41 @@
+# Did every lakehouse table receive a snapshot recently enough? (#11048)
+#
+# Nineteen of the 26 tables in `chain` stopped on 2026-08-02 and it went
+# unreported for eleven days. Not because it was hard to see -- the catalog
+# records every table's newest snapshot in its own metadata -- but because
+# nothing was looking. The routes over those tables stayed green the whole
+# time: the hot tier answers first, and a frozen table returns rows perfectly
+# happily.
+#
+# DAILY, not hourly. The tightest bound here is six hours (the decode lanes),
+# and a check that runs more often than the thing it watches only adds noise.
+name: check-lakehouse-freshness
+
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-lakehouse-freshness
+  cancel-in-progress: false
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+      - name: Check every lakehouse table's newest snapshot
+        env:
+          R2_CATALOG_TOKEN: ${{ secrets.R2_CATALOG_TOKEN }}
+          LIVE_ALERT_WEBHOOK_URL: ${{ secrets.LIVE_ALERT_WEBHOOK_URL }}
+        # No `tee`: piping a report into tee discards the script's exit status,
+        # which is how a scheduled sweep in this repo came to be unable to fail.
+        run: npm run check:lakehouse-freshness

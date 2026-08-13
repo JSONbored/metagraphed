@@ -1433,5 +1433,194 @@
     "column": "updated_at",
     "type": "long",
     "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 2,
+    "column": "snapshot_date",
+    "type": "date",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 3,
+    "column": "completeness_score",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 4,
+    "column": "surface_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 5,
+    "column": "endpoint_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 6,
+    "column": "monitored_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 7,
+    "column": "candidate_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 8,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 9,
+    "column": "validator_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 10,
+    "column": "miner_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 11,
+    "column": "total_stake_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 12,
+    "column": "alpha_price_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 13,
+    "column": "emission_share",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 14,
+    "column": "tao_in_pool_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 15,
+    "column": "alpha_in_pool",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 16,
+    "column": "alpha_out_pool",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 17,
+    "column": "subnet_volume_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 18,
+    "column": "tao_in_emission_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 19,
+    "column": "excess_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 20,
+    "column": "alpha_in_emission",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 21,
+    "column": "alpha_out_emission",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 22,
+    "column": "miner_burned_fraction",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 23,
+    "column": "emission_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 24,
+    "column": "subtoken_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 25,
+    "column": "first_emission_block",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 26,
+    "column": "pipeline_block",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "field_id": 27,
+    "column": "pipeline_block_hash",
+    "type": "string",
+    "required": false
   }
 ]
