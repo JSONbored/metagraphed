@@ -19,6 +19,7 @@ import path from "node:path";
 import { beforeAll, beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import type { Row } from "./row-type.ts";
+import { persistComputeDeclaration } from "../src/compute-declarations-lane.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/pg-sql.ts and src/neon-write.ts -- neither of which a route caller can
@@ -1687,6 +1688,52 @@ test("a subnet whose declaration nobody has read answers with declarations_read 
   // reads like "declared, and needs nothing".
   assert.equal((body.declared_compute as Row).miner, null);
   assert.ok((body.not_modelled as string[]).length > 0);
+});
+
+test("the lane's own write survives the real DDL and reaches the card", async () => {
+  // The producer and the serving read, joined against real Postgres. The
+  // stanza goes in as JSON text through persistComputeDeclaration and comes
+  // back out of a JSONB column through the tri-state rule -- the round trip
+  // neither unit test can make on its own.
+  const record = {
+    netuid: 7,
+    source_url: "https://raw.githubusercontent.com/a/b/main/min_compute.yml",
+    read_at_sha: "abc1234def5678",
+    observed_at: 1760000000000,
+    found: true,
+    spec_version: "0.0.17",
+    miner: {
+      cpu: { min_cores: 4 },
+      gpu: { required: false, min_vram: 8, recommended_gpu: "NVIDIA A100" },
+    },
+    validator: null,
+  };
+  await persistComputeDeclaration(
+    { run: (sql: string, params: unknown[]) => seed(sql, params) },
+    record,
+  );
+  // Re-reading the same surface must UPDATE rather than duplicate, and must
+  // leave first_seen where it was.
+  await persistComputeDeclaration(
+    { run: (sql: string, params: unknown[]) => seed(sql, params) },
+    { ...record, observed_at: 1760000900000, spec_version: "0.0.18" },
+  );
+
+  const body = (await (
+    await call(req("/api/v1/subnets/7/cost-to-participate"))
+  ).json()) as Row;
+  assert.equal(body.declarations_read, 1, "a re-read is an update, not a row");
+  const declaration = (body.declarations as Row[])[0];
+  assert.equal((declaration.evidence as Row).spec_version, "0.0.18");
+  assert.equal(
+    (declaration.evidence as Row).first_seen,
+    new Date(1760000000000).toISOString(),
+    "first_seen must survive the re-read",
+  );
+  assert.equal(
+    (((body.declared_compute as Row).miner as Row).gpu as Row).requirement,
+    "declared-inconsistently",
+  );
 });
 
 test("THE CHECK CONSTRAINTS REFUSE A DECLARATION THAT CONTRADICTS ITSELF", async () => {

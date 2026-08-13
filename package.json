@@ -200,6 +200,7 @@
     "satori": "^0.28.0",
     "satori-html": "^0.3.2",
     "workers-og": "^0.0.27",
+    "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -220,8 +221,7 @@
     "typescript-eslint": "^8.65.0",
     "vite": "^7.3.6",
     "vitest": "^4.1.10",
-    "wrangler": "4.118.0",
-    "yaml": "^2.9.0"
+    "wrangler": "4.118.0"
   },
   "overrides": {
     "esbuild": "^0.28.1",

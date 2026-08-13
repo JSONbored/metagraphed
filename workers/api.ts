@@ -838,6 +838,7 @@ import {
 } from "../src/attribution-sweep.ts";
 import {
   ATTRIBUTION_SWEEP_TABLES,
+  COMPUTE_DECLARATIONS_TABLES,
   ORIGIN_REACHABILITY_TABLES,
 } from "../src/read-store-tables.ts";
 import {
@@ -851,6 +852,16 @@ import {
   type OriginStoreDb,
   type SurfaceRef,
 } from "../src/origin-reachability.ts";
+import { githubAuthHeader } from "../src/link-status-core.ts";
+import {
+  COMPUTE_DECLARATIONS_LANE,
+  COMPUTE_DECLARATIONS_QUEUE,
+  enqueueComputeDeclarations,
+  handleComputeDeclarationBatch,
+  minComputeSurfaces,
+  type ComputeStoreDb,
+  type SurfaceRef as ComputeSurfaceRef,
+} from "../src/compute-declarations-lane.ts";
 import {
   loadRevenueFeedItems,
   type RevenueFeedDb,
@@ -2207,6 +2218,24 @@ export default {
       }
       return;
     }
+    if (batch.queue === COMPUTE_DECLARATIONS_QUEUE) {
+      const store = producerStore(env, ctx, [...COMPUTE_DECLARATIONS_TABLES]);
+      try {
+        await handleComputeDeclarationBatch(
+          batch.messages as unknown as LaneMessage[],
+          store.db as ComputeStoreDb,
+          {
+            // The same token the link lane uses. Without one the GitHub API
+            // allows 60 requests an hour, which still covers 17 surfaces --
+            // so a missing token degrades the rate limit, never the lane.
+            githubAuth: githubAuthHeader(env),
+          },
+        );
+      } finally {
+        store.close();
+      }
+      return;
+    }
     if (batch.queue === ORIGIN_REACHABILITY_QUEUE) {
       // The surfaces are resolved HERE, so a message that waited cannot check a
       // stale copy of what the registry advertises.
@@ -2955,15 +2984,28 @@ export async function fetchSweepText(url: string): Promise<string | null> {
 
 /** Every registered surface url, from the served artifact this Worker already
  * publishes -- including the probe-disabled ones, which is the entire point. */
-export async function registeredSurfaces(env: Env): Promise<SurfaceRef[]> {
+export async function registeredSurfaces(
+  env: Env,
+): Promise<Array<SurfaceRef & ComputeSurfaceRef>> {
   const artifact = await readArtifact(env, "/metagraph/surfaces.json");
   if (!artifact.ok) return [];
   const list = (artifact.data as Row | undefined)?.surfaces;
-  const out: SurfaceRef[] = [];
+  const out: Array<SurfaceRef & ComputeSurfaceRef> = [];
   for (const raw of Array.isArray(list) ? list : []) {
     const surface = (raw ?? {}) as Row;
     if (typeof surface.id === "string" && typeof surface.url === "string") {
-      out.push({ id: surface.id, url: surface.url });
+      // `netuid` and `public_safe` ride along for the compute-declarations
+      // lane (#10932), which needs to know WHOSE declaration a URL is and
+      // whether it may be fetched on a schedule. The origin lane ignores them
+      // -- it groups by host and a surface's owner is irrelevant to whether
+      // the host is up -- so one read of the artifact still serves both rather
+      // than each lane opening it for a different subset of the same rows.
+      out.push({
+        id: surface.id,
+        url: surface.url,
+        netuid: surface.netuid,
+        public_safe: surface.public_safe,
+      });
     }
   }
   return out;
@@ -3051,6 +3093,17 @@ export const LANE_PRODUCERS: ReadonlyArray<{
       enqueueOriginChecks(env.ORIGIN_REACHABILITY, [
         ...surfacesByOrigin(await registeredSurfaces(env)).keys(),
       ]),
+  },
+  {
+    name: COMPUTE_DECLARATIONS_LANE,
+    // The surface list is the registry's, read the same way the origin lane
+    // reads it -- so a declaration surface added by a contributor PR joins the
+    // lane on the next tick with nothing else to change.
+    enqueue: async (env) =>
+      enqueueComputeDeclarations(
+        env.COMPUTE_DECLARATIONS,
+        minComputeSurfaces(await registeredSurfaces(env)),
+      ),
   },
   {
     name: "revenue-probe",

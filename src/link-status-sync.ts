@@ -28,6 +28,7 @@ import type { StorageReadResult } from "../workers/storage.ts";
 import {
   checkLinks,
   collectLinkTargets,
+  githubAuthHeader,
   isConfirmedDeadLink,
   linkCheckStrategy,
   nextLinkRecord,
@@ -152,10 +153,7 @@ export async function runLinkStatusSync(
         (record) => [record.url, record],
       ),
     );
-    const token =
-      typeof env.GITHUB_SIGNALS_TOKEN === "string"
-        ? env.GITHUB_SIGNALS_TOKEN.trim()
-        : "";
+    const githubAuth = githubAuthHeader(env);
 
     // Route every target, then spend the network budget only on what is left.
     const resolved = new Map<string, LinkStatusRecord>();
@@ -166,7 +164,7 @@ export async function runLinkStatusSync(
         // Verified against the repo by the build gate, not over the network.
         continue;
       }
-      if (strategy === "github-api" && !token) {
+      if (strategy === "github-api" && !githubAuth) {
         // Unauthenticated GitHub gives Cloudflare's shared egress 60 requests
         // an hour across the whole fleet — far below the 429 needed here, so an
         // unauthenticated run would mass-"dead" every github.com link. Skipping
@@ -179,7 +177,7 @@ export async function runLinkStatusSync(
     const selected = urlsForRun(toFetch, prior);
     const results = await checkLinks(selected, {
       fetchImpl: deps.fetchImpl,
-      githubAuth: token ? `Bearer ${token}` : null,
+      githubAuth,
     });
     for (const result of results) {
       resolved.set(

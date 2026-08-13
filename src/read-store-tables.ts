@@ -103,9 +103,20 @@ export const ORIGIN_REACHABILITY_TABLES = ["origin_reachability"] as const;
 export const ATTRIBUTION_SWEEP_TABLES = [
   "attribution_sweeps",
   "attribution_candidates",
-  "treasury_readings",
-  "compute_declarations",
 ] as const;
+
+/**
+ * The compute-declarations lane's own write (#10932).
+ *
+ * ITS OWN SET, and `treasury_readings` no longer has one here at all. Both were
+ * added to ATTRIBUTION_SWEEP_TABLES when their tables landed, which widened the
+ * attribution sweep's store handle to two tables it never touches -- the test
+ * beside this file checks that a set COVERS its loader's SQL, not that it is
+ * minimal, so an over-broad set passes quietly. `treasury_readings` is read
+ * through the data-api's own `sql` and written by nothing in this repo yet, so
+ * it needs no set until it has a producer.
+ */
+export const COMPUTE_DECLARATIONS_TABLES = ["compute_declarations"] as const;
 
 /** loadRevenueFeedItems (#10480). The observation pair plus the two tables the
  * coverage-ratio item's denominator is built from -- a ratio priced from one of
