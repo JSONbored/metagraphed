@@ -2866,9 +2866,8 @@ export function buildSubnetGaps(
   if (overlay?.source_repo) kinds.add("source-repo");
   if (overlay?.website_url) kinds.add("website");
   if (overlay?.dashboard_url) kinds.add("dashboard");
-  const expectedKinds = EXPECTED_GAP_KINDS;
   return {
-    missing_kinds: expectedKinds.filter((kind) => !kinds.has(kind)),
+    missing_kinds: EXPECTED_GAP_KINDS.filter((kind) => !kinds.has(kind)),
     supported_kinds: [...kinds].sort(),
     // #9746: surfaces whose URL names a moving target, so the operator may
     // publish a parameterized sibling beside them that this registry does not
