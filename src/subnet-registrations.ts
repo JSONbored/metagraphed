@@ -1,3 +1,4 @@
+import { roundDp } from "./lib/stats.ts";
 // Per-subnet neuron-registration activity from the account_events NeuronRegistered stream: for
 // ONE subnet over a 7d/30d window, the distinct registrants (hotkeys), NeuronRegistered event
 // count, and average registrations per registrant. This is raw registration DEMAND/activity —
@@ -24,10 +25,6 @@ export const DEFAULT_SUBNET_REGISTRATIONS_WINDOW = "7d";
 
 // Round a registrations-per-registrant ratio to a stable 2dp precision. Always finite and
 // non-negative here (events / distinct registrants, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -55,7 +52,7 @@ function registrationsPerRegistrant(
   registrants: number,
 ): number | null {
   if (registrants <= 0) return null;
-  return round(registrations / registrants);
+  return roundDp(registrations / registrants);
 }
 
 // Shape one subnet's registration scorecard from the single-row account_events aggregate. `row`

@@ -7,7 +7,7 @@
 // the metrics endpoint a neuron exposes (which subnets run observability infrastructure), read from
 // the same account_events [netuid, hotkey] tuple AxonServed uses.
 
-import { median, percentile } from "./lib/stats.ts";
+import { roundDp, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
   PROMETHEUS_DEGRADED_NOT_CURATED,
@@ -25,10 +25,6 @@ export const DEFAULT_CHAIN_PROMETHEUS_WINDOW = "7d";
 
 // Round an announcements-per-exporter ratio to a stable precision (2dp). Always finite and
 // non-negative here (events / distinct hotkeys, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -74,7 +70,7 @@ function announcementsPerExporter(
   exporters: number,
 ): number | null {
   if (exporters <= 0) return null;
-  return round(announcements / exporters);
+  return roundDp(announcements / exporters);
 }
 
 export interface IntensityDistribution {
@@ -98,10 +94,10 @@ function intensityDistribution(values: number[]): IntensityDistribution | null {
   const sum = ascending.reduce((total, value) => total + value, 0);
   return {
     count: ascending.length,
-    mean: round(sum / ascending.length),
+    mean: roundDp(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    p50: round(median(ascending)!),
+    p50: roundDp(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],

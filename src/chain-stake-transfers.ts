@@ -14,7 +14,7 @@
 // and the table is dropped in production (#4772 / #4909), so serving goes tryDataApiTier →
 // schema-stable empty stub, never the store.
 
-import { median, percentile } from "./lib/stats.ts";
+import { roundDp, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 
 // The account_events kind emitted when a coldkey transfers stake to another coldkey (transfer_stake).
@@ -31,10 +31,6 @@ export const DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW = "7d";
 
 // Round a transfers-per-sender ratio to a stable precision (2dp). Always finite and
 // non-negative here (events / distinct coldkeys, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -77,7 +73,7 @@ function toIso(value: unknown): string | null {
 // no defined intensity (null) rather than a divide-by-zero.
 function transfersPerSender(transfers: number, senders: number): number | null {
   if (senders <= 0) return null;
-  return round(transfers / senders);
+  return roundDp(transfers / senders);
 }
 
 export interface IntensityDistribution {
@@ -101,10 +97,10 @@ function intensityDistribution(values: number[]): IntensityDistribution | null {
   const sum = ascending.reduce((total, value) => total + value, 0);
   return {
     count: ascending.length,
-    mean: round(sum / ascending.length),
+    mean: roundDp(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    p50: round(median(ascending)!),
+    p50: roundDp(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],

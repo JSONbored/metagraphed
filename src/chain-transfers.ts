@@ -1,4 +1,5 @@
-import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
+import { round9OrZero, numberOrZero } from "./lib/rao.ts";
+import { roundBelowOne } from "./lib/stats.ts";
 // Network-wide native-TAO transfer analytics: over a recent window, how much TAO moved
 // via Balances.Transfer across the whole chain, who moved the most out (top senders) and
 // in (top receivers), and how concentrated that flow is among the top accounts. Pure
@@ -19,10 +20,6 @@ export const CHAIN_TRANSFER_LIMIT_MAX = 100;
 
 // 1 TAO = 1e9 rao; round every TAO output to that precision to shed IEEE-754 noise from
 // summing many REAL amount_tao values (the same rounding the chain/fees market applies).
-function roundTao(value: unknown): number {
-  const n = numberOrZero(value);
-  return Math.round(n * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
-}
 
 // A whole non-negative count (D1 COUNT is integer; truncate defensively for direct callers).
 function toCount(value: unknown): number {
@@ -37,11 +34,6 @@ function toCount(value: unknown): number {
 // a near-monopoly (e.g. 249990/250000 = 0.99996, with other senders still present
 // in unique_senders) must not surface as a flat 1 ("100% of outflow"). A genuine
 // single-sender window where the top senders ARE the whole volume keeps a true 1.
-function roundShare(value: number, dp = 4): number {
-  const factor = 10 ** dp;
-  const rounded = Math.round(value * factor) / factor;
-  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
-}
 
 export interface ChainTransferParty {
   address: string;
@@ -58,7 +50,7 @@ function shapeParties(
     .filter((row) => typeof row?.address === "string" && row.address.length > 0)
     .map((row) => ({
       address: row.address as string,
-      volume_tao: roundTao(row?.volume_tao),
+      volume_tao: round9OrZero(row?.volume_tao),
       transfer_count: toCount(row?.transfer_count),
     }));
 }
@@ -94,14 +86,14 @@ export function buildChainTransfers({
   senders?: Array<Record<string, unknown>>;
   receivers?: Array<Record<string, unknown>>;
 } = {}): ChainTransfersResult {
-  const totalVolume = roundTao(totals?.total_volume_tao);
+  const totalVolume = round9OrZero(totals?.total_volume_tao);
   const topSenders = shapeParties(senders);
   const topReceivers = shapeParties(receivers);
-  const topSenderVolume = roundTao(
+  const topSenderVolume = round9OrZero(
     topSenders.reduce((sum, s) => sum + s.volume_tao, 0),
   );
   const topSenderShare =
-    totalVolume > 0 ? roundShare(topSenderVolume / totalVolume) : null;
+    totalVolume > 0 ? roundBelowOne(topSenderVolume / totalVolume) : null;
   return {
     schema_version: 1,
     window: window ?? null,

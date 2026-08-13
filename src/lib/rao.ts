@@ -224,3 +224,18 @@ export function nonNegativeCellOrNull(value: unknown): number | null {
   const n = finiteCellOrNull(value);
   return n != null && n >= 0 ? n : null;
 }
+
+/**
+ * `round9OrZero` with negatives clamped to zero first (#10948).
+ *
+ * Two modules (accounts-list, metagraph-neurons) rounded
+ * `nonNegativeOrZero(value)` -- a DIFFERENT contract from round9OrZero, which
+ * passes a negative through: these callers aggregate stake totals where a
+ * negative is a data error and must read as zero, not as negative TAO. Kept
+ * as its own export rather than unified, because the clamp is the meaning.
+ */
+export function round9NonNegative(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return round9(n);
+}

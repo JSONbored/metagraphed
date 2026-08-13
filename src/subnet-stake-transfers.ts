@@ -1,3 +1,4 @@
+import { roundDp } from "./lib/stats.ts";
 // Per-subnet stake-transfer activity from the account_events StakeTransferred stream: for ONE subnet
 // over a 7d/30d window, the distinct senders (accounts), StakeTransferred event count, and average
 // transfers per sender. The direct per-subnet lookup companion to the network-wide leaderboard at
@@ -28,10 +29,6 @@ export const DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW = "7d";
 
 // Round a transfers-per-sender ratio to a stable 2dp precision. Always finite and
 // non-negative here (transfers / distinct senders, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -56,7 +53,7 @@ function toIso(value: unknown): string | null {
 // defined intensity (null) rather than a divide-by-zero.
 function transfersPerSender(transfers: number, senders: number): number | null {
   if (senders <= 0) return null;
-  return round(transfers / senders);
+  return roundDp(transfers / senders);
 }
 
 // Shape one subnet's stake-transfer scorecard from the single-row account_events aggregate. `row`

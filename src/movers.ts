@@ -3,10 +3,10 @@
 import { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX } from "./route-limits.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
+  round9OrZero,
   RAO_PER_TAO,
   RAO_PER_TAO_NUMBER,
   finiteCellOrNull,
-  numberOrZero,
   toRaoBig,
 } from "./lib/rao.ts";
 export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
@@ -37,11 +37,6 @@ export const DEFAULT_MOVERS_SORT = "stake";
 
 // 1 TAO = 1e9 rao. Round every TAO output to rao precision; IEEE-754 noise below the rao
 // floor is artifact (mirrors the rounding the turnover/history scorecards apply).
-function roundTao(value: unknown): number {
-  return (
-    Math.round(numberOrZero(value) * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER
-  );
-}
 
 // Exact rao-integer BigInt for one subnet's TAO value, for summation across every subnet
 // (#5290, mirrors toRaoBig/raoBigToTao in chain-yield.ts and stake_sum_rao in
@@ -195,15 +190,15 @@ export function computeMovers(
     const e = endMap.get(netuid) ?? ZERO;
     movers.push({
       netuid,
-      stake_start_alpha: roundTao(s.stake),
-      stake_end_alpha: roundTao(e.stake),
-      stake_delta_alpha: roundTao(e.stake - s.stake),
+      stake_start_alpha: round9OrZero(s.stake),
+      stake_end_alpha: round9OrZero(e.stake),
+      stake_delta_alpha: round9OrZero(e.stake - s.stake),
       stake_pct_change: pctChange(s.stake, e.stake),
       // Dominance: this subnet's share of network stake at the end snapshot.
       stake_share_pct: pctShare(e.stake, raoToTaoNumber(endTotals.stakeRao)),
-      emission_start_alpha: roundTao(s.emission),
-      emission_end_alpha: roundTao(e.emission),
-      emission_delta_alpha: roundTao(e.emission - s.emission),
+      emission_start_alpha: round9OrZero(s.emission),
+      emission_end_alpha: round9OrZero(e.emission),
+      emission_delta_alpha: round9OrZero(e.emission - s.emission),
       emission_pct_change: pctChange(s.emission, e.emission),
       emission_share_pct: pctShare(
         e.emission,

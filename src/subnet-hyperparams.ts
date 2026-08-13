@@ -1,4 +1,5 @@
 import { finiteCellOrNull } from "./lib/rao.ts";
+import { roundDpOrNull } from "./lib/stats.ts";
 // Subnet hyperparameters (#4303, epic #4301): one row per netuid, latest-only.
 // Field mapping documented in
 // apps/indexer-rs/src/bin/poller/jobs/subnet_hyperparams.rs and
@@ -68,19 +69,13 @@ function nonNegativeInt(value: unknown): number | null {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function round(value: number | null, dp: number): number | null {
-  if (value == null || !Number.isFinite(value)) return null;
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
-
 // *_ratio columns are already a 0..1 U16-derived ratio by the time they reach
 // D1 (apps/indexer-rs/src/bin/poller/jobs/subnet_hyperparams.rs's u16_ratio,
 // rounded to 9dp there
 // too) — round again here as defense-in-depth against a future writer that
 // skips that rounding, not because this path expects dirty data.
 function ratio(value: unknown): number | null {
-  return round(finiteCellOrNull(value), 9);
+  return roundDpOrNull(finiteCellOrNull(value), 9);
 }
 
 // A flag column as a real boolean, in any store's spelling. The reasoning --
@@ -109,8 +104,8 @@ export function formatSubnetHyperparams(
     // rao/1e9-exact-split TAO values (rao_to_tao_exact) — round to rao
     // precision (9dp), not formatNeuron's 6dp roundTao, so no low-order rao
     // digits are lost re-serializing an already-exact value.
-    min_burn_tao: round(finiteCellOrNull(row.min_burn_tao), 9),
-    max_burn_tao: round(finiteCellOrNull(row.max_burn_tao), 9),
+    min_burn_tao: roundDpOrNull(finiteCellOrNull(row.min_burn_tao), 9),
+    max_burn_tao: roundDpOrNull(finiteCellOrNull(row.max_burn_tao), 9),
     burn_half_life: nonNegativeInt(row.burn_half_life),
     // Already float-decoded fixed-point on the SDK side — passed through.
     burn_increase_mult: finiteCellOrNull(row.burn_increase_mult),

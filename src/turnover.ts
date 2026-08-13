@@ -1,3 +1,4 @@
+import { roundBelowOne } from "./lib/stats.ts";
 // Validator-set & registration turnover (churn) for one subnet: how much its
 // validator set and neuron population rotate between two dated snapshots of the
 // neuron_daily rollup (start vs end of a window). Pure + exported for unit tests;
@@ -20,11 +21,6 @@ export const TURNOVER_READ_COLUMNS =
 // for the badge (#1796): a set that actually churned must never report a flawless
 // `retention: 1`. Only a genuine ratio of exactly 1 (nothing rotated) keeps the
 // perfect value; any sub-1 ratio clamps to the largest dp-decimal value below 1.
-function round(value: number, dp = 4): number {
-  const factor = 10 ** dp;
-  const rounded = Math.round(value * factor) / factor;
-  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
-}
 
 // Jaccard similarity |A∩B| / |A∪B| — the retained fraction across two sets. Two
 // empty sets are defined as 1 (nothing to lose ⇒ perfectly retained); past that
@@ -223,11 +219,11 @@ export function buildTurnover(
     validators_end: endValidators.size,
     validators_entered: entered,
     validators_exited: exited,
-    validator_retention: round(validatorRetention),
+    validator_retention: roundBelowOne(validatorRetention),
     neurons_start: startMap.size,
     neurons_end: endMap.size,
     uids_deregistered: deregistered,
-    neuron_retention: round(neuronRetention),
+    neuron_retention: roundBelowOne(neuronRetention),
     stability_score: stabilityScore,
   };
 }

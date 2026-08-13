@@ -1,3 +1,4 @@
+import { roundDp } from "./lib/stats.ts";
 // Per-subnet axon-serving announcement activity from the account_events AxonServed stream:
 // for ONE subnet over a 7d/30d window, the distinct servers (hotkeys), AxonServed event count,
 // and average announcements per server. The direct per-subnet lookup companion to the network-wide
@@ -24,10 +25,6 @@ export const DEFAULT_SUBNET_SERVING_WINDOW = "7d";
 
 // Round an announcements-per-server ratio to a stable 2dp precision. Always finite and
 // non-negative here (announcements / distinct servers, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -55,7 +52,7 @@ function announcementsPerServer(
   servers: number,
 ): number | null {
   if (servers <= 0) return null;
-  return round(announcements / servers);
+  return roundDp(announcements / servers);
 }
 
 // Shape one subnet's serving scorecard from the single-row account_events aggregate. `row`

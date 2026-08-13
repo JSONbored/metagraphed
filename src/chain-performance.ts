@@ -9,7 +9,7 @@
 // envelope. Null-safe: an empty snapshot yields a schema-stable `null` block.
 
 import { computeConcentration } from "./concentration.ts";
-import { percentile } from "./lib/stats.ts";
+import { roundDp, percentile } from "./lib/stats.ts";
 
 // The neurons-tier columns the network performance handler reads — like the
 // per-subnet read but with `netuid`, so the artifact can report how many subnets
@@ -25,10 +25,6 @@ const SCORE_PERCENTILES = [10, 25, 50, 75, 90];
 // Round a score/mean to 6 dp so JSON never carries a long floating-point tail.
 // Callers only ever pass finite values (finiteValues drops non-finite cells and
 // scoreDistribution guards count > 0), so no null-guard is needed here.
-function round(value: number): number {
-  const factor = 1e6;
-  return Math.round(value * factor) / factor;
-}
 
 interface CaptureStamp {
   ms: number;
@@ -93,12 +89,12 @@ export function scoreDistribution(values: unknown[]): ScoreDistribution | null {
   const total = finite.reduce((sum, v) => sum + v, 0);
   const summary: ScoreDistribution = {
     count,
-    mean: round(total / count),
-    min: round(ascending[0]),
-    max: round(ascending[count - 1]),
+    mean: roundDp(total / count, 6),
+    min: roundDp(ascending[0], 6),
+    max: roundDp(ascending[count - 1], 6),
   };
   for (const p of SCORE_PERCENTILES) {
-    summary[`p${p}`] = round(percentile(ascending, p)!);
+    summary[`p${p}`] = roundDp(percentile(ascending, p)!, 6);
   }
   return summary;
 }

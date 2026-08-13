@@ -1,5 +1,5 @@
 import { clampRowLimit } from "../workers/request-params.ts";
-import { RAO_PER_TAO_NUMBER, finiteCellOrNull } from "./lib/rao.ts";
+import { round9OrZero, finiteCellOrNull } from "./lib/rao.ts";
 // Nominator list for one validator hotkey (#4334/7.2): who has staked to this
 // validator (across every subnet it operates in), derived from the same
 // StakeAdded/StakeRemoved account_events flow src/account-stake-flow.ts
@@ -27,11 +27,6 @@ export const NOMINATOR_SORTS = ["net_staked", "gross_staked", "last_activity"];
 export const DEFAULT_NOMINATOR_SORT = "net_staked";
 export const NOMINATOR_LIMIT_DEFAULT = 20;
 export const NOMINATOR_LIMIT_MAX = 100;
-function roundTao(value: number): number {
-  /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
-}
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank D1
 // cells coerce via Number("") -> 0; skip those rather than counting a
@@ -257,10 +252,10 @@ export function buildValidatorNominators(
 
   const nominators: Nominator[] = [...perColdkey.values()].map((bucket) => ({
     coldkey: bucket.coldkey,
-    staked_tao: roundTao(bucket.staked_tao),
-    unstaked_tao: roundTao(bucket.unstaked_tao),
-    net_staked_tao: roundTao(bucket.staked_tao - bucket.unstaked_tao),
-    gross_staked_tao: roundTao(bucket.staked_tao + bucket.unstaked_tao),
+    staked_tao: round9OrZero(bucket.staked_tao),
+    unstaked_tao: round9OrZero(bucket.unstaked_tao),
+    net_staked_tao: round9OrZero(bucket.staked_tao - bucket.unstaked_tao),
+    gross_staked_tao: round9OrZero(bucket.staked_tao + bucket.unstaked_tao),
     event_count: bucket.event_count,
     last_observed_at: toIso(bucket.last_observed_ms),
     last_observed_ms: bucket.last_observed_ms,

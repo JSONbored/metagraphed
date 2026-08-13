@@ -1,4 +1,5 @@
-import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
+import { round9OrZero, numberOrZero } from "./lib/rao.ts";
+import { roundBelowOne } from "./lib/stats.ts";
 // Network-wide native-TAO transfer-pair analytics: over a recent window, which
 // sender -> receiver corridors dominate Balances.Transfer flow. This is the pair
 // companion to /chain/transfers (top individual senders/receivers) and
@@ -22,13 +23,8 @@ function toBlockNumber(value: unknown): number | null {
   return Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
-function roundTao(value: unknown): number {
-  const n = numberOrZero(value);
-  return Math.round(n * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
-}
-
 function toNonNegativeTao(value: unknown): number {
-  return Math.max(0, roundTao(value));
+  return Math.max(0, round9OrZero(value));
 }
 
 // Round a 0..1 dominance ratio to a stable precision WITHOUT letting a
@@ -39,11 +35,6 @@ function toNonNegativeTao(value: unknown): number {
 // near-monopoly (e.g. 249990/250000 = 0.99996, with other pairs still present in
 // unique_pairs/pairs[]) must not surface as a flat 1 ("100% of volume"). A
 // genuine single-corridor window where top == total keeps a true 1.
-function roundShare(value: number, dp = 4): number {
-  const factor = 10 ** dp;
-  const rounded = Math.round(value * factor) / factor;
-  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
-}
 
 function toIso(value: unknown): string | null {
   if (value == null) return null;
@@ -141,7 +132,7 @@ export function buildChainTransferPairs({
     ? toNonNegativeTao(totals?.top_pair_volume_tao)
     : returnedTopPairVolume;
   const topPairShare =
-    totalVolume > 0 ? roundShare(topPairVolume / totalVolume) : null;
+    totalVolume > 0 ? roundBelowOne(topPairVolume / totalVolume) : null;
 
   return {
     schema_version: 1,

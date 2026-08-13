@@ -1,8 +1,5 @@
-import {
-  RAO_PER_TAO_NUMBER,
-  finiteCellOrNull,
-  numberOrZero,
-} from "./lib/rao.ts";
+import { round9OrZero, finiteCellOrNull, numberOrZero } from "./lib/rao.ts";
+import { roundBelowOne } from "./lib/stats.ts";
 // Per-account stake flow: how one account's capital moved in (StakeAdded) vs out
 // (StakeRemoved) over a recent window, broken down per subnet and rolled up into a
 // staking-behavior scorecard. Pure shaping (buildAccountStakeFlow); the Worker /
@@ -40,21 +37,12 @@ const DIRECTIONAL_RATIO = 0.2;
 
 // 1 TAO = 1e9 rao. Round every TAO output to rao precision to shed IEEE-754 noise
 // below the rao floor (the same rounding the per-subnet stake-flow scorecard applies).
-function roundTao(value: number): number {
-  /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
-}
 
 // Round the HHI concentration ratio to 4 decimals WITHOUT letting a sub-perfect
 // value round up to an exact 1 — the same anti-overstatement invariant the shared
 // concentration/turnover/reliability ratios enforce (roundRatio in concentration.ts,
 // #2327). A wallet spread across two or more subnets (HHI < 1) must never render as
 // 1, which this card's own contract defines as "all flow in one subnet".
-function roundConcentration(value: number): number {
-  const rounded = Math.round(value * 10000) / 10000;
-  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
-}
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank cells
 // coerce via Number("") → 0; skip those rows rather than counting phantom zero-TAO
@@ -189,10 +177,10 @@ export function buildAccountStakeFlow(
     grossSquares += gross * gross;
     subnets.push({
       netuid,
-      staked_tao: roundTao(b.staked),
-      unstaked_tao: roundTao(b.unstaked),
-      net_flow_tao: roundTao(net),
-      gross_flow_tao: roundTao(gross),
+      staked_tao: round9OrZero(b.staked),
+      unstaked_tao: round9OrZero(b.unstaked),
+      net_flow_tao: round9OrZero(net),
+      gross_flow_tao: round9OrZero(gross),
       flow_ratio: flowRatio(net, gross),
       direction: classifyDirection(net, gross),
       stake_events: b.stakeEvents,
@@ -214,17 +202,17 @@ export function buildAccountStakeFlow(
   // subnet, -> 1/n as it spreads evenly; null when there is no flow to concentrate.
   const concentration =
     totalGross > 0
-      ? roundConcentration(grossSquares / (totalGross * totalGross))
+      ? roundBelowOne(grossSquares / (totalGross * totalGross))
       : null;
 
   return {
     schema_version: 1,
     address,
     window: window ?? null,
-    total_staked_tao: roundTao(totalStaked),
-    total_unstaked_tao: roundTao(totalUnstaked),
-    net_flow_tao: roundTao(totalNet),
-    gross_flow_tao: roundTao(totalGross),
+    total_staked_tao: round9OrZero(totalStaked),
+    total_unstaked_tao: round9OrZero(totalUnstaked),
+    net_flow_tao: round9OrZero(totalNet),
+    gross_flow_tao: round9OrZero(totalGross),
     flow_ratio: flowRatio(totalNet, totalGross),
     direction: classifyDirection(totalNet, totalGross),
     stake_events: totalStakeEvents,

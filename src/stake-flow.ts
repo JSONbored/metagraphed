@@ -1,8 +1,4 @@
-import {
-  RAO_PER_TAO_NUMBER,
-  finiteCellOrNull,
-  numberOrZero,
-} from "./lib/rao.ts";
+import { round9OrZero, finiteCellOrNull, numberOrZero } from "./lib/rao.ts";
 import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 // Net stake flow (capital in vs out) for one subnet over a recent window: how much
 // TAO entered (StakeAdded) vs left (StakeRemoved), summed from the first-party
@@ -45,11 +41,6 @@ export const DEFAULT_STAKE_FLOW_DIRECTION = "all";
 // 1 TAO = 1e9 rao. Summing many REAL amount_tao values accumulates IEEE-754 noise
 // below the rao floor; round every TAO output to rao precision, the smallest real
 // unit (the same rounding the turnover/account-summary scorecards apply).
-function roundTao(value: number): number {
-  /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
-}
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric.
 
@@ -85,10 +76,10 @@ export function buildStakeFlow(
     schema_version: 1,
     netuid,
     window: window ?? null,
-    total_staked_tao: roundTao(stakedTao),
-    total_unstaked_tao: roundTao(unstakedTao),
+    total_staked_tao: round9OrZero(stakedTao),
+    total_unstaked_tao: round9OrZero(unstakedTao),
     // Positive = net capital inflow over the window; negative = net outflow.
-    net_flow_tao: roundTao(stakedTao - unstakedTao),
+    net_flow_tao: round9OrZero(stakedTao - unstakedTao),
     stake_events: stakeEvents,
     unstake_events: unstakeEvents,
   };

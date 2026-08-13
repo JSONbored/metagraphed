@@ -13,6 +13,7 @@
 // (axon announcements) — an account announces an axon, then removes it — operational activity
 // orthogonal to /accounts/{ss58}/subnets (registration state).
 
+import { roundBelowOne } from "./lib/stats.ts";
 import {
   AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
   type EventStreamDegraded,
@@ -36,10 +37,6 @@ export const DEFAULT_AXON_REMOVAL_WINDOW = "30d";
 // an exact 1 — the same anti-overstatement invariant the shared concentration ratios enforce
 // (roundConcentration in account-stake-flow.ts, #2327). An account removing across two or more
 // subnets (HHI < 1) must never render as 1, which this card's contract defines as "all in one".
-function roundConcentration(value: number): number {
-  const rounded = Math.round(value * 10000) / 10000;
-  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -157,7 +154,7 @@ export function buildAccountAxonRemovals(
   // spreads evenly; null when the account has no removals to concentrate.
   const concentration =
     totalRemovals > 0
-      ? roundConcentration(squares / (totalRemovals * totalRemovals))
+      ? roundBelowOne(squares / (totalRemovals * totalRemovals))
       : null;
 
   const card: AccountAxonRemovalsResult = {

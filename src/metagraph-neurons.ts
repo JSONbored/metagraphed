@@ -21,7 +21,7 @@ import {
 } from "./field-projection.ts";
 import type { Neurons } from "../generated/db/types.ts";
 import {
-  RAO_PER_TAO_NUMBER,
+  round9NonNegative,
   finiteCellOrNull,
   nonNegativeOrZero,
   raoBigToTao,
@@ -328,13 +328,6 @@ function nonNegativeInt(value: unknown): number | null {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function roundTao(value: unknown): number {
-  return (
-    Math.round(nonNegativeOrZero(value) * RAO_PER_TAO_NUMBER) /
-    RAO_PER_TAO_NUMBER
-  );
-}
-
 // Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
 // for why, and for the overflow guard that lived in only one of the nine copies
 // this used to be.
@@ -378,7 +371,7 @@ interface ImmunityWindow {
 // string-typed uid/registered_at_block into real integers, and roundTao
 // rounds stake_tao / emission_tao to rao precision). The explicit null
 // guards preserve the previous null-on-missing contract: Number(null) is
-// 0 (not NaN), so nonNegativeInt(null) / finiteCellOrNull(null) / roundTao(null)
+// 0 (not NaN), so nonNegativeInt(null) / finiteCellOrNull(null) / round9NonNegative(null)
 // would otherwise serialize as 0 instead of null. roundTao itself falls
 // back to nonNegativeOrZero(0) for null/non-finite, so the wrapping guards here
 // are what keep "missing cell" cells flowing through as null. Mirrors the
@@ -467,8 +460,9 @@ export function formatNeuron(
       row.incentive == null ? null : round(finiteCellOrNull(row.incentive)),
     dividends:
       row.dividends == null ? null : round(finiteCellOrNull(row.dividends)),
-    emission_tao: row.emission_tao == null ? null : roundTao(row.emission_tao),
-    stake_tao: row.stake_tao == null ? null : roundTao(row.stake_tao),
+    emission_tao:
+      row.emission_tao == null ? null : round9NonNegative(row.emission_tao),
+    stake_tao: row.stake_tao == null ? null : round9NonNegative(row.stake_tao),
     registered_at_block:
       row.registered_at_block == null
         ? null
@@ -822,10 +816,10 @@ function buildGlobalValidatorEntry(
     subnet_count: entry.netuids.size,
     uid_count: entry.uidCount,
     take: round(entry.take),
-    total_stake_tao: roundTao(raoBigToTao(entry.stakeTotalRao)),
-    root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
-    alpha_stake_tao: roundTao(raoBigToTao(alphaStakeRao)),
-    total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
+    total_stake_tao: round9NonNegative(raoBigToTao(entry.stakeTotalRao)),
+    root_stake_tao: round9NonNegative(raoBigToTao(rootStakeRao)),
+    alpha_stake_tao: round9NonNegative(raoBigToTao(alphaStakeRao)),
+    total_emission_tao: round9NonNegative(raoBigToTao(entry.emissionTotalRao)),
     // #2549: from the separate validator_nominator_counts side table, joined
     // by hotkey. Null when that table has no row for this hotkey yet (cold
     // table, or a hotkey the last low-frequency scan hasn't covered) --
@@ -1042,8 +1036,8 @@ export function buildGlobalValidators(
       // ALPHA on every non-root subnet, and named so since #10514: the entry
       // carries a PRICED total_stake_tao, and a row field sharing that suffix
       // across a different unit is the trap the rename removes.
-      stake_alpha: roundTao(stake),
-      emission_alpha: roundTao(emission),
+      stake_alpha: round9NonNegative(stake),
+      emission_alpha: round9NonNegative(emission),
       validator_trust: round(trust),
     });
   }
@@ -1404,10 +1398,12 @@ export function buildValidatorDetail(
     coldkey_count: coldkeys.size,
     subnet_count: subnets.length,
     take: round(take),
-    total_stake_tao: roundTao(raoBigToTao(stakeTotalRao)),
-    root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
-    alpha_stake_tao: roundTao(raoBigToTao(stakeTotalRao - rootStakeRao)),
-    total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
+    total_stake_tao: round9NonNegative(raoBigToTao(stakeTotalRao)),
+    root_stake_tao: round9NonNegative(raoBigToTao(rootStakeRao)),
+    alpha_stake_tao: round9NonNegative(
+      raoBigToTao(stakeTotalRao - rootStakeRao),
+    ),
+    total_emission_tao: round9NonNegative(raoBigToTao(emissionTotalRao)),
     nominator_count: nominatorCount,
     ...finalizeApy(apyAcc),
     ...realizedReturns(stakeTotalRao, realizedStake),

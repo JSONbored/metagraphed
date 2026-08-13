@@ -1,4 +1,4 @@
-import { RAO_PER_TAO_NUMBER, nonNegativeCellOrNull } from "./lib/rao.ts";
+import { round9OrNull, nonNegativeCellOrNull } from "./lib/rao.ts";
 // Nominator-side (coldkey) position reconstruction (#5233): "what does this
 // coldkey actually hold, across every hotkey/subnet it delegates to" — the
 // coldkey-scoped counterpart to buildAccountPortfolio's hotkey-scoped view
@@ -71,10 +71,6 @@ function nullableFraction(value: unknown): number | null {
 
 // 1 TAO = 1e9 rao; round tao outputs to that precision (matches the sibling
 // account-tier modules' own round9/roundTao helpers).
-function roundTao(value: number | null): number | null {
-  if (value == null || !Number.isFinite(value)) return null;
-  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
-}
 
 function round6(value: number | null): number | null {
   if (value == null || !Number.isFinite(value)) return null;
@@ -218,7 +214,7 @@ export function buildAccountPositions(
       continue;
     }
 
-    const stakeTao = roundTao(fraction * hotkeyStake);
+    const stakeTao = round9OrNull(fraction * hotkeyStake);
     if (stakeTao == null) continue;
     totalStakeAlpha += stakeTao;
 
@@ -251,7 +247,7 @@ export function buildAccountPositions(
     ss58,
     captured_at: latestCapturedAt != null ? toIso(latestCapturedAt) : null,
     position_count: positions.length,
-    total_stake_alpha: roundTao(totalStakeAlpha) ?? 0,
+    total_stake_alpha: round9OrNull(totalStakeAlpha) ?? 0,
     positions,
   };
   // The two provenance stamps belong to the LEDGER and to this coldkey's chain

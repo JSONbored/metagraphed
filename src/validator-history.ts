@@ -1,3 +1,4 @@
+import { roundDpOrNull } from "./lib/stats.ts";
 // Cross-subnet daily history for one validator hotkey (#4334/7.3): staked-
 // over-time + a rewards-per-1000-TAO rate, rolled up from the neuron_daily
 // tier the same way buildSubnetHistory rolls up a subnet's daily totals
@@ -19,17 +20,9 @@ function toNonNegativeInt(v: unknown): number | null {
   return n != null && Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
-function roundTao(v: number): number {
-  return Math.round(v * 1e6) / 1e6;
-}
-
 // Round a TAO sum, preserving null -- mirrors neuron-history.ts's
 // roundTaoOrNull so an unrounded D1 SUM() never leaks float noise while a
 // null/cold-day SUM stays null rather than collapsing to 0.
-function roundTaoOrNull(v: unknown): number | null {
-  const n = toFiniteOrNull(v);
-  return n == null ? null : roundTao(n);
-}
 
 // emission / stake scaled to a per-1000-TAO reward rate for that day -- null
 // when stake is zero/absent (the rate is undefined with nothing staked),
@@ -166,8 +159,8 @@ function toRateOrNull(v: unknown): number | null {
  * inventing a cross-subnet reading (#9383).
  */
 function subnetScopedFields(r: Row): Row {
-  const stakeAlpha = roundTaoOrNull(r.stake_alpha);
-  const emissionAlpha = roundTaoOrNull(r.emission_alpha);
+  const stakeAlpha = roundDpOrNull(toFiniteOrNull(r.stake_alpha), 6);
+  const emissionAlpha = roundDpOrNull(toFiniteOrNull(r.emission_alpha), 6);
   return {
     netuid: toNonNegativeInt(r.netuid),
     uid: toNonNegativeInt(r.uid),
@@ -248,8 +241,11 @@ export function buildValidatorHistory(
   const points = (Array.isArray(rows) ? rows : [])
     .filter((r) => r && typeof r === "object")
     .map((r) => {
-      const totalStakeTao = roundTaoOrNull(r.total_stake_tao);
-      const totalEmissionTao = roundTaoOrNull(r.total_emission_tao);
+      const totalStakeTao = roundDpOrNull(toFiniteOrNull(r.total_stake_tao), 6);
+      const totalEmissionTao = roundDpOrNull(
+        toFiniteOrNull(r.total_emission_tao),
+        6,
+      );
       return {
         snapshot_date: r.snapshot_date,
         subnet_count: toNonNegativeInt(r.subnet_count),

@@ -6,7 +6,7 @@
 // for unit tests; the Worker does the store reads + envelope. Scoped to validator_permit rows
 // so the two-snapshot read stays bounded (validators, not every neuron across the network).
 
-import { median, percentile } from "./lib/stats.ts";
+import { roundBelowOne, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
@@ -34,11 +34,6 @@ export const DEFAULT_CHAIN_TURNOVER_WINDOW = "30d";
 // Round a retention ratio (a finite 0..1 jaccard result) to a stable precision WITHOUT
 // letting a sub-perfect ratio round up to an exact 1 — the same anti-overstatement invariant
 // src/turnover.ts enforces: a set that actually churned must never report a flawless 1.
-function round(value: number, dp = 4): number {
-  const factor = 10 ** dp;
-  const rounded = Math.round(value * factor) / factor;
-  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
-}
 
 // Jaccard similarity |A∩B| / |A∪B| — the retained fraction across two sets. Two empty sets
 // are defined as 1 (nothing to lose ⇒ perfectly retained), reached for the network set when a
@@ -83,7 +78,7 @@ function stabilityDistribution(scores: number[]): StabilityDistribution | null {
     mean: Math.round((sum / ascending.length) * 100) / 100,
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    p50: round(median(ascending)!),
+    p50: roundBelowOne(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],
@@ -271,7 +266,7 @@ export function buildChainTurnover(
       validators_end: ev.size,
       validators_entered: churn.entered,
       validators_exited: churn.exited,
-      validator_retention: round(churn.retention),
+      validator_retention: roundBelowOne(churn.retention),
       stability_score: churn.stability,
     });
   }
@@ -290,7 +285,7 @@ export function buildChainTurnover(
     validators_end: end.network.size,
     validators_entered: netChurn.entered,
     validators_exited: netChurn.exited,
-    validator_retention: round(netChurn.retention),
+    validator_retention: roundBelowOne(netChurn.retention),
     stability_score: netChurn.stability,
   };
 
