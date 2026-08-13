@@ -13,6 +13,8 @@
 // subnetType,curationLevel,profileLevel} and the "profiles" query
 // collection's sort_fields at the time of writing.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
+import { sectionsSchema } from "../query-params.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import {
@@ -69,6 +71,12 @@ export type ListProfilesInput = z.infer<typeof ListProfilesInputSchema>;
 export const GetSubnetProfileInputSchema = z
   .object({
     netuid: netuidSchema(),
+    // #10600. Mirrors the route's own parameter -- validate:mcp-input-parity
+    // fails a tool that cannot pass what its route publishes, because an agent
+    // reading our contract would send it and be rejected. Worth more here than
+    // on REST: a REST caller pays the unprojected payload in bandwidth, an
+    // agent pays it in context window.
+    sections: sectionsSchema(QUERY_ENUMS.subnetProfileSection).optional(),
   })
   .strict();
 export type GetSubnetProfileInput = z.infer<typeof GetSubnetProfileInputSchema>;

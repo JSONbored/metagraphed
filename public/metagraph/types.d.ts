@@ -18225,7 +18225,10 @@ export interface operations {
     };
     subnetDetailByNetwork: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Comma-separated top-level sections to return, e.g. `subnet,economics`. One of: subnet, economics, endpoints, surfaces, verified_surfaces, candidate_surfaces, candidates, gaps, notes. Selecting sections never removes the response envelope (schema_version, contract_version, generated_at, operational_observed_at, health_source) -- a smaller document still has to say what it is. An unknown name is rejected rather than ignored. NOT the same parameter as `fields`, which projects columns out of the rows of a list. */
+                sections?: string;
+            };
             header?: never;
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
@@ -39663,7 +39666,10 @@ export interface operations {
     };
     subnetDetail: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Comma-separated top-level sections to return, e.g. `subnet,economics`. One of: subnet, economics, endpoints, surfaces, verified_surfaces, candidate_surfaces, candidates, gaps, notes. Selecting sections never removes the response envelope (schema_version, contract_version, generated_at, operational_observed_at, health_source) -- a smaller document still has to say what it is. An unknown name is rejected rather than ignored. NOT the same parameter as `fields`, which projects columns out of the rows of a list. */
+                sections?: string;
+            };
             header?: never;
             path: {
                 netuid: number;
@@ -44963,7 +44969,10 @@ export interface operations {
     };
     subnetProfile: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Comma-separated top-level sections to return, e.g. `subnet,profile`. One of: subnet, profile, endpoints, surfaces, candidate_surfaces, gaps, notes. Selecting sections never removes the response envelope (schema_version, contract_version, generated_at, operational_observed_at, health_source) -- a smaller document still has to say what it is. An unknown name is rejected rather than ignored. NOT the same parameter as `fields`, which projects columns out of the rows of a list. */
+                sections?: string;
+            };
             header?: never;
             path: {
                 netuid: number;

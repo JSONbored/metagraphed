@@ -70,6 +70,53 @@ export const QUERY_ENUMS = {
     "adapter-backed",
   ],
   subnetStatus: ["active", "inactive"],
+  /**
+   * Top-level sections of `/api/v1/subnets/{netuid}`, selectable via `sections=`
+   * (#10600).
+   *
+   * A DIFFERENT UNIT FROM `fields`, which is why it is a different parameter.
+   * `fields` picks columns out of the rows of a list, everywhere it appears;
+   * this picks whole cards out of one composite document. Same idea, different
+   * unit of selection -- and `fieldsSchema`'s published description says "row
+   * field names", so overloading the name would have meant one parameter with
+   * two meanings and nothing telling a caller which they got.
+   *
+   * WHY PAGING DOES NOT SUBSTITUTE. The route's 272,825 B is not one dominant
+   * list: `endpoints`, `surfaces`, `verified_surfaces` and `candidate_surfaces`
+   * are four parallel arrays over the same subject (76/76/76/16 on subnet 64).
+   * A query collection pages ONE data_key, so declaring one here would narrow a
+   * quarter of the payload and leave the rest -- a response that looks bounded
+   * while staying fat.
+   *
+   * The ENVELOPE is not listed and is never projected away: schema_version,
+   * contract_version, generated_at, operational_observed_at and health_source
+   * identify what the caller is holding, and a document that cannot say what it
+   * is or when it was built is not a smaller document, it is an anonymous one.
+   */
+  subnetDetailSection: [
+    "subnet",
+    "economics",
+    "endpoints",
+    "surfaces",
+    "verified_surfaces",
+    "candidate_surfaces",
+    "candidates",
+    "gaps",
+    "notes",
+  ],
+  /** Top-level sections of `/api/v1/subnets/{netuid}/profile` (#10600). Its own
+   * list rather than a shared one: the profile carries `profile` and no
+   * `economics`/`candidates`/`verified_surfaces`, and a shared vocabulary would
+   * let a caller ask this route for a section it can never return. */
+  subnetProfileSection: [
+    "subnet",
+    "profile",
+    "endpoints",
+    "surfaces",
+    "candidate_surfaces",
+    "gaps",
+    "notes",
+  ],
   subnetType: ["root", "application"],
   endpointLayer: [
     "bittensor-base",

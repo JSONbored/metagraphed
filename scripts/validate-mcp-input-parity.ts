@@ -77,6 +77,22 @@ const CURATED_VIEW =
 const RENAMED_ON_THE_MCP_SIDE =
   "a compatibility ALIAS the route does not publish; the tool also accepts the route's canonical name (#10018)";
 
+/**
+ * The tool serves a DIFFERENT DOCUMENT from the route it is mapped to, so a
+ * section name the route publishes does not exist in the tool's response.
+ *
+ * `get_subnet` is mapped to `/api/v1/subnets/{netuid}/profile` but reads
+ * `/metagraph/overview/{netuid}.json` -- measured 2026-08-13, the overview
+ * carries counts/curation/gap_priorities/health/name/netuid/slug/status where
+ * the profile carries subnet/endpoints/surfaces/candidate_surfaces/notes.
+ * Accepting `sections=subnet` there would advertise a card the document does
+ * not have and answer with an almost-empty projection, which is worse than
+ * refusing the parameter. `get_subnet_profile` reads the profile document
+ * itself and DOES take it.
+ */
+const DIFFERENT_DOCUMENT =
+  "this tool serves a different document from the route it mirrors; the section names the route publishes do not exist in its response (#10600)";
+
 /** A header on the route, an argument on the tool. */
 const REQUEST_HEADER =
   "the route takes this as a header; a tool has no headers, only arguments";
@@ -179,6 +195,8 @@ for (const [key, reason] of Object.entries({
   "list_review_gaps.review_state": MCP_NATIVE,
   "list_enrichment_targets.severity": MCP_NATIVE,
   "list_enrichment_targets.gap_code": MCP_NATIVE,
+  // --- a different document behind the same mapping (#10600) --------------
+  "get_subnet.sections": DIFFERENT_DOCUMENT,
   // --- curated views (#10008) ---------------------------------------------
   "find_subnet_opportunities.board": CURATED_VIEW,
   "search_subnets.type": CURATED_VIEW,
