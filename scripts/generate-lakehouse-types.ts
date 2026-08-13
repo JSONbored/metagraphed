@@ -218,6 +218,12 @@ const ZOD_TYPE: Readonly<Record<string, string>> = {
   // generator existed, and all three date columns are day stamps.
   date: "z.iso.date()",
   double: "z.number()",
+  // Same mapping as `double`, and correct for either -- JSON has one number
+  // type. It cannot express the storage difference, and #11043 is where that
+  // difference matters: `neuron_daily.take` and
+  // `nominator_positions.share_fraction` are float32 in the catalog while
+  // their Postgres source and this repo's writer are both double, so every
+  // append downcasts a published figure.
   float: "z.number()",
   // INTEGER, not just a number. Every `int`/`long` in this catalog is a block
   // number, an index, a count, or epoch-milliseconds -- z.number() would
