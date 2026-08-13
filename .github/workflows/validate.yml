@@ -1339,7 +1339,19 @@ jobs:
         # build:worker owns LOVABLE_SANDBOX + NITRO_PRESET: they decide whether
         # Nitro emits a Worker entry at all, and WHERE (dist/, not .output/).
         # Named so the e2e server below and this step cannot drift apart.
-        run: npm run build:worker --workspace=apps/ui
+        #
+        # `:e2e` additionally pins VITE_METAGRAPH_API_BASE at the local stub
+        # (apps/ui/tests/e2e/api-stub.ts). That value is baked in at build time,
+        # and it is the only lever that reaches the app's SSR fetches -- which
+        # `page.routeFromHAR` cannot intercept, because it sees the browser and
+        # not the server. Without it the overflow sweep reads live production on
+        # every run, and a production wobble fails a PR that touched nothing
+        # (#10938: main went red three times on a backend-only commit).
+        #
+        # This build is for TESTING ONLY. The bundle deployed to production is
+        # built by Cloudflare Workers Builds from the same `build:worker`
+        # without this env, so pinning the API base here cannot reach a user.
+        run: npm run build:worker:e2e --workspace=apps/ui
 
       # Cache the downloaded browser binary across runs (#8910): the install
       # step below measured 65s (11% of this job), and re-downloading the same

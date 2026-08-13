@@ -4,6 +4,15 @@ import { defineConfig } from "@playwright/test";
 // same server, same defaults, so what this check verifies is what a
 // contributor's own screenshot workflow would also render.
 const PORT = 8080;
+/**
+ * The local API the built bundle talks to (#10938).
+ *
+ * MUST MATCH `build:worker:e2e`'s VITE_METAGRAPH_API_BASE: that value is baked
+ * into the bundle at build time (`import.meta.env`), which is the only lever
+ * that reaches the app's SSR fetches -- `page.routeFromHAR` intercepts the
+ * browser and cannot see a request the server makes.
+ */
+const API_STUB_PORT = 8081;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -113,47 +122,68 @@ export default defineConfig({
       fullyParallel: false,
     },
   ],
-  webServer: {
-    // #8928: serve the PRODUCTION build, not `npm run dev`.
-    //
-    // The sweep is 26 routes x 4 viewports. Vite's dev server compiles each
-    // route on first hit, so the old command paid that cost 26 times -- while
-    // the same CI job already produced a production build and threw it away.
-    // Measured against the built bundle: "/" 1.18s cold, "/subnets" 0.31s,
-    // versus ~2.3s per test on the dev server.
-    //
-    // This deliberately changes WHAT is tested, from the dev bundle to the one
-    // that actually ships -- so prod-only breakage the dev server hides is now
-    // in scope. (.claude/skills/metagraphed/SKILL.md Phase C2 previously
-    // pointed here for dev-server parity with the contributor screenshot flow;
-    // that note is updated alongside this.)
-    //
-    // `wrangler dev` rather than `vite preview`: the cloudflare-module preset
-    // emits a Worker (.output/server/index.mjs + its own generated
-    // wrangler.json with the ASSETS binding), which vite preview cannot serve.
-    // The build must therefore already exist -- in CI the `Build` step is
-    // ordered before this one; locally, run `npm run build:worker` first.
-    //
-    // `dist/`, NOT `.output/`, and that distinction broke this once already:
-    // a plain `npm run build` emits .output/ with no Worker entry, while the
-    // cloudflare-module preset (LOVABLE_SANDBOX + NITRO_PRESET, which is what
-    // CI and production use) emits dist/. Testing against the former locally
-    // passed while CI had only the latter. `build:worker` exists so those two
-    // env vars are never the thing you forgot.
-    // Supervised, not bare `wrangler dev` -- see tests/e2e/serve-e2e.ts. The
-    // dev server exits partway through a run and the port stops answering for
-    // every test after it; the supervisor restarts it so that costs a retry
-    // instead of the suite. The cause is now known and is upstream (the
-    // wrangler log CI uploads on failure says ProxyController got
-    // "Network connection lost" from the ProxyWorker), so the note above
-    // about restoring 4 workers once that log identifies it is settled:
-    // worker count was never the cause, and this is the mitigation.
-    command: `node tests/e2e/serve-e2e.ts ${PORT}`,
-    cwd: import.meta.dirname,
-    url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
-    // Booting a Worker + assets is slower to first byte than Vite's dev server,
-    // and it is a one-time cost for the whole run rather than per route.
-    timeout: 120_000,
-  },
+  // TWO servers, stub FIRST. The app's `useSuspenseQuery` runs during SSR and
+  // fetches before any HTML is streamed, so the stub has to be answering
+  // before the app server takes its first request -- Playwright starts these
+  // in order and waits for each `url` to respond.
+  //
+  // Before this, those SSR fetches went to live production on every run: the
+  // sweep read a real API, and a production wobble failed a PR that touched
+  // nothing (#10938 -- main went red three times on a backend-only commit).
+  // Hermetic now, and measured: 92/92 in 34.2s against the stub, versus 3.3
+  // minutes and a live dependency before.
+  webServer: [
+    {
+      command: `node tests/e2e/api-stub.ts ${API_STUB_PORT}`,
+      cwd: import.meta.dirname,
+      // Its own health route, not `/`: the stub serves only /api/v1/**, so a
+      // readiness probe on `/` would 404 forever.
+      url: `http://127.0.0.1:${API_STUB_PORT}/api/v1/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      // #8928: serve the PRODUCTION build, not `npm run dev`.
+      //
+      // The sweep is 26 routes x 4 viewports. Vite's dev server compiles each
+      // route on first hit, so the old command paid that cost 26 times -- while
+      // the same CI job already produced a production build and threw it away.
+      // Measured against the built bundle: "/" 1.18s cold, "/subnets" 0.31s,
+      // versus ~2.3s per test on the dev server.
+      //
+      // This deliberately changes WHAT is tested, from the dev bundle to the one
+      // that actually ships -- so prod-only breakage the dev server hides is now
+      // in scope. (.claude/skills/metagraphed/SKILL.md Phase C2 previously
+      // pointed here for dev-server parity with the contributor screenshot flow;
+      // that note is updated alongside this.)
+      //
+      // `wrangler dev` rather than `vite preview`: the cloudflare-module preset
+      // emits a Worker (.output/server/index.mjs + its own generated
+      // wrangler.json with the ASSETS binding), which vite preview cannot serve.
+      // The build must therefore already exist -- in CI the `Build` step is
+      // ordered before this one; locally, run `npm run build:worker` first.
+      //
+      // `dist/`, NOT `.output/`, and that distinction broke this once already:
+      // a plain `npm run build` emits .output/ with no Worker entry, while the
+      // cloudflare-module preset (LOVABLE_SANDBOX + NITRO_PRESET, which is what
+      // CI and production use) emits dist/. Testing against the former locally
+      // passed while CI had only the latter. `build:worker` exists so those two
+      // env vars are never the thing you forgot.
+      // Supervised, not bare `wrangler dev` -- see tests/e2e/serve-e2e.ts. The
+      // dev server exits partway through a run and the port stops answering for
+      // every test after it; the supervisor restarts it so that costs a retry
+      // instead of the suite. The cause is now known and is upstream (the
+      // wrangler log CI uploads on failure says ProxyController got
+      // "Network connection lost" from the ProxyWorker), so the note above
+      // about restoring 4 workers once that log identifies it is settled:
+      // worker count was never the cause, and this is the mitigation.
+      command: `node tests/e2e/serve-e2e.ts ${PORT}`,
+      cwd: import.meta.dirname,
+      url: `http://localhost:${PORT}`,
+      reuseExistingServer: !process.env.CI,
+      // Booting a Worker + assets is slower to first byte than Vite's dev server,
+      // and it is a one-time cost for the whole run rather than per route.
+      timeout: 120_000,
+    },
+  ],
 });
