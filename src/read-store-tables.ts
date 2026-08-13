@@ -103,6 +103,7 @@ export const ORIGIN_REACHABILITY_TABLES = ["origin_reachability"] as const;
 export const ATTRIBUTION_SWEEP_TABLES = [
   "attribution_sweeps",
   "attribution_candidates",
+  "treasury_readings",
 ] as const;
 
 /** loadRevenueFeedItems (#10480). The observation pair plus the two tables the

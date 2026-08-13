@@ -4731,6 +4731,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/treasury": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read what one subnet's own published source declares it allocates to a treasury, against what the chain shows. Some subnets take a share of miner emission in their own validator code, applied before emission is ever assigned -- that is not a chain event and no indexer in this ecosystem can see it. THIS IS A DISCLOSED BUSINESS MODEL, NOT A DISCOVERY: the publishable signal is declared_matches_observed, and agreement is the expected result. THREE STATES MUST NOT BE COLLAPSED INTO TWO: no reading at all means nobody has read this subnet's repositories and the response makes no claim about it; a reading with found:false means a repo was read at a specific commit and nothing was allocated, which is evidence; and a reading with a share is a reviewed finding. Every reading cites the commit SHA that was HEAD when it was read, so a claim can be re-derived by someone who does not trust us. Readings a machine produced but no maintainer has checked publish their read status only, never their finding. */
+        get: operations["subnetTreasury"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/turnover": {
         parameters: {
             query?: never;
@@ -12322,6 +12339,61 @@ export interface components {
             surface_count?: number | null;
             tao_in_pool_tao?: number | null;
             to_date: string;
+        };
+        /** @description What one subnet's own published source says it allocates to a treasury, against what the chain shows. Some subnets take a share of miner emission in their own validator code, applied before emission is ever assigned — that is not a chain event and no indexer can see it. A cut disclosed in a public repo is a BUSINESS MODEL, not a finding, and for most subnets the answer is that declared matches observed. THREE STATES MUST NOT BE COLLAPSED: no reading at all (nobody looked), a reading with `found: false` (read at a commit, found nothing — evidence), and a reading with a share. Machine readings are published as `candidate` with their finding withheld until a maintainer reviews them. Mirrors GET /api/v1/subnets/{netuid}/treasury. */
+        SubnetTreasuryArtifact: {
+            /** @description Does the declared allocation agree with what the chain shows? TRI-STATE, and `null` — the comparison was not possible because one side is unread — is the normal answer today. Null must never be rendered as `false`: that reads as 'the team is not doing what they said', which is precisely the claim an unread repo cannot support. AGREEMENT IS THE EXPECTED RESULT and is published as prominently as divergence. */
+            declared_matches_observed?: boolean | null;
+            /** @description The total REVIEWED allocation taken from miner emission, as a fraction. Null when nothing reviewed applies. A treasury cut written into a public repo is a DISCLOSED BUSINESS MODEL, not a discovery. */
+            declared_share?: number | null;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources?: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            netuid: number;
+            /** @description What the chain shows reaching the owner, from the owner-capture index. Null when it cannot be measured for this subnet. */
+            observed_share?: number | null;
+            /** @description Readings a machine produced that no maintainer has checked. Their findings are deliberately withheld from this payload — a model's or a regex's summary of source code is not evidence. */
+            pending_review_count: number;
+            /** @description One entry per repository read. An empty list means nobody has read this subnet's sources — not that it takes no treasury cut. */
+            readings: {
+                /** @description What the allocation is taken out of. Shares with different bases are never summed — a payout fee and an emission cut are not the same quantity. */
+                applies_to?: ("miner-emission" | "validator-emission" | "payout" | "fee") | null;
+                /** @description The declared allocation as a FRACTION (0..1), never a percentage. Null when the reading found nothing or has not been reviewed. */
+                declared_share?: number | null;
+                /** @description The citation. `read_at_sha` is the commit that was HEAD when the repo was read, which is what makes the finding re-derivable by someone who does not trust us. */
+                evidence: {
+                    /** @description Where in the repo, so a reviewer opens the right file rather than the whole project. */
+                    evidence_path?: string | null;
+                    /** @description When this repo was first read, preserved across re-reads — so 'we have been watching this since' survives a repo that moves weekly. */
+                    first_seen?: string | null;
+                    /** @description When this reading was taken. A citation without a date cannot be aged out, and a repo that has moved since is exactly what re-reading exists to catch. */
+                    observed_at: string;
+                    /** @description The commit that was HEAD when this repo was read. THE CITATION: it is what makes the finding re-derivable by someone who does not trust us, and what a re-read diffs against to know the repo moved. */
+                    read_at_sha: string;
+                    /** @description The public repository surface that was read. Points at a branch, correctly — a human clicks this and wants the current code. The pinned half is `read_at_sha`. */
+                    source_url: string;
+                };
+                /** @description Did this read find an allocation? THREE STATES: `true` (found, reviewed), `false` (READ AT A COMMIT AND FOUND NOTHING — a measurement, and the expected answer for most subnets), and `null` (not yet reviewed, so no finding is published). A subnet nobody has read has no reading at all rather than a `false`. */
+                found?: boolean | null;
+                /**
+                 * @description How far this reading has got through the human gate. A `candidate` is a machine reading nobody has checked: its READ STATUS is published (which repo, which commit, when) and its FINDING is not. Only `reviewed` rows publish a share.
+                 * @enum {string}
+                 */
+                review_state: "candidate" | "reviewed" | "rejected";
+                treasury_address?: string | null;
+            }[];
+            /** @description How many of this subnet's registered source repositories have been read. ZERO IS THE IMPORTANT VALUE: it means nobody has looked, which is NOT the same as looking and finding no treasury cut. A card with `repos_read: 0` makes no claim about this subnet at all. */
+            repos_read: number;
+            reviewed_count: number;
+            /** @constant */
+            schema_version: 1;
         };
         /** @description One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard. */
         SubnetTurnoverArtifact: {
@@ -47488,6 +47560,130 @@ export interface operations {
                      *     2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetTreasury: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "declared_matches_observed": false,
+                     *         "declared_share": 0.5,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "netuid": 7,
+                     *         "observed_share": 0.5,
+                     *         "pending_review_count": 1,
+                     *         "readings": [
+                     *           {
+                     *             "evidence": {
+                     *               "observed_at": "2026-06-01T00:00:00.000Z",
+                     *               "read_at_sha": "example",
+                     *               "source_url": "https://api.metagraph.sh/example"
+                     *             },
+                     *             "review_state": "candidate"
+                     *           }
+                     *         ],
+                     *         "repos_read": 1,
+                     *         "reviewed_count": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetTreasuryArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

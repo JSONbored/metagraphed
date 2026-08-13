@@ -260,6 +260,7 @@ import {
 } from "./routes/subnet-yield.ts";
 import { SubnetEmissionSplitHistoryArtifactSchema } from "./routes/emission-split.ts";
 import { SubnetOwnerCaptureArtifactSchema } from "./routes/owner-capture.ts";
+import { SubnetTreasuryArtifactSchema } from "./routes/treasury.ts";
 import { SubnetMinerFairnessArtifactSchema } from "./routes/miner-fairness.ts";
 import { SubnetMoversArtifactSchema } from "./routes/subnet-movers.ts";
 import {
@@ -699,6 +700,7 @@ register(
   "SubnetEmissionSplitHistoryArtifact",
 );
 register(SubnetOwnerCaptureArtifactSchema, "SubnetOwnerCaptureArtifact");
+register(SubnetTreasuryArtifactSchema, "SubnetTreasuryArtifact");
 register(SubnetMinerFairnessArtifactSchema, "SubnetMinerFairnessArtifact");
 register(SubnetMoversArtifactSchema, "SubnetMoversArtifact");
 register(SubnetTrajectoryArtifactSchema, "SubnetTrajectoryArtifact");
@@ -1165,6 +1167,7 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "SubnetYieldArtifact",
   "SubnetEmissionSplitHistoryArtifact",
   "SubnetOwnerCaptureArtifact",
+  "SubnetTreasuryArtifact",
   "SubnetMinerFairnessArtifact",
   "SubnetYieldHistoryArtifact",
   "SubnetMoversArtifact",

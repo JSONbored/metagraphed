@@ -2156,6 +2156,15 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
     "DATA_API-tier series; the harness binds no data Worker, so points is empty by construction",
   ],
   [
+    "get_subnet_treasury",
+    // No subnet has been read yet -- the extractor lane lives in
+    // metagraphed-infra and has not run -- so `readings` is empty by
+    // construction here, and that emptiness IS the surface's correct answer for
+    // an unread subnet rather than a harness gap. The row shape is the route's
+    // own artifact schema by identity, exercised by tests/treasury-readings.
+    "no repo has been read yet; readings is empty by construction until the infra extractor runs",
+  ],
+  [
     "get_subnet_lifecycle",
     // subnet_lifecycle is written by the detection folded into the
     // neurons-staleness tick, which needs a live neurons pass -- the harness

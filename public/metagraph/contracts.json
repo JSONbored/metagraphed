@@ -1115,6 +1115,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "What one subnet's own published source declares it allocates to a treasury, against what the chain shows, served live from the treasury_readings store at /api/v1/subnets/{netuid}/treasury. A cut disclosed in a public repo is a BUSINESS MODEL rather than a finding, and for most subnets the answer is that declared matches observed. Three states are kept apart: no reading at all (nobody looked), a reading with found:false (read at a commit and found nothing -- evidence), and a reading with a share. Machine readings publish their read status and withhold their finding until a maintainer reviews them.",
+      "id": "subnet-treasury",
+      "path": "/metagraph/subnets/{netuid}/treasury.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetTreasuryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "How much of one subnet's emission reaches its owner over a 7d/30d/90d window, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/owner-capture. Publishes the two CHAIN-VISIBLE layers only: the protocol owner cut (L1) and emission landing on UIDs the `owner_coldkey` holds (L2). What the owner ultimately keeps is NOT published -- that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and the payload states both as blind spots. Every other stakeholder address reports verdict `unresolved`.",
       "id": "subnet-owner-capture",
       "path": "/metagraph/subnets/{netuid}/owner-capture.json",
@@ -2991,7 +3002,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 171,
+    "mainnet_only_route_count": 172,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

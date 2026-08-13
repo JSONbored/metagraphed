@@ -321,6 +321,11 @@ type Query {
   subnet_miner_fairness(netuid: Int!, window: String): SubnetMinerFairness!
 
   """
+  What one subnet's own published source declares it allocates to a treasury, against what the chain shows. A cut disclosed in a public repo is a business model, not a discovery, and agreement between declared and observed is the expected result — published as prominently as any divergence. Three states are kept apart: no reading (nobody looked, and the response claims nothing), \`found: false\` (read at a commit and found nothing — evidence), and a reviewed share. \`declared_matches_observed\` is tri-state and null is the normal answer today; null must never render as false. Machine readings publish their read status and withhold their finding until reviewed. Mirrors GET /api/v1/subnets/{netuid}/treasury.
+  """
+  subnet_treasury(netuid: Int!): SubnetTreasury!
+
+  """
   How much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window (default 30d), from the neuron_daily rollup joined to the declared \`owner_coldkey\`. Two CHAIN-VISIBLE layers only: the protocol owner cut (L1, 18% and identical everywhere) and emission landing on owner-held UIDs (L2, which varies enormously). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is not the owner's. It is NOT what the owner keeps — the identity of those nominators (L3) and any treasury cut in the subnet's own code (L4) are not observable here, and \`blind_spots\` states that in the response. Every other stakeholder address reports \`unresolved\`, which is the honest default and never a finding against them. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.
   """
   subnet_owner_capture(netuid: Int!, window: String): SubnetOwnerCapture!
@@ -2696,6 +2701,108 @@ type SubnetMinerFairnessConcentration {
   The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator.
   """
   uid: ConcentrationMetrics
+}
+
+"""
+What one subnet's own published source says it allocates to a treasury, against what the chain shows. Some subnets take a share of miner emission in their own validator code, applied before emission is ever assigned — that is not a chain event and no indexer can see it. A cut disclosed in a public repo is a BUSINESS MODEL, not a finding, and for most subnets the answer is that declared matches observed. THREE STATES MUST NOT BE COLLAPSED: no reading at all (nobody looked), a reading with \`found: false\` (read at a commit, found nothing — evidence), and a reading with a share. Machine readings are published as \`candidate\` with their finding withheld until a maintainer reviews them. Mirrors GET /api/v1/subnets/{netuid}/treasury.
+"""
+type SubnetTreasury {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many of this subnet's registered source repositories have been read. ZERO IS THE IMPORTANT VALUE: it means nobody has looked, which is NOT the same as looking and finding no treasury cut. A card with \`repos_read: 0\` makes no claim about this subnet at all.
+  """
+  repos_read: Int!
+  reviewed_count: Int!
+
+  """
+  Readings a machine produced that no maintainer has checked. Their findings are deliberately withheld from this payload — a model's or a regex's summary of source code is not evidence.
+  """
+  pending_review_count: Int!
+
+  """
+  The total REVIEWED allocation taken from miner emission, as a fraction. Null when nothing reviewed applies. A treasury cut written into a public repo is a DISCLOSED BUSINESS MODEL, not a discovery.
+  """
+  declared_share: Float
+
+  """
+  What the chain shows reaching the owner, from the owner-capture index. Null when it cannot be measured for this subnet.
+  """
+  observed_share: Float
+
+  """
+  Does the declared allocation agree with what the chain shows? TRI-STATE, and \`null\` — the comparison was not possible because one side is unread — is the normal answer today. Null must never be rendered as \`false\`: that reads as 'the team is not doing what they said', which is precisely the claim an unread repo cannot support. AGREEMENT IS THE EXPECTED RESULT and is published as prominently as divergence.
+  """
+  declared_matches_observed: Boolean
+
+  """
+  One entry per repository read. An empty list means nobody has read this subnet's sources — not that it takes no treasury cut.
+  """
+  readings: [SubnetTreasuryReading!]!
+
+  """
+  Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+  """
+  field_sources: JSON
+}
+
+type SubnetTreasuryReading {
+  """
+  How far this reading has got through the human gate. A \`candidate\` is a machine reading nobody has checked: its READ STATUS is published (which repo, which commit, when) and its FINDING is not. Only \`reviewed\` rows publish a share.
+  """
+  review_state: String!
+
+  """
+  The citation. \`read_at_sha\` is the commit that was HEAD when the repo was read, which is what makes the finding re-derivable by someone who does not trust us.
+  """
+  evidence: SubnetTreasuryEvidence!
+
+  """
+  Did this read find an allocation? THREE STATES: \`true\` (found, reviewed), \`false\` (READ AT A COMMIT AND FOUND NOTHING — a measurement, and the expected answer for most subnets), and \`null\` (not yet reviewed, so no finding is published). A subnet nobody has read has no reading at all rather than a \`false\`.
+  """
+  found: Boolean
+
+  """
+  The declared allocation as a FRACTION (0..1), never a percentage. Null when the reading found nothing or has not been reviewed.
+  """
+  declared_share: Float
+  treasury_address: String
+
+  """
+  What the allocation is taken out of. Shares with different bases are never summed — a payout fee and an emission cut are not the same quantity.
+  """
+  applies_to: String
+}
+
+"""
+The citation. \`read_at_sha\` is the commit that was HEAD when the repo was read, which is what makes the finding re-derivable by someone who does not trust us.
+"""
+type SubnetTreasuryEvidence {
+  """
+  The public repository surface that was read. Points at a branch, correctly — a human clicks this and wants the current code. The pinned half is \`read_at_sha\`.
+  """
+  source_url: String!
+
+  """
+  The commit that was HEAD when this repo was read. THE CITATION: it is what makes the finding re-derivable by someone who does not trust us, and what a re-read diffs against to know the repo moved.
+  """
+  read_at_sha: String!
+
+  """
+  Where in the repo, so a reviewer opens the right file rather than the whole project.
+  """
+  evidence_path: String
+
+  """
+  When this reading was taken. A citation without a date cannot be aged out, and a repo that has moved since is exactly what re-reading exists to catch.
+  """
+  observed_at: String!
+
+  """
+  When this repo was first read, preserved across re-reads — so 'we have been watching this since' survives a repo that moves weekly.
+  """
+  first_seen: String
 }
 
 """

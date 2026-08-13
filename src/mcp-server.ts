@@ -156,6 +156,10 @@ import {
   GetSubnetOwnerCaptureOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-owner-capture.ts";
 import {
+  GetSubnetTreasuryInputSchema,
+  GetSubnetTreasuryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-treasury.ts";
+import {
   GetSubnetMinerFairnessInputSchema,
   GetSubnetMinerFairnessOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-miner-fairness.ts";
@@ -1445,6 +1449,7 @@ import {
   buildSubnetOwnerCapture,
   parseOwnerCaptureWindow,
 } from "./owner-capture.ts";
+import { buildSubnetTreasury } from "./treasury-readings.ts";
 import {
   buildSubnetMinerFairness,
   parseMinerFairnessWindow,
@@ -7672,6 +7677,46 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "METAGRAPH_NEURONS_SOURCE",
         )) ??
         buildSubnetMinerFairness([], netuid, { window: label, capped: false })
+      );
+    },
+  },
+  {
+    name: "get_subnet_treasury",
+    title: "Get a subnet's declared treasury allocation",
+    description:
+      "Read what one subnet's own published SOURCE CODE declares it allocates " +
+      "to a treasury, against what the chain shows. Some subnets take a share " +
+      "of miner emission in their own validator code, applied before emission " +
+      "is ever assigned -- that is not a chain event and no indexer in this " +
+      "ecosystem can see it. " +
+      "THIS IS A DISCLOSED BUSINESS MODEL, NOT A DISCOVERY. A cut written into " +
+      "a public repo is something the team published; the signal is " +
+      "`declared_matches_observed`, and AGREEMENT IS THE EXPECTED RESULT and " +
+      "must be reported as readily as any divergence. " +
+      "THREE STATES YOU MUST NOT COLLAPSE INTO TWO: `repos_read: 0` means " +
+      "NOBODY HAS READ this subnet's repositories and the response makes no " +
+      "claim about it whatsoever -- do NOT report that as 'no treasury cut'. " +
+      "A reading with `found: false` means a repo WAS read at a specific " +
+      "commit and nothing was allocated, which is real evidence. A reading " +
+      "with a share is a reviewed finding. " +
+      "`declared_matches_observed` is TRI-STATE: null means the comparison was " +
+      "not possible, and reporting null as a mismatch would accuse a team over " +
+      "a repo nobody opened. Readings still marked `candidate` publish their " +
+      "read status only -- their findings are withheld because a machine's " +
+      "summary of source code is not evidence, and you must not infer one. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/treasury.",
+    inputSchema: inputJsonSchema(GetSubnetTreasuryInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetTreasuryInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      return (
+        (await tryDataApiTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/treasury`, {}),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildSubnetTreasury([], netuid)
       );
     },
   },
@@ -14997,6 +15042,7 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
     GetSubnetEmissionSplitHistoryOutputSchema,
   ),
   get_subnet_owner_capture: outputJsonSchema(GetSubnetOwnerCaptureOutputSchema),
+  get_subnet_treasury: outputJsonSchema(GetSubnetTreasuryOutputSchema),
   get_subnet_miner_fairness: outputJsonSchema(
     GetSubnetMinerFairnessOutputSchema,
   ),

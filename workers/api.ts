@@ -280,6 +280,7 @@ import {
   handleSubnetEmissionSplitHistory,
   handleSubnetOwnerCapture,
   canonicalSubnetOwnerCaptureCachePath,
+  handleSubnetTreasury,
   handleSubnetMinerFairness,
   canonicalSubnetMinerFairnessCachePath,
   handleSubnetYieldHistory,
@@ -726,6 +727,7 @@ import {
   SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN,
   SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN,
   SUBNET_OWNER_CAPTURE_PATH_PATTERN,
+  SUBNET_TREASURY_PATH_PATTERN,
   SUBNET_MINER_FAIRNESS_PATH_PATTERN,
   SUBNET_YIELD_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
@@ -6381,6 +6383,21 @@ async function dispatchRequest(
       );
     }
 
+    const treasuryMatch = SUBNET_TREASURY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (treasuryMatch) {
+      // No query parameters, so the path IS the cache key.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-treasury",
+        () => handleSubnetTreasury(request, env, Number(treasuryMatch[1])),
+        resolved.url.pathname,
+      );
+    }
+
     const ownerCaptureMatch = SUBNET_OWNER_CAPTURE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -7709,6 +7726,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // either, so a testnet-addressed request would be answered with the
     // mainnet owner.
     SUBNET_OWNER_CAPTURE_PATH_PATTERN.test(pathname) ||
+    SUBNET_TREASURY_PATH_PATTERN.test(pathname) ||
     SUBNET_MINER_FAIRNESS_PATH_PATTERN.test(pathname) ||
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||

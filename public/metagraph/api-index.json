@@ -914,6 +914,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-treasury",
+      "path": "/metagraph/subnets/{netuid}/treasury.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetTreasuryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-owner-capture",
       "path": "/metagraph/subnets/{netuid}/owner-capture.json",
       "retirement": null,
@@ -2534,7 +2543,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 171,
+    "mainnet_only_route_count": 172,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8652,6 +8661,22 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/treasury.json",
+      "cache": "short",
+      "description": "Read what one subnet's own published source declares it allocates to a treasury, against what the chain shows. Some subnets take a share of miner emission in their own validator code, applied before emission is ever assigned -- that is not a chain event and no indexer in this ecosystem can see it. THIS IS A DISCLOSED BUSINESS MODEL, NOT A DISCOVERY: the publishable signal is declared_matches_observed, and agreement is the expected result. THREE STATES MUST NOT BE COLLAPSED INTO TWO: no reading at all means nobody has read this subnet's repositories and the response makes no claim about it; a reading with found:false means a repo was read at a specific commit and nothing was allocated, which is evidence; and a reading with a share is a reviewed finding. Every reading cites the commit SHA that was HEAD when it was read, so a claim can be re-derived by someone who does not trust us. Readings a machine produced but no maintainer has checked publish their read status only, never their finding.",
+      "id": "subnet-treasury",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/treasury",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/owner-capture.json",

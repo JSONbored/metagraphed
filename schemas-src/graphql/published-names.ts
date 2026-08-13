@@ -473,6 +473,9 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   // minting two look-alike types nothing can compare.
   SubnetMinerFairnessArtifactConcentrationEntity: "ConcentrationMetrics",
   SubnetMinerFairnessArtifactConcentrationUid: "ConcentrationMetrics",
+  SubnetTreasuryArtifact: "SubnetTreasury",
+  SubnetTreasuryArtifactReadings: "SubnetTreasuryReading",
+  SubnetTreasuryArtifactReadingsEvidence: "SubnetTreasuryEvidence",
   SubnetOwnerCaptureArtifact: "SubnetOwnerCapture",
   SubnetOwnerCaptureArtifactPoints: "SubnetOwnerCapturePoint",
   SubnetOwnerCaptureArtifactOwnerUids: "SubnetOwnerCaptureUid",
