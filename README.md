@@ -154,7 +154,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[Perturb](https://metagraph.sh/subnets/26)** `SN26` — `adversarial-robustness` `computer-vision` · [site](https://www.perturbai.io/) · [docs](https://www.perturbai.io/whitepaper) · [repo](https://github.com/0xsigurd/Perturb)
 - **[NI Compute](https://metagraph.sh/subnets/27)** `SN27` — `compute` `dashboard`
 - **[gm](https://metagraph.sh/subnets/28)** `SN28` — `llm-inference` `marketplace` `tee` · [site](https://saygm.com/) · [repo](https://github.com/taostat/gm-miner)
-- **[Coldint](https://metagraph.sh/subnets/29)** `SN29` — `data` `distributed-training` · [site](https://coldint.io/) · [docs](https://github.com/coldint/coldint_validator/blob/main/README.md) · [repo](https://github.com/coldint/hotfloat)
+- **[Coldint](https://metagraph.sh/subnets/29)** `SN29` — `data` `distributed-training` · [site](https://coldint.io/) · [docs](https://github.com/coldint/coldint_validator/blob/main/README.md) · [repo](https://github.com/coldint/coldint_validator)
 - **[Endure Network](https://metagraph.sh/subnets/30)** `SN30` — `defi` `risk-intelligence` · [site](https://endure.network/) · [docs](https://docs.endure.network/)
 - **[Recall](https://metagraph.sh/subnets/31)** `SN31` — `rag` `retrieval`
 - **[ItsAI](https://metagraph.sh/subnets/32)** `SN32` · [site](https://its-ai.org/en) · [repo](https://github.com/It-s-AI/llm-detection)

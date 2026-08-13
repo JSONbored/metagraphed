@@ -22,7 +22,15 @@ import {
 } from "../../../scripts/lib/readme-catalog.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_PATH = path.join(__dirname, "../content/docs/catalog.mdx");
+
+// CATALOG_DOCS_OUTPUT redirects the write, the same override
+// generate-openapi-docs.ts takes as OPENAPI_DOCS_OUTPUT and for the same
+// reason: scripts/validate-ui-docs-drift.ts regenerates into a temp directory
+// and diffs, so a drift check can never leave a dirty working tree behind.
+const COMMITTED_PATH = path.join(__dirname, "../content/docs/catalog.mdx");
+const OUTPUT_PATH = process.env.CATALOG_DOCS_OUTPUT
+  ? path.resolve(process.env.CATALOG_DOCS_OUTPUT)
+  : COMMITTED_PATH;
 
 function frontmatter(curatedCount: number) {
   return [
@@ -52,13 +60,19 @@ async function main() {
   // re-run -- both expect, regardless of which one runs first.
   // prettier.format() does NOT read .prettierrc on its own (that's CLI-only
   // behavior) -- resolveConfig() is required to pick it up here.
-  const config = (await prettier.resolveConfig(OUTPUT_PATH)) ?? {};
+  // Resolve against COMMITTED_PATH, never OUTPUT_PATH: prettier looks the
+  // config up from the file's directory, and a CATALOG_DOCS_OUTPUT pointing at
+  // a temp dir would find none -- formatting the drift check's copy differently
+  // from the committed file and reporting drift that does not exist.
+  const config = (await prettier.resolveConfig(COMMITTED_PATH)) ?? {};
   const formatted = await prettier.format(raw, {
     ...config,
-    filepath: OUTPUT_PATH,
+    filepath: COMMITTED_PATH,
   });
   await writeFile(OUTPUT_PATH, formatted);
-  console.log(`Wrote content/docs/catalog.mdx: ${curatedCount} curated subnets.`);
+  console.log(
+    `Wrote ${OUTPUT_PATH === COMMITTED_PATH ? "content/docs/catalog.mdx" : OUTPUT_PATH}: ${curatedCount} curated subnets.`,
+  );
 }
 
 main();
