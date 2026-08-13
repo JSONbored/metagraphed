@@ -6546,6 +6546,7 @@ export interface components {
             uids_per_entity: number | null;
             validator_stake: components["schemas"]["ChainConcentrationScorecard"] | null;
         };
+        /** @description One distribution's concentration scorecard, passed through from the stored card -- identical by construction to the live /chain/concentration card, because it is the same card. */
         ChainConcentrationScorecard: {
             entropy: number | null;
             entropy_normalized: number | null;
@@ -6553,8 +6554,12 @@ export interface components {
             hhi: number | null;
             hhi_normalized: number | null;
             holders: number;
-            nakamoto_coefficient: number | null;
-            total: number;
+            nakamoto_coefficient: number;
+            top_10pct_share: number | null;
+            top_1pct_share: number | null;
+            top_20pct_share: number | null;
+            top_5pct_share: number | null;
+            total: number | null;
         };
         ChainConcentrationSubnetsArtifact: {
             captured_at: string | null;
@@ -25537,6 +25542,10 @@ export interface operations {
                      *               "hhi_normalized": 0.5,
                      *               "holders": 1,
                      *               "nakamoto_coefficient": 1,
+                     *               "top_10pct_share": 0.5,
+                     *               "top_1pct_share": 0.5,
+                     *               "top_20pct_share": 0.5,
+                     *               "top_5pct_share": 0.5,
                      *               "total": 1
                      *             },
                      *             "entity_count": 1,
@@ -25548,6 +25557,10 @@ export interface operations {
                      *               "hhi_normalized": 0.5,
                      *               "holders": 1,
                      *               "nakamoto_coefficient": 1,
+                     *               "top_10pct_share": 0.5,
+                     *               "top_1pct_share": 0.5,
+                     *               "top_20pct_share": 0.5,
+                     *               "top_5pct_share": 0.5,
                      *               "total": 1
                      *             },
                      *             "entity_stake": {
@@ -25558,6 +25571,10 @@ export interface operations {
                      *               "hhi_normalized": 0.5,
                      *               "holders": 1,
                      *               "nakamoto_coefficient": 1,
+                     *               "top_10pct_share": 0.5,
+                     *               "top_1pct_share": 0.5,
+                     *               "top_20pct_share": 0.5,
+                     *               "top_5pct_share": 0.5,
                      *               "total": 1
                      *             },
                      *             "neuron_count": 1,
@@ -25570,6 +25587,10 @@ export interface operations {
                      *               "hhi_normalized": 0.5,
                      *               "holders": 1,
                      *               "nakamoto_coefficient": 1,
+                     *               "top_10pct_share": 0.5,
+                     *               "top_1pct_share": 0.5,
+                     *               "top_20pct_share": 0.5,
+                     *               "top_5pct_share": 0.5,
                      *               "total": 1
                      *             },
                      *             "subnet_count": 1,
@@ -25582,6 +25603,10 @@ export interface operations {
                      *               "hhi_normalized": 0.5,
                      *               "holders": 1,
                      *               "nakamoto_coefficient": 1,
+                     *               "top_10pct_share": 0.5,
+                     *               "top_1pct_share": 0.5,
+                     *               "top_20pct_share": 0.5,
+                     *               "top_5pct_share": 0.5,
                      *               "total": 1
                      *             }
                      *           }

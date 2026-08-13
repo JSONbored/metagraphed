@@ -206,6 +206,7 @@ import {
 } from "../schemas-src/routes/chain-network-rollups.ts";
 import { ChainAlphaVolumeArtifactSchema } from "../schemas-src/routes/chain-alpha-volume.ts";
 import { ChainConcentrationArtifactSchema } from "../schemas-src/routes/chain-concentration.ts";
+import { ChainConcentrationScorecardSchema } from "../schemas-src/routes/chain-concentration-history.ts";
 import {
   ChainEventsFeedArtifactSchema,
   ChainEventsStatsArtifactSchema,
@@ -4911,6 +4912,87 @@ describe("agent-readiness-status: hand-edited copy no longer shadows the Zod own
     assert.equal(
       description,
       "Agent-facing readiness status and blocker taxonomy for one subnet.",
+    );
+  });
+});
+
+describe("chain-concentration-history: the scorecard is derived, not re-listed (#10982)", () => {
+  // The docstring on ChainConcentrationScorecardSchema always promised that a
+  // historical point and the live /chain/concentration card "carry identical
+  // fields". Underneath it sat a hand-written eight-key object, while the live
+  // card declares the twelve-measure ConcentrationMetrics vocabulary -- so
+  // every stored card served four top-percentile keys its own schema forbade.
+  // These assertions are the promise, made executable: re-list the fields in
+  // either place and the key sets stop matching here.
+  const objectArm = (schema: Record<string, unknown>) =>
+    ("properties" in schema
+      ? schema
+      : (schema.anyOf as Record<string, unknown>[]).find(
+          (arm) => "properties" in arm,
+        )) as { properties: Record<string, unknown>; required?: string[] };
+
+  test("the published component declares exactly the shared concentration vocabulary", () => {
+    const components = generateOpenApiZodComponents();
+    const scorecard = objectArm(
+      components.ChainConcentrationScorecard as Record<string, unknown>,
+    );
+    const shared = objectArm(
+      components.ConcentrationMetrics as Record<string, unknown>,
+    );
+    assert.deepEqual(
+      Object.keys(scorecard.properties).sort(),
+      Object.keys(shared.properties).sort(),
+    );
+  });
+
+  test("all twelve measures stay REQUIRED -- deriving must not weaken the eight that were already right", () => {
+    const components = generateOpenApiZodComponents();
+    const scorecard = objectArm(
+      components.ChainConcentrationScorecard as Record<string, unknown>,
+    );
+    assert.deepEqual(
+      [...(scorecard.required ?? [])].sort(),
+      Object.keys(scorecard.properties).sort(),
+    );
+  });
+
+  test("a real stored card parses -- the four top-percentile shares included", () => {
+    // Shape taken from the live /api/v1/chain/concentration/history response;
+    // the four top_Npct_share keys are what the hand-written copy rejected.
+    const card = {
+      holders: 8185,
+      total: 338420962.9214,
+      gini: 0.954764,
+      hhi: 0.003471,
+      hhi_normalized: 0.003349,
+      nakamoto_coefficient: 101,
+      top_1pct_share: 0.445044,
+      top_5pct_share: 0.866741,
+      top_10pct_share: 0.971802,
+      top_20pct_share: 0.999149,
+      entropy: 8.908676,
+      entropy_normalized: 0.685348,
+    };
+    assert.deepEqual(ChainConcentrationScorecardSchema.parse(card), card);
+  });
+
+  test("strictness survives the derivation -- an unknown measure is still refused", () => {
+    assert.throws(() =>
+      ChainConcentrationScorecardSchema.parse({
+        holders: 1,
+        total: 1,
+        gini: 0,
+        hhi: 0,
+        hhi_normalized: 0,
+        nakamoto_coefficient: 1,
+        top_1pct_share: 0,
+        top_5pct_share: 0,
+        top_10pct_share: 0,
+        top_20pct_share: 0,
+        entropy: 0,
+        entropy_normalized: 0,
+        top_50pct_share: 0,
+      }),
     );
   });
 });
