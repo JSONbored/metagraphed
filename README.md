@@ -14,15 +14,8 @@ Bittensor didn't ship with a map, so we drew one. For every subnet: **what does 
 [![npm](https://img.shields.io/npm/v/@jsonbored/metagraphed?logo=npm&label=npm)](https://www.npmjs.com/package/@jsonbored/metagraphed)
 [![PyPI](https://img.shields.io/pypi/v/metagraphed?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/metagraphed/)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](./LICENSE)
-[![Gittensor impact](https://api.gittensor.io/repos/JSONbored%2Fmetagraphed/badge.svg)](https://gittensor.io/miners/repository?name=JSONbored/metagraphed)
 
 **[Website](https://metagraph.sh)** &nbsp;·&nbsp; [API](https://api.metagraph.sh) &nbsp;·&nbsp; [OpenAPI](https://api.metagraph.sh/metagraph/openapi.json) &nbsp;·&nbsp; [GraphQL](https://api.metagraph.sh/api/v1/graphql) &nbsp;·&nbsp; [MCP](https://api.metagraph.sh/mcp) &nbsp;·&nbsp; [Agent docs](https://api.metagraph.sh/llms.txt) &nbsp;·&nbsp; [Agent workflows](https://api.metagraph.sh/agent-workflows.md) &nbsp;·&nbsp; [Feeds](https://api.metagraph.sh/api/v1/feeds/registry) &nbsp;·&nbsp; [npm](https://www.npmjs.com/package/@jsonbored/metagraphed) &nbsp;·&nbsp; [PyPI](https://pypi.org/project/metagraphed/)
-
-<a href="https://gittensor.io/miners/repository?name=JSONbored/metagraphed">
-  <img src="https://raw.githubusercontent.com/JSONbored/metagraphed/gittensor-impact-assets/gittensor-impact-dark.svg" alt="Gittensor contributor impact" width="600">
-</a>
-
-<sub>Gittensor contributor impact — refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows/gittensor-impact.yml)</sub>
 
 </div>
 
@@ -115,7 +108,7 @@ Open the repo in a [devcontainer](.devcontainer/devcontainer.json)-aware tool (V
 - **Schema-first edits** require `npm run build` (regenerates `openapi.json` + types).
 - **Community submissions** are PR-first: add a surface to exactly one `registry/subnets/<slug>.json` file (via `npm run surface:add`; use `npm run subnet:new` first when that subnet has no file yet), no generated artifacts.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/curation-playbook.md). Gittensor contributor impact is pinned at the top of this README.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/curation-playbook.md).
 
 ## Subnet catalog
 
