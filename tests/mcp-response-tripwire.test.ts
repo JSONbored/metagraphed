@@ -275,6 +275,24 @@ describe("the drift alarm carries its diagnosis", () => {
     );
   });
 
+  test("a non-Error detail is serialised rather than dropped", () => {
+    // `validateMcpResponseTripwire` always hands a ZodError, so this arm is
+    // unreachable through it — and it is the arm that decides whether a
+    // future caller passing a plain object gets a diagnosis or a bare
+    // sentence. Constructed directly, for the same reason `isProjectedAway`
+    // is: an unreachable branch in an alarm is where the diagnosis goes to
+    // die, and codecov/patch counts it either way.
+    const error = new McpResponseSchemaDriftError("get_card", {
+      unrecognized: ["surprise"],
+    });
+    assert.match(error.message, /surprise/);
+    assert.ok(
+      error.message.startsWith(
+        "get_card result drifted from its published outputSchema",
+      ),
+    );
+  });
+
   test("the tool name still leads, so grouping is unchanged", () => {
     // The fingerprint keys on tool + message; a diagnosis appended AFTER the
     // stable prefix keeps every drift of one tool in one issue.
