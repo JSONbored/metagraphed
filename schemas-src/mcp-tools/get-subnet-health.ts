@@ -1,7 +1,21 @@
-// MCP tool `get_subnet_health` (types-epic E batch 2, #8065). "Mirrors" the
-// health domain conceptually but the REST route it names isn't one of
-// schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
+// MCP tool `get_subnet_health` (types-epic E batch 2, #8065).
+//
+// This file DERIVES its shapes from the route schemas below -- the summary
+// from HealthSubnetSummarySchema (#9797), the rows from
+// HealthSubnetSurfaceSchema (#10904), the input from
+// ListSubnetHealthInputSchema (#9998).
+//
+// It did not always. The header here used to read "no existing Zod schema to
+// reuse -- modeled fresh, shallow, from the hand-written literal it replaces",
+// which was true at #8065 and false from #10904 onward, when the copied row
+// schema was replaced by the route's own for the reason that commit records:
+// the copy "sat five fields behind the route's", so the outbound tripwire
+// refused every netuid-0 call the moment the fallback tier answered.
+//
+// The sentence survived the fix it described. A header that still advertises a
+// design the file abandoned costs more than a stale comment usually does: it is
+// read as the reason for a drift, and it sends the reader looking for a
+// hand-copied schema that is no longer here.
 import { z } from "zod";
 import { McpUnsortedPageFields, netuidSchema } from "./shared.ts";
 import { ListSubnetHealthInputSchema } from "./subnet-scoped-lists.ts";
