@@ -1104,6 +1104,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "How much of one subnet's emission reaches its owner over a 7d/30d/90d window, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/owner-capture. Publishes the two CHAIN-VISIBLE layers only: the protocol owner cut (L1) and emission landing on UIDs the owner coldkey holds (L2). What the owner ultimately keeps is NOT published -- that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and the payload states both as blind spots. Every coldkey but the declared owner reports verdict `unresolved`.",
+      "id": "subnet-owner-capture",
+      "path": "/metagraph/subnets/{netuid}/owner-capture.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetOwnerCaptureArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events store filtered by netuid at /api/v1/subnets/{netuid}/events; pass ?format=csv to download the page as CSV (no static file).",
       "id": "subnet-events",
       "path": "/metagraph/subnets/{netuid}/events.json",
@@ -2969,7 +2980,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 169,
+    "mainnet_only_route_count": 170,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

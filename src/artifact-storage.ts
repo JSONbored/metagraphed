@@ -166,6 +166,8 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^subnets\/(?:\d+|\{netuid\})\/yield\/history\.json$/,
   // Per-day emission split by recipient class: computed live from the same rollup.
   /^subnets\/(?:\d+|\{netuid\})\/emission-split\/history\.json$/,
+  // Owner-capture index (L1 + L2): computed live from the same rollup.
+  /^subnets\/(?:\d+|\{netuid\})\/owner-capture\.json$/,
   // Cross-subnet movers leaderboard: computed live from neuron_daily.
   /^subnets\/movers\.json$/,
   // Per-UID metagraph (#1303/#1304/#1305): computed live from the neurons store

@@ -98,11 +98,11 @@ describe("compareQueryBindings", () => {
 });
 
 describe("the real registry", () => {
-  // 199 after #10928 added subnet_emission_split_history. The count is exact on
-  // purpose -- it is a prompt to check that a new field carries a return type
-  // and a description, not a number to widen past.
-  it("declares a return type and a description for all 199 fields", () => {
-    expect(QUERY_BINDINGS).toHaveLength(199);
+  // 200 after #10929 added subnet_owner_capture. The count is exact on purpose
+  // -- it is a prompt to check that a new field carries a return type and a
+  // description, not a number to widen past.
+  it("declares a return type and a description for all 200 fields", () => {
+    expect(QUERY_BINDINGS).toHaveLength(200);
     for (const binding of QUERY_BINDINGS) {
       expect(binding.returns, binding.field).toMatch(/^\[?\w+!?\]?!?$/);
       expect(binding.description.length, binding.field).toBeGreaterThan(0);

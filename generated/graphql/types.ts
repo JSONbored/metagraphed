@@ -3672,6 +3672,8 @@ export type Query = {
   subnet_ohlc: SubnetOhlc;
   /** One subnet's composed overview card: the baked static subnet record overlaid with live probe-derived health, exactly as the REST route composes it. Null when no overview has been baked for that netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/overview. */
   subnet_overview?: Maybe<Scalars['JSON']['output']>;
+  /** How much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window (default 30d), from the neuron_daily rollup joined to the declared owner coldkey. Two CHAIN-VISIBLE layers only: the protocol owner cut (L1, 18% and identical everywhere) and emission landing on owner-held UIDs (L2, which varies enormously). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is not the owner's. It is NOT what the owner keeps — the identity of those nominators (L3) and any treasury cut in the subnet's own code (L4) are not observable here, and `blind_spots` states that in the response. Every coldkey but the declared owner reports `unresolved`, which is the honest default and never a finding against them. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
+  subnet_owner_capture: SubnetOwnerCapture;
   /** Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream -- Bittensor subnet ownership is a permissionless, conviction-weighted contest that transfers automatically once a challenger's conviction overtakes the incumbent owner's, no vote required. A subnet that has never changed hands returns an empty list. Reaches the all-events tier directly (no D1 predecessor) and falls to the R2 lakehouse reader when that tier cannot answer, the same two tiers REST and MCP use; an out-of-range netuid is a GraphQL error, and so is a tier failure the lakehouse cannot cover either -- never a silent empty list. Mirrors GET /api/v1/subnets/{netuid}/ownership-history. */
   subnet_ownership_history: SubnetOwnershipHistory;
   /** Per-subnet reward-distribution and score-spread card over the current neurons snapshot: incentive/dividends concentration plus p10–p90 trust/consensus/validator_trust; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/performance. */
@@ -4948,6 +4950,12 @@ export type QuerySubnet_OhlcArgs = {
 
 export type QuerySubnet_OverviewArgs = {
   netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_Owner_CaptureArgs = {
+  netuid: Scalars['Int']['input'];
+  window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -6716,6 +6724,88 @@ export type SubnetOhlcCandle = {
   volume_usd?: Maybe<Scalars['Float']['output']>;
 };
 
+/** How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and `blind_spots` states both in the response. Every coldkey but the declared owner reports `verdict: unresolved`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
+export type SubnetOwnerCapture = {
+  __typename?: 'SubnetOwnerCapture';
+  /** Every coldkey staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked. */
+  attribution?: Maybe<Array<SubnetOwnerCaptureStakeholder>>;
+  /** The four defined verdicts, published beside the verdicts themselves so a caller can tell `unresolved` is a state rather than a missing value. */
+  attribution_vocabulary?: Maybe<Array<Scalars['String']['output']>>;
+  /** What this measurement cannot see, in the payload rather than only in the docs — because the payload is what gets quoted. Covers the stake behind owner validators (L3), application-layer treasury cuts (L4), and root delegation (L5). */
+  blind_spots?: Maybe<Array<SubnetOwnerCaptureBlindSpot>>;
+  /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+  field_sources?: Maybe<Scalars['JSON']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** The subnet's declared owner coldkey, from SubtensorModule.SubnetOwner. Null when no ownership row has been captured — in which case every owner-derived field is null rather than 0. */
+  owner_coldkey?: Maybe<Scalars['String']['output']>;
+  owner_uid_count?: Maybe<Scalars['Int']['output']>;
+  /** The owner-held UIDs on the NEWEST day only, and who is staked behind them. Newest-day rather than unioned across the window, because a UID set unioned over a month lists neurons that have since deregistered as though they were current. */
+  owner_uids?: Maybe<Array<SubnetOwnerCaptureUid>>;
+  point_count: Scalars['Int']['output'];
+  points: Array<SubnetOwnerCapturePoint>;
+  schema_version: Scalars['Int']['output'];
+  /** The resolved window label (7d/30d/90d). */
+  window?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetOwnerCaptureBlindSpot = {
+  __typename?: 'SubnetOwnerCaptureBlindSpot';
+  layer: Scalars['String']['output'];
+  summary: Scalars['String']['output'];
+};
+
+export type SubnetOwnerCapturePoint = {
+  __typename?: 'SubnetOwnerCapturePoint';
+  neuron_count?: Maybe<Scalars['Int']['output']>;
+  /** L2 as a share of the WHOLE day, `owner_uid_alpha / total_alpha`. RECONSTRUCTED, because the denominator is. ATTRIBUTED, NOT CAPTURED: this is emission that landed on owner-held UIDs, not what the owner ultimately keeps — the stake behind those UIDs (L3) and any application-layer treasury cut (L4) are outside what the chain shows. See `blind_spots`. */
+  owner_attributed_share?: Maybe<Scalars['Float']['output']>;
+  /** `owner_uid_alpha / uid_alpha`. MEASURED and parameter-free — a ratio of two observed sums this response also publishes, carrying no owner-cut assumption. Null when the day emitted nothing to any UID, never 0. */
+  owner_attributed_share_of_uid?: Maybe<Scalars['Float']['output']>;
+  /** `owner_cut_share + owner_attributed_share` — the two chain-visible layers over one denominator. Named for the arithmetic it is. It is NOT 'what the owner takes', and a caller reporting it as such is asserting L3 and L4 this surface explicitly does not measure. */
+  owner_combined_share?: Maybe<Scalars['Float']['output']>;
+  /** The L1 leg in alpha, `total_alpha x owner_cut_share`. RECONSTRUCTED — it is not summed from per-UID rows, because the owner cut is paid outside the UID set entirely. */
+  owner_cut_alpha?: Maybe<Scalars['Float']['output']>;
+  /** L1 — the protocol owner cut applied to this day. `SubnetOwnerCut` is 11796/65535 (18%, not 1/6) and is UNSET on chain, so this is the runtime default rather than a read. Every subnet pays it and no subnet chooses it. */
+  owner_cut_share?: Maybe<Scalars['Float']['output']>;
+  /** L2 — emission that landed on UIDs held by the owner coldkey. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join. */
+  owner_uid_alpha?: Maybe<Scalars['Float']['output']>;
+  /** How many UIDs on this day were held by the declared owner coldkey. NULL when the owner coldkey is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'. */
+  owner_uid_count?: Maybe<Scalars['Int']['output']>;
+  snapshot_date: Scalars['String']['output'];
+  /** The whole day's alpha emission, `alpha_out_emission x 7200 blocks`. RECONSTRUCTED, and the same basis /owner-cut and /emission-split/history use, so the three cannot disagree about what a day of emission is. */
+  total_alpha?: Maybe<Scalars['Float']['output']>;
+  /** Emission across the whole UID set on this day. NOT the day's total — the owner cut is paid outside the UID set, so this is the distributable remainder. See `total_alpha`. */
+  uid_alpha?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubnetOwnerCaptureStakeholder = {
+  __typename?: 'SubnetOwnerCaptureStakeholder';
+  coldkey: Scalars['String']['output'];
+  /** Always empty on this surface. A verdict above `unresolved` requires an evidence object a reader can follow, and this surface establishes none — see the attribution method statement. */
+  evidence: Array<Scalars['JSON']['output']>;
+  /** This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids. */
+  stake_share: Scalars['Float']['output'];
+  /** From the shared attribution vocabulary. `owner` is the only verdict this surface assigns, because the chain read (SubtensorModule.SubnetOwner) IS its evidence. EVERY OTHER COLDKEY IS `unresolved` — the honest default for a relationship nobody has established, and never to be rendered as a negative finding. Nothing here computes a verdict from stake size, timing or co-registration. */
+  verdict: Scalars['String']['output'];
+};
+
+export type SubnetOwnerCaptureUid = {
+  __typename?: 'SubnetOwnerCaptureUid';
+  /** This UID's emission on the newest day, alpha-denominated for every non-root subnet despite the column's `_tao` suffix. */
+  emission_tao?: Maybe<Scalars['Float']['output']>;
+  hotkey?: Maybe<Scalars['String']['output']>;
+  /** `1 - owner_stake_share`: the fraction of this validator's stake that is NOT the owner coldkey's. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here. */
+  nominator_share?: Maybe<Scalars['Float']['output']>;
+  /** Fraction of the stake behind this hotkey held by the owner coldkey itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see `stake_split_reason`. */
+  owner_stake_share?: Maybe<Scalars['Float']['output']>;
+  /** Why the stake split is null, when it is. A short sentence rather than a code, because the reasons are not a closed set the caller should branch on. */
+  stake_split_reason?: Maybe<Scalars['String']['output']>;
+  /** Validator take/commission (0..1) from SubtensorModule::Delegates. GLOBAL per hotkey, not per subnet. NULL means no Delegates entry at capture — which is not 0%, and must not be rendered as one. */
+  take?: Maybe<Scalars['Float']['output']>;
+  uid?: Maybe<Scalars['Float']['output']>;
+  validator_permit?: Maybe<Scalars['Boolean']['output']>;
+};
+
 /** Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history. */
 export type SubnetOwnershipHistory = {
   __typename?: 'SubnetOwnershipHistory';
@@ -8265,6 +8355,11 @@ export type ResolversTypes = ResolversObject<{
   SubnetMoversNetwork: ResolverTypeWrapper<SubnetMoversNetwork>;
   SubnetOhlc: ResolverTypeWrapper<SubnetOhlc>;
   SubnetOhlcCandle: ResolverTypeWrapper<SubnetOhlcCandle>;
+  SubnetOwnerCapture: ResolverTypeWrapper<SubnetOwnerCapture>;
+  SubnetOwnerCaptureBlindSpot: ResolverTypeWrapper<SubnetOwnerCaptureBlindSpot>;
+  SubnetOwnerCapturePoint: ResolverTypeWrapper<SubnetOwnerCapturePoint>;
+  SubnetOwnerCaptureStakeholder: ResolverTypeWrapper<SubnetOwnerCaptureStakeholder>;
+  SubnetOwnerCaptureUid: ResolverTypeWrapper<SubnetOwnerCaptureUid>;
   SubnetOwnershipHistory: ResolverTypeWrapper<SubnetOwnershipHistory>;
   SubnetOwnershipHistoryArtifactOwnershipChanges: ResolverTypeWrapper<SubnetOwnershipHistoryArtifactOwnershipChanges>;
   SubnetPerformance: ResolverTypeWrapper<SubnetPerformance>;
@@ -8703,6 +8798,11 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetMoversNetwork: SubnetMoversNetwork;
   SubnetOhlc: SubnetOhlc;
   SubnetOhlcCandle: SubnetOhlcCandle;
+  SubnetOwnerCapture: SubnetOwnerCapture;
+  SubnetOwnerCaptureBlindSpot: SubnetOwnerCaptureBlindSpot;
+  SubnetOwnerCapturePoint: SubnetOwnerCapturePoint;
+  SubnetOwnerCaptureStakeholder: SubnetOwnerCaptureStakeholder;
+  SubnetOwnerCaptureUid: SubnetOwnerCaptureUid;
   SubnetOwnershipHistory: SubnetOwnershipHistory;
   SubnetOwnershipHistoryArtifactOwnershipChanges: SubnetOwnershipHistoryArtifactOwnershipChanges;
   SubnetPerformance: SubnetPerformance;
@@ -11605,6 +11705,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_movers?: Resolver<ResolversTypes['SubnetMovers'], ParentType, ContextType, Partial<QuerySubnet_MoversArgs>>;
   subnet_ohlc?: Resolver<ResolversTypes['SubnetOhlc'], ParentType, ContextType, RequireFields<QuerySubnet_OhlcArgs, 'netuid'>>;
   subnet_overview?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_OverviewArgs, 'netuid'>>;
+  subnet_owner_capture?: Resolver<ResolversTypes['SubnetOwnerCapture'], ParentType, ContextType, RequireFields<QuerySubnet_Owner_CaptureArgs, 'netuid'>>;
   subnet_ownership_history?: Resolver<ResolversTypes['SubnetOwnershipHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Ownership_HistoryArgs, 'netuid'>>;
   subnet_performance?: Resolver<ResolversTypes['SubnetPerformance'], ParentType, ContextType, RequireFields<QuerySubnet_PerformanceArgs, 'netuid'>>;
   subnet_performance_history?: Resolver<ResolversTypes['SubnetPerformanceHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Performance_HistoryArgs, 'netuid'>>;
@@ -12818,6 +12919,58 @@ export type SubnetOhlcCandleResolvers<ContextType = GqlContext, ParentType exten
   volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetOwnerCaptureResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnerCapture'] = ResolversParentTypes['SubnetOwnerCapture']> = ResolversObject<{
+  attribution?: Resolver<Maybe<Array<ResolversTypes['SubnetOwnerCaptureStakeholder']>>, ParentType, ContextType>;
+  attribution_vocabulary?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  blind_spots?: Resolver<Maybe<Array<ResolversTypes['SubnetOwnerCaptureBlindSpot']>>, ParentType, ContextType>;
+  field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  owner_coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  owner_uid_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  owner_uids?: Resolver<Maybe<Array<ResolversTypes['SubnetOwnerCaptureUid']>>, ParentType, ContextType>;
+  point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['SubnetOwnerCapturePoint']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetOwnerCaptureBlindSpotResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnerCaptureBlindSpot'] = ResolversParentTypes['SubnetOwnerCaptureBlindSpot']> = ResolversObject<{
+  layer?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  summary?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SubnetOwnerCapturePointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnerCapturePoint'] = ResolversParentTypes['SubnetOwnerCapturePoint']> = ResolversObject<{
+  neuron_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  owner_attributed_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_attributed_share_of_uid?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_combined_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_cut_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_cut_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_uid_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_uid_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  uid_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetOwnerCaptureStakeholderResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnerCaptureStakeholder'] = ResolversParentTypes['SubnetOwnerCaptureStakeholder']> = ResolversObject<{
+  coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  evidence?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  stake_share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  verdict?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SubnetOwnerCaptureUidResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnerCaptureUid'] = ResolversParentTypes['SubnetOwnerCaptureUid']> = ResolversObject<{
+  emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  nominator_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  owner_stake_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  stake_split_reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  take?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  uid?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validator_permit?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
 export type SubnetOwnershipHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnershipHistory'] = ResolversParentTypes['SubnetOwnershipHistory']> = ResolversObject<{
@@ -14067,6 +14220,11 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetMoversNetwork?: SubnetMoversNetworkResolvers<ContextType>;
   SubnetOhlc?: SubnetOhlcResolvers<ContextType>;
   SubnetOhlcCandle?: SubnetOhlcCandleResolvers<ContextType>;
+  SubnetOwnerCapture?: SubnetOwnerCaptureResolvers<ContextType>;
+  SubnetOwnerCaptureBlindSpot?: SubnetOwnerCaptureBlindSpotResolvers<ContextType>;
+  SubnetOwnerCapturePoint?: SubnetOwnerCapturePointResolvers<ContextType>;
+  SubnetOwnerCaptureStakeholder?: SubnetOwnerCaptureStakeholderResolvers<ContextType>;
+  SubnetOwnerCaptureUid?: SubnetOwnerCaptureUidResolvers<ContextType>;
   SubnetOwnershipHistory?: SubnetOwnershipHistoryResolvers<ContextType>;
   SubnetOwnershipHistoryArtifactOwnershipChanges?: SubnetOwnershipHistoryArtifactOwnershipChangesResolvers<ContextType>;
   SubnetPerformance?: SubnetPerformanceResolvers<ContextType>;

@@ -298,6 +298,7 @@ import type {
   SubnetYieldNeuron,
   YieldHistoryPoint,
   SubnetEmissionSplitHistory,
+  SubnetOwnerCapture,
   EmissionSplitPoint,
   SubnetYieldHistory,
   SubnetProfile,
@@ -8788,6 +8789,36 @@ export const subnetEmissionSplitHistoryQuery = (
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetEmissionSplitHistory>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** How much of a subnet's emission reaches its owner — L1 + L2 (#10929). */
+export const subnetOwnerCaptureQuery = (netuid: number, window: "7d" | "30d" | "90d" = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-owner-capture", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetOwnerCapture>>(
+        `/api/v1/subnets/${netuid}/owner-capture`,
+        { params: { window }, signal },
+      );
+      return {
+        data: {
+          netuid,
+          window: res.data?.window,
+          owner_coldkey: res.data?.owner_coldkey ?? null,
+          point_count: res.data?.point_count ?? 0,
+          points: Array.isArray(res.data?.points) ? res.data.points : [],
+          owner_uid_count: res.data?.owner_uid_count ?? null,
+          owner_uids: Array.isArray(res.data?.owner_uids) ? res.data.owner_uids : [],
+          // NOT defaulted away. An empty blind-spot list would render a capture
+          // figure with nothing stating what it cannot see, which is the one
+          // shape this surface must never produce.
+          blind_spots: Array.isArray(res.data?.blind_spots) ? res.data.blind_spots : [],
+        } as SubnetOwnerCapture,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetOwnerCapture>;
     },
     staleTime: STALE_MED,
   });

@@ -137,6 +137,7 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_subnet_emission_split_history: {
     operation: "subnet-emission-split-history",
   },
+  get_subnet_owner_capture: { operation: "subnet-owner-capture" },
   get_subnet_stake_flow: { operation: "subnet-stake-flow" },
   get_subnet_event_summary: { operation: "subnet-event-summary" },
   get_subnet_weights: { operation: "subnet-weights" },

@@ -4408,6 +4408,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/owner-capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window. Two chain-visible layers: the protocol owner cut (L1, 18%, the same for every subnet) and emission landing on UIDs held by the declared owner coldkey (L2, which varies enormously -- the network median is far above 18%). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is NOT the owner's. THIS IS NOT `what the owner takes`: the identity of those nominators (L3) and any treasury cut inside the subnet's own code (L4) are not observable here, and the response says so in `blind_spots`. Every coldkey but the declared owner is reported `unresolved`, which is the honest default and not a finding against them. */
+        get: operations["subnetOwnerCapture"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/owner-cut": {
         parameters: {
             query?: never;
@@ -11583,6 +11600,85 @@ export interface components {
             schema_version: 1;
             slug?: string;
             status?: string;
+        };
+        /** @description How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and `blind_spots` states both in the response. Every coldkey but the declared owner reports `verdict: unresolved`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
+        SubnetOwnerCaptureArtifact: {
+            /** @description Every coldkey staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked. */
+            attribution?: {
+                coldkey: string;
+                /** @description Always empty on this surface. A verdict above `unresolved` requires an evidence object a reader can follow, and this surface establishes none — see the attribution method statement. */
+                evidence: unknown[];
+                /** @description This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids. */
+                stake_share: number;
+                /**
+                 * @description From the shared attribution vocabulary. `owner` is the only verdict this surface assigns, because the chain read (SubtensorModule.SubnetOwner) IS its evidence. EVERY OTHER COLDKEY IS `unresolved` — the honest default for a relationship nobody has established, and never to be rendered as a negative finding. Nothing here computes a verdict from stake size, timing or co-registration.
+                 * @enum {string}
+                 */
+                verdict: "unresolved" | "third-party" | "affiliated" | "owner";
+            }[];
+            /** @description The four defined verdicts, published beside the verdicts themselves so a caller can tell `unresolved` is a state rather than a missing value. */
+            attribution_vocabulary?: string[];
+            /** @description What this measurement cannot see, in the payload rather than only in the docs — because the payload is what gets quoted. Covers the stake behind owner validators (L3), application-layer treasury cuts (L4), and root delegation (L5). */
+            blind_spots?: {
+                layer: string;
+                summary: string;
+            }[];
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources?: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            netuid: number;
+            /** @description The subnet's declared owner coldkey, from SubtensorModule.SubnetOwner. Null when no ownership row has been captured — in which case every owner-derived field is null rather than 0. */
+            owner_coldkey?: string | null;
+            owner_uid_count?: number | null;
+            /** @description The owner-held UIDs on the NEWEST day only, and who is staked behind them. Newest-day rather than unioned across the window, because a UID set unioned over a month lists neurons that have since deregistered as though they were current. */
+            owner_uids?: {
+                /** @description This UID's emission on the newest day, alpha-denominated for every non-root subnet despite the column's `_tao` suffix. */
+                emission_tao?: number | null;
+                hotkey?: string | null;
+                /** @description `1 - owner_stake_share`: the fraction of this validator's stake that is NOT the owner coldkey's. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here. */
+                nominator_share?: number | null;
+                /** @description Fraction of the stake behind this hotkey held by the owner coldkey itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see `stake_split_reason`. */
+                owner_stake_share?: number | null;
+                /** @description Why the stake split is null, when it is. A short sentence rather than a code, because the reasons are not a closed set the caller should branch on. */
+                stake_split_reason?: string | null;
+                /** @description Validator take/commission (0..1) from SubtensorModule::Delegates. GLOBAL per hotkey, not per subnet. NULL means no Delegates entry at capture — which is not 0%, and must not be rendered as one. */
+                take?: number | null;
+                uid?: number | null;
+                validator_permit?: boolean;
+            }[];
+            point_count: number;
+            points: {
+                neuron_count?: number;
+                /** @description L2 as a share of the WHOLE day, `owner_uid_alpha / total_alpha`. RECONSTRUCTED, because the denominator is. ATTRIBUTED, NOT CAPTURED: this is emission that landed on owner-held UIDs, not what the owner ultimately keeps — the stake behind those UIDs (L3) and any application-layer treasury cut (L4) are outside what the chain shows. See `blind_spots`. */
+                owner_attributed_share?: number | null;
+                /** @description `owner_uid_alpha / uid_alpha`. MEASURED and parameter-free — a ratio of two observed sums this response also publishes, carrying no owner-cut assumption. Null when the day emitted nothing to any UID, never 0. */
+                owner_attributed_share_of_uid?: number | null;
+                /** @description `owner_cut_share + owner_attributed_share` — the two chain-visible layers over one denominator. Named for the arithmetic it is. It is NOT 'what the owner takes', and a caller reporting it as such is asserting L3 and L4 this surface explicitly does not measure. */
+                owner_combined_share?: number | null;
+                /** @description The L1 leg in alpha, `total_alpha x owner_cut_share`. RECONSTRUCTED — it is not summed from per-UID rows, because the owner cut is paid outside the UID set entirely. */
+                owner_cut_alpha?: number | null;
+                /** @description L1 — the protocol owner cut applied to this day. `SubnetOwnerCut` is 11796/65535 (18%, not 1/6) and is UNSET on chain, so this is the runtime default rather than a read. Every subnet pays it and no subnet chooses it. */
+                owner_cut_share?: number | null;
+                /** @description L2 — emission that landed on UIDs held by the owner coldkey. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join. */
+                owner_uid_alpha?: number | null;
+                /** @description How many UIDs on this day were held by the declared owner coldkey. NULL when the owner coldkey is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'. */
+                owner_uid_count?: number | null;
+                snapshot_date: string;
+                /** @description The whole day's alpha emission, `alpha_out_emission x 7200 blocks`. RECONSTRUCTED, and the same basis /owner-cut and /emission-split/history use, so the three cannot disagree about what a day of emission is. */
+                total_alpha?: number | null;
+                /** @description Emission across the whole UID set on this day. NOT the day's total — the owner cut is paid outside the UID set, so this is the distributable remainder. See `total_alpha`. */
+                uid_alpha?: number | null;
+            }[];
+            schema_version: number;
+            /** @description The resolved window label (7d/30d/90d). */
+            window?: string | null;
         };
         /** @description One subnet's owner-cut accrual and what became of it. The cut is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is paid as STAKE rather than a liquid balance — so a disposition derived from transfers alone would report 'held' for every subnet, and absence of flow evidence resolves to `unresolved` instead. Mirrors GET /api/v1/subnets/{netuid}/owner-cut. */
         SubnetOwnerCutArtifact: {
@@ -44586,6 +44682,148 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetOverviewArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetOwnerCapture: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "attribution": [
+                     *           {
+                     *             "coldkey": "example",
+                     *             "evidence": [
+                     *               null
+                     *             ],
+                     *             "stake_share": 0.5,
+                     *             "verdict": "unresolved"
+                     *           }
+                     *         ],
+                     *         "attribution_vocabulary": [
+                     *           "example"
+                     *         ],
+                     *         "blind_spots": [
+                     *           {
+                     *             "layer": "example",
+                     *             "summary": "Example description."
+                     *           }
+                     *         ],
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "netuid": 7,
+                     *         "owner_coldkey": "example",
+                     *         "owner_uid_count": 1,
+                     *         "owner_uids": [
+                     *           {}
+                     *         ],
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "snapshot_date": "example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetOwnerCaptureArtifact"];
                     };
                 };
             };

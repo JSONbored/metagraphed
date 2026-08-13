@@ -290,6 +290,10 @@ import {
   emissionSplitWindowLabel,
 } from "./emission-split.ts";
 import {
+  buildSubnetOwnerCapture,
+  ownerCaptureWindowLabel,
+} from "./owner-capture.ts";
+import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
   PERFORMANCE_HISTORY_WINDOWS,
@@ -940,6 +944,7 @@ import type {
   QuerySubnet_WeightsArgs,
   QuerySubnet_YieldArgs,
   QuerySubnet_Emission_Split_HistoryArgs,
+  QuerySubnet_Owner_CaptureArgs,
   QuerySubnet_Yield_HistoryArgs,
   QuerySubnetsArgs,
   QuerySurfacesArgs,
@@ -3346,6 +3351,45 @@ const rootValue = {
       window: data.window ?? windowParam,
       point_count: data.point_count ?? 0,
       points: data.points ?? [],
+    };
+  },
+  async subnet_owner_capture(
+    { netuid, window }: QuerySubnet_Owner_CaptureArgs,
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // Same reasoning as its emission-split sibling: no hand-written window
+    // check, because parseArgumentsAtDispatch has already parsed this field's
+    // arguments against the route's published query schema.
+    const windowParam = ownerCaptureWindowLabel(window);
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      ((await tryDataApiTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/owner-capture`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) as Row | null) ??
+      buildSubnetOwnerCapture([], netuid, {
+        window: windowParam,
+        capped: false,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      owner_coldkey: data.owner_coldkey ?? null,
+      point_count: data.point_count ?? 0,
+      points: data.points ?? [],
+      owner_uid_count: data.owner_uid_count ?? null,
+      owner_uids: data.owner_uids ?? [],
+      attribution: data.attribution ?? [],
+      attribution_vocabulary: data.attribution_vocabulary ?? [],
+      blind_spots: data.blind_spots ?? [],
     };
   },
   async subnet_emission_split_history(

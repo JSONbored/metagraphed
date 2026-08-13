@@ -905,6 +905,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-owner-capture",
+      "path": "/metagraph/subnets/{netuid}/owner-capture.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetOwnerCaptureArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-events",
       "path": "/metagraph/subnets/{netuid}/events.json",
       "retirement": null,
@@ -2516,7 +2525,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 169,
+    "mainnet_only_route_count": 170,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8600,6 +8609,35 @@
             "enum": [
               "json",
               "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/owner-capture.json",
+      "cache": "short",
+      "description": "Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window. Two chain-visible layers: the protocol owner cut (L1, 18%, the same for every subnet) and emission landing on UIDs held by the declared owner coldkey (L2, which varies enormously -- the network median is far above 18%). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is NOT the owner's. THIS IS NOT `what the owner takes`: the identity of those nominators (L3) and any treasury cut inside the subnet's own code (L4) are not observable here, and the response says so in `blind_spots`. Every coldkey but the declared owner is reported `unresolved`, which is the honest default and not a finding against them.",
+      "id": "subnet-owner-capture",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/owner-capture",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "default": "30d",
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
             ],
             "type": "string"
           }

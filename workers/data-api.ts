@@ -88,6 +88,10 @@ import {
   EMISSION_SPLIT_HISTORY_ROW_CAP,
 } from "../src/emission-split.ts";
 import {
+  buildSubnetOwnerCapture,
+  OWNER_CAPTURE_HISTORY_ROW_CAP,
+} from "../src/owner-capture.ts";
+import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
   SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
 } from "../src/route-limits.ts";
@@ -550,9 +554,11 @@ import type {
   GithubAccounts,
   NeuronDaily,
   Neurons,
+  NominatorPositions,
   RpcAccounts,
   SubnetHyperparams,
   SubnetHyperparamsHistory,
+  SubnetOwnership,
   SubnetSnapshots,
   SurfaceStatus,
   ValidatorNominatorCounts,
@@ -7434,6 +7440,96 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
           ),
           capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/owner-capture -- how much of the subnet's
+  // emission reaches its owner (#10929).
+  //
+  // THREE READS, and each one is load-bearing:
+  //
+  //   1. `subnet_ownership` for the declared owner coldkey. Read HERE rather
+  //      than passed in from the calling handler, because smuggling it through
+  //      a query parameter would let a caller name any coldkey as the owner and
+  //      have this surface report on it as though the chain said so.
+  //   2. `neuron_daily` WITH `coldkey` -- the column exists on that table and
+  //      the emission-split read simply never selected it. That is the whole
+  //      join: which UIDs are the owner's.
+  //   3. `nominator_positions` for the stake behind the owner's validator
+  //      hotkeys, pinned to the newest captured_at so a half-written pass
+  //      cannot mix two snapshots into one fraction.
+  //
+  // A missing ownership row yields owner_coldkey null and every owner field
+  // null -- not zero. "We do not know who owns this" and "the owner runs
+  // nothing" are different facts and only one of them is an answer.
+  const ownerCaptureMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/owner-capture$/,
+  );
+  if (ownerCaptureMatch) {
+    return async (sql) => {
+      const netuid = Number(ownerCaptureMatch[1]);
+      const cutoff = windowCutoffDate(
+        url,
+        SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+        DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+      );
+      const ownerRows = await sql<{
+        owner_coldkey: SubnetOwnership["owner_coldkey"];
+      }>`
+        SELECT owner_coldkey FROM subnet_ownership
+        WHERE netuid = ${netuid}
+        ORDER BY captured_at DESC LIMIT 1`;
+      const ownerColdkey = ownerRows[0]?.owner_coldkey ?? null;
+
+      const rows = await sql<{
+        snapshot_date: NeuronDaily["snapshot_date"];
+        uid: NeuronDaily["uid"];
+        hotkey: NeuronDaily["hotkey"];
+        coldkey: NeuronDaily["coldkey"];
+        validator_permit: NeuronDaily["validator_permit"];
+        emission_tao: NeuronDaily["emission_tao"];
+        take: NeuronDaily["take"];
+        alpha_out_emission: SubnetSnapshots["alpha_out_emission"];
+      }>`
+        SELECT nd.snapshot_date, nd.uid, nd.hotkey, nd.coldkey,
+               nd.validator_permit, nd.emission_tao, nd.take,
+               ss.alpha_out_emission
+        FROM neuron_daily nd
+        LEFT JOIN subnet_snapshots ss
+          ON ss.netuid = nd.netuid AND ss.snapshot_date = nd.snapshot_date
+        WHERE nd.netuid = ${netuid} AND nd.snapshot_date >= ${cutoff}
+        ORDER BY nd.snapshot_date DESC, nd.uid ASC
+        LIMIT ${OWNER_CAPTURE_HISTORY_ROW_CAP}`;
+
+      // Only meaningful when we know whose UIDs to look behind, so it is
+      // skipped entirely rather than read and discarded.
+      const positions = ownerColdkey
+        ? await sql<{
+            coldkey: NominatorPositions["coldkey"];
+            hotkey: NominatorPositions["hotkey"];
+            share_fraction: NominatorPositions["share_fraction"];
+          }>`
+        SELECT np.coldkey, np.hotkey, np.share_fraction
+        FROM nominator_positions np
+        WHERE np.netuid = ${netuid}
+          AND np.captured_at = (
+            SELECT MAX(captured_at) FROM nominator_positions
+            WHERE netuid = ${netuid}
+          )`
+        : [];
+
+      return json(
+        buildSubnetOwnerCapture(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+            DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= OWNER_CAPTURE_HISTORY_ROW_CAP,
+          ownerColdkey,
+          positions,
         }),
       );
     };
