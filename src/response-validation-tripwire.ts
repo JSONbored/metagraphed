@@ -149,8 +149,18 @@ function asSentOverTheWire(payload: unknown): unknown {
  *
  * Resolved by walking the path into the payload rather than matching on the
  * issue's message, because a message is prose and this is a gate.
+ *
+ * EXPORTED for its own test. The mid-path guard below cannot be reached
+ * through a real Zod issue -- Zod reports at the level that failed and never
+ * emits a path descending THROUGH a scalar -- so the only way to prove it
+ * fires is to hand it such a path directly.
+ *
+ * Testing it beats suppressing it twice over: a coverage-suppression comment
+ * is counted by codecov/patch on a changed line anyway, and the guard is the
+ * one place this function could forgive a real drift, which is exactly what
+ * it must never do.
  */
-function isProjectedAway(
+export function isProjectedAway(
   payload: unknown,
   path: readonly PropertyKey[],
 ): boolean {
