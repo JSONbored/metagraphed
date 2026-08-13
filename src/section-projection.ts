@@ -22,14 +22,13 @@
 // that is not smaller, it is anonymous. A caller asking for `economics` wants a
 // smaller answer, not an unattributable one.
 
-/** Envelope keys every projection keeps, whatever was asked for. */
-export const ALWAYS_KEPT_SECTIONS: readonly string[] = [
-  "schema_version",
-  "contract_version",
-  "generated_at",
-  "operational_observed_at",
-  "health_source",
-];
+// The envelope list itself lives with the schemas, next to the artifact keys
+// it is defined against, and is re-exported here so the projection and the
+// published parameter description cannot name different keys (they used to:
+// this was a hand-written copy, and `sectionsSchema` spelled the same five
+// names out a third time in its prose).
+import { ENVELOPE_SECTIONS } from "../schemas-src/artifact-sections.ts";
+export { ENVELOPE_SECTIONS };
 
 export interface SectionProjection {
   /** The requested section names, in the order given, deduplicated. */
@@ -84,7 +83,7 @@ export function projectSections(
   data: Record<string, unknown>,
   sections: readonly string[],
 ): Record<string, unknown> {
-  const keep = new Set([...ALWAYS_KEPT_SECTIONS, ...sections]);
+  const keep = new Set([...ENVELOPE_SECTIONS, ...sections]);
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (keep.has(key)) out[key] = value;

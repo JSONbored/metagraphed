@@ -23,6 +23,7 @@ import {
 } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
+import { sectionsOf } from "../artifact-sections.ts";
 import {
   BittensorNetworkSchema,
   CoverageLevelSchema,
@@ -762,3 +763,9 @@ export const SubnetDetailArtifactSchema = ArtifactBaseSchema.extend({
   verified_surfaces: z.array(SurfaceSchema).optional(),
 });
 export type SubnetDetailArtifact = z.infer<typeof SubnetDetailArtifactSchema>;
+
+/**
+ * What `?sections=` accepts on the detail route -- read off the document above
+ * rather than restated, so the route cannot offer a card the artifact lacks.
+ */
+export const SUBNET_DETAIL_SECTIONS = sectionsOf(SubnetDetailArtifactSchema);

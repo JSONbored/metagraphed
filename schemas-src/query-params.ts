@@ -22,6 +22,7 @@
 // import sites keep working unchanged.
 import { z } from "zod";
 import { DAY_PATTERN, MAX_OFFSET } from "../workers/request-params.ts";
+import { ENVELOPE_SECTIONS } from "./artifact-sections.ts";
 
 /**
  * A subnet id. Bounded because it genuinely is: `netuid` is a u16 on chain, and
@@ -873,24 +874,35 @@ export const uidSchema = () =>
  * the caller asked for, and a 200 that omits what was requested is worse than
  * a 400 that says why.
  */
-export const sectionsSchema = (allowed: readonly [string, ...string[]]) => {
+export const sectionsSchema = (
+  allowed: readonly [string, ...string[]],
+  example: readonly [string, ...string[]],
+) => {
+  // The vocabulary is derived from the document's schema, so it arrives in the
+  // schema's declaration order -- which puts inherited base keys like `notes`
+  // first and would make `?sections=notes` the published example. The example
+  // is therefore chosen for what it teaches, and checked against the derived
+  // vocabulary so it cannot outlive the sections it names: drop `economics`
+  // from the artifact and this throws at module load rather than shipping a
+  // documented example the route now rejects.
+  const unknown = example.filter((name) => !allowed.includes(name));
+  if (unknown.length > 0) {
+    throw new Error(
+      `sectionsSchema: example names ${unknown.join(", ")}, which the document ` +
+        `does not declare. Allowed: ${allowed.join(", ")}`,
+    );
+  }
   const alternation = `(?:${allowed.join("|")})`;
-  // `slice(0, 2)` rather than a `allowed[1] ? ... : ...` ternary: every
-  // vocabulary this takes is a fixed list of 7+ names, so the one-element arm
-  // is a branch nothing can reach -- and an unreachable branch is a partial
-  // that no test can honestly close.
-  const example = allowed.slice(0, 2).join(",");
   return z
     .string()
     .regex(new RegExp(`^${alternation}(?:,${alternation})*$`))
     .describe(
-      `Comma-separated top-level sections to return, e.g. \`${example}\`. ` +
+      `Comma-separated top-level sections to return, e.g. \`${example.join(",")}\`. ` +
         `One of: ${allowed.join(", ")}. Selecting sections never removes the ` +
-        `response envelope (schema_version, contract_version, generated_at, ` +
-        `operational_observed_at, health_source) -- a smaller document still has ` +
-        `to say what it is. An unknown name is rejected rather than ignored. ` +
-        `NOT the same parameter as \`fields\`, which projects columns out of the ` +
-        `rows of a list.`,
+        `response envelope (${ENVELOPE_SECTIONS.join(", ")}) -- a smaller ` +
+        `document still has to say what it is. An unknown name is rejected ` +
+        `rather than ignored. NOT the same parameter as \`fields\`, which ` +
+        `projects columns out of the rows of a list.`,
     )
-    .meta({ examples: [allowed[0], example] });
+    .meta({ examples: [example[0], example.join(",")] });
 };

@@ -19,6 +19,7 @@
 // neither declared in the hand-edited schema -- see SchemaIndexArtifactSchema.
 import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
+import { sectionsOf } from "../artifact-sections.ts";
 import { SubnetProfileSchema } from "./subnet-profile.ts";
 import {
   CandidateSurfaceSchema,
@@ -60,6 +61,14 @@ export const SubnetProfileArtifactSchema = ArtifactBaseSchema.extend({
   gaps: GapsSchema,
 });
 export type SubnetProfileArtifact = z.infer<typeof SubnetProfileArtifactSchema>;
+
+/**
+ * What `?sections=` accepts on the profile route. Derived, and deliberately
+ * NOT shared with the detail route: this document has `profile` and no
+ * `economics`/`candidates`/`verified_surfaces`, so one common vocabulary would
+ * let a caller ask here for a card that can never come back.
+ */
+export const SUBNET_PROFILE_SECTIONS = sectionsOf(SubnetProfileArtifactSchema);
 
 /**
  * The captured OpenAPI snapshot's own metadata -- ONE declaration (#10790).

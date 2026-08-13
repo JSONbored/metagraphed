@@ -56,7 +56,8 @@
 // worth guessing now. The gate compares `properties`, so this does not affect
 // what 3/5 publishes either way.
 import { z } from "zod";
-import { QUERY_ENUMS } from "./query-enums.ts";
+import { SUBNET_DETAIL_SECTIONS } from "./routes/subnet-detail.ts";
+import { SUBNET_PROFILE_SECTIONS } from "./routes/subnet-profiles.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
@@ -408,10 +409,16 @@ export const ROUTE_QUERY_SCHEMAS = {
   // its published description says so. One name with two units of selection
   // would give a caller a different KIND of answer with nothing telling them.
   "/api/v1/subnets/{netuid}": z.object({
-    sections: sectionsSchema(QUERY_ENUMS.subnetDetailSection).optional(),
+    sections: sectionsSchema(SUBNET_DETAIL_SECTIONS, [
+      "subnet",
+      "economics",
+    ]).optional(),
   }),
   "/api/v1/subnets/{netuid}/profile": z.object({
-    sections: sectionsSchema(QUERY_ENUMS.subnetProfileSection).optional(),
+    sections: sectionsSchema(SUBNET_PROFILE_SECTIONS, [
+      "subnet",
+      "profile",
+    ]).optional(),
   }),
   "/api/v1/search/semantic": z.object({
     // Both were wrong before #10075: `q` published no ceiling though the

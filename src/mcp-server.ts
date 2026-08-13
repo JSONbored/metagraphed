@@ -340,6 +340,8 @@ import {
   QUERY_ENUMS,
 } from "./contracts.ts";
 import { projectToolSections } from "./section-projection.ts";
+import { SUBNET_DETAIL_SECTIONS } from "../schemas-src/routes/subnet-detail.ts";
+import { SUBNET_PROFILE_SECTIONS } from "../schemas-src/routes/subnet-profiles.ts";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
   GET_ECONOMICS_MCP_TOOL,
@@ -5760,11 +5762,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // exact leak tests/network-routing.test.ts guards on the REST side).
       // Testnet carries its own chain economics inside `subnet.economics`.
       if (network && network !== "finney")
-        return projectToolSections(
-          detail,
-          args,
-          QUERY_ENUMS.subnetDetailSection,
-        );
+        return projectToolSections(detail, args, SUBNET_DETAIL_SECTIONS);
       const { economics } = await loadSubnetEconomics(ctx, netuid);
       // Projected LAST, after the economics overlay, for the same reason the
       // REST seam does: `economics` is itself a selectable section, so
@@ -5773,7 +5771,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       return projectToolSections(
         economics ? { ...detail, economics } : detail,
         args,
-        QUERY_ENUMS.subnetDetailSection,
+        SUBNET_DETAIL_SECTIONS,
       );
     },
   },
@@ -8311,7 +8309,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             readArtifact: loadArtifactData,
           }),
           args,
-          QUERY_ENUMS.subnetProfileSection,
+          SUBNET_PROFILE_SECTIONS,
         );
       } catch (rawErr) {
         const tagged = taggedLoaderError(rawErr, "profilesMcp");

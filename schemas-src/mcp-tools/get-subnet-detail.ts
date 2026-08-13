@@ -16,9 +16,11 @@
 import { z } from "zod";
 import { netuidSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
-import { QUERY_ENUMS } from "../query-enums.ts";
 import { sectionsSchema } from "../query-params.ts";
-import { SubnetDetailArtifactSchema } from "../routes/subnet-detail.ts";
+import {
+  SubnetDetailArtifactSchema,
+  SUBNET_DETAIL_SECTIONS,
+} from "../routes/subnet-detail.ts";
 
 export const GetSubnetDetailInputSchema = z
   .object({
@@ -33,7 +35,10 @@ export const GetSubnetDetailInputSchema = z
     //
     // Worth more here than on REST: a REST caller pays the unprojected 272,825
     // B in bandwidth, an agent pays it in context window.
-    sections: sectionsSchema(QUERY_ENUMS.subnetDetailSection).optional(),
+    sections: sectionsSchema(SUBNET_DETAIL_SECTIONS, [
+      "subnet",
+      "economics",
+    ]).optional(),
   })
   .strict();
 export type GetSubnetDetailInput = z.infer<typeof GetSubnetDetailInputSchema>;

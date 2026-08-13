@@ -181,19 +181,20 @@ import {
   parseSectionsParam,
   projectSections,
 } from "../src/section-projection.ts";
-import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
+import { SUBNET_DETAIL_SECTIONS } from "../schemas-src/routes/subnet-detail.ts";
+import { SUBNET_PROFILE_SECTIONS } from "../schemas-src/routes/subnet-profiles.ts";
 
 /**
  * Route id -> the sections that route serves (#10600).
  *
  * Keyed on the matched route id rather than the path so the lookup cannot drift
- * from the router, and derived from QUERY_ENUMS rather than restated -- the same
- * vocabulary the published schema validates against, so the edge and the handler
- * cannot disagree about what `sections=economics` means.
+ * from the router, and read off each artifact's own schema rather than restated
+ * -- the same vocabulary the published parameter validates against, so the edge
+ * and the handler cannot disagree about what `sections=economics` means.
  */
 const SECTION_VOCABULARIES: Record<string, readonly string[] | undefined> = {
-  "subnet-detail": QUERY_ENUMS.subnetDetailSection,
-  "subnet-profile": QUERY_ENUMS.subnetProfileSection,
+  "subnet-detail": SUBNET_DETAIL_SECTIONS,
+  "subnet-profile": SUBNET_PROFILE_SECTIONS,
 };
 import { csvRequested, csvResponse } from "./csv.ts";
 import {
