@@ -20,6 +20,7 @@
 // the hand-edited schema was stale from before diffSubnets() gained name/slug.
 // Modeled here against the real (object) shape.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import { CoverageArtifactSchema } from "./coverage.ts";
 import { API_ROUTE_METHODS } from "../../src/contracts.ts";
 import {
@@ -100,7 +101,7 @@ const FeedContractEntrySchema = z
     method: z.literal("GET"),
     path: z.string().regex(/^\/api\/v1\/feeds\//),
     description: z.string(),
-    formats: z.array(z.enum(["rss", "atom", "json"])),
+    formats: z.array(z.enum(QUERY_ENUMS.feedFormat)),
     content_types: z
       .array(z.string())
       .describe(
@@ -155,7 +156,7 @@ const ApiRouteSchema = z
 const ResponseEnvelopeContractSchema = z
   .object({
     error_schema_ref: z.literal("#/components/schemas/ErrorEnvelope"),
-    fields: z.array(z.enum(["ok", "data", "meta", "error"])),
+    fields: z.array(z.enum(QUERY_ENUMS.responseEnvelopeField)),
     notes: z.string(),
     schema_version: z.literal(1),
     success_schema_ref: z.literal("#/components/schemas/SuccessEnvelope"),

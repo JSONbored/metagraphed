@@ -6,11 +6,12 @@
 // ABSENT rather than null -- an absent field says "this kind has no such thing",
 // where a null would say "it has one and we do not know it".
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 
 /** Shared by every kind. `predates_capture` is the honesty flag: true means the
  * row is the FIRST OBSERVATION of a value, not a change to it. */
 const base = {
-  kind: z.enum(["param", "subnet", "flow"]),
+  kind: z.enum(QUERY_ENUMS.emissionChangeKind),
   observed_at: z.iso.datetime(),
   block_number: z.int().nullable(),
   predates_capture: z.boolean(),

@@ -3,6 +3,7 @@ import {
   finiteCellOrNull,
   numberOrZero,
 } from "./lib/rao.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 // Net stake flow (capital in vs out) for one subnet over a recent window: how much
 // TAO entered (StakeAdded) vs left (StakeRemoved), summed from the first-party
 // account_events stream. Pure shaping (buildStakeFlow); the Worker / data-api
@@ -38,7 +39,7 @@ export const DEFAULT_STAKE_FLOW_WINDOW = "30d";
 
 // direction narrows the stake-flow aggregate to one side: in = StakeAdded only,
 // out = StakeRemoved only, all (or omitted) = both kinds summed as today.
-export const STAKE_FLOW_DIRECTIONS = ["all", "in", "out"];
+export const STAKE_FLOW_DIRECTIONS = QUERY_ENUMS.stakeFlowDirection;
 export const DEFAULT_STAKE_FLOW_DIRECTION = "all";
 
 // 1 TAO = 1e9 rao. Summing many REAL amount_tao values accumulates IEEE-754 noise

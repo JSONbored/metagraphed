@@ -34,6 +34,7 @@ import {
   SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
 } from "./route-limits.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 
 export { SURFACE_HISTORY_LIMIT_DEFAULT, SURFACE_HISTORY_LIMIT_MAX };
 
@@ -48,7 +49,7 @@ export const SURFACE_HISTORY_TABLE = "surface_history";
 
 /** The mutations the writer records. `delete` is the one that matters most to a
  * consumer: it is the only evidence a surface ever existed. */
-export const SURFACE_HISTORY_ACTIONS = ["insert", "update", "delete"] as const;
+export const SURFACE_HISTORY_ACTIONS = QUERY_ENUMS.surfaceHistoryAction;
 
 /**
  * One subnet's trail, newest first. Null when the read fails.

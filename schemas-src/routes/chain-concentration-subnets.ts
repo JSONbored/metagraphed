@@ -8,23 +8,12 @@
 // `row.gini` is the whole point; `row.emission.gini` would need a path syntax
 // no other list surface here has.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 
-export const CONCENTRATION_LENSES = [
-  "emission",
-  "stake",
-  "entity_emission",
-  "entity_stake",
-  "validator_stake",
-] as const;
-
-export const CONCENTRATION_RANKING_SORTS = [
-  "nakamoto_coefficient",
-  "gini",
-  "holders",
-  "top_1pct_share",
-  "total",
-  "netuid",
-] as const;
+// Derived from the vocabulary owner rather than restated (#10987): this file
+// and src/concentration.ts each declared both lists, and nothing compared them.
+export const CONCENTRATION_LENSES = QUERY_ENUMS.concentrationLens;
+export const CONCENTRATION_RANKING_SORTS = QUERY_ENUMS.concentrationRankingSort;
 
 // Every metric is nullable together: a subnet whose chosen lens has no positive
 // distribution carries nulls across the board and says so via `unmeasured`,

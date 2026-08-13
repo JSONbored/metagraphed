@@ -17,14 +17,13 @@
 // epic's established convention. AccountStakeFlowArtifact needed no fix at
 // all (diff:openapi-zod reports PASS after cosmetic normalization).
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
-/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
-export const ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES = [
-  "all",
-  "in",
-  "out",
-] as const;
+/** Derived from the vocabulary owner (#10987): the same three directions as
+ * the stake-flow routes, declared once. */
+export const ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES =
+  QUERY_ENUMS.stakeFlowDirection;
 
 export const WINDOW_ENUM = ["7d", "30d", "90d"] as const;
 

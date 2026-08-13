@@ -49,6 +49,36 @@ export const QUERY_ENUMS = {
     "wrong-chain",
   ],
   healthStatus: ["ok", "degraded", "failed", "unknown"],
+  // Hoisted from twin declarations found when the vocabulary gate learned to
+  // read the serving tree (#10987): each of these was declared once in a
+  // schemas-src file and again in the src/ module that enforces it, with
+  // nothing detecting a divergence. The owner is here; both sides derive.
+  concentrationLens: [
+    "emission",
+    "stake",
+    "entity_emission",
+    "entity_stake",
+    "validator_stake",
+  ],
+  concentrationRankingSort: [
+    "nakamoto_coefficient",
+    "gini",
+    "holders",
+    "top_1pct_share",
+    "total",
+    "netuid",
+  ],
+  emissionChangeKind: ["param", "subnet", "flow"],
+  feedFormat: ["rss", "atom", "json"],
+  revenueShape: ["flat-array", "keyed-map", "scalar"],
+  searchDocumentType: ["subnet", "surface", "provider"],
+  // The REST envelope's top-level keys. Not a query vocabulary, but owned in
+  // this zero-import file because both declarers need it and one of them
+  // (contracts.ts) cannot afford a schema import: the data-api Worker sits at
+  // the startup CPU limit, and this module is the one place guaranteed free.
+  responseEnvelopeField: ["ok", "data", "meta", "error"],
+  stakeFlowDirection: ["all", "in", "out"],
+  surfaceHistoryAction: ["insert", "update", "delete"],
   providerAuthority: [
     "community",
     "official",

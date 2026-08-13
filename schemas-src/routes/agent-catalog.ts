@@ -29,6 +29,7 @@
 //   callable_service_count} despite additionalProperties:true -- tightened
 //   to .strict() here.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import {
   ArtifactBaseSchema,
   ContentHashSchema,
@@ -40,19 +41,8 @@ import { AuthSchema, LIVE_HEALTH_OVERLAY } from "./subnet-detail.ts";
 
 export const AgentReadinessStatusSchema = z
   .object({
-    status: z.enum([
-      "callable",
-      "base-layer",
-      "candidate",
-      "needs-evidence",
-      "blocked",
-    ]),
-    blocker_level: z.enum([
-      "none",
-      "hard-blocked",
-      "needs-review",
-      "missing-data",
-    ]),
+    status: z.enum(QUERY_ENUMS.agentReadinessStatus),
+    blocker_level: z.enum(QUERY_ENUMS.agentBlockerLevel),
     blockers: z.array(AgentReadinessBlockerSchema),
     missing_fields: z.array(z.string()),
     // Only ever set by the live overlay (src/health-serving.ts's

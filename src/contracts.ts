@@ -5079,7 +5079,7 @@ function feedRoute(
     description,
     cache: "medium",
     tags: ["feeds"],
-    formats: ["rss", "atom", "json"],
+    formats: QUERY_ENUMS.feedFormat,
     path_parameters: extra.pathParameters ?? [],
     query_parameters: [
       ...FEED_COMMON_PARAMETERS,
@@ -5608,7 +5608,7 @@ export function buildApiIndexArtifact(
     type_definitions_url: TYPE_DEFINITIONS_PATH,
     response_envelope: {
       schema_version: SCHEMA_VERSION,
-      fields: ["ok", "data", "meta", "error"],
+      fields: QUERY_ENUMS.responseEnvelopeField,
       success_schema_ref: "#/components/schemas/SuccessEnvelope",
       error_schema_ref: "#/components/schemas/ErrorEnvelope",
       notes:

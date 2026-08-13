@@ -813,6 +813,7 @@ import {
   type RevenueStoreDb,
 } from "../src/revenue-observations.ts";
 import {
+  EMISSION_CHANGES_TABLES,
   REVENUE_FEED_TABLES,
   REVENUE_OBSERVATION_TABLES,
 } from "../src/read-store-tables.ts";
@@ -4913,12 +4914,13 @@ async function emissionGateSyncRows(
 /** Every table this lane writes. All three or none: one sync derives all three
  * change sets from ONE observation and writes them in ONE batch, so a family
  * split across stores would put a param change and the enabled change it was
- * derived alongside into different databases. */
-const EMISSION_GATE_TABLES = [
-  "emission_gate_param_history",
-  "subnet_emission_enabled_history",
-  "emission_flow_watch",
-] as const;
+ * derived alongside into different databases.
+ *
+ * THE READER'S LIST, not a copy of it (#10987): loadEmissionChanges UNIONs
+ * exactly these tables, and a table written here but missing there would sync
+ * green and never be served. Deriving the write set from the read set makes
+ * that drift unrepresentable. */
+const EMISSION_GATE_TABLES = EMISSION_CHANGES_TABLES;
 
 async function handleEmissionGateSync(
   request: Request,

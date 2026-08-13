@@ -559,11 +559,7 @@ import {
   buildAccountStakeFlow,
 } from "./account-stake-flow.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
-import {
-  DEFAULT_STAKE_FLOW_DIRECTION,
-  STAKE_FLOW_DIRECTIONS,
-  buildStakeFlow,
-} from "./stake-flow.ts";
+import { DEFAULT_STAKE_FLOW_DIRECTION, buildStakeFlow } from "./stake-flow.ts";
 import { loadChainRegistrationsFromArtifact } from "./chain-registrations-artifact.ts";
 import {
   loadAccountDeregistrationsFromArtifact,
@@ -3783,13 +3779,13 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
+    // No direction guard here: parseArgumentsAtDispatch already rejected a
+    // value outside the route's published enum before this resolver ran
+    // (#10065's rule -- a resolver must not re-validate its own params), and
+    // the guard this replaces was dead code wearing a different error message
+    // than the one a caller actually gets. tests/graphql.test.ts pins the
+    // dispatch-level rejection.
     const directionParam = direction ?? DEFAULT_STAKE_FLOW_DIRECTION;
-    if (!STAKE_FLOW_DIRECTIONS.includes(directionParam)) {
-      throw new GraphQLError(
-        `"${directionParam}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const params = new URLSearchParams();
     params.set("window", windowParam);
     params.set("direction", directionParam);
@@ -6537,13 +6533,10 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
+    // No direction guard here -- same reasoning as subnet_stake_flow above:
+    // the dispatch validator rejects against the published enum first (#10065),
+    // and the copy this replaces was unreachable.
     const requestedDirection = direction ?? DEFAULT_STAKE_FLOW_DIRECTION;
-    if (!STAKE_FLOW_DIRECTIONS.includes(requestedDirection)) {
-      throw new GraphQLError(
-        `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("direction", requestedDirection);

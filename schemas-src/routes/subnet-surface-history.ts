@@ -1,6 +1,7 @@
 // GET /api/v1/subnets/{netuid}/surface-history (#9612): one subnet's surface
 // audit trail. Modeled from src/surface-history.ts's buildSurfaceHistory().
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 
 export const SurfaceHistoryChangeSchema = z
   .object({
@@ -14,7 +15,7 @@ export const SurfaceHistoryChangeSchema = z
       ),
     /** A DELETE entry is the only evidence a surface ever existed. */
     action: z
-      .enum(["insert", "update", "delete"])
+      .enum(QUERY_ENUMS.surfaceHistoryAction)
       .nullable()
       .describe(
         "insert, update or delete. A delete is the only evidence a surface ever existed.",

@@ -618,7 +618,7 @@ export const SurfaceRevenueSchema = z
       description:
         "The envelope key holding the payload `shape` describes, for a source that wraps its rows (a pagination envelope's `items`). Absent means the payload IS the rows.",
     }),
-    shape: z.enum(["flat-array", "keyed-map", "scalar"]).optional().meta({
+    shape: z.enum(QUERY_ENUMS.revenueShape).optional().meta({
       description:
         "How the payload is arranged, so an extractor does not have to guess. flat-array: a list of records, fields.date/fields.amount naming keys within one. keyed-map: nested {period: {subkey: amount}}, where the period IS the key and there are no field names to point at. scalar: one object carrying a single total.",
     }),

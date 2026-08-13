@@ -1,4 +1,5 @@
 // Per-route `limit` page-size ceilings, in one place (#9127).
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 //
 // Each of these numbers used to be stated three times: the constant the handler
 // enforces, the `maximum` the contract publishes, and the "(default N, max M)"
@@ -355,7 +356,7 @@ export const SEMANTIC_LIMIT_DEFAULT = 10;
  * both sides already read (#9127). ai-search.ts re-exports it, so the handler
  * and the published enum cannot drift.
  */
-export const SEMANTIC_TYPES = ["subnet", "surface", "provider"] as const;
+export const SEMANTIC_TYPES = QUERY_ENUMS.searchDocumentType;
 
 export const SEMANTIC_LIMIT_MAX = 20;
 /** Rejected above this with a 400, not truncated -- an embedded query that was
