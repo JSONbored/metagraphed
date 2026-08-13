@@ -30,7 +30,7 @@
   "social": {
     "x": "https://x.com/cacheon_ai"
   },
-  "source_repo": "https://github.com/latent-to/cacheon-old",
+  "source_repo": "https://github.com/latent-to/cacheon",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -86,7 +86,7 @@
       "id": "sn-14-cacheon-source-repo",
       "kind": "source-repo",
       "name": "Cacheon source repository",
-      "notes": "Public Cacheon source repository. The team renamed and archived the repo from latent-to/cacheon to latent-to/cacheon-old (2026-07-07); the old URL still 301-redirects here, but this is the canonical, non-redirecting location. Content unchanged and still matches the live on-chain SN14 description -- confirmed this is NOT a subnet rebrand: the org's separate 'optima' repo is an unrelated testnet-only project (mentions testnet netuid 307), and the live on-chain native_name for SN14 is still 'Cacheon'.",
+      "notes": "Official SN14 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13. Replaces latent-to/cacheon-old, which is archived.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -96,10 +96,10 @@
       "provider": "cacheon",
       "public_safe": true,
       "source_urls": [
-        "https://github.com/latent-to/cacheon-old",
-        "https://cacheon.ai/"
+        "https://cacheon.ai/",
+        "https://github.com/latent-to/cacheon"
       ],
-      "url": "https://github.com/latent-to/cacheon-old"
+      "url": "https://github.com/latent-to/cacheon"
     },
     {
       "auth_required": false,

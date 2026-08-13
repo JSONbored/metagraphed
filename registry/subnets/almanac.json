@@ -22,7 +22,7 @@
   "notes": "First maintainer-reviewed pass for SN41 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 2 pre-existing surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Replaced the hardcoded single-market snapshot surface (GET /api/markets/events/202857, pinned to a specific \"NFL Champion 2027\" event with no stable canonical value -- it will inevitably go stale once that market resolves around Feb 2027) with GET /api/markets, a genuine no-parameter, evergreen listing of all markets on the same host (same reasoning as #5914/#5934).",
   "schema_version": 1,
   "slug": "sn-41",
-  "source_repo": "https://github.com/sportstensor/sn41",
+  "source_repo": "https://github.com/corvxai/almanac",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -54,7 +54,7 @@
       "id": "sn-41-almanac-source-repo",
       "kind": "source-repo",
       "name": "Almanac source repository",
-      "notes": "Official Almanac (SN41) source repository, in the sportstensor GitHub org.",
+      "notes": "Official SN41 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; the README registers against netuid 41. Replaces sportstensor/sn41, archived 2026-07-20.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -63,8 +63,11 @@
       },
       "provider": "almanac",
       "public_safe": true,
-      "source_urls": ["https://almanac.market/"],
-      "url": "https://github.com/sportstensor/sn41"
+      "source_urls": [
+        "https://almanac.market/",
+        "https://github.com/corvxai/almanac"
+      ],
+      "url": "https://github.com/corvxai/almanac"
     },
     {
       "auth_required": false,

@@ -44,7 +44,7 @@
   "social": {
     "x": "https://x.com/bitstarterai"
   },
-  "source_repo": "https://github.com/AlphaCoreBittensor/alphacore",
+  "source_repo": "https://github.com/TensorLink-AI/cascade",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -75,8 +75,8 @@
       "authority": "official",
       "id": "sn-91-alphacore-source",
       "kind": "source-repo",
-      "name": "AlphaCore source repository",
-      "notes": "Public AlphaCore repository linked from the live Bitstarter project page for SN91.",
+      "name": "Cascade source repository",
+      "notes": "Official SN91 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651, where the subnet also now names itself cascade, and verified live 2026-08-13; chain.toml pins netuid 91. Replaces AlphaCoreBittensor/alphacore, which describes a retired mechanism.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -87,9 +87,9 @@
       "public_safe": true,
       "source_urls": [
         "https://bitstarter.ai/",
-        "https://github.com/AlphaCoreBittensor/alphacore"
+        "https://github.com/TensorLink-AI/cascade"
       ],
-      "url": "https://github.com/AlphaCoreBittensor/alphacore"
+      "url": "https://github.com/TensorLink-AI/cascade"
     },
     {
       "auth_required": false,

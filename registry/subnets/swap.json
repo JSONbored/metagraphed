@@ -36,7 +36,7 @@
   "notes": "Reviewed overlay for SN10 Swap using the TaoFi pool page, TaoFi docs, and Swap source repository. Common www.taofi.com API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces. As of this pass, the entire www.taofi.com domain (the registered website, including /pool) returns HTTP 402 with header x-vercel-error: DEPLOYMENT_DISABLED -- the team's Vercel deployment appears disabled (likely a billing lapse, not a code issue). docs.taofi.com is unaffected (separate host/platform, still live). Not a registry misconfiguration -- the website surface is correctly probed and the live health tracker will reflect this outage; left as-is rather than disabling the probe, since this looks recoverable rather than permanently broken.",
   "schema_version": 1,
   "slug": "sn-10",
-  "source_repo": "https://github.com/Swap-Subnet/swap-subnet",
+  "source_repo": "https://github.com/Pareton-ai/pareton",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -88,8 +88,8 @@
       "authority": "official",
       "id": "sn-10-swap-source",
       "kind": "source-repo",
-      "name": "Swap source repository",
-      "notes": "Official Swap subnet source repository.",
+      "name": "Pareton source repository",
+      "notes": "Official SN10 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; the repository description reads \"Pareton (SN10): inference optimization campaigns on Bittensor\". Replaces Swap-Subnet/swap-subnet, last pushed 2025-11-05.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -98,8 +98,8 @@
       },
       "provider": "taofi",
       "public_safe": true,
-      "source_urls": ["https://github.com/Swap-Subnet/swap-subnet"],
-      "url": "https://github.com/Swap-Subnet/swap-subnet"
+      "source_urls": ["https://github.com/Pareton-ai/pareton"],
+      "url": "https://github.com/Pareton-ai/pareton"
     },
     {
       "auth_required": false,

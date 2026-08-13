@@ -27,7 +27,7 @@
   "social": {
     "x": "https://x.com/sundae_bar_"
   },
-  "source_repo": "https://github.com/sundae-bar/bittensor-subnet",
+  "source_repo": "https://github.com/sundae-bar/sb-validator",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -60,7 +60,7 @@
       "id": "sn-121-sundae-bar-source",
       "kind": "source-repo",
       "name": "Sundae Bar source repository",
-      "notes": "Official Sundae Bar source repository.",
+      "notes": "Official SN121 source repository, verified live 2026-08-13: the README describes the secure validator client for the sundae_bar SN121 subnet. Replaces sundae-bar/bittensor-subnet, last pushed 2025-12-08. The chain identity still declares the older repository, so this registration is ahead of SubnetIdentitiesV3.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -69,8 +69,8 @@
       },
       "provider": "sundae-bar",
       "public_safe": true,
-      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
-      "url": "https://github.com/sundae-bar/bittensor-subnet"
+      "source_urls": ["https://github.com/sundae-bar/sb-validator"],
+      "url": "https://github.com/sundae-bar/sb-validator"
     },
     {
       "auth_required": false,

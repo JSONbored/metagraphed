@@ -22,7 +22,7 @@
   "notes": "First maintainer review for SN120. Added website + source-repo surfaces, fixed 3 missing probe blocks. Diffed the 10-path OpenAPI schema for undiscovered public GET endpoints -- added 1 new surface (config); the API root (/) is declared no-auth but currently 500s.",
   "schema_version": 1,
   "slug": "sn-120",
-  "source_repo": "https://github.com/AffineFoundation/affine-cortex",
+  "source_repo": "https://github.com/AffineFoundation/affine",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -172,7 +172,7 @@
       "id": "sn-120-affine-source-repo",
       "kind": "source-repo",
       "name": "Affine source repository",
-      "notes": "Official SN120 Affine source repository -- verified live 2026-07-16.",
+      "notes": "Official SN120 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; the repository description names SN120. Replaces AffineFoundation/affine-cortex, which now returns 404.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -181,8 +181,8 @@
       },
       "provider": "affine",
       "public_safe": true,
-      "source_urls": ["https://github.com/AffineFoundation/affine-cortex"],
-      "url": "https://github.com/AffineFoundation/affine-cortex"
+      "source_urls": ["https://github.com/AffineFoundation/affine"],
+      "url": "https://github.com/AffineFoundation/affine"
     },
     {
       "auth_required": false,
