@@ -2013,11 +2013,102 @@ function scheduleUsageEvent(
   }
 }
 
+/**
+ * Staged response audit for the routes the in-path tripwire cannot reach
+ * (#10984). The entity handlers (per-UID metagraph, accounts, blocks,
+ * extrinsics, chain-*) assemble their envelopes outside handleApiRequest's
+ * generic seam, so METAGRAPH_VALIDATE_RESPONSES never sees them -- and
+ * turning enforcement on for bodies never validated anywhere is how #10897
+ * spent 26 hours serving 500s. This is the warn-first path the issue
+ * prescribes:
+ *
+ *   METAGRAPH_AUDIT_RESPONSES unset  -- off (the flag check is the only cost)
+ *   "warn"                           -- validate a CLONE under waitUntil and
+ *                                       log each drift fingerprint; the body
+ *                                       the caller gets is untouched
+ *   "enforce"                        -- validate in-path and substitute the
+ *                                       same refusal the generic seam serves
+ *
+ * Promotion is a flag flip, not a deploy of new logic: enforce reuses exactly
+ * the code warn exercised. The route's TEMPLATE comes from matchRoute (the
+ * #10985 lookup), so the resolver never sees a concrete path. A response the
+ * generic seam already validated gets re-parsed here only while the audit
+ * flag is set -- the staging cost, paid on purpose and only during staging.
+ *
+ * `projected` is passed when the request carried a fields/sections parameter:
+ * the handler-level projections (metagraph-neurons, emission-pipeline) never
+ * set meta.projection, so the URL is the only honest signal at this seam.
+ */
+// EXPORTED for its own tests: the drift arm needs a body no local route
+// serves (the entity stores are empty locally, and empty arrays validate), so
+// the suite hands it crafted responses directly.
+export async function auditResponse(
+  request: Request,
+  env: Env,
+  ctx: Ctx,
+  response: Response,
+): Promise<Response> {
+  const mode = env.METAGRAPH_AUDIT_RESPONSES as string | undefined;
+  if (mode !== "warn" && mode !== "enforce") return response;
+  if (response.status !== 200) return response;
+  if (!response.headers.get("content-type")?.includes("json")) return response;
+  const url = new URL(request.url);
+  const matched = matchRoute(url.pathname);
+  if (!matched?.artifactTemplate) return response;
+  const projected =
+    url.searchParams.has("fields") || url.searchParams.has("sections");
+  const run = async (body: unknown) => {
+    await validateResponseTripwire(
+      matched.id,
+      body,
+      matched.artifactTemplate,
+      projected,
+    );
+  };
+  if (mode === "warn") {
+    const clone = response.clone();
+    ctx.waitUntil?.(
+      (async () => {
+        try {
+          await run(await clone.json());
+        } catch (err) {
+          if (err instanceof ResponseSchemaDriftError) {
+            console.warn(
+              `[METAGRAPH_AUDIT_RESPONSES] ${matched.id} DRIFTED (warn):`,
+              JSON.stringify(err.detail).slice(0, 2000),
+            );
+          }
+        }
+      })(),
+    );
+    return response;
+  }
+  try {
+    await run(await response.clone().json());
+    return response;
+  } catch (err) {
+    if (err instanceof ResponseSchemaDriftError) {
+      console.error(
+        `[METAGRAPH_AUDIT_RESPONSES] ${matched.id} refused:`,
+        err.detail,
+      );
+      return errorResponse(
+        "response_schema_drift",
+        `The ${matched.id} response did not match its published schema and was refused rather than served.`,
+        500,
+        { artifact_path: matched.artifactPath },
+      );
+    }
+    return response;
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: Ctx) {
-    return withUsageTelemetry(request, env, ctx, () =>
+    const response = await withUsageTelemetry(request, env, ctx, () =>
       handleRequest(request, env, ctx),
     );
+    return auditResponse(request, env, ctx, response);
   },
   async scheduled(
     controller: ScheduledController,
