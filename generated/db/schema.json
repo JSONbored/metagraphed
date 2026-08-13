@@ -3198,6 +3198,78 @@
     "nullable": true
   },
   {
+    "table": "treasury_readings",
+    "column": "applies_to",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "treasury_readings",
+    "column": "declared_share",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "treasury_readings",
+    "column": "evidence_path",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "treasury_readings",
+    "column": "first_seen",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "treasury_readings",
+    "column": "found",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "treasury_readings",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "treasury_readings",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "treasury_readings",
+    "column": "read_at_sha",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "treasury_readings",
+    "column": "review_state",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "treasury_readings",
+    "column": "reviewed_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "treasury_readings",
+    "column": "source_url",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "treasury_readings",
+    "column": "treasury_address",
+    "udt": "text",
+    "nullable": true
+  },
+  {
     "table": "validator_nominator_counts",
     "column": "captured_at",
     "udt": "int8",
