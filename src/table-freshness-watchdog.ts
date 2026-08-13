@@ -117,22 +117,33 @@ export interface FreshnessExpectation {
 }
 
 /**
- * Every table in db/schema.sql, and what its freshness means.
+ * Every table this repo has committed to, and what its freshness means.
  *
  * Thresholds are set from MEASURED cadence (2026-08-07 sweep) with headroom,
  * not from what the producer claims. A threshold under one producer interval
  * alarms forever; one at ten times it never alarms at all.
  *
- * THE CENSUS IS db/schema.sql -- the snapshot of the live Neon schema -- and
- * was tests/fixtures/sqlite-schema until #10817. That directory is the FROZEN
- * D1-era migration set, kept as a test fixture; it names 49 tables, which were
- * exactly the 49 this map classified. So every Neon-era table added after the
- * D1 cutover was structurally invisible to the coverage test: not classified,
- * not exempted, and indistinguishable from healthy. Fourteen had accumulated,
- * including both halves of the ownership family and our own `self_health_*`.
+ * THE CENSUS IS db/schema.sql UNION migrations/neon -- the snapshot of the live
+ * Neon schema, plus every table a committed migration declares. It has been
+ * wrong in both directions:
  *
- * An exemption list is only worth anything if it can see what it exempts, so
- * the census has to come from the schema that actually exists.
+ *   Until #10817 it was tests/fixtures/sqlite-schema, the FROZEN D1-era
+ *   migration set. That names 49 tables, which were exactly the 49 this map
+ *   classified, so every Neon-era table added after the D1 cutover was
+ *   structurally invisible: not classified, not exempted, indistinguishable
+ *   from healthy. Fourteen had accumulated, including both halves of the
+ *   ownership family and our own `self_health_*`.
+ *
+ *   Until #11042 it was the live snapshot alone. That only learns of a table
+ *   AFTER its migration applies, so the PR adding one could neither classify it
+ *   (the snapshot has never heard of it) nor leave it unclassified (the drift
+ *   PR that follows carries the snapshot and fails on it) -- and in between,
+ *   the table was live, written, and watched by nothing. It happened to both
+ *   tables it could happen to.
+ *
+ * The migrations name a table from the commit that DECLARES it, which is where
+ * its classification belongs. An exemption list is only worth anything if it
+ * can see what it exempts.
  */
 export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   // --- live capture: minutes old in steady state -------------------------
