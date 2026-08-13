@@ -267,6 +267,11 @@ describe("REST extrinsic detail", () => {
     assert.equal(res.status, 200);
     // The hot tier DOES hold this hash in the stub, so it answers with the row.
     assert.equal((await json(res)).data.extrinsic.extrinsic_hash, XT_HASH);
+    // #11001: and because it came from the LIVE-FOLLOW window rather than the
+    // lakehouse, it is not settled — withChainDetailEdgeCache reads this header
+    // to decide what may sit at the edge for an hour, so a hot answer must not
+    // advertise itself as storable.
+    assert.equal(res.headers.get("x-metagraph-cache-profile"), "short");
   });
 });
 

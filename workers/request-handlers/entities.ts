@@ -7286,8 +7286,18 @@ export async function handleExtrinsic(
   // — a client must re-check both. withChainDetailEdgeCache reads this profile
   // to decide what may be stored at the edge, so getting it wrong here would
   // cache a moving answer, not merely mis-advertise one.
+  // ...and RESOLVED, not merely cold. `loadExtrinsicColdTier` returns the
+  // schema-stable payload for a confirmed absence rather than null, so
+  // `tier === "cold"` alone is true for "the lakehouse looked and this hash is
+  // not there" — which is exactly the answer that must NOT be pinned for an
+  // hour. A hash absent from the decoded range proves nothing (it may land, or
+  // sit outside it), which is the same reason this route keeps its
+  // `extrinsic: null` instead of 404ing. handleBlock draws the line in the same
+  // place with `data.block ? "static" : "short"`.
   const cacheProfile =
-    answer?.kind === "answer" && answer.tier === "cold" ? "static" : "short";
+    answer?.kind === "answer" && answer.tier === "cold" && data.extrinsic
+      ? "static"
+      : "short";
   return envelopeResponse(
     request,
     {
