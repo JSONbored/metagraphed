@@ -403,6 +403,27 @@ CREATE TABLE public.chain_detail_extrinsics (
 );
 
 --
+-- Name: compute_declarations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.compute_declarations (
+    netuid integer NOT NULL,
+    source_url text NOT NULL,
+    read_at_sha text NOT NULL,
+    observed_at bigint NOT NULL,
+    first_seen bigint NOT NULL,
+    found boolean NOT NULL,
+    spec_version text,
+    miner jsonb,
+    validator jsonb,
+    CONSTRAINT compute_declarations_finding_needs_a_stanza CHECK (((found = false) OR (miner IS NOT NULL) OR (validator IS NOT NULL))),
+    CONSTRAINT compute_declarations_first_seen_is_millis CHECK ((first_seen >= '1000000000000'::bigint)),
+    CONSTRAINT compute_declarations_nothing_found_declares_nothing CHECK (((found = true) OR ((miner IS NULL) AND (validator IS NULL)))),
+    CONSTRAINT compute_declarations_observed_at_is_millis CHECK ((observed_at >= '1000000000000'::bigint)),
+    CONSTRAINT compute_declarations_stanzas_are_objects CHECK ((((miner IS NULL) OR (jsonb_typeof(miner) = 'object'::text)) AND ((validator IS NULL) OR (jsonb_typeof(validator) = 'object'::text))))
+);
+
+--
 -- Name: emission_flow_watch; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1452,6 +1473,13 @@ ALTER TABLE ONLY public.chain_detail_extrinsics
     ADD CONSTRAINT chain_detail_extrinsics_pkey PRIMARY KEY (block_number, extrinsic_index);
 
 --
+-- Name: compute_declarations compute_declarations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.compute_declarations
+    ADD CONSTRAINT compute_declarations_pkey PRIMARY KEY (netuid, source_url);
+
+--
 -- Name: emission_flow_watch emission_flow_watch_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1937,6 +1965,12 @@ CREATE INDEX idx_chain_detail_extrinsics_hash_lower ON public.chain_detail_extri
 --
 
 CREATE INDEX idx_chain_detail_extrinsics_observed ON public.chain_detail_extrinsics USING btree (observed_at);
+
+--
+-- Name: idx_compute_declarations_netuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_compute_declarations_netuid ON public.compute_declarations USING btree (netuid);
 
 --
 -- Name: idx_github_accounts_github_user_id; Type: INDEX; Schema: public; Owner: -

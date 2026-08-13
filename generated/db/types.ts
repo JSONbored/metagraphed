@@ -252,6 +252,19 @@ export interface ChainDetailExtrinsics {
   tip_tao: string | null;
 }
 
+/** `public.compute_declarations` */
+export interface ComputeDeclarations {
+  first_seen: number | string;
+  found: boolean;
+  miner: unknown | null;
+  netuid: number;
+  observed_at: number | string;
+  read_at_sha: string;
+  source_url: string;
+  spec_version: string | null;
+  validator: unknown | null;
+}
+
 /** `public.emission_flow_watch` */
 export interface EmissionFlowWatch {
   block_number: number | null;
@@ -843,6 +856,7 @@ export interface DatabaseTables {
   ChainDetailBlocks: ChainDetailBlocks;
   ChainDetailChainEvents: ChainDetailChainEvents;
   ChainDetailExtrinsics: ChainDetailExtrinsics;
+  ComputeDeclarations: ComputeDeclarations;
   EmissionFlowWatch: EmissionFlowWatch;
   EmissionGateParamHistory: EmissionGateParamHistory;
   GithubAccounts: GithubAccounts;

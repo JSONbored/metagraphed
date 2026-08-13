@@ -37,6 +37,7 @@
 //
 // Pure shaping only: rows arrive from the store, so the same rows always
 // produce the same payload.
+import type { ComputeDeclarations } from "../generated/db/types.ts";
 import {
   COST_TO_PARTICIPATE_NOT_MODELLED,
   GPU_REQUIREMENT_STATES,
@@ -47,27 +48,13 @@ type Row = Record<string, unknown>;
 /**
  * One `compute_declarations` row as the store returns it.
  *
- * Hand-written rather than taken from generated/db/types.ts for exactly as long
- * as it has to be: those types are introspected from the LIVE schema, so they
- * cannot know about a table this PR is creating. Replaced by the generated
- * `ComputeDeclarations` once the migration lands and the snapshot refreshes,
- * the way TreasuryReadingRow was.
- *
- * `miner` and `validator` are JSONB and are deliberately `unknown`: their shape
- * is the subnet's, not ours, and the CHECK constraint promises only that they
- * are objects.
+ * Was a hand-written interface in #11041, because the migration had not been
+ * applied yet and the generated types are introspected from the LIVE schema --
+ * they cannot know about a table its own PR is creating. That is now done, so
+ * this is the generated type and the shape can no longer drift from the column
+ * set. Same swap `TreasuryReadingRow` took one migration earlier.
  */
-export interface ComputeDeclarationRow {
-  netuid: number;
-  source_url: string;
-  read_at_sha: string;
-  observed_at: number | string;
-  first_seen: number | string;
-  found: boolean;
-  spec_version: string | null;
-  miner: unknown;
-  validator: unknown;
-}
+export type ComputeDeclarationRow = ComputeDeclarations;
 
 /** The served vocabulary, taken from the schema rather than restated, so a
  * typo in a returned literal fails `tsc` instead of publishing a fourth state

@@ -581,20 +581,28 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   },
   // NULL FOR A THIRD REASON AGAIN, and deliberately with NO `coveredBy`.
   //
-  // Nothing in this repo writes treasury_readings (#10933). The extractor runs
-  // in metagraphed-infra against DATABASE_URL, on no schedule -- a maintainer
-  // runs it -- so there is no cadence to bound and no lane whose death would
-  // be the alarm. `coveredBy` here would name a watcher that does not exist,
-  // which is exactly the "blind spot with a citation" the field's own doc bars.
+  // Nothing in this repo writes EITHER of these (#10933, #10932). Both
+  // extractors run in metagraphed-infra against DATABASE_URL, on no schedule --
+  // a maintainer runs them -- so there is no cadence to bound and no lane whose
+  // death would be the alarm. `coveredBy` here would name a watcher that does
+  // not exist, which is exactly the "blind spot with a citation" the field's
+  // own doc bars.
   //
   // Quiet is therefore the expected state, and it is not silence: a subnet
-  // nobody has read has NO ROW, which the served card reports as `repos_read:
-  // 0` rather than as an absence of findings. Give this a threshold and it
-  // alarms every day until someone runs an extractor by hand.
+  // nobody has read has NO ROW, which the served cards report as
+  // `repos_read: 0` and `declarations_read: 0` rather than as an absence of
+  // findings. Give either a threshold and it alarms every day until someone
+  // runs an extractor by hand.
   //
   // What would change the answer is a schedule. If the extractor ever gets
   // one, this becomes a bounded age against that interval.
   treasury_readings: {
+    column: "observed_at",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "maintainer-run extractor in metagraphed-infra, no schedule",
+  },
+  compute_declarations: {
     column: "observed_at",
     kind: "ms",
     maxAgeMs: null,

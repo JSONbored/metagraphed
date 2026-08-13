@@ -978,6 +978,60 @@
     "nullable": true
   },
   {
+    "table": "compute_declarations",
+    "column": "first_seen",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "compute_declarations",
+    "column": "found",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "compute_declarations",
+    "column": "miner",
+    "udt": "jsonb",
+    "nullable": true
+  },
+  {
+    "table": "compute_declarations",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "compute_declarations",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "compute_declarations",
+    "column": "read_at_sha",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "compute_declarations",
+    "column": "source_url",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "compute_declarations",
+    "column": "spec_version",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "compute_declarations",
+    "column": "validator",
+    "udt": "jsonb",
+    "nullable": true
+  },
+  {
     "table": "emission_flow_watch",
     "column": "block_number",
     "udt": "int4",
