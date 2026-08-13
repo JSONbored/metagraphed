@@ -1,15 +1,4 @@
 {
   "schema_version": 1,
-  "featured": [
-    {
-      "hotkey": "5DtUJ9ytbeCMjovFieNwaxxqRP3DzT6iQPnZTyKmi3n6iXey",
-      "featured_at": "2026-07-16T16:33:28Z",
-      "relationship": "partner"
-    },
-    {
-      "hotkey": "5Gjr7VuYJC8D58d9S2iZofu7FzFvRiRjpM4zpAaDdqb1Wy6V",
-      "featured_at": "2026-07-16T16:33:28Z",
-      "relationship": "partner"
-    }
-  ]
+  "featured": []
 }

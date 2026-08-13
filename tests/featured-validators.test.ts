@@ -1,6 +1,8 @@
 // The `featured` badge, which was served on every validator row and could
 // never be true (#11080).
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, test } from "vitest";
 import {
   featuredHotkeysFrom,
@@ -12,6 +14,7 @@ import {
   FEATURED_HOTKEY_SET,
 } from "../generated/featured-validators.ts";
 import { buildSubnetValidators } from "../src/metagraph-neurons.ts";
+import { repoRoot } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
 const VALID = JSON.stringify({
@@ -26,12 +29,24 @@ const VALID = JSON.stringify({
 });
 
 describe("featured-validators registry (#11080)", () => {
-  test("the generated set is not empty", () => {
-    // The whole defect was a set that was always empty. A generator that
-    // emitted nothing would reproduce it exactly while every other test passed,
-    // so this is the one assertion that must not be vacuous.
-    assert.ok(FEATURED_HOTKEYS.length > 0, "no featured hotkeys generated");
+  test("the generated set mirrors the committed registry exactly", () => {
+    // The original defect was a set that was always empty WHILE THE REGISTRY
+    // SAID OTHERWISE. The non-vacuity of the parser is pinned on the two-entry
+    // fixture below; this holds the emitted module to the committed file --
+    // whatever its current size, including zero arrangements, which is a real
+    // state: no arrangement means no badge anywhere.
+    const committed = featuredHotkeysFrom(
+      readFileSync(
+        path.join(repoRoot, "registry/featured-validators.json"),
+        "utf8",
+      ),
+    );
+    assert.deepEqual([...FEATURED_HOTKEYS], committed);
     assert.equal(FEATURED_HOTKEY_SET.size, FEATURED_HOTKEYS.length);
+  });
+
+  test("the parser is not vacuous: the fixture yields its entry", () => {
+    assert.equal(featuredHotkeysFrom(VALID).length, 1);
   });
 
   test("hotkeys are sorted, so the emit is stable", () => {
@@ -123,11 +138,14 @@ describe("the badge actually flips (#11080)", () => {
   });
 
   test("a featured hotkey is marked, an unfeatured one is not", () => {
-    const featured = FEATURED_HOTKEYS[0] as string;
+    // A local set, not the generated one: the marking logic is what is under
+    // test, and the committed registry may legitimately hold zero
+    // arrangements.
+    const featured = "5FixtureFeaturedHotkey00000000000000000000000000";
     const out = buildSubnetValidators(
       [row(featured), row("5NotFeaturedAtAll")],
       7,
-      { featuredHotkeys: FEATURED_HOTKEY_SET },
+      { featuredHotkeys: new Set([featured]) },
     );
     const validators = out.validators as Row[];
     const byKey = new Map(validators.map((v) => [v.hotkey, v.featured]));
