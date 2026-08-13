@@ -8,6 +8,7 @@
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { probeSurface, type ProbeSurface } from "./health-probe-core.ts";
 import { resolveSurfaceAlias } from "./surface-aliases.ts";
+import { SurfaceVerifyArtifactSchema } from "../schemas-src/routes/ai-native.ts";
 
 type Row = Record<string, unknown>;
 type Prober = (
@@ -60,6 +61,18 @@ export function primarySurfaceForNetuid(
   );
 }
 
+/**
+ * The served contract, minus the one field this function does not set.
+ *
+ * `from_cache` is stamped by verifySurfaceWithCache after the fact, so the
+ * shape produced HERE is the artifact without it -- `.omit()` rather than a
+ * second object literal, so this stays the same schema the route and
+ * `verify_integration` serve rather than a fourth description of it.
+ */
+const VerifiedSurfaceSchema = SurfaceVerifyArtifactSchema.omit({
+  from_cache: true,
+});
+
 // Probe one surface and shape the verify result. `prober` is injectable for
 // tests (defaults to the real network probe).
 export async function verifySurface(
@@ -76,24 +89,30 @@ export async function verifySurface(
     probe.status !== "failed" &&
     probe.classification !== "dead" &&
     probe.classification !== "unsafe";
-  return {
+  // Parsed, not hand-checked (#11040). `surface_key`, `netuid` and
+  // `classification` are non-nullable in the served contract, so the `?? null`
+  // these three used to carry could never render -- it travelled to the
+  // response tripwire and came back as a 500 naming the ROUTE. Validating
+  // against the schema that is actually served names the field instead, and
+  // covers every field rather than the three I happened to notice.
+  return VerifiedSurfaceSchema.parse({
     schema_version: 1,
     surface_id: surface.surface_id,
-    surface_key: surface.surface_key ?? null,
-    netuid: typeof surface.netuid === "number" ? surface.netuid : null,
+    surface_key: surface.surface_key,
+    netuid: surface.netuid,
     kind: surface.kind,
     url: surface.url,
     provider: surface.provider ?? null,
     auth_required: Boolean(surface.auth_required),
     status: probe.status,
-    classification: probe.classification ?? null,
+    classification: probe.classification,
     callable,
     latency_ms: typeof probe.latency_ms === "number" ? probe.latency_ms : null,
     status_code:
       typeof probe.status_code === "number" ? probe.status_code : null,
     error: probe.error ?? null,
     probed_at: probe.last_checked || probe.verified_at || null,
-  };
+  });
 }
 
 export const VERIFY_CACHE_TTL_SECONDS = 60;

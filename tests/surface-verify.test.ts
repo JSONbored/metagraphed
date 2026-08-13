@@ -133,16 +133,63 @@ describe("surface-verify core (#358)", () => {
       latency_ms: 10,
     }));
     assert.equal(unsafe.callable, false);
-    // a surface with no provider/auth → defaults
+    // a surface with no provider/auth → defaults. `provider` is the only one of
+    // the three that is genuinely optional (`.nullable()` in the served
+    // contract); surface_key/netuid/classification are not, and are supplied
+    // here because omitting them is now an error rather than a null (#11040).
     const bare = await verifySurface(
-      { surface_id: "z", kind: "subnet-api", url: "https://z" },
+      {
+        surface_id: "z",
+        surface_key: "srf-z",
+        netuid: 0,
+        kind: "subnet-api",
+        url: "https://z",
+      },
       {},
-      async () => ({ status: "ok", verified_at: "2026-06-16T01:00:00Z" }),
+      async () => ({
+        status: "ok",
+        classification: "live",
+        verified_at: "2026-06-16T01:00:00Z",
+      }),
     );
     assert.equal(bare.provider, null);
     assert.equal(bare.auth_required, false);
-    assert.equal(bare.netuid, null);
+    assert.equal(bare.netuid, 0); // netuid 0 is root, not "missing"
     assert.equal(bare.probed_at, "2026-06-16T01:00:00Z"); // verified_at fallback
+  });
+
+  // The served contract declares these three non-nullable, so a null could
+  // never have been rendered -- it travelled to the response tripwire and came
+  // back as a 500 naming the route. Each now names the field instead (#11040).
+  test("verifySurface: a missing non-nullable field names itself, not the route", async () => {
+    const live = async () => ({ status: "ok", classification: "live" });
+    const full = {
+      surface_id: "z",
+      surface_key: "srf-z",
+      netuid: 7,
+      kind: "subnet-api",
+      url: "https://z",
+    };
+
+    // netuid 0 is falsy but valid -- the old `typeof === "number"` guard got
+    // this right and a `??`-shaped rewrite would not.
+    const root = await verifySurface({ ...full, netuid: 0 }, {}, live);
+    assert.equal(root.netuid, 0);
+
+    for (const field of ["surface_key", "netuid"] as const) {
+      const missing: Row = { ...full };
+      delete missing[field];
+      await assert.rejects(
+        () => verifySurface(missing, {}, live),
+        new RegExp(`"${field}"`),
+        `dropping ${field} should name ${field}, not the route`,
+      );
+    }
+
+    await assert.rejects(
+      () => verifySurface(full, {}, async () => ({ status: "ok" })),
+      /"classification"/,
+    );
   });
 
   test("verifySurfaceWithCache serves a 60s cache keyed by surface_key", async () => {
