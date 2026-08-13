@@ -5368,8 +5368,15 @@ async function handleChainFirehoseStream(request: Request, env: Env, url: URL) {
   // this function's inferred return to include `undefined` -- and that widening
   // propagates all the way out through dispatchRequest to the Worker's fetch
   // handler. Keeping `const` keeps the inference honest.
-  const response = await stub
-    .fetch(new Request(forwardUrl, request))
+  //
+  // `Promise.resolve().then(...)` rather than `stub.fetch(...).catch(...)`:
+  // a stub is not required to return a real Promise (test doubles in this repo
+  // return a bare Response, and `await` accepts both), so calling `.catch` on
+  // the result is a TypeError against anything but the production binding.
+  // This form also catches a SYNCHRONOUS throw from `.fetch`, which the
+  // `.catch` form silently would not.
+  const response = await Promise.resolve()
+    .then(() => stub.fetch(new Request(forwardUrl, request)))
     .catch((error: unknown) => {
       if (!isDurableObjectReset(error)) throw error;
       return null;
