@@ -99,6 +99,35 @@ async function schemaForArtifact(artifactPath: string) {
 }
 
 /**
+ * The envelope AS THE CLIENT RECEIVES IT, not as the handler built it.
+ *
+ * Same reasoning as the MCP tripwire's own copy of this (#10972), and the same
+ * one-line change, made here even though REST does not currently trip on it:
+ * an artifact composed from an absent source leaves keys present with
+ * `undefined` (`overlaySubnetHealth(null, ...)` produces four), Zod
+ * `.strict()` counts those as unrecognized, and `JSON.stringify` drops them
+ * before the client sees anything.
+ *
+ * REST escapes it today only because the components involved happen to declare
+ * those fields optional. That is a property of which fields drifted first, not
+ * a difference in kind -- the next strict component that omits a key some
+ * composer leaves undefined would fail a response that serializes correctly,
+ * exactly as `get_subnet_health` did on 46% of its calls.
+ *
+ * NOT shared with the MCP copy: this module is imported by the Worker entry
+ * and that one by the MCP dispatch, and a shared import for eight lines would
+ * couple two tripwires that are deliberately independent (see this file's
+ * header on why they are one decision but not one implementation).
+ */
+function asSentOverTheWire(payload: unknown): unknown {
+  try {
+    return JSON.parse(JSON.stringify(payload));
+  } catch {
+    return payload;
+  }
+}
+
+/**
  * Called ONLY when the caller has already confirmed
  * `env.METAGRAPH_VALIDATE_RESPONSES === "true"` -- see this file's own header
  * and the call sites in workers/api.ts and workers/request-handlers/entities.ts.
@@ -112,7 +141,7 @@ export async function validateResponseTripwire(
   try {
     const schema = await schemaForArtifact(artifactPath);
     if (!schema) return;
-    const result = schema.safeParse(envelope);
+    const result = schema.safeParse(asSentOverTheWire(envelope));
     if (!result.success) {
       throw new ResponseSchemaDriftError(routeId, result.error);
     }
