@@ -49,6 +49,7 @@
 // ever be wrong for most of them.
 
 import { laneSilenceCadenceMs } from "./producer-cadence.ts";
+import { DEAD_LETTER_LANE_NAMES } from "./dead-letter.ts";
 import {
   loadLatestLaneHealth,
   staleLanes,
@@ -153,13 +154,49 @@ export const LANE_ALARM_MAX_VERDICT_AGE_MS = LANE_ALARM_CADENCE_WINDOW_MS;
  *
  * Silence is left alone: its bound IS the cadence (three intervals), so its
  * duration is already expressed in the unit that matters.
+ *
+ * ## AND A DEAD-LETTER LANE IS NEITHER
+ *
+ * `lane revenue-probes-dlq is stale: 41.0h (producer cadence 1.0h)` reads as
+ * FORTY-ONE MISSED CYCLES, and it is not that. A DLQ writes `stale` when a
+ * message is lost and never writes `ok`, because nothing un-loses one -- so
+ * the duration is "how long ago something was lost and nobody looked", and the
+ * cadence has nothing to do with it. It ages out after seven days on its own.
+ *
+ * The cadence suffix therefore does to this lane exactly what the bare
+ * duration did to a producer: invites a confident wrong reading. Measured
+ * 2026-08-12, it worked -- 41.0h against a 1.0h cadence was triaged as the
+ * most urgent lane in the fleet, ahead of six that were genuinely silent.
+ *
+ * What a reader needs here is the SUBJECT, and the alarm has been carrying it
+ * in `detail` unread since #10739 taught the summariser to name it (`2
+ * dead-lettered message(s) on revenue-probes-dlq (sn-64-...)`). Same lesson as
+ * the drift alarm two floors down: the thing that was lost IS the diagnosis.
  */
 export function laneAlarmSummary(alarm: LaneAlarm, nowMs: number): string {
   const elapsed = humanDuration(nowMs - alarm.since);
   const base = `lane ${alarm.lane} is ${alarm.kind}: ${elapsed}`;
+  // A DEAD-LETTER lane's duration is not cycles-behind, so the cadence that
+  // makes a producer's duration readable makes this one MISLEADING -- see
+  // isDeadLetterLane. Its subject is what a reader needs instead, and the
+  // alarm has been carrying it in `detail` unread.
+  if (isDeadLetterLane(alarm.lane)) {
+    return alarm.detail ? `${base} -- ${alarm.detail}` : base;
+  }
   return alarm.kind === "stale" && alarm.cadence_ms
     ? `${base} (producer cadence ${humanDuration(alarm.cadence_ms)})`
     : base;
+}
+
+/**
+ * Is this lane a dead-letter queue rather than a producer?
+ *
+ * Derived from `DEAD_LETTER_LANES` rather than matched on a `-dlq` suffix: the
+ * mapping is already the one place that says which queues report as lanes, and
+ * a suffix convention is a second one that can disagree with it.
+ */
+function isDeadLetterLane(lane: string): boolean {
+  return DEAD_LETTER_LANE_NAMES.has(lane);
 }
 
 /** Title prefix. The dedup key: stable across ticks, and greppable by a human. */

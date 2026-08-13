@@ -1243,6 +1243,51 @@ describe("the summary a capture carries (#10809)", () => {
     assert.doesNotMatch(summary, /cadence/);
   });
 
+  test("a dead-letter lane names WHAT was lost, not a cadence", () => {
+    // `lane revenue-probes-dlq is stale: 41.0h (producer cadence 1.0h)` reads
+    // as forty-one missed cycles and is not that: a DLQ writes `stale` when a
+    // message is lost and never writes `ok`, so the duration is "how long ago
+    // something was lost and nobody looked". Measured 2026-08-12, that reading
+    // worked -- it was triaged as the most urgent lane in the fleet, ahead of
+    // six that were genuinely silent.
+    const summary = laneAlarmSummary(
+      {
+        ...staleFor(41, 3_600_000),
+        lane: "revenue-probes-dlq",
+        detail: "2 dead-lettered message(s) on revenue-probes-dlq (sn-64-x)",
+      },
+      NOW,
+    );
+    assert.doesNotMatch(
+      summary,
+      /cadence/,
+      `a DLQ duration is not cycles-behind: ${summary}`,
+    );
+    assert.match(
+      summary,
+      /sn-64-x/,
+      "the subject IS the diagnosis, and the alarm has been carrying it unread",
+    );
+  });
+
+  test("a dead-letter lane with no detail still says what it can", () => {
+    const summary = laneAlarmSummary(
+      { ...staleFor(41, 3_600_000), lane: "revenue-probes-dlq", detail: null },
+      NOW,
+    );
+    assert.match(summary, /lane revenue-probes-dlq is stale: 41\.0h/);
+    assert.doesNotMatch(summary, /cadence/);
+  });
+
+  test("a producer lane is unaffected by the dead-letter branch", () => {
+    // Guards the guard: if the DLQ check widened to every lane, the cadence
+    // that #10809 added would silently vanish from the alarms that need it.
+    assert.match(
+      laneAlarmSummary(staleFor(7.9, 86_400_000), NOW),
+      /producer cadence 24\.0h/,
+    );
+  });
+
   test("silence is left alone -- its bound already IS the cadence", () => {
     const summary = laneAlarmSummary(
       { ...staleFor(4, 86_400_000), kind: "silent" as const },
