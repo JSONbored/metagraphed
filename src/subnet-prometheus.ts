@@ -9,6 +9,7 @@
 // envelope. Null-safe: a cold store or a subnet with no PrometheusServed events yields the zeroed card.
 
 import { PROMETHEUS_DEGRADED_NOT_CURATED } from "./uncurated-event-streams.ts";
+import { roundDp } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -27,10 +28,6 @@ export const DEFAULT_SUBNET_PROMETHEUS_WINDOW = "7d";
 
 // Round an announcements-per-exporter ratio to a stable 2dp precision. Always finite and
 // non-negative here (announcements / distinct exporters, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -58,7 +55,7 @@ function announcementsPerExporter(
   exporters: number,
 ): number | null {
   if (exporters <= 0) return null;
-  return round(announcements / exporters);
+  return roundDp(announcements / exporters);
 }
 
 // Shape one subnet's Prometheus scorecard from the single-row account_events aggregate. `row`

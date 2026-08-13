@@ -9,11 +9,7 @@
 
 import { median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
-import {
-  RAO_PER_TAO_NUMBER,
-  finiteCellOrNull,
-  numberOrZero,
-} from "./lib/rao.ts";
+import { round9OrZero, finiteCellOrNull, numberOrZero } from "./lib/rao.ts";
 
 // The two account_events kinds that move stake: StakeAdded is capital entering a subnet,
 // StakeRemoved is capital leaving. Both carry a positive amount_tao, so net = staked - unstaked.
@@ -32,11 +28,6 @@ export const DEFAULT_CHAIN_STAKE_FLOW_WINDOW = "7d";
 // 1 TAO = 1e9 rao. Summing many REAL amount_tao values accumulates IEEE-754 noise below the
 // rao floor; round every TAO output to rao precision (the same rounding the sibling scorecards
 // apply). A non-finite sum can only arise from a malformed direct call — coerce it to 0.
-function roundTao(value: number): number {
-  /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value * RAO_PER_TAO_NUMBER) / RAO_PER_TAO_NUMBER;
-}
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric.
 
@@ -98,10 +89,10 @@ function netFlowDistribution(values: number[]): NetFlowDistribution | null {
   const sum = ascending.reduce((total, value) => total + value, 0);
   return {
     count: ascending.length,
-    mean: roundTao(sum / ascending.length),
+    mean: round9OrZero(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    p50: roundTao(median(ascending)!),
+    p50: round9OrZero(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],
@@ -220,10 +211,10 @@ export function buildChainStakeFlow(
     const direction = classifyDirection(net, gross);
     subnets.push({
       netuid,
-      total_staked_tao: roundTao(bucket.staked),
-      total_unstaked_tao: roundTao(bucket.unstaked),
-      net_flow_tao: roundTao(net),
-      gross_flow_tao: roundTao(gross),
+      total_staked_tao: round9OrZero(bucket.staked),
+      total_unstaked_tao: round9OrZero(bucket.unstaked),
+      net_flow_tao: round9OrZero(net),
+      gross_flow_tao: round9OrZero(gross),
       stake_events: bucket.stakeEvents,
       unstake_events: bucket.unstakeEvents,
       direction,
@@ -244,10 +235,10 @@ export function buildChainStakeFlow(
   );
 
   const network: ChainStakeFlowNetwork = {
-    total_staked_tao: roundTao(totalStaked),
-    total_unstaked_tao: roundTao(totalUnstaked),
-    net_flow_tao: roundTao(totalStaked - totalUnstaked),
-    gross_flow_tao: roundTao(totalStaked + totalUnstaked),
+    total_staked_tao: round9OrZero(totalStaked),
+    total_unstaked_tao: round9OrZero(totalUnstaked),
+    net_flow_tao: round9OrZero(totalStaked - totalUnstaked),
+    gross_flow_tao: round9OrZero(totalStaked + totalUnstaked),
     stake_events: totalStakeEvents,
     unstake_events: totalUnstakeEvents,
     gaining,

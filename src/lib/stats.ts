@@ -23,3 +23,50 @@ export function median(ascending: number[]): number | null {
     ? ascending[mid]
     : (ascending[mid - 1] + ascending[mid]) / 2;
 }
+
+/**
+ * Round to `dp` decimal places (#10948).
+ *
+ * THE sixteen-way copy: `round(value, dp = 2)` with this exact body was
+ * declared byte-identically in sixteen chain/subnet analytics modules -- the
+ * one shape of the family with no behavioural spread at all, which is why it
+ * collapses without a decision. The variants that DIFFER (a null-guard, a
+ * clamp-below-one, a fixed 1e6 factor) are different contracts and stay
+ * separate -- see roundBelowOne below and the issue for the survivor table.
+ *
+ * The default is the caller's to state: the copies defaulted dp = 2, and the
+ * callers that meant something else always passed it explicitly.
+ */
+export function roundDp(value: number, dp = 2): number {
+  const factor = 10 ** dp;
+  return Math.round(value * factor) / factor;
+}
+
+/**
+ * Round to `dp` places, clamped strictly below 1 for a value that was below 1
+ * (#10948). A share of 0.99996 rounded at 4dp is 1.0 -- which reads as "all of
+ * it" in every ratio column this serves, so a sub-1 input saturates at
+ * 0.9999... instead of crossing the boundary rounding alone would invent.
+ * Four modules declared this byte-identically as their own `round`.
+ */
+export function roundBelowOne(value: number, dp = 4): number {
+  const factor = 10 ** dp;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
+}
+
+/**
+ * `roundDp`, but null in and null out (#10948).
+ *
+ * The null-preserving generic of the family: concentration ratios and
+ * hyperparameter readings where "not computable" must survive the rounding
+ * rather than become a rounded NaN or an invented zero. Four modules carried
+ * this shape privately (two as `round`, two as `roundTaoOrNull` at 6dp).
+ */
+export function roundDpOrNull(
+  value: number | null | undefined,
+  dp = 2,
+): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return roundDp(value, dp);
+}

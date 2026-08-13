@@ -15,6 +15,7 @@
 // routes): WeightsSet fires every tempo, so a 90d window would be an unbounded row scan.
 
 import { WEIGHTS_EVENT_KIND } from "./chain-weights.ts";
+import { roundBelowOne } from "./lib/stats.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -24,11 +25,6 @@ export const ACCOUNT_WEIGHT_SETTERS_WINDOWS: Record<string, number> = {
   "30d": 30,
 };
 export const DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW = "7d";
-
-function roundConcentration(value: number): number {
-  const rounded = Math.round(value * 10000) / 10000;
-  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
-}
 
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -129,7 +125,7 @@ export function buildAccountWeightSetters(
   const dominantNetuid = subnets.length > 0 ? subnets[0].netuid : null;
   const concentration =
     totalWeightSets > 0
-      ? roundConcentration(squares / (totalWeightSets * totalWeightSets))
+      ? roundBelowOne(squares / (totalWeightSets * totalWeightSets))
       : null;
 
   return {

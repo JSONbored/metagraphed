@@ -1,3 +1,4 @@
+import { roundBelowOne } from "./lib/stats.ts";
 // Per-account axon-serving footprint: which subnets one account (hotkey) announced an axon endpoint
 // on over a recent window, broken down per subnet and rolled up into a serving scorecard. Pure
 // shaping (buildAccountServing) + a thin store loader (loadAccountServing); the Worker adds the REST
@@ -31,10 +32,6 @@ export const DEFAULT_SERVING_WINDOW = "30d";
 // an exact 1 — the same anti-overstatement invariant the shared concentration ratios enforce
 // (roundConcentration in account-stake-flow.ts, #2327). An account serving across two or more
 // subnets (HHI < 1) must never render as 1, which this card's contract defines as "all in one".
-function roundConcentration(value: number): number {
-  const rounded = Math.round(value * 10000) / 10000;
-  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -152,7 +149,7 @@ export function buildAccountServing(
   // spreads evenly; null when the account has no announcements to concentrate.
   const concentration =
     totalAnnouncements > 0
-      ? roundConcentration(squares / (totalAnnouncements * totalAnnouncements))
+      ? roundBelowOne(squares / (totalAnnouncements * totalAnnouncements))
       : null;
 
   return {

@@ -9,7 +9,7 @@
 // `null` block (never throws), matching the concentration tier it mirrors.
 
 import { computeConcentration } from "./concentration.ts";
-import { percentile } from "./lib/stats.ts";
+import { roundDp, percentile } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -39,10 +39,6 @@ const SCORE_PERCENTILES = [10, 25, 50, 75, 90];
 // Round a score/mean to 6 dp so JSON never carries a long floating-point tail.
 // Callers only ever pass finite values (finiteValues drops non-finite cells and
 // scoreDistribution guards count > 0), so no null-guard is needed here.
-function round(value: number): number {
-  const factor = 1e6;
-  return Math.round(value * factor) / factor;
-}
 
 // Guard 0/negative epoch ms (a blank/sentinel cell) so a captured_at never
 // stamps the 1970 epoch. Mirrors epochMsStamp in concentration.ts / the
@@ -98,8 +94,8 @@ function scoreMedian(values: unknown[]): number | null {
   if (n === 0) return null;
   const mid = Math.floor(n / 2);
   return n % 2 === 1
-    ? round(ascending[mid])
-    : round((ascending[mid - 1] + ascending[mid]) / 2);
+    ? roundDp(ascending[mid], 6)
+    : roundDp((ascending[mid - 1] + ascending[mid]) / 2, 6);
 }
 
 export interface ScoreDistribution {
@@ -123,12 +119,12 @@ export function scoreDistribution(
   const total = finite.reduce((sum, v) => sum + v, 0);
   const summary: ScoreDistribution = {
     count,
-    mean: round(total / count),
-    min: round(ascending[0]),
-    max: round(ascending[count - 1]),
+    mean: roundDp(total / count, 6),
+    min: roundDp(ascending[0], 6),
+    max: roundDp(ascending[count - 1], 6),
   };
   for (const p of SCORE_PERCENTILES) {
-    summary[`p${p}`] = round(percentile(ascending, p)!);
+    summary[`p${p}`] = roundDp(percentile(ascending, p)!, 6);
   }
   return summary;
 }

@@ -1,4 +1,5 @@
 import { raoBigToTao, toRaoBig } from "./lib/rao.ts"; // Per-subnet / network-wide idle-stake rollup (#6789, follow-up to #6645's
+import { captureStamp } from "./lib/capture-stamp.ts";
 // design spike -- docs/idle-stake-mechanism.md). Dividends are the ONLY
 // stream delegated stake ever receives in dTAO (incentive goes to the
 // hotkey owner alone, never split with delegators); dividends are zero for
@@ -16,28 +17,8 @@ type Row = Record<string, unknown>;
 // this used to be.
 
 // The rows share one cron capture, but don't assume an order -- take the
-// newest captured_at (mirrors src/concentration.ts's own captureStamp/
-// epochMsStamp, a deliberate byte-for-byte copy per this codebase's
-// per-module convention). Accepts an epoch-ms number, a numeric-string
-// epoch (D1/Postgres often hand back a BIGINT column as a string), or an
-// ISO string; anything else (or a non-positive/non-finite epoch) is not a
-// real timestamp and is ignored.
-function epochMsStamp(ms: number): { ms: number; value: string } | null {
-  if (!Number.isFinite(ms) || ms <= 0) return null;
-  const date = new Date(ms);
-  if (!Number.isFinite(date.getTime())) return null;
-  return { ms, value: date.toISOString() };
-}
-function captureStamp(value: unknown): { ms: number; value: string } | null {
-  if (value == null) return null;
-  if (typeof value === "string") {
-    if (/^\d+$/.test(value)) return epochMsStamp(Number(value));
-    const ms = Date.parse(value);
-    return Number.isFinite(ms) ? { ms, value } : null;
-  }
-  if (typeof value === "number") return epochMsStamp(value);
-  return null;
-}
+// newest captured_at, parsed by the shared stamp helpers (#10948; the
+// "byte-for-byte copy" this comment used to license had, of course, drifted).
 function newestCapturedAt(rows: Row[]): string | null {
   let newest: { ms: number; value: string } | null = null;
   for (const row of rows) {

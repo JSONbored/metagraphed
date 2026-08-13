@@ -12,7 +12,7 @@
 // tryDataApiTier() ?? buildChainDeregistrations([]). The field semantics live in
 // schemas-src/routes/chain-network-rollups.ts (ChainDeregistrationsArtifact).
 
-import { median, percentile } from "./lib/stats.ts";
+import { roundDp, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import type { DeregistrationDerivation } from "./deregistration-derivation.ts";
 import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
@@ -36,10 +36,6 @@ export const DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW = "7d";
 
 // Round a deregistrations-per-hotkey ratio to a stable precision (2dp). Always finite and
 // non-negative here (events / distinct hotkeys, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -86,7 +82,7 @@ function deregistrationsPerHotkey(
   hotkeys: number,
 ): number | null {
   if (hotkeys <= 0) return null;
-  return round(deregistrations / hotkeys);
+  return roundDp(deregistrations / hotkeys);
 }
 
 export interface IntensityDistribution {
@@ -110,10 +106,10 @@ function intensityDistribution(values: number[]): IntensityDistribution | null {
   const sum = ascending.reduce((total, value) => total + value, 0);
   return {
     count: ascending.length,
-    mean: round(sum / ascending.length),
+    mean: roundDp(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    p50: round(median(ascending)!),
+    p50: roundDp(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],

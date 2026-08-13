@@ -19,6 +19,7 @@
 
 import type { DeregistrationDerivation } from "./deregistration-derivation.ts";
 import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
+import { roundBelowOne } from "./lib/stats.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -43,10 +44,6 @@ export const DEFAULT_DEREGISTRATION_WINDOW = "30d";
 // an exact 1 — the same anti-overstatement invariant the shared concentration ratios enforce
 // (roundConcentration in account-stake-flow.ts, #2327). An account deregistered across two or more
 // subnets (HHI < 1) must never render as 1, which this card's contract defines as "all in one".
-function roundConcentration(value: number): number {
-  const rounded = Math.round(value * 10000) / 10000;
-  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -169,9 +166,7 @@ export function buildAccountDeregistrations(
   // it spreads evenly; null when the account has no deregistrations to concentrate.
   const concentration =
     totalDeregistrations > 0
-      ? roundConcentration(
-          squares / (totalDeregistrations * totalDeregistrations),
-        )
+      ? roundBelowOne(squares / (totalDeregistrations * totalDeregistrations))
       : null;
 
   return {

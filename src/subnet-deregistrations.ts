@@ -1,3 +1,4 @@
+import { roundDp } from "./lib/stats.ts";
 // Per-subnet neuron-deregistration activity, DERIVED from UID reuse in the NeuronRegistered stream
 // (#9307 -- NeuronDeregistered has never been emitted; see src/deregistration-derivation.ts): for
 // ONE subnet over a 7d/30d window, the distinct deregistered hotkeys, NeuronDeregistered event
@@ -31,10 +32,6 @@ export const DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW = "7d";
 
 // Round a deregistrations-per-hotkey ratio to a stable 2dp precision. Always finite and
 // non-negative here (deregistrations / distinct hotkeys, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -63,7 +60,7 @@ function deregistrationsPerHotkey(
   hotkeys: number,
 ): number | null {
   if (hotkeys <= 0) return null;
-  return round(deregistrations / hotkeys);
+  return roundDp(deregistrations / hotkeys);
 }
 
 // Shape one subnet's deregistration scorecard from the single-row account_events aggregate. `row`

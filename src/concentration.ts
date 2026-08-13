@@ -8,6 +8,8 @@
 import { DAY_MS } from "../workers/config.ts";
 import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
 import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
+import { roundDpOrNull } from "./lib/stats.ts";
+import { captureStamp, type CaptureStamp } from "./lib/capture-stamp.ts";
 
 // The neurons-tier columns the concentration handler reads — the store read contract
 // for buildConcentration (mirrors BLOCK_READ_COLUMNS / EXTRINSIC_READ_COLUMNS). Kept
@@ -20,11 +22,6 @@ const TOP_PERCENTILES = [1, 5, 10, 20];
 
 // Round a ratio/amount to a stable decimal precision; null/non-finite → null so the
 // schema stays `number|null` and JSON never carries a long floating-point tail.
-function round(value: number | null | undefined, dp = 6): number | null {
-  if (value == null || !Number.isFinite(value)) return null;
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // Round a 0..1 concentration ratio (gini, hhi, normalized variants, top-K share)
 // WITHOUT letting a sub-perfect value round up to an exact 1 — a near-monopoly
@@ -41,34 +38,6 @@ function roundRatio(value: number | null | undefined, dp = 6): number | null {
 // Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
 // for why, and for the overflow guard that lived in only one of the nine copies
 // this used to be.
-
-interface CaptureStamp {
-  ms: number;
-  value: string;
-}
-
-function epochMsStamp(ms: number): CaptureStamp | null {
-  if (!Number.isFinite(ms) || ms <= 0) return null;
-  const date = new Date(ms);
-  if (!Number.isFinite(date.getTime())) return null;
-  return { ms, value: date.toISOString() };
-}
-
-function captureStamp(value: unknown): CaptureStamp | null {
-  if (value == null) return null;
-  if (typeof value === "string") {
-    if (/^\d+$/.test(value)) {
-      return epochMsStamp(Number(value));
-    }
-    const ms = Date.parse(value);
-    if (Number.isFinite(ms)) return { ms, value };
-    return null;
-  }
-  if (typeof value === "number") {
-    return epochMsStamp(value);
-  }
-  return null;
-}
 
 // Coerce a raw column array to the finite, strictly-positive values that actually
 // make up a distribution. Zero / negative / NaN / null entries carry no share and
@@ -198,13 +167,13 @@ export function computeConcentration(
   const { bits, normalized } = entropy(descending, total);
   return {
     holders,
-    total: round(total, 4),
+    total: roundDpOrNull(total, 4),
     gini: roundRatio(gini(ascending, total)),
     hhi: roundRatio(h),
     hhi_normalized: roundRatio(hhiNormalized(h, holders)),
     nakamoto_coefficient: nakamoto(descending, total),
     ...topShares(descending, total),
-    entropy: round(bits),
+    entropy: roundDpOrNull(bits, 6),
     entropy_normalized: roundRatio(normalized),
   };
 }
@@ -296,7 +265,9 @@ export function buildConcentration(
     // UIDs per controlling entity — a Sybil/consolidation signal (1.0 = every UID
     // a distinct owner; higher = fewer operators each running many hotkeys).
     uids_per_entity:
-      entities.count > 0 ? round(list.length / entities.count, 4) : null,
+      entities.count > 0
+        ? roundDpOrNull(list.length / entities.count, 4)
+        : null,
     captured_at: capturedAt?.value ?? null,
     stake: computeConcentration(list.map((row) => row?.stake_tao)),
     emission: computeConcentration(list.map((row) => row?.emission_tao)),
@@ -368,7 +339,9 @@ export function buildChainConcentration(
     // UIDs per controlling entity network-wide — a consolidation signal (1.0 =
     // every UID a distinct owner; higher = fewer operators each running many).
     uids_per_entity:
-      entities.count > 0 ? round(list.length / entities.count, 4) : null,
+      entities.count > 0
+        ? roundDpOrNull(list.length / entities.count, 4)
+        : null,
     captured_at: capturedAt?.value ?? null,
     stake: computeConcentration(list.map((row) => row?.stake_tao)),
     emission: computeConcentration(list.map((row) => row?.emission_tao)),
@@ -701,7 +674,7 @@ export function buildSubnetConcentrationRanking(
     neuron_count: list.length,
     captured_at: capturedAt?.value ?? null,
     network: {
-      median_gini: round(
+      median_gini: roundDpOrNull(
         median(
           measured
             .map((row) => row.gini)
@@ -713,7 +686,7 @@ export function buildSubnetConcentrationRanking(
           .map((row) => row.nakamoto_coefficient)
           .filter((value): value is number => value != null),
       ),
-      median_top_1pct_share: round(
+      median_top_1pct_share: roundDpOrNull(
         median(
           measured
             .map((row) => row.top_1pct_share)

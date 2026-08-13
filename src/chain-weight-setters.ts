@@ -1,4 +1,5 @@
 import { clampRowLimit } from "../workers/request-params.ts";
+import { roundBelowOne } from "./lib/stats.ts";
 // Network-wide weight-setter leaderboard: across EVERY subnet over a 7d/30d window, the
 // individual validators driving consensus network-wide — each setter's total WeightsSet event
 // count (summed across every subnet it operates on), its share of the network total, and when it
@@ -32,11 +33,6 @@ export const CHAIN_WEIGHT_SETTERS_LIMIT_MAX = 100;
 // another setter still holds activity (e.g. 49999/50000 = 0.99998 -> 1.0000). Mirrors the
 // anti-overstatement guard in subnet-weight-setters.ts. A genuine sole setter (its count == the
 // network total) keeps a true 1.
-function round(value: number, dp = 4): number {
-  const factor = 10 ** dp;
-  const rounded = Math.round(value * factor) / factor;
-  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -129,7 +125,7 @@ export function buildChainWeightSetters(
         netuid: toHotkey(row?.hotkey) == null ? toNetuid(row?.netuid) : null,
         uid: toUid(row?.uid),
         weight_sets: weightSets,
-        share: totalSets > 0 ? round(weightSets / totalSets) : null,
+        share: totalSets > 0 ? roundBelowOne(weightSets / totalSets) : null,
         first_set_at: toIso(row?.first_set),
         last_set_at: toIso(row?.last_set),
       };

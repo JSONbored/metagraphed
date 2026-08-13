@@ -1,3 +1,4 @@
+import { roundBelowOne } from "./lib/stats.ts";
 // Per-account stake-movement (re-delegation) footprint: which subnets one account
 // (coldkey) moved stake out of over a recent window, broken down per subnet and
 // rolled up into a movement scorecard. Pure shaping (buildAccountStakeMoves) + a
@@ -32,11 +33,6 @@ export const ACCOUNT_STAKE_MOVES_WINDOWS: Record<string, number> = {
   "90d": 90,
 };
 export const DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW = "30d";
-
-function roundConcentration(value: number): number {
-  const rounded = Math.round(value * 10000) / 10000;
-  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
-}
 
 function toCount(value: unknown): number {
   const n = Number(value);
@@ -173,7 +169,7 @@ export function buildAccountStakeMoves(
 
   const concentration =
     totalMovements > 0
-      ? roundConcentration(squares / (totalMovements * totalMovements))
+      ? roundBelowOne(squares / (totalMovements * totalMovements))
       : null;
 
   return {

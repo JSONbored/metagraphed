@@ -30,7 +30,7 @@
 import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
-  RAO_PER_TAO_NUMBER,
+  round9NonNegative,
   nonNegativeOrZero,
   raoBigToTao,
   toRaoBig,
@@ -75,13 +75,6 @@ function nonNegativeInt(value: unknown): number | null {
   if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
-}
-
-function roundTao(value: unknown): number {
-  return (
-    Math.round(nonNegativeOrZero(value) * RAO_PER_TAO_NUMBER) /
-    RAO_PER_TAO_NUMBER
-  );
 }
 
 // Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
@@ -171,8 +164,8 @@ function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
     uid_count: entry.uidCount,
     validator_count: entry.validatorCount,
     miner_count: entry.uidCount - entry.validatorCount,
-    total_stake_tao: roundTao(raoBigToTao(entry.stakeTotalRao)),
-    total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
+    total_stake_tao: round9NonNegative(raoBigToTao(entry.stakeTotalRao)),
+    total_emission_tao: round9NonNegative(raoBigToTao(entry.emissionTotalRao)),
     latest_captured_at: toIso(entry.latestCapturedAt),
     latest_block_number: entry.latestBlockNumber,
     subnets,
@@ -335,8 +328,8 @@ export function buildAccountsList(
     entry.subnets.push({
       netuid,
       uid,
-      stake_alpha: roundTao(stake),
-      emission_alpha: roundTao(emission),
+      stake_alpha: round9NonNegative(stake),
+      emission_alpha: round9NonNegative(emission),
     });
   }
 

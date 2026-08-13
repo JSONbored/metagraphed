@@ -8,6 +8,7 @@
 // envelope. Null-safe: a cold store or a subnet with no AxonInfoRemoved events yields the zeroed card.
 
 import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "./uncurated-event-streams.ts";
+import { roundDp } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -26,10 +27,6 @@ export const DEFAULT_SUBNET_AXON_REMOVALS_WINDOW = "7d";
 
 // Round a removals-per-remover ratio to a stable 2dp precision. Always finite and non-negative
 // here (removals / distinct removers, with the divisor guarded below).
-function round(value: number, dp = 2): number {
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -54,7 +51,7 @@ function toIso(value: unknown): string | null {
 // re-announcing). A subnet with no removers has no defined intensity (null), not a divide-by-zero.
 function removalsPerRemover(removals: number, removers: number): number | null {
   if (removers <= 0) return null;
-  return round(removals / removers);
+  return roundDp(removals / removers);
 }
 
 // Shape one subnet's axon-removal scorecard from the single-row account_events aggregate. `row`

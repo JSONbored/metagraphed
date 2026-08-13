@@ -8,6 +8,7 @@
 // store or a subnet with no WeightsSet events yields a schema-stable empty leaderboard.
 
 import { WEIGHTS_EVENT_KIND } from "./subnet-weights.ts";
+import { roundBelowOne } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -39,11 +40,6 @@ const SETTER_IDENTITY =
 // flat 1 while another setter still holds activity (e.g. 49999/50000 = 0.99998 -> 1.0000).
 // The same anti-overstatement guard the sibling share/ratio rounders apply. A genuine sole
 // setter (its count == the subnet total) keeps a true 1.
-function round(value: number, dp = 4): number {
-  const factor = 10 ** dp;
-  const rounded = Math.round(value * factor) / factor;
-  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
-}
 
 // A non-negative whole count from a COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
@@ -202,7 +198,7 @@ export function buildSubnetWeightSetters(
       hotkey: toHotkey(row?.hotkey),
       uid: toUid(row?.uid),
       weight_sets: weightSets,
-      share: totalSets > 0 ? round(weightSets / totalSets) : null,
+      share: totalSets > 0 ? roundBelowOne(weightSets / totalSets) : null,
       first_set_at: toIso(row?.first_set),
       last_set_at: toIso(row?.last_set),
       ...overdueView(

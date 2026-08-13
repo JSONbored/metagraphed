@@ -22,6 +22,7 @@ export { DEFAULT_HISTORY_WINDOW, HISTORY_WINDOW_DAYS } from "./route-limits.ts";
 import { HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW } from "./route-limits.ts";
 import type { NeuronDaily } from "../generated/db/types.ts";
 import { RAO_PER_TAO, round9 } from "./lib/rao.ts";
+import { roundDpOrNull, roundDp } from "./lib/stats.ts";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;
 
@@ -269,7 +270,7 @@ export function buildEconomicsTrends(
     miner_count: acc.miner_seen ? acc.miner_sum : null,
     mean_emission_share:
       acc.emission_seen > 0
-        ? roundShare(acc.emission_sum / acc.emission_seen)
+        ? roundDp(acc.emission_sum / acc.emission_seen, 6)
         : null,
   }));
   return {
@@ -290,9 +291,6 @@ function toFiniteOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function roundTao(v: number): number {
-  return Math.round(v * 1e6) / 1e6;
-}
 // Exact rao-precision decimal string, never a JS number (#2924): a network-
 // wide daily total_stake_tao sum is already well past 2^53-1's exact-double
 // ceiling (~9,007,199 TAO at rao precision) -- confirmed live 2026-07-14 at
@@ -312,14 +310,6 @@ function raoToTaoString(rao: bigint): string {
 // Round a TAO sum, preserving null — so an unrounded D1 SUM(stake_tao)/SUM(
 // emission_tao) never leaks accumulated float noise, while a null SUM (cold/
 // sparse day) stays null rather than collapsing to 0.
-function roundTaoOrNull(v: unknown): number | null {
-  const n = toFiniteOrNull(v);
-  return n == null ? null : roundTao(n);
-}
-
-function roundShare(v: number): number {
-  return Math.round(v * 1e6) / 1e6;
-}
 
 function median(values: number[]): number | null {
   if (!values.length) return null;
@@ -349,8 +339,11 @@ export function buildSubnetHistory(
       validator_count: toNonNegativeInt(r.validator_count),
       // Round the per-day SUM(stake_tao)/SUM(emission_tao) to stop accumulated
       // float noise from leaking, matching buildEconomicsTrends above.
-      total_stake_alpha: roundTaoOrNull(r.total_stake_tao),
-      total_emission_alpha: roundTaoOrNull(r.total_emission_tao),
+      total_stake_alpha: roundDpOrNull(toFiniteOrNull(r.total_stake_tao), 6),
+      total_emission_alpha: roundDpOrNull(
+        toFiniteOrNull(r.total_emission_tao),
+        6,
+      ),
     }));
   return {
     schema_version: 1,
