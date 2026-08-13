@@ -65,7 +65,6 @@ export const OverlaidSubnetHealthSchema = HealthSubnetSummarySchema.partial()
       ),
   })
   .strict();
-export type OverlaidSubnetHealth = z.infer<typeof OverlaidSubnetHealthSchema>;
 
 export const HealthSummaryArtifactSchema = z
   .object({
