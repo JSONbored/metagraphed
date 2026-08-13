@@ -22,7 +22,7 @@
   "social": {
     "x": "https://x.com/byzantiumai"
   },
-  "source_repo": "https://github.com/byzantiumaitao-arch/byzantium",
+  "source_repo": "https://github.com/praxi-labs/phylax-subnet",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -53,8 +53,8 @@
       "authority": "official",
       "id": "sn-76-byzantium-source-repo",
       "kind": "source-repo",
-      "name": "Byzantium source repository",
-      "notes": "Official SN76 Byzantium source repository -- verified live 2026-07-15. Corrects a prior misattribution: this surface previously pointed to github.com/safe-scan-ai/cancer-ai, an unrelated Bittensor subnet's repo (SafeScan, a cancer-detection subnet with no connection to Byzantium's social-promotion agent theme), which never matched the file's own top-level source_repo field.",
+      "name": "Phylax source repository",
+      "notes": "Official SN76 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; the repository names netuid 76 in its own configuration. Replaces byzantiumaitao-arch/byzantium, the previous holder's repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -63,8 +63,8 @@
       },
       "provider": "byzantium",
       "public_safe": true,
-      "source_urls": ["https://github.com/byzantiumaitao-arch/byzantium"],
-      "url": "https://github.com/byzantiumaitao-arch/byzantium"
+      "source_urls": ["https://github.com/praxi-labs/phylax-subnet"],
+      "url": "https://github.com/praxi-labs/phylax-subnet"
     },
     {
       "auth_required": false,

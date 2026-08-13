@@ -5,7 +5,7 @@
   "kind": "subnet-team",
   "logo_url": "https://metagraph.sh/logos/leoma.png",
   "name": "Leoma",
-  "public_notes": "Subnet 99 (Leoma) team profile — decentralized video generation platform. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo). Review input only (authority: community).",
+  "public_notes": "Subnet 36 (Leoma) team profile -- decentralized video generation platform. Re-keyed from netuid 99 on 2026-08-13: SubnetIdentitiesV3 at block 8823651 names netuid 36 \"Leoma\", and RendixNetwork/leoma's docker-compose.yml defaults NETUID to 36. Review input only (authority: community).",
   "schema_version": 1,
   "website_url": "https://leoma.ai/"
 }

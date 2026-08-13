@@ -896,44 +896,6 @@
       "url": "https://api.cartha.finance/openapi.json"
     },
     {
-      "content_type": "application/json",
-      "drift_status": "unchanged",
-      "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-      "netuid": 36,
-      "path": "/metagraph/schemas/sn-36-eirel-openapi.json",
-      "previous_hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-      "schema_url": "https://api.eirel.ai/openapi.json",
-      "snapshot": {
-        "auth_detail": null,
-        "auth_required": false,
-        "auth_schemes": [],
-        "component_schema_count": 75,
-        "contract_version": "2026-07-03.2",
-        "drift_status": "unchanged",
-        "generated_at": "1970-01-01T00:00:00.000Z",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "netuid": 36,
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "openapi_version": "3.1.0",
-        "path_count": 121,
-        "previous_hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "schema_url": "https://api.eirel.ai/openapi.json",
-        "schema_version": 1,
-        "server_count": 0,
-        "subnet_name": "Eirel",
-        "subnet_slug": "sn-36",
-        "surface_id": "sn-36-eirel-openapi",
-        "surface_url": "https://api.eirel.ai/openapi.json",
-        "tag_count": 0,
-        "title": "owner-api",
-        "version": "0.1.0"
-      },
-      "status": "captured",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-openapi",
-      "url": "https://api.eirel.ai/openapi.json"
-    },
-    {
       "drift_status": "not-captured",
       "error": "no machine-readable OpenAPI JSON found",
       "hash": null,
@@ -2243,8 +2205,8 @@
       "content_type": "application/json",
       "drift_status": "unchanged",
       "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
-      "netuid": 99,
-      "path": "/metagraph/schemas/sn-99-leoma-openapi.json",
+      "netuid": 36,
+      "path": "/metagraph/schemas/sn-36-leoma-openapi.json",
       "previous_hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
       "schema_url": "https://api.leoma.ai/openapi.json",
       "snapshot": {
@@ -2256,7 +2218,7 @@
         "drift_status": "unchanged",
         "generated_at": "1970-01-01T00:00:00.000Z",
         "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
-        "netuid": 99,
+        "netuid": 36,
         "observed_at": "2026-08-02T07:31:05.148Z",
         "openapi_version": "3.1.0",
         "path_count": 28,
@@ -2265,16 +2227,16 @@
         "schema_version": 1,
         "server_count": 0,
         "subnet_name": "Leoma",
-        "subnet_slug": "sn-99",
-        "surface_id": "sn-99-leoma-openapi",
+        "subnet_slug": "sn-36",
+        "surface_id": "sn-36-leoma-openapi",
         "surface_url": "https://api.leoma.ai/openapi.json",
         "tag_count": 0,
         "title": "Leoma API",
         "version": "0.3.2"
       },
       "status": "captured",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-openapi",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-leoma-openapi",
       "url": "https://api.leoma.ai/openapi.json"
     },
     {
@@ -2546,14 +2508,14 @@
       "changed": 1,
       "new": 1,
       "not-captured": 6,
-      "unchanged": 57
+      "unchanged": 56
     },
     "by_status": {
-      "captured": 59,
+      "captured": 58,
       "not-found": 5,
       "unsafe": 1
     },
-    "schema_count": 59,
-    "surface_count": 65
+    "schema_count": 58,
+    "surface_count": 64
   }
 }

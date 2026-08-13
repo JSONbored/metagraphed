@@ -29,7 +29,7 @@
   "social": {
     "x": "https://x.com/forevermoney_ai"
   },
-  "source_repo": "https://github.com/SN98-ForeverMoney/forever-money",
+  "source_repo": "https://github.com/neverplayalone/neverplayalone_subnet",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -60,8 +60,8 @@
       "authority": "official",
       "id": "sn-98-forevermoney-source",
       "kind": "source-repo",
-      "name": "ForeverMoney source repository",
-      "notes": "Official ForeverMoney source repository.",
+      "name": "NeverPlayAlone source repository",
+      "notes": "Official SN98 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; its description reads \"Bittensor subnet 98\". Replaces SN98-ForeverMoney/forever-money, the previous holder's repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -70,8 +70,10 @@
       },
       "provider": "forevermoney",
       "public_safe": true,
-      "source_urls": ["https://github.com/SN98-ForeverMoney/forever-money"],
-      "url": "https://github.com/SN98-ForeverMoney/forever-money"
+      "source_urls": [
+        "https://github.com/neverplayalone/neverplayalone_subnet"
+      ],
+      "url": "https://github.com/neverplayalone/neverplayalone_subnet"
     },
     {
       "auth_required": false,

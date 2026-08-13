@@ -1,0 +1,71 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-website"
+  ],
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-08-13T00:00:00.000Z",
+    "verified_at": "2026-08-13T00:00:00.000Z",
+    "source_count": 2,
+    "gap_notes": [
+      "No source repository found. The docs describe hardware-attested proofs bound to \"public source and weights\" but link no repository, and no Thirty Spokes repo surfaced by search.",
+      "api.thirtyspokes.ai does not resolve. The docs say so directly: \"The user-facing gateway (api.thirtyspokes.ai) is not built yet\" -- so this is a declared not-yet, not link rot."
+    ]
+  },
+  "name": "Thirty Spokes",
+  "netuid": 99,
+  "notes": "First overlay for netuid 99 as Thirty Spokes. This netuid was previously curated as Leoma; SubnetIdentitiesV3 at block 8823651 names netuid 99 \"Thirty Spokes\" with subnet_url https://www.thirtyspokes.ai/, and the project's own docs state it is \"registered on Bittensor as Subnet 99\". Leoma's 31 api.leoma.ai surfaces moved with it to netuid 36 (registry/subnets/leoma.json), where both the chain identity and Leoma's own docker-compose NETUID default place it. Thirty Spokes is a decentralized model router scored on benchmark quality per dollar; miners run the owner's benchmark suite inside their own confidential VM (Intel TDX) and publish a hardware-attested proof, and validators run no inference at all. Both surfaces below live-verified 2026-08-13 (HEAD 200).",
+  "schema_version": 1,
+  "slug": "sn-99",
+  "source_repo": null,
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-99-thirty-spokes-website",
+      "kind": "website",
+      "name": "Thirty Spokes website",
+      "notes": "Official Thirty Spokes website, chain-declared as subnet_url in SubnetIdentitiesV3 at block 8823651 -- live-verified 2026-08-13 (HEAD 200).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "thirty-spokes",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.thirtyspokes.ai/",
+        "https://www.thirtyspokes.ai/docs"
+      ],
+      "url": "https://www.thirtyspokes.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-99-thirty-spokes-docs",
+      "kind": "docs",
+      "name": "Thirty Spokes documentation",
+      "notes": "Public documentation covering the KOTH protocol, attestation and trust model, Bittensor integration, anti-cheat and economic model. States \"Thirty Spokes is registered on Bittensor as Subnet 99\" -- live-verified 2026-08-13 (HEAD 200).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "thirty-spokes",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.thirtyspokes.ai/",
+        "https://www.thirtyspokes.ai/docs"
+      ],
+      "url": "https://www.thirtyspokes.ai/docs"
+    }
+  ],
+  "website_url": "https://www.thirtyspokes.ai/"
+}

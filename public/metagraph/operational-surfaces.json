@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 620,
+  "surface_count": 606,
   "surfaces": [
     {
       "auth_required": false,
@@ -3797,86 +3797,22 @@
     {
       "auth_required": false,
       "authority": "community",
-      "kind": "subnet-api",
+      "kind": "data-artifact",
       "netuid": 36,
       "probe": {
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "eirel",
+      "provider": "leoma",
       "public_safe": true,
       "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Leoma",
       "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-dashboard-families-api",
-      "surface_key": "srf-f10d09696922e4d4",
-      "url": "https://api.eirel.ai/api/v1/dashboard/families"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 36,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "eirel",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
-      },
-      "subnet_name": "Leoma",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-dashboard-overview",
-      "surface_key": "srf-432774f497633625",
-      "url": "https://api.eirel.ai/api/v1/dashboard/overview"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 36,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "eirel",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
-      },
-      "subnet_name": "Leoma",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-dashboard-runs",
-      "surface_key": "srf-c7b97ce1c0f42c54",
-      "url": "https://api.eirel.ai/api/v1/dashboard/runs"
+      "surface_id": "sn-36-leoma-blacklist",
+      "surface_key": "srf-a89ba777448af7d7",
+      "url": "https://api.leoma.ai/blacklist"
     },
     {
       "auth_required": false,
@@ -3888,15 +3824,15 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "eirel",
+      "provider": "leoma",
       "public_safe": true,
       "revenue": null,
       "schema_source": null,
       "subnet_name": "Leoma",
       "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-env-windows",
-      "surface_key": "srf-08ebe2e623e22446",
-      "url": "https://api.eirel.ai/v1/env-windows"
+      "surface_id": "sn-36-leoma-blacklist-miners",
+      "surface_key": "srf-66dd1295a640da34",
+      "url": "https://api.leoma.ai/blacklist/miners"
     },
     {
       "auth_required": false,
@@ -3908,23 +3844,23 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "eirel",
+      "provider": "leoma",
       "public_safe": true,
       "revenue": null,
       "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
+        "artifact": "/metagraph/schemas/sn-36-leoma-openapi.json",
+        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
         "observed_at": "2026-08-02T07:31:05.148Z",
         "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
+        "surface_id": "sn-36-leoma-openapi",
+        "url": "https://api.leoma.ai/openapi.json"
       },
       "subnet_name": "Leoma",
       "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-healthz",
-      "surface_key": "srf-a18f20fa26430a69",
-      "url": "https://api.eirel.ai/healthz"
+      "surface_id": "sn-36-leoma-health",
+      "surface_key": "srf-73e93032ef3adcd3",
+      "url": "https://api.leoma.ai/health"
     },
     {
       "auth_required": false,
@@ -3936,51 +3872,23 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "eirel",
+      "provider": "leoma",
       "public_safe": true,
       "revenue": null,
       "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
+        "artifact": "/metagraph/schemas/sn-36-leoma-openapi.json",
+        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
         "observed_at": "2026-08-02T07:31:05.148Z",
         "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
+        "surface_id": "sn-36-leoma-openapi",
+        "url": "https://api.leoma.ai/openapi.json"
       },
       "subnet_name": "Leoma",
       "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-metagraph-status",
-      "surface_key": "srf-8a1a19859cd4528c",
-      "url": "https://api.eirel.ai/v1/metagraph/status"
-    },
-    {
-      "auth_required": false,
-      "authority": "official",
-      "kind": "subnet-api",
-      "netuid": 36,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "eirel",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
-      },
-      "subnet_name": "Leoma",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-metrics",
-      "surface_key": "srf-03ec04a149dade8b",
-      "url": "https://api.eirel.ai/metrics"
+      "surface_id": "sn-36-leoma-miners-list",
+      "surface_key": "srf-9e102fbe535390e7",
+      "url": "https://api.leoma.ai/miners/list"
     },
     {
       "auth_required": false,
@@ -3992,147 +3900,23 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "eirel",
+      "provider": "leoma",
       "public_safe": true,
       "revenue": null,
       "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
+        "artifact": "/metagraph/schemas/sn-36-leoma-openapi.json",
+        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
         "observed_at": "2026-08-02T07:31:05.148Z",
         "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
+        "surface_id": "sn-36-leoma-openapi",
+        "url": "https://api.leoma.ai/openapi.json"
       },
       "subnet_name": "Leoma",
       "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-runs",
-      "surface_key": "srf-c0b4dd4aad36485f",
-      "url": "https://api.eirel.ai/v1/runs"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 36,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "eirel",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
-      },
-      "subnet_name": "Leoma",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-runs-current-api",
-      "surface_key": "srf-9ebbbdb57543e02c",
-      "url": "https://api.eirel.ai/v1/runs/current"
-    },
-    {
-      "auth_required": false,
-      "authority": "official",
-      "kind": "subnet-api",
-      "netuid": 36,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "eirel",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
-      },
-      "subnet_name": "Leoma",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-submissions-queued",
-      "surface_key": "srf-6b8a40c9b46ccc36",
-      "url": "https://api.eirel.ai/api/v1/dashboard/submissions/queued"
-    },
-    {
-      "auth_required": false,
-      "authority": "official",
-      "kind": "subnet-api",
-      "netuid": 36,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "eirel",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
-        "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-36-eirel-openapi",
-        "url": "https://api.eirel.ai/openapi.json"
-      },
-      "subnet_name": "Leoma",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-weights",
-      "surface_key": "srf-cbdc8f9e3a91a9bd",
-      "url": "https://api.eirel.ai/v1/weights"
-    },
-    {
-      "auth_required": false,
-      "authority": "official",
-      "kind": "data-artifact",
-      "netuid": 36,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "eirel",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Leoma",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-workflow-composition-registry",
-      "surface_key": "srf-e8f6d4ea51a3d325",
-      "url": "https://api.eirel.ai/v1/workflow-composition/registry"
-    },
-    {
-      "auth_required": false,
-      "authority": "official",
-      "kind": "data-artifact",
-      "netuid": 36,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "eirel",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Leoma",
-      "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-workflow-corpus",
-      "surface_key": "srf-9dbc63f415efa798",
-      "url": "https://api.eirel.ai/v1/workflow-corpus"
+      "surface_id": "sn-36-leoma-samples-list",
+      "surface_key": "srf-547a6ee518d2e499",
+      "url": "https://api.leoma.ai/samples/list"
     },
     {
       "auth_required": false,
@@ -4144,15 +3928,142 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "eirel",
+      "provider": "leoma",
       "public_safe": true,
       "revenue": null,
       "schema_source": null,
       "subnet_name": "Leoma",
       "subnet_slug": "sn-36",
-      "surface_id": "sn-36-eirel-workflow-specs",
-      "surface_key": "srf-f2d077a28f21406c",
-      "url": "https://api.eirel.ai/v1/workflow-specs"
+      "surface_id": "sn-36-leoma-scores",
+      "surface_key": "srf-af172550c17591ed",
+      "url": "https://api.leoma.ai/scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "revenue": null,
+      "schema_source": null,
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-leoma-scores-rank",
+      "surface_key": "srf-1018d0be95283542",
+      "url": "https://api.leoma.ai/scores/rank"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "revenue": {
+        "provenance": "probe-derived",
+        "role": "usage-proxy"
+      },
+      "schema_source": null,
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-leoma-scores-stats",
+      "surface_key": "srf-ac99acf86edaea09",
+      "url": "https://api.leoma.ai/scores/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "revenue": null,
+      "schema_source": {
+        "artifact": "/metagraph/schemas/sn-36-leoma-openapi.json",
+        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
+        "match": "same-origin-openapi",
+        "observed_at": "2026-08-02T07:31:05.148Z",
+        "status": "captured",
+        "surface_id": "sn-36-leoma-openapi",
+        "url": "https://api.leoma.ai/openapi.json"
+      },
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-leoma-scores-validators",
+      "surface_key": "srf-aae0d956b62064c1",
+      "url": "https://api.leoma.ai/scores/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "revenue": null,
+      "schema_source": {
+        "artifact": "/metagraph/schemas/sn-36-leoma-openapi.json",
+        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
+        "match": "same-origin-openapi",
+        "observed_at": "2026-08-02T07:31:05.148Z",
+        "status": "captured",
+        "surface_id": "sn-36-leoma-openapi",
+        "url": "https://api.leoma.ai/openapi.json"
+      },
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-leoma-tasks-latest",
+      "surface_key": "srf-f627579577249db4",
+      "url": "https://api.leoma.ai/tasks/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "revenue": null,
+      "schema_source": {
+        "artifact": "/metagraph/schemas/sn-36-leoma-openapi.json",
+        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
+        "match": "same-origin-openapi",
+        "observed_at": "2026-08-02T07:31:05.148Z",
+        "status": "captured",
+        "surface_id": "sn-36-leoma-openapi",
+        "url": "https://api.leoma.ai/openapi.json"
+      },
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-leoma-weights",
+      "surface_key": "srf-1c5c8db9c0b83a74",
+      "url": "https://api.leoma.ai/weights"
     },
     {
       "auth_required": false,
@@ -11944,277 +11855,6 @@
       "surface_id": "sn-98-forevermoney-vaults-tvl-api",
       "surface_key": "srf-b7903c0191b3c777",
       "url": "https://dashboard.forevermoney.ai/api/vaults/tvl"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-blacklist",
-      "surface_key": "srf-6df54207dc8bdf0b",
-      "url": "https://api.leoma.ai/blacklist"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-blacklist-miners",
-      "surface_key": "srf-a1a36bae8aea471c",
-      "url": "https://api.leoma.ai/blacklist/miners"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
-        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-99-leoma-openapi",
-        "url": "https://api.leoma.ai/openapi.json"
-      },
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-health",
-      "surface_key": "srf-0d3e9b0db1918473",
-      "url": "https://api.leoma.ai/health"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
-        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-99-leoma-openapi",
-        "url": "https://api.leoma.ai/openapi.json"
-      },
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-miners-list",
-      "surface_key": "srf-f8069336daa1b6f4",
-      "url": "https://api.leoma.ai/miners/list"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
-        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-99-leoma-openapi",
-        "url": "https://api.leoma.ai/openapi.json"
-      },
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-samples-list",
-      "surface_key": "srf-2cbcbf2a4d469c67",
-      "url": "https://api.leoma.ai/samples/list"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-scores",
-      "surface_key": "srf-4b2c80a2ad45efb8",
-      "url": "https://api.leoma.ai/scores"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-scores-rank",
-      "surface_key": "srf-f241cb7a63e9e049",
-      "url": "https://api.leoma.ai/scores/rank"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": {
-        "provenance": "probe-derived",
-        "role": "usage-proxy"
-      },
-      "schema_source": null,
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-scores-stats",
-      "surface_key": "srf-c5326673a281a48c",
-      "url": "https://api.leoma.ai/scores/stats"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
-        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-99-leoma-openapi",
-        "url": "https://api.leoma.ai/openapi.json"
-      },
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-scores-validators",
-      "surface_key": "srf-2105648335486743",
-      "url": "https://api.leoma.ai/scores/validators"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
-        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-99-leoma-openapi",
-        "url": "https://api.leoma.ai/openapi.json"
-      },
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-tasks-latest",
-      "surface_key": "srf-77b4603b849756fe",
-      "url": "https://api.leoma.ai/tasks/latest"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 99,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "leoma",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
-        "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-08-02T07:31:05.148Z",
-        "status": "captured",
-        "surface_id": "sn-99-leoma-openapi",
-        "url": "https://api.leoma.ai/openapi.json"
-      },
-      "subnet_name": "Thirty Spokes",
-      "subnet_slug": "sn-99",
-      "surface_id": "sn-99-leoma-weights",
-      "surface_key": "srf-e861395493e32ffa",
-      "url": "https://api.leoma.ai/weights"
     },
     {
       "auth_required": false,

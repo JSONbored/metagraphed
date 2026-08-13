@@ -1,4 +1,11 @@
 // SN98 (ForeverMoney) end-to-end verification for the call_subnet_surface MCP tool
+// NOTE (2026-08-13): netuid 98's official source repository was repointed to
+// neverplayalone/neverplayalone_subnet -- SubnetIdentitiesV3 at block 8823651
+// declares it and its description reads "Bittensor subnet 98". The
+// sn-98-forevermoney-source pin follows it; the two raw.githubusercontent
+// surfaces still point at SN98-ForeverMoney/forever-money, which is correct --
+// they are pinned commits of files that repository actually serves, and a
+// change of holder does not retroactively unpublish them.
 // (metagraphed#7110, MCP execute Phase 1 follow-up #7014/#7215).
 // Unlike tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN98's real registry surfaces
@@ -134,7 +141,7 @@ const SURFACES = [
     id: "sn-98-forevermoney-source",
     kind: "source-repo",
     operational: false,
-    url: "https://github.com/SN98-ForeverMoney/forever-money",
+    url: "https://github.com/neverplayalone/neverplayalone_subnet",
     method: "HEAD",
     contentType: "text/html",
     rawBody: null,
