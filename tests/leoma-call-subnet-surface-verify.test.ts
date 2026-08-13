@@ -1,13 +1,19 @@
-// SN99 (SN99) end-to-end verification for the call_subnet_surface MCP tool
+// SN36 (Leoma) end-to-end verification for the call_subnet_surface MCP tool
+// NOTE (2026-08-13): this subnet moved netuids. Leoma was curated at netuid 99
+// until SubnetIdentitiesV3 at block 8823651 named netuid 36 "Leoma" and netuid
+// 99 "Thirty Spokes"; RendixNetwork/leoma's own docker-compose.yml defaults
+// NETUID to 36. The surface itself is unchanged -- same host, same route -- so
+// this file follows it rather than being retired: only the id prefix
+// (sn-99-* -> sn-36-*) and the netuid moved.
 // (metagraphed#7111, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
-// synthetic surfaces -- this file pins SN99's *real* registry surface config
+// synthetic surfaces -- this file pins Leoma's *real* registry surface config
 // (registry/subnets/leoma.json) to the tool's contract, so a future edit that
 // regresses its callability (flipping to HEAD, marking it auth_required,
 // disabling its probe) is caught here.
 //
-// The surface is the public no-auth SN99 API health endpoint
-// (sn-99-leoma-health, GET https://api.leoma.ai/health, JSON, single fixed endpoint -- no schema). Live-verified
+// The surface is the public no-auth Leoma API health endpoint
+// (sn-36-leoma-health, GET https://api.leoma.ai/health, JSON, single fixed endpoint -- no schema). Live-verified
 // 2026-07-21 to return HTTP 200 application/json {"status":"healthy"}. The
 // fixture below mirrors that live response rather than fetching it, keeping the
 // test hermetic while still exercising the JSON parse-and-return path.
@@ -19,7 +25,7 @@ import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import type { Row } from "./row-type.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 
-const SURFACE_ID = "sn-99-leoma-health";
+const SURFACE_ID = "sn-36-leoma-health";
 
 const registry = JSON.parse(
   readFileSync(
@@ -41,7 +47,7 @@ function upstreamResponse() {
   });
 }
 
-describe("SN99 SN99 call_subnet_surface verification (#7111)", () => {
+describe("SN36 (Leoma) call_subnet_surface verification (#7111)", () => {
   test("the registry surface exists and is configured to be callable", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
@@ -77,7 +83,7 @@ describe("SN99 SN99 call_subnet_surface verification (#7111)", () => {
 
   test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
     const catalog = {
-      surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 99 }],
+      surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 36 }],
     };
     const deps = {
       readArtifact: async (_env: Row, path: string) =>

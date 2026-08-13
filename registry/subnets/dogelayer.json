@@ -31,8 +31,8 @@
       "authority": "official",
       "id": "sn-80-dogelayer-source-repo",
       "kind": "source-repo",
-      "name": "dogelayer source repository",
-      "notes": "Official SN80 miner/validator source repository -- verified live 2026-07-15.",
+      "name": "OpenRoboto source repository",
+      "notes": "Official SN80 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; the repository names netuid 80 in its own text and describes itself as the public miner, protocol and validator. Replaces dogelayer-ai/dogelayer, whose site returns 530.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,8 +41,8 @@
       },
       "provider": "dogelayer",
       "public_safe": true,
-      "source_urls": ["https://github.com/dogelayer-ai/dogelayer"],
-      "url": "https://github.com/dogelayer-ai/dogelayer"
+      "source_urls": ["https://github.com/openroboto-ai/openroboto-subnet"],
+      "url": "https://github.com/openroboto-ai/openroboto-subnet"
     },
     {
       "auth_required": false,
@@ -143,5 +143,5 @@
       "url": "https://www.f2pool.com/mining-user-ltc/4c4d13e15249e898a3ba76d49c8aaa60?user_name=taosub"
     }
   ],
-  "source_repo": "https://github.com/dogelayer-ai/dogelayer"
+  "source_repo": "https://github.com/openroboto-ai/openroboto-subnet"
 }

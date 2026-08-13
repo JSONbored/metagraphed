@@ -35,7 +35,7 @@
   "notes": "Reviewed overlay for SN66. Migrated from the unarbos/ninja.arbos.life identity to the ninja-subnet org / ninja66.ai domain -- verified live 2026-07-15 (ninja.arbos.life now 404s site-wide; ninja66.ai's own page links to github.com/ninja-subnet/ninja and ninja-validator, both actively pushed the same day). Official website, source repositories, and health endpoint verified live under the new identity. The obvious OpenAPI JSON paths currently serve HTML or 404, so schema-backed status remains a gap. This re-review pass fixed 1 surface having no probe config at all -- the registry-wide gap tracked in #5932 -- and re-confirmed the migrated identity, on-chain identity match, and OpenAPI gap all still hold as of 2026-07-16.",
   "schema_version": 1,
   "slug": "sn-66",
-  "source_repo": "https://github.com/ninja-subnet/ninja",
+  "source_repo": "https://github.com/conjectures-io/conjectures-validator",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -67,8 +67,8 @@
       "authority": "official",
       "id": "sn-66-ninja-tau-source",
       "kind": "source-repo",
-      "name": "Ninja agent source repository",
-      "notes": "Official published-agent repository for Ninja SN66. Migrated from unarbos/tau to the ninja-subnet org's \"ninja\" repo (description: \"Subnet 66 published ninja king agent\") -- verified live 2026-07-15, pushed same day.",
+      "name": "Conjectures validator source repository",
+      "notes": "Official SN66 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; the README says \"conjectures.io -- Bittensor Subnet 66 Validator\", repeats \"Bittensor Subnet 66\", and sets BOUNTY_NETUID=66. Replaces ninja-subnet/ninja: the chain records a SubnetOwnerChanged transfer on netuid 66 observed 2026-08-12, and ninja66.ai returns 521. The two remaining ninja-subnet surfaces are kept as the previous holder's published repositories.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -78,10 +78,10 @@
       "provider": "unarbos",
       "public_safe": true,
       "source_urls": [
-        "https://github.com/ninja-subnet/ninja",
-        "https://ninja66.ai/"
+        "https://ninja66.ai/",
+        "https://github.com/conjectures-io/conjectures-validator"
       ],
-      "url": "https://github.com/ninja-subnet/ninja"
+      "url": "https://github.com/conjectures-io/conjectures-validator"
     },
     {
       "auth_required": false,

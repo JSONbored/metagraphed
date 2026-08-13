@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "docs_url": "https://www.thirtyspokes.ai/docs",
+  "id": "thirty-spokes",
+  "kind": "subnet-team",
+  "name": "Thirty Spokes",
+  "public_notes": "Subnet 99 (Thirty Spokes) team profile -- a decentralized model router where miners compete on benchmark quality per dollar and prove it with hardware attestation. Identity from on-chain SubnetIdentitiesV3 at block 8823651 (name, website), corroborated by the project's own docs stating it is \"registered on Bittensor as Subnet 99\". Review input only (authority: community).",
+  "schema_version": 1,
+  "website_url": "https://www.thirtyspokes.ai/"
+}

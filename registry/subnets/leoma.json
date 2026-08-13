@@ -17,15 +17,15 @@
     ]
   },
   "name": "Leoma",
-  "netuid": 99,
-  "notes": "First maintainer review for SN99. Added website + source-repo surfaces, fixed 2 missing probe blocks. Diffed the 28-path OpenAPI schema for undiscovered public GET endpoints -- added 6 new surfaces (scores, scores/rank, blacklist, blacklist/miners, tasks/latest, weights); 2 candidates (miners/valid, miners/all) turned out to require validator-signed headers despite the schema saying no auth.",
+  "netuid": 36,
+  "notes": "Re-keyed from netuid 99 to netuid 36 on 2026-08-13. Leoma moved netuids: SubnetIdentitiesV3 at block 8823651 names netuid 36 \"Leoma\", and RendixNetwork/leoma's own docker-compose.yml defaults NETUID to 36. Netuid 99 is now Thirty Spokes, which states in its docs that it is \"registered on Bittensor as Subnet 99\" -- see registry/subnets/thirty-spokes.json. The previous netuid-36 overlay (Eirel, RendixNetwork/eirel-ai, also RendixNetwork) is retired: eirel.ai, leaderboard.eirel.ai and eirel.ai/whitepaper.pdf all return 404 and api.eirel.ai returns 521, and no Eirel source declares a netuid. Prior review notes for this manifest: First maintainer review for SN99. Added website + source-repo surfaces, fixed 2 missing probe blocks. Diffed the 28-path OpenAPI schema for undiscovered public GET endpoints -- added 6 new surfaces (scores, scores/rank, blacklist, blacklist/miners, tasks/latest, weights); 2 candidates (miners/valid, miners/all) turned out to require validator-signed headers despite the schema saying no auth.",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
     "outcome": "none-found",
     "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
   },
   "schema_version": 1,
-  "slug": "sn-99",
+  "slug": "sn-36",
   "social": {
     "x": "https://x.com/leoma_ai"
   },
@@ -35,7 +35,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-health",
+      "id": "sn-36-leoma-health",
       "kind": "subnet-api",
       "name": "Leoma API health",
       "notes": "Public no-auth GET /health on api.leoma.ai returning application liveness JSON (observed: status, version, database, metagraph_synced, last_sync). Documented in the subnet OpenAPI spec and implemented in the official RendixNetwork/leoma health route used by validator API clients.",
@@ -61,7 +61,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-scores-stats",
+      "id": "sn-36-leoma-scores-stats",
       "kind": "data-artifact",
       "name": "Leoma network score summary",
       "revenue": {
@@ -87,7 +87,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-openapi",
+      "id": "sn-36-leoma-openapi",
       "kind": "openapi",
       "name": "Leoma validator API OpenAPI schema",
       "notes": "Public no-auth OpenAPI 3.x schema for the SN99 Leoma validator API (title \"Leoma API\", version 0.3.2, 28 paths) on api.leoma.ai. Documents /health, miner listing, samples, scores, and related validator routes; same host as the existing health and scores/stats surfaces.",
@@ -115,7 +115,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-miners-list",
+      "id": "sn-36-leoma-miners-list",
       "kind": "subnet-api",
       "name": "Leoma miners list",
       "notes": "Public no-auth GET returning the registered miners list (uid, hotkey, model_name, model_revision). Documented in the subnet's own OpenAPI schema.",
@@ -137,7 +137,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-samples-list",
+      "id": "sn-36-leoma-samples-list",
       "kind": "subnet-api",
       "name": "Leoma samples list",
       "notes": "Public no-auth GET returning evaluation sample records (id, task_id, validator_hotkey, miner_hotkey). Documented in the subnet's own OpenAPI schema.",
@@ -159,7 +159,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-scores-validators",
+      "id": "sn-36-leoma-scores-validators",
       "kind": "subnet-api",
       "name": "Leoma validator scores",
       "notes": "Public no-auth GET returning per-validator scoring stats (total_samples, total_passed, avg_score). Documented in the subnet's own OpenAPI schema.",
@@ -181,7 +181,7 @@
     {
       "auth_required": false,
       "authority": "official",
-      "id": "sn-99-leoma-website",
+      "id": "sn-36-leoma-website",
       "kind": "website",
       "name": "Leoma website",
       "notes": "Official SN99 Leoma website -- verified live 2026-07-16.",
@@ -199,7 +199,7 @@
     {
       "auth_required": false,
       "authority": "official",
-      "id": "sn-99-leoma-source-repo",
+      "id": "sn-36-leoma-source-repo",
       "kind": "source-repo",
       "name": "Leoma source repository",
       "notes": "Official SN99 Leoma source repository -- verified live 2026-07-16.",
@@ -217,7 +217,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-scores",
+      "id": "sn-36-leoma-scores",
       "kind": "data-artifact",
       "name": "Leoma per-miner scores",
       "notes": "Public no-auth GET /scores on api.leoma.ai returning per-miner scoring aggregates keyed by hotkey (avg_score, total_samples, total_passed, pass_rate, validator_count). Documented in the subnet's own OpenAPI schema; same api.leoma.ai host as the existing scores/stats and scores/validators surfaces.",
@@ -239,7 +239,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-scores-rank",
+      "id": "sn-36-leoma-scores-rank",
       "kind": "data-artifact",
       "name": "Leoma miner rank leaderboard",
       "notes": "Public no-auth GET /scores/rank on api.leoma.ai returning the ranked miner leaderboard (miner_hotkey, uid, rank, passed_count, pass_rate, block, eligible). Documented in the subnet's own OpenAPI schema; same host as the other scores surfaces.",
@@ -261,7 +261,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-blacklist",
+      "id": "sn-36-leoma-blacklist",
       "kind": "data-artifact",
       "name": "Leoma blacklist records",
       "notes": "Public no-auth GET /blacklist on api.leoma.ai returning full blacklist entries (hotkey, reason, added_by, created_at). Documented in the subnet's own OpenAPI schema. Distinct in shape from the hotkey-only /blacklist/miners list.",
@@ -283,7 +283,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-blacklist-miners",
+      "id": "sn-36-leoma-blacklist-miners",
       "kind": "data-artifact",
       "name": "Leoma blacklisted miner hotkeys",
       "notes": "Public no-auth GET /blacklist/miners on api.leoma.ai returning a plain array of blacklisted miner hotkeys. Documented in the subnet's own OpenAPI schema. Distinct in shape from the full-record /blacklist surface.",
@@ -305,7 +305,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-tasks-latest",
+      "id": "sn-36-leoma-tasks-latest",
       "kind": "subnet-api",
       "name": "Leoma latest task id",
       "notes": "Public no-auth GET /tasks/latest on api.leoma.ai returning the most recent evaluation task_id. Documented in the subnet's own OpenAPI schema.",
@@ -327,7 +327,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-weights",
+      "id": "sn-36-leoma-weights",
       "kind": "subnet-api",
       "name": "Leoma current weight-setting result",
       "notes": "Public no-auth GET /weights on api.leoma.ai returning the current round's winning miner and per-miner weight allocation (winner_uid, miners[].miner_hotkey/uid/pass_rate/weight). Documented in the subnet's own OpenAPI schema.",
@@ -349,7 +349,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-blacklist-operator-account",
+      "id": "sn-36-leoma-blacklist-operator-account",
       "kind": "subnet-api",
       "name": "Leoma blacklist operator account",
       "notes": "Remove From Blacklist operation on the Leoma API (DELETE, GET /blacklist/{operator account}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -371,7 +371,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-miners-all",
+      "id": "sn-36-leoma-miners-all",
       "kind": "subnet-api",
       "name": "Leoma miners all",
       "notes": "Get All Miners operation on the Leoma API (GET /miners/all), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a required validator-identity request header as required, so the probe is left disabled.",
@@ -393,7 +393,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-miners-info-miner-account-id",
+      "id": "sn-36-leoma-miners-info-miner-account-id",
       "kind": "subnet-api",
       "name": "Leoma miners info miner operator account",
       "notes": "Get Miner Info operation on the Leoma API (GET /miners/info/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -415,7 +415,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-miners-miner-account-id",
+      "id": "sn-36-leoma-miners-miner-account-id",
       "kind": "subnet-api",
       "name": "Leoma miners miner operator account",
       "notes": "Get Miner operation on the Leoma API (GET /miners/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -437,7 +437,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-miners-miner-account-id-tasks",
+      "id": "sn-36-leoma-miners-miner-account-id-tasks",
       "kind": "subnet-api",
       "name": "Leoma miners miner operator account tasks",
       "notes": "Get Miner Tasks operation on the Leoma API (GET /miners/{miner account id}/tasks), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -459,7 +459,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-miners-uid-uid",
+      "id": "sn-36-leoma-miners-uid-uid",
       "kind": "subnet-api",
       "name": "Leoma miners uid uid",
       "notes": "Get Miner By Uid operation on the Leoma API (GET /miners/uid/{uid}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -481,7 +481,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-miners-valid",
+      "id": "sn-36-leoma-miners-valid",
       "kind": "subnet-api",
       "name": "Leoma miners valid",
       "notes": "Get Valid Miners operation on the Leoma API (GET /miners/valid), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a required validator-identity request header as required, so the probe is left disabled.",
@@ -503,7 +503,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-samples",
+      "id": "sn-36-leoma-samples",
       "kind": "subnet-api",
       "name": "Leoma samples",
       "notes": "Submit Sample operation on the Leoma API (POST /samples), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled.",
@@ -525,7 +525,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-samples-batch",
+      "id": "sn-36-leoma-samples-batch",
       "kind": "subnet-api",
       "name": "Leoma samples batch",
       "notes": "Submit Samples Batch operation on the Leoma API (POST /samples/batch), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled.",
@@ -547,7 +547,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-samples-miner-miner-account-id",
+      "id": "sn-36-leoma-samples-miner-miner-account-id",
       "kind": "subnet-api",
       "name": "Leoma samples miner miner operator account",
       "notes": "Get Miner Samples operation on the Leoma API (GET /samples/miner/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -569,7 +569,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-samples-task",
+      "id": "sn-36-leoma-samples-task",
       "kind": "subnet-api",
       "name": "Leoma samples task",
       "notes": "Get Task Samples operation on the Leoma API (GET /samples/task), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a required validator-identity query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
@@ -591,7 +591,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-samples-validator-validator-account-id",
+      "id": "sn-36-leoma-samples-validator-validator-account-id",
       "kind": "subnet-api",
       "name": "Leoma samples validator validator operator account",
       "notes": "Get Validator Samples operation on the Leoma API (GET /samples/validator/{validator account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -613,7 +613,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-scores-miner-miner-account-id",
+      "id": "sn-36-leoma-scores-miner-miner-account-id",
       "kind": "subnet-api",
       "name": "Leoma scores miner miner operator account",
       "notes": "Get Miner Scores operation on the Leoma API (GET /scores/miner/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -635,7 +635,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-scores-validator-validator-account-id",
+      "id": "sn-36-leoma-scores-validator-validator-account-id",
       "kind": "subnet-api",
       "name": "Leoma scores validator validator operator account",
       "notes": "Get Validator Scores operation on the Leoma API (GET /scores/validator/{validator account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -657,7 +657,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-tasks",
+      "id": "sn-36-leoma-tasks",
       "kind": "subnet-api",
       "name": "Leoma tasks",
       "notes": "Get Miner Tasks operation on the Leoma API (GET /tasks), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a required miner-identity query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
@@ -679,7 +679,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-tasks-task-id",
+      "id": "sn-36-leoma-tasks-task-id",
       "kind": "subnet-api",
       "name": "Leoma tasks task id",
       "notes": "Get Task Detail operation on the Leoma API (GET /tasks/{task_id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
@@ -701,7 +701,7 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-99-leoma-tasks-task-id-miner-miner-account-id",
+      "id": "sn-36-leoma-tasks-task-id-miner-miner-account-id",
       "kind": "subnet-api",
       "name": "Leoma tasks task id miner miner operator account",
       "notes": "Get Task Miner Detail operation on the Leoma API (GET /tasks/{task_id}/miner/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
