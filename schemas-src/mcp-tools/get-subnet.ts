@@ -29,6 +29,8 @@
 // are modelled from what production actually serves, verified field by field
 // against a live get_subnet response.
 import { z } from "zod";
+import { sectionsSchema } from "../query-params.ts";
+import { SUBNET_OVERVIEW_SECTIONS } from "../routes/subnet-overview.ts";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import { OverlaidSubnetHealthSchema } from "../routes/health.ts";
 import { netuidSchema } from "./shared.ts";
@@ -42,6 +44,16 @@ import { CurationMetadataSchema } from "../routes/subnet-detail.ts";
 export const GetSubnetInputSchema = z
   .object({
     netuid: netuidSchema(),
+    // #11100, the same argument get_subnet_detail carries for the same
+    // reason: the composed overview is the payload a research session
+    // measured as very large with heavy duplication, this tool is the one
+    // most likely to be an agent's first call, and an agent pays the
+    // unprojected bytes in context window. The bound comes FROM the route's
+    // vocabulary; validate:mcp-input-parity holds the two together.
+    sections: sectionsSchema(SUBNET_OVERVIEW_SECTIONS, [
+      "profile",
+      "health",
+    ]).optional(),
   })
   .strict();
 export type GetSubnetInput = z.infer<typeof GetSubnetInputSchema>;

@@ -33,6 +33,10 @@ import {
 } from "../schemas-src/routes/subnet-profiles.ts";
 import { ArtifactBaseSchema } from "../schemas-src/envelope.ts";
 import { LIVE_HEALTH_OVERLAY } from "../schemas-src/routes/subnet-detail.ts";
+import {
+  SUBNET_OVERVIEW_SECTIONS,
+  SubnetOverviewArtifactSchema,
+} from "../schemas-src/routes/subnet-overview.ts";
 
 const DETAIL = SUBNET_DETAIL_SECTIONS;
 const PROFILE = SUBNET_PROFILE_SECTIONS;
@@ -254,6 +258,24 @@ describe("GET /api/v1/subnets/{netuid}?sections=", () => {
     assert.match(String(error.message), /sections/);
   });
 
+  test("the overview route serves a selected section and sheds the rest (#11100)", async () => {
+    const { res, body } = await getRoute(
+      "/api/v1/subnets/1/overview?sections=profile",
+    );
+    assert.equal(res.status, 200);
+    const data = (body?.data ?? {}) as Row;
+    assert.ok("profile" in data, "the requested section is present");
+    for (const shed of ["health", "curation", "gaps", "counts"]) {
+      assert.ok(!(shed in data), `${shed} must be projected away`);
+    }
+    // Its own vocabulary: `economics` is a detail-route section the overview
+    // never carries, so it must be refused, not ignored.
+    const refused = await getRoute(
+      "/api/v1/subnets/1/overview?sections=economics",
+    );
+    assert.equal(refused.res.status, 400);
+  });
+
   test("the profile route refuses `economics`, which it cannot serve", async () => {
     // Its own vocabulary, not a shared one: accepting a name this document
     // never carries would promise a section that can never arrive.
@@ -290,6 +312,7 @@ describe("the lever is published, not just implemented", () => {
   it.each([
     ["/api/v1/subnets/{netuid}", SUBNET_DETAIL_SECTIONS],
     ["/api/v1/subnets/{netuid}/profile", SUBNET_PROFILE_SECTIONS],
+    ["/api/v1/subnets/{netuid}/overview", SUBNET_OVERVIEW_SECTIONS],
   ])("%s publishes sections with its own closed set", (route, vocabulary) => {
     const parameter = published(route).find((p) => p.name === "sections");
     expect(parameter, `${route} must publish sections`).toBeTruthy();
@@ -409,6 +432,23 @@ describe("the section vocabulary cannot drift from the document", () => {
         "surfaces",
       ],
     ],
+    [
+      "overview",
+      SUBNET_OVERVIEW_SECTIONS,
+      [
+        "counts",
+        "curation",
+        "gap_priorities",
+        "gaps",
+        "health",
+        "name",
+        "netuid",
+        "notes",
+        "profile",
+        "slug",
+        "status",
+      ],
+    ],
   ])("%s publishes exactly this vocabulary", (_name, vocab, expected) => {
     // Compared unsorted: `sectionsOf` sorts, so the published order is part of
     // what this pins.
@@ -422,6 +462,7 @@ describe("the section vocabulary cannot drift from the document", () => {
     for (const [schema, vocab] of [
       [SubnetDetailArtifactSchema, SUBNET_DETAIL_SECTIONS],
       [SubnetProfileArtifactSchema, SUBNET_PROFILE_SECTIONS],
+      [SubnetOverviewArtifactSchema, SUBNET_OVERVIEW_SECTIONS],
     ] as const) {
       for (const section of vocab) {
         assert.ok(

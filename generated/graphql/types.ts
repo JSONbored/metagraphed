@@ -4987,6 +4987,7 @@ export type QuerySubnet_OhlcArgs = {
 
 export type QuerySubnet_OverviewArgs = {
   netuid: Scalars['Int']['input'];
+  sections?: InputMaybe<Scalars['String']['input']>;
 };
 
 

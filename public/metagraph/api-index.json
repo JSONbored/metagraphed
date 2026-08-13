@@ -3100,7 +3100,16 @@
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "description": "Comma-separated top-level sections to return, e.g. `profile,health`. One of: counts, curation, gap_priorities, gaps, health, name, netuid, notes, profile, slug, status. Selecting sections never removes the response envelope (schema_version, contract_version, generated_at, operational_observed_at, health_source) -- a smaller document still has to say what it is. An unknown name is rejected rather than ignored. A projected document omits every non-selected section, including ones the document schema marks required: `required` describes the unprojected response (#10960), so a client validating responses should skip validation or treat sections as optional when it sends this parameter. NOT the same parameter as `fields`, which projects columns out of the rows of a list.",
+          "name": "sections",
+          "schema": {
+            "pattern": "^(?:counts|curation|gap_priorities|gaps|health|name|netuid|notes|profile|slug|status)(?:,(?:counts|curation|gap_priorities|gaps|health|name|netuid|notes|profile|slug|status))*$",
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/agent-catalog.json",

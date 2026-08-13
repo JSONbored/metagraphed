@@ -16,6 +16,7 @@
 // (.passthrough()) so this is a pure completeness gain, not a tightening.
 import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
+import { sectionsOf } from "../artifact-sections.ts";
 import { OverlaidSubnetHealthSchema } from "./health.ts";
 import {
   CurationMetadataSchema,
@@ -53,3 +54,14 @@ export const SubnetOverviewArtifactSchema = ArtifactBaseSchema.extend({
 export type SubnetOverviewArtifact = z.infer<
   typeof SubnetOverviewArtifactSchema
 >;
+
+/**
+ * The overview's selectable sections (#11100), derived the same way the other
+ * two composite subnet routes derive theirs (#10600). The identity scalars
+ * (netuid/slug/name/status) ride the vocabulary by derivation -- selecting
+ * them is harmless, and excluding them by hand would be a second list to
+ * drift.
+ */
+export const SUBNET_OVERVIEW_SECTIONS = sectionsOf(
+  SubnetOverviewArtifactSchema,
+);
