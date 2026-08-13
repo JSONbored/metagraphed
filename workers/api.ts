@@ -1668,9 +1668,13 @@ async function resolveUsageDistinctId(
   // Worker (`zeronode.workers.dev`) was 82% of `block-detail`, which was in
   // turn the largest route in the project -- a caller that dominated the
   // traffic and could not be counted.
-  const callingWorker = request.headers.get("cf-worker");
+  // Guarded on the SANITISED value, not the raw header: the id is what has to
+  // be non-empty, and checking the input instead would let a header that
+  // sanitises away become the bare namespace -- `worker:`, a caller whose name
+  // is the empty string, which reads as an identity and is not one.
+  const callingWorker = sanitizeUsageLabel(request.headers.get("cf-worker"));
   if (callingWorker) {
-    return `${USAGE_WORKER_NAMESPACE}${sanitizeUsageLabel(callingWorker)}`;
+    return `${USAGE_WORKER_NAMESPACE}${callingWorker}`;
   }
   return undefined;
 }

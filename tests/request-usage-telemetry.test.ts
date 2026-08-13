@@ -1339,6 +1339,15 @@ describe("withUsageTelemetry — the calling Worker", () => {
     assert.equal(await idFor({}), undefined);
   });
 
+  test("a Worker name that sanitises away is not an identity", async () => {
+    // The Headers API normalises a whitespace-only value to the empty
+    // string, so this cannot become the bare namespace `worker:` -- a caller
+    // whose name is the empty string, which would read as an identity and is
+    // not one. Pinned because the guard is on the SANITISED value, and moving
+    // it back to the raw header would reintroduce exactly that.
+    assert.equal(await idFor({ "cf-worker": "   " }), undefined);
+  });
+
   test("a Worker is never a person", async () => {
     // It is software. High volume, tiny cardinality — exactly the shape that
     // must not mint profiles.

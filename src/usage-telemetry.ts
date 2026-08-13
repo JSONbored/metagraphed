@@ -753,9 +753,16 @@ function sanitizeLabel(value: unknown): string | undefined {
  * Exported because `resolveUsageDistinctId` builds the `worker:` id in
  * workers/api.ts, and an unbounded id is an unbounded property on an event
  * this project emits ~1.1M times a day.
+ *
+ * Returns undefined rather than a placeholder, and the caller guards on THAT
+ * rather than on the raw header. A placeholder would have been dead code here
+ * -- the Headers API normalises a whitespace-only value to the empty string,
+ * so a header that is truthy but sanitises to nothing cannot arrive over
+ * HTTP -- and it would have minted `worker:unknown` as though it were an
+ * identity if anything ever did reach it.
  */
-export function sanitizeUsageLabel(value: unknown): string {
-  return sanitizeLabel(value) ?? "unknown";
+export function sanitizeUsageLabel(value: unknown): string | undefined {
+  return sanitizeLabel(value);
 }
 
 // ─── $mcp_error_type projection (#8963) ────────────────────────────────────
