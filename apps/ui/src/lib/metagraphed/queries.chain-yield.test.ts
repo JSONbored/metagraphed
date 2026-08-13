@@ -46,7 +46,7 @@ describe("normalizeChainYield", () => {
         distribution: {
           count: 80,
           mean: 0.01,
-          median: 0.002,
+          p50: 0.002,
           min: 0,
           max: 5,
           p10: 0,

@@ -46,7 +46,7 @@ describe("normalizeChainWeights", () => {
           mean: 13.5,
           min: 12,
           p25: 12,
-          median: 12,
+          p50: 12,
           p75: 15,
           p90: 15,
           max: 15,

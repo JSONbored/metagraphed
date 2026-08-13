@@ -4245,10 +4245,7 @@ function normalizeChainIntensityDistribution(raw: unknown): ChainIntensityDistri
     mean: firstFiniteNumber(raw.mean) ?? 0,
     min: firstFiniteNumber(raw.min) ?? 0,
     p25: firstFiniteNumber(raw.p25) ?? 0,
-    // p50 is the wire name; `raw.median` is the pre-rename spelling, read as a
-    // fallback because the API worker and this app deploy separately and either
-    // can land first. Remove once both are deployed.
-    median: firstFiniteNumber(raw.p50 ?? raw.median) ?? 0,
+    median: firstFiniteNumber(raw.p50) ?? 0,
     p75: firstFiniteNumber(raw.p75) ?? 0,
     p90: firstFiniteNumber(raw.p90) ?? 0,
     max: firstFiniteNumber(raw.max) ?? 0,
@@ -4637,7 +4634,7 @@ function normalizeChainStakeFlowDistribution(raw: unknown): ChainStakeFlowDistri
     mean: coerceFiniteNumber(raw.mean) ?? null,
     min: coerceFiniteNumber(raw.min) ?? null,
     p25: coerceFiniteNumber(raw.p25) ?? null,
-    median: coerceFiniteNumber(raw.p50 ?? raw.median) ?? null,
+    median: coerceFiniteNumber(raw.p50) ?? null,
     p75: coerceFiniteNumber(raw.p75) ?? null,
     p90: coerceFiniteNumber(raw.p90) ?? null,
     max: coerceFiniteNumber(raw.max) ?? null,
@@ -4706,7 +4703,7 @@ function normalizeChainStakeMovesDistribution(raw: unknown): ChainStakeMovesDist
     mean: coerceFiniteNumber(raw.mean) ?? null,
     min: coerceFiniteNumber(raw.min) ?? null,
     p25: coerceFiniteNumber(raw.p25) ?? null,
-    median: coerceFiniteNumber(raw.p50 ?? raw.median) ?? null,
+    median: coerceFiniteNumber(raw.p50) ?? null,
     p75: coerceFiniteNumber(raw.p75) ?? null,
     p90: coerceFiniteNumber(raw.p90) ?? null,
     max: coerceFiniteNumber(raw.max) ?? null,
@@ -8468,10 +8465,7 @@ function normalizeChainYieldDistribution(raw: unknown): ChainYieldDistribution |
   return {
     count,
     mean: firstFiniteNumber(raw.mean) ?? 0,
-    // p50 is the wire name; `raw.median` is the pre-rename spelling, read as a
-    // fallback because the API worker and this app deploy separately and either
-    // can land first. Remove once both are deployed.
-    median: firstFiniteNumber(raw.p50 ?? raw.median) ?? 0,
+    median: firstFiniteNumber(raw.p50) ?? 0,
     min: firstFiniteNumber(raw.min) ?? 0,
     max: firstFiniteNumber(raw.max) ?? 0,
     p10: firstFiniteNumber(raw.p10) ?? 0,

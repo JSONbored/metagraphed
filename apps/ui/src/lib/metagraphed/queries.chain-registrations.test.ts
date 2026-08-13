@@ -46,7 +46,7 @@ describe("normalizeChainRegistrations", () => {
           mean: 12.5,
           min: 10,
           p25: 10,
-          median: 10,
+          p50: 10,
           p75: 15,
           p90: 15,
           max: 15,
