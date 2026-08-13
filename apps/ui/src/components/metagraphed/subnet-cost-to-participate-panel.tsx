@@ -3,6 +3,7 @@ import { subnetCostToParticipateQuery } from "@/lib/metagraphed/queries";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Skeleton, ErrorState } from "@/components/metagraphed/states";
 import type { DeclaredComputeSpec } from "@/lib/metagraphed/types";
+import { formatNumber } from "@/lib/metagraphed/format";
 
 /**
  * What it costs to participate in a subnet (#10932 phase 1).
@@ -84,9 +85,15 @@ export function SubnetCostToParticipatePanel({ netuid }: { netuid: number }) {
   );
 }
 
-/** TAO, or an em dash. Never 0 for a null: a subnet nobody priced is not free. */
+/**
+ * TAO, or an em dash. Never 0 for a null: a subnet nobody priced is not free.
+ *
+ * Through `formatNumber` rather than `toLocaleString()`: an unlocalised call
+ * resolves to the RUNTIME's default, which the SSR Worker and a non-en-US
+ * browser never agree on, and that mismatch is React #418 (#8356).
+ */
 export function taoLabel(value: number | null | undefined): string {
-  return value == null ? "—" : `${value.toLocaleString()} τ`;
+  return value == null ? "—" : `${formatNumber(value)} τ`;
 }
 
 export function pctLabel(value: number | null | undefined): string {
@@ -132,9 +139,7 @@ function Spec({ label, value }: { label: string; value: number | null | undefine
   return (
     <div>
       <dt className="mg-type-caption text-ink-muted">{label}</dt>
-      <dd className="mg-type-body text-ink-strong">
-        {value == null ? "—" : value.toLocaleString()}
-      </dd>
+      <dd className="mg-type-body text-ink-strong">{formatNumber(value)}</dd>
     </div>
   );
 }
