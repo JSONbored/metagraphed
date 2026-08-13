@@ -57,6 +57,7 @@
 // what 3/5 publishes either way.
 import { z } from "zod";
 import { SUBNET_DETAIL_SECTIONS } from "./routes/subnet-detail.ts";
+import { SUBNET_OVERVIEW_SECTIONS } from "./routes/subnet-overview.ts";
 import { SUBNET_PROFILE_SECTIONS } from "./routes/subnet-profiles.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
@@ -281,7 +282,6 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // null schema means the router validates nothing at all -- so the route
   // would silently ACCEPT any query string instead of rejecting it.
   "/api/v1/chain/deregistration-ranking",
-  "/api/v1/subnets/{netuid}/overview",
   "/api/v1/agent-catalog/{netuid}",
   "/api/v1/providers/{slug}",
   "/api/v1/coverage",
@@ -422,6 +422,16 @@ export const ROUTE_QUERY_SCHEMAS = {
     sections: sectionsSchema(SUBNET_PROFILE_SECTIONS, [
       "subnet",
       "profile",
+    ]).optional(),
+  }),
+  // #11100: the third composite subnet route. The overview is the payload the
+  // field report measured as very large with heavy duplication, and get_subnet
+  // -- the tool most likely to be an agent's first call -- serves it; an agent
+  // pays the unprojected bytes in context window.
+  "/api/v1/subnets/{netuid}/overview": z.object({
+    sections: sectionsSchema(SUBNET_OVERVIEW_SECTIONS, [
+      "profile",
+      "health",
     ]).optional(),
   }),
   "/api/v1/search/semantic": z.object({

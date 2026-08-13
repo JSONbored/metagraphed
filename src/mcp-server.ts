@@ -358,6 +358,7 @@ import {
 } from "./contracts.ts";
 import { projectToolSections } from "./section-projection.ts";
 import { SUBNET_DETAIL_SECTIONS } from "../schemas-src/routes/subnet-detail.ts";
+import { SUBNET_OVERVIEW_SECTIONS } from "../schemas-src/routes/subnet-overview.ts";
 import { SUBNET_PROFILE_SECTIONS } from "../schemas-src/routes/subnet-profiles.ts";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
@@ -5825,7 +5826,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         `/metagraph/overview/${netuid}.json`,
       );
       const live = await mcpLiveHealth(ctx);
-      return overlayOverviewHealth(overview, live, netuid) || overview;
+      // Projected LAST, after the health overlay, for the same reason
+      // get_subnet_detail projects after its economics overlay: `health` is
+      // itself a selectable section, so projecting first would drop the very
+      // card a caller asked for (#11100).
+      return projectToolSections(
+        overlayOverviewHealth(overview, live, netuid) || overview,
+        args,
+        SUBNET_OVERVIEW_SECTIONS,
+      );
     },
   },
   {

@@ -60,7 +60,11 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   search_subnets: { operation: "search" },
   list_subnets: { operation: "subnets" },
   find_subnets_by_capability: { operation: "agent-catalog" },
-  get_subnet: { operation: "subnet-profile" },
+  // #11100: the overview route it actually serves. Mapped to subnet-profile
+  // while the overview route had no published lever; now that the route
+  // publishes `sections`, mirroring it directly is what lets input-parity
+  // hold the tool's vocabulary to the route's with no declared divergence.
+  get_subnet: { operation: "subnet-overview" },
   get_subnet_detail: { operation: "subnet-detail" },
   get_subnet_snapshot: {
     operation: null,

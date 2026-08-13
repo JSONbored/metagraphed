@@ -34,8 +34,6 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "The contract document itself. get_api_schema serves a SUBNET's captured schema; this one is ours, and get_contracts describes it.",
   "/api/v1/search/resolve":
     "Identifier resolution (#9672). search_subnets and semantic_search are the agent-facing discovery paths; resolve is a UI affordance.",
-  "/api/v1/subnets/{netuid}/overview":
-    "The composed overview get_subnet already serves under its profile route.",
   "/api/v1/chain/stream":
     "The realtime firehose (#11045). A request/response tool cannot hold an " +
     "event stream open; MCP sessions subscribe through the hub's own " +

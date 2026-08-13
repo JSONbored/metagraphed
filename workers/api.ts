@@ -186,6 +186,7 @@ import {
   projectSections,
 } from "../src/section-projection.ts";
 import { SUBNET_DETAIL_SECTIONS } from "../schemas-src/routes/subnet-detail.ts";
+import { SUBNET_OVERVIEW_SECTIONS } from "../schemas-src/routes/subnet-overview.ts";
 import { SUBNET_PROFILE_SECTIONS } from "../schemas-src/routes/subnet-profiles.ts";
 
 /**
@@ -199,6 +200,7 @@ import { SUBNET_PROFILE_SECTIONS } from "../schemas-src/routes/subnet-profiles.t
 const SECTION_VOCABULARIES: Record<string, readonly string[] | undefined> = {
   "subnet-detail": SUBNET_DETAIL_SECTIONS,
   "subnet-profile": SUBNET_PROFILE_SECTIONS,
+  "subnet-overview": SUBNET_OVERVIEW_SECTIONS,
 };
 import { csvRequested, csvResponse } from "./csv.ts";
 import {
