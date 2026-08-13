@@ -3825,6 +3825,41 @@ async function chainEventsCacheKey(
 }
 
 /**
+ * Fire a cache write into `waitUntil` WITHOUT letting its failure surface
+ * (#11022).
+ *
+ * A `cache.put` can reject — most often `Network connection lost.` when the
+ * caller disconnected and the response body being cloned is already gone. An
+ * unhandled rejection inside `waitUntil` is recorded by the runtime as an
+ * exception span event, so a visitor closing a tab produced an ERROR carrying
+ * `outcome: "ok"`: the request succeeded, and we filed a fault anyway.
+ *
+ * That was ~27% of this Worker's entire error channel over a 3-day window, and
+ * the routes it named are exactly the cache-eligible ones — `/api/v1/health`,
+ * `/api/v1/subnets/{n}/health`, `/api/v1/subnets/{n}/endpoints`,
+ * `/api/v1/economics`, `/api/v1/validators/economics`,
+ * `/api/v1/endpoint-incidents`.
+ *
+ * Caching is best-effort by definition: a write we could not make is a cache
+ * miss next time, not an incident. This is the same posture src/icon-proxy.ts
+ * already takes on its own `bucket.put` ("caching is best-effort"), applied to
+ * the four edge-cache writes that never got it.
+ *
+ * Deliberately swallowing rather than logging: the condition is
+ * indistinguishable from an ordinary disconnect, it is not actionable, and a
+ * log line per disconnect just moves the noise rather than removing it.
+ *
+ * Takes a THUNK, not a promise. `ctx?.waitUntil?.(store.put(...))` does not
+ * evaluate its argument when `waitUntil` is nullish -- optional CALL syntax
+ * skips the arguments entirely -- so passing the promise to a helper would
+ * start the write on a context that cannot defer it, which is a behaviour
+ * change and not the one intended.
+ */
+function cacheWrite(ctx: Ctx | undefined, write: () => Promise<unknown>): void {
+  ctx?.waitUntil?.(write().catch(() => {}));
+}
+
+/**
  * Edge-cache TTL for a chain-detail answer the handler has declared immutable
  * (#11001).
  *
@@ -3929,7 +3964,7 @@ export async function withChainDetailEdgeCache(
       "cache-control",
       `public, s-maxage=${CHAIN_DETAIL_EDGE_CACHE_TTL_SECONDS}`,
     );
-    ctx?.waitUntil?.(cacheable.store.put(cacheable.key, stored));
+    cacheWrite(ctx, () => cacheable.store.put(cacheable.key, stored));
   }
   return response;
 }
@@ -4086,7 +4121,7 @@ export async function handleChainEventsFamily(
           }
         : await coldTierChainEventsPayload(env, url, chain);
     if (answer && cacheable) {
-      ctx?.waitUntil?.(
+      cacheWrite(ctx, () =>
         cacheable.store.put(
           cacheable.key,
           new Response(JSON.stringify(answer), {
@@ -9572,7 +9607,7 @@ async function handleApiRequest(
   // to the static artifact. 304/HEAD/non-200 are skipped. The edge entry
   // expires per the response's cache-control max-age.
   if (edgeCacheable && live === null && response.status === 200) {
-    ctx?.waitUntil?.(
+    cacheWrite(ctx, () =>
       edgeCacheable.store.put(edgeCacheable.key, response.clone()),
     );
   }
@@ -9581,7 +9616,7 @@ async function handleApiRequest(
   // never cache a cold-KV fallback, which would pin build-time health under a
   // stable key. The entry busts on the next cron snapshot (key) + max-age.
   if (overlayCacheable && live !== null && response.status === 200) {
-    ctx?.waitUntil?.(
+    cacheWrite(ctx, () =>
       overlayCacheable.store.put(overlayCacheable.key, response.clone()),
     );
   }
