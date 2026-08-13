@@ -119,6 +119,53 @@ export function renderCatalog(overlays: Row[]): string {
   ].join("\n");
 }
 
+/**
+ * The docs page destination (#11109). One renderer, two committed outputs --
+ * README.md's catalog section and this MDX page -- and until #11109 only the
+ * first was checked where registry PRs actually run: catalog.mdx's drift check
+ * lived in the path-filtered ui job, which registry-only changes skip, so the
+ * PR that CAUSED the drift passed and every unrelated PR after it failed
+ * (twice in one day: #11104, #11108). The rendering lives here so the
+ * always-running readme-catalog check can hold both destinations, and the
+ * apps/ui generator stays a thin wrapper.
+ */
+export const CATALOG_DOCS_COMMITTED_PATH = path.join(
+  repoRoot,
+  "apps/ui/content/docs/catalog.mdx",
+);
+
+function catalogDocsFrontmatter(curatedCount: number): string {
+  return [
+    "---",
+    "title: Subnet catalog",
+    `description: ${curatedCount} curated subnets, generated from the registry overlays in registry/subnets/ -- focus areas, links, and coverage at a glance.`,
+    "---",
+    "",
+    "",
+  ].join("\n");
+}
+
+/**
+ * The exact bytes content/docs/catalog.mdx must hold for these overlays.
+ *
+ * Formatted through the apps/ui workspace's own Prettier config (MDX treats
+ * `<sub>` as JSX, which reflows differently than plain markdown), resolved
+ * against the COMMITTED path so a temp-dir output cannot pick up a different
+ * config and report drift that does not exist. prettier.format() does not read
+ * .prettierrc on its own -- resolveConfig() is the CLI-only lookup, done here.
+ */
+export async function renderCatalogDocsMdx(overlays: Row[]): Promise<string> {
+  const curatedCount = curatedSubnetOverlays(overlays).length;
+  const raw = `${catalogDocsFrontmatter(curatedCount)}${renderCatalog(overlays)}\n`;
+  const prettier = await import("prettier");
+  const config =
+    (await prettier.resolveConfig(CATALOG_DOCS_COMMITTED_PATH)) ?? {};
+  return prettier.format(raw, {
+    ...config,
+    filepath: CATALOG_DOCS_COMMITTED_PATH,
+  });
+}
+
 export function injectedReadme(readme: string, catalog: string): string {
   const beginAt = readme.indexOf(BEGIN);
   const endAt = readme.indexOf(END);

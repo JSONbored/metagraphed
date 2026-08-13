@@ -1231,18 +1231,11 @@ jobs:
 
       # Same drift-check shape as the API reference docs step just above
       # (#6634, the #1652 acceptance line that was never actually built):
-      # content/docs/catalog.mdx is entirely generated from the curated
-      # registry/subnets/ overlays via scripts/lib/readme-catalog.ts (the
-      # same renderer README.md's own catalog section uses) -- an enriched
-      # subnet that never regenerates this page silently drifts otherwise.
-      - name: Build subnet catalog docs (drift check)
-        working-directory: apps/ui
-        run: |
-          node scripts/generate-catalog-docs.ts
-          if ! git diff --exit-code -- content/docs/catalog.mdx; then
-            echo "::error::apps/ui/content/docs/catalog.mdx is stale -- run 'node scripts/generate-catalog-docs.ts' (from apps/ui) and commit the result."
-            exit 1
-          fi
+      # content/docs/catalog.mdx's drift check moved to validate:readme-catalog
+      # (#11109): the drift is CAUSED by registry changes, and registry-only
+      # PRs skip this path-filtered job -- so the check here failed every PR
+      # except the one that introduced the drift. The always-running validate
+      # job now holds both catalog destinations against the shared renderer.
 
       # Same drift-check shape again, and here it IS the acceptance criterion:
       # #8610 asks that "every enforced limit on the page matches tier config as
