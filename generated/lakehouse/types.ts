@@ -204,6 +204,7 @@ export type RpcProxyEventsRow = {
   attempts: number | null;
   latency_ms: number | null;
   cache: string | null;
+  sample_interval: number | null;
 };
 
 /** `chain.rpc_proxy_events` columns, in field-id order. */
@@ -218,6 +219,7 @@ export const RPC_PROXY_EVENTS_COLUMNS = [
   "attempts",
   "latency_ms",
   "cache",
+  "sample_interval",
 ] as const;
 
 /** `chain.self_health_daily` */
@@ -602,6 +604,208 @@ export const SUBNET_SNAPSHOTS_COLUMNS = [
   "pipeline_block_hash",
 ] as const;
 
+/** `chain.account_balances` */
+export type AccountBalancesRow = {
+  ss58: string | null;
+  free_tao: number | null;
+  reserved_tao: number | null;
+  captured_at: number | null;
+};
+
+/** `chain.account_balances` columns, in field-id order. */
+export const ACCOUNT_BALANCES_COLUMNS = [
+  "ss58",
+  "free_tao",
+  "reserved_tao",
+  "captured_at",
+] as const;
+
+/** `chain.neurons` */
+export type NeuronsRow = {
+  netuid: number | null;
+  uid: number | null;
+  hotkey: string | null;
+  coldkey: string | null;
+  active: boolean | null;
+  validator_permit: boolean | null;
+  rank: number | null;
+  trust: number | null;
+  validator_trust: number | null;
+  consensus: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  emission_tao: number | null;
+  stake_tao: number | null;
+  registered_at_block: number | null;
+  is_immunity_period: boolean | null;
+  axon: string | null;
+  block_number: number | null;
+  captured_at: number | null;
+  take: number | null;
+};
+
+/** `chain.neurons` columns, in field-id order. */
+export const NEURONS_COLUMNS = [
+  "netuid",
+  "uid",
+  "hotkey",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "validator_trust",
+  "consensus",
+  "incentive",
+  "dividends",
+  "emission_tao",
+  "stake_tao",
+  "registered_at_block",
+  "is_immunity_period",
+  "axon",
+  "block_number",
+  "captured_at",
+  "take",
+] as const;
+
+/** `chain.subnet_identity` */
+export type SubnetIdentityRow = {
+  netuid: number | null;
+  block_number: number | null;
+  captured_at: number | null;
+  subnet_name: string | null;
+  symbol: string | null;
+  description: string | null;
+  github_repo: string | null;
+  subnet_url: string | null;
+  discord: string | null;
+  logo_url: string | null;
+  identity_hash: string | null;
+};
+
+/** `chain.subnet_identity` columns, in field-id order. */
+export const SUBNET_IDENTITY_COLUMNS = [
+  "netuid",
+  "block_number",
+  "captured_at",
+  "subnet_name",
+  "symbol",
+  "description",
+  "github_repo",
+  "subnet_url",
+  "discord",
+  "logo_url",
+  "identity_hash",
+] as const;
+
+/** `chain.subnet_ownership` */
+export type SubnetOwnershipRow = {
+  netuid: number | null;
+  owner_hotkey: string | null;
+  owner_coldkey: string | null;
+  captured_at: number | null;
+};
+
+/** `chain.subnet_ownership` columns, in field-id order. */
+export const SUBNET_OWNERSHIP_COLUMNS = [
+  "netuid",
+  "owner_hotkey",
+  "owner_coldkey",
+  "captured_at",
+] as const;
+
+/** `chain.subnets` */
+export type SubnetsRow = {
+  netuid: number | null;
+  slug: string | null;
+  name: string | null;
+  source: string | null;
+  overlay: string | null;
+  source_commit: string | null;
+  updated_at: string | null;
+  observed_at: number | null;
+};
+
+/** `chain.subnets` columns, in field-id order. */
+export const SUBNETS_COLUMNS = [
+  "netuid",
+  "slug",
+  "name",
+  "source",
+  "overlay",
+  "source_commit",
+  "updated_at",
+  "observed_at",
+] as const;
+
+/** `chain.surfaces` */
+export type SurfacesRow = {
+  id: string | null;
+  subnet_netuid: number | null;
+  provider_id: string | null;
+  surface_key: string | null;
+  kind: string | null;
+  url: string | null;
+  authority: string | null;
+  review_state: string | null;
+  probe_eligible: boolean | null;
+  public_safe: boolean | null;
+  overlay: string | null;
+  source_commit: string | null;
+  updated_at: string | null;
+  observed_at: number | null;
+};
+
+/** `chain.surfaces` columns, in field-id order. */
+export const SURFACES_COLUMNS = [
+  "id",
+  "subnet_netuid",
+  "provider_id",
+  "surface_key",
+  "kind",
+  "url",
+  "authority",
+  "review_state",
+  "probe_eligible",
+  "public_safe",
+  "overlay",
+  "source_commit",
+  "updated_at",
+  "observed_at",
+] as const;
+
+/** `chain.providers` */
+export type ProvidersRow = {
+  id: string | null;
+  overlay: string | null;
+  source_commit: string | null;
+  updated_at: string | null;
+  observed_at: number | null;
+};
+
+/** `chain.providers` columns, in field-id order. */
+export const PROVIDERS_COLUMNS = [
+  "id",
+  "overlay",
+  "source_commit",
+  "updated_at",
+  "observed_at",
+] as const;
+
+/** `chain.validator_nominator_counts` */
+export type ValidatorNominatorCountsRow = {
+  hotkey: string | null;
+  nominator_count: number | null;
+  captured_at: number | null;
+};
+
+/** `chain.validator_nominator_counts` columns, in field-id order. */
+export const VALIDATOR_NOMINATOR_COUNTS_COLUMNS = [
+  "hotkey",
+  "nominator_count",
+  "captured_at",
+] as const;
+
 /** Every Iceberg table this repo reads, by name. */
 export const LAKEHOUSE_TABLES = [
   "blocks",
@@ -620,4 +824,12 @@ export const LAKEHOUSE_TABLES = [
   "neuron_daily",
   "account_position_daily",
   "subnet_snapshots",
+  "account_balances",
+  "neurons",
+  "subnet_identity",
+  "subnet_ownership",
+  "subnets",
+  "surfaces",
+  "providers",
+  "validator_nominator_counts",
 ] as const;

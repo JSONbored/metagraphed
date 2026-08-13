@@ -61,12 +61,7 @@ export const TABLES = [
   "extrinsics",
   "chain_events",
   "account_events",
-  // The nine the cold tiers read. Taken from the FROM/JOIN targets in `src/`
-  // with comments STRIPPED -- a plain grep for `chain.<name>` also matches
-  // prose, and `chain.account_events_daily` is exactly that trap: it is named
-  // in four comments and one route description, and queried by nothing.
-  // src/account-history-cold-tier.ts computes its own day bucket from
-  // `account_events` instead, which its header says in as many words.
+  // The nine the cold tiers read.
   "account_identity",
   "account_identity_history",
   "nominator_positions",
@@ -76,20 +71,32 @@ export const TABLES = [
   "subnet_hyperparams_history",
   "subnet_identity_history",
   "subnet_ownership_history",
-  // The two daily rollups. Listed the moment they became READABLE rather than
-  // when they became present: they have existed since the 2026-08-02 seed, but
-  // that seed is a strict SUBSET of Neon (lakehouse 07-10..08-02, Neon
-  // 07-10..08-11, measured), so nothing could have been served from them. The
-  // continuous producer (metagraphed-infra#445) is what changes that.
-  //
-  // Neither is written by the decoder, so neither belongs in DECODER_TABLES --
-  // they are derived in the Worker from one metagraph snapshot and copied out
-  // of Postgres. The generator's `decoderTables` subset test is what keeps that
-  // distinction honest.
+  // The two daily rollups, and the snapshot that prices them in TAO.
   "neuron_daily",
   "account_position_daily",
-  // Joined by src/neuron-daily-cold-tier.ts to price stake and emission in TAO.
   "subnet_snapshots",
+  // WRITTEN BUT NOT (YET) READ. This list used to be READ tables only, on the
+  // rule that a type for a table nothing queries is dead code the moment it is
+  // generated. That rule was right when the only consumer was a cold-tier
+  // query, and it stopped being right when the lakehouse became the archive.
+  //
+  // Two things changed. `validate:store-type-parity` (#11060) compares Neon
+  // against THIS snapshot, so a table absent here is a table whose column types
+  // nothing compares -- it saw 16 tables and 186 columns while the archive held
+  // 26. And the state mirror now WRITES these, so their shape is load-bearing
+  // whether or not a route reads them.
+  //
+  // The dead-code objection does not apply either: the generator emits into
+  // `LAKEHOUSE_ROW_SCHEMAS`, a registry, so every schema it produces is
+  // referenced and none of this touches the unreferenced-exports ceiling.
+  "account_balances",
+  "neurons",
+  "subnet_identity",
+  "subnet_ownership",
+  "subnets",
+  "surfaces",
+  "providers",
+  "validator_nominator_counts",
 ];
 
 // Guarded, so importing TABLES does not reach for the catalog. Before this the

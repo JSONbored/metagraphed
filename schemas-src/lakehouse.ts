@@ -191,6 +191,7 @@ export const RpcProxyEventsRowSchema = z
     attempts: z.int().nullable(),
     latency_ms: z.int().nullable(),
     cache: z.string().nullable(),
+    sample_interval: z.int().nullable(),
   })
   .partial()
   .catchall(z.unknown());
@@ -466,6 +467,187 @@ export const SubnetSnapshotsRowSchema = z
   .partial()
   .catchall(z.unknown());
 
+/**
+ * `chain.account_balances` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const AccountBalancesRowSchema = z
+  .object({
+    ss58: z.string().nullable(),
+    free_tao: z.number().nullable(),
+    reserved_tao: z.number().nullable(),
+    captured_at: z.int().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
+/**
+ * `chain.neurons` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const NeuronsRowSchema = z
+  .object({
+    netuid: z.int().nullable(),
+    uid: z.int().nullable(),
+    hotkey: z.string().nullable(),
+    coldkey: z.string().nullable(),
+    active: z.boolean().nullable(),
+    validator_permit: z.boolean().nullable(),
+    rank: z.number().nullable(),
+    trust: z.number().nullable(),
+    validator_trust: z.number().nullable(),
+    consensus: z.number().nullable(),
+    incentive: z.number().nullable(),
+    dividends: z.number().nullable(),
+    emission_tao: z.number().nullable(),
+    stake_tao: z.number().nullable(),
+    registered_at_block: z.int().nullable(),
+    is_immunity_period: z.boolean().nullable(),
+    axon: z.string().nullable(),
+    block_number: z.int().nullable(),
+    captured_at: z.int().nullable(),
+    take: z.number().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
+/**
+ * `chain.subnet_identity` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const SubnetIdentityRowSchema = z
+  .object({
+    netuid: z.int().nullable(),
+    block_number: z.int().nullable(),
+    captured_at: z.int().nullable(),
+    subnet_name: z.string().nullable(),
+    symbol: z.string().nullable(),
+    description: z.string().nullable(),
+    github_repo: z.string().nullable(),
+    subnet_url: z.string().nullable(),
+    discord: z.string().nullable(),
+    logo_url: z.string().nullable(),
+    identity_hash: z.string().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
+/**
+ * `chain.subnet_ownership` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const SubnetOwnershipRowSchema = z
+  .object({
+    netuid: z.int().nullable(),
+    owner_hotkey: z.string().nullable(),
+    owner_coldkey: z.string().nullable(),
+    captured_at: z.int().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
+/**
+ * `chain.subnets` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const SubnetsRowSchema = z
+  .object({
+    netuid: z.int().nullable(),
+    slug: z.string().nullable(),
+    name: z.string().nullable(),
+    source: z.string().nullable(),
+    overlay: z.string().nullable(),
+    source_commit: z.string().nullable(),
+    updated_at: z.iso.datetime().nullable(),
+    observed_at: z.int().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
+/**
+ * `chain.surfaces` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const SurfacesRowSchema = z
+  .object({
+    id: z.base64().nullable(),
+    subnet_netuid: z.int().nullable(),
+    provider_id: z.string().nullable(),
+    surface_key: z.string().nullable(),
+    kind: z.string().nullable(),
+    url: z.string().nullable(),
+    authority: z.string().nullable(),
+    review_state: z.string().nullable(),
+    probe_eligible: z.boolean().nullable(),
+    public_safe: z.boolean().nullable(),
+    overlay: z.string().nullable(),
+    source_commit: z.string().nullable(),
+    updated_at: z.iso.datetime().nullable(),
+    observed_at: z.int().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
+/**
+ * `chain.providers` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const ProvidersRowSchema = z
+  .object({
+    id: z.string().nullable(),
+    overlay: z.string().nullable(),
+    source_commit: z.string().nullable(),
+    updated_at: z.iso.datetime().nullable(),
+    observed_at: z.int().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
+/**
+ * `chain.validator_nominator_counts` as the catalog declares it.
+ *
+ * OPEN (`.catchall`) on purpose: a read selects a projection, and often
+ * an aggregate alias that is not a column at all. Closed would delete it.
+ * PARTIAL on purpose: a projection carries a subset of the columns.
+ * What stays pinned is the TYPE of any declared column that IS present.
+ */
+export const ValidatorNominatorCountsRowSchema = z
+  .object({
+    hotkey: z.string().nullable(),
+    nominator_count: z.int().nullable(),
+    captured_at: z.int().nullable(),
+  })
+  .partial()
+  .catchall(z.unknown());
+
 /** Every table's row schema, by table name. */
 export const LAKEHOUSE_ROW_SCHEMAS = {
   blocks: BlocksRowSchema,
@@ -484,4 +666,12 @@ export const LAKEHOUSE_ROW_SCHEMAS = {
   neuron_daily: NeuronDailyRowSchema,
   account_position_daily: AccountPositionDailyRowSchema,
   subnet_snapshots: SubnetSnapshotsRowSchema,
+  account_balances: AccountBalancesRowSchema,
+  neurons: NeuronsRowSchema,
+  subnet_identity: SubnetIdentityRowSchema,
+  subnet_ownership: SubnetOwnershipRowSchema,
+  subnets: SubnetsRowSchema,
+  surfaces: SurfacesRowSchema,
+  providers: ProvidersRowSchema,
+  validator_nominator_counts: ValidatorNominatorCountsRowSchema,
 } as const;

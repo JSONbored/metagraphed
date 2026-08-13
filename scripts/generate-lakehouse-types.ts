@@ -78,6 +78,18 @@ export function readSnapshot(): LakehouseColumn[] {
  * ~9.01e15, so the representable range is not close.
  */
 const TS_TYPE: Readonly<Record<string, string>> = {
+  // Iceberg uuid, which R2 SQL returns as BASE64-ENCODED BYTES
+  // ("AA2+kG8JRdOnBgo8lnnc5Q==") rather than canonical uuid text -- verified
+  // against chain.surfaces.id. A reader expecting "0a0dbe90-..." gets a string
+  // that is the right type and the wrong value, which is why this is mapped
+  // explicitly rather than left to fall back to string.
+  uuid: "string",
+  // Iceberg timestamptz. R2 SQL renders it as an ISO-8601 string with
+  // MICROSECOND precision ("2026-08-02T00:00:35.111100Z"), not as an epoch
+  // number -- verified against chain.subnets.updated_at. Everything else
+  // temporal in this lakehouse is `long` epoch-ms; these three registry tables
+  // are the exception, inherited from the 2026-08-02 exodus load.
+  timestamptz: "string",
   boolean: "boolean",
   // `date` IS `string`, and that is read off the reader rather than assumed.
   // R2 SQL serializes an Iceberg date as 'YYYY-MM-DD', and
@@ -210,6 +222,8 @@ export const DECODER_TABLES: readonly string[] = CHAIN_FIREHOSE_TOPICS;
  * column that changes shape changes both or neither.
  */
 const ZOD_TYPE: Readonly<Record<string, string>> = {
+  uuid: "z.base64()",
+  timestamptz: "z.iso.datetime()",
   boolean: "z.boolean()",
   // 'YYYY-MM-DD' over the wire -- see TS_TYPE's note. `z.iso.date()` rather
   // than a bare string: the format is not assumed, it is the one
