@@ -1,4 +1,4 @@
-import { roundDpOrNull, roundDp } from "./lib/stats.ts";
+import { roundDpOrNull } from "./lib/stats.ts";
 // Cross-subnet daily history for one validator hotkey (#4334/7.3): staked-
 // over-time + a rewards-per-1000-TAO rate, rolled up from the neuron_daily
 // tier the same way buildSubnetHistory rolls up a subnet's daily totals
