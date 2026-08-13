@@ -1318,6 +1318,17 @@ describe("a lakehouse read is VALIDATED, not cast (#11000)", () => {
     );
   });
 
+  test("a JSON body that is not the ENGINE envelope is a decline", () => {
+    // Parses fine, fails the envelope: `success` must be a boolean. Before the
+    // safeParse this was a cast, so a body shaped like this reached the row
+    // reader with `undefined` fields -- "no rows" and "we could not tell"
+    // became the same answer.
+    return r2SqlQuery(mockEnv(TOKEN), "SELECT 1 FROM chain.blocks", {
+      fetch: streamOf({ success: "yes", result: { rows: [] } }),
+      ...noCapture,
+    }).then((rows) => assert.equal(rows, null));
+  });
+
   test("a table outside the catalog is unvalidated, not rejected", async () => {
     // The honest limit of the automatic lookup: a statement can read something
     // the snapshot does not describe, and inventing a schema there would refuse

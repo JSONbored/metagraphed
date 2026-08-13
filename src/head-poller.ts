@@ -12,13 +12,17 @@
 // Every RPC is plain HTTP JSON-RPC against CHAIN_HEAD_RPC_URL — the same
 // public endpoint everything else already reads (live-verified for months).
 
-import { z } from "zod";
+// The wire shapes moved to schemas-src (#11008); this module keeps the poller.
+// RE-EXPORTED, not re-inferred: `z.infer<typeof HeadBlockSchema>` here would be
+// a second declaration of a generated-shape type, which is exactly what
+// validate:type-duplicates exists to catch -- and did.
 import {
   BlockBodySchema,
   HeadBlockSchema,
 } from "../schemas-src/head-poller-wire.ts";
+import type { HeadBlock } from "../schemas-src/head-poller-wire.ts";
 export { HeadBlockSchema };
-export type HeadBlock = z.infer<typeof HeadBlockSchema>;
+export type { HeadBlock } from "../schemas-src/head-poller-wire.ts";
 import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
 import { DEFAULT_SS58_PREFIX, encodeAccountId32 } from "./ss58.ts";
 
