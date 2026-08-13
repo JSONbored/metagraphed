@@ -823,6 +823,10 @@
       { "binding": "ATTRIBUTION_SWEEPS", "queue": "attribution-sweeps" },
       { "binding": "ORIGIN_REACHABILITY", "queue": "origin-reachability" },
       { "binding": "REVENUE_PROBES", "queue": "revenue-probes" },
+      // #10932: one registered min_compute surface per message. The card at
+      // /subnets/{netuid}/cost-to-participate shipped reading a table nothing
+      // wrote; this is the producer.
+      { "binding": "COMPUTE_DECLARATIONS", "queue": "compute-declarations" },
     ],
     "consumers": [
       {
@@ -880,6 +884,25 @@
         "max_retries": 3,
         "max_concurrency": 2,
         "dead_letter_queue": "revenue-probes-dlq",
+      },
+      // One declaration per message: a raw.githubusercontent fetch plus one
+      // GitHub API call for the commit that last touched the path. 17 surfaces
+      // today, so the batch is small for the same reason its neighbours' are --
+      // and concurrency low because every request lands on one host.
+      {
+        "queue": "compute-declarations",
+        "max_batch_size": 5,
+        "max_batch_timeout": 15,
+        "max_retries": 3,
+        "max_concurrency": 2,
+        "dead_letter_queue": "compute-declarations-dlq",
+      },
+      {
+        "queue": "compute-declarations-dlq",
+        "max_batch_size": 100,
+        "max_batch_timeout": 30,
+        "max_retries": 0,
+        "max_concurrency": 1,
       },
       {
         "queue": "revenue-probes-dlq",

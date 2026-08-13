@@ -330,6 +330,29 @@ export function isConfirmedDeadLink(
   return (record?.consecutive_failures || 0) >= LINK_DEAD_STRIKES;
 }
 
+/**
+ * The `Authorization` value for api.github.com, or null.
+ *
+ * ONE PLACE, because two lanes now want it (#10932). Both reach the same API
+ * for the same reason -- the unauthenticated limit is 60 requests an hour and
+ * the token lifts it to 5,000 -- and a second copy of "which env var, trimmed,
+ * and what prefix" is a second chance to spell the header differently and
+ * silently run unauthenticated.
+ *
+ * NULL IS A DEGRADED RATE LIMIT, NEVER A DEGRADED LANE. Both callers work
+ * without a token; the link lane skips its github subset rather than
+ * mass-"dead"ing it, and the compute lane's 17 surfaces fit inside 60/hour.
+ */
+export function githubAuthHeader(env: {
+  GITHUB_SIGNALS_TOKEN?: unknown;
+}): string | null {
+  const token =
+    typeof env?.GITHUB_SIGNALS_TOKEN === "string"
+      ? env.GITHUB_SIGNALS_TOKEN.trim()
+      : "";
+  return token ? `Bearer ${token}` : null;
+}
+
 export interface CheckLinkDeps {
   fetchImpl?: typeof fetch;
   /** `unknown` to match probeUrl's own guard signature exactly. */
