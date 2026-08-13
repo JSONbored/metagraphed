@@ -212,6 +212,25 @@ describe("chain-detail edge cache (#11001)", () => {
     assert.equal(cache.putKeys.length, 0);
   });
 
+  test("skips the store when there is no waitUntil to defer it to", async () => {
+    // dispatchChainHistoryRoute defaults `ctx` to `{}`, and several internal
+    // call paths pass one — so the storable branch has to survive a context
+    // with no waitUntil rather than throwing on it mid-response.
+    const cache = mockCaches();
+    cache.install();
+    const res = await withChainDetailEdgeCache(
+      get(),
+      env,
+      url,
+      "mainnet",
+      {},
+      async () => answer("static"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), '{"ok":true}');
+    assert.equal(cache.putKeys.length, 0);
+  });
+
   test("runs the handler when the runtime has no cache at all", async () => {
     globalWithCaches.caches = undefined;
     const handler = producer(() => answer("static"));
