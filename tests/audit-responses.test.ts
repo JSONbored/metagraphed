@@ -40,6 +40,34 @@ const DRIFTED = {
   },
 };
 
+const TAO_USD_URL = "https://api.metagraph.sh/api/v1/network/tao-usd";
+
+/** A tao-usd body whose only defect is the absent points array -- exactly what
+ * the #9720 include_points=false toggle serves, and the production fingerprint
+ * #11079 dispositioned. Every other field is a real minimal state: an unwritten
+ * series with no reading. */
+const TAO_USD_WITHOUT_POINTS = {
+  ok: true,
+  schema_version: 1,
+  data: {
+    schema_version: 1,
+    window: "24h",
+    point_count: 0,
+    stale: true,
+    stale_after_ms: 0,
+    age_ms: null,
+    priced_point_count: 0,
+    latest: null,
+    oldest_observed_at: null,
+    change_usd: null,
+    change_pct: null,
+  },
+  meta: {
+    artifact_path: "/metagraph/network/tao-usd.json",
+    contract_version: "2026-08-13",
+  },
+};
+
 function envWith(mode: string | undefined): Row {
   const env = createLocalArtifactEnv() as Row;
   if (mode === undefined) delete env.METAGRAPH_AUDIT_RESPONSES;
@@ -130,6 +158,33 @@ describe("auditResponse (#10984)", () => {
       jsonResponse(DRIFTED),
     );
     assert.equal(out.status, 200);
+  });
+
+  test("include_points=false is a projection: the omitted points are forgiven (#11079)", async () => {
+    // The #9720 "send me less" toggle omits data.points BY REQUEST -- the MCP
+    // tool's default, and the production warn log's only fingerprint. The URL
+    // carries the signal, like ?fields= above.
+    const out = await auditResponse(
+      new Request(`${TAO_USD_URL}?include_points=false`),
+      envWith("enforce") as unknown as Env,
+      { waitUntil: () => {} } as unknown as Parameters<typeof auditResponse>[2],
+      jsonResponse(TAO_USD_WITHOUT_POINTS),
+    );
+    assert.equal(out.status, 200);
+  });
+
+  test("the same absence WITHOUT the toggle is still drift (#11079)", async () => {
+    // Forgiveness must not outlive its reason: a handler that stopped sending
+    // points unasked is the defect the seam exists to catch.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const out = await auditResponse(
+      new Request(TAO_USD_URL),
+      envWith("enforce") as unknown as Env,
+      { waitUntil: () => {} } as unknown as Parameters<typeof auditResponse>[2],
+      jsonResponse(TAO_USD_WITHOUT_POINTS),
+    );
+    assert.equal(out.status, 500);
+    error.mockRestore();
   });
 
   test("a body that claims JSON and is not never breaks the response", async () => {
