@@ -806,6 +806,340 @@ export const VALIDATOR_NOMINATOR_COUNTS_COLUMNS = [
   "captured_at",
 ] as const;
 
+/** `chain.chain_concentration_daily` */
+export type ChainConcentrationDailyRow = {
+  day: string | null;
+  neuron_count: number | null;
+  card: string | null;
+  source_captured_at: number | null;
+  computed_at: number | null;
+  builder_version: number | null;
+};
+
+/** `chain.chain_concentration_daily` columns, in field-id order. */
+export const CHAIN_CONCENTRATION_DAILY_COLUMNS = [
+  "day",
+  "neuron_count",
+  "card",
+  "source_captured_at",
+  "computed_at",
+  "builder_version",
+] as const;
+
+/** `chain.compute_declarations` */
+export type ComputeDeclarationsRow = {
+  netuid: number | null;
+  source_url: string | null;
+  read_at_sha: string | null;
+  observed_at: number | null;
+  first_seen: number | null;
+  found: boolean | null;
+  spec_version: string | null;
+  miner: string | null;
+  validator: string | null;
+};
+
+/** `chain.compute_declarations` columns, in field-id order. */
+export const COMPUTE_DECLARATIONS_COLUMNS = [
+  "netuid",
+  "source_url",
+  "read_at_sha",
+  "observed_at",
+  "first_seen",
+  "found",
+  "spec_version",
+  "miner",
+  "validator",
+] as const;
+
+/** `chain.emission_flow_watch` */
+export type EmissionFlowWatchRow = {
+  id: number | null;
+  item: string | null;
+  netuid: number | null;
+  is_set: boolean | null;
+  ema_block: number | null;
+  block_number: number | null;
+  observed_at: number | null;
+  predates_capture: boolean | null;
+};
+
+/** `chain.emission_flow_watch` columns, in field-id order. */
+export const EMISSION_FLOW_WATCH_COLUMNS = [
+  "id",
+  "item",
+  "netuid",
+  "is_set",
+  "ema_block",
+  "block_number",
+  "observed_at",
+  "predates_capture",
+] as const;
+
+/** `chain.emission_gate_param_history` */
+export type EmissionGateParamHistoryRow = {
+  id: number | null;
+  param: string | null;
+  value: number | null;
+  previous_value: number | null;
+  source: string | null;
+  block_number: number | null;
+  observed_at: number | null;
+  predates_capture: boolean | null;
+};
+
+/** `chain.emission_gate_param_history` columns, in field-id order. */
+export const EMISSION_GATE_PARAM_HISTORY_COLUMNS = [
+  "id",
+  "param",
+  "value",
+  "previous_value",
+  "source",
+  "block_number",
+  "observed_at",
+  "predates_capture",
+] as const;
+
+/** `chain.hotkey_alpha` */
+export type HotkeyAlphaRow = {
+  hotkey: string | null;
+  netuid: number | null;
+  total_alpha: number | null;
+  captured_at: number | null;
+};
+
+/** `chain.hotkey_alpha` columns, in field-id order. */
+export const HOTKEY_ALPHA_COLUMNS = [
+  "hotkey",
+  "netuid",
+  "total_alpha",
+  "captured_at",
+] as const;
+
+/** `chain.revenue_observations` */
+export type RevenueObservationsRow = {
+  surface_id: string | null;
+  netuid: number | null;
+  period: string | null;
+  grain: string | null;
+  amount: number | null;
+  currency: string | null;
+  provenance: string | null;
+  response_hash: string | null;
+  observed_at: number | null;
+};
+
+/** `chain.revenue_observations` columns, in field-id order. */
+export const REVENUE_OBSERVATIONS_COLUMNS = [
+  "surface_id",
+  "netuid",
+  "period",
+  "grain",
+  "amount",
+  "currency",
+  "provenance",
+  "response_hash",
+  "observed_at",
+] as const;
+
+/** `chain.subnet_deregistration_daily` */
+export type SubnetDeregistrationDailyRow = {
+  netuid: number | null;
+  snapshot_date: string | null;
+  moving_price: number | null;
+  registered_at_block: number | null;
+  subnet_mechanism: number | null;
+  network_immunity_period: number | null;
+  pinned_block: number | null;
+  captured_at: number | null;
+};
+
+/** `chain.subnet_deregistration_daily` columns, in field-id order. */
+export const SUBNET_DEREGISTRATION_DAILY_COLUMNS = [
+  "netuid",
+  "snapshot_date",
+  "moving_price",
+  "registered_at_block",
+  "subnet_mechanism",
+  "network_immunity_period",
+  "pinned_block",
+  "captured_at",
+] as const;
+
+/** `chain.subnet_emission_enabled_history` */
+export type SubnetEmissionEnabledHistoryRow = {
+  id: number | null;
+  netuid: number | null;
+  enabled: boolean | null;
+  previous_enabled: boolean | null;
+  block_number: number | null;
+  observed_at: number | null;
+  predates_capture: boolean | null;
+};
+
+/** `chain.subnet_emission_enabled_history` columns, in field-id order. */
+export const SUBNET_EMISSION_ENABLED_HISTORY_COLUMNS = [
+  "id",
+  "netuid",
+  "enabled",
+  "previous_enabled",
+  "block_number",
+  "observed_at",
+  "predates_capture",
+] as const;
+
+/** `chain.subnet_lifecycle` */
+export type SubnetLifecycleRow = {
+  id: number | null;
+  netuid: number | null;
+  event: string | null;
+  block_number: number | null;
+  observed_at: number | null;
+  predates_capture: boolean | null;
+};
+
+/** `chain.subnet_lifecycle` columns, in field-id order. */
+export const SUBNET_LIFECYCLE_COLUMNS = [
+  "id",
+  "netuid",
+  "event",
+  "block_number",
+  "observed_at",
+  "predates_capture",
+] as const;
+
+/** `chain.surface_failure_daily` */
+export type SurfaceFailureDailyRow = {
+  day: string | null;
+  netuid: number | null;
+  kind: string | null;
+  classification: string | null;
+  checks: number | null;
+  updated_at: number | null;
+};
+
+/** `chain.surface_failure_daily` columns, in field-id order. */
+export const SURFACE_FAILURE_DAILY_COLUMNS = [
+  "day",
+  "netuid",
+  "kind",
+  "classification",
+  "checks",
+  "updated_at",
+] as const;
+
+/** `chain.surface_history` */
+export type SurfaceHistoryRow = {
+  id: number | null;
+  surface_id: string | null;
+  subnet_netuid: number | null;
+  action: string | null;
+  overlay: string | null;
+  source_commit: string | null;
+  recorded_at: number | null;
+};
+
+/** `chain.surface_history` columns, in field-id order. */
+export const SURFACE_HISTORY_COLUMNS = [
+  "id",
+  "surface_id",
+  "subnet_netuid",
+  "action",
+  "overlay",
+  "source_commit",
+  "recorded_at",
+] as const;
+
+/** `chain.surface_uptime_daily` */
+export type SurfaceUptimeDailyRow = {
+  surface_id: string | null;
+  surface_key: string | null;
+  netuid: number | null;
+  day: string | null;
+  samples: number | null;
+  ok_count: number | null;
+  uptime_ratio: number | null;
+  avg_latency_ms: number | null;
+  status: string | null;
+  latency_samples: number | null;
+  p50_latency_ms: number | null;
+  p95_latency_ms: number | null;
+  p99_latency_ms: number | null;
+  updated_at: number | null;
+};
+
+/** `chain.surface_uptime_daily` columns, in field-id order. */
+export const SURFACE_UPTIME_DAILY_COLUMNS = [
+  "surface_id",
+  "surface_key",
+  "netuid",
+  "day",
+  "samples",
+  "ok_count",
+  "uptime_ratio",
+  "avg_latency_ms",
+  "status",
+  "latency_samples",
+  "p50_latency_ms",
+  "p95_latency_ms",
+  "p99_latency_ms",
+  "updated_at",
+] as const;
+
+/** `chain.tao_usd_index` */
+export type TaoUsdIndexRow = {
+  block_number: number | null;
+  observed_at: number | null;
+  usd_per_tao: number | null;
+  price_basis: string | null;
+  eth_usd: number | null;
+  pool_count: number | null;
+  pools: string | null;
+};
+
+/** `chain.tao_usd_index` columns, in field-id order. */
+export const TAO_USD_INDEX_COLUMNS = [
+  "block_number",
+  "observed_at",
+  "usd_per_tao",
+  "price_basis",
+  "eth_usd",
+  "pool_count",
+  "pools",
+] as const;
+
+/** `chain.treasury_readings` */
+export type TreasuryReadingsRow = {
+  netuid: number | null;
+  source_url: string | null;
+  read_at_sha: string | null;
+  observed_at: number | null;
+  first_seen: number | null;
+  found: boolean | null;
+  declared_share: number | null;
+  treasury_address: string | null;
+  applies_to: string | null;
+  evidence_path: string | null;
+  review_state: string | null;
+  reviewed_at: number | null;
+};
+
+/** `chain.treasury_readings` columns, in field-id order. */
+export const TREASURY_READINGS_COLUMNS = [
+  "netuid",
+  "source_url",
+  "read_at_sha",
+  "observed_at",
+  "first_seen",
+  "found",
+  "declared_share",
+  "treasury_address",
+  "applies_to",
+  "evidence_path",
+  "review_state",
+  "reviewed_at",
+] as const;
+
 /** Every Iceberg table this repo reads, by name. */
 export const LAKEHOUSE_TABLES = [
   "blocks",
@@ -832,4 +1166,18 @@ export const LAKEHOUSE_TABLES = [
   "surfaces",
   "providers",
   "validator_nominator_counts",
+  "chain_concentration_daily",
+  "compute_declarations",
+  "emission_flow_watch",
+  "emission_gate_param_history",
+  "hotkey_alpha",
+  "revenue_observations",
+  "subnet_deregistration_daily",
+  "subnet_emission_enabled_history",
+  "subnet_lifecycle",
+  "surface_failure_daily",
+  "surface_history",
+  "surface_uptime_daily",
+  "tao_usd_index",
+  "treasury_readings",
 ] as const;

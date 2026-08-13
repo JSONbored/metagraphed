@@ -97,6 +97,25 @@ export const TABLES = [
   "surfaces",
   "providers",
   "validator_nominator_counts",
+  // The fifteen created 2026-08-13 to close the archive gap
+  // (metagraphed-infra#552). Snapshotted for the same reason as the block
+  // above: the mirror writes them, so store-type-parity must be able to compare
+  // their column types against Neon, and the generator gives each one a Zod row
+  // schema in LAKEHOUSE_ROW_SCHEMAS at no cost to the exports ceiling.
+  "chain_concentration_daily",
+  "compute_declarations",
+  "emission_flow_watch",
+  "emission_gate_param_history",
+  "hotkey_alpha",
+  "revenue_observations",
+  "subnet_deregistration_daily",
+  "subnet_emission_enabled_history",
+  "subnet_lifecycle",
+  "surface_failure_daily",
+  "surface_history",
+  "surface_uptime_daily",
+  "tao_usd_index",
+  "treasury_readings",
 ];
 
 // Guarded, so importing TABLES does not reach for the catalog. Before this the

@@ -2126,5 +2126,782 @@
     "column": "captured_at",
     "type": "long",
     "required": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "field_id": 1,
+    "column": "day",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "field_id": 2,
+    "column": "neuron_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "field_id": 3,
+    "column": "card",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "field_id": 4,
+    "column": "source_captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "field_id": 5,
+    "column": "computed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "field_id": 6,
+    "column": "builder_version",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 2,
+    "column": "source_url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 3,
+    "column": "read_at_sha",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 4,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 5,
+    "column": "first_seen",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 6,
+    "column": "found",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 7,
+    "column": "spec_version",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 8,
+    "column": "miner",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "compute_declarations",
+    "field_id": 9,
+    "column": "validator",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "field_id": 1,
+    "column": "id",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "field_id": 2,
+    "column": "item",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "field_id": 3,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "field_id": 4,
+    "column": "is_set",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "field_id": 5,
+    "column": "ema_block",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "field_id": 6,
+    "column": "block_number",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "field_id": 7,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "field_id": 8,
+    "column": "predates_capture",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "field_id": 1,
+    "column": "id",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "field_id": 2,
+    "column": "param",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "field_id": 3,
+    "column": "value",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "field_id": 4,
+    "column": "previous_value",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "field_id": 5,
+    "column": "source",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "field_id": 6,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "field_id": 7,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "field_id": 8,
+    "column": "predates_capture",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "hotkey_alpha",
+    "field_id": 1,
+    "column": "hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "hotkey_alpha",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "hotkey_alpha",
+    "field_id": 3,
+    "column": "total_alpha",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "hotkey_alpha",
+    "field_id": 4,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 1,
+    "column": "surface_id",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 3,
+    "column": "period",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 4,
+    "column": "grain",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 5,
+    "column": "amount",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 6,
+    "column": "currency",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 7,
+    "column": "provenance",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 8,
+    "column": "response_hash",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "revenue_observations",
+    "field_id": 9,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "field_id": 2,
+    "column": "snapshot_date",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "field_id": 3,
+    "column": "moving_price",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "field_id": 4,
+    "column": "registered_at_block",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "field_id": 5,
+    "column": "subnet_mechanism",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "field_id": 6,
+    "column": "network_immunity_period",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "field_id": 7,
+    "column": "pinned_block",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "field_id": 8,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "field_id": 1,
+    "column": "id",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "field_id": 3,
+    "column": "enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "field_id": 4,
+    "column": "previous_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "field_id": 5,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "field_id": 6,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "field_id": 7,
+    "column": "predates_capture",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "field_id": 1,
+    "column": "id",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "field_id": 3,
+    "column": "event",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "field_id": 4,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "field_id": 5,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "field_id": 6,
+    "column": "predates_capture",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "field_id": 1,
+    "column": "day",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "field_id": 3,
+    "column": "kind",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "field_id": 4,
+    "column": "classification",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "field_id": 5,
+    "column": "checks",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "field_id": 6,
+    "column": "updated_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "surface_history",
+    "field_id": 1,
+    "column": "id",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_history",
+    "field_id": 2,
+    "column": "surface_id",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_history",
+    "field_id": 3,
+    "column": "subnet_netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_history",
+    "field_id": 4,
+    "column": "action",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_history",
+    "field_id": 5,
+    "column": "overlay",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_history",
+    "field_id": 6,
+    "column": "source_commit",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_history",
+    "field_id": 7,
+    "column": "recorded_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 1,
+    "column": "surface_id",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 2,
+    "column": "surface_key",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 3,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 4,
+    "column": "day",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 5,
+    "column": "samples",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 6,
+    "column": "ok_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 7,
+    "column": "uptime_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 8,
+    "column": "avg_latency_ms",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 9,
+    "column": "status",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 10,
+    "column": "latency_samples",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 11,
+    "column": "p50_latency_ms",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 12,
+    "column": "p95_latency_ms",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 13,
+    "column": "p99_latency_ms",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "field_id": 14,
+    "column": "updated_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "tao_usd_index",
+    "field_id": 1,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "tao_usd_index",
+    "field_id": 2,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "tao_usd_index",
+    "field_id": 3,
+    "column": "usd_per_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "tao_usd_index",
+    "field_id": 4,
+    "column": "price_basis",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "tao_usd_index",
+    "field_id": 5,
+    "column": "eth_usd",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "tao_usd_index",
+    "field_id": 6,
+    "column": "pool_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "tao_usd_index",
+    "field_id": 7,
+    "column": "pools",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 2,
+    "column": "source_url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 3,
+    "column": "read_at_sha",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 4,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 5,
+    "column": "first_seen",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 6,
+    "column": "found",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 7,
+    "column": "declared_share",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 8,
+    "column": "treasury_address",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 9,
+    "column": "applies_to",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 10,
+    "column": "evidence_path",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 11,
+    "column": "review_state",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "treasury_readings",
+    "field_id": 12,
+    "column": "reviewed_at",
+    "type": "long",
+    "required": false
   }
 ]
