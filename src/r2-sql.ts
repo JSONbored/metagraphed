@@ -733,8 +733,13 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
     const decoded = R2SqlBodySchema.safeParse(parsed);
     if (!decoded.success) {
       thrownCode = "unparseable";
+      // `error.message` rather than `issues[0]?.message ?? "unknown"`: a
+      // ZodError always carries at least one issue, so the fallback was a
+      // branch nothing could reach -- and the full message names EVERY
+      // mismatch instead of the first, which is what a reader needs when the
+      // engine's envelope changes shape.
       throw new Error(
-        `r2 sql: response body did not match the engine envelope: ${decoded.error.issues[0]?.message ?? "unknown"}`,
+        `r2 sql: response body did not match the engine envelope: ${decoded.error.message.slice(0, MAX_REJECTION_DETAIL)}`,
       );
     }
     const body: R2SqlBody = decoded.data;

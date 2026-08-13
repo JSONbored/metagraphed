@@ -1318,6 +1318,46 @@ describe("a lakehouse read is VALIDATED, not cast (#11000)", () => {
     );
   });
 
+  test("a stream chunk with no bytes is skipped, not counted", async () => {
+    // A ReadableStream may hand back `{ done: false, value: undefined }`. The
+    // guard exists so `value.byteLength` cannot throw on it; a real stream
+    // rarely does this, so the reader is driven directly rather than pretending
+    // a well-behaved stream will produce it.
+    const payload = JSON.stringify({
+      success: true,
+      result: { rows: [{ block_number: 1 }] },
+    });
+    const chunks = [
+      { done: false, value: undefined },
+      { done: false, value: new TextEncoder().encode(payload) },
+      { done: true, value: undefined },
+    ];
+    let i = 0;
+    const body = {
+      getReader: () => ({
+        read: async () => chunks[i++]!,
+        cancel: async () => undefined,
+      }),
+    };
+    const rows = await r2SqlQuery(
+      mockEnv(TOKEN),
+      "SELECT block_number FROM chain.blocks",
+      {
+        fetch: (async () => ({
+          ok: true,
+          status: 200,
+          body,
+        })) as unknown as typeof fetch,
+        ...noCapture,
+      },
+    );
+    assert.deepEqual(
+      rows,
+      [{ block_number: 1 }],
+      "the empty chunk must not end the read",
+    );
+  });
+
   test("a JSON body that is not the ENGINE envelope is a decline", () => {
     // Parses fine, fails the envelope: `success` must be a boolean. Before the
     // safeParse this was a cast, so a body shaped like this reached the row
