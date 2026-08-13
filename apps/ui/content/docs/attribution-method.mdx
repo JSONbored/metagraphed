@@ -1,0 +1,82 @@
+---
+title: Attribution method
+description: The rules every owner-capture surface publishes under — what we will say about who controls a wallet, what we will not, and how to check us.
+---
+
+Some of what this API publishes is about **where a subnet's money goes**: how much emission the owner receives, whether an owner-run validator keeps what it earns, whether a treasury allocation matches what a subnet says it takes.
+
+Those are the most useful figures here and the easiest to get wrong in a way that harms someone. A wrong revenue number is an error. **"This team is quietly taking 60%" is not retractable once an agent has quoted it.**
+
+This page is the standard we hold ourselves to. It is published rather than internal so you can check us against it, and so a subnet operator who thinks we have it wrong knows exactly which rule to point at.
+
+## 1. A take rate does not tell you what an operator keeps
+
+What a validator operator actually retains is:
+
+```
+kept = take × dividends + (1 − take) × dividends × (operator_stake ÷ total_stake_on_hotkey)
+```
+
+A validator with an 18% take and no self-stake keeps **18%**. The same validator, fully self-staked, keeps **100%**. The take is published on chain and tells you almost nothing on its own — the self-stake fraction is the decisive term.
+
+So we do not report "the owner takes X%" from a take rate. Take-rate-only analysis is worse than none, because it looks rigorous.
+
+## 2. A large nominator is not evidence of anything
+
+Concentrated delegation behind an owner-run validator has at least four innocent explanations before "hidden team wallet":
+
+- a **custodial exchange** staking on behalf of many users
+- a **delegation service**
+- a single **unaffiliated whale**
+- a **DAO or treasury** with no relationship to the subnet
+
+Every one produces the identical on-chain shape. The default verdict for an unlabelled coldkey is `unresolved` — never `owner`.
+
+## 3. Affiliation needs linkable evidence, not correlation
+
+A coldkey moves above `unresolved` only on evidence you can check:
+
+| Evidence         | What it is                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------- |
+| `funding-path`   | a transfer from the owner coldkey, cited to the extrinsic                                            |
+| `chain-identity` | an on-chain identity naming the team                                                                 |
+| `self-declared`  | the subnet's own docs, repo or site — pinned to a commit SHA, because a branch moves under the claim |
+| `key-rotation`   | a coldkey swap or hotkey rotation linking the two                                                    |
+| `known-entity`   | a labelled third party, which supports `third-party` rather than `affiliated`                        |
+
+Timing correlation, similar stake sizes and "registered in the same block" are **reviewer hints, not publishable evidence**. They are exactly the reasoning that turns a coincidence into an allegation.
+
+This is enforced in the schema, not by convention: a verdict above `unresolved` **cannot be serialised without an evidence entry**, and an evidence entry without a `source_url` or an `extrinsic_hash` is refused. `owner` is the one exemption, because it comes from `SubtensorModule.SubnetOwner` and the chain read is itself the citation.
+
+## 4. Disclosed is not dishonest
+
+A treasury allocation written into a subnet's own public repository is a **disclosed business model**, not a deception. Publishing it as a scandal would be a misrepresentation in the other direction.
+
+The signal worth serving is **divergence between what a subnet declares and what the chain shows** — and the honest headline for most subnets is _"declared take matches observed take."_ If a surface cannot produce that boring answer, it is not a measurement.
+
+## 5. Right of reply
+
+`operator-attested` is already a first-class provenance class here: displayed, and never summed into a headline. Subnet teams get the same deal on wallets. Declare your affiliated coldkeys and your treasury policy and we publish the declaration beside the measurement, showing where the two agree.
+
+A team that declares gets a cleaner card. A team that stays silent gets `unresolved` — **a neutral fact, not an allegation.**
+
+## 6. We publish the mechanism, never the motive
+
+| We do not say                              | We say                                                                                       |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| "The owner secretly takes 60% of emission" | "60% of emission is attributed to UIDs held by the owner coldkey and one unresolved coldkey" |
+| "This subnet is a scam"                    | "98% of registered miner UIDs recorded zero emission over the last 31 days"                  |
+| "The team dumped tokens"                   | "44,186 TAO unstaked and 88,284 staked by the owner coldkey over 30 days; net accumulating"  |
+| "Hidden 10% tax on miners"                 | "A 10% treasury allocation is present in the subnet's published source at &lt;permalink&gt;" |
+
+Each pair is the same underlying number. The right-hand column is defensible, sourceable, and more useful to someone deciding where to put capital.
+
+## Two things these surfaces cannot see
+
+**Root delegation.** Root (netuid 0) stake is TAO-denominated with a `tao_weight` of 0.18, and root stakers earn dividends in alpha. It is a capture path that is **invisible on a subnet's own metagraph** — a subnet-scoped measurement cannot see it, and says so rather than implying its absence.
+
+**Per-subnet take.** `take` is stored globally per hotkey, not per subnet, so a validator operating on six subnets reports the same take on all six. A `null` take means no `Delegates` entry — **not 0%**. Childkey takes dilute it further, are read live, and have no history at all.
+
+## If you think we have this wrong
+
+Open an issue naming the rule and the row. A claim that cannot survive that conversation should not have been published, and we would rather correct it than defend it.
