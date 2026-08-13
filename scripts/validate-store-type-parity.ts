@@ -81,18 +81,19 @@ const FITS: Readonly<Record<string, ReadonlySet<string>>> = {
  * Iceberg widening is a safe promotion. This is the scoreboard for closing
  * them, not permission to keep them.
  */
-const KNOWN: ReadonlySet<string> = new Set([
-  "neuron_daily.take",
-  "nominator_positions.share_fraction",
-  "subnet_hyperparams.weights_version",
-  "subnet_hyperparams_history.weights_version",
-  // Both arrived in migration 0025, AFTER the 2026-08-02 exodus load, so the
-  // frozen copy predates them. metagraphed-infra#510's restore must include
-  // them or the archive stays lossy.
-  "nominator_positions.shares",
-  "nominator_positions.source",
+const KNOWN: ReadonlySet<string> = new Set<string>([
+  // EMPTY, and it stays that way. All six original divergences were fixed in
+  // the catalog on 2026-08-13 (metagraphed-infra#536): the two float32
+  // narrowings and both int8 -> int32 `weights_version` columns were widened,
+  // and `nominator_positions.shares` / `.source` -- added by migration 0025
+  // AFTER the 2026-08-02 exodus load, so the frozen copy never had them --
+  // were added. Every record count was checked before and after; Iceberg
+  // widening rewrites nothing.
+  //
+  // Emptying this was not optional. The gate fails on a KNOWN entry that has
+  // STOPPED diverging, precisely so a baseline cannot outlive the damage it
+  // describes and quietly overstate it.
 ]);
-
 export interface Column {
   table: string;
   column: string;

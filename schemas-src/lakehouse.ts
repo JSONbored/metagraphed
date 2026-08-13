@@ -165,6 +165,8 @@ export const NominatorPositionsRowSchema = z
     netuid: z.int().nullable(),
     share_fraction: z.number().nullable(),
     captured_at: z.int().nullable(),
+    shares: z.number().nullable(),
+    source: z.string().nullable(),
   })
   .partial()
   .catchall(z.unknown());
