@@ -83,7 +83,7 @@ export function SubnetEmissionSplitPanel({ netuid }: { netuid: number }) {
   );
 }
 
-function earningLabel(point: EmissionSplitPoint): string {
+export function earningLabel(point: EmissionSplitPoint): string {
   const earning = point.earning_miner_count;
   const total = point.miner_count;
   if (earning == null || total == null) return "—";
@@ -91,7 +91,7 @@ function earningLabel(point: EmissionSplitPoint): string {
 }
 
 /** A percentage, or an em dash. NEVER 0% for a null — see the header. */
-function percent(value: number | null | undefined): string {
+export function percent(value: number | null | undefined): string {
   if (value == null) return "—";
   return `${(value * 100).toFixed(1)}%`;
 }

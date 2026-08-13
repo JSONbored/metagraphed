@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildSubnetEmissionSplitHistory,
+  emissionSplitWindowLabel,
   EMISSION_SPLIT_HISTORY_ROW_CAP,
   parseEmissionSplitHistoryWindow,
   SUBNET_EMISSION_SPLIT_FIELD_SOURCES,
@@ -374,6 +375,17 @@ describe("the window vocabulary", () => {
       label: "30d",
       days: 30,
     });
+  });
+
+  test("the label helper defaults an absent window and passes a set one through", () => {
+    // Both arms driven directly. In production `parseArgumentsAtDispatch`
+    // fills the GraphQL resolver's argument from the published schema, so the
+    // fallback arm is unreachable there -- which is exactly why the guard was
+    // pulled out here, where it can be proven rather than ignored.
+    assert.equal(emissionSplitWindowLabel("7d"), "7d");
+    assert.equal(emissionSplitWindowLabel("90d"), "90d");
+    assert.equal(emissionSplitWindowLabel(undefined), "30d");
+    assert.equal(emissionSplitWindowLabel(null), "30d");
   });
 
   test("an unsupported window is a stated error, not a silent default", () => {

@@ -125,6 +125,23 @@ export function parseEmissionSplitHistoryWindow(
   return { label: v, days: SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS[v] };
 }
 
+/**
+ * The window label a caller asked for, defaulted.
+ *
+ * Exported and unit-tested rather than inlined at the call site. The GraphQL
+ * resolver's `window` argument is resolved by `parseArgumentsAtDispatch`
+ * against the route's published query schema, so in production the fallback
+ * arm is unreachable -- measured: never taken across the whole suite. An
+ * unreachable branch inside a resolver cannot be proven either way, and
+ * a v8-ignore hint does not exempt it from codecov/patch, so the guard lives
+ * here where a test can drive both arms directly.
+ */
+export function emissionSplitWindowLabel(
+  window: string | null | undefined,
+): string {
+  return window ?? DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW;
+}
+
 /** Per-field provenance. The shares between validator and miner are ratios of
  * observed sums; everything carrying the owner cut or a day's
  * `alpha_out_emission` is a reconstruction over a runtime default. */

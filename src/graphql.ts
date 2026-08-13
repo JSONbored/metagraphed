@@ -283,8 +283,10 @@ import {
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
 } from "./subnet-yield.ts";
-import { buildSubnetEmissionSplitHistory } from "./emission-split.ts";
-import { DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW } from "./route-limits.ts";
+import {
+  buildSubnetEmissionSplitHistory,
+  emissionSplitWindowLabel,
+} from "./emission-split.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -3376,7 +3378,7 @@ const rootValue = {
     // unsupported window is rejected before this resolver runs. Restating the
     // enum here would put a second copy of a published fact where the contract
     // cannot see it -- the drift #10060 removed.
-    const windowParam = window ?? DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW;
+    const windowParam = emissionSplitWindowLabel(window);
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =

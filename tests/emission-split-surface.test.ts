@@ -152,6 +152,37 @@ describe("the CSV export", () => {
   });
 });
 
+test("the CSV rows are sorted oldest-first", async () => {
+  // The route serves newest-first; a spreadsheet wants the opposite. With
+  // fewer than two rows the comparator never runs, so this needs two.
+  const res = await handleSubnetEmissionSplitHistory(
+    req(`${PATH}?format=csv`),
+    {
+      ...(mockEnv() as unknown as Record<string, unknown>),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            window: "30d",
+            point_count: 2,
+            points: [
+              { snapshot_date: "2026-08-12", miner_count: 2 },
+              { snapshot_date: "2026-08-11", miner_count: 1 },
+            ],
+            field_sources: {},
+          }),
+      },
+    } as never,
+    NETUID,
+    asUrl(`${PATH}?format=csv`),
+  );
+  assert.equal(res.status, 200);
+  const rows = (await res.text()).trim().split("\n");
+  assert.match(rows[1], /^2026-08-11/, "oldest row first");
+  assert.match(rows[2], /^2026-08-12/);
+});
 describe("the edge-cache key", () => {
   test("an omitted window and the explicit default collapse to one key", () => {
     // Otherwise the two spellings of the same request are two cache entries.
