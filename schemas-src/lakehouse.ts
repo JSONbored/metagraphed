@@ -384,7 +384,12 @@ export const NeuronDailyRowSchema = z
     consensus: z.number().nullable(),
     incentive: z.number().nullable(),
     dividends: z.number().nullable(),
-    emission_tao: z.number().nullable(),
+    emission_tao: z
+      .number()
+      .describe(
+        "ALPHA-denominated for non-root subnets, per TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- despite the on-chain-inherited name (#2550/#8945). netuid 0 (root) is genuine TAO. Multiply by tempos/day before deriving a daily figure.",
+      )
+      .nullable(),
     stake_tao: z.number().nullable(),
     registered_at_block: z.int().nullable(),
     is_immunity_period: z.boolean().nullable(),
@@ -419,7 +424,12 @@ export const AccountPositionDailyRowSchema = z
     incentive: z.number().nullable(),
     dividends: z.number().nullable(),
     stake_tao: z.number().nullable(),
-    emission_tao: z.number().nullable(),
+    emission_tao: z
+      .number()
+      .describe(
+        "ALPHA-denominated for non-root subnets, per TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- despite the on-chain-inherited name (#2550/#8945). netuid 0 (root) is genuine TAO. Multiply by tempos/day before deriving a daily figure.",
+      )
+      .nullable(),
     captured_at: z.int().nullable(),
     updated_at: z.int().nullable(),
   })
@@ -507,7 +517,12 @@ export const NeuronsRowSchema = z
     consensus: z.number().nullable(),
     incentive: z.number().nullable(),
     dividends: z.number().nullable(),
-    emission_tao: z.number().nullable(),
+    emission_tao: z
+      .number()
+      .describe(
+        "ALPHA-denominated for non-root subnets, per TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- despite the on-chain-inherited name (#2550/#8945). netuid 0 (root) is genuine TAO. Multiply by tempos/day before deriving a daily figure.",
+      )
+      .nullable(),
     stake_tao: z.number().nullable(),
     registered_at_block: z.int().nullable(),
     is_immunity_period: z.boolean().nullable(),

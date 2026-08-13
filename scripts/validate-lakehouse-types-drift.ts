@@ -36,7 +36,7 @@ const stale = (
   [
     [TYPES_PATH, emitTypes(snapshot)],
     [RUST_PATH, emitRustTypes(snapshot)],
-    [ZOD_PATH, emitZodSchemas(snapshot)],
+    [ZOD_PATH, await emitZodSchemas(snapshot)],
   ] as const
 ).filter(
   ([file, regenerated]) =>
