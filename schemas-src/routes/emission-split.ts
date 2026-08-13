@@ -93,6 +93,3 @@ export const SubnetEmissionSplitHistoryArtifactSchema =
     .describe(
       "Per-day split of one subnet's emission by recipient class — owner, validators, miners — over a 7d/30d/90d window, newest first. The validator/miner split is MEASURED from the per-UID neuron_daily rollup; the owner leg and every absolute figure are RECONSTRUCTED, because the owner's cut is paid outside the UID set and `SubnetOwnerCut` is unset on chain. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history.",
     );
-export type SubnetEmissionSplitHistoryArtifact = z.infer<
-  typeof SubnetEmissionSplitHistoryArtifactSchema
->;

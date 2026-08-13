@@ -18,12 +18,6 @@ export const GetSubnetEmissionSplitHistoryInputSchema = z
     window: RouteQuery_subnets_netuid_emission_split_history.shape.window,
   })
   .strict();
-export type GetSubnetEmissionSplitHistoryInput = z.infer<
-  typeof GetSubnetEmissionSplitHistoryInputSchema
->;
 
 export const GetSubnetEmissionSplitHistoryOutputSchema =
   SubnetEmissionSplitHistoryArtifactSchema;
-export type GetSubnetEmissionSplitHistoryOutput = z.infer<
-  typeof GetSubnetEmissionSplitHistoryOutputSchema
->;
