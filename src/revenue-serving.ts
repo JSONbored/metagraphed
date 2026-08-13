@@ -276,13 +276,19 @@ export function resolveSources(
 
 export function buildSubnetRevenue(
   input: SubnetRevenueInput & {
-    observations?: Map<string, RevenueObservation[]>;
+    /** Required and explicitly nullable since #10926 -- see
+     * LoadSubnetRevenueInput.observations for why the optional form was the
+     * bug's hiding place. */
+    observations: Map<string, RevenueObservation[]> | null;
   },
 ): SubnetRevenueView {
   const { searched_at = null } = input;
   const sources = resolveSources(
     input.sources,
     input.window_days,
+    // No `?? new Map()`: the input is required and explicitly nullable since
+    // #10926, so "nothing to pass" is a statement the caller makes rather than
+    // a default that silently absorbs a forgotten argument.
     input.observations ?? new Map(),
   );
 

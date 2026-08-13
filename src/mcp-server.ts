@@ -1582,7 +1582,9 @@ import {
   loadTaoUsdSeries,
   DEFAULT_TAO_USD_WINDOW,
   TAO_USD_WINDOWS,
+  usdPerTaoOrNull,
 } from "./tao-usd-series.ts";
+import { loadRevenueObservations } from "./revenue-observations.ts";
 import {
   buildSurfaceHistory,
   loadSurfaceHistory,
@@ -1713,6 +1715,7 @@ import {
   SUBNET_BURN_HISTORY_TABLES,
   SUBNET_SNAPSHOT_TABLES,
   SURFACE_HISTORY_TABLES,
+  REVENUE_OBSERVATION_TABLES,
   TAO_USD_TABLES,
   UPTIME_DAILY_TABLES,
 } from "./read-store-tables.ts";
@@ -3251,15 +3254,47 @@ async function mcpSubnetSurfaces(
 
 /** Latest TAO/USD, or null. Null prices the emission at 0 USD, which yields
  * null ratios -- honest, since without a rate there is no USD comparison. */
+/**
+ * The current TAO/USD rate, from the SAME store REST prices against.
+ *
+ * This used to read `/metagraph/network/tao-usd.json` and grade the blob
+ * itself -- a second source and a second implementation, and it answered null
+ * in production while REST priced the same subnet in the same second (netuid
+ * 64, 2026-08-12: REST `emission.usd` 86,917.23, MCP null with "no TAO/USD
+ * rate"). Every USD leg on every MCP revenue and owner-cut response was null,
+ * and the response reported it as a stated outcome rather than a fault.
+ *
+ * The tell that it was a copy problem and not a missing capability: the
+ * sibling tool `get_tao_usd` in this same file was already reading the store
+ * correctly. One shared `usdPerTaoOrNull` now serves both surfaces, so the two
+ * cannot answer differently again.
+ */
+/**
+ * The revenue observation series, from the SAME store REST reads.
+ *
+ * `netuid: null` loads every subnet's series in one query -- what
+ * `list_revenue_coverage` needs, and what REST's coverage handler already
+ * does rather than issuing one query per subnet.
+ *
+ * A read failure comes back as null and degrades to "not observed", the same
+ * output as an empty store. That is correct here: neither is a zero.
+ */
+async function mcpRevenueObservations(ctx: McpCtx, netuid: number | null) {
+  return loadRevenueObservations(
+    readStore(
+      ctx.env,
+      REVENUE_OBSERVATION_TABLES,
+    ) as never as unknown as Parameters<typeof loadRevenueObservations>[0],
+    netuid,
+  );
+}
+
 async function mcpUsdPerTao(ctx: McpCtx): Promise<number | null> {
-  try {
-    const blob = await loadArtifactData(ctx, "/metagraph/network/tao-usd.json");
-    const latest = blob?.latest as Record<string, unknown> | undefined;
-    const usd = latest?.usd_per_tao;
-    return typeof usd === "number" && Number.isFinite(usd) ? usd : null;
-  } catch {
-    return null;
-  }
+  return usdPerTaoOrNull(
+    readStore(ctx.env, TAO_USD_TABLES) as never as unknown as Parameters<
+      typeof usdPerTaoOrNull
+    >[0],
+  );
 }
 
 // One subnet's economics: live KV tier (KV-primary), else the committed R2
@@ -9343,6 +9378,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         window_days: 30,
         economics,
         owner_cut: typeof ownerCut === "number" ? ownerCut : null,
+        // #10926: the rate. Without it `accrual.usd` was null on every MCP
+        // call while REST priced the same subnet from the same index.
+        usd_per_tao: await mcpUsdPerTao(ctx),
       });
       return {
         schema_version: 1,
@@ -9390,6 +9428,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           economics,
           surfaces: await mcpSubnetSurfaces(ctx, netuid),
           usd_per_tao: await mcpUsdPerTao(ctx),
+          // #10926: the observation series. Without it every source reported
+          // `excluded_reason: "not observed"` and `revenue_usd` was null for
+          // every subnet forever -- a correct-looking decline in place of a
+          // read that never happened, which is invisible precisely because
+          // the decline is the documented normal answer.
+          observations: await mcpRevenueObservations(ctx, netuid),
         }),
         field_sources: SUBNET_REVENUE_FIELD_SOURCES,
       };
@@ -9412,6 +9456,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ? (blob.subnets as Array<Record<string, unknown>>)
         : [];
       const usd = await mcpUsdPerTao(ctx);
+      // ONE read for every subnet, matching the REST handler: the whole series
+      // is cheaper than the first dozen per-netuid queries.
+      const allObservations = await mcpRevenueObservations(ctx, null);
       const subnets = [];
       for (const row of rows) {
         const netuid = Number(row?.netuid);
@@ -9423,6 +9470,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             economics: row,
             surfaces: await mcpSubnetSurfaces(ctx, netuid),
             usd_per_tao: usd,
+            observations: allObservations,
           }),
         );
       }
