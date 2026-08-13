@@ -224,4 +224,65 @@ describe("Discovery artifacts", () => {
     // Catches robots.txt and sitemap.xml drifting out of sync with each other.
     assert.equal(sitemapLine, `https://${PRIMARY_DOMAIN}/sitemap.xml`);
   });
+
+  // #11002. Asserts CRAWL BEHAVIOUR, not the text: a substring check passes just
+  // as happily on a rule set whose precedence is backwards, and precedence is
+  // the only thing keeping /api/v1/blocks/summary crawlable while the ~8.8M
+  // /api/v1/blocks/{ref} URLs beneath the same prefix are not. Mirrors
+  // apps/ui/src/server.robots.test.ts, which gates the apex's own copy — the two
+  // hosts are one policy and a change to either alone reopens the walk.
+  test("robots.txt withholds the unbounded per-entity spaces, not the collections", async () => {
+    const txt = await fs.readFile(path.join(publicDir, "robots.txt"), "utf8");
+
+    // RFC 9309 §2.2.2: longest matching rule wins, Allow wins a tie, no match
+    // means allowed.
+    const crawlable = (pathname: string) => {
+      let best = { length: -1, allow: true };
+      for (const line of txt.split("\n")) {
+        const rule = /^(Allow|Disallow):\s*(\S+)$/.exec(line.trim());
+        if (!rule) continue;
+        const [, kind, pattern] = rule;
+        const matches = pattern.endsWith("$")
+          ? pathname === pattern.slice(0, -1)
+          : pathname.startsWith(pattern);
+        if (!matches) continue;
+        const allow = kind === "Allow";
+        if (
+          pattern.length > best.length ||
+          (pattern.length === best.length && allow)
+        ) {
+          best = { length: pattern.length, allow };
+        }
+      }
+      return best.allow;
+    };
+
+    for (const p of [
+      "/api/v1/blocks/8803541",
+      "/api/v1/blocks/8803541/extrinsics",
+      "/api/v1/blocks/8803541/events",
+      "/api/v1/blocks/8803541/chain-events",
+      "/api/v1/extrinsics/0xa6fd0387b5e54ffe8cf753c10720a437e82ad7e4c47a33997cbd68b498d14d95",
+      "/api/v1/accounts/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      "/api/v1/accounts/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY/transfers",
+    ]) {
+      assert.equal(crawlable(p), false, `${p} should be withheld`);
+    }
+
+    // The collections and the two bounded rollups that sit under a disallowed
+    // prefix — these are what the sitemap and llms.txt advertise.
+    for (const p of [
+      "/",
+      "/api/v1/blocks",
+      "/api/v1/blocks/summary",
+      "/api/v1/extrinsics",
+      "/api/v1/accounts",
+      "/api/v1/accounts/top-holders",
+      "/api/v1/subnets",
+      "/api/v1/agent-catalog",
+      "/metagraph/openapi.json",
+    ]) {
+      assert.equal(crawlable(p), true, `${p} should stay crawlable`);
+    }
+  });
 });
