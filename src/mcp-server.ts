@@ -156,6 +156,10 @@ import {
   GetSubnetOwnerCaptureOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-owner-capture.ts";
 import {
+  GetSubnetMinerFairnessInputSchema,
+  GetSubnetMinerFairnessOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-miner-fairness.ts";
+import {
   GetSubnetStakeFlowInputSchema,
   GetSubnetStakeFlowOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-stake-flow.ts";
@@ -1437,6 +1441,10 @@ import {
   buildSubnetOwnerCapture,
   parseOwnerCaptureWindow,
 } from "./owner-capture.ts";
+import {
+  buildSubnetMinerFairness,
+  parseMinerFairnessWindow,
+} from "./miner-fairness.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -7651,6 +7659,50 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           window: label,
           capped: false,
         })
+      );
+    },
+  },
+  {
+    name: "get_subnet_miner_fairness",
+    title: "Get subnet miner fairness distribution",
+    description:
+      "Measure whether a subnet's registered miners actually EARN, over a 7d, " +
+      "30d or 90d window (default 30d). Every dashboard publishes a miner " +
+      "count; the median subnet has 99.2% of its non-validator UIDs on zero " +
+      "emission, so that count read as a count of earners is close to " +
+      "fiction. Reports the daily zero-emission rate, how many days each " +
+      "miner UID earned on -- `earned on 0 of 31 days` and `earned on 3 of " +
+      "31` are different answers that a snapshot collapses into one `zero` -- " +
+      "and emission concentration across controlling ENTITIES (the addresses " +
+      "holding the UIDs) as the headline lens, with the per-UID lens beside " +
+      "it. A subnet with three operators behind 256 UIDs is not diverse and " +
+      "the per-UID Gini alone hides that. " +
+      "DESCRIPTIVE ONLY: there is no fairness score in this payload and you " +
+      "must not invent one. A high Gini on a subnet whose task genuinely has " +
+      "one best answer is NOT misconduct, and calling a subnet unfair off " +
+      "these numbers is a judgement the data cannot support. Always report " +
+      "`days_covered` beside any distribution figure you quote. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/miner-fairness.",
+    inputSchema: inputJsonSchema(GetSubnetMinerFairnessInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetMinerFairnessInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      const parsed = parseMinerFairnessWindow(args?.window);
+      if (args?.window !== undefined && "error" in parsed && parsed.error) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      const { label } = parsed as { label: string };
+      return (
+        (await tryDataApiTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/miner-fairness`, {
+            window: label,
+          }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildSubnetMinerFairness([], netuid, { window: label, capped: false })
       );
     },
   },
@@ -15038,6 +15090,9 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
     GetSubnetEmissionSplitHistoryOutputSchema,
   ),
   get_subnet_owner_capture: outputJsonSchema(GetSubnetOwnerCaptureOutputSchema),
+  get_subnet_miner_fairness: outputJsonSchema(
+    GetSubnetMinerFairnessOutputSchema,
+  ),
   get_subnet_stake_flow: outputJsonSchema(GetSubnetStakeFlowOutputSchema),
   get_subnet_event_summary: outputJsonSchema(GetSubnetEventSummaryOutputSchema),
   get_subnet_stake_moves: outputJsonSchema(GetSubnetStakeMovesOutputSchema),

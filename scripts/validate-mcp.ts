@@ -2146,6 +2146,16 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
     "DATA_API-tier series; the harness binds no data Worker, so points is empty by construction",
   ],
   [
+    "get_subnet_miner_fairness",
+    // Same shape and same reason as its emission-split sibling above: the
+    // series comes through the DATA_API tier over neuron_daily, the hermetic
+    // harness binds no data Worker, so the tool correctly answers with the
+    // empty builder (days_covered 0) and `points` has no row. The point shape
+    // IS covered -- it is the route's own artifact schema by identity, and
+    // tests/miner-fairness.test.ts safeParses a populated payload through it.
+    "DATA_API-tier series; the harness binds no data Worker, so points is empty by construction",
+  ],
+  [
     "get_subnet_lifecycle",
     // subnet_lifecycle is written by the detection folded into the
     // neurons-staleness tick, which needs a live neurons pass -- the harness

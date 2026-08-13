@@ -101,6 +101,7 @@ import {
 } from "../../src/subnet-yield.ts";
 import { buildSubnetEmissionSplitHistory } from "../../src/emission-split.ts";
 import { buildSubnetOwnerCapture } from "../../src/owner-capture.ts";
+import { buildSubnetMinerFairness } from "../../src/miner-fairness.ts";
 import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
   DEFAULT_SUBNET_REVENUE_WINDOW,
@@ -2305,6 +2306,18 @@ export function canonicalSubnetEmissionSplitHistoryCachePath(
   );
 }
 
+// Canonical edge-cache key for the miner-fairness route (#10931): the window
+// alone, so two callers asking the same question share one entry.
+export function canonicalSubnetMinerFairnessCachePath(url: URL) {
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = resolveWindow(
+    url,
+    SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+    DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  );
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
 // Canonical edge-cache key for the owner-capture route (#10929). Same
 // `?window=` vocabulary as its emission-split sibling and no CSV variant, so
 // this is the window alone -- two callers asking for the same window must not
@@ -2714,6 +2727,47 @@ export async function handleSubnetEmissionSplitHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/emission-split/history.json`,
+        (data.points as unknown as Array<Record<string, unknown>>)[0]
+          ?.snapshot_date ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/miner-fairness?window=7d|30d|90d (#10931):
+// whether this subnet's registered miners actually earn, over the series. A
+// cold/absent store answers 200 with days_covered:0 rather than 404 -- a
+// subnet with no daily rollup is a real state and the normal one for anything
+// registered in the last day.
+export async function handleSubnetMinerFairness(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  const { label } = resolveWindow(
+    url,
+    SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+    DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+  );
+  const data =
+    ((await tryDataApiTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetMinerFairness> | null) ??
+    buildSubnetMinerFairness([], Number(netuid), {
+      window: label,
+      capped: false,
+    });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/miner-fairness.json`,
         (data.points as unknown as Array<Record<string, unknown>>)[0]
           ?.snapshot_date ?? null,
       ),

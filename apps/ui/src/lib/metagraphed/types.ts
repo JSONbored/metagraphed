@@ -3041,6 +3041,46 @@ export interface SubnetEmissionSplitHistory {
 }
 
 /**
+ * Miner fairness (#10931). DESCRIPTIVE ONLY — there is no score field here and
+ * the render must not invent one.
+ */
+export interface MinerFairnessPoint {
+  snapshot_date: string;
+  miner_count: number;
+  earning_miner_count: number;
+  zero_emission_pct?: number | null;
+}
+
+export interface MinerFairnessLens {
+  gini?: number | null;
+  nakamoto_coefficient?: number;
+  top_1pct_share?: number | null;
+  holders?: number;
+}
+
+export interface SubnetMinerFairness {
+  netuid: number;
+  window?: string;
+  /** Beside every distribution figure — 3 days and 31 days are not the same claim. */
+  days_covered: number;
+  point_count?: number;
+  points: MinerFairnessPoint[];
+  miner_uid_count: number;
+  persistence?: {
+    never_earned_count: number;
+    earned_every_day_count: number;
+    median_earning_days?: number | null;
+    max_earning_days?: number | null;
+  } | null;
+  entity_count: number;
+  uids_per_entity?: number | null;
+  concentration?: {
+    entity?: MinerFairnessLens | null;
+    uid?: MinerFairnessLens | null;
+  } | null;
+}
+
+/**
  * Owner capture, L1 + L2 (#10929).
  *
  * The render shape deliberately keeps `owner_attributed_share` and

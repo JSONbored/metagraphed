@@ -280,6 +280,8 @@ import {
   handleSubnetEmissionSplitHistory,
   handleSubnetOwnerCapture,
   canonicalSubnetOwnerCaptureCachePath,
+  handleSubnetMinerFairness,
+  canonicalSubnetMinerFairnessCachePath,
   handleSubnetYieldHistory,
   handleChainConcentration,
   handleChainConcentrationSubnets,
@@ -724,6 +726,7 @@ import {
   SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN,
   SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN,
   SUBNET_OWNER_CAPTURE_PATH_PATTERN,
+  SUBNET_MINER_FAIRNESS_PATH_PATTERN,
   SUBNET_YIELD_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
@@ -6209,6 +6212,28 @@ async function dispatchRequest(
       );
     }
 
+    const minerFairnessMatch = SUBNET_MINER_FAIRNESS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (minerFairnessMatch) {
+      // Same rollup, same cron cadence, same edge-cache treatment as its
+      // emission-split sibling.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-miner-fairness",
+        () =>
+          handleSubnetMinerFairness(
+            request,
+            env,
+            Number(minerFairnessMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetMinerFairnessCachePath(resolved.url),
+      );
+    }
+
     const ownerCaptureMatch = SUBNET_OWNER_CAPTURE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -7537,6 +7562,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // either, so a testnet-addressed request would be answered with the
     // mainnet owner.
     SUBNET_OWNER_CAPTURE_PATH_PATTERN.test(pathname) ||
+    SUBNET_MINER_FAIRNESS_PATH_PATTERN.test(pathname) ||
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||

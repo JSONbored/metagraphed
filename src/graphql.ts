@@ -294,6 +294,10 @@ import {
   ownerCaptureWindowLabel,
 } from "./owner-capture.ts";
 import {
+  buildSubnetMinerFairness,
+  minerFairnessWindowLabel,
+} from "./miner-fairness.ts";
+import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
   PERFORMANCE_HISTORY_WINDOWS,
@@ -945,6 +949,7 @@ import type {
   QuerySubnet_YieldArgs,
   QuerySubnet_Emission_Split_HistoryArgs,
   QuerySubnet_Owner_CaptureArgs,
+  QuerySubnet_Miner_FairnessArgs,
   QuerySubnet_Yield_HistoryArgs,
   QuerySubnetsArgs,
   QuerySurfacesArgs,
@@ -3351,6 +3356,45 @@ const rootValue = {
       window: data.window ?? windowParam,
       point_count: data.point_count ?? 0,
       points: data.points ?? [],
+    };
+  },
+  async subnet_miner_fairness(
+    { netuid, window }: QuerySubnet_Miner_FairnessArgs,
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // No hand-written window check: parseArgumentsAtDispatch has already
+    // parsed this field's arguments against the route's published query
+    // schema, same as its emission-split sibling.
+    const windowParam = minerFairnessWindowLabel(window);
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      ((await tryDataApiTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/miner-fairness`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) as Row | null) ??
+      buildSubnetMinerFairness([], netuid, {
+        window: windowParam,
+        capped: false,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      days_covered: data.days_covered ?? 0,
+      point_count: data.point_count ?? 0,
+      points: data.points ?? [],
+      miner_uid_count: data.miner_uid_count ?? 0,
+      persistence: data.persistence ?? null,
+      entity_count: data.entity_count ?? 0,
+      uids_per_entity: data.uids_per_entity ?? null,
+      concentration: data.concentration ?? null,
     };
   },
   async subnet_owner_capture(

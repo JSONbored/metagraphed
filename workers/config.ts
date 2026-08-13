@@ -711,6 +711,10 @@ export const SUBNET_YIELD_HISTORY_PATH_PATTERN =
 // the neuron_daily rollup, no static file.
 export const SUBNET_EMISSION_SPLIT_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/emission-split\/history$/;
+// Whether a subnet's registered miners actually earn (#10931), from the
+// neuron_daily rollup over a window, no static file.
+export const SUBNET_MINER_FAIRNESS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/miner-fairness$/;
 // How much of a subnet's emission reaches its owner (#10929) -- the protocol
 // cut plus emission on owner-held UIDs -- from the neuron_daily rollup joined
 // to subnet_ownership, no static file.

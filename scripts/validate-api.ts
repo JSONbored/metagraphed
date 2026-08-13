@@ -851,6 +851,26 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/miner-fairness?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.days_covered, "number");
+      assert.equal(typeof body.data.field_sources, "object");
+      // NO SCORE, asserted against the live response. The schema cannot say
+      // "and nothing resembling a grade" -- a surface that added
+      // `fairness_score` would validate fine and be exactly the thing #10931
+      // says not to ship.
+      for (const forbidden of ["score", "grade", "rating", "verdict"]) {
+        assert.equal(
+          Object.keys(body.data as Row).some((k) => k.includes(forbidden)),
+          false,
+          `miner-fairness must not publish a ${forbidden}`,
+        );
+      }
+    },
+  ],
+  [
     "/api/v1/subnets/7/owner-capture?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);

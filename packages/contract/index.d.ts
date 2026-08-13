@@ -4340,6 +4340,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/miner-fairness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Measure whether a subnet's registered miners actually earn, over a 7d/30d/90d window rather than from a snapshot. Every dashboard publishes a miner count; the median subnet has 99.2% of its non-validator UIDs on zero emission, so that count read as a count of earners is close to fiction. Reports the daily zero rate, how many days each miner UID earned on -- `earned on 0 of 31` and `earned on 3 of 31` are different answers a snapshot collapses -- and emission concentration across controlling ENTITIES (the addresses holding the UIDs) as the headline lens, because a subnet with three operators behind 256 UIDs is not diverse and the per-UID Gini alone hides that. Descriptive only: there is no fairness score, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. */
+        get: operations["subnetMinerFairness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/neurons/{uid}": {
         parameters: {
             query?: never;
@@ -11475,6 +11492,56 @@ export interface components {
                 validator_trust?: number | null;
             }[];
             schema_version: number;
+        };
+        /** @description Whether a subnet's registered miners actually earn, measured over a 7d/30d/90d window rather than from a snapshot. Reports the daily zero-emission rate, how many days each miner UID earned on (persistent-zero and occasionally-zero are different facts a snapshot collapses), and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. DESCRIPTIVE ONLY — there is no fairness score and no grade: a high Gini on a subnet whose task genuinely has one best answer is not misconduct, and that context is not in this data. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness. */
+        SubnetMinerFairnessArtifact: {
+            concentration?: {
+                /** @description THE HEADLINE LENS: emission concentration across controlling entities (coldkeys), with each entity's UIDs summed. A subnet with three operators behind 256 UIDs is not diverse, and the per-UID lens alone hides exactly that. */
+                entity?: components["schemas"]["ConcentrationMetrics"];
+                /** @description The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator. */
+                uid?: components["schemas"]["ConcentrationMetrics"];
+            };
+            /** @description How many days the series actually covers. Published beside every distribution figure: a distribution over 3 days and one over 31 are not the same claim, and `neuron_daily` is only ~27-33 days deep, so a 90d window is answered with the depth found rather than refused. */
+            days_covered: number;
+            /** @description Distinct controlling addresses behind those UIDs, keyed on the `coldkey` field. A UID with no owner recorded counts as its own entity, so this never under-counts unknown owners — merging them would make a subnet look more concentrated than it is. */
+            entity_count: number;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources?: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            /** @description Distinct non-validator UIDs seen anywhere in the window — the denominator for the persistence block. */
+            miner_uid_count: number;
+            netuid: number;
+            persistence?: {
+                /** @description Miner UIDs that earned on every day they were registered for. */
+                earned_every_day_count: number;
+                max_earning_days?: number | null;
+                /** @description The typical miner's earning days across the window. Null on an empty population — the median of nothing is not zero, and zero would read as 'the typical miner earned on no days'. */
+                median_earning_days?: number | null;
+                /** @description Miner UIDs that earned on ZERO days of the window. Distinct from the daily zero rate: this is the population that is not in the game at all, rather than the one that missed a tempo. */
+                never_earned_count: number;
+            };
+            point_count: number;
+            points: {
+                /** @description How many of them recorded emission above zero. Against `miner_count` this is the fact a miner count alone hides — on the median subnet almost none of the registered miners earn on a given day. */
+                earning_miner_count: number;
+                /** @description Non-validator UIDs registered on this day. This is the number every leaderboard publishes as 'miners'. */
+                miner_count: number;
+                snapshot_date: string;
+                /** @description Fraction of this day's miner UIDs that earned nothing. Null — never 0 — on a day with no miner UIDs at all, because 0% over an empty population reads as 'everybody earned'. A SINGLE DAY OVERSTATES this: emission is a per-tempo rate and a UID paid on a different tempo reads as a zero here. Use the persistence block for the durable version. */
+                zero_emission_pct?: number | null;
+            }[];
+            schema_version: number;
+            /** @description Miner UIDs per controlling entity. 1.0 = every UID a distinct owner; higher = fewer operators each running many hotkeys. The network median is ~3.08 and the maximum ~21.3, so '256 miners' is routinely far fewer operators. */
+            uids_per_entity?: number | null;
+            /** @description The resolved window label (7d/30d/90d). */
+            window?: string | null;
         };
         SubnetMoversArtifact: {
             end_date: string | null;
@@ -44010,6 +44077,146 @@ export interface operations {
                      *     0,hk_sample,ck_sample,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetMinerFairness: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "concentration": {
+                     *           "entity": {
+                     *             "holders": 1,
+                     *             "nakamoto_coefficient": 1
+                     *           },
+                     *           "uid": {
+                     *             "holders": 1,
+                     *             "nakamoto_coefficient": 1
+                     *           }
+                     *         },
+                     *         "days_covered": 1,
+                     *         "entity_count": 1,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "miner_uid_count": 1,
+                     *         "netuid": 7,
+                     *         "persistence": {
+                     *           "earned_every_day_count": 1,
+                     *           "max_earning_days": 0.5,
+                     *           "median_earning_days": 0.5,
+                     *           "never_earned_count": 1
+                     *         },
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "earning_miner_count": 1,
+                     *             "miner_count": 1,
+                     *             "snapshot_date": "example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "uids_per_entity": 0.5,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetMinerFairnessArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
