@@ -2903,5 +2903,26 @@
     "column": "reviewed_at",
     "type": "long",
     "required": false
+  },
+  {
+    "table": "subnet_burn_history",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_burn_history",
+    "field_id": 2,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_burn_history",
+    "field_id": 3,
+    "column": "burn_tao",
+    "type": "double",
+    "required": false
   }
 ]
