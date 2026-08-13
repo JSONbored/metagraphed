@@ -1395,7 +1395,36 @@ function isStaticEdgeCacheEligible(
 // Scoped to the large /api/v1/endpoints index (~1.43 MB / 1160 rows) whose
 // overlay output is fully determined by (contract_version, last_run_at) — the
 // per-subnet `subnet-endpoints` variant is small and intentionally excluded.
-const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
+const CACHEABLE_OVERLAY_ROUTE_IDS = new Set([
+  "endpoints",
+  // #11023: the two health routes, for a DIFFERENT reason than `endpoints`.
+  //
+  // `endpoints` is here because its OUTPUT is large (~1.43 MB to re-stringify),
+  // which is why the note above excludes the small per-subnet variant. Health's
+  // cost is not its output -- `/api/v1/health` returns a summary -- it is its
+  // INPUT: `loadGlobalOperationalHealth` reads KV `health:current`, a 253 KB
+  // value, with `{ type: "json" }`, so every request pays a 253 KB fetch plus a
+  // full JSON.parse before projecting a fraction of it. Measured in production
+  // over 3 days: `cpu_time_ms` of 294, 318, 343, 411, 457, 483, 489, 591 and
+  // 660 on plain `GET /api/v1/health`, against `cpu_time_ms: 1` for a
+  // multi-second lakehouse scan on `/blocks/{ref}`. That scan is I/O; this is
+  // CPU, and CPU is the metered resource.
+  //
+  // `subnet-health` is included for the same reason and NOT excluded by the
+  // small-output argument: it parses the identical 253 KB snapshot to answer
+  // for one subnet, so its input cost is the global route's while its output is
+  // a fraction of it -- the worst ratio of the three.
+  //
+  // Correctness rests on `last_run_at` genuinely gating the snapshot, and it
+  // does: src/health-prober.ts writes KV_HEALTH_CURRENT and KV_HEALTH_META in
+  // one `Promise.all`, so a stamp that has not moved means a snapshot that has
+  // not moved. The residual window -- KV being eventually consistent, so the
+  // meta could be visible in a colo slightly before the snapshot it stamps --
+  // is not new: `endpoints` already overlays the same health data under the
+  // same key and has shipped with it.
+  "health",
+  "subnet-health",
+]);
 
 // Reduce a request's query string to its canonical, cache-relevant form: keep
 // only the params that actually steer the response body (the collection's
