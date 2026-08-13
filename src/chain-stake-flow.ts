@@ -83,14 +83,14 @@ export interface NetFlowDistribution {
   mean: number;
   min: number;
   p25: number;
-  median: number;
+  p50: number;
   p75: number;
   p90: number;
   max: number;
 }
 
 // Spread of the per-subnet net flow across every subnet in the window: count, mean, and
-// min / p25 / median / p75 / p90 / max (TAO). Null when no subnet moved stake — lets a caller
+// min / p25 / p50 / p75 / p90 / max (TAO). Null when no subnet moved stake — lets a caller
 // read the flow as a distribution (how lopsided the network's capital movement is).
 function netFlowDistribution(values: number[]): NetFlowDistribution | null {
   if (values.length === 0) return null;
@@ -101,7 +101,7 @@ function netFlowDistribution(values: number[]): NetFlowDistribution | null {
     mean: roundTao(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    median: roundTao(median(ascending)!),
+    p50: roundTao(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],

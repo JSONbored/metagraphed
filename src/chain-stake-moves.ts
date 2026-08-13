@@ -83,14 +83,14 @@ export interface IntensityDistribution {
   mean: number;
   min: number;
   p25: number;
-  median: number;
+  p50: number;
   p75: number;
   p90: number;
   max: number;
 }
 
 // Spread of the per-subnet re-move intensity across every subnet with movement activity: count,
-// mean, and min / p25 / median / p75 / p90 / max. Null when no subnet saw a move.
+// mean, and min / p25 / p50 / p75 / p90 / max. Null when no subnet saw a move.
 function intensityDistribution(values: number[]): IntensityDistribution | null {
   /* v8 ignore next -- defensive: only called with one value per subnet, and the builder returns
      the empty block (distribution null) before this runs when there are no subnets */
@@ -102,7 +102,7 @@ function intensityDistribution(values: number[]): IntensityDistribution | null {
     mean: round(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25)!,
-    median: round(median(ascending)!),
+    p50: round(median(ascending)!),
     p75: percentile(ascending, 75)!,
     p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],

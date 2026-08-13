@@ -89,13 +89,13 @@ function computeYieldValue(
 export interface YieldDistribution {
   count: number;
   mean: number;
-  median: number;
+  p50: number;
   min: number;
   max: number;
   [key: `p${number}`]: number;
 }
 
-// Distribution summary of the per-neuron return rates: count/mean/median/min/max
+// Distribution summary of the per-neuron return rates: count/mean/p50/min/max
 // plus the p10..p90 spread. Null when no neuron carries a defined yield (cold
 // store / empty network / every neuron zero-stake).
 export function yieldDistribution(
@@ -110,7 +110,7 @@ export function yieldDistribution(
   const summary: YieldDistribution = {
     count,
     mean: round9(total / count),
-    median: round9(median(defined)!),
+    p50: round9(median(defined)!),
     min: round9(defined[0]),
     max: round9(defined[count - 1]),
   };

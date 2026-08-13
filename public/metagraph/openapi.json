@@ -2450,9 +2450,9 @@
               "count": 1,
               "max": 0.5,
               "mean": 0.5,
-              "median": 0.5,
               "min": 0.5,
               "p25": 0.5,
+              "p50": 0.5,
               "p75": 0.5,
               "p90": 0.5
             },
@@ -2498,9 +2498,9 @@
               "count": 2,
               "max": 15,
               "mean": 12.5,
-              "median": 10,
               "min": 10,
               "p25": 10,
+              "p50": 10,
               "p75": 15,
               "p90": 15
             },
@@ -2966,9 +2966,9 @@
               "count": 2,
               "max": 15,
               "mean": 12.5,
-              "median": 10,
               "min": 10,
               "p25": 10,
+              "p50": 10,
               "p75": 15,
               "p90": 15
             },
@@ -3410,9 +3410,9 @@
               "count": 2,
               "max": 15,
               "mean": 12.5,
-              "median": 10,
               "min": 10,
               "p25": 10,
+              "p50": 10,
               "p75": 15,
               "p90": 15
             },
@@ -3476,9 +3476,9 @@
               "count": 2,
               "max": 15,
               "mean": 12.5,
-              "median": 10,
               "min": 10,
               "p25": 10,
+              "p50": 10,
               "p75": 15,
               "p90": 15
             },
@@ -3625,9 +3625,9 @@
               "count": 2,
               "max": 15,
               "mean": 12.5,
-              "median": 10,
               "min": 10,
               "p25": 10,
+              "p50": 10,
               "p75": 15,
               "p90": 15
             },
@@ -3738,9 +3738,9 @@
               "count": 1,
               "max": 0.5,
               "mean": 0.5,
-              "median": 0.5,
               "min": 0.5,
               "p25": 0.5,
+              "p50": 0.5,
               "p75": 0.5,
               "p90": 0.5
             },
@@ -3808,9 +3808,9 @@
               "count": 2,
               "max": 15,
               "mean": 12.5,
-              "median": 10,
               "min": 10,
               "p25": 10,
+              "p50": 10,
               "p75": 15,
               "p90": 15
             },
@@ -3874,9 +3874,9 @@
               "count": 2,
               "max": 15,
               "mean": 12.5,
-              "median": 10,
               "min": 10,
               "p25": 10,
+              "p50": 10,
               "p75": 15,
               "p90": 15
             },
@@ -4110,9 +4110,9 @@
               "count": 1,
               "max": 1,
               "mean": 0.5,
-              "median": 0.5,
               "min": 1,
               "p25": 1,
+              "p50": 0.5,
               "p75": 1,
               "p90": 1
             },
@@ -4167,9 +4167,9 @@
               "count": 2,
               "max": 15,
               "mean": 12.5,
-              "median": 10,
               "min": 10,
               "p25": 10,
+              "p50": 10,
               "p75": 15,
               "p90": 15
             },
@@ -4293,10 +4293,10 @@
               "count": 1,
               "max": 0.5,
               "mean": 0.5,
-              "median": 0.5,
               "min": 0.5,
               "p10": 0.5,
               "p25": 0.5,
+              "p50": 0.5,
               "p75": 0.5,
               "p90": 0.5
             },
@@ -25185,13 +25185,13 @@
                   "mean": {
                     "type": "number"
                   },
-                  "median": {
-                    "type": "number"
-                  },
                   "min": {
                     "type": "number"
                   },
                   "p25": {
+                    "type": "number"
+                  },
+                  "p50": {
                     "type": "number"
                   },
                   "p75": {
@@ -25206,7 +25206,7 @@
                   "mean",
                   "min",
                   "p25",
-                  "median",
+                  "p50",
                   "p75",
                   "p90",
                   "max"
@@ -26210,11 +26210,6 @@
                     "minimum": 0,
                     "type": "number"
                   },
-                  "median": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "number"
-                  },
                   "min": {
                     "maximum": 100,
                     "minimum": 0,
@@ -26224,6 +26219,11 @@
                     "maximum": 100,
                     "minimum": 0,
                     "type": "integer"
+                  },
+                  "p50": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "number"
                   },
                   "p75": {
                     "maximum": 100,
@@ -26241,7 +26241,7 @@
                   "mean",
                   "min",
                   "p25",
-                  "median",
+                  "p50",
                   "p75",
                   "p90",
                   "max"
@@ -26691,9 +26691,6 @@
                   "mean": {
                     "type": "number"
                   },
-                  "median": {
-                    "type": "number"
-                  },
                   "min": {
                     "type": "number"
                   },
@@ -26701,6 +26698,9 @@
                     "type": "number"
                   },
                   "p25": {
+                    "type": "number"
+                  },
+                  "p50": {
                     "type": "number"
                   },
                   "p75": {
@@ -26715,7 +26715,7 @@
                   "mean",
                   "min",
                   "p25",
-                  "median",
+                  "p50",
                   "p75",
                   "p90",
                   "max",
@@ -36367,15 +36367,15 @@
             "minimum": 0,
             "type": "number"
           },
-          "median": {
-            "minimum": 0,
-            "type": "number"
-          },
           "min": {
             "minimum": 0,
             "type": "number"
           },
           "p25": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "p50": {
             "minimum": 0,
             "type": "number"
           },
@@ -36393,7 +36393,7 @@
           "mean",
           "min",
           "p25",
-          "median",
+          "p50",
           "p75",
           "p90",
           "max"

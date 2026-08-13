@@ -7,6 +7,7 @@
 // here rather than only in production. Also asserts the converse per the
 // issue's non-vacuous requirement: an empty object must fail every schema.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test, vi, afterEach } from "vitest";
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
@@ -5076,6 +5077,59 @@ describe("overlaid subnet health: one vocabulary, every surface that serves it (
         surface_count: 0,
       }),
       { netuid: 42, status: "unknown", surface_count: 0 },
+    );
+  });
+});
+
+describe("one percentile vocabulary across the published contract (#10989)", () => {
+  // The registry served the SAME statistic under two names: the
+  // distribution-stats family answered `median` while ScoreDistribution
+  // answered `p50`, from the same kind of sorted vector. A caller reading two
+  // of our distribution blocks had to know which spelling each one used.
+  //
+  // A negative invariant, not a list of what was fixed: any FUTURE ladder that
+  // spells its middle `median` fails here, including one nobody has written
+  // yet. Read over the EMITTED spec rather than the registered components,
+  // because three of the five ladders are inlined rather than registered --
+  // checking only components would have covered two of them and passed.
+  test("no percentile ladder names its middle `median`", () => {
+    const spec = JSON.parse(
+      readFileSync("public/metagraph/openapi.json", "utf8"),
+    ) as unknown;
+    const ladders: string[] = [];
+    const offenders: string[] = [];
+    const walk = (node: unknown, path: string): void => {
+      if (Array.isArray(node)) {
+        node.forEach((child, i) => walk(child, `${path}/${i}`));
+        return;
+      }
+      if (typeof node !== "object" || node === null) return;
+      const record = node as Record<string, unknown>;
+      const properties = record.properties;
+      if (properties && typeof properties === "object") {
+        const keys = Object.keys(properties);
+        // A percentile LADDER, not merely an object carrying a median:
+        // ValidatorTakeDistribution publishes a sorted vector plus a median
+        // and median_earning, which is a different vocabulary and must not be
+        // dragged in by a looser rule.
+        if (["p25", "p75", "p90"].every((p) => keys.includes(p))) {
+          ladders.push(path);
+          if (keys.includes("median")) offenders.push(path);
+        }
+      }
+      for (const [key, value] of Object.entries(record)) {
+        walk(value, `${path}/${key}`);
+      }
+    };
+    walk(spec, "#");
+    assert.ok(
+      ladders.length >= 5,
+      `expected the spec's percentile ladders, found ${ladders.length} -- a rule that matches nothing passes for the wrong reason`,
+    );
+    assert.deepEqual(
+      offenders,
+      [],
+      "a percentile ladder must spell its middle `p50`, beside p25/p75/p90",
     );
   });
 });

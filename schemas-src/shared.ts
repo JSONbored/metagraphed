@@ -757,7 +757,7 @@ export const GithubReleaseSchema = z
 /**
  * A count and the spread of a measure -- ONE declaration, four domains (#10790).
  *
- * The eight-key summary (count/mean/min/p25/median/p75/p90/max) was written out
+ * The eight-key summary (count/mean/min/p25/p50/p75/p90/max) was written out
  * four times: a 0-100 stability score with INTEGER percentiles, a net flow that
  * can be negative, a non-negative intensity, and an unbounded generic. The key
  * set is one vocabulary; the bounds are not, and collapsing them to a single
@@ -768,7 +768,21 @@ export const GithubReleaseSchema = z
  * distribution summary contains.
  *
  * `percentile` defaults to `measure` and is separate only because the stability
- * score's percentiles are whole numbers where its mean and median are not.
+ * score's percentiles are whole numbers where its mean and p50 are not.
+ *
+ * ## p50, not `median`
+ *
+ * The 50th percentile is spelled `p50` here, beside `p25`/`p75`/`p90`, because
+ * the registry serves that one statistic under BOTH names: this family answered
+ * `median` while ScoreDistribution (shared.ts, /chain/performance and
+ * /subnets/{netuid}/performance) answered `p50`, from the same kind of sorted
+ * vector. A caller reading two of our distribution blocks had to know which
+ * spelling each one used, and `median` sitting between `p25` and `p75` reads as
+ * a different measurement rather than the middle of the same ladder.
+ *
+ * Renaming the published field is the point rather than a side effect, so the
+ * producers moved with it in the same change -- a schema that renames ahead of
+ * its writers is drift, and drift is now a 500.
  */
 export function distributionStatsSchema(
   measure: z.ZodType,
@@ -780,7 +794,7 @@ export function distributionStatsSchema(
       mean: measure,
       min: percentile,
       p25: percentile,
-      median: measure,
+      p50: measure,
       p75: percentile,
       p90: percentile,
       max: percentile,
