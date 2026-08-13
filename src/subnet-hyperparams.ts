@@ -1,3 +1,4 @@
+import { finiteCellOrNull } from "./lib/rao.ts";
 // Subnet hyperparameters (#4303, epic #4301): one row per netuid, latest-only.
 // Field mapping documented in
 // apps/indexer-rs/src/bin/poller/jobs/subnet_hyperparams.rs and
@@ -60,13 +61,6 @@ function toIso(ms: unknown): string | null {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function nullableNumber(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function nonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
@@ -86,7 +80,7 @@ function round(value: number | null, dp: number): number | null {
 // too) — round again here as defense-in-depth against a future writer that
 // skips that rounding, not because this path expects dirty data.
 function ratio(value: unknown): number | null {
-  return round(nullableNumber(value), 9);
+  return round(finiteCellOrNull(value), 9);
 }
 
 // A flag column as a real boolean, in any store's spelling. The reasoning --
@@ -115,11 +109,11 @@ export function formatSubnetHyperparams(
     // rao/1e9-exact-split TAO values (rao_to_tao_exact) — round to rao
     // precision (9dp), not formatNeuron's 6dp roundTao, so no low-order rao
     // digits are lost re-serializing an already-exact value.
-    min_burn_tao: round(nullableNumber(row.min_burn_tao), 9),
-    max_burn_tao: round(nullableNumber(row.max_burn_tao), 9),
+    min_burn_tao: round(finiteCellOrNull(row.min_burn_tao), 9),
+    max_burn_tao: round(finiteCellOrNull(row.max_burn_tao), 9),
     burn_half_life: nonNegativeInt(row.burn_half_life),
     // Already float-decoded fixed-point on the SDK side — passed through.
-    burn_increase_mult: nullableNumber(row.burn_increase_mult),
+    burn_increase_mult: finiteCellOrNull(row.burn_increase_mult),
     // Raw on-chain integer, deliberately not scaled to a ratio (unconfirmed
     // scaling constant — see migrations/0036_subnet_hyperparams.sql).
     bonds_moving_avg_raw: nonNegativeInt(row.bonds_moving_avg_raw),
@@ -131,7 +125,7 @@ export function formatSubnetHyperparams(
     alpha_high_ratio: ratio(row.alpha_high_ratio),
     alpha_low_ratio: ratio(row.alpha_low_ratio),
     liquid_alpha_enabled: toBooleanFlag(row.liquid_alpha_enabled),
-    alpha_sigmoid_steepness: nullableNumber(row.alpha_sigmoid_steepness),
+    alpha_sigmoid_steepness: finiteCellOrNull(row.alpha_sigmoid_steepness),
     yuma_version: nonNegativeInt(row.yuma_version),
     subnet_is_active: toBooleanFlag(row.subnet_is_active),
     transfers_enabled: toBooleanFlag(row.transfers_enabled),

@@ -22,6 +22,7 @@ import {
 import type { Neurons } from "../generated/db/types.ts";
 import {
   RAO_PER_TAO_NUMBER,
+  finiteCellOrNull,
   nonNegativeOrZero,
   raoBigToTao,
   round9OrNull,
@@ -316,14 +317,6 @@ function toIso(ms: unknown): string | null {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function nullableNumber(value: unknown): number | null {
-  if (value == null) return null;
-  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
-  if (typeof value === "string" && value.trim() === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function nonNegativeInt(value: unknown): number | null {
   // Guard null first: Number(null) === 0, so a null column (block_number is a
   // nullable INTEGER) would masquerade as the real chain height / netuid / uid 0
@@ -385,7 +378,7 @@ interface ImmunityWindow {
 // string-typed uid/registered_at_block into real integers, and roundTao
 // rounds stake_tao / emission_tao to rao precision). The explicit null
 // guards preserve the previous null-on-missing contract: Number(null) is
-// 0 (not NaN), so nonNegativeInt(null) / nullableNumber(null) / roundTao(null)
+// 0 (not NaN), so nonNegativeInt(null) / finiteCellOrNull(null) / roundTao(null)
 // would otherwise serialize as 0 instead of null. roundTao itself falls
 // back to nonNegativeOrZero(0) for null/non-finite, so the wrapping guards here
 // are what keep "missing cell" cells flowing through as null. Mirrors the
@@ -462,18 +455,18 @@ export function formatNeuron(
     coldkey: row.coldkey ?? null,
     active: toBooleanFlag(row.active),
     validator_permit: toBooleanFlag(row.validator_permit),
-    rank: row.rank == null ? null : round(nullableNumber(row.rank)),
-    trust: row.trust == null ? null : round(nullableNumber(row.trust)),
+    rank: row.rank == null ? null : round(finiteCellOrNull(row.rank)),
+    trust: row.trust == null ? null : round(finiteCellOrNull(row.trust)),
     validator_trust:
       row.validator_trust == null
         ? null
-        : round(nullableNumber(row.validator_trust)),
+        : round(finiteCellOrNull(row.validator_trust)),
     consensus:
-      row.consensus == null ? null : round(nullableNumber(row.consensus)),
+      row.consensus == null ? null : round(finiteCellOrNull(row.consensus)),
     incentive:
-      row.incentive == null ? null : round(nullableNumber(row.incentive)),
+      row.incentive == null ? null : round(finiteCellOrNull(row.incentive)),
     dividends:
-      row.dividends == null ? null : round(nullableNumber(row.dividends)),
+      row.dividends == null ? null : round(finiteCellOrNull(row.dividends)),
     emission_tao: row.emission_tao == null ? null : roundTao(row.emission_tao),
     stake_tao: row.stake_tao == null ? null : roundTao(row.stake_tao),
     registered_at_block:
@@ -484,7 +477,7 @@ export function formatNeuron(
     axon: row.axon ?? null,
     // Global per-hotkey (SubtensorModule::Delegates), not per (netuid, uid) --
     // null means no Delegates entry at capture time (#2548).
-    take: row.take == null ? null : round(nullableNumber(row.take)),
+    take: row.take == null ? null : round(finiteCellOrNull(row.take)),
   };
   if (featuredHotkeys) {
     neuron.featured = Boolean(hotkey && featuredHotkeys.has(hotkey as string));
@@ -953,8 +946,8 @@ export function buildGlobalValidators(
 
     const stake = nonNegativeOrZero(row?.stake_tao);
     const emission = nonNegativeOrZero(row?.emission_tao);
-    const trust = nullableNumber(row?.validator_trust);
-    const capturedAt = nullableNumber(row?.captured_at);
+    const trust = finiteCellOrNull(row?.validator_trust);
+    const capturedAt = finiteCellOrNull(row?.captured_at);
     const blockNumber = nonNegativeInt(row?.block_number);
     let entry = validatorsByHotkey.get(hotkey);
     if (!entry) {
@@ -982,7 +975,7 @@ export function buildGlobalValidators(
     // Global per-hotkey, identical across every row for this hotkey -- take
     // the first non-null value seen rather than re-deriving/overwriting.
     if (entry.take == null) {
-      const take = nullableNumber(row?.take);
+      const take = finiteCellOrNull(row?.take);
       if (take != null) entry.take = take;
     }
     if (typeof row?.coldkey === "string" && row.coldkey.length > 0) {
@@ -1191,7 +1184,7 @@ export async function loadStoreAlphaPricesByNetuid(
     for (const row of rows) {
       const netuid = nonNegativeInt(row?.netuid);
       if (netuid == null) continue;
-      map.set(netuid, nullableNumber(row?.alpha_price_tao));
+      map.set(netuid, finiteCellOrNull(row?.alpha_price_tao));
     }
     return map;
   } catch {
@@ -1330,7 +1323,7 @@ export function buildValidatorDetail(
     }
     // Global per-hotkey, identical across every row here -- first non-null wins.
     if (take == null) {
-      const rowTake = nullableNumber(row?.take);
+      const rowTake = finiteCellOrNull(row?.take);
       if (rowTake != null) take = rowTake;
     }
     const stake = nonNegativeOrZero(row?.stake_tao);
@@ -1353,14 +1346,14 @@ export function buildValidatorDetail(
         tempoByNetuid,
       );
     }
-    const trust = nullableNumber(row?.validator_trust);
+    const trust = finiteCellOrNull(row?.validator_trust);
     if (trust != null) {
       validatorTrustTotal += trust;
       validatorTrustCount += 1;
       maxValidatorTrust =
         maxValidatorTrust == null ? trust : Math.max(maxValidatorTrust, trust);
     }
-    const capturedAt = nullableNumber(row?.captured_at);
+    const capturedAt = finiteCellOrNull(row?.captured_at);
     const blockNumber = nonNegativeInt(row?.block_number);
     if (
       capturedAt != null &&

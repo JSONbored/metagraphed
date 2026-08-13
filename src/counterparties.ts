@@ -1,4 +1,4 @@
-import { raoBigToTao, toRaoBig } from "./lib/rao.ts"; /**
+import { raoBigToTao, taoCellOrNull, toRaoBig } from "./lib/rao.ts"; /**
  * Rows `buildCounterparties` returns when the caller names no limit.
  *
  * Named so the MCP tool can PUBLISH it (#10101). It was a bare `20` in the
@@ -28,25 +28,9 @@ export const COUNTERPARTIES_LIMIT_MAX = 100;
 export const COUNTERPARTIES_SCAN_CAP = 5000;
 export const COUNTERPARTY_RELATIONSHIP_SCAN_CAP = 5000;
 
-// Round a TAO sum to rao precision so accumulated float error never leaks a long
-// tail into the JSON.
-function round(value: number, dp = 9): number {
-  if (!Number.isFinite(value)) return 0;
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
-
 // Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
 // for why, and for the overflow guard that lived in only one of the nine copies
 // this used to be.
-
-function nullableNumber(value: unknown): number | null {
-  if (value == null) return null;
-  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? round(n) : null;
-}
 
 function nullableInteger(value: unknown): number | null {
   if (value == null) return null;
@@ -134,7 +118,7 @@ export function buildCounterparties(
     if (party == null) continue;
     // Align with buildCounterpartyRelationship: blank/null amount_tao cells must
     // be skipped, not coerced to 0 and counted as a phantom zero-TAO transfer.
-    const amount = nullableNumber(row?.amount_tao);
+    const amount = taoCellOrNull(row?.amount_tao);
     if (amount == null) continue;
     const sentRao = isSender && !isReceiver ? toRaoBig(amount) : 0n;
     const receivedRao = isReceiver && !isSender ? toRaoBig(amount) : 0n;
@@ -249,7 +233,7 @@ export function buildCounterpartyRelationship(
     const received = from === counterparty && to === ss58;
     if (!sent && !received) continue;
 
-    const amount = nullableNumber(row.amount_tao);
+    const amount = taoCellOrNull(row.amount_tao);
     if (amount == null) continue;
     if (sent) totalSentRao += toRaoBig(amount);
     if (received) totalReceivedRao += toRaoBig(amount);

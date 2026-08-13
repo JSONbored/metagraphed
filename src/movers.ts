@@ -5,6 +5,7 @@ import { clampRowLimit } from "../workers/request-params.ts";
 import {
   RAO_PER_TAO,
   RAO_PER_TAO_NUMBER,
+  finiteCellOrNull,
   numberOrZero,
   toRaoBig,
 } from "./lib/rao.ts";
@@ -72,12 +73,6 @@ function raoToTaoString(rao: bigint): string {
 
 // A finite aggregate cell, or null when absent/blank/non-numeric. Blank cells coerce
 // via Number("") → 0; trim rejects "" / whitespace-only (mirrors counterparties #3059).
-function nullableNumber(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null
 // explicitly so a null netuid is skipped rather than coerced to subnet 0
@@ -111,10 +106,10 @@ function indexByNetuid(rows: Row[]): Map<number, BoundaryEntry> {
   for (const row of Array.isArray(rows) ? rows : []) {
     const netuid = normalizedNetuid(row?.netuid);
     if (netuid == null) continue;
-    const neurons = nullableNumber(row?.neuron_count);
-    const validators = nullableNumber(row?.validator_count);
-    const stake = nullableNumber(row?.total_stake_tao);
-    const emission = nullableNumber(row?.total_emission_tao);
+    const neurons = finiteCellOrNull(row?.neuron_count);
+    const validators = finiteCellOrNull(row?.validator_count);
+    const stake = finiteCellOrNull(row?.total_stake_tao);
+    const emission = finiteCellOrNull(row?.total_emission_tao);
     if (
       neurons == null ||
       validators == null ||
