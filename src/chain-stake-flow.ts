@@ -9,7 +9,11 @@
 
 import { median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
-import { RAO_PER_TAO_NUMBER, numberOrZero } from "./lib/rao.ts";
+import {
+  RAO_PER_TAO_NUMBER,
+  finiteCellOrNull,
+  numberOrZero,
+} from "./lib/rao.ts";
 
 // The two account_events kinds that move stake: StakeAdded is capital entering a subnet,
 // StakeRemoved is capital leaving. Both carry a positive amount_tao, so net = staked - unstaked.
@@ -35,12 +39,6 @@ function roundTao(value: number): number {
 }
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric.
-function nullableTao(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null AND a
 // blank/whitespace-only string explicitly so neither is silently coerced to subnet 0
@@ -183,7 +181,7 @@ export function buildChainStakeFlow(
     // the pure builder aligned with the "active stake-flow subnets" contract.
     const kind = row?.event_kind;
     if (kind !== STAKE_ADDED_KIND && kind !== STAKE_REMOVED_KIND) continue;
-    const tao = nullableTao(row?.total_tao);
+    const tao = finiteCellOrNull(row?.total_tao);
     if (tao == null) continue;
     const bucket = perNetuid.get(netuid) ?? {
       staked: 0,

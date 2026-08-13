@@ -1,5 +1,5 @@
 import { clampRowLimit } from "../workers/request-params.ts";
-import { RAO_PER_TAO_NUMBER } from "./lib/rao.ts";
+import { RAO_PER_TAO_NUMBER, finiteCellOrNull } from "./lib/rao.ts";
 // Nominator list for one validator hotkey (#4334/7.2): who has staked to this
 // validator (across every subnet it operates in), derived from the same
 // StakeAdded/StakeRemoved account_events flow src/account-stake-flow.ts
@@ -36,12 +36,6 @@ function roundTao(value: number): number {
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank D1
 // cells coerce via Number("") -> 0; skip those rather than counting a
 // phantom zero-TAO stake event (mirrors buildAccountStakeFlow/#3059).
-function nullableTao(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
 
 function coerceEpochMs(value: unknown): number | null {
   if (value == null) return null;
@@ -233,8 +227,8 @@ export function buildValidatorNominators(
       last_observed_ms: null,
     };
     if (kind == null) {
-      const staked = nullableTao(row?.staked_tao);
-      const unstaked = nullableTao(row?.unstaked_tao);
+      const staked = finiteCellOrNull(row?.staked_tao);
+      const unstaked = finiteCellOrNull(row?.unstaked_tao);
       if (staked == null && unstaked == null) continue;
       bucket.staked_tao += staked ?? 0;
       bucket.unstaked_tao += unstaked ?? 0;
@@ -242,7 +236,7 @@ export function buildValidatorNominators(
       if (kind !== STAKE_ADDED_KIND && kind !== STAKE_REMOVED_KIND) {
         continue;
       }
-      const tao = nullableTao(row?.total_tao);
+      const tao = finiteCellOrNull(row?.total_tao);
       if (tao == null) continue;
       if (kind === STAKE_ADDED_KIND) bucket.staked_tao += tao;
       else bucket.unstaked_tao += tao;

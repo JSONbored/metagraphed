@@ -17,6 +17,8 @@ import {
   raoBigToTao,
   round9,
   round9OrNull,
+  finiteCellOrNull,
+  nonNegativeCellOrNull,
   round9OrZero,
   taoCellOrNull,
   toRaoBig,
@@ -211,6 +213,41 @@ describe("round9 / round9OrZero / round9OrNull", () => {
       assert.equal(
         taoCellOrNull(v),
         round9OrNull(v),
+        `diverged on ${String(v)}`,
+      );
+    }
+  });
+
+  test("finiteCellOrNull does NOT round, and taoCellOrNull does", () => {
+    // The trap in batch 3: seven modules' `nullableTao` looked like
+    // taoCellOrNull and returns the RAW coerced number. Collapsing them onto
+    // the rounding one would have introduced rao-rounding on seven surfaces
+    // that never had it.
+    const finer = 1.2345678901234;
+    assert.equal(finiteCellOrNull(finer), finer);
+    assert.equal(taoCellOrNull(finer), 1.23456789);
+  });
+
+  test("the two cell variants differ only on a negative", () => {
+    // ONE NAME, TWO CONTRACTS: of seven `nullableTao` copies, four accepted a
+    // negative and three rejected it. Which is right depends on the column --
+    // a stake cannot be negative, a net flow can.
+    assert.equal(finiteCellOrNull(-1), -1);
+    assert.equal(nonNegativeCellOrNull(-1), null);
+    for (const v of [
+      null,
+      undefined,
+      "",
+      "  ",
+      "nope",
+      Number.NaN,
+      0,
+      2.5,
+      "3.5",
+    ]) {
+      assert.equal(
+        finiteCellOrNull(v),
+        nonNegativeCellOrNull(v),
         `diverged on ${String(v)}`,
       );
     }

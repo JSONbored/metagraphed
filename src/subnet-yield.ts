@@ -8,7 +8,12 @@
 // Null-safe: a cold/empty subnet yields a zeroed, empty-neuron card (never throws).
 
 import { median, percentile } from "./lib/stats.ts";
-import { raoBigToTao, round9OrZero, toRaoBig } from "./lib/rao.ts";
+import {
+  nonNegativeCellOrNull,
+  raoBigToTao,
+  round9OrZero,
+  toRaoBig,
+} from "./lib/rao.ts";
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -23,12 +28,6 @@ function roundedMedian(ascending: number[]): number | null {
 // A finite TAO cell, or null when absent/blank/non-numeric. Blank cells coerce via
 // Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
 // zero-yield readings (mirrors nullableNumber in metagraph-neurons.ts).
-function nullableTao(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
 
 // Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
 // for why, and for the overflow guard that lived in only one of the nine copies
@@ -118,9 +117,9 @@ export function buildSubnetYield(
         blockNumber = Number.isFinite(block) ? block : null;
       }
     }
-    const stake = nullableTao(row?.stake_tao);
+    const stake = nonNegativeCellOrNull(row?.stake_tao);
     if (stake == null) continue;
-    const emission = nullableTao(row?.emission_tao);
+    const emission = nonNegativeCellOrNull(row?.emission_tao);
     // Match the sibling neuron formatter's SQLite 0/1 convention: only an integer 1
     // is a validator, so a numeric-string "0" cannot slip through as truthy.
     const isValidator = Number(row?.validator_permit) === 1;
@@ -269,10 +268,10 @@ function yieldHistoryPoint(date: string, dayRows: Row[]): Row {
   let neuronCount = 0;
   const definedYields: number[] = [];
   for (const row of dayRows) {
-    const stake = nullableTao(row?.stake_tao);
+    const stake = nonNegativeCellOrNull(row?.stake_tao);
     if (stake == null) continue;
     neuronCount += 1;
-    const emission = nullableTao(row?.emission_tao);
+    const emission = nonNegativeCellOrNull(row?.emission_tao);
     if (emission != null) {
       yieldStakeRao += toRaoBig(stake);
       yieldEmissionRao += toRaoBig(emission);
