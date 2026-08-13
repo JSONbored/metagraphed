@@ -183,7 +183,9 @@
     "validate:untyped-lakehouse-reads": "node scripts/validate-untyped-lakehouse-reads.ts",
     "validate:lakehouse-readers": "node scripts/validate-lakehouse-readers.ts",
     "check:lakehouse-freshness": "node scripts/check-lakehouse-freshness.ts",
-    "validate:store-type-parity": "node scripts/validate-store-type-parity.ts"
+    "validate:store-type-parity": "node scripts/validate-store-type-parity.ts",
+    "validate:featured-validators-drift": "node scripts/validate-featured-validators-drift.ts",
+    "build:featured-validators": "node scripts/generate-featured-validators.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.8.3",
