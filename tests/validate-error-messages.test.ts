@@ -171,21 +171,16 @@ describe("validate-schemas.ts enum error messages", () => {
     const subnetFiles = await listJsonFiles(
       path.join(repoRoot, "registry/subnets"),
     );
-    let targetFile;
-    let targetDocument;
-    for (const file of subnetFiles) {
-      const document = await readJson(file);
-      if (document.partnership) {
-        targetFile = file;
-        targetDocument = document;
-        break;
-      }
-    }
-    assert.ok(targetFile, "at least one subnet file must have a partnership");
+    // INJECTED rather than found: the registry may legitimately hold zero
+    // partnership blocks (it does today), and this test is about the schema's
+    // enum error message, not about any subnet carrying the field.
+    const targetFile = subnetFiles[0];
+    assert.ok(targetFile, "the registry must hold at least one subnet file");
+    const targetDocument = await readJson(targetFile);
 
     mutatedFile = targetFile;
     originalContents = readFileSync(mutatedFile, "utf8");
-    targetDocument.partnership.tier = "sponsor";
+    targetDocument.partnership = { since: "2026-01-01", tier: "sponsor" };
     writeFileSync(mutatedFile, JSON.stringify(targetDocument, null, 2));
 
     const { status, output } = runNode(["scripts/validate-schemas.ts"]);

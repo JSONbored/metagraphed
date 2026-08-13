@@ -40,10 +40,6 @@
     "outcome": "none-found",
     "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
   },
-  "partnership": {
-    "since": "2026-07-04",
-    "tier": "pilot"
-  },
   "schema_version": 1,
   "slug": "allways",
   "source_repo": "https://github.com/entrius/allways",

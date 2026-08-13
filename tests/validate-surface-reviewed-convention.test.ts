@@ -153,10 +153,16 @@ describe("validate-surface.ts reviewed-tier convention (#5739)", () => {
     assert.doesNotMatch(output, /convention advisory/i);
   });
 
-  test("the three live exempt files are acknowledged, not flagged", () => {
+  test("root stays exempt; the two ex-pilot manifests are flagged like anyone else", () => {
     // Pin to the three named files rather than a no-args full-corpus scan:
     // other tests (validate-error-messages) mutate registry/subnets/*.json
     // in place under parallel vitest, which races a full-corpus run.
+    //
+    // The pilot exemption is gone from allways/gittensor, so their hand-seeded
+    // surfaces now draw the same NON-BLOCKING advisory any deviating
+    // adapter-backed entry draws -- deliberately: an ordinary subnet's gaps
+    // are visible, not exempted. Backfilling their source_urls/verified_at is
+    // what clears the advisory.
     const { status, output } = runNode([
       "scripts/validate-surface.ts",
       "registry/subnets/root.json",
@@ -166,8 +172,8 @@ describe("validate-surface.ts reviewed-tier convention (#5739)", () => {
     assert.equal(status, 0, output);
     assert.match(output, /acknowledged exemption/i);
     assert.match(output, /root\.json/);
+    assert.match(output, /convention advisory/i);
     assert.match(output, /gittensor\.json/);
     assert.match(output, /allways\.json/);
-    assert.doesNotMatch(output, /convention advisory/i);
   });
 });
