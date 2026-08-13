@@ -9149,6 +9149,10 @@ async function handleApiRequest(
         matched.id,
         { ok: true, schema_version: 1, ...envelopePayload },
         matched.artifactPath,
+        // #10975: a `?fields=` response is SHORTER than its component on
+        // purpose, so absence is not drift here. The projection metadata the
+        // CSV branch already reads is the same signal.
+        Boolean(transformed.meta?.projection),
       );
     } catch (err) {
       if (err instanceof ResponseSchemaDriftError) {

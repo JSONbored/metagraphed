@@ -128,6 +128,51 @@ function asSentOverTheWire(payload: unknown): unknown {
 }
 
 /**
+ * Is this issue just a field the projection removed?
+ *
+ * ## WHY A PROJECTION NEEDS ITS OWN ANSWER
+ *
+ * `?fields=` returns FEWER keys on purpose, and the component describes the
+ * whole row -- so every projected response failed, on every route that
+ * advertises the parameter (#10975). Measured against production: `?fields=name`
+ * returned 500 on gaps, curation, candidates, profiles, subnets and providers.
+ * Selecting fewer fields is the entire point of the parameter and it was the
+ * thing that broke it.
+ *
+ * ## WHAT IS STILL ENFORCED
+ *
+ * Only ABSENCE is forgiven, and only when the value at the issue's own path is
+ * genuinely missing. A projection can remove a key; it cannot add one and it
+ * cannot change a type. So an unrecognized key still fails, and a present value
+ * of the wrong type still fails -- the two things a caller would actually be
+ * hurt by.
+ *
+ * Resolved by walking the path into the payload rather than matching on the
+ * issue's message, because a message is prose and this is a gate.
+ *
+ * EXPORTED for its own test. The mid-path guard below cannot be reached
+ * through a real Zod issue -- Zod reports at the level that failed and never
+ * emits a path descending THROUGH a scalar -- so the only way to prove it
+ * fires is to hand it such a path directly.
+ *
+ * Testing it beats suppressing it twice over: a coverage-suppression comment
+ * is counted by codecov/patch on a changed line anyway, and the guard is the
+ * one place this function could forgive a real drift, which is exactly what
+ * it must never do.
+ */
+export function isProjectedAway(
+  payload: unknown,
+  path: readonly PropertyKey[],
+): boolean {
+  let node: unknown = payload;
+  for (const key of path) {
+    if (node == null || typeof node !== "object") return false;
+    node = (node as Record<PropertyKey, unknown>)[key];
+  }
+  return node === undefined;
+}
+
+/**
  * Called ONLY when the caller has already confirmed
  * `env.METAGRAPH_VALIDATE_RESPONSES === "true"` -- see this file's own header
  * and the call sites in workers/api.ts and workers/request-handlers/entities.ts.
@@ -136,14 +181,33 @@ export async function validateResponseTripwire(
   routeId: string,
   envelope: unknown,
   artifactPath?: string,
+  /**
+   * True when the caller asked for a subset of fields. A projected response is
+   * SHORTER than its component by design, so absence stops being a drift --
+   * see `isProjectedAway` for what stays enforced.
+   */
+  projected = false,
 ): Promise<void> {
   if (!artifactPath) return;
   try {
     const schema = await schemaForArtifact(artifactPath);
     if (!schema) return;
-    const result = schema.safeParse(asSentOverTheWire(envelope));
+    const wire = asSentOverTheWire(envelope);
+    const result = schema.safeParse(wire);
     if (!result.success) {
-      throw new ResponseSchemaDriftError(routeId, result.error);
+      const issues = projected
+        ? result.error.issues.filter(
+            (issue) => !isProjectedAway(wire, issue.path),
+          )
+        : result.error.issues;
+      // Every issue explained by the projection means the response is exactly
+      // what was asked for. Anything left is a real drift and still throws.
+      if (issues.length > 0) {
+        throw new ResponseSchemaDriftError(routeId, {
+          ...result.error,
+          issues,
+        });
+      }
     }
   } catch (err) {
     // A DRIFT propagates -- that is the point. Anything else (a failed import,

@@ -15,6 +15,7 @@ import { afterEach, describe, test, vi } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import {
+  isProjectedAway,
   ResponseSchemaDriftError,
   validateResponseTripwire,
 } from "../src/response-validation-tripwire.ts";
@@ -481,5 +482,138 @@ describe("the REST tripwire validates what is sent", () => {
       ),
       ResponseSchemaDriftError,
     );
+  });
+});
+
+// ── A projection is shorter on purpose (#10975) ─────────────────────────────
+//
+// `?fields=` returned 500 on EVERY route that advertises it. Measured against
+// production before the fix: `?fields=name` gave 500 on gaps, curation,
+// candidates, profiles, subnets and providers. Selecting fewer fields is the
+// entire point of the parameter, and it was the thing that broke it.
+//
+// The component describes the whole row, so a projected response is missing
+// keys by design. Only ABSENCE is forgiven, and only where the value really is
+// missing: a projection can remove a key, it cannot add one and it cannot
+// change a type.
+describe("the tripwire tolerates a projection, and nothing else", () => {
+  // Drives the REAL validateResponseTripwire rather than a local copy of its
+  // filter: a test that reimplements the logic it is checking passes on its
+  // own reasoning, which is the one thing it must not do.
+  const envelope = (gaps: unknown[]) => ({
+    ok: true,
+    schema_version: 1,
+    data: {
+      schema_version: 1,
+      generated_at: "2026-08-13T00:00:00.000Z",
+      gaps,
+    },
+    meta: { contract_version: "x" },
+  });
+  const PATH = "/metagraph/gaps.json";
+
+  test("a projected row missing declared keys is accepted", async () => {
+    // `?fields=name` serves exactly this, and it was a 500 on every route
+    // that advertises the parameter.
+    await assert.doesNotReject(
+      validateResponseTripwire(
+        "gaps",
+        envelope([{ name: "root" }]),
+        PATH,
+        true,
+      ),
+    );
+  });
+
+  test("...and is still refused when no projection was requested", async () => {
+    // Guards the guard: if the flag stopped being read, the test above would
+    // pass for the wrong reason.
+    await assert.rejects(
+      validateResponseTripwire(
+        "gaps",
+        envelope([{ name: "root" }]),
+        PATH,
+        false,
+      ),
+      ResponseSchemaDriftError,
+    );
+  });
+
+  test("an UNRECOGNIZED key still fails under a projection", async () => {
+    // A projection can only remove. Forgiving an undeclared key would give up
+    // the guarantee on the responses a caller is most likely to be surprised
+    // by.
+    await assert.rejects(
+      validateResponseTripwire(
+        "gaps",
+        envelope([{ name: "root", surprise: "shipped" }]),
+        PATH,
+        true,
+      ),
+      ResponseSchemaDriftError,
+    );
+  });
+
+  test("a WRONG TYPE on a present value still fails under a projection", async () => {
+    await assert.rejects(
+      validateResponseTripwire(
+        "gaps",
+        envelope([{ netuid: "zero", name: "root" }]),
+        PATH,
+        true,
+      ),
+      ResponseSchemaDriftError,
+    );
+  });
+
+  test("a scalar where an object is declared still fails", async () => {
+    // The path cannot be walked into a string, so the issue is NOT explained
+    // by the projection — a row that is not a row is a real drift, and
+    // forgiving it would be the worst possible reading of "shorter on
+    // purpose".
+    await assert.rejects(
+      validateResponseTripwire("gaps", envelope(["not-an-object"]), PATH, true),
+      ResponseSchemaDriftError,
+    );
+  });
+
+  test("a null is present, not absent, and still fails", async () => {
+    // The distinction the path-walk has to get right: `null` is a value the
+    // producer CHOSE, not a field the projection removed.
+    await assert.rejects(
+      validateResponseTripwire(
+        "gaps",
+        envelope([{ netuid: null, name: "root" }]),
+        PATH,
+        true,
+      ),
+      ResponseSchemaDriftError,
+    );
+  });
+});
+
+describe("isProjectedAway walks the path, and stops when it cannot", () => {
+  test("a key the payload does not carry reads as projected away", () => {
+    assert.equal(isProjectedAway({ a: { b: {} } }, ["a", "b", "c"]), true);
+  });
+
+  test("a key the payload does carry does not", () => {
+    assert.equal(
+      isProjectedAway({ a: { b: { c: 1 } } }, ["a", "b", "c"]),
+      false,
+    );
+  });
+
+  test("null is a value, not an absence", () => {
+    assert.equal(isProjectedAway({ a: null }, ["a"]), false);
+  });
+
+  test("a path that descends THROUGH a scalar is not projected away", () => {
+    // Unreachable via a real Zod issue -- Zod reports at the level that failed
+    // and never emits a path descending through a scalar -- so this is the
+    // only way to prove the guard fires. Getting it wrong would forgive a real
+    // drift, which is the one thing this function must never do.
+    assert.equal(isProjectedAway({ a: "scalar" }, ["a", "b"]), false);
+    assert.equal(isProjectedAway({ a: null }, ["a", "b"]), false);
   });
 });
