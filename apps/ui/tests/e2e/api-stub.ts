@@ -137,14 +137,24 @@ for (const [key, value] of Object.entries(supplement)) {
   if (!byPath.has(pathname)) byPath.set(pathname, recorded);
 }
 
-function lookup(rawUrl: string): Recorded | null {
+/**
+ * A hit, and whether it answered the exact URL asked for.
+ *
+ * The distinction only matters while recording, but it has to be made here:
+ * the path/pattern fallbacks below are indistinguishable from a real hit once
+ * they return, which is precisely how a wrong-shaped fixture hides.
+ */
+type Match = { recorded: Recorded; exact: boolean };
+
+function lookup(rawUrl: string): Match | null {
   const url = new URL(rawUrl, `http://127.0.0.1:${port}`);
-  return (
-    byUrl.get(url.pathname + url.search) ??
+  const exact = byUrl.get(url.pathname + url.search);
+  if (exact) return { recorded: exact, exact: true };
+  const fallback =
     byPath.get(url.pathname) ??
     byPattern.find((p) => p.pattern.test(url.pathname))?.recorded ??
-    null
-  );
+    null;
+  return fallback ? { recorded: fallback, exact: false } : null;
 }
 
 // Misses are reported once each. A route that starts requesting an endpoint
@@ -207,8 +217,14 @@ const server = createServer((req, res) => {
   };
 
   const hit = lookup(req.url ?? "/");
-  if (hit) {
-    serve(hit);
+  // While recording, only an EXACT hit is a hit. The path fallback answers
+  // `?limit=50` with whatever `?limit=1` returned, so a recording run saw no
+  // gap and could never fill one -- /chain/blocks got a 1-row table, which
+  // renders but cannot scroll, and the sticky-header spec correctly refused
+  // to measure it. A fallback that suppresses its own repair is worse than a
+  // miss, because the miss at least prints.
+  if (hit && (hit.exact || !recording)) {
+    serve(hit.recorded);
     return;
   }
 
@@ -216,7 +232,10 @@ const server = createServer((req, res) => {
   const pathAndQuery = url.pathname + url.search;
   if (recording) {
     void record(pathAndQuery).then((recorded) => {
-      if (recorded) return serve(recorded);
+      // Upstream refused (non-2xx, or unreachable). An approximate answer
+      // beats a 404 here -- it is what replay would have served anyway -- so
+      // the run continues and `record` has already said why it declined.
+      if (recorded ?? hit) return serve(recorded ?? hit!.recorded);
       res.writeHead(404, { ...cors, "content-type": "application/json" });
       res.end(JSON.stringify({ error: "record_failed", path: url.pathname }));
     });
