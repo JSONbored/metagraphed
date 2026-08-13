@@ -1533,7 +1533,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-owner-capture",
     "/metagraph/subnets/{netuid}/owner-capture.json",
-    "How much of one subnet's emission reaches its owner over a 7d/30d/90d window, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/owner-capture. Publishes the two CHAIN-VISIBLE layers only: the protocol owner cut (L1) and emission landing on UIDs the owner coldkey holds (L2). What the owner ultimately keeps is NOT published -- that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and the payload states both as blind spots. Every coldkey but the declared owner reports verdict `unresolved`.",
+    "How much of one subnet's emission reaches its owner over a 7d/30d/90d window, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/owner-capture. Publishes the two CHAIN-VISIBLE layers only: the protocol owner cut (L1) and emission landing on UIDs the `owner_coldkey` holds (L2). What the owner ultimately keeps is NOT published -- that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and the payload states both as blind spots. Every other stakeholder address reports verdict `unresolved`.",
     "SubnetOwnerCaptureArtifact",
     COMPUTED_LIVE,
   ),
@@ -3401,7 +3401,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/owner-capture",
     "/metagraph/subnets/{netuid}/owner-capture.json",
-    "Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window. Two chain-visible layers: the protocol owner cut (L1, 18%, the same for every subnet) and emission landing on UIDs held by the declared owner coldkey (L2, which varies enormously -- the network median is far above 18%). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is NOT the owner's. THIS IS NOT `what the owner takes`: the identity of those nominators (L3) and any treasury cut inside the subnet's own code (L4) are not observable here, and the response says so in `blind_spots`. Every coldkey but the declared owner is reported `unresolved`, which is the honest default and not a finding against them.",
+    "Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window. Two chain-visible layers: the protocol owner cut (L1, 18%, the same for every subnet) and emission landing on UIDs held by the declared `owner_coldkey` (L2, which varies enormously -- the network median is far above 18%). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is NOT the owner's. THIS IS NOT `what the owner takes`: the identity of those nominators (L3) and any treasury cut inside the subnet's own code (L4) are not observable here, and the response says so in `blind_spots`. Every other stakeholder address is reported `unresolved`, which is the honest default and not a finding against them.",
     "short",
     ["subnets", "analytics"],
     [],

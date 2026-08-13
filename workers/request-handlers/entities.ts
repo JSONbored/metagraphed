@@ -2724,7 +2724,7 @@ export async function handleSubnetEmissionSplitHistory(
 
 // GET /api/v1/subnets/{netuid}/owner-capture?window=7d|30d|90d (#10929): how
 // much of this subnet's emission reaches its owner -- the protocol cut (L1) and
-// emission on UIDs the owner coldkey holds (L2), which are the two layers the
+// emission on UIDs the `owner_coldkey` holds (L2), which are the two layers the
 // chain shows. A cold/absent store answers 200 with points:[] and
 // owner_coldkey:null rather than 404, for the same reason its emission-split
 // sibling does: a subnet with no daily rollup is a real state.

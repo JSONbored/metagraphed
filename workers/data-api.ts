@@ -7450,7 +7450,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   //
   // THREE READS, and each one is load-bearing:
   //
-  //   1. `subnet_ownership` for the declared owner coldkey. Read HERE rather
+  //   1. `subnet_ownership` for the declared `owner_coldkey`. Read HERE rather
   //      than passed in from the calling handler, because smuggling it through
   //      a query parameter would let a caller name any coldkey as the owner and
   //      have this surface report on it as though the chain said so.

@@ -7662,14 +7662,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "over a 7d, 30d or 90d window (default 30d). Publishes the two layers " +
       "the chain actually shows: the protocol owner cut (L1, 18%, identical " +
       "for every subnet) and emission landing on UIDs held by the declared " +
-      "owner coldkey (L2, which varies enormously -- the network median sits " +
+      "`owner_coldkey` (L2, which varies enormously -- the network median sits " +
       "far above 18%). Also lists those UIDs, each validator's take, and the " +
       "MEASURED fraction of stake behind them that is not the owner's. " +
       "THIS IS NOT `WHAT THE OWNER TAKES`. Who those nominators are (L3) and " +
       "any treasury cut inside the subnet's own code (L4) are not observable " +
-      "here, and `blind_spots` says so in the payload. Every coldkey but the " +
-      "declared owner is reported `unresolved`, which is the honest default " +
-      "for a relationship nobody established -- a large nominator behind an " +
+      "here, and `blind_spots` says so in the payload. Every other " +
+      "stakeholder address is reported `unresolved`, which is the honest " +
+      "default for a relationship nobody established -- a large nominator " +
+      "behind an " +
       "owner-run validator is equally consistent with a custodial exchange, a " +
       "delegation service, an unaffiliated whale or a DAO treasury, and those " +
       "produce an identical on-chain shape. DO NOT REPORT AN UNRESOLVED " +

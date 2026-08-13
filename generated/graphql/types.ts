@@ -3683,7 +3683,7 @@ export type Query = {
   subnet_ohlc: SubnetOhlc;
   /** One subnet's composed overview card: the baked static subnet record overlaid with live probe-derived health, exactly as the REST route composes it. Null when no overview has been baked for that netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/overview. */
   subnet_overview?: Maybe<Scalars['JSON']['output']>;
-  /** How much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window (default 30d), from the neuron_daily rollup joined to the declared owner coldkey. Two CHAIN-VISIBLE layers only: the protocol owner cut (L1, 18% and identical everywhere) and emission landing on owner-held UIDs (L2, which varies enormously). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is not the owner's. It is NOT what the owner keeps — the identity of those nominators (L3) and any treasury cut in the subnet's own code (L4) are not observable here, and `blind_spots` states that in the response. Every coldkey but the declared owner reports `unresolved`, which is the honest default and never a finding against them. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
+  /** How much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window (default 30d), from the neuron_daily rollup joined to the declared `owner_coldkey`. Two CHAIN-VISIBLE layers only: the protocol owner cut (L1, 18% and identical everywhere) and emission landing on owner-held UIDs (L2, which varies enormously). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is not the owner's. It is NOT what the owner keeps — the identity of those nominators (L3) and any treasury cut in the subnet's own code (L4) are not observable here, and `blind_spots` states that in the response. Every other stakeholder address reports `unresolved`, which is the honest default and never a finding against them. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
   subnet_owner_capture: SubnetOwnerCapture;
   /** Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream -- Bittensor subnet ownership is a permissionless, conviction-weighted contest that transfers automatically once a challenger's conviction overtakes the incumbent owner's, no vote required. A subnet that has never changed hands returns an empty list. Reaches the all-events tier directly (no D1 predecessor) and falls to the R2 lakehouse reader when that tier cannot answer, the same two tiers REST and MCP use; an out-of-range netuid is a GraphQL error, and so is a tier failure the lakehouse cannot cover either -- never a silent empty list. Mirrors GET /api/v1/subnets/{netuid}/ownership-history. */
   subnet_ownership_history: SubnetOwnershipHistory;
@@ -6735,10 +6735,10 @@ export type SubnetOhlcCandle = {
   volume_usd?: Maybe<Scalars['Float']['output']>;
 };
 
-/** How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and `blind_spots` states both in the response. Every coldkey but the declared owner reports `verdict: unresolved`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
+/** How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and `blind_spots` states both in the response. Every other stakeholder address reports `verdict: unresolved`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
 export type SubnetOwnerCapture = {
   __typename?: 'SubnetOwnerCapture';
-  /** Every coldkey staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked. */
+  /** Every stakeholder address staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked. */
   attribution?: Maybe<Array<SubnetOwnerCaptureStakeholder>>;
   /** The four defined verdicts, published beside the verdicts themselves so a caller can tell `unresolved` is a state rather than a missing value. */
   attribution_vocabulary?: Maybe<Array<Scalars['String']['output']>>;
@@ -6778,9 +6778,9 @@ export type SubnetOwnerCapturePoint = {
   owner_cut_alpha?: Maybe<Scalars['Float']['output']>;
   /** L1 — the protocol owner cut applied to this day. `SubnetOwnerCut` is 11796/65535 (18%, not 1/6) and is UNSET on chain, so this is the runtime default rather than a read. Every subnet pays it and no subnet chooses it. */
   owner_cut_share?: Maybe<Scalars['Float']['output']>;
-  /** L2 — emission that landed on UIDs held by the owner coldkey. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join. */
+  /** L2 — emission that landed on UIDs held by the `owner_coldkey`. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join. */
   owner_uid_alpha?: Maybe<Scalars['Float']['output']>;
-  /** How many UIDs on this day were held by the declared owner coldkey. NULL when the owner coldkey is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'. */
+  /** How many UIDs on this day were held by the declared `owner_coldkey`. NULL when the `owner_coldkey` is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'. */
   owner_uid_count?: Maybe<Scalars['Int']['output']>;
   snapshot_date: Scalars['String']['output'];
   /** The whole day's alpha emission, `alpha_out_emission x 7200 blocks`. RECONSTRUCTED, and the same basis /owner-cut and /emission-split/history use, so the three cannot disagree about what a day of emission is. */
@@ -6793,7 +6793,7 @@ export type SubnetOwnerCaptureStakeholder = {
   __typename?: 'SubnetOwnerCaptureStakeholder';
   coldkey: Scalars['String']['output'];
   evidence: Array<AttributionEvidence>;
-  /** This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids. */
+  /** This address's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids. */
   stake_share: Scalars['Float']['output'];
   verdict: Scalars['String']['output'];
 };
@@ -6803,9 +6803,9 @@ export type SubnetOwnerCaptureUid = {
   /** This UID's emission on the newest day, alpha-denominated for every non-root subnet despite the column's `_tao` suffix. */
   emission_tao?: Maybe<Scalars['Float']['output']>;
   hotkey?: Maybe<Scalars['String']['output']>;
-  /** `1 - owner_stake_share`: the fraction of this validator's stake that is NOT the owner coldkey's. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here. */
+  /** `1 - owner_stake_share`: the fraction of this validator's stake that is NOT the `owner_coldkey`'s. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here. */
   nominator_share?: Maybe<Scalars['Float']['output']>;
-  /** Fraction of the stake behind this hotkey held by the owner coldkey itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see `stake_split_reason`. */
+  /** Fraction of the stake behind this hotkey held by the `owner_coldkey` itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see `stake_split_reason`. */
   owner_stake_share?: Maybe<Scalars['Float']['output']>;
   /** Why the stake split is null, when it is. A short sentence rather than a code, because the reasons are not a closed set the caller should branch on. */
   stake_split_reason?: Maybe<Scalars['String']['output']>;

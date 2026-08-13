@@ -4415,7 +4415,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window. Two chain-visible layers: the protocol owner cut (L1, 18%, the same for every subnet) and emission landing on UIDs held by the declared owner coldkey (L2, which varies enormously -- the network median is far above 18%). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is NOT the owner's. THIS IS NOT `what the owner takes`: the identity of those nominators (L3) and any treasury cut inside the subnet's own code (L4) are not observable here, and the response says so in `blind_spots`. Every coldkey but the declared owner is reported `unresolved`, which is the honest default and not a finding against them. */
+        /** Measure how much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window. Two chain-visible layers: the protocol owner cut (L1, 18%, the same for every subnet) and emission landing on UIDs held by the declared `owner_coldkey` (L2, which varies enormously -- the network median is far above 18%). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is NOT the owner's. THIS IS NOT `what the owner takes`: the identity of those nominators (L3) and any treasury cut inside the subnet's own code (L4) are not observable here, and the response says so in `blind_spots`. Every other stakeholder address is reported `unresolved`, which is the honest default and not a finding against them. */
         get: operations["subnetOwnerCapture"];
         put?: never;
         post?: never;
@@ -11601,9 +11601,9 @@ export interface components {
             slug?: string;
             status?: string;
         };
-        /** @description How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and `blind_spots` states both in the response. Every coldkey but the declared owner reports `verdict: unresolved`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
+        /** @description How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and `blind_spots` states both in the response. Every other stakeholder address reports `verdict: unresolved`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture. */
         SubnetOwnerCaptureArtifact: {
-            /** @description Every coldkey staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked. */
+            /** @description Every stakeholder address staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked. */
             attribution?: {
                 coldkey: string;
                 /** @default [] */
@@ -11617,7 +11617,7 @@ export interface components {
                     /** @description A public page a reader can open — the subnet's own docs, repo or site. Pin a repo citation to a commit SHA; a branch moves under the claim. */
                     source_url?: string | null;
                 }[];
-                /** @description This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids. */
+                /** @description This address's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids. */
                 stake_share: number;
                 /**
                  * @default unresolved
@@ -11651,9 +11651,9 @@ export interface components {
                 /** @description This UID's emission on the newest day, alpha-denominated for every non-root subnet despite the column's `_tao` suffix. */
                 emission_tao?: number | null;
                 hotkey?: string | null;
-                /** @description `1 - owner_stake_share`: the fraction of this validator's stake that is NOT the owner coldkey's. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here. */
+                /** @description `1 - owner_stake_share`: the fraction of this validator's stake that is NOT the `owner_coldkey`'s. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here. */
                 nominator_share?: number | null;
-                /** @description Fraction of the stake behind this hotkey held by the owner coldkey itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see `stake_split_reason`. */
+                /** @description Fraction of the stake behind this hotkey held by the `owner_coldkey` itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see `stake_split_reason`. */
                 owner_stake_share?: number | null;
                 /** @description Why the stake split is null, when it is. A short sentence rather than a code, because the reasons are not a closed set the caller should branch on. */
                 stake_split_reason?: string | null;
@@ -11675,9 +11675,9 @@ export interface components {
                 owner_cut_alpha?: number | null;
                 /** @description L1 — the protocol owner cut applied to this day. `SubnetOwnerCut` is 11796/65535 (18%, not 1/6) and is UNSET on chain, so this is the runtime default rather than a read. Every subnet pays it and no subnet chooses it. */
                 owner_cut_share?: number | null;
-                /** @description L2 — emission that landed on UIDs held by the owner coldkey. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join. */
+                /** @description L2 — emission that landed on UIDs held by the `owner_coldkey`. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join. */
                 owner_uid_alpha?: number | null;
-                /** @description How many UIDs on this day were held by the declared owner coldkey. NULL when the owner coldkey is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'. */
+                /** @description How many UIDs on this day were held by the declared `owner_coldkey`. NULL when the `owner_coldkey` is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'. */
                 owner_uid_count?: number | null;
                 snapshot_date: string;
                 /** @description The whole day's alpha emission, `alpha_out_emission x 7200 blocks`. RECONSTRUCTED, and the same basis /owner-cut and /emission-split/history use, so the three cannot disagree about what a day of emission is. */

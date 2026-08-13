@@ -1104,7 +1104,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "How much of one subnet's emission reaches its owner over a 7d/30d/90d window, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/owner-capture. Publishes the two CHAIN-VISIBLE layers only: the protocol owner cut (L1) and emission landing on UIDs the owner coldkey holds (L2). What the owner ultimately keeps is NOT published -- that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and the payload states both as blind spots. Every coldkey but the declared owner reports verdict `unresolved`.",
+      "description": "How much of one subnet's emission reaches its owner over a 7d/30d/90d window, served live from the neuron_daily rollup at /api/v1/subnets/{netuid}/owner-capture. Publishes the two CHAIN-VISIBLE layers only: the protocol owner cut (L1) and emission landing on UIDs the `owner_coldkey` holds (L2). What the owner ultimately keeps is NOT published -- that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and the payload states both as blind spots. Every other stakeholder address reports verdict `unresolved`.",
       "id": "subnet-owner-capture",
       "path": "/metagraph/subnets/{netuid}/owner-capture.json",
       "retirement": null,

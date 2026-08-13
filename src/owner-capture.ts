@@ -15,7 +15,7 @@
 // ## THE LAYERS, AND WHERE THIS ONE STOPS
 //
 //   L1  protocol owner cut, 18%                     chain-visible   -- here
-//   L2  emission on UIDs held by the owner coldkey  chain-visible   -- here
+//   L2  emission on UIDs held by the `owner_coldkey`  chain-visible   -- here
 //   L3  self-stake vs nominator stake behind those  needs judgement -- NOT here
 //   L4  application-layer treasury allocation       not on chain    -- NOT here
 //   L5  root delegation                             not on this     -- stated
@@ -264,7 +264,7 @@ function ownerCapturePoint(
     // L1. The protocol cut, which every subnet pays and no subnet chooses.
     owner_cut_share: round9(ownerCut),
     owner_cut_alpha: totals === null ? null : round9(totals.owner),
-    // L2. Emission that landed on UIDs the owner coldkey holds.
+    // L2. Emission that landed on UIDs the `owner_coldkey` holds.
     owner_uid_count: ownerColdkey === null ? null : ownerUidCount,
     owner_uid_alpha: ownerColdkey === null ? null : round9(ownerUidAlpha),
     uid_alpha: round9(uidAlpha),
@@ -376,7 +376,7 @@ function ownerUidRows(
  * structural, not a default this module could drift away from: nothing here
  * computes a verdict. The vocabulary comes from schemas-src/attribution.ts,
  * where the schema refuses to serialise anything above `unresolved` without an
- * evidence object -- so a future heuristic cannot quietly promote a coldkey by
+ * evidence object -- so a future heuristic cannot quietly promote a stakeholder by
  * editing this file alone.
  */
 function attributionRows(

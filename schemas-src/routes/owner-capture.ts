@@ -39,11 +39,11 @@ const OwnerCapturePointSchema = z
     }),
     owner_uid_count: z.int().min(0).nullable().optional().meta({
       description:
-        "How many UIDs on this day were held by the declared owner coldkey. NULL when the owner coldkey is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'.",
+        "How many UIDs on this day were held by the declared `owner_coldkey`. NULL when the `owner_coldkey` is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'.",
     }),
     owner_uid_alpha: z.number().nullable().optional().meta({
       description:
-        "L2 — emission that landed on UIDs held by the owner coldkey. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join.",
+        "L2 — emission that landed on UIDs held by the `owner_coldkey`. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join.",
     }),
     uid_alpha: z.number().nullable().optional().meta({
       description:
@@ -83,11 +83,11 @@ const OwnerHeldUidSchema = z
     }),
     owner_stake_share: z.number().nullable().optional().meta({
       description:
-        "Fraction of the stake behind this hotkey held by the owner coldkey itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see `stake_split_reason`.",
+        "Fraction of the stake behind this hotkey held by the `owner_coldkey` itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see `stake_split_reason`.",
     }),
     nominator_share: z.number().nullable().optional().meta({
       description:
-        "`1 - owner_stake_share`: the fraction of this validator's stake that is NOT the owner coldkey's. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here.",
+        "`1 - owner_stake_share`: the fraction of this validator's stake that is NOT the `owner_coldkey`'s. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here.",
     }),
     stake_split_reason: z.string().nullable().optional().meta({
       description:
@@ -104,7 +104,7 @@ const OwnerHeldUidSchema = z
 const AttributedStakeholderSchema = attributedColdkeySchema({
   stake_share: z.number().meta({
     description:
-      "This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids.",
+      "This address's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids.",
   }),
 });
 
@@ -127,7 +127,7 @@ export const SubnetOwnerCaptureArtifactSchema = subnetHistoryArtifactSchema(
     }),
     attribution: z.array(AttributedStakeholderSchema).optional().meta({
       description:
-        "Every coldkey staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked.",
+        "Every stakeholder address staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked.",
     }),
     attribution_vocabulary: z.array(z.string()).optional().meta({
       description:
@@ -140,5 +140,5 @@ export const SubnetOwnerCaptureArtifactSchema = subnetHistoryArtifactSchema(
     field_sources: FieldSourcesSchema.optional(),
   })
   .describe(
-    "How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and `blind_spots` states both in the response. Every coldkey but the declared owner reports `verdict: unresolved`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.",
+    "How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and `blind_spots` states both in the response. Every other stakeholder address reports `verdict: unresolved`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.",
   );

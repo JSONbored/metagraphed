@@ -316,7 +316,7 @@ type Query {
   subnet_emission_split_history(netuid: Int!, window: String): SubnetEmissionSplitHistory!
 
   """
-  How much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window (default 30d), from the neuron_daily rollup joined to the declared owner coldkey. Two CHAIN-VISIBLE layers only: the protocol owner cut (L1, 18% and identical everywhere) and emission landing on owner-held UIDs (L2, which varies enormously). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is not the owner's. It is NOT what the owner keeps — the identity of those nominators (L3) and any treasury cut in the subnet's own code (L4) are not observable here, and \`blind_spots\` states that in the response. Every coldkey but the declared owner reports \`unresolved\`, which is the honest default and never a finding against them. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.
+  How much of one subnet's emission reaches its owner, per day over a 7d/30d/90d window (default 30d), from the neuron_daily rollup joined to the declared \`owner_coldkey\`. Two CHAIN-VISIBLE layers only: the protocol owner cut (L1, 18% and identical everywhere) and emission landing on owner-held UIDs (L2, which varies enormously). Also lists those UIDs, each validator's take, and the measured fraction of stake behind them that is not the owner's. It is NOT what the owner keeps — the identity of those nominators (L3) and any treasury cut in the subnet's own code (L4) are not observable here, and \`blind_spots\` states that in the response. Every other stakeholder address reports \`unresolved\`, which is the honest default and never a finding against them. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.
   """
   subnet_owner_capture(netuid: Int!, window: String): SubnetOwnerCapture!
 
@@ -2607,7 +2607,7 @@ type SubnetEmissionSplitHistoryPoint {
 }
 
 """
-How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and \`blind_spots\` states both in the response. Every coldkey but the declared owner reports \`verdict: unresolved\`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.
+How much of one subnet's emission reaches its owner, over a 7d/30d/90d window, newest first — the protocol cut (L1) and emission landing on owner-held UIDs (L2), which are both chain-visible. What the owner ULTIMATELY KEEPS is not published: that depends on the stake behind those validators (L3) and on any application-layer treasury cut (L4), and \`blind_spots\` states both in the response. Every other stakeholder address reports \`verdict: unresolved\`, which is the honest default and not a negative finding. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/owner-capture.
 """
 type SubnetOwnerCapture {
   schema_version: Int!
@@ -2630,7 +2630,7 @@ type SubnetOwnerCapture {
   owner_uids: [SubnetOwnerCaptureUid!]
 
   """
-  Every coldkey staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked.
+  Every stakeholder address staked behind the owner's validator UIDs, largest share first, each with its verdict. An empty list means no positions were captured, not that nobody is staked.
   """
   attribution: [SubnetOwnerCaptureStakeholder!]
 
@@ -2665,12 +2665,12 @@ type SubnetOwnerCapturePoint {
   owner_cut_alpha: Float
 
   """
-  How many UIDs on this day were held by the declared owner coldkey. NULL when the owner coldkey is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'.
+  How many UIDs on this day were held by the declared \`owner_coldkey\`. NULL when the \`owner_coldkey\` is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'.
   """
   owner_uid_count: Int
 
   """
-  L2 — emission that landed on UIDs held by the owner coldkey. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join.
+  L2 — emission that landed on UIDs held by the \`owner_coldkey\`. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join.
   """
   owner_uid_alpha: Float
 
@@ -2716,12 +2716,12 @@ type SubnetOwnerCaptureUid {
   take: Float
 
   """
-  Fraction of the stake behind this hotkey held by the owner coldkey itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see \`stake_split_reason\`.
+  Fraction of the stake behind this hotkey held by the \`owner_coldkey\` itself. Measured from nominator_positions. Null when the position set for this hotkey is not provably whole — see \`stake_split_reason\`.
   """
   owner_stake_share: Float
 
   """
-  \`1 - owner_stake_share\`: the fraction of this validator's stake that is NOT the owner coldkey's. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here.
+  \`1 - owner_stake_share\`: the fraction of this validator's stake that is NOT the \`owner_coldkey\`'s. MEASURED, and published with no interpretation attached. A high value is not evidence of anything — a custodial exchange, a delegation service, an unaffiliated whale and a team wallet all produce this identical shape. Resolving which is L3, and is not done here.
   """
   nominator_share: Float
 
@@ -2737,7 +2737,7 @@ type SubnetOwnerCaptureStakeholder {
   evidence: [AttributionEvidence!]!
 
   """
-  This coldkey's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids.
+  This address's summed share of the stake behind the owner's validator UIDs on this subnet. Per-subnet: alpha is a different token per subnet and these fractions are never summed across netuids.
   """
   stake_share: Float!
 }
