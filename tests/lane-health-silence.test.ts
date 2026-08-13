@@ -19,6 +19,7 @@ import {
   laneSilenceThresholdMs,
 } from "../src/lane-alarm.ts";
 import type { LaneHealthRecord } from "../src/lane-health.ts";
+import { LANE_PRODUCER } from "../src/producer-cadence.ts";
 
 const NOW = 1_786_300_000_000;
 const MIN = 60_000;
@@ -125,26 +126,57 @@ describe("the bound is the lane's own cadence, not a global one", () => {
 });
 
 describe("without a cadence sample, nothing changes", () => {
+  // These two are about a lane with NO cadence from either source -- no
+  // observation AND no declaration. They used `neurons` for that, which stopped
+  // being true when LANE_PRODUCER learned that lane's producer: it had a
+  // staleness floor and no silence floor, and closing that gap is what made a
+  // 30-day-old record read `unknown` here instead of `ok`. The behaviour change
+  // is the fix; the fixture just needed a lane that is genuinely undeclared.
+  //
+  // Asserted rather than assumed, so this cannot quietly start leaning on a
+  // mapped lane again.
+  const UNDECLARED = "lane-with-no-declared-producer";
+
+  test("the fixture lane really has no declared producer", () => {
+    assert.equal(LANE_PRODUCER[UNDECLARED], undefined);
+  });
+
   test("no cadences at all leaves every verdict alone", () => {
     // A caller that has not paid for the cadence query gets exactly today's
     // behaviour -- inventing a bound would invent alarms.
     const ancient = record({
+      lane: UNDECLARED,
       verdict: "ok",
       checked_at: NOW - 30 * 24 * 60 * MIN,
     });
-    assert.equal(view({ neurons: ancient })[0]!.verdict, "ok");
+    assert.equal(view({ [UNDECLARED]: ancient })[0]!.verdict, "ok");
   });
 
   test("a lane with too little history to derive a cadence is left alone", () => {
     // loadLaneCadence returns null for a lane under the sample floor.
     const ancient = record({
+      lane: UNDECLARED,
       verdict: "ok",
       checked_at: NOW - 30 * 24 * 60 * MIN,
     });
     assert.equal(
-      view({ neurons: ancient }, { neurons: null })[0]!.verdict,
+      view({ [UNDECLARED]: ancient }, { [UNDECLARED]: null })[0]!.verdict,
       "ok",
     );
+  });
+
+  test("a DECLARED lane is not left alone -- that is the floor doing its job", () => {
+    // The other side of the two above, and the regression that matters: with
+    // no cadence sample at all, `neurons` still gets a bound because
+    // LANE_PRODUCER declares its producer. Before that mapping this read `ok`
+    // after thirty days of silence.
+    const ancient = record({
+      lane: "neurons",
+      verdict: "ok",
+      checked_at: NOW - 30 * 24 * 60 * MIN,
+    });
+    assert.equal(LANE_PRODUCER["neurons"], "metagraph");
+    assert.equal(view({ neurons: ancient })[0]!.verdict, "unknown");
   });
 
   test("a lane that has never been checked is left alone", () => {
