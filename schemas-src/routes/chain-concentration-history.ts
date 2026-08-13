@@ -2,23 +2,42 @@
 // concentrated? Modeled from src/chain-concentration-history.ts's
 // buildChainConcentrationHistory().
 import { z } from "zod";
+import { ConcentrationMetricsSchema } from "../shared.ts";
 import { UnavailableDegradedSchema } from "./event-stream-honesty.ts";
 
-/** One distribution's scorecard, as computeConcentration produced it. Passed
- * through from the stored card rather than re-shaped, so a historical point and
- * the live /chain/concentration card carry identical fields. */
-export const ChainConcentrationScorecardSchema = z
-  .object({
-    holders: z.int().min(0),
-    total: z.number(),
-    gini: z.number().nullable(),
-    hhi: z.number().nullable(),
-    hhi_normalized: z.number().nullable(),
-    nakamoto_coefficient: z.int().nullable(),
-    entropy: z.number().nullable(),
-    entropy_normalized: z.number().nullable(),
-  })
-  .strict();
+/**
+ * One distribution's scorecard, as computeConcentration produced it.
+ *
+ * DERIVED, because the sentence below was already the contract and the copy
+ * that used to sit here was not. The cron stores exactly the card
+ * /chain/concentration serves -- src/chain-concentration-history.ts's header
+ * says so, and that route declares `ConcentrationMetricsSchema`: twelve
+ * measures. This re-listed eight, dropping `top_1pct_share`,
+ * `top_5pct_share`, `top_10pct_share`, and `top_20pct_share`, under a
+ * docstring promising "identical fields". Every stored card therefore carried
+ * four keys its own schema forbade -- 441 conformance violations across the
+ * 147 cards in a 30-day window, all of them the same four.
+ *
+ * #10786 already caught these two schemas disagreeing about NULLABILITY and
+ * fixed that half, writing "one shape, two schemas, and only one of them
+ * true". The field lists stayed divergent, because fixing a copy leaves it a
+ * copy. Deriving is what makes the promise enforceable instead of
+ * aspirational.
+ *
+ * `.required()`, the same spelling routes/domains.ts uses, and for the same
+ * reason: `computeConcentration()` returns one fixed shape or null, so a card
+ * that exists carries every measure. Deriving withOUT it would have quietly
+ * dropped this component's `required` list from eight keys to two -- fixing
+ * the missing four by weakening the eight that were already right. Checked
+ * against production before choosing: all 147 cards in the live 30-day window
+ * carry all twelve keys, none of them null.
+ */
+export const ChainConcentrationScorecardSchema =
+  ConcentrationMetricsSchema.unwrap()
+    .required()
+    .describe(
+      "One distribution's concentration scorecard, passed through from the stored card -- identical by construction to the live /chain/concentration card, because it is the same card.",
+    );
 
 export const ChainConcentrationHistoryPointSchema = z
   .object({

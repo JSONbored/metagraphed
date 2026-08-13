@@ -1179,6 +1179,7 @@ export type ChainConcentrationHistoryPoint = {
   validator_stake?: Maybe<ChainConcentrationScorecard>;
 };
 
+/** One distribution's concentration scorecard, passed through from the stored card -- identical by construction to the live /chain/concentration card, because it is the same card. */
 export type ChainConcentrationScorecard = {
   __typename?: 'ChainConcentrationScorecard';
   entropy?: Maybe<Scalars['Float']['output']>;
@@ -1187,8 +1188,12 @@ export type ChainConcentrationScorecard = {
   hhi?: Maybe<Scalars['Float']['output']>;
   hhi_normalized?: Maybe<Scalars['Float']['output']>;
   holders: Scalars['Int']['output'];
-  nakamoto_coefficient?: Maybe<Scalars['Int']['output']>;
-  total: Scalars['Float']['output'];
+  nakamoto_coefficient: Scalars['Int']['output'];
+  top_1pct_share?: Maybe<Scalars['Float']['output']>;
+  top_5pct_share?: Maybe<Scalars['Float']['output']>;
+  top_10pct_share?: Maybe<Scalars['Float']['output']>;
+  top_20pct_share?: Maybe<Scalars['Float']['output']>;
+  total?: Maybe<Scalars['Float']['output']>;
 };
 
 export type ChainDeregistrations = {
@@ -9723,8 +9728,12 @@ export type ChainConcentrationScorecardResolvers<ContextType = GqlContext, Paren
   hhi?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   hhi_normalized?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   holders?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  nakamoto_coefficient?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  total?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  nakamoto_coefficient?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  top_1pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_5pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_10pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_20pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ChainDeregistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainDeregistrations'] = ResolversParentTypes['ChainDeregistrations']> = ResolversObject<{

@@ -2876,13 +2876,20 @@ type ChainConcentrationHistoryPoint {
   validator_stake: ChainConcentrationScorecard
 }
 
+"""
+One distribution's concentration scorecard, passed through from the stored card -- identical by construction to the live /chain/concentration card, because it is the same card.
+"""
 type ChainConcentrationScorecard {
   holders: Int!
-  total: Float!
+  total: Float
   gini: Float
   hhi: Float
   hhi_normalized: Float
-  nakamoto_coefficient: Int
+  nakamoto_coefficient: Int!
+  top_1pct_share: Float
+  top_5pct_share: Float
+  top_10pct_share: Float
+  top_20pct_share: Float
   entropy: Float
   entropy_normalized: Float
 }

@@ -2783,6 +2783,10 @@
                   "hhi_normalized": 0.5,
                   "holders": 1,
                   "nakamoto_coefficient": 1,
+                  "top_10pct_share": 0.5,
+                  "top_1pct_share": 0.5,
+                  "top_20pct_share": 0.5,
+                  "top_5pct_share": 0.5,
                   "total": 1
                 },
                 "entity_count": 1,
@@ -2794,6 +2798,10 @@
                   "hhi_normalized": 0.5,
                   "holders": 1,
                   "nakamoto_coefficient": 1,
+                  "top_10pct_share": 0.5,
+                  "top_1pct_share": 0.5,
+                  "top_20pct_share": 0.5,
+                  "top_5pct_share": 0.5,
                   "total": 1
                 },
                 "entity_stake": {
@@ -2804,6 +2812,10 @@
                   "hhi_normalized": 0.5,
                   "holders": 1,
                   "nakamoto_coefficient": 1,
+                  "top_10pct_share": 0.5,
+                  "top_1pct_share": 0.5,
+                  "top_20pct_share": 0.5,
+                  "top_5pct_share": 0.5,
                   "total": 1
                 },
                 "neuron_count": 1,
@@ -2816,6 +2828,10 @@
                   "hhi_normalized": 0.5,
                   "holders": 1,
                   "nakamoto_coefficient": 1,
+                  "top_10pct_share": 0.5,
+                  "top_1pct_share": 0.5,
+                  "top_20pct_share": 0.5,
+                  "top_5pct_share": 0.5,
                   "total": 1
                 },
                 "subnet_count": 1,
@@ -2828,6 +2844,10 @@
                   "hhi_normalized": 0.5,
                   "holders": 1,
                   "nakamoto_coefficient": 1,
+                  "top_10pct_share": 0.5,
+                  "top_1pct_share": 0.5,
+                  "top_20pct_share": 0.5,
+                  "top_5pct_share": 0.5,
                   "total": 1
                 }
               }
@@ -22179,6 +22199,7 @@
       },
       "ChainConcentrationScorecard": {
         "additionalProperties": false,
+        "description": "One distribution's concentration scorecard, passed through from the stored card -- identical by construction to the live /chain/concentration card, because it is the same card.",
         "properties": {
           "entropy": {
             "anyOf": [
@@ -22236,11 +22257,44 @@
             "type": "integer"
           },
           "nakamoto_coefficient": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "top_10pct_share": {
             "anyOf": [
               {
-                "maximum": 9007199254740991,
-                "minimum": -9007199254740991,
-                "type": "integer"
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "top_1pct_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "top_20pct_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "top_5pct_share": {
+            "anyOf": [
+              {
+                "type": "number"
               },
               {
                 "type": "null"
@@ -22248,7 +22302,14 @@
             ]
           },
           "total": {
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -22258,6 +22319,10 @@
           "hhi",
           "hhi_normalized",
           "nakamoto_coefficient",
+          "top_1pct_share",
+          "top_5pct_share",
+          "top_10pct_share",
+          "top_20pct_share",
           "entropy",
           "entropy_normalized"
         ],
