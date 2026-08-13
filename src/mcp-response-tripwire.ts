@@ -78,7 +78,28 @@ export class McpResponseSchemaDriftError extends Error {
   readonly code = MCP_RESPONSE_DRIFT_CODE;
   readonly captureAsFault = true;
   constructor(tool: string, detail: unknown) {
-    super(`${tool} result drifted from its published outputSchema`);
+    // The issues ride IN the message (bounded), because the message is the
+    // only thing the exception pipeline serializes: `detail` never leaves
+    // this object, and `cause` is `this`, so the captured fault read
+    // "drifted from its published outputSchema" with the diagnosis -- WHICH
+    // keys, at WHICH path -- discarded. Measured 2026-08-12: get_subnet_health
+    // drifted on netuid 0 for hours and neither PostHog nor a tail could say
+    // on what. Same lesson as the REST tripwire's alarm (#10897): the
+    // unrecognized keys ARE the diagnosis.
+    //
+    // RESTORED, and pinned by a test this time. #10914 added it and #10917 --
+    // a store refactor branched before that landed -- removed it again with
+    // ZERO conflicts, because nothing asserted the message carried anything.
+    // A silent revert is what an unasserted behaviour invites, and the cost
+    // was measured: production emitted a 64-character alarm naming no key for
+    // six hours, and diagnosing #10972 needed a local reproduction to recover
+    // what this line already knew.
+    super(
+      `${tool} result drifted from its published outputSchema: ` +
+        String(
+          detail instanceof Error ? detail.message : JSON.stringify(detail),
+        ).slice(0, 400),
+    );
     this.name = "McpResponseSchemaDriftError";
     this.tool = tool;
     this.detail = detail;
