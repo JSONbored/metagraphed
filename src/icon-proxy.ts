@@ -33,6 +33,29 @@ const CACHE_CONTROL = "public, max-age=2592000, immutable"; // 30d, per contract
 // blackholes a real icon for 24h. (#1124 frontend-surfacing freshness audit.)
 const NEGATIVE_CACHE_STABLE = "public, max-age=86400"; // 24h — won't resolve
 const NEGATIVE_CACHE_TRANSIENT = "public, max-age=600"; // 10m — retry soon
+
+/**
+ * The same two windows, as a SERVER-SIDE record (#11020).
+ *
+ * The two `Cache-Control` values above were the whole negative cache, and a
+ * response header is per-colo, per-client state. So a subject that will never
+ * resolve re-ran the entire aggregator fan-out in every colo, forever: over one
+ * 3-day window `icon-cache/gh:tensorclaw/192`, `icon-cache/gh:PlatformNetwork/192`
+ * and two others missed ~30+ times across DFW, LAX, IAD, ORD, MSP, SJC, SEA,
+ * FRA and PHX, and those misses were 55% of the entire Worker error channel
+ * (#11022).
+ *
+ * A tombstone in R2 makes "24h" and "10m" mean 24h and 10m GLOBALLY, which is
+ * what the two constants above always claimed. The stable/transient split is
+ * preserved exactly as the fan-out already reasons about it: a clean 4xx is a
+ * stable "no", an abort/5xx/403 is transient and must be retried soon.
+ */
+const NEGATIVE_TOMBSTONE_STABLE_MS = 86_400_000; // 24h, matching the header
+const NEGATIVE_TOMBSTONE_TRANSIENT_MS = 600_000; // 10m, matching the header
+
+/** Marks a cached object as a NEGATIVE result rather than an icon. */
+const NEGATIVE_META_KEY = "negative";
+const NEGATIVE_META_AT = "negative_at";
 const BLOCKED_TLDS = new Set(["localhost", "local", "internal"]);
 // A real-ish UA — DuckDuckGo/Google's favicon endpoints bot-block the default Worker
 // user-agent (a cause of the prod 404s).
@@ -421,7 +444,32 @@ export async function handleIconProxy(
   if (bucket?.get) {
     try {
       const cached = await bucket.get(cacheKey);
-      if (cached) {
+      // A TOMBSTONE is stored under the same key as an icon would be, so one
+      // read answers both questions. It must be tested BEFORE the hit path:
+      // its body is empty, and serving that as an image would turn "no icon"
+      // into "a zero-byte icon".
+      const negativeKind = cached?.customMetadata?.[NEGATIVE_META_KEY];
+      if (cached && negativeKind) {
+        const writtenAt = Number(
+          cached.customMetadata?.[NEGATIVE_META_AT] ?? 0,
+        );
+        const ttl =
+          negativeKind === "transient"
+            ? NEGATIVE_TOMBSTONE_TRANSIENT_MS
+            : NEGATIVE_TOMBSTONE_STABLE_MS;
+        if (Number.isFinite(writtenAt) && now - writtenAt < ttl) {
+          await (cached.body as ReadableStream | undefined)?.cancel?.();
+          return notFound(
+            negativeKind === "transient"
+              ? NEGATIVE_CACHE_TRANSIENT
+              : NEGATIVE_CACHE_STABLE,
+          );
+        }
+        // Expired: fall through and re-resolve. Deliberately not deleted here
+        // -- the re-resolution overwrites it with either an icon or a fresh
+        // tombstone, so a delete would only widen the window in which a
+        // concurrent request sees nothing and re-runs the fan-out.
+      } else if (cached) {
         const ct = cached.httpMetadata?.contentType || "image/png";
         const extra: Record<string, string> = { "x-icon-cache": "hit" };
         if (isHead) {
@@ -496,5 +544,23 @@ export async function handleIconProxy(
   }
   // Allowlisted host, every source failed: short window if it was transient (retry
   // soon), full day if every source gave a clean negative.
+  //
+  // #11020: record it server-side too, so the next colo does not repeat the
+  // whole fan-out. Awaited rather than deferred because this handler takes no
+  // ExecutionContext -- the same reason the positive `bucket.put` above is
+  // awaited -- and best-effort for the same reason: failing to cache a negative
+  // must never turn a 404 into a 500.
+  if (bucket?.put) {
+    try {
+      await bucket.put(cacheKey, new Uint8Array(0), {
+        customMetadata: {
+          [NEGATIVE_META_KEY]: transient ? "transient" : "stable",
+          [NEGATIVE_META_AT]: String(now),
+        },
+      });
+    } catch {
+      // caching is best-effort
+    }
+  }
   return notFound(transient ? NEGATIVE_CACHE_TRANSIENT : NEGATIVE_CACHE_STABLE);
 }
