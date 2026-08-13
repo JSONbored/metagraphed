@@ -190,6 +190,30 @@ export const HISTORY_WINDOWS = Object.keys(HISTORY_WINDOW_DAYS);
 export const DEFAULT_HISTORY_WINDOW = "30d";
 
 /**
+ * The 7d/30d/90d trend window, named (#11008).
+ *
+ * SIXTEEN routes declared this vocabulary as an inline `["7d", "30d", "90d"]`
+ * -- the per-entity history and activity family: a subnet's performance,
+ * concentration, yield and validator-economics history, an account's stake
+ * flow, registrations, serving and prometheus, and chain turnover. Every other
+ * window vocabulary in this file is named and derived from its own days map
+ * (46 of the 64 `windowSchema()` call sites use one); this was the outlier, and
+ * a value set written sixteen times is sixteen places to forget when it moves.
+ *
+ * DISTINCT from HISTORY_WINDOWS, which is this plus `1y` and `all` -- the
+ * long-horizon variant a daily rollup can answer and these cannot. Naming them
+ * apart is the point: they were never the same window, and the inline spelling
+ * made that impossible to see.
+ */
+export const TREND_WINDOW_DAYS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+export const TREND_WINDOWS = Object.keys(TREND_WINDOW_DAYS);
+export const DEFAULT_TREND_WINDOW = "30d";
+
+/**
  * The feed families (`/api/v1/feeds/*`) -- page size and watchlist length.
  *
  * 50 items is what `src/feeds.ts` has always served and what all 24 published
