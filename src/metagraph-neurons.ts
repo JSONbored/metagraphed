@@ -437,7 +437,7 @@ export function computeImmunityWindow(
 // untouched by this change.
 export function formatNeuron(
   row: Row | null | undefined,
-  featuredHotkeys?: Set<string>,
+  featuredHotkeys?: ReadonlySet<string>,
   immunityPeriod?: number | null,
 ): Row | null {
   if (!row || typeof row !== "object") return null;
@@ -530,7 +530,7 @@ export function buildSubnetValidators(
   netuid: unknown,
   {
     featuredHotkeys = new Set<string>(),
-  }: { featuredHotkeys?: Set<string> } = {},
+  }: { featuredHotkeys?: ReadonlySet<string> } = {},
 ): Row {
   const { captured_at, block_number } = snapshotStamp(rows);
   // A real (if possibly empty) Set is always passed to formatNeuron here, so
@@ -882,7 +882,7 @@ export interface BuildGlobalValidatorsOptions {
    * defect, not a normal state. Such a membership is EXCLUDED from the sums,
    * which under-reports rather than mis-denominates -- the safe direction. */
   priceByNetuid: Map<number, number | null>;
-  featuredHotkeys?: Set<string>;
+  featuredHotkeys?: ReadonlySet<string>;
   identityByColdkey?: Map<string, Row>;
   nominatorCounts?: Map<string, number>;
   tempoByNetuid?: Map<number, number>;

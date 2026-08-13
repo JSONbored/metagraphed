@@ -469,6 +469,7 @@ import { MCP_TIERED_RATE_LIMIT } from "../src/api-tiers.ts";
 import { createPgSql, type PgSql } from "../src/pg-sql.ts";
 import { neonWriteRunner } from "../src/neon-write-buffer.ts";
 import type { ChainAlertTriggers } from "../generated/db/types.ts";
+import { FEATURED_HOTKEY_SET } from "../generated/featured-validators.ts";
 import type { NeuronColumnsRow } from "../src/metagraph-neurons.ts";
 import type { NeuronDailyReadRow } from "../src/neuron-history.ts";
 
@@ -6946,9 +6947,21 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     };
   }
 
-  // GET /api/v1/subnets/:netuid/validators. featured_validators has no D1
-  // home (it stays a maintainer-toggled Postgres side table until its own
-  // port): the empty set is loadFeaturedHotkeys's own degraded value.
+  // GET /api/v1/subnets/:netuid/validators.
+  //
+  // `featured` was served on every row and was permanently FALSE (#11080). The
+  // comment here used to say featured_validators "stays a maintainer-toggled
+  // Postgres side table until its own port" and that the empty set was
+  // loadFeaturedHotkeys's degraded value -- but loadFeaturedHotkeys did not
+  // exist, no producer wrote the table and no reader read it, so a badge for
+  // paying partners could not be true. A degraded value nothing can ever
+  // upgrade is just a constant.
+  //
+  // The curation now lives in registry/featured-validators.json, generated to a
+  // frozen constant. Registry rather than a live table because it is a
+  // commercial arrangement and belongs in a reviewed pull request; a constant
+  // rather than a runtime read because this worker sits at the startup CPU
+  // limit and a badge must not depend on a fetch succeeding.
   const subnetValidators = url.pathname.match(
     /^\/api\/v1\/subnets\/(\d+)\/validators$/,
   );
@@ -6960,7 +6973,9 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         [netuid],
       );
       return json(
-        buildSubnetValidators(rows, netuid, { featuredHotkeys: new Set() }),
+        buildSubnetValidators(rows, netuid, {
+          featuredHotkeys: FEATURED_HOTKEY_SET,
+        }),
       );
     };
   }

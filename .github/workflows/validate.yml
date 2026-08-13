@@ -446,6 +446,7 @@ jobs:
           run_step npm run validate:lakehouse-types-drift
           run_step npm run validate:lakehouse-readers
           run_step npm run validate:store-type-parity
+          run_step npm run validate:featured-validators-drift
           run_step npm run validate:schema-enums
           run_step npm run validate:openapi-examples
           run_step npm run validate:generated-client
