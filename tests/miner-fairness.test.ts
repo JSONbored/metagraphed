@@ -387,6 +387,88 @@ describe("shaping", () => {
   });
 });
 
+describe("the live lens — the capture tripwire (#11091)", () => {
+  /** One CURRENT-metagraph row. Miner unless told otherwise. */
+  const liveRow = (over: Row = {}): Row => ({
+    uid: 0,
+    coldkey: "5A",
+    validator_permit: false,
+    incentive: 0,
+    captured_at: 1_700_000_000_000,
+    block_number: 8_000_000,
+    ...over,
+  });
+
+  test("AN ACTIVE CAPTURE IS VISIBLE LIVE WHILE THE WINDOW STAYS SMOOTH", () => {
+    // The SN75 shape: a month of evenly-earning days, then one UID holding
+    // 99% of live incentive. The windowed lens reports the month; the live
+    // lens must scream.
+    const windowRows = [
+      ...day("2026-08-12", 100, 100),
+      ...day("2026-08-11", 100, 100),
+    ];
+    const liveRows = [
+      liveRow({ uid: 238, coldkey: "5Captor", incentive: 0.990829 }),
+      ...Array.from({ length: 99 }, (_, i) =>
+        liveRow({ uid: i, coldkey: `5Miner${i}`, incentive: 0.000107 }),
+      ),
+    ];
+    const out = buildSubnetMinerFairness(windowRows, 75, {
+      window: "30d",
+      liveRows,
+    });
+    const live = out.live as Row;
+    const uidLens = live.uid as Row;
+    assert.equal(uidLens.nakamoto_coefficient, 1);
+    assert.ok((uidLens.top_1pct_share as number) > 0.9);
+    // The windowed lens over the smooth month must NOT scream -- the
+    // divergence between the two blocks is the signal, so both halves are
+    // asserted.
+    const windowUid = (out.concentration as Row).uid as Row;
+    assert.ok((windowUid.nakamoto_coefficient as number) > 1);
+    assert.equal(live.captured_at, 1_700_000_000_000);
+    assert.equal(live.block_number, 8_000_000);
+  });
+
+  test("validators are excluded from the live population too", () => {
+    const liveRows = [
+      liveRow({ uid: 0, incentive: 0.5 }),
+      liveRow({ uid: 1, coldkey: "5B", incentive: 0.5 }),
+      liveRow({
+        uid: 2,
+        coldkey: "5Val",
+        validator_permit: true,
+        incentive: 1,
+      }),
+    ];
+    const out = buildSubnetMinerFairness(day("2026-08-12", 2, 2), 7, {
+      liveRows,
+    });
+    const uidLens = (out.live as Row).uid as Row;
+    // Two equal miners: nakamoto 2. A counted validator would make it 1.
+    assert.equal(uidLens.nakamoto_coefficient, 2);
+    assert.equal(uidLens.holders, 2);
+  });
+
+  test("no current rows is a null block, never a fabricated distribution", () => {
+    const absent = buildSubnetMinerFairness(day("2026-08-12", 2, 2), 7, {});
+    assert.equal(absent.live, null);
+    const empty = buildSubnetMinerFairness(day("2026-08-12", 2, 2), 7, {
+      liveRows: [],
+    });
+    assert.equal(empty.live, null);
+  });
+
+  test("the payload with a live block still matches its own schema", () => {
+    const out = buildSubnetMinerFairness(day("2026-08-12", 3, 2), 7, {
+      window: "7d",
+      liveRows: [liveRow({ incentive: 0.4 })],
+    });
+    const parsed = SubnetMinerFairnessArtifactSchema.safeParse(out);
+    assert.ok(parsed.success, JSON.stringify(parsed.error?.issues));
+  });
+});
+
 describe("the window", () => {
   test("shares the emission-split vocabulary", () => {
     for (const label of ["7d", "30d", "90d"]) {

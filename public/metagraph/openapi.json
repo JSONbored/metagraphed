@@ -10504,6 +10504,18 @@
                 "storage": "example"
               }
             },
+            "live": {
+              "block_number": 5000000,
+              "captured_at": 0.5,
+              "entity": {
+                "holders": 1,
+                "nakamoto_coefficient": 1
+              },
+              "uid": {
+                "holders": 1,
+                "nakamoto_coefficient": 1
+              }
+            },
             "miner_uid_count": 1,
             "netuid": 7,
             "persistence": {
@@ -51886,6 +51898,71 @@
               "type": "string"
             },
             "type": "object"
+          },
+          "live": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "block_number": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "captured_at": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Epoch-ms stamp of the newest current-metagraph row the lenses below were computed from -- read this against the window: these lenses are NOW, the ones under `concentration` are the whole window."
+                  },
+                  "entity": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/ConcentrationMetrics"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "The entity lens over the CURRENT per-UID incentive distribution (miners only). Incentive is the chain's live ranking and already a share, so `total` is the miners' summed incentive. Null when no miner carries any."
+                  },
+                  "uid": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/ConcentrationMetrics"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "The per-UID lens over the same current incentive distribution."
+                  }
+                },
+                "required": [
+                  "captured_at",
+                  "block_number",
+                  "entity",
+                  "uid"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "THE CAPTURE TRIPWIRE: the same two lenses over the CURRENT metagraph, beside the windowed ones -- because a window aggregate smooths away a mid-window capture event. SN75 reported a 30d uid gini of 0.77 while one UID held incentive 0.9908 live; when these lenses diverge violently from `concentration`, trust these. Null when the current-metagraph store has no rows for this subnet."
           },
           "miner_uid_count": {
             "description": "Distinct non-validator UIDs seen anywhere in the window — the denominator for the persistence block.",

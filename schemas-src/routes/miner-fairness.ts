@@ -97,6 +97,28 @@ export const SubnetMinerFairnessArtifactSchema = subnetHistoryArtifactSchema(
         "Miner UIDs per controlling entity. 1.0 = every UID a distinct owner; higher = fewer operators each running many hotkeys. The network median is ~3.08 and the maximum ~21.3, so '256 miners' is routinely far fewer operators.",
     }),
     concentration: FairnessConcentrationSchema.optional(),
+    live: z
+      .object({
+        captured_at: z.number().nullable().meta({
+          description:
+            "Epoch-ms stamp of the newest current-metagraph row the lenses below were computed from -- read this against the window: these lenses are NOW, the ones under `concentration` are the whole window.",
+        }),
+        block_number: z.int().nullable(),
+        entity: ConcentrationMetricsSchema.nullable().meta({
+          description:
+            "The entity lens over the CURRENT per-UID incentive distribution (miners only). Incentive is the chain's live ranking and already a share, so `total` is the miners' summed incentive. Null when no miner carries any.",
+        }),
+        uid: ConcentrationMetricsSchema.nullable().meta({
+          description:
+            "The per-UID lens over the same current incentive distribution.",
+        }),
+      })
+      .nullable()
+      .optional()
+      .meta({
+        description:
+          "THE CAPTURE TRIPWIRE: the same two lenses over the CURRENT metagraph, beside the windowed ones -- because a window aggregate smooths away a mid-window capture event. SN75 reported a 30d uid gini of 0.77 while one UID held incentive 0.9908 live; when these lenses diverge violently from `concentration`, trust these. Null when the current-metagraph store has no rows for this subnet.",
+      }),
     field_sources: FieldSourcesSchema.optional(),
   })
   .describe(

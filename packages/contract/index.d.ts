@@ -11769,6 +11769,16 @@ export interface components {
                     storage: string | null;
                 };
             };
+            /** @description THE CAPTURE TRIPWIRE: the same two lenses over the CURRENT metagraph, beside the windowed ones -- because a window aggregate smooths away a mid-window capture event. SN75 reported a 30d uid gini of 0.77 while one UID held incentive 0.9908 live; when these lenses diverge violently from `concentration`, trust these. Null when the current-metagraph store has no rows for this subnet. */
+            live?: {
+                block_number: number | null;
+                /** @description Epoch-ms stamp of the newest current-metagraph row the lenses below were computed from -- read this against the window: these lenses are NOW, the ones under `concentration` are the whole window. */
+                captured_at: number | null;
+                /** @description The entity lens over the CURRENT per-UID incentive distribution (miners only). Incentive is the chain's live ranking and already a share, so `total` is the miners' summed incentive. Null when no miner carries any. */
+                entity: components["schemas"]["ConcentrationMetrics"] | null;
+                /** @description The per-UID lens over the same current incentive distribution. */
+                uid: components["schemas"]["ConcentrationMetrics"] | null;
+            } | null;
             /** @description Distinct non-validator UIDs seen anywhere in the window — the denominator for the persistence block. */
             miner_uid_count: number;
             netuid: number;
@@ -44684,6 +44694,18 @@ export interface operations {
                      *           "example": {
                      *             "kind": "measured",
                      *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "live": {
+                     *           "block_number": 5000000,
+                     *           "captured_at": 0.5,
+                     *           "entity": {
+                     *             "holders": 1,
+                     *             "nakamoto_coefficient": 1
+                     *           },
+                     *           "uid": {
+                     *             "holders": 1,
+                     *             "nakamoto_coefficient": 1
                      *           }
                      *         },
                      *         "miner_uid_count": 1,

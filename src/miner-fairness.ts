@@ -73,6 +73,8 @@ export const SUBNET_MINER_FAIRNESS_FIELD_SOURCES = {
   },
   "concentration.entity": { kind: "measured", storage: "neuron_daily" },
   "concentration.uid": { kind: "measured", storage: "neuron_daily" },
+  "live.entity": { kind: "measured", storage: "neurons" },
+  "live.uid": { kind: "measured", storage: "neurons" },
   uids_per_entity: { kind: "measured", storage: "neuron_daily" },
 } as const;
 
@@ -164,10 +166,61 @@ function fairnessPoint(date: string, dayRows: Row[]): Row {
  * Null-safe: a cold or absent store yields `days_covered: 0` and null
  * distributions, never a throw and never a 404.
  */
+/**
+ * The live concentration block, from CURRENT `neurons` rows (#11091).
+ *
+ * The windowed lenses are this route's headline and they are doing their
+ * documented job -- persistence over a snapshot -- but a mid-window capture
+ * event is exactly what a window aggregate smooths away: SN75 reported a 30d
+ * uid gini of 0.77 while the live metagraph had ONE UID at incentive 0.990829
+ * and every other earner at 0.000107. This block is the same two lenses over
+ * the CURRENT per-UID incentive distribution, so the divergence is visible in
+ * one response instead of requiring a second call a caller does not know to
+ * make.
+ *
+ * Null when no current rows were supplied (a cold store is a real state) --
+ * never a fabricated smooth distribution.
+ */
+function liveConcentration(liveRows: Row[] | null | undefined): Row | null {
+  const list = Array.isArray(liveRows) ? liveRows : [];
+  const miners = list.filter((row) => !isValidator(row?.validator_permit));
+  if (miners.length === 0) return null;
+  const minerRows = miners.map((row) => ({
+    coldkey: row?.coldkey,
+    // The lens rides `incentive` rather than `emission_tao`: incentive IS the
+    // chain's current miner ranking (what the SN75 capture showed), and it is
+    // already a share -- no tempo or denomination question to answer.
+    emission_tao: nonNegativeCellOrNull(row?.incentive) ?? 0,
+  }));
+  const entities = groupByEntity(minerRows);
+  // Newest stamp across the rows: the store writes one capture per pass, but
+  // `max` stays honest if a pass ever lands mid-read.
+  let capturedAt: number | null = null;
+  let blockNumber: number | null = null;
+  for (const row of miners) {
+    const at = nonNegativeCellOrNull(row?.captured_at);
+    if (at !== null && (capturedAt === null || at > capturedAt))
+      capturedAt = at;
+    const block = nonNegativeCellOrNull(row?.block_number);
+    if (block !== null && (blockNumber === null || block > blockNumber))
+      blockNumber = block;
+  }
+  return {
+    captured_at: capturedAt,
+    block_number: blockNumber,
+    entity: computeConcentration(entities.emission),
+    uid: computeConcentration(minerRows.map((r) => r.emission_tao)),
+  };
+}
+
 export function buildSubnetMinerFairness(
   rows: Row[] | null | undefined,
   netuid: unknown,
-  { window, capped }: { window?: string; capped?: boolean } = {},
+  {
+    window,
+    capped,
+    liveRows,
+  }: { window?: string; capped?: boolean; liveRows?: Row[] | null } = {},
 ): Row {
   const list = Array.isArray(rows) ? rows : [];
 
@@ -264,6 +317,7 @@ export function buildSubnetMinerFairness(
       entity: entityLens as ConcentrationScorecard | null,
       uid: uidLens as ConcentrationScorecard | null,
     },
+    live: liveConcentration(liveRows),
     field_sources: SUBNET_MINER_FAIRNESS_FIELD_SOURCES,
   };
 }

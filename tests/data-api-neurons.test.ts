@@ -1597,6 +1597,63 @@ test("GET /api/v1/subnets/:netuid/miner-fairness clusters by controlling entity"
   assert.ok((entityLens.gini as number) > (uidLens.gini as number));
 });
 
+// #11091: the live block rides the same response, from the CURRENT neurons
+// table -- the SN75 shape driven end-to-end through the real DDL: a smooth
+// window beside a live single-UID capture, plus a null-incentive row that must
+// read as zero rather than poison the lens.
+test("miner-fairness carries the live capture tripwire beside the window", async () => {
+  const date = dayAgo(1);
+  for (const uid of [0, 1]) {
+    await insertDaily({
+      uid,
+      coldkey: `5Even${uid}`,
+      validator_permit: 0,
+      emission_tao: 1,
+      snapshot_date: date,
+    });
+  }
+  await insertNeuron({
+    uid: 238,
+    coldkey: "5Captor",
+    validator_permit: 0,
+    incentive: 0.990829,
+  });
+  await insertNeuron({
+    uid: 1,
+    hotkey: "5Hot7-1",
+    coldkey: "5Crumb",
+    validator_permit: 0,
+    incentive: 0.000107,
+  });
+  await insertNeuron({
+    uid: 2,
+    hotkey: "5Hot7-2",
+    coldkey: "5Null",
+    validator_permit: 0,
+    incentive: null,
+  });
+  await insertNeuron({
+    uid: 3,
+    hotkey: "5Hot7-3",
+    coldkey: "5Vali",
+    validator_permit: 1,
+    incentive: 0.5,
+  });
+
+  const res = await call(req("/api/v1/subnets/7/miner-fairness"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  const live = body.live as Row;
+  assert.ok(live, "the live block must ride the response");
+  const liveUid = live.uid as Row;
+  // One UID holds ~99.99% of live incentive: the tripwire the window hides.
+  assert.equal(liveUid.nakamoto_coefficient, 1);
+  // Three miners counted (the null-incentive one reads as zero, the validator
+  // is excluded), two of them positive holders.
+  assert.equal(liveUid.holders, 2);
+  assert.equal(live.captured_at, CAPTURED_AT);
+});
+
 test("miner-fairness counts a registered UID that earns nothing", async () => {
   // The headline fact: the population includes UIDs on zero, and a read that
   // dropped them would report 100% of miners earning on every subnet.

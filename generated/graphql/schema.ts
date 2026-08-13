@@ -2660,6 +2660,11 @@ type SubnetMinerFairness {
   concentration: SubnetMinerFairnessConcentration
 
   """
+  THE CAPTURE TRIPWIRE: the same two lenses over the CURRENT metagraph, beside the windowed ones -- because a window aggregate smooths away a mid-window capture event. SN75 reported a 30d uid gini of 0.77 while one UID held incentive 0.9908 live; when these lenses diverge violently from \`concentration\`, trust these. Null when the current-metagraph store has no rows for this subnet.
+  """
+  live: SubnetMinerFairnessLive
+
+  """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
   """
   field_sources: JSON
@@ -2710,6 +2715,60 @@ type SubnetMinerFairnessConcentration {
   The same measures per UID, published beside the entity lens rather than instead of it. Where the two diverge, several UIDs share an operator. Same distribution and unit as the entity lens: window-summed daily per-tempo alpha samples.
   """
   uid: ConcentrationMetrics
+}
+
+type SubnetMinerFairnessLive {
+  """
+  Epoch-ms stamp of the newest current-metagraph row the lenses below were computed from -- read this against the window: these lenses are NOW, the ones under \`concentration\` are the whole window.
+  """
+  captured_at: Float
+  block_number: Int
+
+  """
+  The entity lens over the CURRENT per-UID incentive distribution (miners only). Incentive is the chain's live ranking and already a share, so \`total\` is the miners' summed incentive. Null when no miner carries any.
+  """
+  entity: SubnetMinerFairnessLiveEntity
+
+  """The per-UID lens over the same current incentive distribution."""
+  uid: SubnetMinerFairnessLiveUid
+}
+
+type SubnetMinerFairnessLiveEntity {
+  holders: Int!
+
+  """
+  The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit.
+  """
+  total: Float
+  gini: Float
+  hhi: Float
+  hhi_normalized: Float
+  nakamoto_coefficient: Int!
+  top_1pct_share: Float
+  top_5pct_share: Float
+  top_10pct_share: Float
+  top_20pct_share: Float
+  entropy: Float
+  entropy_normalized: Float
+}
+
+type SubnetMinerFairnessLiveUid {
+  holders: Int!
+
+  """
+  The sum of the distribution this lens was computed over, in that distribution's own unit and window -- the FIELD EMBEDDING this lens names both (window-summed per-tempo alpha samples on miner-fairness, incentive shares on performance, block counts on blocks-summary). Never comparable across routes: two lenses over different distributions share these measures, not a unit.
+  """
+  total: Float
+  gini: Float
+  hhi: Float
+  hhi_normalized: Float
+  nakamoto_coefficient: Int!
+  top_1pct_share: Float
+  top_5pct_share: Float
+  top_10pct_share: Float
+  top_20pct_share: Float
+  entropy: Float
+  entropy_normalized: Float
 }
 
 """

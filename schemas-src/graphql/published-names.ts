@@ -467,6 +467,10 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetMinerFairnessArtifactPoints: "SubnetMinerFairnessPoint",
   SubnetMinerFairnessArtifactPersistence: "SubnetMinerFairnessPersistence",
   SubnetMinerFairnessArtifactConcentration: "SubnetMinerFairnessConcentration",
+  // #11091: the live capture-tripwire block and its two lenses.
+  SubnetMinerFairnessArtifactLive: "SubnetMinerFairnessLive",
+  SubnetMinerFairnessArtifactLiveEntity: "SubnetMinerFairnessLiveEntity",
+  SubnetMinerFairnessArtifactLiveUid: "SubnetMinerFairnessLiveUid",
   // Both lenses collapse onto the ONE published component. The schema is
   // already shared in source (ConcentrationMetricsSchema); these entries are
   // what makes the reuse visible in the published contract rather than
