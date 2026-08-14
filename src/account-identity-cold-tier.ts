@@ -13,7 +13,7 @@ import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
-import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 
 // Both SELECT lists are derived from the same exported field set data-api's
 // reads are built on: latest-only is account + the 7 identity fields +
@@ -64,7 +64,7 @@ export async function loadAccountIdentityHistoryColdTier(
     return null;
   // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
   // reasonable trade and declining beats serving a page that is quietly wrong.
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   const where = [`account = '${addr}'`];
   const cursor = decodeCursor(query.cursor, CURSOR_ARITY);

@@ -101,7 +101,7 @@ import { storeAll } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
-import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";
@@ -178,7 +178,7 @@ export async function loadAccountTransfersColdTier(
   if (limit === null || offset === null || limit <= 0) return null;
   // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
   // reasonable trade and declining beats serving a page that is quietly wrong.
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   // An unusable address is a decline, not an unfiltered scan of every account.
   const addr = safeSs58Literal(ss58);
@@ -700,7 +700,7 @@ export async function loadValidatorNominatorsColdTier(
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   const sort = query.sort ?? DEFAULT_NOMINATOR_SORT;
   // A sort this tier cannot express would otherwise silently serve the default

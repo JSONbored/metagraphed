@@ -277,6 +277,94 @@ describe("no registered route serves an unlabelled decline (#10270)", () => {
   });
 });
 
+describe("no paginated route declines a deep offset in silence (#11142)", () => {
+  /**
+   * The sweep above cannot see this class, by construction.
+   *
+   * Its discriminator is the r2-sql failure generation, so it only considers
+   * routes whose lakehouse read was ATTEMPTED and failed. A decline taken
+   * before the query -- `offset` past OFFSET_EMULATION_CAP is checked before
+   * any SQL is built -- moves no generation, issues no request, and therefore
+   * looks identical to a route that simply had nothing to say.
+   *
+   * That is exactly how `/api/v1/extrinsics` shipped answering
+   * `extrinsic_count: 0, next_cursor: null` -- byte-identical to end-of-feed --
+   * as a cacheable 200 with millions of rows behind the offset.
+   *
+   * DEPTH IS THE DISCRIMINATOR, not a list of routes to remember. Each route is
+   * driven twice: if it asks the lakehouse at a shallow offset but goes silent
+   * at a deep one, it declined without querying, and that answer must say so.
+   * A route that never pages the lakehouse is skipped by its own behaviour, so
+   * a route added tomorrow is covered without editing this file.
+   */
+  const EVERY_ROUTE = [...API_ROUTES, ...FEED_ROUTES];
+
+  /** Named so the sweep cannot go quietly green on a smaller surface. */
+  const PAGED_ANCHOR = "/api/v1/extrinsics";
+
+  test("a route that stops querying at depth must label the answer", async () => {
+    const calls: string[] = [];
+    const countingLakehouse = (async (input: unknown) => {
+      calls.push(String(input));
+      throw new Error("r2 sql unreachable");
+    }) as unknown as typeof fetch;
+
+    const paged: string[] = [];
+    const unlabelled: string[] = [];
+
+    await withFetch(countingLakehouse, async () => {
+      for (const route of EVERY_ROUTE) {
+        const path = concretePath(route.path);
+
+        // Shallow: does this route page the lakehouse at all? A route that
+        // does not (a baked artifact, or one that rejects `offset` outright
+        // with a 400) needs no exemption entry -- it simply never qualifies.
+        calls.length = 0;
+        try {
+          await handleRequest(
+            apiRequest(`${path}?offset=0`),
+            LAKEHOUSE_ENV,
+            {},
+          );
+        } catch {
+          continue;
+        }
+        if (calls.length === 0) continue;
+        paged.push(route.path);
+
+        // Deep: past the emulated-offset ceiling.
+        calls.length = 0;
+        let deep: Response;
+        try {
+          deep = (await handleRequest(
+            apiRequest(`${path}?offset=${OFFSET_EMULATION_CAP + 10}`),
+            LAKEHOUSE_ENV,
+            {},
+          )) as Response;
+        } catch {
+          continue;
+        }
+        // Still querying: the answer is whatever the tier said, and the
+        // generation-based sweep above already owns that case.
+        if (calls.length > 0) continue;
+        // A non-200 is already an honest refusal.
+        if (deep.status !== 200) continue;
+        if (!deep.headers.get(DEGRADED_HEADER)) unlabelled.push(route.path);
+      }
+    });
+
+    assert.deepEqual(
+      unlabelled,
+      [],
+      "these stopped querying at depth and answered 200 anyway, with nothing to say the page was declined rather than empty",
+    );
+    assert.ok(
+      paged.includes(PAGED_ANCHOR),
+      `${PAGED_ANCHOR} no longer pages the lakehouse -- this sweep is measuring less than it thinks`,
+    );
+  });
+});
+
 describe("what the router label refuses to touch", () => {
   // The four early returns, each stated once. Driving them through a route
   // would need a route that happens to be in each state, which is how a

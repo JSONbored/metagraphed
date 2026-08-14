@@ -48,7 +48,7 @@ import {
   safeNameLiteral,
   safeSs58Literal,
 } from "./r2-sql.ts";
-import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { lakehouseHeadBlock } from "./blocks-cold-tier.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
@@ -204,7 +204,7 @@ export async function loadAccountEventsColdTier(
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   // An unusable address is a decline, not an unfiltered scan of every account.
   const addr = safeSs58Literal(ss58);
@@ -299,7 +299,7 @@ export async function loadSubnetEventsColdTier(
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   // An unusable netuid is a decline, not an unfiltered scan of every subnet.
   const subnet = safeBlockNumber(netuid);
@@ -365,7 +365,7 @@ export async function loadBlockEventsColdTier(
   const limit = safeBlockNumber(page.limit);
   const offset = safeBlockNumber(page.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   const height = await resolveBlockHeight(env, ref, network);
   if (height === null) return null;
