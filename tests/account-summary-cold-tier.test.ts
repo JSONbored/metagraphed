@@ -12,7 +12,10 @@
 // folded into the aggregate (it was the query that aborted -- see "two reads").
 import assert from "node:assert/strict";
 import { visibleInWindow } from "./helpers/scan-window.ts";
-import { accountSummaryShardKey } from "../src/account-summary-projection.ts";
+import {
+  ACCOUNT_SUMMARY_SHARDS,
+  accountSummaryShardKey,
+} from "../src/account-summary-projection.ts";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
@@ -669,7 +672,7 @@ describe("the projection short-circuits the aggregate leg (#11131)", () => {
                 json: async () => ({
                   schema_version: 1,
                   generated_at: "2026-08-14T00:00:00Z",
-                  shard_count: 256,
+                  shard_count: ACCOUNT_SUMMARY_SHARDS,
                   account_count: 1,
                   accounts: { [SS58]: groups },
                 }),
