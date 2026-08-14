@@ -469,6 +469,11 @@ export async function mcpServerCardResponse(
     // SEP-2127's remotes[] shape, mirroring server.json's own entry, so a
     // registry consumer and a card consumer read one vocabulary.
     remotes: [{ type: "streamable-http", url: `${base}/mcp` }],
+    // The core profile (#11164): the same server, listing only the curated
+    // ~23-tool golden path -- a context diet for clients that hold tool
+    // definitions in the prompt. Calls are unrestricted on both endpoints;
+    // every count on this card describes /mcp, the full listing.
+    core_endpoint: `${base}/mcp/core`,
     websiteUrl: "https://metagraph.sh",
     // PRIMITIVES ARE DELIBERATELY NOT EMBEDDED (#11170). The card used to
     // carry `tools: listToolDefinitions()` -- all 240 full definitions, 1.6 MB

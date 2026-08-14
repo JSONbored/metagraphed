@@ -36,6 +36,7 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
+import { isMcpCorePath } from "./github-oauth.ts";
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { serveWithSdk } from "./mcp-sdk-adapter.ts";
@@ -1936,6 +1937,10 @@ const asCredentialStoreEnv = (env: Env) =>
 interface McpCtx {
   env: Env;
   domain?: string;
+  /** Which listing profile this request's endpoint serves (#11164): "core"
+   * for /mcp/core, "full" otherwise. Filters tools/list ONLY -- dispatch,
+   * validation, tripwire and analytics are identical on both endpoints. */
+  profile?: McpProfile;
   sessionId?: string | null;
   // #9789: the protocol revision THIS request declared, which decides whether
   // a tool result still needs the compatibility text block. Optional because
@@ -15420,8 +15425,102 @@ export function withAdvertisedRequiredIntent(
   return { ...schema, required: [...required, MCP_INTENT_ARG] };
 }
 
-export function listToolDefinitions() {
-  return MCP_TOOLS.map((tool) => {
+/**
+ * The core profile: the ~25 tools behind /mcp/core (#11164).
+ *
+ * ## WHY A SECOND ENDPOINT AND NOT A SMALLER CATALOGUE
+ *
+ * The full tools/list serializes to ~1.6 MB -- roughly 406K tokens for any
+ * client that holds tool definitions in model context, which is most of them.
+ * The wire was never the cost (gzip takes it to ~190 KB); the CONTEXT is, and
+ * no encoding reaches that. The only lever that does is listing fewer tools,
+ * and removing tools from /mcp would break "Bittensor in a box". So /mcp
+ * stays whole and /mcp/core lists this set: the golden path the served skill
+ * and llms.txt already teach -- discover, verify, integrate, call, screen --
+ * plus the escape hatches (`ask`, `get_more_tools`) that keep a thin session
+ * from ever being stranded.
+ *
+ * ## THE PROFILE FILTERS LISTING, NEVER CALLS
+ *
+ * A session connected to /mcp/core can still tools/call all 240 tools: the
+ * profile is a context diet, not an authorization boundary. Refusing the call
+ * would force a reconnect at the exact moment an agent discovered it needed
+ * more, and every dispatch-side control (validation, tripwire, analytics,
+ * rate limits) is per-tool, not per-profile, so nothing weakens.
+ *
+ * ## DERIVATION
+ *
+ * Seeded from the documented golden path (public/skills/bittensor/SKILL.md +
+ * llms.txt), which is the commitment the docs already make about what matters.
+ * Re-derive from $mcp_tool_call (PostHog) once that access is in-session; the
+ * set should track measured use, not taste.
+ *
+ * Validated at load: a name that stops matching a registered tool throws with
+ * the name, so a rename cannot silently shrink the profile.
+ */
+export const MCP_CORE_TOOL_NAMES: readonly string[] = [
+  // Discover
+  "search_subnets",
+  "find_subnets_by_capability",
+  "semantic_search",
+  "list_subnets",
+  "compare_subnets",
+  // Ask (the whole-question shortcut, and the stranded-session escape hatch)
+  "ask",
+  "get_more_tools",
+  // Verify
+  "get_subnet",
+  "get_subnet_health",
+  "registry_summary",
+  "get_coverage",
+  "get_feed",
+  // Integrate + call
+  "list_subnet_apis",
+  "get_api_schema",
+  "call_subnet_surface",
+  "store_surface_credential",
+  "get_best_rpc_endpoint",
+  // Screen economically
+  "get_economics",
+  "get_subnet_economics",
+  "get_subnet_cost_to_participate",
+  "get_subnet_emission_split_history",
+  "get_subnet_miner_fairness",
+  "get_tao_usd",
+];
+
+export type McpProfile = "full" | "core";
+
+/**
+ * Load-validation for the core profile, EXPORTED so its throw arm is provable:
+ * the guard's whole job is to fire on a rename, and a guard whose failure arm
+ * no test can reach is the pattern this repo keeps finding reverted (#10914).
+ */
+export function assertCoreNamesRegistered(
+  names: readonly string[],
+  registered: ReadonlySet<string>,
+): ReadonlySet<string> {
+  const missing = names.filter((name) => !registered.has(name));
+  if (missing.length > 0) {
+    throw new Error(
+      `MCP_CORE_TOOL_NAMES names unregistered tool(s): ${missing.join(", ")}. ` +
+        "A renamed tool must update the core profile in the same change.",
+    );
+  }
+  return new Set(names);
+}
+
+const CORE_TOOL_NAME_SET: ReadonlySet<string> = assertCoreNamesRegistered(
+  MCP_CORE_TOOL_NAMES,
+  new Set(MCP_TOOLS.map((tool) => tool.name)),
+);
+
+export function listToolDefinitions(profile: McpProfile = "full") {
+  const tools =
+    profile === "core"
+      ? MCP_TOOLS.filter((tool) => CORE_TOOL_NAME_SET.has(tool.name))
+      : MCP_TOOLS;
+  return tools.map((tool) => {
     // NORMALISED HERE, not at the spread below (#9654). The sentinel is a Zod
     // artifact of `z.int()`, not a property of which side of the call a schema
     // describes, so it landed on 1,083 of 1,083 output integer fields while
@@ -17061,18 +17160,22 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
             : rpcError(
                 id,
                 RPC_INVALID_PARAMS,
-                "tools/list is not paginated on this server: the full tool " +
-                  "catalogue is returned in one response and no `nextCursor` " +
-                  "is ever issued, so there is no cursor to resume from. Omit " +
-                  "`cursor`.",
+                "tools/list is not paginated on this server: this " +
+                  "endpoint's whole listing is returned in one response and " +
+                  "no `nextCursor` is ever issued, so there is no cursor to " +
+                  "resume from. Omit `cursor`.",
               );
         }
-        const tools = listToolDefinitions();
+        const tools = listToolDefinitions(ctx?.profile);
         // Recorded for a notification too: the discovery happened either way,
         // and dropping it would undercount exactly the crawler traffic this
-        // event exists to make visible.
+        // event exists to make visible. `profile` rides along so core-endpoint
+        // adoption is measurable against the full listing (#11164).
         scheduleMcpToolsListEvent(ctx, {
           toolCount: tools.length,
+          // Absent (a hand-built test ctx) reads as the full profile in
+          // analytics; the real dispatcher always sets it.
+          profile: ctx?.profile,
           // The names themselves, per the wire contract: joined against
           // $mcp_tool_call on $session_id they answer "advertised but never
           // called", which the count alone cannot.
@@ -17336,8 +17439,18 @@ async function buildContext(
   accountId: string | null = null,
 ) {
   let domain;
+  let profile: McpProfile = "full";
   try {
-    domain = new URL(request.url).host || PRIMARY_DOMAIN;
+    const requestUrl = new URL(request.url);
+    // An http(s) Request cannot carry an empty host -- the constructor
+    // refuses relative and hostless URLs -- so no `|| PRIMARY_DOMAIN` arm
+    // here; the catch below is the only real fallback.
+    domain = requestUrl.host;
+    // The endpoint IS the profile (#11164): /mcp/core lists the curated core
+    // set, everything else lists the whole catalogue. Derived per request
+    // rather than stored on the session, because a client binds its session
+    // to one endpoint URL anyway and stored state could only disagree.
+    profile = isMcpCorePath(requestUrl.pathname) ? "core" : "full";
   } catch {
     domain = PRIMARY_DOMAIN;
   }
@@ -17376,6 +17489,7 @@ async function buildContext(
   return {
     env,
     domain,
+    profile,
     sessionId,
     // Already validated by handleMcpRequest, so this is either a version we
     // support or absent (#9789).
