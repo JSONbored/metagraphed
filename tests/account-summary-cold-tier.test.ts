@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
-  ACCOUNT_SUMMARY_SHARDS,
+  ACCOUNT_SUMMARY_POINTER_KEY,
   accountSummaryShardKey,
 } from "../src/account-summary-projection.ts";
 import { readFileSync } from "node:fs";
@@ -660,24 +660,38 @@ describe("all three account-summary surfaces go through the one composer", () =>
 });
 
 describe("the projection short-circuits the aggregate leg (#11131)", () => {
-  const SHARD_KEY = accountSummaryShardKey(SS58);
+  const GEN = "20260814T100000Z";
+  const SHARDS = 16384;
+  const SHARD_KEY = accountSummaryShardKey(SS58, SHARDS, GEN);
 
   /** An archive binding holding one shard for this account. */
   function archive(groups: unknown[] | null) {
+    const stamp = new Date().toISOString();
     return {
       METAGRAPH_ARCHIVE: {
-        get: async (key: string) =>
-          key === SHARD_KEY && groups
-            ? {
-                json: async () => ({
-                  schema_version: 1,
-                  generated_at: "2026-08-14T00:00:00Z",
-                  shard_count: ACCOUNT_SUMMARY_SHARDS,
-                  account_count: 1,
-                  accounts: { [SS58]: groups },
-                }),
-              }
-            : null,
+        get: async (key: string) => {
+          if (!groups) return null;
+          if (key === ACCOUNT_SUMMARY_POINTER_KEY) {
+            return {
+              json: async () => ({
+                schema_version: 1,
+                generation: GEN,
+                shard_count: SHARDS,
+                generated_at: stamp,
+                account_count: 1,
+              }),
+            };
+          }
+          if (key === SHARD_KEY) {
+            return {
+              json: async () => ({
+                schema_version: 1,
+                accounts: { [SS58]: groups },
+              }),
+            };
+          }
+          return null;
+        },
       },
     } as never;
   }
