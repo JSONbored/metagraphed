@@ -277,6 +277,50 @@ describe("loadAccountSummaryProjection", () => {
     ]);
   });
 
+  test("a non-object body is refused, at the pointer and at the shard", async () => {
+    // `readJson` returns null for anything that parses but is not an object --
+    // a bare string or number would otherwise be indexed into and read as an
+    // empty payload rather than a refusal.
+    const badPointer = archive({ [ACCOUNT_SUMMARY_POINTER_KEY]: "nope" });
+    assert.equal(
+      await loadAccountSummaryProjection(badPointer.env, HOT, FRESH),
+      null,
+      "pointer",
+    );
+    const badShard = archive({
+      [ACCOUNT_SUMMARY_POINTER_KEY]: pointer(),
+      [accountSummaryShardKey(HOT, SHARDS, GEN)]: 42,
+    });
+    assert.equal(
+      await loadAccountSummaryProjection(badShard.env, HOT, FRESH),
+      null,
+      "shard",
+    );
+  });
+
+  test("a shard with no accounts map, or a non-array account, declines", async () => {
+    // Both mean "the object exists but says nothing about this account", which
+    // is a decline rather than an empty answer.
+    for (const accounts of [
+      undefined,
+      "nope",
+      { [HOT]: { not: "an array" } },
+    ]) {
+      const store = archive({
+        [ACCOUNT_SUMMARY_POINTER_KEY]: pointer(),
+        [accountSummaryShardKey(HOT, SHARDS, GEN)]: {
+          schema_version: ACCOUNT_SUMMARY_SCHEMA_VERSION,
+          accounts,
+        },
+      });
+      assert.equal(
+        await loadAccountSummaryProjection(store.env, HOT, FRESH),
+        null,
+        JSON.stringify(accounts),
+      );
+    }
+  });
+
   test("an account present with no usable groups declines", async () => {
     const store = archive(published({ [HOT]: [] }));
     assert.equal(
