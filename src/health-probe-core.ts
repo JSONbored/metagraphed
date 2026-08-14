@@ -178,6 +178,12 @@ export function acceptHeader(expect: unknown): string {
 interface ProbeOptions {
   isUnsafeUrl?: (url: unknown) => boolean | Promise<boolean>;
   fetchImpl?: typeof fetch;
+  /** Web Bot Auth (metagraphed-infra#562): stamps Signature/Signature-Input/
+   * Signature-Agent onto an outbound probe so origins can verify the fleet
+   * cryptographically. Absent (local, CI, unsigned deployments) means the
+   * probe goes out exactly as before -- the signature is additive and must
+   * never be the reason a probe fails. */
+  signRequest?: (url: string, headers: Headers) => Promise<void>;
   connect?: (
     url: string,
     calls: typeof SUBTENSOR_PROBE_CALLS,
@@ -209,7 +215,11 @@ export async function probeUrl(
   options: ProbeOptions = {},
   redirectCount = 0,
 ): Promise<HttpProbeResult> {
-  const { isUnsafeUrl = isUnsafePublicUrl, fetchImpl = fetch } = options;
+  const {
+    isUnsafeUrl = isUnsafePublicUrl,
+    fetchImpl = fetch,
+    signRequest,
+  } = options;
 
   if (await isUnsafeUrl(url)) {
     return {
@@ -227,12 +237,17 @@ export async function probeUrl(
   const started = performance.now();
 
   try {
+    const probeHeaders = new Headers({
+      accept,
+      "user-agent": "metagraphed-smoke-probe/0.0",
+    });
+    // Signed AFTER the safety guard and per hop: a redirect re-enters
+    // probeUrl, so each authority gets its own signature rather than the
+    // first hop's riding to a second host it was never bound to.
+    if (signRequest) await signRequest(url, probeHeaders);
     const response = await fetchImpl(url, {
       method,
-      headers: {
-        accept,
-        "user-agent": "metagraphed-smoke-probe/0.0",
-      },
+      headers: probeHeaders,
       redirect: "manual",
       signal: controller.signal,
     });
