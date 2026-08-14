@@ -165,6 +165,30 @@ export type VerifyIntegrationOutput = z.infer<
   typeof VerifyIntegrationOutputSchema
 >;
 
+/**
+ * The verbs this tool will send, and the subset that may carry a body.
+ *
+ * ONE DECLARATION because three places need it: the published input enum
+ * below, the dispatch guard that refuses anything else, and the request
+ * builder that decides whether a body is attached. They were three literals,
+ * and the enum was the one that silently bounded the tool -- 184 DELETE and 53
+ * PATCH operations declared across the fleet's captured specs were unreachable
+ * because a verb was missing from a list nothing pointed at (#11146).
+ *
+ * DELETE carries no body. HTTP permits one and most servers ignore it, and
+ * accepting it would mean validating against a requestBody the operation
+ * essentially never declares.
+ */
+export const CALL_SURFACE_METHODS = [
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+] as const;
+export const CALL_SURFACE_BODY_METHODS = ["POST", "PUT", "PATCH"] as const;
+
 export const CallSubnetSurfaceInputSchema = z
   .object({
     surface_id: surfaceIdSchema(),
@@ -188,9 +212,21 @@ export const CallSubnetSurfaceInputSchema = z
       // wrong assertion (#9659).
       .meta({ format: "uri-reference", examples: ["/v1/status"] }),
     method: z
-      .enum(["GET", "HEAD", "POST", "PUT"])
+      // PATCH and DELETE joined the four originals in #11146: across the
+      // fleet's captured specs, 184 DELETE and 53 PATCH operations were
+      // declared by subnets and unreachable through this tool purely because
+      // the verb was not in this enum. The gate is unchanged and does the real
+      // work -- the exact path+method must be declared in the surface's own
+      // captured schema, and an authenticated surface still needs the caller's
+      // own credential -- so widening the verb set grants no authority the
+      // caller did not already have calling the API directly.
+      .enum(CALL_SURFACE_METHODS)
       .optional()
-      .describe("HTTP method to use for the call.")
+      .describe(
+        "HTTP method to use for the call. A destructive verb (PATCH/DELETE) is " +
+          "accepted only when the surface's captured schema declares that exact " +
+          "path+method, and is sent with the caller's own credential.",
+      )
       .meta({ examples: ["GET"] }),
     // Branch order (object, then string) mirrors the hand-written original's
     // `type: ["object", "string"]`.

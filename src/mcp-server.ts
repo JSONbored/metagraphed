@@ -1107,6 +1107,8 @@ import {
   VerifyIntegrationInputSchema,
   VerifyIntegrationOutputSchema,
   CallSubnetSurfaceInputSchema,
+  CALL_SURFACE_METHODS,
+  CALL_SURFACE_BODY_METHODS,
   CallSubnetSurfaceOutputSchema,
   StoreSurfaceCredentialInputSchema,
   StoreSurfaceCredentialOutputSchema,
@@ -14419,7 +14421,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "call_subnet_surface",
     title: "Call a subnet's live API and return its response",
     description:
-      "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). For POST/PUT, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, cookie, or merged into a POST/PUT JSON body (MCP execute Phase 3-4, #7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call.",
+      "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT/PATCH/DELETE) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. PATCH and DELETE are reachable on the same terms as every other verb and grant no authority the caller lacks calling the API directly: the operation must be declared, and an authenticated surface still needs the caller's own credential. For POST/PUT/PATCH, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, cookie, or merged into a POST/PUT/PATCH JSON body (MCP execute Phase 3-4, #7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call.",
     inputSchema: inputJsonSchema(CallSubnetSurfaceInputSchema),
     async handler(
       args: z.infer<typeof CallSubnetSurfaceInputSchema>,
@@ -14468,19 +14470,29 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (hasMethod) {
         // hasMethod already proved args.method is a non-empty string.
         normalizedMethod = (args.method as string).toUpperCase();
-        if (!["GET", "HEAD", "POST", "PUT"].includes(normalizedMethod)) {
-          throw toolError(
-            "invalid_params",
-            "`method` must be GET, HEAD, POST, or PUT.",
-          );
-        }
         if (
-          hasBodyArg &&
-          (normalizedMethod === "GET" || normalizedMethod === "HEAD")
+          !(CALL_SURFACE_METHODS as readonly string[]).includes(
+            normalizedMethod,
+          )
         ) {
           throw toolError(
             "invalid_params",
-            "`body` is only valid with method POST or PUT.",
+            `\`method\` must be ${CALL_SURFACE_METHODS.join(", ")}.`,
+          );
+        }
+        // DELETE joins GET/HEAD here rather than with the body-carrying verbs:
+        // a request body on DELETE is permitted by HTTP and ignored by most
+        // servers, and accepting one would mean validating it against a
+        // requestBody the operation almost never declares.
+        if (
+          hasBodyArg &&
+          !(CALL_SURFACE_BODY_METHODS as readonly string[]).includes(
+            normalizedMethod,
+          )
+        ) {
+          throw toolError(
+            "invalid_params",
+            `\`body\` is only valid with method ${CALL_SURFACE_BODY_METHODS.join(", ")}.`,
           );
         }
       }
