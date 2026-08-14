@@ -13,9 +13,11 @@ import { SEND_BATCH_MAX } from "../src/lane-queue.ts";
 import worker, {
   fetchSweepText,
   handleScheduled,
+  sweepRecordFor,
   sweepableSubnets,
 } from "../workers/api.ts";
 import { LANE_HEARTBEAT_CRON } from "../workers/config.ts";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 import {
@@ -407,24 +409,36 @@ describe("the worker's two halves of the lane", () => {
   /** BOTH bindings stubbed: readArtifact picks a storage tier per path, and
    * /metagraph/subnets.json is r2-tier -- an ASSETS-only env serves nothing for
    * it and the test would pass while proving nothing. */
-  function artifactEnv(payload: unknown) {
-    const path = "/metagraph/subnets.json";
+  /** TWO artifacts, keyed by path, because the lane reads two.
+   *
+   * The single-payload version this replaces answered every path with the
+   * subnet list, which is precisely how #10818 stayed invisible: the fixtures
+   * put `surfaces` on the list record, the published artifact never has, and a
+   * helper that serves one blob for any path cannot tell those apart. */
+  function artifactEnv(payload: unknown, surfacesPayload?: unknown) {
+    const bodies = new Map<string, unknown>();
+    if (payload != null) bodies.set("/metagraph/subnets.json", payload);
+    if (surfacesPayload != null) {
+      bodies.set("/metagraph/surfaces.json", surfacesPayload);
+    }
     return {
       ASSETS: {
         async fetch(request: Request) {
           const { pathname } = new URL(request.url);
-          return pathname === path && payload != null
-            ? Response.json(payload as never)
+          const body = bodies.get(pathname);
+          return body != null
+            ? Response.json(body as never)
             : new Response("{}", { status: 404 });
         },
       },
       METAGRAPH_ARCHIVE: {
         async get(key: string) {
           const pathname = `/metagraph/${String(key).replace(/^latest\//, "")}`;
-          return pathname === path && payload != null
+          const body = bodies.get(pathname);
+          return body != null
             ? {
                 async json() {
-                  return payload;
+                  return body;
                 },
               }
             : null;
@@ -433,18 +447,58 @@ describe("the worker's two halves of the lane", () => {
     };
   }
 
+  /** An env serving ONE subnet's `/metagraph/surfaces/{netuid}.json`, which is
+   * the artifact the resolver reads. `null` body means the artifact is absent,
+   * which must not read as "the subnet declares nothing". */
+  function surfaceEnv(netuid: number, body: unknown) {
+    const target = `/metagraph/surfaces/${netuid}.json`;
+    return {
+      ASSETS: {
+        async fetch(request: Request) {
+          const { pathname } = new URL(request.url);
+          return pathname === target && body != null
+            ? Response.json(body as never)
+            : new Response("{}", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          const p = `/metagraph/${String(key).replace(/^latest\//, "")}`;
+          return p === target && body != null
+            ? {
+                async json() {
+                  return body;
+                },
+              }
+            : null;
+        },
+      },
+    };
+  }
+
+  /** The shape `/metagraph/surfaces.json` actually publishes: one flat list,
+   * each surface carrying its own `netuid`. */
+  function surfacesArtifact(
+    rows: Array<{ netuid: unknown; kind?: string; url?: string }>,
+  ) {
+    return { surfaces: rows };
+  }
+
   test("reads the subnet list from the served artifact, skipping root", async () => {
     // Root is emission-ineligible, so there is no owner cut to account for and
     // nothing this sweep is looking for on its behalf.
     const out = await sweepableSubnets(
-      artifactEnv({
-        subnets: [
-          { netuid: 0, surfaces: [] },
-          { netuid: 64, surfaces: [] },
-          { netuid: "nope" },
-          null,
-        ],
-      }) as never,
+      artifactEnv(
+        // NO `surfaces` on the list record -- that is the published shape, and
+        // fixtures that invent one are what hid #10818 for the lane's whole life.
+        {
+          subnets: [{ netuid: 0 }, { netuid: 64 }, { netuid: "nope" }, null],
+        },
+        surfacesArtifact([
+          { netuid: 0, kind: "docs", url: "https://root.test" },
+          { netuid: 64, kind: "docs", url: "https://sixtyfour.test" },
+        ]),
+      ) as never,
     );
     assert.deepEqual(
       out.map((s) => s.netuid),
@@ -464,9 +518,103 @@ describe("the worker's two halves of the lane", () => {
   });
 
   test("a non-array subnets key is not iterated", async () => {
+    // The surfaces artifact is supplied so this reaches the subnet loop at all:
+    // without it the missing-artifact guard returns first and the assertion
+    // would pass for the wrong reason.
     assert.deepEqual(
-      await sweepableSubnets(artifactEnv({ subnets: "not a list" }) as never),
+      await sweepableSubnets(
+        artifactEnv({ subnets: "not a list" }, surfacesArtifact([])) as never,
+      ),
       [],
+    );
+  });
+
+  test("surfaces come from the per-subnet SURFACES artifact, not the subnet list", async () => {
+    // THE BUG THIS LANE SHIPPED WITH. /metagraph/subnets.json publishes
+    // `surface_count` and never `surfaces[]`, so every sweep read undefined and
+    // recorded `no-sources`. Measured 2026-08-14: 128 sweeps, 0 sources
+    // checked, 0 candidates, against 2,900 sweepable surfaces published.
+    const record = await sweepRecordFor(
+      surfaceEnv(64, {
+        surfaces: [
+          { kind: "docs", url: "https://example.com/docs" },
+          { kind: "website", url: "https://example.com" },
+          { kind: "openapi", url: "https://example.com/openapi.json" },
+        ],
+      }) as never,
+      64,
+      { netuid: 64, surface_count: 3 },
+    );
+    assert.deepEqual(sweepableSources(record), [
+      "https://example.com/docs",
+      "https://example.com",
+    ]);
+  });
+
+  test("a subnet that is no longer registered resolves to null, not an empty sweep", async () => {
+    // Enqueued, then delisted. A resolved absence, which the consumer records
+    // as such -- distinct from a subnet we could not read.
+    assert.equal(
+      await sweepRecordFor(
+        surfaceEnv(64, { surfaces: [] }) as never,
+        64,
+        undefined,
+      ),
+      null,
+    );
+  });
+
+  test("an UNREADABLE surfaces artifact THROWS rather than sweeping with none", async () => {
+    // `no-sources` is a claim about the SUBNET. Publishing it because OUR
+    // artifact was unavailable would be a finding built out of our own outage
+    // -- the conflation `unreachable` exists to prevent. A throw retries the
+    // message instead of persisting a false negative.
+    await assert.rejects(
+      () => sweepRecordFor(surfaceEnv(64, null) as never, 64, { netuid: 64 }),
+      /surfaces artifact unavailable/,
+    );
+  });
+
+  test("a non-array surfaces key resolves to an empty list, not undefined", async () => {
+    const record = await sweepRecordFor(
+      surfaceEnv(64, { surfaces: "not a list" }) as never,
+      64,
+      { netuid: 64 },
+    );
+    assert.deepEqual((record as { surfaces: unknown }).surfaces, []);
+    assert.deepEqual(sweepableSources(record), []);
+  });
+
+  test("against the REAL published artifacts, the lane finds sources to sweep", async () => {
+    // THE GUARD THAT WOULD HAVE CAUGHT #10818, and the reason it is bound to
+    // the built tree rather than a fixture.
+    //
+    // Every unit test above passes hand-made records, so all of them stayed
+    // green while the lane read `surfaces` from an artifact that has never
+    // published it -- 128 sweeps, 0 sources checked, for the lane's whole life.
+    // A fixture can only prove the code agrees with the fixture.
+    //
+    // This asserts the contract that actually matters: fed the artifacts this
+    // repo really publishes, the sweep has something to fetch. If either
+    // artifact's shape moves again, this fails here instead of turning into
+    // 129 silent `no-sources` rows in production.
+    const env = createLocalArtifactEnv() as never;
+    const subnets = await sweepableSubnets(env);
+    assert.ok(
+      subnets.length > 100,
+      `expected the fleet, got ${subnets.length}`,
+    );
+    let withSources = 0;
+    for (const { netuid, record } of subnets.slice(0, 25)) {
+      const resolved = await sweepRecordFor(env, netuid, record);
+      if (sweepableSources(resolved).length > 0) withSources += 1;
+    }
+    // Measured 2026-08-14: 2,900 sweepable http(s) surfaces, and EVERY subnet
+    // carries at least one. A floor rather than an exact count, so adding or
+    // retiring a surface does not fail an unrelated PR.
+    assert.ok(
+      withSources > 12,
+      `only ${withSources}/25 sampled subnets have a sweepable source`,
     );
   });
 
@@ -735,25 +883,36 @@ describe("the queue wiring", () => {
 
 describe("the queue consumer, through the Worker's own handler", () => {
   /** The registry artifact plus a queue binding, as the Worker sees them. */
-  function queueEnv(payload: unknown) {
-    const target = "/metagraph/subnets.json";
-    const hit = (p: string) => p === target && payload != null;
+  /** Per-PATH bodies: the consumer reads the subnet list AND, for each message,
+   * that subnet's `/metagraph/surfaces/{netuid}.json`. A helper that answered
+   * every path with one payload is what let #10818 hide. */
+  function queueEnv(
+    payload: unknown,
+    surfacesByNetuid: Record<number, unknown> = {},
+  ) {
+    const bodies = new Map<string, unknown>();
+    if (payload != null) bodies.set("/metagraph/subnets.json", payload);
+    for (const [netuid, body] of Object.entries(surfacesByNetuid)) {
+      if (body != null) bodies.set(`/metagraph/surfaces/${netuid}.json`, body);
+    }
     return {
       ASSETS: {
         async fetch(request: Request) {
           const { pathname } = new URL(request.url);
-          return hit(pathname)
-            ? Response.json(payload as never)
+          const body = bodies.get(pathname);
+          return body != null
+            ? Response.json(body as never)
             : new Response("{}", { status: 404 });
         },
       },
       METAGRAPH_ARCHIVE: {
         async get(key: string) {
           const p = `/metagraph/${String(key).replace(/^latest\//, "")}`;
-          return hit(p)
+          const body = bodies.get(p);
+          return body != null
             ? {
                 async json() {
-                  return payload;
+                  return body;
                 },
               }
             : null;
@@ -761,6 +920,40 @@ describe("the queue consumer, through the Worker's own handler", () => {
       },
     };
   }
+
+  test("the CONSUMER resolves surfaces and actually fetches them", async () => {
+    // THE WIRING, not the resolver. Every other test here calls
+    // `sweepRecordFor` directly, so reverting the consumer back to handing the
+    // bare list record straight to the sweep left all of them green -- which is
+    // the same shape of hole that let #10818 ship. This one drives
+    // `worker.queue` and asserts a real URL was requested.
+    const fetched: string[] = [];
+    const original = globalThis.fetch;
+    try {
+      globalThis.fetch = (async (input: RequestInfo | URL) => {
+        fetched.push(String(input));
+        return new Response("nothing here");
+      }) as typeof fetch;
+      await worker.queue!(
+        {
+          queue: "attribution-sweeps",
+          messages: [{ body: { netuid: 64 }, ack: () => {}, retry: () => {} }],
+        } as never,
+        queueEnv(
+          { subnets: [{ netuid: 64 }] },
+          {
+            64: {
+              surfaces: [{ kind: "docs", url: "https://swept.test/docs" }],
+            },
+          },
+        ) as never,
+        { waitUntil: () => {} } as never,
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+    assert.deepEqual(fetched, ["https://swept.test/docs"]);
+  });
 
   test("a sweep batch is routed to the sweep consumer, not the webhook path", async () => {
     // Both queues bind to one `queue()` export. Without the branch this message
@@ -779,7 +972,7 @@ describe("the queue consumer, through the Worker's own handler", () => {
     await assert.doesNotReject(() =>
       worker.queue!(
         batch as never,
-        queueEnv({ subnets: [{ netuid: 64, surfaces: [] }] }) as never,
+        queueEnv({ subnets: [{ netuid: 64 }] }) as never,
         { waitUntil: () => {} } as never,
       ),
     );
@@ -805,7 +998,7 @@ describe("the queue consumer, through the Worker's own handler", () => {
     };
     await worker.queue!(
       batch as never,
-      queueEnv({ subnets: [{ netuid: 64, surfaces: [] }] }) as never,
+      queueEnv({ subnets: [{ netuid: 64 }] }) as never,
       { waitUntil: () => {} } as never,
     );
     // No store binding, so the write fails and it retries -- but it got that
@@ -877,7 +1070,7 @@ describe("the last of the queue shapes", () => {
   test("the cron producer enqueues when a binding IS present", async () => {
     const sent: number[] = [];
     const env = {
-      ...(queueEnvFor({ subnets: [{ netuid: 7, surfaces: [] }] }) as object),
+      ...(queueEnvFor({ subnets: [{ netuid: 7 }] }) as object),
       ATTRIBUTION_SWEEPS: {
         async sendBatch(messages: Array<{ body: { netuid: number } }>) {
           for (const m of messages) sent.push(m.body.netuid);
@@ -901,25 +1094,46 @@ describe("the last of the queue shapes", () => {
 });
 
 /** The registry artifact alone, for the producer test above. */
-function queueEnvFor(payload: unknown) {
-  const target = "/metagraph/subnets.json";
-  const hit = (p: string) => p === target && payload != null;
+/** Per-PATH bodies, because the lane reads two artifacts.
+ *
+ * `surfacesPayload` defaults to one sweepable surface for every subnet in the
+ * list, so a test about ENQUEUEING does not have to restate the surface model
+ * to say what it means. Tests that care about the surfaces artifact pass their
+ * own; the one that cares about it being ABSENT passes null. */
+function queueEnvFor(payload: unknown, surfacesPayload?: unknown) {
+  const bodies = new Map<string, unknown>();
+  if (payload != null) bodies.set("/metagraph/subnets.json", payload);
+  const listed = (payload as { subnets?: unknown[] } | null)?.subnets;
+  const fallback = {
+    surfaces: (Array.isArray(listed) ? listed : [])
+      .map((raw) => (raw ?? {}) as { netuid?: unknown })
+      .filter((s) => Number.isInteger(Number(s.netuid)))
+      .map((s) => ({
+        netuid: Number(s.netuid),
+        kind: "docs",
+        url: `https://example.test/${String(s.netuid)}`,
+      })),
+  };
+  const surfaces = surfacesPayload === undefined ? fallback : surfacesPayload;
+  if (surfaces != null) bodies.set("/metagraph/surfaces.json", surfaces);
   return {
     ASSETS: {
       async fetch(request: Request) {
         const { pathname } = new URL(request.url);
-        return hit(pathname)
-          ? Response.json(payload as never)
+        const body = bodies.get(pathname);
+        return body != null
+          ? Response.json(body as never)
           : new Response("{}", { status: 404 });
       },
     },
     METAGRAPH_ARCHIVE: {
       async get(key: string) {
         const p = `/metagraph/${String(key).replace(/^latest\//, "")}`;
-        return hit(p)
+        const body = bodies.get(p);
+        return body != null
           ? {
               async json() {
-                return payload;
+                return body;
               },
             }
           : null;

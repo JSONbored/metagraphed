@@ -2193,7 +2193,8 @@ export default {
           store.db as SweepStoreDb,
           {
             fetchText: fetchSweepText,
-            recordFor: async (netuid: number) => byNetuid.get(netuid) ?? null,
+            recordFor: async (netuid: number) =>
+              sweepRecordFor(env, netuid, byNetuid.get(netuid)),
           },
         );
       } finally {
@@ -2975,6 +2976,57 @@ export async function sweepableSubnets(
     out.push({ netuid, record });
   }
   return out;
+}
+
+/**
+ * One subnet's registry record WITH the surfaces the sweep reads.
+ *
+ * SURFACES ARE NOT ON THE LIST RECORD, and assuming they were made this lane a
+ * no-op for its entire life. `/metagraph/subnets.json` publishes
+ * `surface_count` and the four headline URLs; it has never carried
+ * `surfaces[]`. So `sweepableSources` read `undefined` for every subnet,
+ * produced no URLs, and every sweep recorded `no-sources` -- which reads as
+ * "the subnet declares nothing fetchable" and was in fact "we looked in the
+ * wrong artifact".
+ *
+ * Measured against production 2026-08-14: 128 sweeps, one per subnet, ALL
+ * verdict `no-sources`, `sources_checked` 0 on every row, and
+ * `attribution_candidates` empty -- against 2,900 sweepable http(s) surfaces
+ * the registry publishes across all 129 subnets (metagraphed#10818).
+ *
+ * PER-SUBNET, not the 4.26 MB aggregate. `/metagraph/surfaces.json` carries all
+ * 3,442 surfaces; this resolver runs once per QUEUE MESSAGE, so reading the
+ * aggregate would parse 4.26 MB per subnet inside a Worker whose whole heap is
+ * 128 MB. `/metagraph/surfaces/{netuid}.json` is a declared contract path and
+ * ~93 KB, and it is the only part any one message needs.
+ *
+ * Returns null when the subnet is not in the registry any more -- it was
+ * enqueued and then delisted -- which the caller records as a resolved
+ * absence.
+ *
+ * THROWS when the subnet exists but its surfaces cannot be read. That is OUR
+ * artifact failing, not the subnet declaring nothing, and the two must not
+ * produce the same row: a throw retries the message, while returning a
+ * surface-less record would persist a `no-sources` finding built out of our own
+ * outage. Same distinction `unreachable` keeps from `none-published`.
+ */
+export async function sweepRecordFor(
+  env: Env,
+  netuid: number,
+  base: Row | undefined,
+): Promise<Row | null> {
+  if (!base) return null;
+  const surfaces = await readArtifact(
+    env,
+    `/metagraph/surfaces/${netuid}.json`,
+  );
+  if (!surfaces.ok) {
+    throw new Error(
+      `attribution-sweep: surfaces artifact unavailable for netuid ${netuid}`,
+    );
+  }
+  const published = (surfaces.data as Row | undefined)?.surfaces;
+  return { ...base, surfaces: Array.isArray(published) ? published : [] };
 }
 
 /** One source, bounded. A treasury address on a page is near the top of it;
