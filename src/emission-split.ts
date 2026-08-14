@@ -147,6 +147,12 @@ export const SUBNET_EMISSION_SPLIT_FIELD_SOURCES = {
     storage: "SubtensorModule.SubnetOwnerHotkey",
   },
   "points.burned_share_of_uid": { kind: "reconstructed", storage: null },
+  "points.tao_usd": { kind: "measured", storage: "tao_usd_index" },
+  "points.total_usd_day": { kind: "reconstructed", storage: null },
+  "points.owner_usd_day": { kind: "reconstructed", storage: null },
+  "points.validator_usd_day": { kind: "reconstructed", storage: null },
+  "points.miner_usd_day": { kind: "reconstructed", storage: null },
+  "points.burned_usd_day": { kind: "reconstructed", storage: null },
   "points.miner_alpha": {
     kind: "measured",
     storage: "neuron_daily.emission_tao",
@@ -182,6 +188,7 @@ function emissionSplitPoint(
   dayRows: Row[],
   ownerCut: number,
   burnHotkey?: string | null,
+  usdPerTao?: number | null,
 ): Row {
   let validatorRao = 0n;
   let minerRao = 0n;
@@ -250,6 +257,24 @@ function emissionSplitPoint(
           return { total, owner, distributable: total - owner };
         })();
 
+  // #11095: the per-day USD legs. Every input already rides the point -- the
+  // reconstructed day totals, the measured shares, the day's alpha price, and
+  // the day's last PRICED tao-usd observation supplied by the handler. Null
+  // whenever any leg of the chain is (a day before the tao-usd series began
+  // 2026-08-02, an unknown alpha price, an unpriceable day) -- a stated gap,
+  // never a zero. The single largest error a real research session made was
+  // assuming a split constant to hand-roll exactly this figure.
+  const usdDay = (alphaDay: number | null | undefined): number | null =>
+    totals === null ||
+    alphaDay == null ||
+    alphaPriceTao === null ||
+    usdPerTao == null ||
+    !Number.isFinite(usdPerTao)
+      ? null
+      : round9(alphaDay * alphaPriceTao * usdPerTao);
+  const shareAlphaDay = (share: number | null): number | null =>
+    totals === null || share === null ? null : totals.distributable * share;
+
   return {
     snapshot_date: date,
     neuron_count: validatorCount + minerCount,
@@ -277,6 +302,12 @@ function emissionSplitPoint(
       totals === null || minerShareOfUid === null
         ? null
         : round9((totals.distributable / totals.total) * minerShareOfUid),
+    tao_usd: usdPerTao == null ? null : round9(usdPerTao),
+    total_usd_day: usdDay(totals?.total),
+    owner_usd_day: usdDay(totals?.owner),
+    validator_usd_day: usdDay(shareAlphaDay(validatorShareOfUid)),
+    miner_usd_day: usdDay(shareAlphaDay(minerShareOfUid)),
+    burned_usd_day: usdDay(shareAlphaDay(burnedShareOfUid)),
     alpha_price_tao: alphaPriceTao,
     total_tao:
       totals === null || alphaPriceTao === null
@@ -304,11 +335,14 @@ export function buildSubnetEmissionSplitHistory(
     capped,
     ownerCut = OWNER_CUT,
     burnHotkey,
+    usdPerTaoByDay,
   }: {
     window?: string;
     capped?: boolean;
     ownerCut?: number;
     burnHotkey?: string | null;
+    /** Day (YYYY-MM-DD) -> that day's last PRICED usd_per_tao observation. */
+    usdPerTaoByDay?: ReadonlyMap<string, number>;
   } = {},
 ): Row {
   const list = Array.isArray(rows) ? rows : [];
@@ -330,7 +364,13 @@ export function buildSubnetEmissionSplitHistory(
       ? ownerCut
       : OWNER_CUT;
   const points = days.map(([date, dayRows]) =>
-    emissionSplitPoint(date, dayRows, effectiveCut, burnHotkey),
+    emissionSplitPoint(
+      date,
+      dayRows,
+      effectiveCut,
+      burnHotkey,
+      usdPerTaoByDay?.get(date) ?? null,
+    ),
   );
   return {
     schema_version: 1,

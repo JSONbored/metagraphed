@@ -7497,6 +7497,27 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
           ON ss.netuid = nd.netuid AND ss.snapshot_date = nd.snapshot_date
         WHERE nd.netuid = ${netuid} AND nd.snapshot_date >= ${cutoff}
         ORDER BY nd.snapshot_date DESC LIMIT ${EMISSION_SPLIT_HISTORY_ROW_CAP}`;
+      // #11095: the day's last PRICED tao-usd observation, one row per day.
+      // Aggregated in SQL -- the raw series is ~1 row/minute and a 90d window
+      // would be ~130k rows read for 90 scalars. Days before the series began
+      // (2026-08-02) simply have no row, and the USD legs stay null there.
+      // `observed_at` is BIGINT epoch-ms (migration 0003), so the day key is
+      // derived through to_timestamp and the cutoff compared in the same unit.
+      const cutoffMs = Date.parse(`${cutoff}T00:00:00Z`);
+      const usdRows = await sql<{ day: string; usd_per_tao: number | null }>`
+        SELECT to_char(to_timestamp(observed_at / 1000.0), 'YYYY-MM-DD') AS day,
+               (array_agg(usd_per_tao ORDER BY observed_at DESC))[1] AS usd_per_tao
+        FROM tao_usd_index
+        WHERE usd_per_tao IS NOT NULL
+          AND observed_at >= ${cutoffMs}
+        GROUP BY 1`;
+      // No guard: the WHERE clause already excludes null prices, to_char
+      // cannot emit a null day, and a hypothetical driver NaN would only
+      // flow into legs that serialize to null -- the same answer as an
+      // unpriced day.
+      const usdPerTaoByDay = new Map<string, number>(
+        usdRows.map((row) => [row.day, Number(row.usd_per_tao)]),
+      );
       return json(
         buildSubnetEmissionSplitHistory(rows, netuid, {
           window: windowLabelFor(
@@ -7506,6 +7527,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
           ),
           capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
           burnHotkey: await resolveBurnHotkey(sql, netuid),
+          usdPerTaoByDay,
         }),
       );
     };
