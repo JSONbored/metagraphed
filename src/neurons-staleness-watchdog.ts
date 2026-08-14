@@ -181,7 +181,7 @@ export const NEURONS_PASS_WINDOW_MS = passWindowMs("metagraph", 1 / 3);
  * rule. Read together the pair is the diagnosis: `covered` well under `total`
  * is a scan that died partway through the network.
  */
-const NEURONS_COVERAGE_SQL =
+export const NEURONS_COVERAGE_SQL =
   "SELECT COUNT(DISTINCT netuid) AS total, MAX(captured_at) AS latest, " +
   "COUNT(DISTINCT CASE WHEN captured_at >= " +
   "(SELECT MAX(captured_at) FROM neurons) - ? THEN netuid END) AS covered " +

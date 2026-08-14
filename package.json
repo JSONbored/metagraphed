@@ -79,6 +79,7 @@
     "validate:contract-drift": "node scripts/validate-contract-drift.ts",
     "validate:db-types-drift": "node scripts/validate-db-types-drift.ts",
     "validate:lane-topology": "node scripts/validate-lane-topology.ts",
+    "validate:coverage-scoping": "node scripts/validate-coverage-scoping.ts",
     "validate:lakehouse-types-drift": "node scripts/validate-lakehouse-types-drift.ts",
     "validate:operational-surface-parity": "node scripts/validate-operational-surface-parity.ts",
     "validate:schema-enums": "node scripts/validate-schema-enums.ts",

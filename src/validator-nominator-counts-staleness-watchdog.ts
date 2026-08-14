@@ -173,7 +173,7 @@ export const VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS = passWindowMs(
  * is what tells an operator how many older-vintage rows are sitting underneath
  * a partial pass.
  */
-const VALIDATOR_NOMINATOR_COUNTS_COVERAGE_SQL =
+export const VALIDATOR_NOMINATOR_COUNTS_COVERAGE_SQL =
   "SELECT COUNT(*) AS total, MAX(captured_at) AS latest, " +
   "SUM(CASE WHEN captured_at >= " +
   "(SELECT MAX(captured_at) FROM validator_nominator_counts) - ? " +
