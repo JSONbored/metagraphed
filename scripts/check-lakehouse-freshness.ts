@@ -365,6 +365,7 @@ interface SchemaField {
 /** Ask R2 SQL whether a column is actually unreadable across generations. */
 async function columnSpansGenerations(
   auth: Record<string, string>,
+  namespace: string,
   table: string,
   column: string,
 ): Promise<boolean> {
@@ -376,7 +377,7 @@ async function columnSpansGenerations(
         headers: { ...auth, "content-type": "application/json" },
         body: JSON.stringify({
           warehouse: WAREHOUSE_BUCKET,
-          query: `SELECT count(${column}) AS n FROM chain.${table}`,
+          query: `SELECT count(${column}) AS n FROM ${namespace}.${table}`,
         }),
       },
     );
@@ -458,12 +459,33 @@ async function main(): Promise<void> {
     process.stderr.write("catalog /v1/config returned no prefix\n");
     process.exit(1);
   }
-  const listed = (await (
-    await fetch(`${BASE}/v1/${prefix}/namespaces/chain/tables`, {
-      headers: auth,
-    })
-  ).json()) as { identifiers?: { name: string }[] };
-  const tables = (listed.identifiers ?? []).map((i) => i.name).sort();
+  // BOTH NAMESPACES. This watched `chain` only, so the four decoded
+  // `chain_testnet` tables had no freshness coverage at all -- testnet is a
+  // SERVED network, so a stalled testnet decode would have been invisible here
+  // while the mainnet tables kept the check green. They are fresh today (0.6h),
+  // which is exactly when the gap is cheapest to close.
+  //
+  // Rules are keyed by BARE table name: testnet carries the same four names,
+  // written by the same decoder on the same tick, so it inherits the same
+  // bound. If the two cadences ever diverge, that is the moment to split the
+  // map rather than now.
+  const namespaces = ["chain", "chain_testnet"];
+  const tables: { namespace: string; table: string; qualified: string }[] = [];
+  for (const namespace of namespaces) {
+    const listed = (await (
+      await fetch(`${BASE}/v1/${prefix}/namespaces/${namespace}/tables`, {
+        headers: auth,
+      })
+    ).json()) as { identifiers?: { name: string }[] };
+    for (const id of listed.identifiers ?? []) {
+      tables.push({
+        namespace,
+        table: id.name,
+        qualified: namespace === "chain" ? id.name : `${namespace}.${id.name}`,
+      });
+    }
+  }
+  tables.sort((a, b) => a.qualified.localeCompare(b.qualified));
 
   const now = Date.now();
   const failures: string[] = [];
@@ -473,11 +495,12 @@ async function main(): Promise<void> {
   // people learn to discount.
   const unreadable: string[] = [];
   const lines: string[] = [];
-  for (const table of tables) {
+  for (const { namespace, table, qualified } of tables) {
     const meta = (await (
-      await fetch(`${BASE}/v1/${prefix}/namespaces/chain/tables/${table}`, {
-        headers: auth,
-      })
+      await fetch(
+        `${BASE}/v1/${prefix}/namespaces/${namespace}/tables/${table}`,
+        { headers: auth },
+      )
     ).json()) as {
       metadata?: {
         snapshots?: { "timestamp-ms"?: number }[];
@@ -490,13 +513,13 @@ async function main(): Promise<void> {
     const candidates = typeChangedAcrossSchemas(meta.metadata);
     const spanned: string[] = [];
     for (const column of candidates) {
-      if (await columnSpansGenerations(auth, table, column)) {
+      if (await columnSpansGenerations(auth, namespace, table, column)) {
         spanned.push(column);
       }
     }
     if (spanned.length) {
       unreadable.push(
-        `${table}: R2 SQL cannot read ${spanned.join(", ")} -- the column's ` +
+        `${qualified}: R2 SQL cannot read ${spanned.join(", ")} -- the column's ` +
           `TYPE changed across schema generations and data files still carry ` +
           `the old one. Rewrite the table under its current schema.`,
       );
@@ -506,7 +529,11 @@ async function main(): Promise<void> {
       ? Math.max(...snapshots.map((s) => s["timestamp-ms"] ?? 0))
       : null;
     const verdict = evaluate(
-      { table, newestMs, ageMs: newestMs === null ? null : now - newestMs },
+      {
+        table: qualified,
+        newestMs,
+        ageMs: newestMs === null ? null : now - newestMs,
+      },
       EXPECTED[table],
     );
     lines.push(`${verdict.ok ? "ok  " : "STALE"} ${verdict.detail}`);
@@ -517,8 +544,9 @@ async function main(): Promise<void> {
   const staleNames = new Set(failures.map((f) => f.split(" ")[0] ?? ""));
   // A table that has COME BACK must leave the baseline, or the baseline stops
   // describing the outage. Computed, never asserted.
+  const present = new Set(tables.map((t) => t.qualified));
   const recovered = [...KNOWN_FROZEN].filter(
-    (t) => tables.includes(t) && !staleNames.has(t),
+    (t) => present.has(t) && !staleNames.has(t),
   );
   const regressions = failures.filter(
     (f) => !KNOWN_FROZEN.has(f.split(" ")[0] ?? ""),
