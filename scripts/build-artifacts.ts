@@ -392,6 +392,57 @@ const capturedSchemaDetails = new Map<string, Row>();
   }
 }
 
+// #11159: recover the DOCUMENT behind a retained entry. Last-good retention
+// keeps a surface's index entry across a failed capture -- that is what stops
+// a transient 502 wiping its drift history -- but the per-surface documents
+// live only in this build's staging tree, so the retained entry arrived with
+// no document, failed the detail check, and fell to not-captured anyway:
+// metadata survived, callability did not (sn-114 lost Phase 2 for exactly
+// this on 2026-08-14).
+//
+// The previous publish's document still exists, at the same R2 key the
+// publish uploaded it to. So when a capture RAN (staging is non-empty --
+// credential-less deterministic builds skip this whole block by never having
+// credentials for the read either) and the baseline carries a captured entry
+// with no staged document, fetch the published copy and re-attach it --
+// but only when its hash is the one the entry claims, because a recovered
+// document that does not match its entry is exactly the forgery the detail
+// check exists to refuse.
+if (capturedSchemaDetails.size > 0) {
+  const baselineEntries = Array.isArray(previousSchemaIndexArtifact?.schemas)
+    ? (previousSchemaIndexArtifact.schemas as Row[])
+    : [];
+  const recovered: string[] = [];
+  for (const entry of baselineEntries) {
+    if (entry.status !== "captured") continue;
+    const relativePath = schemaDetailArtifactRelativePath(
+      (entry.path as string) || "",
+    );
+    if (!relativePath || capturedSchemaDetails.has(relativePath)) continue;
+    const published = await readGeneratedStoreJson(
+      `latest/metagraph/${relativePath}`,
+    );
+    if (!published?.document) continue;
+    const document = sanitizeOpenApiDocument(published.document) as Row;
+    if (hashJson(document) !== entry.hash) continue;
+    const { document: _document, ...snapshot } = published;
+    capturedSchemaDocuments.set(relativePath, document);
+    capturedSchemaDetails.set(relativePath, {
+      documentHash: hashJson(document),
+      snapshot,
+    });
+    recovered.push(String(entry.surface_id));
+  }
+  if (recovered.length > 0) {
+    // Named, like every other lifeline in this pipeline: a recovery that
+    // happens silently is a capture failure that stops being investigated.
+    console.warn(
+      `schema documents recovered from the previous publish for ${recovered.length} ` +
+        `surface(s) whose capture failed this run: ${recovered.join(", ")}`,
+    );
+  }
+}
+
 // Captured live request/response fixtures (issue #352), written to R2 staging by
 // the network capture:fixtures step. Preserve them across the wipe so the build
 // can re-serve fixtures/{surface_id}.json + index them in R2 fixtures.json.
