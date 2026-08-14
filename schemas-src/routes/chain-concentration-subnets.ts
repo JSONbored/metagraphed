@@ -30,7 +30,7 @@ export const SubnetConcentrationRowSchema = z
     }),
     earning_miner_count: z.int().min(0).optional().meta({
       description:
-        "How many of them carry emission right now. Against miner_uid_count this is the screening fact a count alone hides -- and this bulk row is the LIVE grain; the per-subnet miner-fairness route answers it over a window, which is the durable version.",
+        "How many of them carry emission right now. Against miner_uid_count this is the screening fact a count alone hides -- and this bulk row is the LIVE grain, read off the current snapshot. The windowed answer is /subnets/{netuid}/emission-split/history -- per day on each point, and over the whole window in `miner_earnings.earning_miner_count` -- and it is the larger number, because it counts miners that earned earlier in the window and do not now.",
     }),
     holders: z.int().min(0).nullable(),
     total: z.number().nullable(),

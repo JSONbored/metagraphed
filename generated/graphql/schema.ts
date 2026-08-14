@@ -2686,23 +2686,54 @@ type SubnetEmissionSplitHistoryPoint {
 }
 
 type SubnetEmissionSplitMinerEarnings {
+  """
+  Miner UIDs that recorded emission on ANY day of the window. A WINDOW count, deliberately not a live one: /chain/concentration/subnets publishes an \`earning_miner_count\` of its own read off the current snapshot, so the two differ by the miners that earned earlier in the window and do not right now -- and the smaller live number is the one that describes today.
+  """
   earning_miner_count: Int!
 
   """
   Miner UIDs seen in the window that never recorded emission -- published beside the percentiles because on the median subnet this is most of them, and a distribution over earners alone reads as universal income.
   """
   zero_miner_count: Int!
+
+  """
+  The MEDIAN earning miner's alpha per day: their share of the window's summed miner emission (validators and the burn sink excluded) x the basis point's miner_alpha_day. Nearest-rank, so it is a real miner's figure and not an interpolation.
+  """
   p50_alpha_day: Float
+
+  """
+  The 75th-percentile earning miner's alpha per day, same derivation as p50.
+  """
   p75_alpha_day: Float
+
+  """
+  The 90th-percentile earning miner's alpha per day, same derivation as p50.
+  """
   p90_alpha_day: Float
+
+  """
+  The single largest earning miner's alpha per day. A ceiling, never a typical figure -- on a concentrated subnet it is multiples of p90.
+  """
   top_alpha_day: Float
 
   """
   What the MEDIAN earning miner makes per day in USD -- each UID's share of the window's summed miner emission (validators and the burn sink excluded) x the newest point's miner_usd_day. Null when that point's USD chain is (no priced tao-usd day, unknown alpha price).
   """
   p50_usd_day: Float
+
+  """
+  The 75th-percentile earning miner's USD per day, same derivation as p50_usd_day.
+  """
   p75_usd_day: Float
+
+  """
+  The 90th-percentile earning miner's USD per day, same derivation as p50_usd_day.
+  """
   p90_usd_day: Float
+
+  """
+  The single largest earning miner's USD per day. A ceiling, never a typical figure.
+  """
   top_usd_day: Float
 
   """
