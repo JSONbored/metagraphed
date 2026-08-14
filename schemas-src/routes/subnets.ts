@@ -9,6 +9,7 @@
 // Query params from the same OpenAPI operation's `parameters` array (the
 // route() call in src/contracts.ts for "subnets").
 import { z } from "zod";
+import { LineageAlsoOnEntrySchema } from "./subnet-profile.ts";
 import {
   SocialLinksSchema,
   GithubReleaseSchema,
@@ -52,6 +53,10 @@ export const SubnetIndexEntrySchema = z
       .array(z.object({ week: z.iso.datetime(), count: z.int().min(0) }))
       .nullable()
       .optional(),
+    // #11099: the testnet lineage in bulk (the profile's also_on list) -- a
+    // screen can name the free practice netuids for every candidate in one
+    // call. Null when no testnet twin matched.
+    also_on: z.array(LineageAlsoOnEntrySchema).nullable().optional(),
     // Byte-count language breakdown from the GitHub /languages API (#6639) —
     // a genuinely open map (language name -> byte count), matching the
     // OpenAPI contract's own additionalProperties schema, not a shortcut.

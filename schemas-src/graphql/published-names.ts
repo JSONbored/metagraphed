@@ -679,6 +679,8 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
     "SubnetOwnershipHistoryArtifactOwnershipChanges",
   SubnetProfile: "SubnetProfile",
   SubnetProfileCompleteness: "SubnetProfileCompleteness",
+  // #11099: the bulk subnet row's testnet-lineage entries.
+  SubnetIndexEntryAlsoOn: "SubnetIndexEntryAlsoOn",
   SubnetProfileGithubCommitsWeekly: "SubnetProfileGithubCommitsWeekly",
   SubnetProfileGithubReleases: "SubnetProfileGithubReleases",
   SubnetProfileIdentityEvidence: "SubnetProfileIdentityEvidence",

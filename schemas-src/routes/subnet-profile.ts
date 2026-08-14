@@ -26,6 +26,19 @@ import {
   PROFILE_LEVEL_VALUES,
 } from "../shared.ts";
 
+/**
+ * One testnet twin in a lineage list (#11099) -- declared ONCE here and
+ * imported by the bulk subnets row, per the shape-duplicates gate.
+ */
+export const LineageAlsoOnEntrySchema = z
+  .object({
+    network: z.string().optional(),
+    netuid: z.int().min(0).optional(),
+    name: z.string().nullable().optional(),
+    matched_by: z.enum(["github_repo", "chain_name"]).optional(),
+  })
+  .strict();
+
 export const SubnetProfileNativeIdentitySchema = z
   .object({
     source: z.string(),

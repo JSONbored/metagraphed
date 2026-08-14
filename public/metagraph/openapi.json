@@ -51057,6 +51057,47 @@
       "SubnetIndexEntry": {
         "additionalProperties": false,
         "properties": {
+          "also_on": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "matched_by": {
+                      "enum": [
+                        "github_repo",
+                        "chain_name"
+                      ],
+                      "type": "string"
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "netuid": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "network": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "block": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -67257,7 +67298,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant.",
+        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on.",
         "tags": [
           "subnets"
         ],
@@ -81463,7 +81504,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant.",
+        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on.",
         "tags": [
           "subnets"
         ],
