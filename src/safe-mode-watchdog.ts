@@ -60,6 +60,7 @@
 //     the two halves now fail independently: history that cannot be read is
 //     reported as UNREAD (never as "no SafeMode activity"), and the pause
 //     verdict is still computed and still alerts.
+import { chainRpc } from "./chain-rpc.ts";
 import { bytesToHex, storageMapPrefix } from "../src/twox-storage-key.ts";
 import { loadExtrinsicFeedColdTier } from "./extrinsics-cold-tier.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
@@ -159,22 +160,20 @@ export function evaluateSafeMode({
 
 type Fetcher = typeof fetch;
 
+/** Its own timeout is the one thing this lane did differently, so it is the one
+ * thing passed through: everything else came from the shared client (#11194). */
+const RPC_TIMEOUT_MS = 20_000;
+
 async function rpc(
   url: string,
   method: string,
   params: unknown[],
   doFetch: Fetcher,
 ): Promise<unknown> {
-  const res = await doFetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    signal: AbortSignal.timeout(20_000),
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  return chainRpc(url, method, params, {
+    fetchImpl: doFetch as typeof fetch,
+    timeoutMs: RPC_TIMEOUT_MS,
   });
-  if (!res.ok) throw new Error(`${method}: HTTP ${res.status}`);
-  const body = (await res.json()) as { result?: unknown; error?: unknown };
-  if (body.error) throw new Error(`${method}: ${JSON.stringify(body.error)}`);
-  return body.result;
 }
 
 /** Reads the SafeMode extrinsic history, or null when the tier declined. */
