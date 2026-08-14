@@ -174,7 +174,7 @@ test("a renamed subnet does not wholesale-discard the committed schema index", (
   }
 }, 120_000);
 
-test("a schema-index discard is named, counted, and recorded for CI", () => {
+test("one tampered entry is dropped, and only that entry (#11147)", () => {
   const schemaIndexPath = harness.artifactFilePath("schemas/index.json");
   const summaryPath = harness.artifactFilePath("build-summary.json");
   const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
@@ -189,11 +189,12 @@ test("a schema-index discard is named, counted, and recorded for CI", () => {
     (schema: Row) => schema.status === "captured",
   ).length;
 
-  // #9909: the discard itself is correct and stays -- an index that cannot be
-  // trusted must not be reused. What was wrong is that it was SILENT: captured
-  // schemas vanished from the agent catalog and operational-surfaces'
-  // schema_source with nothing in the build log, and the cause had to be found
-  // by diffing a pristine build against a changed one.
+  // #9909 made the discard loud; #11147 made it PROPORTIONATE. Refusing a
+  // tampered entry is still correct and still happens -- what changed is that it
+  // no longer takes every other subnet's captured schema with it. In production
+  // one subnet changing its published spec cost the other 56 their schema on
+  // every publish for 11 days, which is a denial of service the guard was never
+  // meant to grant.
   (target.snapshot ??= {}).hash = "forged-by-this-test";
 
   try {
@@ -209,14 +210,67 @@ test("a schema-index discard is named, counted, and recorded for CI", () => {
       stdio: "pipe",
     });
 
+    const rebuilt = JSON.parse(readFileSync(schemaIndexPath, "utf8"));
+    const entry = rebuilt.schemas.find(
+      (schema: Row) => schema.surface_id === target.surface_id,
+    );
+    // The tampered entry loses its captured claim -- the forgery is refused.
+    assert(entry, "the surface must still be listed");
+    assert.equal(entry.status, "not-captured");
+    assert.equal(entry.hash, null);
+    // ...and nothing else does. This is the whole point: the index survives.
+    const capturedAfter = rebuilt.schemas.filter(
+      (schema: Row) => schema.status === "captured",
+    ).length;
+    assert.equal(capturedAfter, capturedBefore - 1);
+    assert.equal(rebuilt.source, "openapi-snapshot");
+    // A proportionate rejection is not a wholesale discard, so the CI gate --
+    // which fails on ANY dropped_captured -- must not fire for it.
+    assert.equal(
+      JSON.parse(readFileSync(summaryPath, "utf8")).schema_index_discard,
+      null,
+    );
+  } finally {
+    writeFileSync(schemaIndexPath, originalSchemaIndex);
+    writeFileSync(summaryPath, originalSummary);
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
+      cwd: harness.scriptCwd,
+      encoding: "utf8",
+      env: harness.env,
+      stdio: "pipe",
+    });
+    harness.restoreSupportArtifacts(supportArtifacts);
+  }
+}, 120_000);
+
+test("a structurally unusable index is still discarded wholesale, and recorded for CI", () => {
+  // The wholesale path stays, and validate.ts still gates on it: an index that
+  // is not a schema snapshot at all cannot be vetted entry by entry, because
+  // there is nothing to trust about its shape.
+  const schemaIndexPath = harness.artifactFilePath("schemas/index.json");
+  const summaryPath = harness.artifactFilePath("build-summary.json");
+  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+  const originalSummary = readFileSync(summaryPath, "utf8");
+  const supportArtifacts = harness.snapshotSupportArtifacts();
+  const schemaIndex = JSON.parse(originalSchemaIndex);
+  const capturedBefore = schemaIndex.schemas.filter(
+    (schema: Row) => schema.status === "captured",
+  ).length;
+  schemaIndex.source = "not-an-openapi-snapshot";
+
+  try {
+    writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
+      cwd: harness.scriptCwd,
+      encoding: "utf8",
+      env: harness.env,
+      stdio: "pipe",
+    });
     const discard = JSON.parse(readFileSync(summaryPath, "utf8"))
       .schema_index_discard as Row;
     assert(discard, "the discard must be recorded on the build summary");
     assert.equal(discard.dropped_captured, capturedBefore);
-    // The reason names the entry AND the field, which is the difference between
-    // a one-line diagnosis and an isolation run.
-    assert.match(String(discard.reason), new RegExp(target.surface_id));
-    assert.match(String(discard.reason), /snapshot\.hash/);
+    assert.match(String(discard.reason), /no reusable committed index/);
   } finally {
     writeFileSync(schemaIndexPath, originalSchemaIndex);
     writeFileSync(summaryPath, originalSummary);

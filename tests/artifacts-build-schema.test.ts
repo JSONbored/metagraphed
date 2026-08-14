@@ -79,12 +79,29 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       ? readFileSync(schemaDriftPath, "utf8")
       : "";
     const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+    // THE SECURITY PROPERTY, unchanged: forged metadata never survives a build.
     assert.equal(rebuiltSchemaDrift.includes(forgedMarker), false);
     assert.equal(rebuiltSchemaIndex.includes(forgedMarker), false);
     if (rebuiltSchemaDrift) {
       assert.equal(JSON.parse(rebuiltSchemaDrift).source, "artifact-build");
     }
-    assert.equal(JSON.parse(rebuiltSchemaIndex).source, "artifact-build");
+    // WHAT CHANGED (#11147): the BLAST RADIUS, not the refusal. The tampered
+    // entry loses its captured claim; the index and every honest entry beside
+    // it survive. Collapsing to the `artifact-build` placeholder -- which is
+    // what this asserted before -- let anyone who could tamper with one entry
+    // blank all 57, and in production a subnet legitimately changing its spec
+    // did exactly that on every publish for 11 days.
+    const rebuilt = JSON.parse(rebuiltSchemaIndex);
+    assert.equal(rebuilt.source, "openapi-snapshot");
+    const rebuiltTarget = rebuilt.schemas.find(
+      (schema: Row) => schema.surface_id === indexTarget.surface_id,
+    );
+    assert.equal(rebuiltTarget.status, "not-captured");
+    assert.equal(rebuiltTarget.hash, null);
+    assert(
+      rebuilt.schemas.some((schema: Row) => schema.status === "captured"),
+      "honest captured entries must survive one forged neighbour",
+    );
   } finally {
     if (originalSchemaDrift) {
       writeFileSync(schemaDriftPath, originalSchemaDrift);
