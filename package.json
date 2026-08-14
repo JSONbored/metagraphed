@@ -80,6 +80,7 @@
     "validate:db-types-drift": "node scripts/validate-db-types-drift.ts",
     "validate:lane-topology": "node scripts/validate-lane-topology.ts",
     "validate:coverage-scoping": "node scripts/validate-coverage-scoping.ts",
+    "measure:lane-populations": "node scripts/measure-lane-populations.ts",
     "validate:lakehouse-types-drift": "node scripts/validate-lakehouse-types-drift.ts",
     "validate:operational-surface-parity": "node scripts/validate-operational-surface-parity.ts",
     "validate:schema-enums": "node scripts/validate-schema-enums.ts",
@@ -232,7 +233,8 @@
     "typescript-eslint": "^8.65.0",
     "vite": "^7.3.6",
     "vitest": "^4.1.10",
-    "wrangler": "4.118.0"
+    "wrangler": "4.118.0",
+    "xxhash-wasm": "^1.1.0"
   },
   "overrides": {
     "esbuild": "^0.28.1",
