@@ -24,6 +24,14 @@ export const SubnetConcentrationRowSchema = z
     neuron_count: z.int().min(0),
     entity_count: z.int().min(0),
     uids_per_entity: z.number().nullable(),
+    miner_uid_count: z.int().min(0).optional().meta({
+      description:
+        "Non-validator UIDs on this subnet's current metagraph, the burn sink excluded (#11094/#11098). The number every leaderboard calls 'miners'.",
+    }),
+    earning_miner_count: z.int().min(0).optional().meta({
+      description:
+        "How many of them carry emission right now. Against miner_uid_count this is the screening fact a count alone hides -- and this bulk row is the LIVE grain; the per-subnet miner-fairness route answers it over a window, which is the durable version.",
+    }),
     holders: z.int().min(0).nullable(),
     total: z.number().nullable(),
     gini: z.number().nullable(),

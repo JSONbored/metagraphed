@@ -22777,6 +22777,12 @@
             "items": {
               "additionalProperties": false,
               "properties": {
+                "earning_miner_count": {
+                  "description": "How many of them carry emission right now. Against miner_uid_count this is the screening fact a count alone hides -- and this bulk row is the LIVE grain; the per-subnet miner-fairness route answers it over a window, which is the durable version.",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "entity_count": {
                   "maximum": 9007199254740991,
                   "minimum": 0,
@@ -22843,6 +22849,12 @@
                       "type": "null"
                     }
                   ]
+                },
+                "miner_uid_count": {
+                  "description": "Non-validator UIDs on this subnet's current metagraph, the burn sink excluded (#11094/#11098). The number every leaderboard calls 'miners'.",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "nakamoto_coefficient": {
                   "anyOf": [
