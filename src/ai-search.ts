@@ -467,7 +467,20 @@ export async function runEmbeddingSync(
     embedded += valid.length;
   }
   if (removed.length && typeof env.VECTORIZE.deleteByIds === "function") {
-    await env.VECTORIZE.deleteByIds(removed);
+    // CHUNKED, like the upsert above. Vectorize caps deleteByIds at 100 ids and
+    // rejects the whole call past it -- observed in production as
+    // `VECTOR_DELETE_ERROR (code = 40007): too many ids in payload; max id
+    // count is 100, got 173`.
+    //
+    // The upsert was chunked from the start because embedding is batched
+    // anyway; the delete was not, because `removed` is usually small. It only
+    // fails on a large prune, which is exactly when it matters -- a rejected
+    // call leaves every stale vector in the index, so `semantic_search` keeps
+    // returning documents the registry no longer has, and the manifest is
+    // written as though the delete succeeded.
+    for (const ids of chunk(removed, EMBED_BATCH_SIZE)) {
+      await env.VECTORIZE.deleteByIds(ids);
+    }
   }
   if (env?.METAGRAPH_CONTROL?.put) {
     await env.METAGRAPH_CONTROL.put(EMBED_MANIFEST_KEY, JSON.stringify(next));
