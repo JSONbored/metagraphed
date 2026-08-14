@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  ACCOUNT_SUMMARY_MAX_AGE_MS,
   ACCOUNT_SUMMARY_SCHEMA_VERSION,
   ACCOUNT_SUMMARY_SHARDS,
   accountShard,
@@ -295,6 +296,62 @@ describe("loadAccountSummaryProjection", () => {
     });
     const groups = await loadAccountSummaryProjection(store.env, HOT);
     assert.equal(groups!.length, 1);
+  });
+
+  test("A STALE SHARD IS REFUSED", async () => {
+    // The ONLY way this reader could publish something wrong. Every other
+    // failure declines and the caller reads the lakehouse; a month-old shard
+    // parses perfectly and would be served as the account's current totals --
+    // and invisibly, because the card's `generated_at` comes from the LIVE
+    // recent-feed leg, so a frozen aggregate beside a fresh feed looks healthy.
+    const written = Date.parse("2026-08-01T00:00:00Z");
+    const store = archive({
+      [accountSummaryShardKey(HOT)]: shardBody(
+        { [HOT]: [group()] },
+        { generated_at: "2026-08-01T00:00:00Z" },
+      ),
+    });
+    assert.equal(
+      await loadAccountSummaryProjection(store.env, HOT, {
+        now: () => written + ACCOUNT_SUMMARY_MAX_AGE_MS + 1,
+      }),
+      null,
+      "past the bound",
+    );
+    assert.ok(
+      await loadAccountSummaryProjection(store.env, HOT, {
+        now: () => written + ACCOUNT_SUMMARY_MAX_AGE_MS - 1,
+      }),
+      "inside the bound still answers",
+    );
+  });
+
+  test("the bound clears a missed producer run", async () => {
+    // The producer's own floor is 20 hours. A bound near one interval would
+    // decline on a lane that is merely slow, which is the sizing error the
+    // projection-staleness watchdog documents in missed ticks.
+    assert.ok(
+      ACCOUNT_SUMMARY_MAX_AGE_MS > 2 * 20 * 60 * 60 * 1000,
+      "must survive two missed runs",
+    );
+  });
+
+  test("a shard with no readable generated_at is refused", async () => {
+    // Unknown age is not young. Without a timestamp there is no way to tell a
+    // fresh publish from a fossil, and the safe reading is the lakehouse.
+    for (const generated_at of [undefined, "", "not-a-date", 12345]) {
+      const store = archive({
+        [accountSummaryShardKey(HOT)]: shardBody(
+          { [HOT]: [group()] },
+          { generated_at },
+        ),
+      });
+      assert.equal(
+        await loadAccountSummaryProjection(store.env, HOT),
+        null,
+        String(generated_at),
+      );
+    }
   });
 
   test("a null netuid survives as null", async () => {
