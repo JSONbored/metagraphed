@@ -92,11 +92,39 @@ export const NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS = missedTicksMs(
 /**
  * How many coldkeys a COMPLETE pass is expected to cover.
  *
- * 23,668, read off production on 2026-08-05 as `COUNT(DISTINCT coldkey)` at
- * the newest `captured_at` -- every coldkey the SubtensorModule::Alpha scan
- * found holding at least one position.
+ * 21,263, COUNTED ON CHAIN on 2026-08-14 rather than read off our own table:
+ *
+ *   prefix = twox128("SubtensorModule") ++ twox128("Alpha")
+ *   state_getKeysPaged(prefix, 1000, last, finalizedHead), walked to exhaustion
+ *   -> 120,253 entries over 121 pages, final page 253 (a SHORT page, so this is
+ *      end-of-iteration and not a truncated walk)
+ *   -> 108,671 with netuid != 0, of which ZERO carry shares == 0
+ *   -> 21,263 distinct coldkeys
+ *
+ * This lane's sink stores netuid != 0 with shares > 0, so that last figure is
+ * the population a complete pass covers, measured against the source rather
+ * than inferred from the sink.
+ *
+ * ## THIS ONE DRIFTED, IT DID NOT ROT
+ *
+ * The previous 23,668 was "read off production on 2026-08-05 as
+ * `COUNT(DISTINCT coldkey)` at the newest `captured_at`" -- correctly scoped to
+ * ONE pass, so it never had the accumulation bug its siblings did (#11165,
+ * #11167 both re-anchored constants that had been read over a whole table that
+ * never prunes). It simply fell ~10% behind the network in nine days, which is
+ * the shrink direction the ratio's comment below already anticipates.
+ *
+ * Re-measuring is therefore routine maintenance here, not a defect fix, and the
+ * rule it feeds did its job in the meantime: the pass that prompted this covered
+ * 9,254 coldkeys, far below the floor rather than marginally under it, and was
+ * correctly read as a truncated pass rather than as drift.
+ *
+ * Measure it on CHAIN when re-anchoring. `nominator_positions` accumulates --
+ * `COUNT(DISTINCT coldkey)` over the whole table read 28,650 at the time of
+ * writing against those 21,263 live coldkeys, and that figure is the one the
+ * alarm text reports as context.
  */
-export const NOMINATOR_POSITIONS_EXPECTED_COLDKEYS = 23_668;
+export const NOMINATOR_POSITIONS_EXPECTED_COLDKEYS = 21_263;
 
 /**
  * How much of that a single pass must cover before it counts as complete.
