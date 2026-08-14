@@ -817,6 +817,29 @@
       },
       "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
       "url": "https://beamcore.b1m.ai/logs/stream/%7Bsource%7D"
+    },
+    {
+      "id": "sn-105-beam-dashboard",
+      "name": "Beam orchestrator dashboard",
+      "kind": "dashboard",
+      "url": "https://data.b1m.ai/",
+      "provider": "beam",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Beam-Network/beam/blob/main/README.md"
+      ],
+      "notes": "The subnet's own operator dashboard, listed as \"Dashboard\" under Links in the Beam-Network/beam README. Serves the orchestrator view at /orchestrators; a Next.js app, not an API -- the callable API is beamcore.b1m.ai, which the same README names as CORE_SERVER_URL.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "maintainer-reviewed"
+      }
     }
   ],
   "website_url": "https://b1m.ai/"
