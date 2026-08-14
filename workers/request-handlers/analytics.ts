@@ -58,6 +58,7 @@ import {
 } from "../responses.ts";
 import { currentDataApiTierFallbackGeneration } from "../data-api-tier.ts";
 import { currentR2SqlFailureGeneration } from "../../src/r2-sql.ts";
+import { currentOffsetCapDeclineGeneration } from "../../src/r2-sql-blocks.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
 import {} from "../../src/route-limits.ts";
 import { formatGlobalIncidents } from "../../src/health-serving.ts";
@@ -360,6 +361,20 @@ export interface DegradedSnapshot {
   postgresTier: number;
   r2Sql: number;
   unmeasured: number;
+  /**
+   * Reads that declined a too-deep offset WITHOUT issuing a query (#11142).
+   *
+   * A fourth counter because the other three cannot see this one. `r2Sql`
+   * moves when a query fails; the emulated-offset cap is checked before any SQL
+   * is built, so nothing is sent, nothing fails, and the answer went out as a
+   * bare 200 whose body was byte-identical to end-of-feed -- on ten paginated
+   * routes, edge-cached for the TTL.
+   *
+   * Counted at the single check in `offsetBeyondEmulationCap` rather than at
+   * each route's `?? build...([])`, because there are 92 of those and the whole
+   * design of this labelling is that no handler has to remember it.
+   */
+  offsetCapDeclined: number;
 }
 
 export function degradedSnapshot(): DegradedSnapshot {
@@ -367,6 +382,7 @@ export function degradedSnapshot(): DegradedSnapshot {
     postgresTier: currentDataApiTierFallbackGeneration(),
     r2Sql: currentR2SqlFailureGeneration(),
     unmeasured: unmeasuredGeneration,
+    offsetCapDeclined: currentOffsetCapDeclineGeneration(),
   };
 }
 
@@ -392,7 +408,13 @@ export function degradedSince(before: DegradedSnapshot): {
   return {
     transient:
       now.postgresTier !== before.postgresTier || now.r2Sql !== before.r2Sql,
-    unmeasured: now.unmeasured !== before.unmeasured,
+    // An offset-cap decline is UNMEASURED, not transient: the same offset
+    // declines identically for the whole TTL, so the answer stays cacheable and
+    // merely stops claiming to be measured. Barring it from the cache would
+    // re-run a refusal that cannot change.
+    unmeasured:
+      now.unmeasured !== before.unmeasured ||
+      now.offsetCapDeclined !== before.offsetCapDeclined,
   };
 }
 

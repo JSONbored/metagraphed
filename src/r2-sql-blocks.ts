@@ -24,6 +24,7 @@
 
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import { BLOCKS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { BlocksRow } from "../generated/lakehouse/types.ts";
@@ -81,6 +82,51 @@ const BLOCK_COLUMNS = BLOCKS_COLUMNS.join(", ");
  * replaces the silent empty page when it is exceeded anyway.
  */
 export const OFFSET_EMULATION_CAP = 250;
+
+/**
+ * How many times a read has declined a too-deep offset, this isolate.
+ *
+ * Same contract as `currentR2SqlFailureGeneration`: a caller snapshots this
+ * before serving and compares after. It exists because that counter CANNOT see
+ * this decline -- the cap is checked before any SQL is built, so no query is
+ * issued, nothing fails, and no failure generation moves.
+ *
+ * That blindness shipped. `handleRequest` labels a degraded answer by comparing
+ * generations around the dispatch, so ten paginated routes answered a declined
+ * page as a bare, edge-cacheable 200 whose body was byte-identical to
+ * end-of-feed (#11142). `/api/v1/extrinsics?offset=260` reported
+ * `extrinsic_count: 0, next_cursor: null` with millions of rows behind it.
+ *
+ * UNMEASURED rather than transient, which is why it is a separate counter from
+ * the failure one rather than an increment of it: the same offset declines the
+ * same way for the whole TTL, so the answer stays cacheable and merely stops
+ * claiming to be measured. See `degradedSince` for that split.
+ */
+let offsetCapDeclineGeneration = 0;
+
+registerModuleStateReset("src/r2-sql-blocks.ts", () => {
+  offsetCapDeclineGeneration = 0;
+});
+
+export function currentOffsetCapDeclineGeneration(): number {
+  return offsetCapDeclineGeneration;
+}
+
+/**
+ * Whether `offset` is past the emulated-offset ceiling, RECORDING the decline.
+ *
+ * Every cold-tier reader asks through here rather than comparing against
+ * OFFSET_EMULATION_CAP itself. A bare comparison returns null silently, and the
+ * answer that reaches the caller is then indistinguishable from an empty feed
+ * -- which is the entire defect. Routing the check through one function is what
+ * makes a reader added tomorrow report the decline without its author having to
+ * know the labelling exists.
+ */
+export function offsetBeyondEmulationCap(offset: number): boolean {
+  if (offset <= OFFSET_EMULATION_CAP) return false;
+  offsetCapDeclineGeneration += 1;
+  return true;
+}
 
 export interface BlockFeedQuery {
   limit: number;
@@ -159,7 +205,7 @@ export async function fetchBlockRowsFromR2Sql(
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
   // Refuse rather than mis-serve: see OFFSET_EMULATION_CAP.
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   const where: string[] = [];
   const author = safeAuthorLiteral(query.author);

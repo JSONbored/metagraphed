@@ -12,7 +12,7 @@
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
-import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import {
   buildSubnetHyperparams,
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
@@ -75,7 +75,7 @@ export async function loadSubnetHyperparamsHistoryColdTier(
     return null;
   // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
   // reasonable trade and declining beats serving a page that is quietly wrong.
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   const where = [`netuid = ${n}`];
   const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
