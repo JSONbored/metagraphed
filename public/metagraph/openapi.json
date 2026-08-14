@@ -9605,6 +9605,19 @@
                 "storage": "example"
               }
             },
+            "miner_earnings": {
+              "basis_date": "example",
+              "earning_miner_count": 1,
+              "p50_alpha_day": 0.5,
+              "p50_usd_day": 0.5,
+              "p75_alpha_day": 0.5,
+              "p75_usd_day": 0.5,
+              "p90_alpha_day": 0.5,
+              "p90_usd_day": 0.5,
+              "top_alpha_day": 0.5,
+              "top_usd_day": 0.5,
+              "zero_miner_count": 1
+            },
             "netuid": 7,
             "point_count": 1,
             "points": [
@@ -48419,6 +48432,136 @@
               "type": "string"
             },
             "type": "object"
+          },
+          "miner_earnings": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "basis_date": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "The point whose per-day legs priced these figures -- the newest in the window."
+                  },
+                  "earning_miner_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "p50_alpha_day": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "p50_usd_day": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "What the MEDIAN earning miner makes per day in USD -- each UID's share of the window's summed miner emission (validators and the burn sink excluded) x the newest point's miner_usd_day. Null when that point's USD chain is (no priced tao-usd day, unknown alpha price)."
+                  },
+                  "p75_alpha_day": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "p75_usd_day": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "p90_alpha_day": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "p90_usd_day": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "top_alpha_day": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "top_usd_day": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "zero_miner_count": {
+                    "description": "Miner UIDs seen in the window that never recorded emission -- published beside the percentiles because on the median subnet this is most of them, and a distribution over earners alone reads as universal income.",
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "earning_miner_count",
+                  "zero_miner_count",
+                  "p50_alpha_day",
+                  "p75_alpha_day",
+                  "p90_alpha_day",
+                  "top_alpha_day",
+                  "p50_usd_day",
+                  "p75_usd_day",
+                  "p90_usd_day",
+                  "top_usd_day",
+                  "basis_date"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "THE MINER INCOME DISTRIBUTION (#11096): what a miner here actually makes, per day, at p50/p75/p90 and the top earner, in alpha and USD -- shares measured from the window's per-UID emission (burn sink excluded), priced through the newest point's own legs. Null when the window holds no miner UIDs."
           },
           "netuid": {
             "maximum": 9007199254740991,

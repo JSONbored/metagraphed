@@ -530,3 +530,99 @@ describe("the USD legs (#11095)", () => {
     assert.equal(p.miner_usd_day, null);
   });
 });
+
+describe("the miner income distribution (#11096)", () => {
+  test("percentiles over per-UID shares, priced through the newest point", () => {
+    // Four earning miners at 1:1:2:4 of the window's miner mass, one on zero,
+    // plus the burn sink and a validator that must not enter.
+    const base = {
+      snapshot_date: "2026-08-12",
+      alpha_out_emission: 1,
+      alpha_price_tao: 0.01,
+      validator_permit: false,
+    };
+    const rows: Row[] = [
+      { ...base, uid: 0, hotkey: "5A", emission_tao: 1 },
+      { ...base, uid: 1, hotkey: "5B", emission_tao: 1 },
+      { ...base, uid: 2, hotkey: "5C", emission_tao: 2 },
+      { ...base, uid: 3, hotkey: "5D", emission_tao: 4 },
+      { ...base, uid: 4, hotkey: "5E", emission_tao: 0 },
+      { ...base, uid: 162, hotkey: "5OwnerHot", emission_tao: 100 },
+      {
+        ...base,
+        uid: 200,
+        hotkey: "5V",
+        validator_permit: true,
+        emission_tao: 50,
+      },
+    ];
+    const out = buildSubnetEmissionSplitHistory(rows, 13, {
+      burnHotkey: "5OwnerHot",
+      usdPerTaoByDay: new Map([["2026-08-12", 100]]),
+    });
+    const e = out.miner_earnings as Row;
+    assert.equal(e.earning_miner_count, 4);
+    assert.equal(e.zero_miner_count, 1);
+    const p = (out.points as Row[])[0];
+    const minerAlphaDay = (p.total_alpha as number) * (p.miner_share as number);
+    // Top earner holds 4/8 of miner mass.
+    assert.ok(
+      Math.abs((e.top_alpha_day as number) - minerAlphaDay * 0.5) < 1e-6,
+    );
+    // Median of [1,1,2,4] by nearest-rank is 1 -> 1/8 of the mass.
+    assert.ok(Math.abs((e.p50_alpha_day as number) - minerAlphaDay / 8) < 1e-6);
+    assert.ok((e.p50_usd_day as number) > 0);
+    assert.equal(e.basis_date, "2026-08-12");
+  });
+
+  test("an empty window is null, and an unpriced one nulls only the money", () => {
+    assert.equal(
+      buildSubnetEmissionSplitHistory([], 13, {}).miner_earnings,
+      null,
+    );
+    // sn74Day carries no uid column, so give each row one -- a row without a
+    // uid cannot enter a per-UID distribution.
+    const withUids: Row[] = sn74Day("2026-08-12").map((r, i) => ({
+      ...r,
+      uid: i,
+    }));
+    const out = buildSubnetEmissionSplitHistory(withUids, 74, {});
+    const e = out.miner_earnings as Row;
+    assert.ok((e.p50_alpha_day as number) > 0, "alpha needs no USD chain");
+    assert.equal(e.p50_usd_day, null);
+  });
+});
+
+describe("the distribution's degrade arms (#11096)", () => {
+  test("all miners on zero: counts present, every percentile null", () => {
+    const rows: Row[] = [0, 1, 2].map((uid) => ({
+      snapshot_date: "2026-08-12",
+      uid,
+      hotkey: `5Z${uid}`,
+      validator_permit: false,
+      emission_tao: 0,
+      alpha_out_emission: 1,
+    }));
+    const e = buildSubnetEmissionSplitHistory(rows, 7, {})
+      .miner_earnings as Row;
+    assert.equal(e.earning_miner_count, 0);
+    assert.equal(e.zero_miner_count, 3);
+    assert.equal(e.p50_alpha_day, null);
+    assert.equal(e.top_usd_day, null);
+  });
+
+  test("a window with UIDs but no dated points still answers, moneyless", () => {
+    // A row whose snapshot_date is unusable never becomes a point, so there is
+    // no basis to price against -- the shares exist, the money does not.
+    const rows: Row[] = [
+      { uid: 0, hotkey: "5A", validator_permit: false, emission_tao: 2 },
+      { uid: 1, hotkey: "5B", validator_permit: false, emission_tao: 1 },
+    ];
+    const e = buildSubnetEmissionSplitHistory(rows, 7, {})
+      .miner_earnings as Row;
+    assert.equal(e.earning_miner_count, 2);
+    assert.equal(e.basis_date, null);
+    assert.equal(e.p50_alpha_day, null, "no point, no day total");
+    assert.equal(e.p50_usd_day, null);
+  });
+});

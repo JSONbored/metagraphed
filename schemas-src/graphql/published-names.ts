@@ -463,6 +463,9 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetYieldArtifactNeurons: "SubnetYieldNeuron",
   SubnetEmissionSplitHistoryArtifact: "SubnetEmissionSplitHistory",
   SubnetEmissionSplitHistoryArtifactPoints: "SubnetEmissionSplitHistoryPoint",
+  // #11096: the per-UID miner income distribution block.
+  SubnetEmissionSplitHistoryArtifactMinerEarnings:
+    "SubnetEmissionSplitMinerEarnings",
   SubnetMinerFairnessArtifact: "SubnetMinerFairness",
   SubnetMinerFairnessArtifactPoints: "SubnetMinerFairnessPoint",
   SubnetMinerFairnessArtifactPersistence: "SubnetMinerFairnessPersistence",

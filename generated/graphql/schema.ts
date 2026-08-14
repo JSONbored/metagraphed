@@ -2551,6 +2551,11 @@ type SubnetEmissionSplitHistory {
   points: [SubnetEmissionSplitHistoryPoint!]!
 
   """
+  THE MINER INCOME DISTRIBUTION (#11096): what a miner here actually makes, per day, at p50/p75/p90 and the top earner, in alpha and USD -- shares measured from the window's per-UID emission (burn sink excluded), priced through the newest point's own legs. Null when the window holds no miner UIDs.
+  """
+  miner_earnings: SubnetEmissionSplitMinerEarnings
+
+  """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
   """
   field_sources: JSON
@@ -2668,6 +2673,32 @@ type SubnetEmissionSplitHistoryPoint {
   \`total_alpha\` priced through \`alpha_price_tao\`. Reconstructed, and null whenever either input is.
   """
   total_tao: Float
+}
+
+type SubnetEmissionSplitMinerEarnings {
+  earning_miner_count: Int!
+
+  """
+  Miner UIDs seen in the window that never recorded emission -- published beside the percentiles because on the median subnet this is most of them, and a distribution over earners alone reads as universal income.
+  """
+  zero_miner_count: Int!
+  p50_alpha_day: Float
+  p75_alpha_day: Float
+  p90_alpha_day: Float
+  top_alpha_day: Float
+
+  """
+  What the MEDIAN earning miner makes per day in USD -- each UID's share of the window's summed miner emission (validators and the burn sink excluded) x the newest point's miner_usd_day. Null when that point's USD chain is (no priced tao-usd day, unknown alpha price).
+  """
+  p50_usd_day: Float
+  p75_usd_day: Float
+  p90_usd_day: Float
+  top_usd_day: Float
+
+  """
+  The point whose per-day legs priced these figures -- the newest in the window.
+  """
+  basis_date: String
 }
 
 """

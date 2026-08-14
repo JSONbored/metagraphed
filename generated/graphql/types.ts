@@ -6416,6 +6416,8 @@ export type SubnetEmissionSplitHistory = {
   __typename?: 'SubnetEmissionSplitHistory';
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
+  /** THE MINER INCOME DISTRIBUTION (#11096): what a miner here actually makes, per day, at p50/p75/p90 and the top earner, in alpha and USD -- shares measured from the window's per-UID emission (burn sink excluded), priced through the newest point's own legs. Null when the window holds no miner UIDs. */
+  miner_earnings?: Maybe<SubnetEmissionSplitMinerEarnings>;
   netuid: Scalars['Int']['output'];
   point_count: Scalars['Int']['output'];
   points: Array<SubnetEmissionSplitHistoryPoint>;
@@ -6476,6 +6478,24 @@ export type SubnetEmissionSplitHistoryPoint = {
   validator_share_of_uid?: Maybe<Scalars['Float']['output']>;
   /** The distributable day total x the MEASURED validator_share_of_uid, priced. Null when any input is. */
   validator_usd_day?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubnetEmissionSplitMinerEarnings = {
+  __typename?: 'SubnetEmissionSplitMinerEarnings';
+  /** The point whose per-day legs priced these figures -- the newest in the window. */
+  basis_date?: Maybe<Scalars['String']['output']>;
+  earning_miner_count: Scalars['Int']['output'];
+  p50_alpha_day?: Maybe<Scalars['Float']['output']>;
+  /** What the MEDIAN earning miner makes per day in USD -- each UID's share of the window's summed miner emission (validators and the burn sink excluded) x the newest point's miner_usd_day. Null when that point's USD chain is (no priced tao-usd day, unknown alpha price). */
+  p50_usd_day?: Maybe<Scalars['Float']['output']>;
+  p75_alpha_day?: Maybe<Scalars['Float']['output']>;
+  p75_usd_day?: Maybe<Scalars['Float']['output']>;
+  p90_alpha_day?: Maybe<Scalars['Float']['output']>;
+  p90_usd_day?: Maybe<Scalars['Float']['output']>;
+  top_alpha_day?: Maybe<Scalars['Float']['output']>;
+  top_usd_day?: Maybe<Scalars['Float']['output']>;
+  /** Miner UIDs seen in the window that never recorded emission -- published beside the percentiles because on the median subnet this is most of them, and a distribution over earners alone reads as universal income. */
+  zero_miner_count: Scalars['Int']['output'];
 };
 
 /** What the CHAIN charges to enter. Exact, measured, and the only hard numbers in this card. */
@@ -8675,6 +8695,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetEmissionDecomposition: ResolverTypeWrapper<SubnetEmissionDecomposition>;
   SubnetEmissionSplitHistory: ResolverTypeWrapper<SubnetEmissionSplitHistory>;
   SubnetEmissionSplitHistoryPoint: ResolverTypeWrapper<SubnetEmissionSplitHistoryPoint>;
+  SubnetEmissionSplitMinerEarnings: ResolverTypeWrapper<SubnetEmissionSplitMinerEarnings>;
   SubnetEntryCost: ResolverTypeWrapper<SubnetEntryCost>;
   SubnetEventSummary: ResolverTypeWrapper<SubnetEventSummary>;
   SubnetEventSummaryArtifactCategories: ResolverTypeWrapper<SubnetEventSummaryArtifactCategories>;
@@ -9141,6 +9162,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetEmissionDecomposition: SubnetEmissionDecomposition;
   SubnetEmissionSplitHistory: SubnetEmissionSplitHistory;
   SubnetEmissionSplitHistoryPoint: SubnetEmissionSplitHistoryPoint;
+  SubnetEmissionSplitMinerEarnings: SubnetEmissionSplitMinerEarnings;
   SubnetEntryCost: SubnetEntryCost;
   SubnetEventSummary: SubnetEventSummary;
   SubnetEventSummaryArtifactCategories: SubnetEventSummaryArtifactCategories;
@@ -13033,6 +13055,7 @@ export type SubnetEmissionDecompositionResolvers<ContextType = GqlContext, Paren
 
 export type SubnetEmissionSplitHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEmissionSplitHistory'] = ResolversParentTypes['SubnetEmissionSplitHistory']> = ResolversObject<{
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  miner_earnings?: Resolver<Maybe<ResolversTypes['SubnetEmissionSplitMinerEarnings']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['SubnetEmissionSplitHistoryPoint']>, ParentType, ContextType>;
@@ -13068,6 +13091,20 @@ export type SubnetEmissionSplitHistoryPointResolvers<ContextType = GqlContext, P
   validator_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_share_of_uid?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetEmissionSplitMinerEarningsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEmissionSplitMinerEarnings'] = ResolversParentTypes['SubnetEmissionSplitMinerEarnings']> = ResolversObject<{
+  basis_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  earning_miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  p50_alpha_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  p50_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  p75_alpha_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  p75_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  p90_alpha_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  p90_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_alpha_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  zero_miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type SubnetEntryCostResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEntryCost'] = ResolversParentTypes['SubnetEntryCost']> = ResolversObject<{
@@ -14798,6 +14835,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetEmissionDecomposition?: SubnetEmissionDecompositionResolvers<ContextType>;
   SubnetEmissionSplitHistory?: SubnetEmissionSplitHistoryResolvers<ContextType>;
   SubnetEmissionSplitHistoryPoint?: SubnetEmissionSplitHistoryPointResolvers<ContextType>;
+  SubnetEmissionSplitMinerEarnings?: SubnetEmissionSplitMinerEarningsResolvers<ContextType>;
   SubnetEntryCost?: SubnetEntryCostResolvers<ContextType>;
   SubnetEventSummary?: SubnetEventSummaryResolvers<ContextType>;
   SubnetEventSummaryArtifactCategories?: SubnetEventSummaryArtifactCategoriesResolvers<ContextType>;
