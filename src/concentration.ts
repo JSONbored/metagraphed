@@ -611,11 +611,14 @@ export function buildSubnetConcentrationRanking(
     sort = DEFAULT_CONCENTRATION_RANKING_SORT,
     order,
     limit,
+    burnHotkeyByNetuid,
   }: {
     lens?: ConcentrationLens;
     sort?: ConcentrationRankingSort;
     order?: "asc" | "desc" | null;
     limit: number;
+    /** netuid -> the subnet's burn hotkey, where MinerBurned > 0 (#11098). */
+    burnHotkeyByNetuid?: ReadonlyMap<number, string>;
   },
 ): SubnetConcentrationRankingResult {
   const list = Array.isArray(rows) ? rows : [];
@@ -639,9 +642,38 @@ export function buildSubnetConcentrationRanking(
     else byNetuid.set(netuid, [row]);
   }
 
-  const subnets = [...byNetuid.entries()].map(([netuid, group]) =>
-    rankingRow(buildConcentration(group, netuid), lens),
-  );
+  const subnets = [...byNetuid.entries()].map(([netuid, group]) => {
+    // #11098: the fairness scalars the screening question needs beside the
+    // lens, and #11094's burn discipline applied in bulk -- the burn sink is
+    // excluded from the EMISSION-reading lenses (its incentive is the chain's
+    // burn, not a holder's earnings) and from the miner counts; stake lenses
+    // keep it, since its stake is real.
+    const burnHotkey = burnHotkeyByNetuid?.get(netuid) ?? null;
+    const emissionLens = lens === "emission" || lens === "entity_emission";
+    const withoutBurn =
+      burnHotkey === null
+        ? group
+        : group.filter((row) => row?.hotkey !== burnHotkey);
+    let minerUidCount = 0;
+    let earningMinerCount = 0;
+    for (const row of withoutBurn) {
+      if (row?.validator_permit === true || Number(row?.validator_permit) === 1)
+        continue;
+      minerUidCount += 1;
+      const emission = Number(row?.emission_tao);
+      if (Number.isFinite(emission) && emission > 0) earningMinerCount += 1;
+    }
+    return Object.assign(
+      rankingRow(
+        buildConcentration(emissionLens ? withoutBurn : group, netuid),
+        lens,
+      ),
+      {
+        miner_uid_count: minerUidCount,
+        earning_miner_count: earningMinerCount,
+      },
+    );
+  });
 
   const direction = order ?? WIDEST_FIRST[sort];
   const factor = direction === "desc" ? -1 : 1;

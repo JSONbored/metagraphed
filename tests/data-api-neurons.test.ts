@@ -2849,3 +2849,92 @@ test("emission-split serves the USD legs from the day's priced observation (#110
   // 7200 alpha day total x 0.01 alpha price x 350 usd.
   assert.ok(Math.abs((point.total_usd_day as number) - 25200) < 1e-3);
 });
+
+test("the bulk ranking excludes each subnet's burn sink and counts its miners (#11098)", async () => {
+  await seed(
+    `INSERT INTO subnet_ownership (netuid, owner_coldkey, owner_hotkey, captured_at)
+     VALUES (?, ?, ?, ?)`,
+    [7, "5OwnerCold", "5OwnerHot", CAPTURED_AT],
+  );
+  await seed(
+    `INSERT INTO subnet_snapshots (netuid, snapshot_date, miner_burned_fraction)
+     VALUES (?, ?, ?)`,
+    [7, dayAgo(0), 0.7],
+  );
+  await insertNeuron({
+    uid: 162,
+    hotkey: "5OwnerHot",
+    coldkey: "5OwnerCold",
+    validator_permit: 0,
+    emission_tao: 70,
+    incentive: 0.7,
+  });
+  await insertNeuron({
+    uid: 1,
+    hotkey: "5HotM1",
+    coldkey: "5ColdM1",
+    validator_permit: 0,
+    emission_tao: 10,
+    incentive: 0.1,
+  });
+  await insertNeuron({
+    uid: 2,
+    hotkey: "5HotM2",
+    coldkey: "5ColdM2",
+    validator_permit: 0,
+    emission_tao: 0,
+    incentive: 0,
+  });
+  await insertNeuron({
+    uid: 3,
+    hotkey: "5HotV",
+    coldkey: "5ColdV",
+    validator_permit: 1,
+    emission_tao: 20,
+    incentive: 0,
+  });
+
+  // A second subnet whose fraction is ZERO: its owner UID is an ordinary
+  // holder, and the map must not invent an exclusion for it.
+  await seed(
+    `INSERT INTO subnet_ownership (netuid, owner_coldkey, owner_hotkey, captured_at)
+     VALUES (?, ?, ?, ?)`,
+    [9, "5OC9", "5OH9", CAPTURED_AT],
+  );
+  await seed(
+    `INSERT INTO subnet_snapshots (netuid, snapshot_date, miner_burned_fraction)
+     VALUES (?, ?, ?)`,
+    [9, dayAgo(0), 0],
+  );
+  await insertNeuron({
+    netuid: 9,
+    uid: 0,
+    hotkey: "5OH9",
+    coldkey: "5OC9",
+    validator_permit: 0,
+    emission_tao: 5,
+  });
+  await insertNeuron({
+    netuid: 9,
+    uid: 1,
+    hotkey: "5H9b",
+    coldkey: "5C9b",
+    validator_permit: 0,
+    emission_tao: 5,
+  });
+
+  const res = await call(
+    req("/api/v1/chain/concentration/subnets?lens=emission&limit=200"),
+  );
+  assert.equal(res.status, 200);
+  const subnets = ((await res.json()) as Row).subnets as Row[];
+  const row = subnets.find((r) => r.netuid === 7) as Row;
+  assert.equal(row.miner_uid_count, 2, "sink and validator are not miners");
+  assert.equal(row.earning_miner_count, 1);
+  const zeroBurn = subnets.find((r) => r.netuid === 9) as Row;
+  assert.equal(zeroBurn.miner_uid_count, 2, "no exclusion invented");
+  assert.equal(zeroBurn.holders, 2);
+  // With the 70-emission sink excluded, the emission lens sees the validator's
+  // 20 and the miner's 10 -- two holders, not a 70% single-holder illusion.
+  assert.equal(row.holders, 2);
+});

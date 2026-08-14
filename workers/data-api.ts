@@ -7388,13 +7388,48 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         stake_tao: Neurons["stake_tao"];
         emission_tao: Neurons["emission_tao"];
         coldkey: Neurons["coldkey"];
+        hotkey: Neurons["hotkey"];
         validator_permit: Neurons["validator_permit"];
         netuid: Neurons["netuid"];
         captured_at: Neurons["captured_at"];
       }>`
-        SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
+        SELECT stake_tao, emission_tao, coldkey, hotkey, validator_permit, netuid, captured_at
         FROM neurons`;
-      return json(buildSubnetConcentrationRanking(rows, query));
+      // #11098/#11094 in bulk: every subnet's burn hotkey in two grouped
+      // reads, so the emission lenses and the miner counts apply the same
+      // discipline the per-subnet routes do. A netuid missing from either
+      // half simply has no map entry -- no exclusion invented.
+      const owners = await sql<{ netuid: number; owner_hotkey: string | null }>`
+        SELECT DISTINCT ON (netuid) netuid, owner_hotkey
+        FROM subnet_ownership
+        ORDER BY netuid, captured_at DESC`;
+      const fractions = await sql<{
+        netuid: number;
+        miner_burned_fraction: number | null;
+      }>`
+        SELECT DISTINCT ON (netuid) netuid, miner_burned_fraction
+        FROM subnet_snapshots
+        ORDER BY netuid, snapshot_date DESC`;
+      const burnHotkeyByNetuid = new Map<number, string>();
+      const fractionByNetuid = new Map(
+        fractions.map((row) => [row.netuid, Number(row.miner_burned_fraction)]),
+      );
+      for (const row of owners) {
+        const fraction = fractionByNetuid.get(row.netuid);
+        if (
+          row.owner_hotkey &&
+          Number.isFinite(fraction) &&
+          (fraction as number) > 0
+        ) {
+          burnHotkeyByNetuid.set(row.netuid, row.owner_hotkey);
+        }
+      }
+      return json(
+        buildSubnetConcentrationRanking(rows, {
+          ...query,
+          burnHotkeyByNetuid,
+        }),
+      );
     };
   }
 

@@ -6673,6 +6673,8 @@ export interface components {
             sort: "nakamoto_coefficient" | "gini" | "holders" | "top_1pct_share" | "total" | "netuid";
             subnet_count: number;
             subnets: {
+                /** @description How many of them carry emission right now. Against miner_uid_count this is the screening fact a count alone hides -- and this bulk row is the LIVE grain; the per-subnet miner-fairness route answers it over a window, which is the durable version. */
+                earning_miner_count?: number;
                 entity_count: number;
                 entropy: number | null;
                 entropy_normalized: number | null;
@@ -6680,6 +6682,8 @@ export interface components {
                 hhi: number | null;
                 hhi_normalized: number | null;
                 holders: number | null;
+                /** @description Non-validator UIDs on this subnet's current metagraph, the burn sink excluded (#11094/#11098). The number every leaderboard calls 'miners'. */
+                miner_uid_count?: number;
                 nakamoto_coefficient: number | null;
                 netuid: number;
                 neuron_count: number;
