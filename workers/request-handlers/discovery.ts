@@ -466,9 +466,33 @@ export async function mcpServerCardResponse(
     },
     capabilities: MCP_CAPABILITIES,
     _meta: MCP_REGISTRY_META,
-    tools: listToolDefinitions(),
-    resource_templates: MCP_RESOURCE_TEMPLATES,
-    prompts: listPromptDefinitions(),
+    // SEP-2127's remotes[] shape, mirroring server.json's own entry, so a
+    // registry consumer and a card consumer read one vocabulary.
+    remotes: [{ type: "streamable-http", url: `${base}/mcp` }],
+    websiteUrl: "https://metagraph.sh",
+    // PRIMITIVES ARE DELIBERATELY NOT EMBEDDED (#11170). The card used to
+    // carry `tools: listToolDefinitions()` -- all 240 full definitions, 1.6 MB
+    // of a 1.65 MB document -- which the server-card SEP explicitly excludes:
+    // "this specification intentionally omits primitive definitions (tools,
+    // resources, and prompts) from server cards", because what a server
+    // exposes can vary by session and the runtime list operations are the
+    // source of truth. A discovery card is a business card, not the catalogue.
+    //
+    // Nothing is lost: the counts below say what is behind the door, and
+    // `primitive_definitions` names every place the full specs are served --
+    // the MCP list operations for protocol clients, and the agent-tools
+    // documents for OpenAI/Anthropic-style runtimes.
+    primitive_counts: {
+      tools: listToolDefinitions().length,
+      prompts: listPromptDefinitions().length,
+      resource_templates: MCP_RESOURCE_TEMPLATES.length,
+    },
+    primitive_definitions: {
+      mcp: `${base}/mcp (tools/list, prompts/list, resources/templates/list)`,
+      index: `${base}/.well-known/agent-tools/index.json`,
+      openai: `${base}/.well-known/agent-tools/openai.json`,
+      anthropic: `${base}/.well-known/agent-tools/anthropic.json`,
+    },
   };
   const pub = await publishedAt(env);
   const card = {
