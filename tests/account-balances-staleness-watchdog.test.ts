@@ -203,6 +203,30 @@ describe("evaluateAccountBalancesStaleness", () => {
     assert.ok(verdict.age_ms < verdict.threshold_ms);
   });
 
+  test("the re-anchor tightened the guard: the OLD floor now alerts", () => {
+    // The finding behind #11185's account_balances entry. The expectation was
+    // 306,000, measured 2026-08-05, while the live population had grown to
+    // ~366,700 -- so the floor sat at 244,800, which is 67% of reality. A pass
+    // could lose a THIRD of all accounts and still report ok, and the blind
+    // spot the ratio documents as "80% to 100%" had quietly become 67% to 100%.
+    //
+    // Slack IS the dangerous direction for a floor whose job is catching a
+    // truncated pass, so this pins that the old floor is no longer acceptable.
+    const OLD_FLOOR = 244_800;
+    const verdict = evaluateAccountBalancesStaleness(
+      inputs({ coveredRows: OLD_FLOOR, totalRows: FULL }),
+    );
+    assert.equal(
+      verdict.reason,
+      "partial",
+      "a pass covering only the old floor must now be caught",
+    );
+    assert.ok(
+      ACCOUNT_BALANCES_COVERAGE_FLOOR_ROWS > OLD_FLOOR,
+      "the re-anchor must raise the floor, not lower it",
+    );
+  });
+
   test("a pass exactly at the floor is complete; one row under is not", () => {
     // Strictly-less, matching the threshold edge above, so a lane landing
     // exactly on the floor never flaps.

@@ -120,16 +120,49 @@ export const ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS = missedTicksMs(
 /**
  * How many accounts a COMPLETE pass is expected to write.
  *
- * The producer walks System::Account -- 542,618 entries at its own last live
- * measurement (2026-07-19), per tests/fixtures/sqlite-schema/0017_account_balances.sql -- and
- * SKIPS every account whose free and reserved are both zero, so a full pass
- * lands the nonzero-balance subset of that, ~306,000 accounts (2026-08-05).
+ * The producer walks System::Account and SKIPS every account whose free and
+ * reserved are both zero, so a full pass lands the nonzero-balance subset.
  *
- * Stated as the measurement rather than as a bound, because the floor below is
- * what the rule actually uses and is sized so that being wrong about this
- * number cannot make the alarm wrong in the dangerous direction.
+ * 366,700, re-measured 2026-08-14 from what a VERIFIED-COMPLETE pass actually
+ * wrote: 366,713 accounts stamped within the pass window, against 367,125 rows
+ * in the table, at an age of 3.8 h on a 6 h cadence. The 412-row difference is
+ * accounts that went to zero and kept their row -- this table never prunes, so
+ * its raw row count is history and is NOT the population (see
+ * src/lane-table-topology.ts).
+ *
+ * ## WHY THIS WAS 306,000, AND WHY DRIFT MATTERED HERE
+ *
+ * The old figure was measured 2026-08-05 and the population grew ~20% in nine
+ * days -- expected, because this is the one lane whose expectation only GROWS
+ * (it counts accounts that have ever held a balance).
+ *
+ * The previous comment argued that being wrong here "cannot make the alarm
+ * wrong in the dangerous direction", on the grounds that understating the
+ * expectation leaves the floor "merely slacker still, never tighter". The
+ * direction is right and the conclusion is not: slack IS the dangerous
+ * direction for a floor whose whole job is catching a truncated pass. At
+ * 306,000 the floor was 244,800 -- 67% of the live population -- so a pass
+ * could have lost a THIRD of all accounts and still reported ok. The blind spot
+ * the ratio's comment documents as "80% to 100%" had quietly become 67% to
+ * 100%. That is exactly the failure hotkey-alpha's own comment names: a floor
+ * that has grown too low to fire is invisible.
+ *
+ * ## HOW TO RE-MEASURE
+ *
+ * Ideally from chain: walk System::Account and count entries whose free and
+ * reserved are not both zero. That needs storage VALUES for ~543k keys, which
+ * is expensive and timed out when attempted here, so this is anchored instead
+ * on what a complete pass wrote -- sound because the producer writes exactly
+ * that subset, and because completeness was confirmed independently (99.9% of
+ * table rows refreshed, well inside cadence).
+ *
+ *   SELECT count(*) FILTER (WHERE captured_at >=
+ *            (SELECT max(captured_at) FROM account_balances) - <pass window>)
+ *     FROM account_balances;
+ *
+ * Do NOT anchor on `count(*)` alone: that is accumulated history.
  */
-export const ACCOUNT_BALANCES_EXPECTED_ACCOUNTS = 306_000;
+export const ACCOUNT_BALANCES_EXPECTED_ACCOUNTS = 366_700;
 
 /**
  * How much of that a single pass must cover before it counts as complete.
