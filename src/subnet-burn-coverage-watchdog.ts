@@ -78,12 +78,30 @@ export const SUBNET_BURN_COVERAGE_FLOOR_RATIO = 0.95;
  * writer that wrote one netuid 129 times would otherwise pass a row count, and
  * that is close enough to the observed failure to be worth excluding.
  */
+// BOTH SIDES ARE ONE PASS (#11185). `expected` counted DISTINCT netuid over the
+// WHOLE of subnet_hyperparams while `covered` counted one stamp, which is the
+// asymmetry that made hotkey-alpha alarm on a complete pass for hours (#11170):
+// there, `referenced` spanned all of nominator_positions' history and no correct
+// pass could ever reach the floor.
+//
+// It has not fired here yet, and only because nothing has been removed.
+// Measured 2026-08-14: subnet_hyperparams holds 129 distinct netuids in total
+// AND 129 at its newest stamp -- identical, because no netuid has ever left.
+// Chain agrees: TotalNetworks = 129 and NetworksAdded = 129 entries, which is
+// 128 subnets plus root (netuid 0), max netuid 128.
+//
+// The first deregistration that leaves a stale row behind breaks that
+// coincidence: the denominator would exceed the live set and this alarm would
+// fire forever on complete passes. Windowing it to that table's own newest pass
+// makes the comparison structural rather than lucky.
 const SUBNET_BURN_COVERAGE_SQL =
   "SELECT (SELECT MAX(observed_at) FROM subnet_burn_history) AS latest," +
   " (SELECT COUNT(DISTINCT netuid) FROM subnet_burn_history" +
   " WHERE observed_at = (SELECT MAX(observed_at) FROM subnet_burn_history))" +
   " AS covered," +
-  " (SELECT COUNT(DISTINCT netuid) FROM subnet_hyperparams) AS expected";
+  " (SELECT COUNT(DISTINCT netuid) FROM subnet_hyperparams" +
+  " WHERE captured_at = (SELECT MAX(captured_at) FROM subnet_hyperparams))" +
+  " AS expected";
 
 /**
  * The single row that query returns.
