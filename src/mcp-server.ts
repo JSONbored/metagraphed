@@ -2189,7 +2189,13 @@ const ACCOUNT_TRANSFERS_DIRECTIONS = ["all", "sent", "received"];
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
-  title: "metagraphed — Bittensor subnet operational registry",
+  // "Bittensor in a box" is the product's own tagline -- it has been the
+  // served skill's H1 since the skill existed, and it is the phrase users
+  // repeat back. The NAME stays `metagraphed`: the registry identity
+  // (io.github.JSONbored/metagraphed), the npm/PyPI packages, and every
+  // `claude mcp add` in the wild key on it, and a tagline is not worth
+  // breaking an address for.
+  title: "metagraphed — Bittensor in a box",
   // Implementation.description (added in MCP 2025-11-25): a short human-readable
   // line surfaced during initialization.
   description:
