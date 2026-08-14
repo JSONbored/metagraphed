@@ -343,6 +343,23 @@ export async function pruneKeysInNeon(
  * the ratio of two of them is exact in numeric. The Rust side computed this as
  * u128 -> f64 division, so this is at least as accurate and does not round the
  * denominator before dividing.
+ *
+ * ONLY ROWS THAT WOULD CHANGE. The `IS DISTINCT FROM` guard is not a
+ * micro-optimisation -- without it this was the most expensive statement in the
+ * database by a wide margin, and every write it made was a no-op.
+ *
+ * Measured from pg_stat_statements: 1,698 calls, 182,099,222 rows updated,
+ * 3,189,560 ms of execution and **76 GB of WAL**. Then measured against a real
+ * pass: 108,732 rows in scope, 108,732 already holding exactly the value this
+ * would assign, ZERO that would change. The producer computes the same fraction
+ * the numeric expression does, so every row was rewritten to itself -- and
+ * Postgres has no way to know that without being told, because an UPDATE writes
+ * a new tuple version whether or not the value moved.
+ *
+ * The guard keeps the correction it was written for: a row whose stored value
+ * genuinely disagrees is still fixed, and the statement stays a no-op the rest
+ * of the time. It also keeps `IS DISTINCT FROM` rather than `<>` so a NULL
+ * share_fraction still gets written.
  */
 export async function normalizeShareFractionsInNeon(
   sql: PgUnsafe | null | undefined,
@@ -370,7 +387,8 @@ export async function normalizeShareFractionsInNeon(
           AND p.netuid = t.netuid
           AND p.captured_at = $1
           AND p.shares IS NOT NULL
-          AND t.total > 0`,
+          AND t.total > 0
+          AND p.share_fraction IS DISTINCT FROM (p.shares / t.total)::double precision`,
       [capturedAt],
     );
   } catch (error) {
