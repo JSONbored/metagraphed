@@ -396,6 +396,14 @@ function openCommandPalette() {
   );
 }
 
+// The hero's MCP connect one-liner. Static rather than agentResourcesQuery()'s
+// `mcp.install` (which HomeForAgentsModule below renders) on purpose: the hero
+// renders pre-hydration with no query dependency, and this recommends
+// /mcp/core — the 23-tool context-diet profile (#11164) — where `mcp.install`
+// teaches the full 240-tool /mcp catalog. Per-client setup lives at /docs/mcp.
+const MCP_CORE_INSTALL =
+  "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core";
+
 function HomeHero() {
   const hydrated = useHydrated();
   const { data: subnetsData } = useQuery({
@@ -484,6 +492,16 @@ function HomeHero() {
           >
             Read the API
           </Link>
+        </div>
+        {/* inline-flex, not flex: this is a control shell (a copyable command
+            row), not a content panel — same distinction the card-shell lint
+            rule draws for segmented controls. */}
+        <div className="mg-fade-in mg-fade-in-delay-3 mt-6 inline-flex w-full max-w-xl items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
+          <Terminal className="size-3.5 shrink-0 text-accent" aria-hidden />
+          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left font-mono mg-type-caption-lg text-ink-muted">
+            {MCP_CORE_INSTALL}
+          </code>
+          <CopyButton value={MCP_CORE_INSTALL} label="MCP install command" />
         </div>
         <ChainHeadTip />
       </div>

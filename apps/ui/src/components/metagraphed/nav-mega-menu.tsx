@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { Plug } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import {
@@ -276,6 +277,41 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
           </div>
         );
       })}
+      {/* MCP is a plain top-level link, not a panel — one setup page, nothing
+          to browse. Hover-intent closes any open panel so moving from a panel
+          trigger onto this link doesn't strand the panel open behind it. */}
+      <div onMouseEnter={scheduleClose}>
+        <Link
+          to="/docs/$"
+          params={{ _splat: "mcp" }}
+          aria-current={pathname === "/docs/mcp" ? "page" : undefined}
+          className={classNames(
+            "relative inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 h-9 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+            pathname === "/docs/mcp"
+              ? "text-ink-strong font-medium"
+              : "text-ink-muted hover:text-ink-strong",
+          )}
+          onClick={() => {
+            setOpenKey(null);
+            onNavigate?.();
+          }}
+          preload="intent"
+        >
+          <Plug
+            className={classNames(
+              "size-3.5",
+              pathname === "/docs/mcp" ? "text-accent" : "opacity-70",
+            )}
+          />
+          <span>MCP</span>
+          {pathname === "/docs/mcp" ? (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-3 right-3 -bottom-1 h-[1.5px] rounded-full bg-accent mg-fade-in"
+            />
+          ) : null}
+        </Link>
+      </div>
       {activePanel ? (
         <>
           <div aria-hidden className="mg-mega-scrim" onClick={() => setOpenKey(null)} />

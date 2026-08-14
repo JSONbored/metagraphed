@@ -31,6 +31,7 @@ import {
   Layers,
   Loader2,
   Network,
+  Plug,
   RotateCcw,
   Rss,
   Search,
@@ -105,6 +106,7 @@ interface RouteEntry {
 // docsRoutes below), it just renders with the default icon.
 const DOCS_ICON_OVERRIDES: Record<string, typeof Compass> = {
   "/docs/graphql": Braces,
+  "/docs/mcp": Plug,
   "/docs/rpc": Zap,
   "/docs/feeds": Rss,
   "/docs/chain-events": History,
