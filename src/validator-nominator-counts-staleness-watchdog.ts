@@ -45,7 +45,13 @@
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { passWindowMs } from "./producer-cadence.ts";
-import { readStore } from "./read-store.ts";
+import {
+  countOrZero,
+  numberOrNull,
+  readStore,
+  type ReadStoreDb,
+} from "./read-store.ts";
+import type { ValidatorNominatorCounts } from "../generated/db/types.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 
@@ -241,16 +247,20 @@ export function evaluateValidatorNominatorCountsStaleness(input: {
   return { ...base, stale: false, reason: null, age_ms: age };
 }
 
-/** A null SUM over no rows, or a shim that stringifies, must land on 0 rather
- * than NaN -- a NaN compares false against the floor and would report a
- * truncated table healthy. */
-function countOrZero(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-interface StatementClientLike {
-  first(text: string, values?: unknown[]): Promise<unknown>;
+/**
+ * The single row the coverage read returns.
+ *
+ * `latest` is typed through the GENERATED column type, so a stamp that changes
+ * type in Neon changes here rather than silently arriving as something else.
+ * The counts are `string | number` for the driver's reason, not the column's:
+ * COUNT() is BIGINT and node-postgres hands a bigint back as a string whenever
+ * it is not exactly representable. Every member is nullable because each
+ * subselect answers null on an empty table.
+ */
+interface ValidatorNominatorCountsCoverageRow {
+  latest: ValidatorNominatorCounts["captured_at"] | null;
+  covered: string | number | null;
+  total: string | number | null;
 }
 
 export interface ValidatorNominatorCountsStalenessDeps {
@@ -292,7 +302,7 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
   // threaded in by hand. Each of those alone is silent -- the lane simply stops
   // reporting, and an absent verdict reads as health.
   const db = readStore(env, ["validator_nominator_counts"]) as unknown as
-    StatementClientLike | undefined;
+    ReadStoreDb | undefined;
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
@@ -306,15 +316,12 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
     VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_ROWS;
 
   try {
-    const row = (await db.first(VALIDATOR_NOMINATOR_COUNTS_COVERAGE_SQL, [
-      passWindowMs,
-    ])) as {
-      latest: number | null;
-      covered: number | null;
-      total: number | null;
-    } | null;
+    const row = await db.first<ValidatorNominatorCountsCoverageRow>(
+      VALIDATOR_NOMINATOR_COUNTS_COVERAGE_SQL,
+      [passWindowMs],
+    );
     const verdict = evaluateValidatorNominatorCountsStaleness({
-      latestCapturedAtMs: row?.latest ?? null,
+      latestCapturedAtMs: numberOrNull(row?.latest),
       coveredRows: countOrZero(row?.covered),
       totalRows: countOrZero(row?.total),
       nowMs: now(),

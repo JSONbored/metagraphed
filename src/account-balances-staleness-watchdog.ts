@@ -90,7 +90,13 @@ import { laneHealthStore } from "./lane-health-store.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore } from "./read-store.ts";
+import {
+  countOrZero,
+  numberOrNull,
+  readStore,
+  type ReadStoreDb,
+} from "./read-store.ts";
+import type { AccountBalances } from "../generated/db/types.ts";
 
 /**
  * How old the ledger may get before this is a stall.
@@ -297,16 +303,20 @@ export function evaluateAccountBalancesStaleness(input: {
   return { ...base, stale: false, reason: null, age_ms: age };
 }
 
-/** D1 counts arrive as numbers, but a null SUM over no rows and a shim that
- * stringifies both have to land on 0 rather than NaN -- a NaN would compare
- * false against the floor and report the truncated table healthy. */
-function countOrZero(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-interface StatementClientLike {
-  first(text: string, values?: unknown[]): Promise<unknown>;
+/**
+ * The single row the coverage read returns.
+ *
+ * `latest` is typed through the GENERATED column type, so a stamp that changes
+ * type in Neon changes here rather than silently arriving as something else.
+ * The counts are `string | number` for the driver's reason, not the column's:
+ * COUNT() is BIGINT and node-postgres hands a bigint back as a string whenever
+ * it is not exactly representable. Every member is nullable because each
+ * subselect answers null on an empty table.
+ */
+interface AccountBalancesCoverageRow {
+  latest: AccountBalances["captured_at"] | null;
+  covered: string | number | null;
+  total: string | number | null;
 }
 
 export interface AccountBalancesStalenessDeps {
@@ -334,7 +344,7 @@ export async function runAccountBalancesStalenessWatchdog(
   // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["account_balances"]) as unknown as
-    StatementClientLike | undefined;
+    ReadStoreDb | undefined;
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
@@ -348,15 +358,12 @@ export async function runAccountBalancesStalenessWatchdog(
     ACCOUNT_BALANCES_COVERAGE_FLOOR_ROWS;
 
   try {
-    const row = (await db.first(ACCOUNT_BALANCES_COVERAGE_SQL, [
-      passWindowMs,
-    ])) as {
-      latest: number | null;
-      covered: number | null;
-      total: number | null;
-    } | null;
+    const row = await db.first<AccountBalancesCoverageRow>(
+      ACCOUNT_BALANCES_COVERAGE_SQL,
+      [passWindowMs],
+    );
     const verdict = evaluateAccountBalancesStaleness({
-      latestCapturedAtMs: row?.latest ?? null,
+      latestCapturedAtMs: numberOrNull(row?.latest),
       coveredRows: countOrZero(row?.covered),
       totalRows: countOrZero(row?.total),
       nowMs: now(),

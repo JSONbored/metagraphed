@@ -63,6 +63,48 @@ type Row = Record<string, unknown>;
  * every one of them. Loaders shared with the producer store (tao-usd,
  * pipeline-history, chain-concentration-history) consume the same verbs, so
  * one loader serves both providers with no adapter shape between them. */
+/**
+ * A `COUNT()`/`SUM()` result as a number, or 0.
+ *
+ * Lives here because the reason it exists is the DRIVER's: Postgres returns
+ * COUNT as BIGINT, and node-postgres hands a bigint back as a STRING whenever
+ * the value is not exactly representable (see src/pg-sql.ts's parser). So a
+ * coverage row's counts are honestly `string | number | null`, and every reader
+ * needs the same coercion.
+ *
+ * It was copy-pasted into five staleness watchdogs as `countOrZero` and into
+ * src/lane-alarm.ts as `toInt` -- six identical bodies under two names, which is
+ * how a coercion quietly diverges.
+ *
+ * Zero rather than NaN or a throw: every caller is a coverage rule, and a count
+ * it cannot read must be treated as "covered nothing" so the rule alerts. NaN
+ * compares false against a floor and would report healthy -- see
+ * "an uncountable coverage number reads as ZERO, never as covered".
+ */
+export function countOrZero(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * A BIGINT column as a number, preserving null.
+ *
+ * The sibling of `countOrZero` and for the same driver reason, but a stamp is
+ * not a count: an unreadable timestamp must stay NULL, because 0 is a real
+ * instant (1970) and would make a dead lane read as merely very stale rather
+ * than as never having reported.
+ *
+ * Epoch-ms values are exactly representable, so today the driver hands these
+ * back as numbers and this is a no-op. It exists because the GENERATED type
+ * says `number | string` and a reader that assumes `number` is the #9782 class
+ * of bug -- code and column disagreeing about a type, with nothing throwing.
+ */
+export function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 export interface ReadStoreDb {
   query<T = Row>(text: string, values?: unknown[]): Promise<T[]>;
   first<T = Row>(text: string, values?: unknown[]): Promise<T | null>;
