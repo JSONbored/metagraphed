@@ -55,6 +55,7 @@ import {
   LIFECYCLE_CSV_COLUMNS,
   analyticsQueryError,
   markDataApiTierFallbackResponse,
+  unmeasured,
 } from "./analytics.ts";
 import {
   overlayAccountPositionHistoryColdTier,
@@ -7011,7 +7012,34 @@ export async function handleExtrinsics(
           },
           network,
         )
-      : null) ?? buildExtrinsicFeed([], { limit, offset, nextCursor: null });
+      : null) ??
+    // LABELLED, because an empty feed here is not an empty feed (#11142).
+    //
+    // Two different things reach this operand, and neither one means "no more
+    // extrinsics": the `call_hash` arm above skips the tier outright, and the
+    // cold tier returns null when it declines -- notably once `offset` passes
+    // OFFSET_EMULATION_CAP, which it checks BEFORE issuing any query.
+    //
+    // That last part is why the central label was not already covering this.
+    // `handleRequest` snapshots the r2-sql failure generation around every
+    // dispatch, so a query that fails (a `body_too_large` decline, a timeout)
+    // is labelled and barred from the cache without anyone remembering to. A
+    // decline taken before the query moves no generation at all, so the
+    // response went out as a bare 200.
+    //
+    // Measured against production 2026-08-14: `?offset=240` returned 5 rows
+    // and a cursor, `?offset=260` returned `extrinsic_count: 0` with
+    // `next_cursor: null` -- the exact end-of-feed signal -- with no
+    // `x-metagraph-degraded` header and `public, max-age=60,
+    // stale-while-revalidate=300`. Millions of rows sit behind that offset, so
+    // a client paginating the feed stopped early, dropped the tail, and the
+    // edge served that answer to everyone else for the next five minutes.
+    //
+    // `unmeasured` rather than the tier-fallback marker: these declines are
+    // STABLE, not transient. The same offset declines the same way for the
+    // whole TTL, so the answer stays cacheable and merely stops claiming to be
+    // measured -- which is the distinction degradedSince() draws.
+    unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
       extrinsicsToCsvRows(
@@ -7073,7 +7101,8 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
       blockEnd: query.block_end ?? null,
       from: query.from ?? null,
       to: query.to ?? null,
-    })) ?? buildExtrinsicFeed([], { limit, offset, nextCursor: null });
+    })) ??
+    unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
       extrinsicsToCsvRows(
@@ -7138,7 +7167,8 @@ export async function handleGovernanceConfigChanges(
       blockEnd: query.block_end ?? null,
       from: query.from ?? null,
       to: query.to ?? null,
-    })) ?? buildExtrinsicFeed([], { limit, offset, nextCursor: null });
+    })) ??
+    unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
       extrinsicsToCsvRows(
