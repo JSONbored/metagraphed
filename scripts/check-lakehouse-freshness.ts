@@ -110,8 +110,24 @@ export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
     reason: "identity poller, restore pending",
   },
   featured_validators: {
-    maxAgeMs: 7 * DAY,
-    reason: "registry projection, restore pending",
+    // EXEMPT, and this is a decision rather than an unpaid debt.
+    //
+    // The curation moved to registry/featured-validators.json (#11080), where
+    // git holds it with authorship, review and full history -- a better archive
+    // for a commercial arrangement than Iceberg, which has none of those.
+    //
+    // The roster was then emptied (#11116): no validator currently carries an
+    // arrangement, so the badge serves false everywhere, correctly. The two
+    // rows still in this table are the materialised record of an arrangement
+    // that has ENDED.
+    //
+    // Feeding it from the registry would therefore write zero rows or overwrite
+    // those two -- destroying the only thing the table holds. Doing nothing is
+    // the option that preserves the record, so it is frozen ON PURPOSE and no
+    // longer counted against the frozen baseline.
+    maxAgeMs: null,
+    reason:
+      "a past arrangement, kept as-is: the roster is empty and git is the archive for the curation",
   },
   neurons: { maxAgeMs: 2 * DAY, reason: "metagraph poller, restore pending" },
   nominator_positions: {
@@ -293,7 +309,6 @@ export const KNOWN_FROZEN: ReadonlySet<string> = new Set([
   //                         published from this repo
   //   rpc_proxy_events      no such table in Neon; the RPC proxy Worker writes
   //                         it to D1
-  "featured_validators",
 ]);
 export interface TableAge {
   table: string;
