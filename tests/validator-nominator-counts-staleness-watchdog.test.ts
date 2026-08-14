@@ -162,8 +162,11 @@ describe("evaluateValidatorNominatorCountsStaleness", () => {
     // The acceptance criterion. Both ticks carry an identically fresh
     // MAX(captured_at); the ONLY difference is how many hotkeys the pass
     // reached, which is exactly what a timestamp cannot express.
+    // A FRACTION of the expectation, not a literal: `54_000` was half of the
+    // old 112,245 and is above the whole measured population, so it would now
+    // read as a complete pass and assert nothing.
     const half = evaluateValidatorNominatorCountsStaleness(
-      inputs({ coveredRows: 54_000, totalRows: FULL }),
+      inputs({ coveredRows: Math.round(FULL / 2), totalRows: FULL }),
     );
     assert.equal(half.stale, true, "a half-covered pass must not read as ok");
     assert.equal(half.reason, "partial");
@@ -177,27 +180,56 @@ describe("evaluateValidatorNominatorCountsStaleness", () => {
     assert.equal(whole.age_ms, half.age_ms);
   });
 
-  test("a truncated pass is caught at every chunk boundary but the last", () => {
-    // The sync route caps a request at 25,000 rows, so a full pass is ~5
-    // requests and a death partway lands near these counts. The floor is placed
-    // against that grid rather than picked round.
-    for (const covered of [25_000, 50_000, 75_000]) {
+  test("a pass that died mid-scan is caught, wherever it died", () => {
+    // The chunk grid this used to assert (25k / 50k / 75k / 100k) is GONE. It
+    // followed from a 112,245-hotkey expectation across a 25,000-row sync cap,
+    // ~5 requests. Measured on chain 2026-08-14 the population is 21,547, so a
+    // full pass fits in ONE request and there are no interior boundaries left
+    // for a death to land on -- see the ratio's comment.
+    //
+    // What still has to hold is the property the grid was standing in for: a
+    // pass that covered materially less than the population must alert. These
+    // are fractions of the expectation rather than absolute counts, so the next
+    // re-anchor moves them automatically instead of silently re-encoding a
+    // population that has moved on.
+    for (const fraction of [0.25, 0.5, 0.75]) {
+      const covered = Math.round(
+        VALIDATOR_NOMINATOR_COUNTS_EXPECTED_HOTKEYS * fraction,
+      );
       const verdict = evaluateValidatorNominatorCountsStaleness(
         inputs({ coveredRows: covered, totalRows: FULL }),
       );
       assert.equal(
         verdict.reason,
         "partial",
-        `a pass that died at ${covered} rows must alert`,
+        `a pass that reached only ${Math.round(fraction * 100)}% of the population must alert`,
       );
     }
-    // Documented gap, asserted so it is a decision rather than a surprise: a
-    // death in the final chunk clears the floor. Tightening far enough to catch
-    // it would put the alarm inside the noise band of population change.
-    const lastChunk = evaluateValidatorNominatorCountsStaleness(
-      inputs({ coveredRows: 100_000, totalRows: FULL }),
+    // The documented gap, still a decision rather than a surprise: a pass just
+    // inside the 80% tolerance clears, because tightening further would put the
+    // alarm inside the noise band of ordinary churn.
+    const nearlyWhole = evaluateValidatorNominatorCountsStaleness(
+      inputs({
+        coveredRows: Math.round(
+          VALIDATOR_NOMINATOR_COUNTS_EXPECTED_HOTKEYS * 0.9,
+        ),
+        totalRows: FULL,
+      }),
     );
-    assert.equal(lastChunk.stale, false);
+    assert.equal(nearlyWhole.stale, false);
+  });
+
+  test("the real 2026-08-14 pass reads as COMPLETE, not partial", () => {
+    // The regression this re-anchor is for. Production reported 21,548 hotkeys
+    // covered and alarmed continuously that /validators served silently stale
+    // counts. Counted on chain the same day -- twox128 prefix walk of
+    // SubtensorModule::Alpha, 120,253 entries ending on a short page -- there
+    // are 21,547 distinct hotkeys. The pass was complete; the constant was not.
+    const verdict = evaluateValidatorNominatorCountsStaleness(
+      inputs({ coveredRows: 21_548, totalRows: 112_250 }),
+    );
+    assert.equal(verdict.stale, false);
+    assert.notEqual(verdict.reason, "partial");
   });
 
   test("the no-prune stragglers do not count against coverage", () => {
@@ -233,7 +265,10 @@ describe("evaluateValidatorNominatorCountsStaleness", () => {
     // If a whole pass has been missed, "the producer stopped" is the headline
     // and the coverage of its last attempt is a detail.
     const verdict = evaluateValidatorNominatorCountsStaleness(
-      inputs({ latestCapturedAtMs: NOW - 31 * HOUR, coveredRows: 54_000 }),
+      inputs({
+        latestCapturedAtMs: NOW - 31 * HOUR,
+        coveredRows: Math.round(FULL / 2),
+      }),
     );
     assert.equal(verdict.reason, "stale");
   });
@@ -340,7 +375,11 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
   });
 
   test("a recent but half-covered table alerts, naming both counts", async () => {
-    const { env } = fakeDb(NOW - HOUR, 54_000, 112_250);
+    // Half the measured population, expressed as a fraction so a re-anchor
+    // moves it: `54_000` was half of the old 112,245 expectation and now sits
+    // above the whole chain, which would make this assert nothing.
+    const HALF = Math.round(VALIDATOR_NOMINATOR_COUNTS_EXPECTED_HOTKEYS / 2);
+    const { env } = fakeDb(NOW - HOUR, HALF, 112_250);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
     const result = await runValidatorNominatorCountsStalenessWatchdog(env, {
@@ -352,13 +391,13 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
     });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
-    assert.equal(result.covered_rows, 54_000);
+    assert.equal(result.covered_rows, HALF);
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0]!.errorCode, "stale_lane");
     const message = String(recorded[0]!.error?.message);
     // Distinct wording from the stalled case -- different place to go looking.
     assert.match(message, /truncated/);
-    assert.match(message, /54000 hotkeys/);
+    assert.match(message, new RegExp(`${HALF} hotkeys`));
     assert.match(message, /RECENT and PARTIAL/);
     assert.doesNotMatch(message, /nothing is refreshing/);
   });
