@@ -2628,6 +2628,34 @@ type SubnetEmissionSplitHistoryPoint {
   """
   validator_share: Float
 
+  """
+  The day's last PRICED usd_per_tao observation from the TAO/USD index (#9609) -- the rate every *_usd_day leg below used. Null before the series began (2026-08-02) or on an unpriceable day; the legs are null with it.
+  """
+  tao_usd: Float
+
+  """
+  RECONSTRUCTED (#11095): total_alpha x alpha_price_tao x tao_usd. The whole chain of assumptions is visible in this point's own fields; null when any link is. Do not hand-roll this from an assumed split constant -- the shares here are measured.
+  """
+  total_usd_day: Float
+
+  """owner_alpha x alpha_price_tao x tao_usd; null as above."""
+  owner_usd_day: Float
+
+  """
+  The distributable day total x the MEASURED validator_share_of_uid, priced. Null when any input is.
+  """
+  validator_usd_day: Float
+
+  """
+  What the subnet's miners collectively received that day in USD: the distributable day total x the MEASURED miner_share_of_uid (burn sink excluded), priced through the day's alpha price and TAO/USD rate. THE figure a revenue screen wants, derived from measured shares rather than an assumed constant.
+  """
+  miner_usd_day: Float
+
+  """
+  The burn sink's leg, priced the same way. What the subnet recycles per day in USD terms.
+  """
+  burned_usd_day: Float
+
   """Miner share of the whole day. Reconstructed."""
   miner_share: Float
 

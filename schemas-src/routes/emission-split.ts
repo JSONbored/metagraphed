@@ -82,6 +82,29 @@ const SubnetEmissionSplitPointSchema = z
       description:
         "Validator share of the WHOLE day, owner leg included — so it is strictly below `validator_share_of_uid`, which is a share of the distributable remainder only. Reconstructed.",
     }),
+    tao_usd: z.number().nullable().optional().meta({
+      description:
+        "The day's last PRICED usd_per_tao observation from the TAO/USD index (#9609) -- the rate every *_usd_day leg below used. Null before the series began (2026-08-02) or on an unpriceable day; the legs are null with it.",
+    }),
+    total_usd_day: z.number().nullable().optional().meta({
+      description:
+        "RECONSTRUCTED (#11095): total_alpha x alpha_price_tao x tao_usd. The whole chain of assumptions is visible in this point's own fields; null when any link is. Do not hand-roll this from an assumed split constant -- the shares here are measured.",
+    }),
+    owner_usd_day: z.number().nullable().optional().meta({
+      description: "owner_alpha x alpha_price_tao x tao_usd; null as above.",
+    }),
+    validator_usd_day: z.number().nullable().optional().meta({
+      description:
+        "The distributable day total x the MEASURED validator_share_of_uid, priced. Null when any input is.",
+    }),
+    miner_usd_day: z.number().nullable().optional().meta({
+      description:
+        "What the subnet's miners collectively received that day in USD: the distributable day total x the MEASURED miner_share_of_uid (burn sink excluded), priced through the day's alpha price and TAO/USD rate. THE figure a revenue screen wants, derived from measured shares rather than an assumed constant.",
+    }),
+    burned_usd_day: z.number().nullable().optional().meta({
+      description:
+        "The burn sink's leg, priced the same way. What the subnet recycles per day in USD terms.",
+    }),
     miner_share: z.number().nullable().optional().meta({
       description: "Miner share of the whole day. Reconstructed.",
     }),

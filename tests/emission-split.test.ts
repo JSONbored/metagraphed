@@ -499,3 +499,34 @@ describe("the burn leg (#11094)", () => {
     assert.equal(p.burned_share_of_uid, 0);
   });
 });
+
+describe("the USD legs (#11095)", () => {
+  test("derived from the day totals, the measured shares, and the day's rate", () => {
+    const out = buildSubnetEmissionSplitHistory(sn74Day("2026-08-12"), 74, {
+      usdPerTaoByDay: new Map([["2026-08-12", 400]]),
+    });
+    const p = (out.points as Row[])[0];
+    assert.equal(p.tao_usd, 400);
+    // total 7200 alpha x price 0.0135 x 400 usd.
+    assert.ok(
+      Math.abs((p.total_usd_day as number) - 7200 * 0.0135 * 400) < 1e-3,
+    );
+    // The three distributable legs plus the owner leg reassemble the total.
+    const sum =
+      (p.owner_usd_day as number) +
+      (p.validator_usd_day as number) +
+      (p.miner_usd_day as number) +
+      (p.burned_usd_day as number);
+    assert.ok(Math.abs(sum - (p.total_usd_day as number)) < 1e-3, String(sum));
+  });
+
+  test("a day without a priced observation nulls every USD leg, never zeroes", () => {
+    const p = (
+      buildSubnetEmissionSplitHistory(sn74Day("2026-08-12"), 74, {})
+        .points as Row[]
+    )[0];
+    assert.equal(p.tao_usd, null);
+    assert.equal(p.total_usd_day, null);
+    assert.equal(p.miner_usd_day, null);
+  });
+});

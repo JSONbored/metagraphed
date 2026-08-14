@@ -62,7 +62,31 @@ const MIGRATIONS = [
   // #10932: same argument for the compute declarations -- the extractor writes
   // from a private lane, so its CHECK constraints are the only enforcement.
   "migrations/neon/0029_compute_declarations.sql",
-].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
+]
+  .map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"))
+  // #11095: the emission-split USD legs read tao_usd_index, whose home
+  // migration (0003) also creates history tables that collide with the
+  // shapes the later files above establish under IF NOT EXISTS. Slice the
+  // ONE table's block out of the real migration rather than restating its
+  // DDL: the CREATE TABLE and its trailing index, single-sourced.
+  .concat(
+    (() => {
+      const migration = fs.readFileSync(
+        path.join(
+          process.cwd(),
+          "migrations/neon/0003_append_only_histories.sql",
+        ),
+        "utf8",
+      );
+      const start = migration.indexOf(
+        "CREATE TABLE IF NOT EXISTS tao_usd_index",
+      );
+      const end = migration.indexOf("CREATE TABLE", start + 1);
+      if (start === -1 || end === -1)
+        throw new Error("tao_usd_index block not found in migration 0003");
+      return [migration.slice(start, end)];
+    })(),
+  );
 
 /** Tables a test may write, emptied between tests. */
 const SEEDED_TABLES = [
@@ -73,6 +97,7 @@ const SEEDED_TABLES = [
   "validator_nominator_counts",
   "subnet_hyperparams",
   "subnet_snapshots",
+  "tao_usd_index",
   "surface_checks",
   "surface_status",
   "subnet_ownership",
@@ -2788,4 +2813,39 @@ test("no snapshot row, or a zero fraction, resolves no burn -- nothing excluded"
     const rows = ((await res.json()) as Row).neurons as Row[];
     assert.equal(rows[0]?.is_burn_uid, false, `netuid ${netuid}`);
   }
+});
+
+test("emission-split serves the USD legs from the day's priced observation (#11095)", async () => {
+  await insertDaily({
+    uid: 5,
+    hotkey: "5HotUsd",
+    coldkey: "5ColdUsd",
+    validator_permit: 0,
+    emission_tao: 2,
+    snapshot_date: dayAgo(1),
+  });
+  await seed(
+    `INSERT INTO subnet_snapshots (netuid, snapshot_date, alpha_out_emission, alpha_price_tao)
+     VALUES (?, ?, ?, ?)`,
+    [7, dayAgo(1), 1, 0.01],
+  );
+  await seed(
+    `INSERT INTO tao_usd_index (block_number, observed_at, usd_per_tao, price_basis, pool_count)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      8_800_000,
+      Date.parse(`${dayAgo(1)}T12:00:00Z`),
+      350,
+      "wrapped_onchain_median",
+      3,
+    ],
+  );
+  const res = await call(req("/api/v1/subnets/7/emission-split/history"));
+  assert.equal(res.status, 200);
+  const point = (((await res.json()) as Row).points as Row[]).find(
+    (p) => p.snapshot_date === dayAgo(1),
+  ) as Row;
+  assert.equal(point.tao_usd, 350);
+  // 7200 alpha day total x 0.01 alpha price x 350 usd.
+  assert.ok(Math.abs((point.total_usd_day as number) - 25200) < 1e-3);
 });

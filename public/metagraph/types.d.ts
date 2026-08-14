@@ -589,7 +589,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.
+         * List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["economicsByNetwork"];
@@ -2367,7 +2367,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. */
+        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. */
         get: operations["economics"];
         put?: never;
         post?: never;
@@ -4384,7 +4384,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Measure whether a subnet's registered miners actually earn, over a 7d/30d/90d window rather than from a snapshot. Every dashboard publishes a miner count; the median subnet has 99.2% of its non-validator UIDs on zero emission, so that count read as a count of earners is close to fiction. Reports the daily zero rate, how many days each miner UID earned on -- `earned on 0 of 31` and `earned on 3 of 31` are different answers a snapshot collapses -- and emission concentration across controlling ENTITIES (the addresses holding the UIDs) as the headline lens, because a subnet with three operators behind 256 UIDs is not diverse and the per-UID Gini alone hides that. Descriptive only: there is no fairness score, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. */
+        /** Measure whether a subnet's registered miners actually earn, over a 7d/30d/90d window rather than from a snapshot. Every dashboard publishes a miner count; the median subnet has 99.2% of its non-validator UIDs on zero emission, so that count read as a count of earners is close to fiction. Reports the daily zero rate, how many days each miner UID earned on -- `earned on 0 of 31` and `earned on 3 of 31` are different answers a snapshot collapses -- and emission concentration across controlling ENTITIES (the addresses holding the UIDs) as the headline lens, because a subnet with three operators behind 256 UIDs is not diverse and the per-UID Gini alone hides that. Descriptive only: there is no fairness score, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. For the subnet's measured validator/miner/burned split -- never assume a split constant -- see /subnets/{netuid}/emission-split/history, which also carries the derived per-day USD legs. */
         get: operations["subnetMinerFairness"];
         put?: never;
         post?: never;
@@ -11240,6 +11240,8 @@ export interface components {
                 burned_alpha?: number | null;
                 /** @description burned_alpha / uid_alpha. With `validator_share_of_uid` and `miner_share_of_uid` this sums to 1 over the UID set; null when the day emitted nothing. */
                 burned_share_of_uid?: number | null;
+                /** @description The burn sink's leg, priced the same way. What the subnet recycles per day in USD terms. */
+                burned_usd_day?: number | null;
                 /** @description Non-validator UIDs that recorded emission above zero on this day. Against `miner_count` this is how many registered miners earned anything at all — the median subnet has almost none, and a miner count read alone overstates participation. */
                 earning_miner_count?: number;
                 /** @description Validator-permit UIDs that recorded emission above zero on this day. */
@@ -11251,6 +11253,8 @@ export interface components {
                 miner_share?: number | null;
                 /** @description Miner share of the observed per-UID emission. Measured. */
                 miner_share_of_uid?: number | null;
+                /** @description What the subnet's miners collectively received that day in USD: the distributable day total x the MEASURED miner_share_of_uid (burn sink excluded), priced through the day's alpha price and TAO/USD rate. THE figure a revenue screen wants, derived from measured shares rather than an assumed constant. */
+                miner_usd_day?: number | null;
                 neuron_count?: number;
                 /** @description The owner leg, `total_alpha x owner_cut`. RECONSTRUCTED. It is NOT summed from the rows — the owner cut is paid outside the UID set, so no per-UID row carries it. */
                 owner_alpha?: number | null;
@@ -11258,11 +11262,17 @@ export interface components {
                 owner_cut?: number | null;
                 /** @description Owner share of the whole day. Reconstructed. `owner_share + validator_share + miner_share` sums to 1 within rao precision. */
                 owner_share?: number | null;
+                /** @description owner_alpha x alpha_price_tao x tao_usd; null as above. */
+                owner_usd_day?: number | null;
                 snapshot_date: string;
+                /** @description The day's last PRICED usd_per_tao observation from the TAO/USD index (#9609) -- the rate every *_usd_day leg below used. Null before the series began (2026-08-02) or on an unpriceable day; the legs are null with it. */
+                tao_usd?: number | null;
                 /** @description The whole day's alpha emission: `alpha_out_emission x 7200 blocks`. RECONSTRUCTED. Null when the day's snapshot carries no `alpha_out_emission` — the measured legs are still published beside it, because a validator/miner split is a real answer even when the day's total is not known. */
                 total_alpha?: number | null;
                 /** @description `total_alpha` priced through `alpha_price_tao`. Reconstructed, and null whenever either input is. */
                 total_tao?: number | null;
+                /** @description RECONSTRUCTED (#11095): total_alpha x alpha_price_tao x tao_usd. The whole chain of assumptions is visible in this point's own fields; null when any link is. Do not hand-roll this from an assumed split constant -- the shares here are measured. */
+                total_usd_day?: number | null;
                 /** @description Emission across the whole UID set. This is NOT the day's total emission: the subnet owner's cut is paid outside the UID set, so this is the distributable remainder — see `total_alpha`. */
                 uid_alpha?: number | null;
                 /** @description Emission to validator-permit UIDs. ALPHA-denominated for every non-root subnet — safe to compare within one subnet, never across subnets without the price join. */
@@ -11272,6 +11282,8 @@ export interface components {
                 validator_share?: number | null;
                 /** @description Validator share of the observed per-UID emission. MEASURED and parameter-free — a ratio of two sums this response also publishes. Null when the day emitted nothing, never 0, which would read as 'validators received none of it'. */
                 validator_share_of_uid?: number | null;
+                /** @description The distributable day total x the MEASURED validator_share_of_uid, priced. Null when any input is. */
+                validator_usd_day?: number | null;
             }[];
             schema_version: number;
             /** @description The resolved window label (7d/30d/90d). */
