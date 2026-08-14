@@ -9,11 +9,13 @@
   "curation": {
     "gap_notes": [
       "No verified SSE/event stream yet -- /logs/stream/{source} exists but is path-parameterized, not a bare no-param route.",
-      "The BeamCore OpenAPI schema declares no security on all 53 paths, but most are actually auth-gated in practice (401): auth/me, auth/keys, clients, destinations, transfers, orchestrators/pending-transfers, orchestrators/workers, Validator/epoch-summary/latest-epoch, jobs, internal/routing/live. Only validators/orchestrators and status/orchestrator-relays are genuinely public -- both added as new surfaces."
+      "The BeamCore OpenAPI schema declares no security on any path, but most are auth-gated in practice (401): auth/me, auth/keys, clients, destinations, transfers, orchestrators/pending-transfers, orchestrators/workers, Validator/epoch-summary/latest-epoch, jobs, internal/routing/live. Those surfaces carry auth_required:true with probes disabled; verified 2026-08-14, when every one of them still answered 401 anonymously.",
+      "MUTATIONS ARE NOT REGISTERED, AND CANNOT BE. The spec declares 56 paths / 60 operations, of which 22 are POST/PATCH/PUT/DELETE; a registered surface is a URL with no method dimension (see metagraphed#11146), so registering one would publish a route the prober calls with GET and an agent reads as fetchable. Their absence here is a limit of the registry, NOT evidence that the subnet has no such route. The operationally load-bearing one is POST /orchestrators/register, which must be called before an orchestrator can connect -- skipping it yields orchestrator_not_routable, an error whose name sends operators to debug ports instead.",
+      "/orchestrators/prism-scores/{orch_uid} is the subnet's scoring surface and is registered but not callable: it is auth_required and path-parameterized, so it needs both a stored credential and Phase 2 path-param execution (call_subnet_surface with an explicit path+method against the captured schema)."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "reviewed_at": "2026-08-14T00:00:00.000Z",
     "source_count": 5,
     "verified_at": "2026-07-16T00:00:00.000Z"
   },
@@ -99,7 +101,13 @@
         "submitted_by": "philluiz2323"
       },
       "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
-      "url": "https://beamcore.b1m.ai/config/uid-ranges"
+      "url": "https://beamcore.b1m.ai/config/uid-ranges",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,
