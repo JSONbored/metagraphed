@@ -591,14 +591,58 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /invalid_params/);
     });
 
-    test("a method outside GET/HEAD/POST/PUT is invalid_params", async () => {
+    test("a method outside the published enum is invalid_params", async () => {
+      // TRACE is not in CALL_SURFACE_METHODS and never will be. DELETE used to
+      // be this test's subject and is now a first-class verb (#11146) -- 184
+      // DELETE operations across the fleet's captured specs were unreachable
+      // for no reason but this list.
       const result = await callTool({
         surface_id: "x:api:4",
         path: "/users/123",
-        method: "DELETE",
+        method: "TRACE",
       });
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("DELETE and PATCH are refused when the schema does not declare them", async () => {
+      // The verb being callable does not make an undeclared operation callable:
+      // the gate is unchanged, and it is the gate that does the work.
+      for (const method of ["DELETE", "PATCH"]) {
+        const result = await callTool({
+          surface_id: "x:api:4",
+          path: "/users/123",
+          method,
+        });
+        assert.equal(result.isError, true, `${method} must be gated`);
+        assert.match(result.content[0].text, /path_not_declared/);
+      }
+    });
+
+    test("a body is refused on DELETE and accepted on PATCH", async () => {
+      // DELETE carries no body: HTTP permits one, most servers ignore it, and
+      // the operation essentially never declares a requestBody to validate it
+      // against. PATCH is a body verb like POST and PUT.
+      const withBody = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123",
+        method: "DELETE",
+        body: { name: "x" },
+      });
+      assert.equal(withBody.isError, true);
+      assert.match(withBody.content[0].text, /invalid_params/);
+      assert.match(withBody.content[0].text, /POST, PUT, PATCH/);
+
+      // PATCH gets past the body guard and is stopped by the schema gate
+      // instead, which is the correct refusal for this fixture.
+      const patch = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123",
+        method: "PATCH",
+        body: { name: "x" },
+      });
+      assert.equal(patch.isError, true);
+      assert.match(patch.content[0].text, /path_not_declared/);
     });
 
     test("a surface with no captured schema at all is rejected with no_schema", async () => {

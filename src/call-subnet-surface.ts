@@ -280,9 +280,18 @@ export async function callSubnetSurface(
       : surface?.probe?.method === "HEAD"
         ? "HEAD"
         : "GET";
-  // GET/HEAD never carry a body even if one was somehow supplied -- only the
-  // tool handler's own POST/PUT validation path ever sets requestBody.
-  const canHaveBody = path && (method === "POST" || method === "PUT");
+  // A verb that does not carry a body never carries one even if one was somehow
+  // supplied -- only the tool handler's own validation path sets requestBody.
+  //
+  // Spelled out rather than imported from CALL_SURFACE_BODY_METHODS, which owns
+  // this vocabulary (schemas-src/mcp-tools/ai-integration.ts): this module has
+  // NO imports on purpose -- it is the outbound-fetch safety path, and pulling
+  // in the schema module would drag Zod and the whole tool registry into it.
+  // The tool handler validates the same rule from the shared list before ever
+  // calling here, so this is the defensive second check, not the decision.
+  const canHaveBody =
+    Boolean(path) &&
+    (method === "POST" || method === "PUT" || method === "PATCH");
   const timeoutMs = Number.isFinite(surface?.probe?.timeout_ms)
     ? (surface.probe?.timeout_ms as number)
     : 10_000;
