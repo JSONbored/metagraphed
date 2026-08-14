@@ -13,6 +13,7 @@ import {
   safeAuthorLiteral,
 } from "../src/r2-sql-blocks.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { CHAIN_EVENTS_LIMIT_MAX } from "../src/route-limits.ts";
 import { mockEnv } from "./row-type.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
@@ -87,6 +88,39 @@ describe("loadBlockFeedFromR2Sql", () => {
     assert.ok(!/OFFSET/i.test(queries[0]!), "never emits an OFFSET clause");
     assert.equal(data!.blocks[0]!.block_number, 8);
     assert.equal(data!.blocks.length, 2);
+  });
+
+  test("the offset cap keeps the worst measured page under the body cap (#11140)", () => {
+    // NOT `OFFSET_EMULATION_CAP === 250` -- that asserts the code's own
+    // assumption and passes at any value. This pins the ARITHMETIC the constant
+    // exists to satisfy, so raising it back fails here with the reason.
+    //
+    // The over-fetch is `limit + offset` rows (R2 SQL has no OFFSET), each
+    // carrying an unbounded `call_args`. Measured 2026-08-14 on
+    // chain_detail_extrinsics: a filtered read concentrates the wide rows, and
+    // the density that actually declined in production implies ~11.4 KB/row --
+    // that page tripped a 12 MB cap, so the cap is not the free variable.
+    // Imported, not retyped: raising the limit ceiling widens the same
+    // over-fetch, so this must fail then too rather than pass on a stale 100.
+    const MAX_PAGE_LIMIT = CHAIN_EVENTS_LIMIT_MAX;
+    const OBSERVED_WIDE_ROW_BYTES = 11_400;
+    const PRODUCTION_BODY_CAP = 8 * 1024 * 1024;
+
+    const worstFetch = OFFSET_EMULATION_CAP + MAX_PAGE_LIMIT;
+    const worstBytes = worstFetch * OBSERVED_WIDE_ROW_BYTES;
+    assert.ok(
+      worstBytes < PRODUCTION_BODY_CAP,
+      `an emulated-offset page may fetch ${worstFetch} rows, which is ` +
+        `${worstBytes} bytes at the observed wide-row density and exceeds the ` +
+        `${PRODUCTION_BODY_CAP}-byte cap. Lower OFFSET_EMULATION_CAP; do not ` +
+        `raise the body cap -- 8 MB was already raised to 12 MB and still declined.`,
+    );
+    // And the margin is real, not a hair under: at least 2x headroom, so an
+    // era with denser payloads than the one measured does not reintroduce it.
+    assert.ok(
+      worstBytes * 2 < PRODUCTION_BODY_CAP,
+      "the offset cap should leave at least 2x headroom against the body cap",
+    );
   });
 
   test("declines a too-deep offset rather than scanning for it", async () => {
