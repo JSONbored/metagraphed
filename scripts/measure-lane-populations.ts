@@ -17,20 +17,27 @@
 // minutes per lane, and it would make CI depend on a third party being up. Run
 // it when a coverage alarm fires marginally, or before re-anchoring anything.
 //
-// ## THE SELF-CHECK IS NOT OPTIONAL
+// USES THE REPO'S OWN twox128. src/twox-storage-key.ts already implements
+// XXH64 and both prefix helpers, and its header states the convention plainly:
+// "XXH64 implemented directly rather than adding a new npm dependency". The
+// first cut of this script added `xxhash-wasm` and re-derived the same prefix
+// arithmetic, which was a dependency and a duplicate that both already had an
+// answer in the tree.
 //
-// Substrate's twox128 is xxhash64 with the digest LITTLE-endian, and getting
-// that wrong does not error -- it returns a prefix that matches no keys, so a
-// walk reports ZERO entries and reads exactly like an empty map. That happened
-// twice while writing this: once from big-endian digests, once from passing the
-// block hash into `state_getKeysPaged`'s startKey slot. Both produced confident,
-// wrong answers.
+// ## THE SELF-CHECK IS STILL NOT OPTIONAL
 //
-// So every run first hashes a known value and refuses to continue unless it
-// matches. `twox128("System") = 26aa394eea5630e07c48ae0c9558cef7` is published
-// in the Substrate docs and is not ours to get wrong.
+// Substrate's twox128 wants the digest LITTLE-endian, and getting that wrong
+// does not error -- it returns a prefix matching no keys, so a walk reports
+// ZERO entries and reads exactly like an empty map. That happened twice while
+// doing #11185: once from big-endian digests, once from passing the block hash
+// into `state_getKeysPaged`'s startKey slot. Both gave confident wrong answers.
+//
+// The shared helper is well tested, so this check now guards the WIRING rather
+// than the primitive -- that the prefix reaching the node is the one intended.
+// `twox128("System") = 26aa394eea5630e07c48ae0c9558cef7` is published by
+// Substrate and is not ours to get wrong.
 import { fileURLToPath } from "node:url";
-import xxhash from "xxhash-wasm";
+import { storageMapPrefix, twox128 } from "../src/twox-storage-key.ts";
 import { ACCOUNT_BALANCES_EXPECTED_ACCOUNTS } from "../src/account-balances-staleness-watchdog.ts";
 import { NEURONS_EXPECTED_NETUIDS } from "../src/neurons-staleness-watchdog.ts";
 import { NOMINATOR_POSITIONS_EXPECTED_COLDKEYS } from "../src/nominator-positions-staleness-watchdog.ts";
@@ -42,29 +49,22 @@ const PAGE = 1000;
 /** The published value for `twox128("System")`. */
 const SYSTEM_PREFIX = "26aa394eea5630e07c48ae0c9558cef7";
 
-type Hasher = (input: string) => Buffer;
+const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString("hex");
 
-async function twox128Factory(): Promise<Hasher> {
-  const { h64Raw } = await xxhash();
-  const le = (value: bigint): Buffer => {
-    const b = Buffer.alloc(8);
-    b.writeBigUInt64LE(value);
-    return b;
-  };
-  const twox128: Hasher = (input) =>
-    Buffer.concat([
-      le(h64Raw(Buffer.from(input), 0n)),
-      le(h64Raw(Buffer.from(input), 1n)),
-    ]);
-  const check = twox128("System").toString("hex");
+/** The `0x`-prefixed storage prefix for one pallet item. */
+function prefixOf(pallet: string, item: string): string {
+  return `0x${hex(storageMapPrefix(pallet, item))}`;
+}
+
+function assertTwoxWiring(): void {
+  const check = hex(twox128("System"));
   if (check !== SYSTEM_PREFIX) {
     throw new Error(
       `twox128 self-check failed: got ${check}, expected ${SYSTEM_PREFIX}. ` +
-        `A wrong digest order returns a prefix matching no keys, so every walk ` +
-        `below would report ZERO and read as an empty map rather than as an error.`,
+        `A prefix that is wrong matches no keys, so every walk below would ` +
+        `report ZERO and read as an empty map rather than as an error.`,
     );
   }
-  return twox128;
 }
 
 async function rpc<T>(method: string, params: unknown[]): Promise<T> {
@@ -160,19 +160,14 @@ async function main(): Promise<void> {
   const only = process.argv.slice(2).filter((a) => !a.startsWith("-"));
   const wants = (lane: string) => only.length === 0 || only.includes(lane);
 
-  const twox128 = await twox128Factory();
+  assertTwoxWiring();
   const at = await rpc<string>("chain_getFinalizedHead", []);
   process.stdout.write(`node ${NODE}\nat   ${at}\n\n`);
 
   const rows: Measured[] = [];
 
   if (wants("neurons")) {
-    const key =
-      "0x" +
-      Buffer.concat([
-        twox128("SubtensorModule"),
-        twox128("TotalNetworks"),
-      ]).toString("hex");
+    const key = prefixOf("SubtensorModule", "TotalNetworks");
     const raw = await rpc<string | null>("state_getStorage", [key, at]);
     const total = raw ? Buffer.from(raw.slice(2), "hex").readUInt16LE(0) : 0;
     rows.push({
@@ -186,11 +181,7 @@ async function main(): Promise<void> {
   const needsAlpha =
     wants("validator-nominator-counts") || wants("nominator-positions");
   if (needsAlpha) {
-    const prefix =
-      "0x" +
-      Buffer.concat([twox128("SubtensorModule"), twox128("Alpha")]).toString(
-        "hex",
-      );
+    const prefix = prefixOf("SubtensorModule", "Alpha");
     process.stdout.write("walking SubtensorModule::Alpha ...\n");
     const { keys, finalPage } = await walkKeys(prefix, at, (n) => {
       if (n % 40_000 === 0) process.stdout.write(`  ...${n}\n`);
@@ -232,9 +223,7 @@ async function main(): Promise<void> {
     // out when attempted. So this reports the ceiling and says so rather than
     // printing a number that means something else.
     process.stdout.write("walking System::Account (slow) ...\n");
-    const prefix =
-      "0x" +
-      Buffer.concat([twox128("System"), twox128("Account")]).toString("hex");
+    const prefix = prefixOf("System", "Account");
     const { keys, finalPage } = await walkKeys(prefix, at, (n) => {
       if (n % 100_000 === 0) process.stdout.write(`  ...${n}\n`);
     });
