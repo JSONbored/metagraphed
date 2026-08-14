@@ -609,6 +609,7 @@ import { urlProjects } from "../src/projection-signal.ts";
 import {
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
+  isMcpCorePath,
   isMcpEndpointPath,
 } from "../src/github-oauth.ts";
 import {
@@ -5956,7 +5957,7 @@ async function dispatchRequest(
   // from joining a base URL, and rejecting it bought nothing: OAuthProvider already
   // treats the two as one route, and the app answering only the bare form is what put
   // an otherwise-correct client on the 405 path.
-  if (isMcpEndpointPath(url.pathname)) {
+  if (isMcpEndpointPath(url.pathname) || isMcpCorePath(url.pathname)) {
     // IMPORTED HERE, NOT AT MODULE SCOPE (#10424). src/mcp-server.ts is ~12.5k
     // lines and this is the ONLY thing api.ts uses from it, so a static import
     // made every consumer of api.ts pay for the whole MCP server: 23 of the 39

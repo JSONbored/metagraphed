@@ -236,6 +236,19 @@ export function isMcpEndpointPath(pathname: string): boolean {
   return pathname === MCP_API_ROUTE || pathname === `${MCP_API_ROUTE}/`;
 }
 
+/**
+ * The core-profile endpoint (#11164): the same MCP server, listing only the
+ * curated core tool set. Same trailing-slash tolerance, same reasons.
+ * `matchesMcpApiRoute` already covers it (prefix match), so the OAuth and
+ * API-key handling on this path is identical to /mcp by construction.
+ */
+export function isMcpCorePath(pathname: string): boolean {
+  return (
+    pathname === `${MCP_API_ROUTE}/core` ||
+    pathname === `${MCP_API_ROUTE}/core/`
+  );
+}
+
 export function isNonOAuthMcpRequest(request: Request): boolean {
   if (!matchesMcpApiRoute(new URL(request.url).pathname)) return false;
   const header = request.headers.get("Authorization");
