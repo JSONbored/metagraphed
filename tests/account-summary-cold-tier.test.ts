@@ -12,6 +12,7 @@
 // folded into the aggregate (it was the query that aborted -- see "two reads").
 import assert from "node:assert/strict";
 import { visibleInWindow } from "./helpers/scan-window.ts";
+import { accountSummaryShardKey } from "../src/account-summary-projection.ts";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
@@ -652,5 +653,114 @@ describe("all three account-summary surfaces go through the one composer", () =>
       readFileSync("src/account-summary-card.ts", "utf8"),
       /loadAccountSummaryColdTier\(/,
     );
+  });
+});
+
+describe("the projection short-circuits the aggregate leg (#11131)", () => {
+  const SHARD_KEY = accountSummaryShardKey(SS58);
+
+  /** An archive binding holding one shard for this account. */
+  function archive(groups: unknown[] | null) {
+    return {
+      METAGRAPH_ARCHIVE: {
+        get: async (key: string) =>
+          key === SHARD_KEY && groups
+            ? {
+                json: async () => ({
+                  schema_version: 1,
+                  generated_at: "2026-08-14T00:00:00Z",
+                  shard_count: 256,
+                  account_count: 1,
+                  accounts: { [SS58]: groups },
+                }),
+              }
+            : null,
+      },
+    } as never;
+  }
+
+  test("THE 4,374 MB SCAN IS NOT ISSUED when the shard answers", async () => {
+    // The measured cost this whole change exists to remove. The grouped leg is
+    // a lifetime aggregate over a scattered key, so no window bounds it -- the
+    // only fix is to not run it per request.
+    const engine = fakeEngine();
+    const cold = await loadAccountSummaryColdTier(
+      archive([
+        {
+          kind: "AxonServed",
+          netuid: 55,
+          count: 4,
+          fb: 8_700_000,
+          lb: 8_750_000,
+          fo: AGG.fo,
+          lo: AGG.lo,
+        },
+        {
+          kind: "NeuronRegistered",
+          netuid: 7,
+          count: 2,
+          fb: 8_710_000,
+          lb: 8_760_000,
+          fo: AGG.fo,
+          lo: AGG.lo,
+        },
+      ]),
+      SS58,
+      { query: engine.query as never },
+    );
+
+    assert.equal(cold.declined, undefined);
+    for (const sql of engine.seen) {
+      assert.doesNotMatch(
+        sql,
+        /GROUP BY event_kind, netuid/,
+        `the grouped scan must not run: ${sql.slice(0, 120)}`,
+      );
+    }
+    // The card is still built from the SAME builder over the SAME shape.
+    const card = buildAccountSummary(SS58, cold as never);
+    assert.equal(card.event_count, 6);
+    assert.equal(card.subnet_count, 2);
+    assert.equal(card.event_kinds.length, 2);
+  });
+
+  test("a shard that cannot answer falls back to the scan, unchanged", async () => {
+    // The safety property: shipping the reader before the producer has
+    // backfilled must be indistinguishable from not shipping it.
+    const engine = fakeEngine();
+    const cold = await loadAccountSummaryColdTier(archive(null), SS58, {
+      query: engine.query as never,
+    });
+    assert.equal(cold.declined, undefined);
+    assert.ok(
+      engine.seen.some((s) => s.includes("GROUP BY event_kind, netuid")),
+      "the lakehouse leg must still run",
+    );
+    assert.equal(buildAccountSummary(SS58, cold as never).event_count, 6);
+  });
+
+  test("the cap keeps its meaning across both tiers", async () => {
+    // A route whose numbers depend on which tier served it is worse than
+    // either tier. The projection knows the true lifetime total; the published
+    // count stays clamped exactly as the live CTE's LIMIT CAP + 1 clamps it.
+    const engine = fakeEngine();
+    const cold = await loadAccountSummaryColdTier(
+      archive([
+        {
+          kind: "AxonServed",
+          netuid: 55,
+          count: ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 500,
+          fb: 1,
+          lb: 2,
+          fo: AGG.fo,
+          lo: AGG.lo,
+        },
+      ]),
+      SS58,
+      { query: engine.query as never },
+    );
+    const card = buildAccountSummary(SS58, cold as never);
+    assert.equal(card.event_count, ACCOUNT_EVENT_SUMMARY_SCAN_CAP);
+    assert.equal(card.event_scan_capped, true);
   });
 });

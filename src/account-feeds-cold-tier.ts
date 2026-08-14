@@ -101,6 +101,7 @@ import { storeAll } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { windowedFloorRead, windowedRowRead } from "./account-events-window.ts";
+import { loadAccountSummaryProjection } from "./account-summary-projection.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
@@ -1054,30 +1055,39 @@ export async function loadAccountSummaryColdTier(
   // and `first_seen`. So it re-issues instead, keeping its own ORDER BY and
   // LIMIT inside the SQL, and stops as soon as the window holds CAP + 1 rows --
   // at which point the newest CAP + 1 within it are the newest overall.
+  // THE PROJECTION FIRST (#11131). The grouped leg is a LIFETIME aggregate over
+  // a scattered key, so no window bounds it -- measured 4,374 MB and ~14s per
+  // request, which is the read that aborts at the 15s ceiling. A sharded R2
+  // artifact answers the identical question in one GET, and a miss returns null
+  // so this arm simply does not run. It can make the route faster, never wrong.
+  const projected = await loadAccountSummaryProjection(env, ss58);
+
   const [groupRows, recentRows] = await Promise.all([
-    windowedFloorRead<Record<string, unknown>[]>(env, {
-      query,
-      attempt: (bound, run) =>
-        run(
-          env,
-          `WITH scan AS (${scan(bound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
-            `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
-            `min(observed_at) AS fo, max(observed_at) AS lo ` +
-            `FROM scan GROUP BY event_kind, netuid`,
-          { onError: track("summary-groups") },
-        ),
-      // `sum(count)` over the groups is the rows the CTE saw, which is exactly
-      // the number the retired cap probe returned.
-      //
-      // No `?? 0`: `count(*)` always yields a value, so the nullish half is a
-      // branch no test can reach -- the same reading the `scanned` line below
-      // already applies. An absent count would make the sum NaN, `NaN > CAP` is
-      // false, and the read falls back to the unbounded query it would have
-      // issued anyway, so nothing is lost by not guarding it.
-      satisfied: (rows) =>
-        rows.reduce((n, row) => n + Number(row.count), 0) >
-        ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
-    }),
+    projected
+      ? Promise.resolve(projected)
+      : windowedFloorRead<Record<string, unknown>[]>(env, {
+          query,
+          attempt: (bound, run) =>
+            run(
+              env,
+              `WITH scan AS (${scan(bound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
+                `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
+                `min(observed_at) AS fo, max(observed_at) AS lo ` +
+                `FROM scan GROUP BY event_kind, netuid`,
+              { onError: track("summary-groups") },
+            ),
+          // `sum(count)` over the groups is the rows the CTE saw, which is exactly
+          // the number the retired cap probe returned.
+          //
+          // No `?? 0`: `count(*)` always yields a value, so the nullish half is a
+          // branch no test can reach -- the same reading the `scanned` line below
+          // already applies. An absent count would make the sum NaN, `NaN > CAP` is
+          // false, and the read falls back to the unbounded query it would have
+          // issued anyway, so nothing is lost by not guarding it.
+          satisfied: (rows) =>
+            rows.reduce((n, row) => n + Number(row.count), 0) >
+            ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+        }),
     windowedRowRead<AccountEventsRow>(env, {
       query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
       table: "chain.account_events",
