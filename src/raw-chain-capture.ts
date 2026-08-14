@@ -31,6 +31,7 @@
 // apart from the injected fetch and store, so the whole guarantee is testable
 // without a chain or a bucket.
 
+import { chainRpc } from "./chain-rpc.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
 /** twox128("System") ++ twox128("Events") — the runtime storage key holding
@@ -56,26 +57,21 @@ export interface RawBlockCapture {
   captured_at: number;
 }
 
-interface RpcResponse {
-  result?: unknown;
-  error?: { message?: string };
-}
-
+/**
+ * The shared, VALIDATED client (#11194).
+ *
+ * This file used to carry its own copy of the envelope type and the call. Both
+ * were byte-identical to raw-chain-capture.ts's, and both CAST the response
+ * rather than parsing it -- see src/chain-rpc.ts for why that matters at a
+ * boundary served by a public archive nobody here operates.
+ */
 async function rpc(
   url: string,
   method: string,
   params: unknown[],
   fetchImpl: typeof fetch,
 ): Promise<unknown> {
-  const res = await fetchImpl(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  });
-  if (!res.ok) throw new Error(`${method}: HTTP ${res.status}`);
-  const body = (await res.json()) as RpcResponse;
-  if (body.error) throw new Error(`${method}: ${body.error.message}`);
-  return body.result;
+  return chainRpc(url, method, params, { fetchImpl });
 }
 
 /**

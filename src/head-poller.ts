@@ -24,28 +24,24 @@ import type { HeadBlock } from "../schemas-src/head-poller-wire.ts";
 export { HeadBlockSchema };
 export type { HeadBlock } from "../schemas-src/head-poller-wire.ts";
 import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
+import { chainRpc } from "./chain-rpc.ts";
 import { DEFAULT_SS58_PREFIX, encodeAccountId32 } from "./ss58.ts";
 
-interface RpcResponse {
-  result?: unknown;
-  error?: { message?: string };
-}
-
+/**
+ * The shared, VALIDATED client (#11194).
+ *
+ * This file used to carry its own copy of the envelope type and the call. Both
+ * were byte-identical to raw-chain-capture.ts's, and both CAST the response
+ * rather than parsing it -- see src/chain-rpc.ts for why that matters at a
+ * boundary served by a public archive nobody here operates.
+ */
 async function rpc(
   url: string,
   method: string,
   params: unknown[],
   fetchImpl: typeof fetch,
 ): Promise<unknown> {
-  const res = await fetchImpl(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  });
-  if (!res.ok) throw new Error(`${method}: HTTP ${res.status}`);
-  const body = (await res.json()) as RpcResponse;
-  if (body.error) throw new Error(`${method}: ${body.error.message}`);
-  return body.result;
+  return chainRpc(url, method, params, { fetchImpl });
 }
 
 export function hexToNumber(hex: unknown): number {
