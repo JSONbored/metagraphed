@@ -49,6 +49,8 @@
 // route faster, never wrong, and shipping it before the producer has backfilled
 // is safe by construction.
 
+import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "./account-events.ts";
+
 /** Objects the producer writes, one per shard. Contract with
  * metagraphed-infra's `services/indexer-rs/account_summary_r2.py`. */
 export const ACCOUNT_SUMMARY_PROJECTION_PREFIX =
@@ -206,5 +208,24 @@ export async function loadAccountSummaryProjection(
   // An account present with no usable groups is not an answer -- the caller
   // reads the lakehouse rather than publishing an empty card from a shard.
   if (!groups.length) return null;
+
+  // AN ACCOUNT OVER THE CAP IS NOT THIS TIER'S TO ANSWER.
+  //
+  // The projection aggregates an account's WHOLE history. The live path
+  // aggregates the newest ACCOUNT_EVENT_SUMMARY_SCAN_CAP events. Below the cap
+  // those are the same set, so the answers are identical -- above it they are
+  // not, and the difference is invisible in `event_count` (both clamp to CAP)
+  // while `event_kinds` and `subnet_count` silently widen to lifetime.
+  //
+  // Measured on 5Fv5t8frGG3MKt...: the live path reports 4 kinds across 2
+  // subnets, the projection 10 across 3. Same route, different answer depending
+  // on which tier served it, which is worse than either answer alone.
+  //
+  // So this declines above the cap and the lakehouse answers, exactly as it did
+  // before the projection existed. That is a small minority of accounts -- the
+  // cap is 5,000 lifetime events -- and it costs them nothing they were not
+  // already paying.
+  const scanned = groups.reduce((n, g) => n + Number(g.count), 0);
+  if (scanned > ACCOUNT_EVENT_SUMMARY_SCAN_CAP) return null;
   return groups;
 }

@@ -756,10 +756,15 @@ describe("the projection short-circuits the aggregate leg (#11131)", () => {
     assert.equal(buildAccountSummary(SS58, cold as never).event_count, 6);
   });
 
-  test("the cap keeps its meaning across both tiers", async () => {
-    // A route whose numbers depend on which tier served it is worse than
-    // either tier. The projection knows the true lifetime total; the published
-    // count stays clamped exactly as the live CTE's LIMIT CAP + 1 clamps it.
+  test("AN OVER-CAP ACCOUNT FALLS BACK -- the tiers must not disagree", async () => {
+    // I shipped this wrong and production caught it. The projection aggregates
+    // an account's WHOLE history; this leg aggregates the newest CAP events.
+    // `event_count` clamps to CAP either way, so the divergence hides there --
+    // but `event_kinds` and `subnet_count` widen to lifetime. Measured live:
+    // 4 kinds / 2 subnets from the lakehouse against 10 / 3 from the shard.
+    //
+    // So above the cap the projection declines and this leg runs, which is what
+    // keeps one route from having two answers.
     const engine = fakeEngine();
     const cold = await loadAccountSummaryColdTier(
       archive([
@@ -776,8 +781,12 @@ describe("the projection short-circuits the aggregate leg (#11131)", () => {
       SS58,
       { query: engine.query as never },
     );
+    assert.ok(
+      engine.seen.some((s) => s.includes("GROUP BY event_kind, netuid")),
+      "the lakehouse leg must answer for an account the shard cannot",
+    );
     const card = buildAccountSummary(SS58, cold as never);
-    assert.equal(card.event_count, ACCOUNT_EVENT_SUMMARY_SCAN_CAP);
-    assert.equal(card.event_scan_capped, true);
+    assert.equal(card.event_count, 6);
+    assert.equal(card.event_scan_capped, false);
   });
 });

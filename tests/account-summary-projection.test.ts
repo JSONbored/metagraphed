@@ -7,6 +7,7 @@
 // payload it should have refused.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "../src/account-events.ts";
 import {
   ACCOUNT_SUMMARY_MAX_AGE_MS,
   ACCOUNT_SUMMARY_POINTER_KEY,
@@ -319,6 +320,39 @@ describe("loadAccountSummaryProjection", () => {
         JSON.stringify(accounts),
       );
     }
+  });
+
+  test("AN ACCOUNT OVER THE CAP DECLINES -- the two tiers would disagree", async () => {
+    // The defect this exists for, caught in production before it was trusted.
+    // The projection aggregates an account's WHOLE history; the live path
+    // aggregates the newest CAP events. `event_count` clamps to CAP either way,
+    // so the difference hides there -- but `event_kinds` and `subnet_count`
+    // silently widen to lifetime.
+    //
+    // Measured on a real account: live reported 4 kinds across 2 subnets, the
+    // projection 10 across 3. Same route, different answer by tier.
+    const over = [
+      group({
+        kind: "AxonServed",
+        netuid: 7,
+        count: ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+      }),
+      group({ kind: "Transfer", netuid: null, count: 1 }),
+    ];
+    const store = archive(published({ [HOT]: over }));
+    assert.equal(
+      await loadAccountSummaryProjection(store.env, HOT, FRESH),
+      null,
+    );
+  });
+
+  test("an account EXACTLY at the cap is still answered", async () => {
+    // At the cap the two windows are the same set, so the answers agree -- an
+    // off-by-one here would drop the busiest accounts the tier CAN serve.
+    const atCap = [group({ count: ACCOUNT_EVENT_SUMMARY_SCAN_CAP })];
+    const store = archive(published({ [HOT]: atCap }));
+    const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    assert.equal(groups!.length, 1);
   });
 
   test("an account present with no usable groups declines", async () => {
