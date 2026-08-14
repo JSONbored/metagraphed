@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { visibleInWindow } from "./helpers/block-window.ts";
 import {
   archiveEnv,
   forbiddenDataApi,
@@ -16362,7 +16363,10 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     };
     const seen: string[] = [];
     for (const args of [{ direction: "all" }, {}]) {
-      const lake = lakehouse([ROW], { once: true });
+      // No `once` since #11131: the double honours the block window, so this
+      // row is visible in exactly the window containing block 4,200,000 -- the
+      // real behaviour, where `once` was a blunt stand-in for it.
+      const lake = lakehouse([ROW]);
       try {
         const res = await callTool(
           "get_account_transfers",
@@ -16510,8 +16514,12 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     const queries: string[] = [];
     let call = 0;
     globalThis.fetch = (async (_u: string, init: RequestInit) => {
-      queries.push(JSON.parse(String(init.body)).query);
-      const rows = responses[Math.min(call, responses.length - 1)] ?? [];
+      const sql = String(JSON.parse(String(init.body)).query);
+      queries.push(sql);
+      const rows = visibleInWindow(
+        sql,
+        responses[Math.min(call, responses.length - 1)] ?? [],
+      );
       call += 1;
       return {
         ok: true,
@@ -16727,11 +16735,12 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
           observed_at: 1750009000000,
         },
       ],
-      // The windowed reader keeps stepping until the page fills, so the stub
-      // has to model DISTINCT windows: one row in the first, nothing below it.
-      // Replaying the same row for every call would accumulate duplicates and
-      // assert on an arrangement no real lakehouse produces.
-      [],
+      // ONE response, because the double now models the block window itself
+      // (tests/helpers/block-window.ts): this row is visible in exactly the
+      // window containing block 4,200,000 and nowhere else. The second, empty
+      // response used to stand in for that -- it suppressed the duplicates
+      // without saying why they appeared, and it also hid the head-block read,
+      // which is the FIRST query and would otherwise have consumed this row.
     );
     const res = await callTool(
       "get_account_events",

@@ -1,3 +1,4 @@
+import { visibleInWindow } from "./block-window.ts";
 // Transport doubles for the readers that answer now that the Postgres tier is
 // gone (#10190).
 //
@@ -85,27 +86,31 @@ export interface LakehouseDouble {
  * seam's two legs) can be answered per-query rather than with one list that
  * happens to satisfy both.
  *
- * `once: true` answers the FIRST query and returns nothing after it. The account
- * feeds need this: `windowedAccountEventsRead` keeps widening its time window
- * and re-querying until it has collected `limit` rows, so a double that answers
- * every query with the same list hands back that list once per step -- a page
- * four times too long, silently.
+ * THE BLOCK WINDOW IS HONOURED (#11131). Every scattered-key read on
+ * `chain.account_events` widens a `block_number` window until its page fills,
+ * so a double that replayed its list for each step handed back a page four
+ * times too long, silently. Rows are now filtered to the window the query
+ * actually asked for -- which is what a real lakehouse does, and what makes
+ * these tests evidence about the reader instead of about the double.
+ *
+ * This replaced an `once: true` option that answered only the first query and
+ * returned nothing after it. That was a blunt stand-in for the same thing --
+ * it suppressed the duplicate rows without modelling why they appeared, and it
+ * made a reader that legitimately widens look like one that failed to. Two
+ * mechanisms for one property is worse than either alone.
  */
 export function lakehouse(
   answer: unknown[] | ((sql: string) => unknown[]),
-  { once = false }: { once?: boolean } = {},
 ): LakehouseDouble {
   const original = globalThis.fetch;
   const queries: string[] = [];
   globalThis.fetch = (async (_url: string, init: RequestInit) => {
     const sql = String(JSON.parse(String(init.body)).query);
     queries.push(sql);
-    const rows =
-      once && queries.length > 1
-        ? []
-        : typeof answer === "function"
-          ? answer(sql)
-          : answer;
+    const rows = visibleInWindow(
+      sql,
+      typeof answer === "function" ? answer(sql) : answer,
+    );
     return {
       ok: true,
       status: 200,

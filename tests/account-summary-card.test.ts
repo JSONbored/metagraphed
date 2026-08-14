@@ -89,7 +89,21 @@ function lakehouse({ fail = false }: { fail?: boolean } = {}) {
             ]
           : sql.includes("count(*) AS c FROM (")
             ? [{ c: 100 }]
-            : [RECENT_EVENT];
+            : // RANGE-AWARE since #11131 bounded this feed by block_number: it
+              // now widens a window until the page fills, so a stub replaying
+              // its row for every window reports ONE event four times.
+              // Honouring the bound is what keeps the count honest.
+              [RECENT_EVENT].filter((row) => {
+                const bound = sql.match(
+                  /block_number >= (\d+)(?: AND block_number <= (\d+))?/,
+                );
+                if (!bound) return true;
+                const n = Number(row.block_number);
+                return (
+                  n >= Number(bound[1]) &&
+                  (bound[2] === undefined || n <= Number(bound[2]))
+                );
+              });
     return {
       ok: true,
       status: 200,

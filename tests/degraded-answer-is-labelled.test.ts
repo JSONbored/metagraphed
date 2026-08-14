@@ -17,6 +17,7 @@
 // registered path, if the lakehouse declined while the request was served and
 // the answer was still a 200, that 200 must say so.
 import assert from "node:assert/strict";
+import { visibleInWindow } from "./helpers/block-window.ts";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import {
@@ -64,13 +65,28 @@ const refusingLakehouse = (() => {
   throw new Error("r2 sql unreachable");
 }) as unknown as typeof fetch;
 
-/** The lakehouse answering, in R2 SQL's own envelope. */
+/**
+ * The lakehouse answering, in R2 SQL's own envelope.
+ *
+ * Honours the query's block window (#11131): the counterparty scan widens a
+ * `block_number` range until it has its rows, so a double that replayed this
+ * fixture for every step would report one transfer as four and this test would
+ * read as a counting bug rather than the labelling one it is about.
+ */
 function answeringLakehouse(rows: Record<string, unknown>[]): typeof fetch {
-  return (async () =>
-    new Response(JSON.stringify({ success: true, result: { rows } }), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    })) as unknown as typeof fetch;
+  return (async (_url: string, init: RequestInit) =>
+    new Response(
+      JSON.stringify({
+        success: true,
+        result: {
+          rows: visibleInWindow(
+            String(JSON.parse(String(init.body)).query),
+            rows,
+          ),
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as unknown as typeof fetch;
 }
 
 function apiRequest(path: string): Request {

@@ -79,7 +79,22 @@ describe("loadAccountEventsColdTier", () => {
     // simply was not using it.
     const q = sqlFetch([eventRow(8_759_000, 1), eventRow(8_759_000, 0)]);
     await loadAccountEventsColdTier(TOKEN as never, ADDR, { limit: 2 });
-    assert.match(q[0]!, /block_number >= \d+ AND block_number <= \d+/);
+    assert.match(q[0]!, /block_number >= \d+/);
+  });
+
+  test("THE FIRST SLICE HAS NO CEILING, so a row above the watermark is not hidden", async () => {
+    // The head is the DECODE WATERMARK, and a row can land in the lakehouse
+    // before the watermark advances past it. Clamping the newest slice to
+    // `<= head` would drop exactly the rows a newest-first feed exists to show,
+    // and it would do it silently -- the page would look full and simply be
+    // missing its top. The floor is what prunes; the ceiling buys nothing here.
+    const q = sqlFetch([eventRow(8_759_000, 1), eventRow(8_759_000, 0)]);
+    await loadAccountEventsColdTier(TOKEN as never, ADDR, { limit: 2 });
+    assert.doesNotMatch(
+      q[0]!,
+      /block_number <= /,
+      `the newest slice must not be capped at the watermark: ${q[0]}`,
+    );
   });
 
   test("widens the window when a page does not fill, and keeps order", async () => {
@@ -93,11 +108,14 @@ describe("loadAccountEventsColdTier", () => {
     assert.equal(data!.events.length, 1);
     assert.ok(q.length >= 2, `expected a second window, issued ${q.length}`);
     // Each window sits strictly below its predecessor, so concatenation is
-    // globally ordered and no merge step is needed.
+    // globally ordered and no merge step is needed. The second slice is the
+    // first to carry a ceiling, and it must sit below the first slice's floor.
+    const floor = (sql: string) =>
+      Number(/block_number >= (\d+)/.exec(sql)![1]);
     const ceil = (sql: string) => Number(/block_number <= (\d+)/.exec(sql)![1]);
     assert.ok(
-      ceil(q[1]!) < ceil(q[0]!),
-      "the second window must read below the first",
+      ceil(q[1]!) < floor(q[0]!),
+      "the second window must read strictly below the first, so slices are disjoint",
     );
   });
 

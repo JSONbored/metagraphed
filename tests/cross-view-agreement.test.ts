@@ -16,6 +16,7 @@
 // A view is allowed to DECLINE (503). What it may not do is claim a tier
 // answered and hand back nothing while its twin hands back rows.
 import assert from "node:assert/strict";
+import { visibleInWindow } from "./helpers/block-window.ts";
 import { beforeEach, describe, test, vi, afterEach } from "vitest";
 import { resetModuleState } from "../src/module-state-registry.ts";
 
@@ -127,7 +128,7 @@ function lakehouse() {
     } else if (sql.includes("count(*) AS c FROM (")) {
       rows = [{ c: 100 }];
     } else if (sql.includes("FROM chain.account_events")) {
-      rows = [ACCOUNT_EVENT];
+      rows = visibleInWindow(sql, [ACCOUNT_EVENT]);
     }
     return {
       ok: true,

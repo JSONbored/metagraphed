@@ -100,6 +100,7 @@ import {
 import { storeAll } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
+import { windowedFloorRead, windowedRowRead } from "./account-events-window.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
@@ -222,11 +223,21 @@ export async function loadAccountTransfersColdTier(
 
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
-  const rows = await r2SqlQuery<AccountEventsRow>(
-    env,
-    `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where.join(" AND ")}` +
-      ` ${FEED_ORDER} LIMIT ${limit + paged}`,
-  );
+  // BOUNDED (#11131). `(hotkey = X OR coldkey = X)` is a scattered-key filter,
+  // so without a block bound the engine opens all 51 files: 577.5 MB and 3,480
+  // R2 requests, measured, against 0.1 MB and 9 with one. This feed was one of
+  // the reads timing out at the 15s r2-sql ceiling and failing the deploy's
+  // smoke step. The walk returns the identical rows -- see the module.
+  const rows = await windowedRowRead<AccountEventsRow>(env, {
+    table: "chain.account_events",
+    columns: EVENT_COLUMNS,
+    where,
+    order: ` ${FEED_ORDER}`,
+    need: limit + paged,
+    // A cursor page already knows the block it resumes below, so it starts
+    // there rather than re-reading the head.
+    ceiling: cursor ? safeBlockNumber(cursor[1]) : null,
+  });
   if (rows === null) return null;
 
   const page = paged > 0 ? rows.slice(paged) : rows;
@@ -796,13 +807,20 @@ async function counterpartyScan(
   env: Env | null | undefined,
   predicate: string,
 ): Promise<Record<string, unknown>[] | null> {
-  const rows = await r2SqlQuery(
-    env,
-    `SELECT hotkey, coldkey, amount_tao, block_number, event_index, observed_at ` +
-      `FROM chain.account_events WHERE event_kind = 'Transfer' AND ${predicate} ` +
-      `${FEED_ORDER} LIMIT ${COUNTERPARTIES_SCAN_CAP}`,
-  );
-  return rows;
+  // BOUNDED (#11131), same reasoning as the transfer feed: the predicate pins
+  // hotkey/coldkey, which file statistics cannot prune on. The cap is a row
+  // count, not a scan bound -- reaching it still required reading every file.
+  //
+  // `scan_capped` is unaffected: the walk collects the newest CAP rows, which
+  // is what the unbounded LIMIT returned, so the builder still sees CAP rows
+  // exactly when there were at least that many.
+  return windowedRowRead<Record<string, unknown>>(env, {
+    table: "chain.account_events",
+    columns: `hotkey, coldkey, amount_tao, block_number, event_index, observed_at`,
+    where: ["event_kind = 'Transfer'", predicate],
+    order: ` ${FEED_ORDER}`,
+    need: COUNTERPARTIES_SCAN_CAP,
+  });
 }
 
 /**
@@ -971,9 +989,12 @@ export async function loadAccountSummaryColdTier(
   // probe -- see the read block below. The PUBLISHED window is still the newest
   // CAP events: `c` is clamped back to CAP before it leaves this function, so
   // the payload is unchanged.
-  const scan =
+  // Takes the walk's block bound (#11131), so the window it scans is spliced in
+  // rather than the whole table being opened for a filter statistics cannot
+  // prune. Empty string is the unbounded fallback, when the head is unreadable.
+  const scan = (bound: string) =>
     `SELECT netuid, event_kind, block_number, observed_at ` +
-    `FROM chain.account_events WHERE ${where} ` +
+    `FROM chain.account_events WHERE ${where}${bound} ` +
     `ORDER BY block_number DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
 
   // TWO READS, NOT THREE (was five before #9386).
@@ -1012,21 +1033,47 @@ export async function loadAccountSummaryColdTier(
     failures.push(`${leg}: ${detail}`);
   };
 
+  // BOTH LEGS ARE BOUNDED (#11131). `(hotkey = X OR coldkey = X)` is a
+  // scattered-key filter, so each of these opened all 51 files -- and this
+  // route is the one #11131 measured timing out most often. The groups leg
+  // cannot use the accumulating walk the feed legs use: a slice would aggregate
+  // EVERY row in its range rather than only enough to reach CAP + 1, widening
+  // the window the totals describe and quietly changing `event_scan_capped`
+  // and `first_seen`. So it re-issues instead, keeping its own ORDER BY and
+  // LIMIT inside the SQL, and stops as soon as the window holds CAP + 1 rows --
+  // at which point the newest CAP + 1 within it are the newest overall.
   const [groupRows, recentRows] = await Promise.all([
-    query(
-      env,
-      `WITH scan AS (${scan}) SELECT event_kind AS kind, netuid AS netuid, ` +
-        `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
-        `min(observed_at) AS fo, max(observed_at) AS lo ` +
-        `FROM scan GROUP BY event_kind, netuid`,
-      { onError: track("summary-groups") },
-    ),
-    query(
-      env,
-      `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} ` +
-        `${FEED_ORDER} LIMIT ${limit}`,
-      { onError: track("recent-feed") },
-    ),
+    windowedFloorRead<Record<string, unknown>[]>(env, {
+      query,
+      attempt: (bound, run) =>
+        run(
+          env,
+          `WITH scan AS (${scan(bound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
+            `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
+            `min(observed_at) AS fo, max(observed_at) AS lo ` +
+            `FROM scan GROUP BY event_kind, netuid`,
+          { onError: track("summary-groups") },
+        ),
+      // `sum(count)` over the groups is the rows the CTE saw, which is exactly
+      // the number the retired cap probe returned.
+      //
+      // No `?? 0`: `count(*)` always yields a value, so the nullish half is a
+      // branch no test can reach -- the same reading the `scanned` line below
+      // already applies. An absent count would make the sum NaN, `NaN > CAP` is
+      // false, and the read falls back to the unbounded query it would have
+      // issued anyway, so nothing is lost by not guarding it.
+      satisfied: (rows) =>
+        rows.reduce((n, row) => n + Number(row.count), 0) >
+        ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+    }),
+    windowedRowRead<Record<string, unknown>>(env, {
+      query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
+      table: "chain.account_events",
+      columns: EVENT_COLUMNS,
+      where: [where],
+      order: ` ${FEED_ORDER}`,
+      need: limit,
+    }),
   ]);
 
   // Either half missing is a decline: a card mixing measured aggregates with a
