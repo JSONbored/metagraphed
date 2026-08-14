@@ -34250,6 +34250,61 @@
                   "minimum": 0,
                   "type": "integer"
                 },
+                "schema_parity": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "captured_path_count": {
+                      "description": "Paths the subnet's captured spec(s) declare, summed across captured specs.",
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "captured_schema_count": {
+                      "description": "Captured machine-readable specs backing this measurement.",
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "declared_non_get_count": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero."
+                    },
+                    "flagged": {
+                      "description": "True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing.",
+                      "type": "boolean"
+                    },
+                    "registered_non_get_count": {
+                      "description": "Registered surfaces declaring a non-GET method (#11146 phase 3).",
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "registered_route_surface_count": {
+                      "description": "Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route).",
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "captured_schema_count",
+                    "captured_path_count",
+                    "declared_non_get_count",
+                    "registered_route_surface_count",
+                    "registered_non_get_count",
+                    "flagged"
+                  ],
+                  "type": "object"
+                },
                 "slug": {
                   "type": "string"
                 }

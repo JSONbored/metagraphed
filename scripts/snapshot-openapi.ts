@@ -201,6 +201,12 @@ async function snapshotSurface(surface: Row): Promise<Row> {
         normalized.paths && typeof normalized.paths === "object"
           ? Object.keys(normalized.paths).length
           : 0,
+      // #11146 phase 4: how many declared operations are mutations. Stamped
+      // here, where the document is in hand, because the parity rollup in the
+      // build must derive from index entries alone -- captured documents only
+      // exist in credentialed builds. Entries captured before this stamp have
+      // no value, and the rollup reports that as absence, never zero.
+      non_get_operation_count: countNonGetOperations(normalized),
       component_schema_count:
         normalized.components?.schemas &&
         typeof normalized.components.schemas === "object"
@@ -238,6 +244,26 @@ async function snapshotSurface(surface: Row): Promise<Row> {
     "not-found",
     "no machine-readable OpenAPI JSON found",
   );
+}
+
+// #11146 phase 4: the mutation half of the parity ledger. GET is what the
+// registry could always represent; everything else was invisible until the
+// method dimension (phase 3), and this count is what the gaps rollup compares
+// registered mutations against. `head`/`options`/`trace` are deliberately not
+// counted: they are not application operations a caller would register.
+const MUTATION_OPERATION_METHODS = ["post", "put", "patch", "delete"] as const;
+
+function countNonGetOperations(document: Row): number {
+  const paths = document?.paths;
+  if (!paths || typeof paths !== "object") return 0;
+  let count = 0;
+  for (const item of Object.values(paths as Record<string, unknown>)) {
+    if (!item || typeof item !== "object") continue;
+    for (const method of MUTATION_OPERATION_METHODS) {
+      if ((item as Row)[method]) count += 1;
+    }
+  }
+  return count;
 }
 
 function unavailable(

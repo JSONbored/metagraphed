@@ -1121,8 +1121,75 @@ const curationIndex = mergedSubnets.map((subnet) => ({
   surface_count: subnet.surface_count,
 }));
 
+// #11146 phase 4: per-subnet schema parity -- captured spec vs registered
+// catalogue, the check the SN105 report asked for. Derived from schema INDEX
+// entries only, never the captured documents: documents exist solely in
+// credentialed builds, and this rollup must be a function of inputs every
+// build has (the reconciled index baseline + the registry). The counts ride
+// each captured entry's `snapshot` block, stamped at capture time.
+const capturedSchemaEntriesByNetuid = new Map<unknown, Row[]>();
+for (const entry of (schemaIndexArtifact.schemas as Row[]) || []) {
+  if (entry.status !== "captured") continue;
+  const list = capturedSchemaEntriesByNetuid.get(entry.netuid) || [];
+  list.push(entry);
+  capturedSchemaEntriesByNetuid.set(entry.netuid, list);
+}
+
+// The registered side of the ledger: concrete callable route surfaces
+// (subnet-api / sse / data-artifact). `openapi` is excluded on purpose -- the
+// spec document is how we KNOW the declared side, not a route of the API.
+const PARITY_ROUTE_KINDS = new Set(["subnet-api", "sse", "data-artifact"]);
+
+function schemaParityForSubnet(
+  netuid: unknown,
+  subnetSurfaces: Row[],
+): Row | null {
+  const captured = capturedSchemaEntriesByNetuid.get(netuid) || [];
+  if (captured.length === 0) return null;
+  const pathCounts = captured.map(
+    (entry) => (entry.snapshot as Row | undefined)?.path_count,
+  );
+  // An index entry predating the path_count stamp reports absence, not zero:
+  // a parity verdict built on a guessed denominator is the drift_status:
+  // "unchanged" mistake again.
+  if (!pathCounts.every((count) => Number.isInteger(count))) return null;
+  const capturedPathCount = pathCounts.reduce(
+    (sum: number, count) => sum + (count as number),
+    0,
+  );
+  const nonGetCounts = captured.map(
+    (entry) => (entry.snapshot as Row | undefined)?.non_get_operation_count,
+  );
+  const registeredRouteSurfaces = subnetSurfaces.filter((surface) =>
+    PARITY_ROUTE_KINDS.has(surface.kind as string),
+  );
+  return {
+    captured_schema_count: captured.length,
+    captured_path_count: capturedPathCount,
+    // Null until a capture stamped it (entries predate the stamp); the two
+    // sides of the mutation ledger only compare once both are measured.
+    declared_non_get_count: nonGetCounts.every((count) =>
+      Number.isInteger(count),
+    )
+      ? nonGetCounts.reduce((sum: number, count) => sum + (count as number), 0)
+      : null,
+    registered_route_surface_count: registeredRouteSurfaces.length,
+    registered_non_get_count: registeredRouteSurfaces.filter(
+      (surface) => surface.method && surface.method !== "GET",
+    ).length,
+    // The flag the issue asked for: the subnet declares more paths than the
+    // catalogue registers as routes. A caller reading only the registry
+    // cannot tell which routes those are -- that is the gap being named.
+    flagged: registeredRouteSurfaces.length < capturedPathCount,
+  };
+}
+
 const gapsIndex = mergedSubnets.map((subnet) => {
   const missingKinds = subnet.gaps.missing_kinds || [];
+  const schemaParity = schemaParityForSubnet(
+    subnet.netuid,
+    surfacesByNetuidForCounts.get(subnet.netuid) || [],
+  );
   return {
     coverage_level: subnet.coverage_level,
     curation_level: subnet.curation.level,
@@ -1148,6 +1215,10 @@ const gapsIndex = mergedSubnets.map((subnet) => {
     ),
     name: subnet.name,
     netuid: subnet.netuid,
+    // #11146 phase 4: present only when the subnet has captured schema entries
+    // whose counts are stamped -- absence means "not measured", never "in
+    // parity".
+    ...(schemaParity ? { schema_parity: schemaParity } : {}),
     slug: subnet.slug,
   };
 });

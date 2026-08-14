@@ -8636,6 +8636,20 @@ export interface components {
                 gaps: components["schemas"]["Gaps"];
                 name: string;
                 netuid: number;
+                schema_parity?: {
+                    /** @description Paths the subnet's captured spec(s) declare, summed across captured specs. */
+                    captured_path_count: number;
+                    /** @description Captured machine-readable specs backing this measurement. */
+                    captured_schema_count: number;
+                    /** @description Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero. */
+                    declared_non_get_count: number | null;
+                    /** @description True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing. */
+                    flagged: boolean;
+                    /** @description Registered surfaces declaring a non-GET method (#11146 phase 3). */
+                    registered_non_get_count: number;
+                    /** @description Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route). */
+                    registered_route_surface_count: number;
+                };
                 slug: string;
             }[];
             generated_at: string;
