@@ -436,6 +436,7 @@ describe("the section vocabulary cannot drift from the document", () => {
       "overview",
       SUBNET_OVERVIEW_SECTIONS,
       [
+        "compute_requirements",
         "counts",
         "curation",
         "gap_priorities",

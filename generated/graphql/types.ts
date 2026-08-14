@@ -6035,10 +6035,12 @@ export type Subnet = {
   endpoints: Array<Endpoint>;
   first_party?: Maybe<Scalars['Boolean']['output']>;
   gap_count?: Maybe<Scalars['Int']['output']>;
+  gpu_required?: Maybe<Scalars['String']['output']>;
   health?: Maybe<SubnetHealth>;
   integration_readiness?: Maybe<Scalars['Int']['output']>;
   lifecycle?: Maybe<Scalars['String']['output']>;
   logo_url?: Maybe<Scalars['String']['output']>;
+  min_vram_gb?: Maybe<Scalars['Float']['output']>;
   name: Scalars['String']['output'];
   netuid: Scalars['Int']['output'];
   official_surface_count?: Maybe<Scalars['Int']['output']>;
@@ -12800,10 +12802,12 @@ export type SubnetResolvers<ContextType = GqlContext, ParentType extends Resolve
   endpoints?: Resolver<Array<ResolversTypes['Endpoint']>, ParentType, ContextType, Partial<SubnetEndpointsArgs>>;
   first_party?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   gap_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  gpu_required?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   health?: Resolver<Maybe<ResolversTypes['SubnetHealth']>, ParentType, ContextType>;
   integration_readiness?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   lifecycle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   logo_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  min_vram_gb?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   official_surface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;

@@ -11,6 +11,15 @@ import { generateServiceSnippets } from "../src/integration-snippets.ts";
 import { firstPartyLogoUrl } from "./cache-identity-logos.ts";
 import { githubSignalsForSubnet, loadGithubSignals } from "./github-signals.ts";
 import {
+  computeRequirementsForRepoUrl,
+  loadComputeRequirements,
+} from "./compute-requirements.ts";
+import {
+  computeRequirementsSection,
+  minerScreeningFields,
+  type ComputeRequirements,
+} from "../src/compute-requirements.ts";
+import {
   backfilledIdentityUrl,
   socialAccounts,
   subnetContact,
@@ -200,6 +209,16 @@ const nativeSnapshot: Row = await loadNativeSnapshot();
 // degrades every subnet's github_languages/github_last_push_at to null,
 // never throws.
 const githubSignals = await loadGithubSignals();
+// #11097: the min_compute readings behind the hardware facet. Read from the
+// committed seed, never the network, so the build stays reproducible.
+const computeRequirements = await loadComputeRequirements();
+// Keyed by the merged row's OWN resolved source_repo, so the facet always
+// describes the repo the row displays. Deliberately NOT a field on the merged
+// subnet: that object is projected into the detail artifact's `subnet` block,
+// which is strict, and a screening facet does not belong inside a subnet's
+// identity record.
+const requirementsForRow = (subnet: Row): ComputeRequirements | null =>
+  computeRequirementsForRepoUrl(computeRequirements, subnet.source_repo);
 const overlayByNetuid = new Map(
   overlays.map((overlay) => [overlay.netuid, overlay]),
 );
@@ -613,6 +632,11 @@ const subnetIndex: Row[] = mergedSubnets.map((subnet) => {
     github_stars: subnet.github_stars,
     github_commits_weekly: subnet.github_commits_weekly,
     github_unreachable: subnet.github_unreachable,
+    // #11097: the miner hardware floor -- the first screening filter for a
+    // capital-constrained operator. Both fields are null on the subnets whose
+    // repo publishes no readable min_compute file, and a null GPU answer is
+    // never rendered as "no GPU needed".
+    ...minerScreeningFields(requirementsForRow(subnet)),
     // #11099: the testnet lineage in bulk -- the same also_on list the profile
     // carries, so a screen can find the free practice netuids for every
     // candidate in one call instead of 129. Null (not []) when no testnet twin
@@ -1517,6 +1541,13 @@ await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
         .length,
     },
     gap_priorities: overviewGapPriorities.get(subnet.netuid) || [],
+    // #11097: the whole declaration -- both roles and the commit it was read
+    // at -- as a selectable section. Null when the resolved source repo
+    // publishes no readable min_compute file, which is the answer for most of
+    // the fleet and is not the same as declaring no requirements.
+    compute_requirements: computeRequirementsSection(
+      requirementsForRow(subnet),
+    ),
   });
 });
 // --- Agent capability catalog ------------------------------------------------

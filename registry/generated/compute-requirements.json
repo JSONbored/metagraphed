@@ -1,0 +1,949 @@
+{
+  "generated_at": "2026-08-14T04:46:00.657Z",
+  "requirements": [
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "55bd03042426485326612ce2b302b0df835beeb4",
+        "source_url": "https://raw.githubusercontent.com/one-covenant/templar/main/min_compute.yml",
+        "spec_version": "0.3.6"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 64,
+        "min_ram_gb": 1200,
+        "min_storage_gb": 1000,
+        "min_vram_gb": 192
+      },
+      "owner": "one-covenant",
+      "repo": "templar",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 64,
+        "min_ram_gb": 1200,
+        "min_storage_gb": 1000,
+        "min_vram_gb": 141
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "487077fb67050b122e22e0bc5a789041770af678",
+        "source_url": "https://raw.githubusercontent.com/entrius/allways/main/min_compute.yml",
+        "spec_version": null
+      },
+      "found": false,
+      "miner": null,
+      "owner": "entrius",
+      "repo": "allways",
+      "validator": null
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "7f7034a56a4296e49388834cb7233c175b6551ae",
+        "source_url": "https://raw.githubusercontent.com/study-service/BitAds.ai/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": null,
+        "min_cores": 1,
+        "min_ram_gb": 2,
+        "min_storage_gb": 20,
+        "min_vram_gb": null
+      },
+      "owner": "study-service",
+      "repo": "BitAds.ai",
+      "validator": {
+        "gpu_required": null,
+        "min_cores": 1,
+        "min_ram_gb": 2,
+        "min_storage_gb": 20,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "fda1af201e99d072a20d3c98914cbafb41caa77d",
+        "source_url": "https://raw.githubusercontent.com/Orpheus-AI/Zeus/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 0
+      },
+      "owner": "Orpheus-AI",
+      "repo": "Zeus",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 2,
+        "min_ram_gb": 8,
+        "min_storage_gb": 100,
+        "min_vram_gb": 0
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "7220c9d22da501c5bb2188ff833c09fdb1367398",
+        "source_url": "https://raw.githubusercontent.com/ippcteam/SN21-adtao/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 2,
+        "min_ram_gb": 4,
+        "min_storage_gb": 5,
+        "min_vram_gb": null
+      },
+      "owner": "ippcteam",
+      "repo": "SN21-adtao",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 8,
+        "min_storage_gb": 10,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "4bda926de5fd3d05d43e497da267b6e0e874ef34",
+        "source_url": "https://raw.githubusercontent.com/Desearch-ai/subnet-22/main/min_compute.yml",
+        "spec_version": "1.0.4"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": null,
+        "min_cores": 2,
+        "min_ram_gb": 8,
+        "min_storage_gb": 48,
+        "min_vram_gb": null
+      },
+      "owner": "Desearch-ai",
+      "repo": "subnet-22",
+      "validator": {
+        "gpu_required": null,
+        "min_cores": 4,
+        "min_ram_gb": 8,
+        "min_storage_gb": 48,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "2a7147ae0f6fa89c4794bcd2c3cb8a572f61b104",
+        "source_url": "https://raw.githubusercontent.com/macrocosm-os/mainframe/main/min_compute.yml",
+        "spec_version": "0.3.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 50,
+        "min_vram_gb": 24
+      },
+      "owner": "macrocosm-os",
+      "repo": "mainframe",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 100,
+        "min_vram_gb": 24
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "e7d636e76e76e005f0a6f712c4a0d393dffbf1bc",
+        "source_url": "https://raw.githubusercontent.com/coldint/coldint_validator/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": null,
+      "owner": "coldint",
+      "repo": "coldint_validator",
+      "validator": null
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "715150377a3cf75832ae38e45be9f7d4830c0e7f",
+        "source_url": "https://raw.githubusercontent.com/It-s-AI/llm-detection/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 24,
+        "min_storage_gb": 20,
+        "min_vram_gb": 24
+      },
+      "owner": "It-s-AI",
+      "repo": "llm-detection",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 80,
+        "min_storage_gb": 1000,
+        "min_vram_gb": 80
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "0223b3f21e6b2923faa6044b3324a72a1c91ae00",
+        "source_url": "https://raw.githubusercontent.com/afterpartyai/bittensor-conversation-genome-project/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      },
+      "owner": "afterpartyai",
+      "repo": "bittensor-conversation-genome-project",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "877ac4ca1fb23d0b03d8681c533d709644f2dd47",
+        "source_url": "https://raw.githubusercontent.com/BitMind-AI/bitmind-subnet/main/min_compute.yml",
+        "spec_version": "3.0.0"
+      },
+      "found": true,
+      "miner": null,
+      "owner": "BitMind-AI",
+      "repo": "bitmind-subnet",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 32,
+        "min_storage_gb": 1000,
+        "min_vram_gb": 80
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "5dc9eebb321cfaef2ec71d9c2b521aeb0fbf0f6c",
+        "source_url": "https://raw.githubusercontent.com/GraphiteAI/Graphite-Subnet/main/min_compute.yml",
+        "spec_version": "0.0.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 8,
+        "min_storage_gb": 10,
+        "min_vram_gb": null
+      },
+      "owner": "GraphiteAI",
+      "repo": "Graphite-Subnet",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "ad3dc20d950c175954cd831f4a2a7ee465b9dc4c",
+        "source_url": "https://raw.githubusercontent.com/Team-Rizzo/alpharidge-ai/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      },
+      "owner": "Team-Rizzo",
+      "repo": "alpharidge-ai",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "4998604235969353547960d84e547cae49fd3347",
+        "source_url": "https://raw.githubusercontent.com/qbittensor-labs/quantum-compute/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": null,
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": null,
+        "min_vram_gb": null
+      },
+      "owner": "qbittensor-labs",
+      "repo": "quantum-compute",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": null,
+        "min_ram_gb": 8,
+        "min_storage_gb": 80,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "b352a4f13d2caae3bacd4c52358c289d231e36b7",
+        "source_url": "https://raw.githubusercontent.com/synthdataco/synth-subnet/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 2,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 0
+      },
+      "owner": "synthdataco",
+      "repo": "synth-subnet",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 16,
+        "min_ram_gb": 64,
+        "min_storage_gb": 25,
+        "min_vram_gb": 0
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "1818765c1b59c01de89489ee601758dde8deb5a7",
+        "source_url": "https://raw.githubusercontent.com/yanez-compliance/MIID-subnet/main/min_compute.yml",
+        "spec_version": "1.1"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "declared-inconsistently",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 50,
+        "min_vram_gb": 16
+      },
+      "owner": "yanez-compliance",
+      "repo": "MIID-subnet",
+      "validator": {
+        "gpu_required": "declared-inconsistently",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 50,
+        "min_vram_gb": 16
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "ee2a1530be5dee5f3bc0f8e97cb3c0a6dc493131",
+        "source_url": "https://raw.githubusercontent.com/genomesio/subnet-niome/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": null
+      },
+      "owner": "genomesio",
+      "repo": "subnet-niome",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "d374b862f0bf53884ba38a154f7fe37f307565ce",
+        "source_url": "https://raw.githubusercontent.com/Handshake58/HS58-subnet/main/min_compute.yml",
+        "spec_version": null
+      },
+      "found": false,
+      "miner": null,
+      "owner": "Handshake58",
+      "repo": "HS58-subnet",
+      "validator": null
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "80bae408b5447015e22616bd37ec6a78ce5ec653",
+        "source_url": "https://raw.githubusercontent.com/babelbit/babelbit_subnet/main/min_compute.yml",
+        "spec_version": null
+      },
+      "found": false,
+      "miner": null,
+      "owner": "babelbit",
+      "repo": "babelbit_subnet",
+      "validator": null
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "17df1c6a8e8044916437e8b7a97e038dd0d35573",
+        "source_url": "https://raw.githubusercontent.com/Bitsec-AI/sandbox/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      },
+      "owner": "Bitsec-AI",
+      "repo": "sandbox",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "28f2e634d01ecbd1cffa2d2291ea30ae8ec771b2",
+        "source_url": "https://raw.githubusercontent.com/qbittensor-labs/enigma/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 1,
+        "min_ram_gb": 8,
+        "min_storage_gb": 100,
+        "min_vram_gb": 0
+      },
+      "owner": "qbittensor-labs",
+      "repo": "enigma",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 26,
+        "min_ram_gb": 96,
+        "min_storage_gb": 50,
+        "min_vram_gb": 96
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "8a0e9173d361fff411e0bb1ab6e1a2eb87922db6",
+        "source_url": "https://raw.githubusercontent.com/taofu-labs/tpn-subnet/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 2,
+        "min_ram_gb": 2,
+        "min_storage_gb": 50,
+        "min_vram_gb": null
+      },
+      "owner": "taofu-labs",
+      "repo": "tpn-subnet",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 8,
+        "min_storage_gb": 100,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "24e05aaa83b38165bfefa728333587f86a7bcf24",
+        "source_url": "https://raw.githubusercontent.com/HeraldMedia/herald/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": null,
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": null,
+        "min_vram_gb": null
+      },
+      "owner": "HeraldMedia",
+      "repo": "herald",
+      "validator": {
+        "gpu_required": null,
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": null,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "3a3280ab88e3402d4156dc365c0f00730391bf54",
+        "source_url": "https://raw.githubusercontent.com/natixnetwork/streetvision-subnet/main/min_compute.yml",
+        "spec_version": "2.0.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 2,
+        "min_ram_gb": 8,
+        "min_storage_gb": 50,
+        "min_vram_gb": 4
+      },
+      "owner": "natixnetwork",
+      "repo": "streetvision-subnet",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 32,
+        "min_storage_gb": 150,
+        "min_vram_gb": 20
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "a85691c4aaae1e6f185d4e145ee9413f604eead0",
+        "source_url": "https://raw.githubusercontent.com/entrius/gittensor/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": null,
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": null,
+        "min_vram_gb": null
+      },
+      "owner": "entrius",
+      "repo": "gittensor",
+      "validator": {
+        "gpu_required": null,
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": null,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "afa0c8cce0391f9cb1496ea6de4f1343924a3b8e",
+        "source_url": "https://raw.githubusercontent.com/taos-im/sn-79/main/min_compute.yml",
+        "spec_version": "0.1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 4,
+        "min_storage_gb": 100,
+        "min_vram_gb": 0
+      },
+      "owner": "taos-im",
+      "repo": "sn-79",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 16,
+        "min_ram_gb": 32,
+        "min_storage_gb": 200,
+        "min_vram_gb": 0
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "compute.min.yaml",
+        "read_at_sha": "83c49346010bbb52ed2439a4aa7612338bf0f087",
+        "source_url": "https://raw.githubusercontent.com/one-covenant/grail/main/compute.min.yaml",
+        "spec_version": "0.1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 16,
+        "min_ram_gb": 64,
+        "min_storage_gb": 100,
+        "min_vram_gb": 24
+      },
+      "owner": "one-covenant",
+      "repo": "grail",
+      "validator": {
+        "gpu_required": "required",
+        "min_cores": 16,
+        "min_ram_gb": 64,
+        "min_storage_gb": 100,
+        "min_vram_gb": 24
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "0d3488ab808ee95bd350712ab99c2dc564f7a904",
+        "source_url": "https://raw.githubusercontent.com/toptensor/CliqueAI/main/min_compute.yml",
+        "spec_version": "0.0.17"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "declared-inconsistently",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      },
+      "owner": "toptensor",
+      "repo": "CliqueAI",
+      "validator": {
+        "gpu_required": "declared-inconsistently",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "8811aab8f4fb76626162cd4f1f695421d3638e06",
+        "source_url": "https://raw.githubusercontent.com/mobiusfund/investing/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": 20,
+        "min_vram_gb": null
+      },
+      "owner": "mobiusfund",
+      "repo": "investing",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": 20,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "485c9c0841904c46291b94448591da305c905479",
+        "source_url": "https://raw.githubusercontent.com/bitcast-network/bitcast/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": null,
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": null,
+        "min_vram_gb": null
+      },
+      "owner": "bitcast-network",
+      "repo": "bitcast",
+      "validator": {
+        "gpu_required": null,
+        "min_cores": null,
+        "min_ram_gb": null,
+        "min_storage_gb": null,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "b2dce41e6dbad77c46ddf2222c4fb1786d953f7e",
+        "source_url": "https://raw.githubusercontent.com/verathos-ai/verathos/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "required",
+        "min_cores": 4,
+        "min_ram_gb": 32,
+        "min_storage_gb": 100,
+        "min_vram_gb": 24
+      },
+      "owner": "verathos-ai",
+      "repo": "verathos",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 50,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "115f36da7c483d16018d4c16a14f8fb8d0433306",
+        "source_url": "https://raw.githubusercontent.com/tag101-ai/tag101/main/min_compute.yml",
+        "spec_version": "0.2.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 2,
+        "min_ram_gb": 8,
+        "min_storage_gb": 20,
+        "min_vram_gb": 0
+      },
+      "owner": "tag101-ai",
+      "repo": "tag101",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 30,
+        "min_vram_gb": 0
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "b1d773e9f8fb0d16c314a89af731f2e00856121a",
+        "source_url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 4,
+        "min_ram_gb": 8,
+        "min_storage_gb": 60,
+        "min_vram_gb": 0
+      },
+      "owner": "minos-protocol",
+      "repo": "minos_subnet",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 8,
+        "min_ram_gb": 32,
+        "min_storage_gb": 100,
+        "min_vram_gb": 0
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "29762eadfca5ef01651c436d7b413e9751b45424",
+        "source_url": "https://raw.githubusercontent.com/talkheadai/talkhead-subnet/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": null,
+      "owner": "talkheadai",
+      "repo": "talkhead-subnet",
+      "validator": null
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:46:00.657Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "faaf81ea7b8122a5006ce187923b632c620979ca",
+        "source_url": "https://raw.githubusercontent.com/TensorUSD/subnet/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "declared-inconsistently",
+        "min_cores": 2,
+        "min_ram_gb": 4,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      },
+      "owner": "TensorUSD",
+      "repo": "subnet",
+      "validator": {
+        "gpu_required": "declared-inconsistently",
+        "min_cores": 2,
+        "min_ram_gb": 4,
+        "min_storage_gb": 10,
+        "min_vram_gb": 8
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "5208197624d8ee10a06988620265e1b1a516af72",
+        "source_url": "https://raw.githubusercontent.com/sundae-bar/sb-validator/main/min_compute.yml",
+        "spec_version": "1.0.1"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 1,
+        "min_ram_gb": 2,
+        "min_storage_gb": 5,
+        "min_vram_gb": null
+      },
+      "owner": "sundae-bar",
+      "repo": "sb-validator",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 1,
+        "min_ram_gb": 2,
+        "min_storage_gb": 5,
+        "min_vram_gb": null
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "363e131040db81076fdcdcd9b4d31ccb8fd1c521",
+        "source_url": "https://raw.githubusercontent.com/bitrecs/bitrecs-subnet/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "declared-inconsistently",
+        "min_cores": 4,
+        "min_ram_gb": 16,
+        "min_storage_gb": 50,
+        "min_vram_gb": 8
+      },
+      "owner": "bitrecs",
+      "repo": "bitrecs-subnet",
+      "validator": {
+        "gpu_required": "declared-inconsistently",
+        "min_cores": 8,
+        "min_ram_gb": 32,
+        "min_storage_gb": 500,
+        "min_vram_gb": 8
+      }
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "c94113d0312059829df364d581157e15112d74a8",
+        "source_url": "https://raw.githubusercontent.com/Barbariandev/MANTIS/main/min_compute.yml",
+        "spec_version": null
+      },
+      "found": false,
+      "miner": null,
+      "owner": "Barbariandev",
+      "repo": "MANTIS",
+      "validator": null
+    },
+    {
+      "evidence": {
+        "observed_at": "2026-08-14T04:36:17.498Z",
+        "path": "min_compute.yml",
+        "read_at_sha": "9ed610c9631ac16d7e95ea9600abe1a974e15d07",
+        "source_url": "https://raw.githubusercontent.com/swarm-subnet/swarm/main/min_compute.yml",
+        "spec_version": "1.0"
+      },
+      "found": true,
+      "miner": {
+        "gpu_required": "not-required",
+        "min_cores": 3,
+        "min_ram_gb": 8,
+        "min_storage_gb": 20,
+        "min_vram_gb": null
+      },
+      "owner": "swarm-subnet",
+      "repo": "swarm",
+      "validator": {
+        "gpu_required": "not-required",
+        "min_cores": 3,
+        "min_ram_gb": 16,
+        "min_storage_gb": 50,
+        "min_vram_gb": null
+      }
+    }
+  ],
+  "summary": {
+    "files_found": 39,
+    "read_without_spec": 4,
+    "repos_probed": 119,
+    "retained": 0,
+    "specs_parsed": 35,
+    "uncited": 80
+  }
+}

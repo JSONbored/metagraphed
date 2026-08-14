@@ -185,6 +185,11 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("review:promote"),
     step("review:queue", refreshEnv),
     step("adapters:snapshot", refreshEnv),
+    // #11097: re-read every source repo's min_compute file into the committed
+    // seed BEFORE the build, which reads that seed rather than the network.
+    // Tolerant like the other live-data steps: a GitHub outage leaves the
+    // previous seed in place and the build carries on with it.
+    step("compute:requirements", refreshEnv),
     step("build", refreshEnv),
     step("schemas:snapshot", refreshEnv),
     step("capture:fixtures", refreshEnv),

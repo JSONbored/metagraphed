@@ -24,6 +24,7 @@ import {
   LIVE_HEALTH_OVERLAY,
 } from "./subnet-detail.ts";
 import { SubnetProfileSchema } from "./subnet-profile.ts";
+import { SubnetComputeRequirementsSchema } from "../compute.ts";
 
 // The overlaid health block has ONE declaration, in routes/health.ts next to
 // the summary the overlay spreads. Re-listing it here dropped
@@ -50,6 +51,10 @@ export const SubnetOverviewArtifactSchema = ArtifactBaseSchema.extend({
     })
     .strict(),
   gap_priorities: z.array(z.unknown()).optional(),
+  // #11097: the hardware floor, as a selectable section. Null when the
+  // resolved source repo publishes no readable min_compute file -- which is
+  // the answer for 90 of 129 subnets and must never render as "no GPU needed".
+  compute_requirements: SubnetComputeRequirementsSchema.nullable().optional(),
 });
 export type SubnetOverviewArtifact = z.infer<
   typeof SubnetOverviewArtifactSchema
