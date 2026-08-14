@@ -119,6 +119,10 @@ export const SubnetMinerFairnessArtifactSchema = subnetHistoryArtifactSchema(
         description:
           "THE CAPTURE TRIPWIRE: the same two lenses over the CURRENT metagraph, beside the windowed ones -- because a window aggregate smooths away a mid-window capture event. SN75 reported a 30d uid gini of 0.77 while one UID held incentive 0.9908 live; when these lenses diverge violently from `concentration`, trust these. Null when the current-metagraph store has no rows for this subnet.",
       }),
+    burn_uid: z.int().min(0).nullable().optional().meta({
+      description:
+        "The UID excluded from every figure above as the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the `SubtensorModule.SubnetOwnerHotkey` UID, so it is not a miner and counting it would inflate each distribution by 1/(1-burn). Null when the subnet burns nothing -- no row was excluded.",
+    }),
     field_sources: FieldSourcesSchema.optional(),
   })
   .describe(

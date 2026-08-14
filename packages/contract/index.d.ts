@@ -9162,6 +9162,8 @@ export interface components {
                 /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
+                /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
+                is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
@@ -9202,6 +9204,8 @@ export interface components {
                 /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
+                /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
+                is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
@@ -11232,11 +11236,15 @@ export interface components {
             points: {
                 /** @description The day's alpha price in TAO, from the same daily snapshot. This is `SubnetMovingPrice`, the chain's emission-weighting average — not a traded mark. */
                 alpha_price_tao?: number | null;
+                /** @description Emission landing on the subnet's burn sink -- the UID holding `SubtensorModule.SubnetOwnerHotkey` while `SubtensorModule.MinerBurned` > 0. It rode the miner leg before #11094, overstating what miners receive by 1/(1-burn); 0 on a subnet that burns nothing. */
+                burned_alpha?: number | null;
+                /** @description burned_alpha / uid_alpha. With `validator_share_of_uid` and `miner_share_of_uid` this sums to 1 over the UID set; null when the day emitted nothing. */
+                burned_share_of_uid?: number | null;
                 /** @description Non-validator UIDs that recorded emission above zero on this day. Against `miner_count` this is how many registered miners earned anything at all — the median subnet has almost none, and a miner count read alone overstates participation. */
                 earning_miner_count?: number;
                 /** @description Validator-permit UIDs that recorded emission above zero on this day. */
                 earning_validator_count?: number;
-                /** @description Emission to non-validator UIDs, alpha-denominated. */
+                /** @description Emission to non-validator UIDs, alpha-denominated -- the BURN SINK excluded (#11094): the SubnetOwnerHotkey UID carrying the MinerBurned fraction is its own `burned_alpha` leg, so this is what miners actually receive. */
                 miner_alpha?: number | null;
                 miner_count?: number;
                 /** @description Miner share of the whole day. Reconstructed. */
@@ -11732,6 +11740,8 @@ export interface components {
                 /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
+                /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
+                is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
@@ -11749,6 +11759,8 @@ export interface components {
         };
         /** @description Whether a subnet's registered miners actually earn, measured over a 7d/30d/90d window rather than from a snapshot. Reports the daily zero-emission rate, how many days each miner UID earned on (persistent-zero and occasionally-zero are different facts a snapshot collapses), and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. DESCRIPTIVE ONLY — there is no fairness score and no grade: a high Gini on a subnet whose task genuinely has one best answer is not misconduct, and that context is not in this data. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness. */
         SubnetMinerFairnessArtifact: {
+            /** @description The UID excluded from every figure above as the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the `SubtensorModule.SubnetOwnerHotkey` UID, so it is not a miner and counting it would inflate each distribution by 1/(1-burn). Null when the subnet burns nothing -- no row was excluded. */
+            burn_uid?: number | null;
             concentration?: {
                 /** @description THE HEADLINE LENS: emission concentration across controlling entities (coldkeys), with each entity's UIDs summed. A subnet with three operators behind 256 UIDs is not diverse, and the per-UID lens alone hides exactly that. The distribution is each entity's miner emission summed across the window's `days_covered` days, where each day contributes that day's captured PER-TEMPO alpha rate (the `emission_tao` convention) -- so `total` is a within-subnet ranking mass, not a window payout total, and never TAO. */
                 entity?: components["schemas"]["ConcentrationMetrics"];
@@ -12769,6 +12781,8 @@ export interface components {
                 /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
+                /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
+                is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
@@ -44678,6 +44692,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "burn_uid": 1,
                      *         "concentration": {
                      *           "entity": {
                      *             "holders": 1,
@@ -44846,6 +44861,7 @@ export interface operations {
                      *           "immunity_expires_at": "2026-06-01T00:00:00.000Z",
                      *           "immunity_expires_at_block": 5000000,
                      *           "incentive": 0.5,
+                     *           "is_burn_uid": false,
                      *           "is_immunity_period": false,
                      *           "rank": 0.5,
                      *           "registered_at_block": 5000000,

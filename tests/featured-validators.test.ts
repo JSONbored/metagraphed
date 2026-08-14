@@ -13,7 +13,10 @@ import {
   FEATURED_HOTKEYS,
   FEATURED_HOTKEY_SET,
 } from "../generated/featured-validators.ts";
-import { buildSubnetValidators } from "../src/metagraph-neurons.ts";
+import {
+  buildSubnetMetagraph,
+  buildSubnetValidators,
+} from "../src/metagraph-neurons.ts";
 import { repoRoot } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -162,5 +165,34 @@ describe("the badge actually flips (#11080)", () => {
     const first = (out.validators as Row[])[0];
     assert.ok(first && "featured" in first);
     assert.equal(first.featured, false);
+  });
+});
+
+describe("the burn flag on metagraph rows (#11094)", () => {
+  const mgRow = (over: Row = {}): Row => ({
+    uid: 0,
+    hotkey: "5HotA",
+    coldkey: "5ColdA",
+    validator_permit: false,
+    incentive: 0.1,
+    ...over,
+  });
+
+  test("the owner-hotkey UID is flagged when a burn hotkey resolves", () => {
+    const out = buildSubnetMetagraph(
+      [mgRow({ uid: 162, hotkey: "5OwnerHot" }), mgRow({ uid: 1 })],
+      13,
+      { burnHotkey: "5OwnerHot" },
+    );
+    const byUid = new Map(
+      (out.neurons as Row[]).map((n) => [n.uid, n.is_burn_uid]),
+    );
+    assert.equal(byUid.get(162), true);
+    assert.equal(byUid.get(1), false);
+  });
+
+  test("without the resolution the key is absent, keeping older shapes intact", () => {
+    const out = buildSubnetMetagraph([mgRow()], 13, {});
+    assert.ok(!("is_burn_uid" in (out.neurons as Row[])[0]));
   });
 });

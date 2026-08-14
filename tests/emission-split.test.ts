@@ -459,3 +459,43 @@ describe("the contract", () => {
     );
   });
 });
+
+describe("the burn leg (#11094)", () => {
+  test("the burn sink's emission is its own leg, not the miners'", () => {
+    const rows: Row[] = sn74Day("2026-08-12").map((r) => ({
+      ...r,
+      hotkey: "5M",
+    }));
+    rows.push({
+      snapshot_date: "2026-08-12",
+      alpha_out_emission: 1,
+      alpha_price_tao: 0.0135,
+      hotkey: "5OwnerHot",
+      validator_permit: false,
+      emission_tao: 200,
+    });
+    const out = buildSubnetEmissionSplitHistory(rows, 13, {
+      burnHotkey: "5OwnerHot",
+    });
+    const p = (out.points as Row[])[0];
+    assert.equal(p.burned_alpha, 200);
+    assert.ok(Math.abs((p.miner_alpha as number) - 34.5096) < 1e-6);
+    // The sink is in neither population.
+    assert.equal(p.miner_count, 6);
+    // The three shares of the UID set sum to 1.
+    const sum =
+      (p.validator_share_of_uid as number) +
+      (p.miner_share_of_uid as number) +
+      (p.burned_share_of_uid as number);
+    assert.ok(Math.abs(sum - 1) < 1e-6, String(sum));
+  });
+
+  test("no burn hotkey: burned_alpha is zero and nothing moves", () => {
+    const p = (
+      buildSubnetEmissionSplitHistory(sn74Day("2026-08-12"), 74, {})
+        .points as Row[]
+    )[0];
+    assert.equal(p.burned_alpha, 0);
+    assert.equal(p.burned_share_of_uid, 0);
+  });
+});

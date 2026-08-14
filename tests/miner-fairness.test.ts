@@ -469,6 +469,78 @@ describe("the live lens — the capture tripwire (#11091)", () => {
   });
 });
 
+describe("the burn sink (#11094)", () => {
+  // The SN13 shape: MinerBurned 0.7156 lands on the owner-hotkey UID as
+  // incentive, and before the exclusion it read as one "miner" holding 71.6%.
+  const rows = [
+    row({
+      uid: 162,
+      coldkey: "5OwnerCold",
+      hotkey: "5OwnerHot",
+      emission_tao: 7,
+    }),
+    row({ uid: 0, coldkey: "5A", hotkey: "5HotA", emission_tao: 1 }),
+    row({ uid: 1, coldkey: "5B", hotkey: "5HotB", emission_tao: 1 }),
+  ];
+
+  test("the burn UID is excluded from every population and NAMED on the card", () => {
+    const out = buildSubnetMinerFairness(rows, 13, { burnHotkey: "5OwnerHot" });
+    assert.equal(out.burn_uid, 162);
+    assert.equal(out.miner_uid_count, 2, "the sink is not a miner");
+    const p = (out.points as Row[])[0];
+    assert.equal(p.miner_count, 2);
+    const uidLens = (out.concentration as Row).uid as Row;
+    // Two equal miners once the sink is out: the lens must not see the 71.6%.
+    assert.equal(uidLens.holders, 2);
+    assert.ok((uidLens.gini as number) < 0.001, String(uidLens.gini));
+  });
+
+  test("no burn hotkey means no exclusion and a null burn_uid", () => {
+    const out = buildSubnetMinerFairness(rows, 13, {});
+    assert.equal(out.burn_uid, null);
+    assert.equal(out.miner_uid_count, 3);
+  });
+
+  test("the live lens excludes the sink too", () => {
+    const live = [
+      {
+        uid: 162,
+        coldkey: "5OwnerCold",
+        hotkey: "5OwnerHot",
+        validator_permit: false,
+        incentive: 0.7156,
+        captured_at: 1,
+        block_number: 1,
+      },
+      {
+        uid: 0,
+        coldkey: "5A",
+        hotkey: "5HotA",
+        validator_permit: false,
+        incentive: 0.14,
+        captured_at: 1,
+        block_number: 1,
+      },
+      {
+        uid: 1,
+        coldkey: "5B",
+        hotkey: "5HotB",
+        validator_permit: false,
+        incentive: 0.14,
+        captured_at: 1,
+        block_number: 1,
+      },
+    ];
+    const out = buildSubnetMinerFairness(rows, 13, {
+      burnHotkey: "5OwnerHot",
+      liveRows: live,
+    });
+    const liveUid = (out.live as Row).uid as Row;
+    assert.equal(liveUid.holders, 2, "the sink's 0.7156 must not enter");
+    assert.equal(liveUid.nakamoto_coefficient, 2);
+  });
+});
+
 describe("the window", () => {
   test("shares the emission-split vocabulary", () => {
     for (const label of ["7d", "30d", "90d"]) {
