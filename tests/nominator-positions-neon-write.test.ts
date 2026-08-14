@@ -545,4 +545,28 @@ describe("normalizeShareFractionsInNeon", () => {
     assert.equal(result.ok, false);
     assert.match(String(result.reason), /deadlock detected/);
   });
+  test("only rows whose value would CHANGE are written", () => {
+    // This was the most expensive statement in the database: 1,698 calls,
+    // 182,099,222 rows updated, 76 GB of WAL. Measured against a real pass,
+    // 108,732 of 108,732 rows already held exactly the value it assigns and
+    // ZERO would change -- the producer computes the same fraction, so every
+    // write was a no-op that Postgres still had to materialise as a new tuple.
+    const captured: string[] = [];
+    const sql = {
+      unsafe: async (text: string) => {
+        captured.push(text);
+        return [];
+      },
+    } as unknown as Parameters<typeof normalizeShareFractionsInNeon>[0];
+    return normalizeShareFractionsInNeon(sql, 1_700_000_000_000).then(() => {
+      const statement = captured[0] ?? "";
+      assert.match(statement, /IS DISTINCT FROM/);
+      // IS DISTINCT FROM rather than <>, so a NULL share_fraction is still
+      // written rather than compared away to NULL.
+      assert.ok(
+        !/share_fraction\s*<>/.test(statement),
+        "a plain <> would skip rows whose stored fraction is NULL",
+      );
+    });
+  });
 });
