@@ -35,6 +35,7 @@
 // parsed before it is sent, and a schema bug fails the route instead of
 // quietly shipping. That is the trade the flag exists to make.
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { isProjectedAway } from "./projection-signal.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import type { z } from "zod";
 
@@ -127,50 +128,11 @@ function asSentOverTheWire(payload: unknown): unknown {
   }
 }
 
-/**
- * Is this issue just a field the projection removed?
- *
- * ## WHY A PROJECTION NEEDS ITS OWN ANSWER
- *
- * `?fields=` returns FEWER keys on purpose, and the component describes the
- * whole row -- so every projected response failed, on every route that
- * advertises the parameter (#10975). Measured against production: `?fields=name`
- * returned 500 on gaps, curation, candidates, profiles, subnets and providers.
- * Selecting fewer fields is the entire point of the parameter and it was the
- * thing that broke it.
- *
- * ## WHAT IS STILL ENFORCED
- *
- * Only ABSENCE is forgiven, and only when the value at the issue's own path is
- * genuinely missing. A projection can remove a key; it cannot add one and it
- * cannot change a type. So an unrecognized key still fails, and a present value
- * of the wrong type still fails -- the two things a caller would actually be
- * hurt by.
- *
- * Resolved by walking the path into the payload rather than matching on the
- * issue's message, because a message is prose and this is a gate.
- *
- * EXPORTED for its own test. The mid-path guard below cannot be reached
- * through a real Zod issue -- Zod reports at the level that failed and never
- * emits a path descending THROUGH a scalar -- so the only way to prove it
- * fires is to hand it such a path directly.
- *
- * Testing it beats suppressing it twice over: a coverage-suppression comment
- * is counted by codecov/patch on a changed line anyway, and the guard is the
- * one place this function could forgive a real drift, which is exactly what
- * it must never do.
- */
-export function isProjectedAway(
-  payload: unknown,
-  path: readonly PropertyKey[],
-): boolean {
-  let node: unknown = payload;
-  for (const key of path) {
-    if (node == null || typeof node !== "object") return false;
-    node = (node as Record<PropertyKey, unknown>)[key];
-  }
-  return node === undefined;
-}
+// `isProjectedAway` moved to src/projection-signal.ts when the MCP tripwire
+// needed the same rule (#11142): the two seams validate one contract, so the
+// question "did the caller ask for less" is answered in one place for both.
+// Re-exported here because this module's own tests and callers named it.
+export { isProjectedAway } from "./projection-signal.ts";
 
 /**
  * Called ONLY when the caller has already confirmed

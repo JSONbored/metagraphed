@@ -726,6 +726,7 @@ import {
   stripSentinelIntegerBounds,
 } from "./mcp-input-schema.ts";
 import { validateMcpResponseTripwire } from "./mcp-response-tripwire.ts";
+import { argsProject } from "./projection-signal.ts";
 import {
   buildSubnetValidatorEconomicsPayload,
   resolveEconomicsBlob,
@@ -16839,7 +16840,15 @@ async function dispatchTool(
       (ctx?.env as unknown as Row | undefined)?.METAGRAPH_VALIDATE_RESPONSES ===
       "true"
     ) {
-      validateMcpResponseTripwire(tool.name, outputSchema, payload);
+      // `argsProject` is the MCP half of the signal workers/api.ts derives
+      // from the URL -- one rule, one module, so a projection lever added to
+      // one surface cannot go missing on the other (#11142).
+      validateMcpResponseTripwire(
+        tool.name,
+        outputSchema,
+        payload,
+        argsProject(args),
+      );
     }
     return {
       content: toolResultContent(payload, outputSchema, ctx?.protocolVersion),

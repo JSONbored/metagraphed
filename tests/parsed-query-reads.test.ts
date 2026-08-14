@@ -51,13 +51,11 @@ const DECLARED: Record<string, number> = {
   // The two by-name generic readers, matched by their parameter variable.
   parameter: 1,
   name: 1,
-  // The audit seam's projection signal (#11079). auditResponse wraps the
-  // default fetch export, OUTSIDE the router's parse, and derives `projected`
-  // from the URL alone -- the same way it reads fields/sections via `.has()`,
-  // which this regex does not see. Not a second copy of a bound:
-  // parseBooleanParam is strict, so the literal "false" is the only value the
-  // read can act on, and any other value never reaches the seam as a 200.
-  include_points: 1,
+  // `include_points` was here for the audit seam's projection signal (#11079)
+  // and is GONE (#11142): the seam now calls `urlProjects` from
+  // src/projection-signal.ts, which owns all three levers for both this surface
+  // and the MCP dispatch. The ratchet falling is the point -- one raw read
+  // fewer, and the entry deleted rather than left to describe nothing.
 };
 
 function rawReads(file: string): string[] {

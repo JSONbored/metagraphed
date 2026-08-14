@@ -54,6 +54,7 @@
 // have been a contract agreeing with itself and proving nothing -- before the
 // flag was allowed to matter anywhere.
 import { outputSchemaSource } from "./mcp-input-schema.ts";
+import { isProjectedAway } from "./projection-signal.ts";
 
 /** The stable code an agent branches on, and telemetry groups by. */
 export const MCP_RESPONSE_DRIFT_CODE = "response_schema_drift";
@@ -163,6 +164,14 @@ export function validateMcpResponseTripwire(
   tool: string,
   published: unknown,
   structuredContent: unknown,
+  /**
+   * True when the CALLER asked for less -- `fields`, `sections`, or
+   * `include_points: false`. A projected result is shorter than the schema that
+   * describes it by design, so absence stops being a drift; see
+   * src/projection-signal.ts for what stays enforced, and why this had to be
+   * shared with REST rather than asked twice.
+   */
+  projected = false,
 ): void {
   let schema;
   try {
@@ -177,8 +186,18 @@ export function validateMcpResponseTripwire(
     );
     return;
   }
-  const result = schema.safeParse(asSentOverTheWire(structuredContent));
+  const wire = asSentOverTheWire(structuredContent);
+  const result = schema.safeParse(wire);
   if (!result.success) {
-    throw new McpResponseSchemaDriftError(tool, result.error);
+    const issues = projected
+      ? result.error.issues.filter(
+          (issue) => !isProjectedAway(wire, issue.path),
+        )
+      : result.error.issues;
+    // Every issue explained by the projection means the result is exactly what
+    // was asked for. Anything left is a real drift and still throws.
+    if (issues.length > 0) {
+      throw new McpResponseSchemaDriftError(tool, { ...result.error, issues });
+    }
   }
 }
