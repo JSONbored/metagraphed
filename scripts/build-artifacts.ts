@@ -2408,7 +2408,16 @@ await fs.writeFile(
 // Changing one and not the other leaves the walk fully open.
 await fs.writeFile(
   path.join(repoRoot, "public/robots.txt"),
-  `User-agent: *\n` +
+  // Content Signals (contentsignals.org): a robots.txt-level declaration of
+  // HOW fetched content may be used, beside the existing WHERE rules. All
+  // three signals are yes ON PURPOSE -- this registry is public data whose
+  // entire pitch is being read, quoted and reasoned over by machines; saying
+  // ai-train=no here would ask the ecosystem not to learn the thing we exist
+  // to teach. Revisit alongside the paid tier if premium data ever needs a
+  // different posture (it would need its own path-scoped block, not a flip
+  // of this one).
+  `Content-Signal: search=yes, ai-input=yes, ai-train=yes\n` +
+    `User-agent: *\n` +
     `Allow: /\n` +
     `# Unbounded per-entity detail: one uncached scan per URL, not in the sitemap.\n` +
     `# The collection routes (/api/v1/blocks, /api/v1/extrinsics,\n` +
@@ -2491,6 +2500,15 @@ Keyed accounts are also subject to a cost-weighted daily quota.
 - MCP server card: ${llmsApiBase}/.well-known/mcp/server-card.json
 `;
 await fs.writeFile(path.join(repoRoot, "public/auth.md"), authMarkdown, "utf8");
+// The SAME document at /.well-known/auth.md: the agent-readiness scanners
+// (Cloudflare Diagnostics among them) probe the well-known path, and an agent
+// told "look in .well-known" should find the answer where it was told to look
+// rather than needing the root spelling we happened to pick first.
+await fs.writeFile(
+  path.join(repoRoot, "public/.well-known/auth.md"),
+  authMarkdown,
+  "utf8",
+);
 
 await writeJson(artifactFile("contracts.json"), contracts);
 await writeJson(

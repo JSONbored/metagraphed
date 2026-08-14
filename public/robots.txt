@@ -1,3 +1,4 @@
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 User-agent: *
 Allow: /
 # Unbounded per-entity detail: one uncached scan per URL, not in the sitemap.
