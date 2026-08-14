@@ -94,7 +94,7 @@ export const SUBNET_BURN_COVERAGE_FLOOR_RATIO = 0.95;
 // coincidence: the denominator would exceed the live set and this alarm would
 // fire forever on complete passes. Windowing it to that table's own newest pass
 // makes the comparison structural rather than lucky.
-const SUBNET_BURN_COVERAGE_SQL =
+export const SUBNET_BURN_COVERAGE_SQL =
   "SELECT (SELECT MAX(observed_at) FROM subnet_burn_history) AS latest," +
   " (SELECT COUNT(DISTINCT netuid) FROM subnet_burn_history" +
   " WHERE observed_at = (SELECT MAX(observed_at) FROM subnet_burn_history))" +

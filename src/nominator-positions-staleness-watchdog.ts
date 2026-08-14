@@ -219,7 +219,7 @@ export const NOMINATOR_POSITIONS_SCAN_SOURCE = requireFullScanValue(
  * `total` stays scoped too, so the number the alarm reports as context is the
  * same population the rule is judging rather than a second, larger one.
  */
-const NOMINATOR_POSITIONS_COVERAGE_SQL =
+export const NOMINATOR_POSITIONS_COVERAGE_SQL =
   "SELECT COUNT(DISTINCT coldkey) AS total, MAX(captured_at) AS latest, " +
   "COUNT(DISTINCT CASE WHEN captured_at >= " +
   "(SELECT MAX(captured_at) FROM nominator_positions WHERE source = ?) - ? " +

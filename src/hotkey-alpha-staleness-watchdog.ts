@@ -122,7 +122,7 @@ export const HOTKEY_ALPHA_PASS_WINDOW_MS = passWindowMs("hotkey_alpha", 1 / 4);
  * rides along free and tells an operator how much older data sits underneath a
  * partial pass; it is never the rule.
  */
-const HOTKEY_ALPHA_COVERAGE_SQL =
+export const HOTKEY_ALPHA_COVERAGE_SQL =
   "SELECT (SELECT COUNT(*) FROM hotkey_alpha) AS total," +
   " (SELECT MAX(captured_at) FROM hotkey_alpha) AS latest," +
   " (SELECT SUM(CASE WHEN captured_at >=" +

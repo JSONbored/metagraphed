@@ -227,7 +227,7 @@ export const ACCOUNT_BALANCES_PASS_WINDOW_MS = passWindowMs(
  * by the rule; it rides along free on the same walk and is what tells an
  * operator how much older data is sitting underneath a partial pass.
  */
-const ACCOUNT_BALANCES_COVERAGE_SQL =
+export const ACCOUNT_BALANCES_COVERAGE_SQL =
   "SELECT COUNT(*) AS total, MAX(captured_at) AS latest, " +
   "SUM(CASE WHEN captured_at >= " +
   "(SELECT MAX(captured_at) FROM account_balances) - ? THEN 1 ELSE 0 END) " +
