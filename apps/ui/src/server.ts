@@ -113,6 +113,38 @@ const SITEMAP_STATIC_PATHS = [
   "/about",
 ];
 
+/**
+ * Send an apex `/metagraph/*` request to the host that actually serves it (#11204).
+ *
+ * The generated artifacts live on api.metagraph.sh and have never been served
+ * here — `https://metagraph.sh/metagraph/subnets.json` 404s while
+ * `https://api.metagraph.sh/metagraph/subnets.json` is a 200. Search Console
+ * reported 82 of the site's 83 crawl errors against exactly this prefix, so
+ * every one of them is a link (ours, historically, or someone else's) pointing
+ * at the wrong host rather than at a resource that stopped existing.
+ *
+ * A 301 is the honest answer: the artifact is not missing, it is somewhere
+ * else, permanently. That resolves the whole bucket in one rule and keeps any
+ * external link to the old shape working, which returning a prettier 404 would
+ * not. `url.search` is carried through so a query-bearing artifact URL survives
+ * the hop, and only GET/HEAD are redirected — anything else falls through to
+ * the SSR app, whose non-HTML handler already answers with the canonical URL.
+ */
+export function handleArtifactHostRedirect(request: Request): Response | null {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const url = new URL(request.url);
+  if (url.pathname !== "/metagraph" && !url.pathname.startsWith("/metagraph/")) return null;
+  return new Response(null, {
+    status: 301,
+    headers: {
+      location: `${API_ORIGIN}${url.pathname}${url.search}`,
+      // Safe to cache: the split between the human site and the API host is
+      // structural, not a routing detail that changes per deploy.
+      "cache-control": "public, max-age=3600",
+    },
+  });
+}
+
 // Proxy a backend discovery resource to the apex, or build the sitemap. Returns null for everything
 // else (the request falls through to the SSR app).
 async function handleDiscovery(request: Request): Promise<Response | null> {
@@ -961,6 +993,8 @@ export default {
     if (analyticsResponse) return analyticsResponse;
     const ogResponse = await handleOgImage(request);
     if (ogResponse) return ogResponse;
+    const artifactRedirect = handleArtifactHostRedirect(request);
+    if (artifactRedirect) return artifactRedirect;
     const discoveryResponse = await handleDiscovery(request);
     if (discoveryResponse) return discoveryResponse;
     try {

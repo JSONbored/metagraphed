@@ -50,3 +50,25 @@ export function entityNotFoundMeta(entity: string, description: string) {
 export function isMissingEntityError(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
+
+/**
+ * Is THIS route's not-found boundary the thing that rendered (#11204)?
+ *
+ * A loader that throws `notFound()` gets two things at once: router-core's
+ * `applyFailure` answers the SSR request `404` instead of `200`, and the
+ * route's `notFoundComponent` renders in place of the page. `head()` still
+ * runs for that match, and it must not title the boundary as though the entity
+ * resolved — which is exactly what `/blocks/not-a-block` did, serving a real
+ * 404 under the confident title "Block not-a-block — Metagraphed".
+ *
+ * Reading the match covers BOTH ways to reach the boundary — `parseParams`
+ * rejecting a malformed id, and a loader confirming a well-formed id names
+ * nothing — so a route no longer needs a separate `head()` branch per cause.
+ */
+export function isNotFoundMatch(match: unknown): boolean {
+  return (
+    typeof match === "object" &&
+    match !== null &&
+    (match as { status?: unknown }).status === "notFound"
+  );
+}

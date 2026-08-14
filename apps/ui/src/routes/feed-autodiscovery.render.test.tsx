@@ -132,9 +132,12 @@ describe("feed autodiscovery in rendered markup (#8703)", () => {
     } as never);
     expect(alternatesFrom((malformed?.links ?? []) as HeadLink[])).toEqual([]);
 
+    // #11204: the absent case is signalled by the MATCH now, not by loaderData.
+    // The loader throws notFound() so the SSR request answers 404 rather than
+    // 200, which means head() sees a not-found match and no loader data at all.
     const missing = await SubnetRoute.options.head?.({
       params: { netuid: 99999 },
-      loaderData: { missing: true },
+      match: { status: "notFound" },
     } as never);
     expect(alternatesFrom((missing?.links ?? []) as HeadLink[])).toEqual([]);
   });

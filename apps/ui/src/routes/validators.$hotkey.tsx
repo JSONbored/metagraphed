@@ -5,7 +5,11 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
-import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
+import {
+  entityNotFoundMeta,
+  isMissingEntityError,
+  isNotFoundMatch,
+} from "@/lib/metagraphed/entity-not-found-meta";
 import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { validatorDetailQuery } from "@/lib/metagraphed/queries";
@@ -66,12 +70,12 @@ export const Route = createFileRoute("/validators/$hotkey")({
       // failure keeps returning null so the page still renders and the
       // component's own query drives the error path -- marking a page noindex
       // on a transient blip would de-index real entities during an outage.
-      if (isMissingEntityError(error)) return { missing: true as const };
+      if (isMissingEntityError(error)) throw notFound();
       return null;
     }
   },
-  head: ({ params, loaderData }) => {
-    if (loaderData && "missing" in loaderData) {
+  head: ({ params, loaderData, match }) => {
+    if (isNotFoundMatch(match)) {
       return entityNotFoundMeta(
         "Validator",
         "No Bittensor validator is registered at this hotkey.",
@@ -124,12 +128,17 @@ export const Route = createFileRoute("/validators/$hotkey")({
     <AppShell>
       <PageHeading
         eyebrow="Explorer"
-        title="Invalid hotkey"
-        description="Validator hotkeys must be a valid ss58 (base58) string."
+        title="Validator not found"
+        description="No registered validator matches this hotkey."
       />
+      {/* #11204: serves both causes now -- a malformed hotkey, and a valid ss58
+          the API confirms names no validator. In practice the second is rare:
+          /api/v1/validators/{hotkey} answers 200-with-zeros for an unregistered
+          hotkey rather than 404, and zeros are NOT absence under this repo's
+          own contract rule, so nothing here infers one from the other. */}
       <EmptyState
-        title="Invalid hotkey"
-        description="Use a valid validator hotkey ss58 address."
+        title="Validator not found"
+        description="No Bittensor validator is registered at this hotkey. Hotkeys are ss58 (base58) strings — check for a truncated address, or browse the directory to find an active validator."
         action={{ label: "Back to validators", href: "/validators" }}
       />
     </AppShell>

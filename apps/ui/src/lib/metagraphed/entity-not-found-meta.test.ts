@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ApiError } from "./client";
-import { entityNotFoundMeta, isMissingEntityError } from "./entity-not-found-meta";
+import { entityNotFoundMeta, isMissingEntityError, isNotFoundMatch } from "./entity-not-found-meta";
 
 const metaValue = (meta: ReturnType<typeof entityNotFoundMeta>["meta"], key: string) =>
   meta.find((m): m is { name: string; content: string } => "name" in m && m.name === key)?.content;
@@ -38,5 +38,29 @@ describe("isMissingEntityError (#8624) — the safety property", () => {
     expect(isMissingEntityError(new DOMException("Aborted", "AbortError"))).toBe(false);
     expect(isMissingEntityError(undefined)).toBe(false);
     expect(isMissingEntityError({ status: 404 })).toBe(false);
+  });
+});
+
+describe("isNotFoundMatch (#11204)", () => {
+  it("recognizes the match router-core marks when a not-found boundary renders", () => {
+    // router-core's applyFailure sets `status: "notFound"` on the boundary match
+    // and answers the SSR request 404. head() still runs for that match, so this
+    // is what stops it titling the page as though the entity resolved.
+    expect(isNotFoundMatch({ status: "notFound" })).toBe(true);
+  });
+
+  it("is false for every match state that DID resolve", () => {
+    // The failure that matters is the false positive: treating a resolved match
+    // as not-found would put `noindex` on a real subnet page.
+    for (const status of ["success", "pending", "error", "redirected"]) {
+      expect(isNotFoundMatch({ status }), status).toBe(false);
+    }
+  });
+
+  it("is false for a malformed or absent match rather than throwing", () => {
+    // head() runs in the SSR path; a throw here would take down the render.
+    for (const bad of [undefined, null, "notFound", 404, {}, { status: undefined }]) {
+      expect(isNotFoundMatch(bad), String(bad)).toBe(false);
+    }
   });
 });

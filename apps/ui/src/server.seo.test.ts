@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildOgImageUrl, routeOwnsOgImage } from "./lib/metagraphed/og-card";
-import { SEO_DEFAULT_TAGS, sitemapLastmod } from "./server";
+import { handleArtifactHostRedirect, SEO_DEFAULT_TAGS, sitemapLastmod } from "./server";
 
 // #8624. These are the SEO properties that were silently wrong in production and
 // that nothing was asserting: every /docs/* page shared one OG card, and the
@@ -55,6 +55,45 @@ describe("docs cards are OURS, not an entity's (#8624)", () => {
   it("still defaults to entity=1, so the entity routes are unaffected", () => {
     const url = new URL(buildOgImageUrl({ title: "Chutes", eyebrow: "Subnet" }));
     expect(url.searchParams.get("entity")).toBe("1");
+  });
+});
+
+describe("apex /metagraph/* redirects to the host that serves it (#11204)", () => {
+  const get = (url: string, method = "GET") =>
+    handleArtifactHostRedirect(new Request(url, { method }));
+
+  it("301s an artifact path to api.metagraph.sh", () => {
+    // 82 of the site's 83 Search Console crawl errors were this one prefix.
+    const res = get("https://metagraph.sh/metagraph/subnets.json");
+    expect(res?.status).toBe(301);
+    expect(res?.headers.get("location")).toBe("https://api.metagraph.sh/metagraph/subnets.json");
+  });
+
+  it("carries the query string across the hop", () => {
+    const res = get("https://metagraph.sh/metagraph/fixtures/x.json?pretty=1");
+    expect(res?.headers.get("location")).toBe(
+      "https://api.metagraph.sh/metagraph/fixtures/x.json?pretty=1",
+    );
+  });
+
+  it("covers the bare prefix as well as paths under it", () => {
+    expect(get("https://metagraph.sh/metagraph")?.status).toBe(301);
+  });
+
+  it("leaves every other path to the SSR app", () => {
+    // The guard that matters: a page route must never be redirected to the API
+    // host. `/metagraphed` is the near-miss that a `startsWith("/metagraph")`
+    // test would have swallowed.
+    for (const p of ["/", "/subnets", "/subnets/1", "/metagraphed", "/metagraphs", "/docs"]) {
+      expect(get(`https://metagraph.sh${p}`), p).toBeNull();
+    }
+  });
+
+  it("redirects HEAD but leaves non-idempotent methods alone", () => {
+    expect(get("https://metagraph.sh/metagraph/subnets.json", "HEAD")?.status).toBe(301);
+    for (const method of ["POST", "PUT", "DELETE"]) {
+      expect(get("https://metagraph.sh/metagraph/subnets.json", method), method).toBeNull();
+    }
   });
 });
 
