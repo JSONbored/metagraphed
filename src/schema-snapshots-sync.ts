@@ -169,6 +169,85 @@ export function retainLastGoodSchemas(
   return { schemas, retained_count: retained };
 }
 
+/**
+ * Which copy of the schema index the build should reconcile: the one this build
+ * CAPTURED, or the durable store.
+ *
+ * ## THE DEADLOCK THIS ENDS (#11147)
+ *
+ * The publish captures every registered spec live (`schemas-snapshot`), writes
+ * the index and the per-surface detail documents, and then
+ * `reusableSchemaIndexArtifact` validated the STORE against THIS BUILD'S detail
+ * documents -- because the store was preferred unconditionally. `detailMatches`
+ * compares document hashes, so a subnet that changed its spec since the store
+ * was written failed, and one failure discarded all 57 captured schemas.
+ *
+ * The fresher the capture, the more certain the discard. Measured 2026-08-14:
+ * every captured schema frozen at `observed_at: 2026-08-02`, 24 of 52 subnets'
+ * captured path count differing from their live spec, and 23 of those 24 still
+ * reporting `drift_status: "unchanged"` -- the store agreeing with itself.
+ *
+ * ## THE RULE
+ *
+ * Prefer whichever copy was OBSERVED most recently. Nothing needs to know
+ * whether a capture ran: a build that captured has a newer `observed_at` by
+ * construction, and a build that did not (local dev, the Validate lane, the
+ * determinism test) reads the committed seed whose stamp is unchanged, so the
+ * store still wins and those builds stay byte-reproducible.
+ *
+ * The store keeps its real job. When the fresh index wins, the store's
+ * last-good entries are merged back in through `retainLastGoodSchemas` -- the
+ * SAME retention the cron applies -- so a surface whose spec was unreachable
+ * during THIS capture keeps the entry it had, and only genuinely persistent
+ * failure ages it out. Preferring fresh therefore costs no drift history.
+ *
+ * `nowMs` is the build's own timestamp rather than a wall clock, so the merge
+ * is a function of its inputs and a rebuild produces the same bytes.
+ */
+export function chooseSchemaIndexBaseline(
+  captured: Row | null | undefined,
+  store: Row | null | undefined,
+  nowMs: number,
+): Row | null {
+  const storeUsable = store && Array.isArray(store.schemas) ? store : null;
+  const capturedUsable =
+    captured && Array.isArray(captured.schemas) ? captured : null;
+  if (!capturedUsable) return storeUsable ?? (captured as Row | null) ?? null;
+  if (!storeUsable) return capturedUsable;
+  const capturedAt = indexObservedAtMs(capturedUsable);
+  const storeAt = indexObservedAtMs(storeUsable);
+  // Not strictly newer -- including both unstamped, and including equal, which
+  // is what a build that did not capture sees -- leaves the store in charge.
+  if (capturedAt == null || (storeAt != null && capturedAt <= storeAt)) {
+    return storeUsable;
+  }
+  const merged = retainLastGoodSchemas(
+    capturedUsable.schemas as Row[],
+    schemaEntriesById(storeUsable),
+    nowMs,
+  );
+  return {
+    ...capturedUsable,
+    summary: summarizeSchemaEntries(merged.schemas),
+    schemas: merged.schemas,
+  };
+}
+
+/**
+ * When the index as a whole was observed. Reads the index stamp rather than any
+ * entry's, because this answers "which capture run is newer", not "how old is
+ * this surface" -- `entryObservedAtMs` answers that one.
+ */
+export function indexObservedAtMs(doc: Row | null | undefined): number | null {
+  const observedAt = doc?.observed_at ?? doc?.generated_at;
+  if (typeof observedAt !== "string" || !observedAt) return null;
+  // The build placeholder is not a time. A stamp of 1970 means "this build had
+  // no clock", which must never read as older-or-newer than a real capture.
+  if (observedAt === "1970-01-01T00:00:00.000Z") return null;
+  const ms = Date.parse(observedAt);
+  return Number.isFinite(ms) ? ms : null;
+}
+
 /** Recount the index summary over whatever survived retention. */
 export function summarizeSchemaEntries(schemas: Row[]): Row {
   const countBy = (key: string): Record<string, number> => {

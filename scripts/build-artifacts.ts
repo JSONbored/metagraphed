@@ -103,7 +103,10 @@ import {
 } from "../src/mcp-server.ts";
 import { buildDatasetExports } from "./datasets.ts";
 import { readGeneratedStoreJson } from "./r2-rest.ts";
-import { SCHEMA_INDEX_R2_KEY } from "../src/schema-snapshots-sync.ts";
+import {
+  chooseSchemaIndexBaseline,
+  SCHEMA_INDEX_R2_KEY,
+} from "../src/schema-snapshots-sync.ts";
 import {
   buildChangelog,
   type ArtifactEntry,
@@ -342,10 +345,21 @@ const previousSchemaDriftArtifact = await readOptionalJson(
 const previousSchemaIndexStore = await readGeneratedStoreJson(
   SCHEMA_INDEX_R2_KEY,
 ).catch(() => null);
-const previousSchemaIndexArtifact =
-  previousSchemaIndexStore && Array.isArray(previousSchemaIndexStore.schemas)
-    ? previousSchemaIndexStore
-    : await readOptionalJson(path.join(outputRoot, "schemas/index.json"));
+// #11147: the store no longer wins UNCONDITIONALLY. It used to, which meant a
+// publish validated the store against the detail documents `schemas-snapshot`
+// had just written -- so a subnet that changed its spec failed the hash check
+// and one failure discarded all 57 captured schemas, every publish, leaving the
+// fleet frozen 11 days behind. chooseSchemaIndexBaseline prefers whichever copy
+// was observed most recently and merges the store's last-good entries back in
+// through the cron's own retention, so a capture this build performed is
+// trusted without costing the drift history of a surface it could not reach.
+const previousSchemaIndexArtifact = chooseSchemaIndexBaseline(
+  await readOptionalJson(path.join(outputRoot, "schemas/index.json")),
+  previousSchemaIndexStore,
+  // The build's own stamp, not a wall clock: retention has to be a function of
+  // the build's inputs or the artifacts stop being byte-reproducible.
+  Date.parse(generatedAt) || 0,
+);
 
 // snapshot-openapi writes the sanitized OpenAPI `document` into per-surface
 // schema files (R2 staging); capture it before the wipe below so the schema
@@ -4519,20 +4533,40 @@ function reusableSchemaIndexArtifact(
     );
   }
   const currentSurfaces = openApiSurfacesById(surfaces);
-  // Forgery/staleness guard: a committed entry whose surface still exists but no
-  // longer matches it (tampered or drifted metadata) means the index can't be
-  // trusted — discard it wholesale and fall back to the build placeholder.
-  for (const entry of previous.schemas) {
+  // Forgery/staleness guard: an entry whose surface still exists but no longer
+  // matches it (tampered or drifted metadata) cannot be trusted.
+  //
+  // PER ENTRY, NOT WHOLESALE (#11147). Rejecting one entry used to discard the
+  // whole index -- every captured schema, for every subnet -- and in production
+  // that is what happened: one subnet changing its published spec cost the other
+  // 56 their captured schema, on every publish, for 11 days.
+  //
+  // Dropping only the offending entry is strictly safer than dropping all of
+  // them. A forged entry is still refused -- it is replaced by the not-captured
+  // placeholder its surface would get if it had never been captured -- and the
+  // honest entries beside it survive. The old behaviour handed an attacker who
+  // could tamper with ONE entry the power to blank the whole index, which is a
+  // denial of service the guard was never meant to grant.
+  const rejected: string[] = [];
+  const vetted: Row[] = (previous.schemas as Row[]).map((entry) => {
     const surface = currentSurfaces.get(entry.surface_id);
-    if (!surface) continue;
+    if (!surface) return entry;
     const mismatch = schemaIndexEntryMismatch(entry, surface, capturedDetails);
-    if (mismatch) {
-      return discardSchemaIndex(
-        `entry ${entry.surface_id} no longer matches its surface on ${mismatch}`,
-        previous,
-      );
-    }
+    if (!mismatch) return entry;
+    rejected.push(`${entry.surface_id} (${mismatch})`);
+    return notCapturedSchemaIndexEntry(surface);
+  });
+  if (rejected.length > 0) {
+    // Named and counted, because this used to be the moment the index vanished
+    // and the only evidence was a diff between two builds.
+    console.warn(
+      `schema index: dropped ${rejected.length} entr${rejected.length === 1 ? "y" : "ies"} ` +
+        `that no longer match their surface — ${rejected.slice(0, 5).join(", ")}` +
+        `${rejected.length > 5 ? `, +${rejected.length - 5} more` : ""}. ` +
+        "The surviving entries are unaffected; re-run the schema capture to restore these.",
+    );
   }
+
   // Reconcile incrementally with the current surface set instead of nuking the
   // whole index when it changes: keep every committed entry whose surface still
   // exists (captured snapshots survive), drop entries for removed surfaces, and
@@ -4540,10 +4574,8 @@ function reusableSchemaIndexArtifact(
   // openapi surface is now a routine single-file contribution, so it must never
   // wipe the captured schema index; a later `schemas:snapshot` upgrades the
   // placeholders to captured.
-  const previousIds = new Set(
-    previous.schemas.map((entry) => entry.surface_id),
-  );
-  const reconciled = previous.schemas.filter((entry) =>
+  const previousIds = new Set(vetted.map((entry) => entry.surface_id));
+  const reconciled = vetted.filter((entry) =>
     currentSurfaces.has(entry.surface_id),
   );
   for (const [surfaceId, surface] of currentSurfaces) {
@@ -4551,6 +4583,8 @@ function reusableSchemaIndexArtifact(
       reconciled.push(notCapturedSchemaIndexEntry(surface));
     }
   }
+  // Unchanged means unchanged INCLUDING the vetting: a run that rejected an
+  // entry always falls through to the rebuild below, never returns `previous`.
   if (stableStringify(reconciled) === stableStringify(previous.schemas)) {
     return previous;
   }

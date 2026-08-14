@@ -22,6 +22,8 @@ import {
   SCHEMA_INDEX_ARTIFACT_PATH,
   SCHEMA_INDEX_R2_KEY,
   SCHEMA_SNAPSHOT_RETENTION_MS,
+  chooseSchemaIndexBaseline,
+  indexObservedAtMs,
 } from "../src/schema-snapshots-sync.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
 
@@ -543,5 +545,155 @@ describe("runSchemaSnapshotsSync", () => {
       raw.includes(`"${SCHEMA_SNAPSHOTS_SYNC_CRON}"`),
       `wrangler.jsonc has no trigger for ${SCHEMA_SNAPSHOTS_SYNC_CRON}`,
     );
+  });
+});
+
+describe("chooseSchemaIndexBaseline (#11147)", () => {
+  const index = (observedAt: string | null, schemas: Row[]): Row => ({
+    source: "openapi-snapshot",
+    observed_at: observedAt,
+    schemas,
+  });
+  const captured = (id: string, observedAt: string, hash: string): Row => ({
+    surface_id: id,
+    status: "captured",
+    hash,
+    snapshot: { observed_at: observedAt },
+  });
+  const notCaptured = (id: string): Row => ({
+    surface_id: id,
+    status: "not-captured",
+    hash: null,
+  });
+  const now = Date.parse("2026-08-14T06:00:00.000Z");
+
+  test("this build's capture wins when it is newer than the store", () => {
+    // The production deadlock: the store was preferred unconditionally, so the
+    // build validated an 11-day-old copy against detail documents it had just
+    // captured, and one changed spec discarded all of them.
+    const store = index("2026-08-02T07:31:05.148Z", [
+      captured("sn-105", "2026-08-02T07:31:05.148Z", "old"),
+    ]);
+    const fresh = index("2026-08-14T05:30:00.000Z", [
+      captured("sn-105", "2026-08-14T05:30:00.000Z", "new"),
+    ]);
+    const chosen = chooseSchemaIndexBaseline(fresh, store, now);
+    assert.equal((chosen?.schemas as Row[])[0].hash, "new");
+  });
+
+  test("the store stays in charge when the capture did not run", () => {
+    // A build that did not capture reads the committed seed, whose stamp is
+    // unchanged -- equal is not newer, which is what keeps local and CI builds
+    // byte-reproducible.
+    const stamp = "2026-08-02T07:31:05.148Z";
+    const store = index(stamp, [captured("sn-105", stamp, "store")]);
+    const seed = index(stamp, [captured("sn-105", stamp, "seed")]);
+    assert.equal(
+      (chooseSchemaIndexBaseline(seed, store, now)?.schemas as Row[])[0].hash,
+      "store",
+    );
+  });
+
+  test("a surface the fresh capture could not reach keeps its last-good entry", () => {
+    // Preferring fresh must not cost the drift history the retention exists to
+    // protect: a spec that 502'd during THIS capture is not a spec that changed.
+    const store = index("2026-08-13T00:00:00.000Z", [
+      captured("sn-1", "2026-08-13T00:00:00.000Z", "lastgood"),
+      captured("sn-105", "2026-08-13T00:00:00.000Z", "old"),
+    ]);
+    const fresh = index("2026-08-14T05:30:00.000Z", [
+      notCaptured("sn-1"),
+      captured("sn-105", "2026-08-14T05:30:00.000Z", "new"),
+    ]);
+    const chosen = chooseSchemaIndexBaseline(fresh, store, now);
+    const byId = new Map(
+      (chosen?.schemas as Row[]).map((row) => [row.surface_id, row]),
+    );
+    assert.equal(byId.get("sn-1")?.status, "captured");
+    assert.equal(byId.get("sn-1")?.hash, "lastgood");
+    assert.equal(byId.get("sn-105")?.hash, "new");
+    // The summary is recounted over what actually survived.
+    assert.equal((chosen?.summary as Row)?.schema_count, 2);
+  });
+
+  test("a last-good entry older than the retention window is not resurrected", () => {
+    const store = index("2026-06-01T00:00:00.000Z", [
+      captured("sn-1", "2026-06-01T00:00:00.000Z", "ancient"),
+    ]);
+    const fresh = index("2026-08-14T05:30:00.000Z", [notCaptured("sn-1")]);
+    const chosen = chooseSchemaIndexBaseline(fresh, store, now);
+    assert.equal((chosen?.schemas as Row[])[0].status, "not-captured");
+  });
+
+  test("either copy missing or shapeless falls back to the other", () => {
+    const store = index("2026-08-02T00:00:00.000Z", [
+      captured("sn-105", "2026-08-02T00:00:00.000Z", "store"),
+    ]);
+    const fresh = index("2026-08-14T00:00:00.000Z", [
+      captured("sn-105", "2026-08-14T00:00:00.000Z", "fresh"),
+    ]);
+    assert.equal(chooseSchemaIndexBaseline(null, store, now), store);
+    assert.equal(chooseSchemaIndexBaseline(fresh, null, now), fresh);
+    assert.equal(chooseSchemaIndexBaseline(null, null, now), null);
+    // A body with no schemas array is not an index; it must not win by having a
+    // newer stamp.
+    const shapeless = {
+      source: "openapi-snapshot",
+      observed_at: "2027-01-01T00:00:00.000Z",
+    } as Row;
+    assert.equal(chooseSchemaIndexBaseline(shapeless, store, now), store);
+    assert.equal(chooseSchemaIndexBaseline(fresh, shapeless, now), fresh);
+    // Neither usable: the caller still gets whatever it handed in, not a throw.
+    assert.equal(chooseSchemaIndexBaseline(shapeless, null, now), shapeless);
+  });
+
+  test("an unstamped or placeholder capture never outranks a stamped store", () => {
+    const store = index("2026-08-02T00:00:00.000Z", [
+      captured("sn-105", "2026-08-02T00:00:00.000Z", "store"),
+    ]);
+    for (const stamp of [null, "1970-01-01T00:00:00.000Z", "not-a-date"]) {
+      const fresh = index(stamp, [
+        captured("sn-105", "2026-08-14T00:00:00.000Z", "fresh"),
+      ]);
+      assert.equal(
+        (chooseSchemaIndexBaseline(fresh, store, now)?.schemas as Row[])[0]
+          .hash,
+        "store",
+        `stamp ${String(stamp)} must not win`,
+      );
+    }
+    // ...but a stamped capture beats an UNSTAMPED store, which is the cold-start
+    // case: a store written before stamps existed must not freeze the fleet.
+    const unstampedStore = index(null, [
+      captured("sn-105", "2026-08-02T00:00:00.000Z", "store"),
+    ]);
+    const fresh = index("2026-08-14T00:00:00.000Z", [
+      captured("sn-105", "2026-08-14T00:00:00.000Z", "fresh"),
+    ]);
+    assert.equal(
+      (
+        chooseSchemaIndexBaseline(fresh, unstampedStore, now)?.schemas as Row[]
+      )[0].hash,
+      "fresh",
+    );
+  });
+
+  test("indexObservedAtMs reads the index stamp, refusing the build placeholder", () => {
+    assert.equal(
+      indexObservedAtMs({ observed_at: "2026-08-14T00:00:00.000Z" } as Row),
+      Date.parse("2026-08-14T00:00:00.000Z"),
+    );
+    // generated_at is the fallback when a copy carries no observed_at.
+    assert.equal(
+      indexObservedAtMs({ generated_at: "2026-08-14T00:00:00.000Z" } as Row),
+      Date.parse("2026-08-14T00:00:00.000Z"),
+    );
+    assert.equal(indexObservedAtMs({} as Row), null);
+    assert.equal(indexObservedAtMs(null), null);
+    assert.equal(
+      indexObservedAtMs({ observed_at: "1970-01-01T00:00:00.000Z" } as Row),
+      null,
+    );
+    assert.equal(indexObservedAtMs({ observed_at: "nope" } as Row), null);
   });
 });
