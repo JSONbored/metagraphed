@@ -19,6 +19,10 @@
 // anywhere.
 interface Env {
   ACCOUNT_BALANCES_SYNC_SECRET?: string;
+  /** Web Bot Auth signing key for the prober fleet (metagraphed-infra#562):
+   * `<seed>.<public>`, both halves base64url-encoded 32 bytes. Absent means
+   * probes go out unsigned, which is the local/CI state. */
+  METAGRAPH_BOT_SIGNING_KEY?: string;
   ACCOUNT_IDENTITY_SYNC_SECRET?: string;
   SUBNET_IDENTITY_SYNC_SECRET?: string;
   SUBNET_OWNERSHIP_SYNC_SECRET?: string;

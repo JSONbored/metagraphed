@@ -17,6 +17,7 @@
 // unit-testable without a live runtime. Decoupled from the data build: a stale
 // structural snapshot can never freeze health again.
 
+import { botSignerFromEnv } from "./web-bot-auth.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
   isUnsafePublicUrl,
@@ -551,6 +552,9 @@ export async function runHealthProber(
         overrides.isUnsafeUrl ||
         workerResolvedUrlSafetyGuard({ fetchImpl: overrides.safetyFetch }),
       connect: overrides.connect || workerWebSocketConnector(),
+      // Web Bot Auth: resolved once per sweep, absent unless the signing
+      // secret is configured -- see src/web-bot-auth.ts's header.
+      signRequest: (await botSignerFromEnv(env))?.sign,
     } as Row);
   const concurrency = overrides.concurrency || PROBE_CONCURRENCY;
 

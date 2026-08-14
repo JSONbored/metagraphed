@@ -234,6 +234,7 @@ import {
   A2A_CARD_PATH,
   A2A_ENDPOINT_PATH,
 } from "./request-handlers/a2a-paths.ts";
+import { BOT_KEY_DIRECTORY_PATH } from "../src/web-bot-auth-paths.ts";
 import {
   BADGE_SVG_PATTERN,
   homepageResponse,
@@ -6314,6 +6315,14 @@ async function dispatchRequest(
   if (url.pathname === A2A_CARD_PATH) {
     const { agentCardResponse } = await import("./request-handlers/a2a.ts");
     return agentCardResponse(request);
+  }
+
+  // Web Bot Auth key directory (metagraphed-infra#562): the JWKS origins use
+  // to verify the prober fleet's signed requests. 404 when no signing key is
+  // configured -- absence is the truthful shape for an unsigned deployment.
+  if (url.pathname === BOT_KEY_DIRECTORY_PATH) {
+    const { botKeyDirectoryResponse } = await import("../src/web-bot-auth.ts");
+    return botKeyDirectoryResponse(request, env);
   }
 
   // Agent tool specs for non-MCP runtimes (OpenAI function calling / Anthropic
