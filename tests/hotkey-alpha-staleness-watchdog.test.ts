@@ -265,7 +265,24 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
     // Both ledgers are read in the one statement — the floor is derived, not
     // fetched separately, so the two cannot be read at different moments.
     assert.match(reads[0], /FROM nominator_positions/);
-    assert.deepEqual(binds[0], [HOTKEY_ALPHA_PASS_WINDOW_MS]);
+    // And bounded to THAT ledger's newest pass. Without this the denominator is
+    // every (hotkey, netuid) nominator_positions has ever held -- it never
+    // prunes -- so a complete pass is measured against accumulated history and
+    // cannot clear the floor. Measured 2026-08-14: 35,073 pairs in the table
+    // against 17,292 live on chain, with the pass writing 17,619 (#11167).
+    assert.match(
+      reads[0],
+      /FROM nominator_positions WHERE captured_at >=[\s\S]*MAX\(captured_at\) FROM nominator_positions/,
+      "the referenced-pair floor must follow the position ledger's newest pass",
+    );
+    // TWICE: the pass window bounds `covered` on hotkey_alpha AND `referenced`
+    // on nominator_positions, so a complete pass is measured against the pairs
+    // that ledger's NEWEST pass names rather than every pair it has ever held
+    // (#11167).
+    assert.deepEqual(binds[0], [
+      HOTKEY_ALPHA_PASS_WINDOW_MS,
+      HOTKEY_ALPHA_PASS_WINDOW_MS,
+    ]);
   });
 
   test("an empty ledger alerts and names both affected surfaces", async () => {
@@ -359,7 +376,7 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
     );
     assert.equal(result.threshold_ms, 2 * HOUR);
     assert.equal(result.reason, "stale");
-    assert.deepEqual(binds[0], [90_000]);
+    assert.deepEqual(binds[0], [90_000, 90_000]);
   });
 
   test("a null SUM lands on 0 rather than NaN", async () => {

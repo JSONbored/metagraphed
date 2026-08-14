@@ -128,8 +128,26 @@ const HOTKEY_ALPHA_COVERAGE_SQL =
   " (SELECT SUM(CASE WHEN captured_at >=" +
   " (SELECT MAX(captured_at) FROM hotkey_alpha) - ? THEN 1 ELSE 0 END)" +
   " FROM hotkey_alpha) AS covered," +
+  // THE NEWEST PASS ON BOTH SIDES (#11167). `covered` is already restricted to
+  // what this pass wrote; `referenced` counted DISTINCT pairs over the WHOLE of
+  // nominator_positions, which accumulates -- a (hotkey, netuid) whose stake is
+  // gone keeps its row. So a complete pass was measured against every pair the
+  // lane has ever seen and could not reach the floor by construction.
+  //
+  // Measured on chain 2026-08-14 (twox128 walk of SubtensorModule::Alpha,
+  // 120,253 entries): 17,292 live (hotkey, netuid) pairs with shares > 0. The
+  // table referenced 35,073, and the pass wrote 17,619 -- complete, and alarming
+  // against a floor of 28,058 derived from that 35,073.
+  //
+  // COUPLING, stated because it is load-bearing: this denominator now follows
+  // nominator_positions' newest pass, so a truncated positions pass shrinks this
+  // floor and can make hotkey_alpha look healthy on a short pass of its own.
+  // That is still strictly better than comparing against all history, but it is
+  // why nominator-positions' own truncation is tracked separately rather than
+  // being absorbed here.
   " (SELECT COUNT(*) FROM (SELECT DISTINCT hotkey, netuid" +
-  " FROM nominator_positions)) AS referenced";
+  " FROM nominator_positions WHERE captured_at >=" +
+  " (SELECT MAX(captured_at) FROM nominator_positions) - ?)) AS referenced";
 
 export type HotkeyAlphaStalenessReason = "no_rows" | "stale" | "partial" | null;
 
@@ -260,7 +278,13 @@ export async function runHotkeyAlphaStalenessWatchdog(
     HOTKEY_ALPHA_COVERAGE_FLOOR_RATIO;
 
   try {
-    const row = (await db.first(HOTKEY_ALPHA_COVERAGE_SQL, [passWindowMs])) as {
+    // Two binds now: the pass window applies to hotkey_alpha's `covered` and to
+    // nominator_positions' `referenced`, which must be measured over ITS newest
+    // pass rather than all history -- see the SQL.
+    const row = (await db.first(HOTKEY_ALPHA_COVERAGE_SQL, [
+      passWindowMs,
+      passWindowMs,
+    ])) as {
       latest: number | null;
       covered: number | null;
       total: number | null;
