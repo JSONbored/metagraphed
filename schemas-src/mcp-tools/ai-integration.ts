@@ -50,14 +50,23 @@ const HowDoICallServiceSchema = z
     surface_id: z.string(),
     kind: z.string(),
     capability: z.string(),
+    method: z
+      .string()
+      .optional()
+      .describe(
+        "HTTP method this service is invoked with; absent means GET (#11146).",
+      ),
     base_url: z.string(),
     callable: z.boolean(),
     auth: z
       .object({ required: z.boolean(), schemes: z.array(z.string()) })
       .strict(),
+    // NULL for a declared non-GET service (#11146): the generator refuses to
+    // emit a GET snippet against a mutation, and the catalog row stored none.
     snippets: z
       .object({ curl: z.string(), python: z.string(), typescript: z.string() })
-      .strict(),
+      .strict()
+      .nullable(),
     // TWO BRANCHES, and only the unavailable one was declared (#10790). When a
     // schema or fixture EXISTS the producer adds the tool call that fetches it
     // -- which is the entire point of `how_do_i_call` -- and when it does not,

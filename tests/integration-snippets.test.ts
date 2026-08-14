@@ -100,6 +100,23 @@ describe("generateServiceSnippets (#351)", () => {
       null,
     );
   });
+
+  test("refuses a declared mutation -- no GET snippet for a non-GET service (#11146)", () => {
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+      assert.equal(
+        generateServiceSnippets({ base_url: "https://x.io/api", method }),
+        null,
+        method,
+      );
+    }
+    // An explicit GET is the same as absent: snippets as before.
+    const out = generateServiceSnippets({
+      base_url: "https://x.io/api",
+      method: "GET",
+    });
+    assert.ok(out);
+    assert.match(out.curl, /^curl -sS 'https:\/\/x\.io\/api'$/);
+  });
 });
 
 describe("generateServiceSnippets structured auth (#746)", () => {

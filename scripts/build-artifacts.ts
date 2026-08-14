@@ -1842,6 +1842,10 @@ function buildSubnetServices(netuid: unknown): Row[] {
         kind: surface.kind,
         capability: surface.name || surface.notes || `${surface.kind} surface`,
         description: surface.notes || null,
+        // #11146 phase 3: absent means GET, so every pre-existing row is
+        // byte-identical. A non-GET service gets no snippets below (the
+        // generator refuses to GET a declared mutation).
+        ...(surface.method ? { method: surface.method } : {}),
         base_url: surface.url,
         provider: surface.provider || null,
         authority: surface.authority || null,
@@ -1855,6 +1859,7 @@ function buildSubnetServices(netuid: unknown): Row[] {
         // filled from the structured auth detail (issue #746, was #351 guess).
         snippets: generateServiceSnippets({
           base_url: surface.url,
+          method: surface.method,
           auth_required: authRequired,
           auth_schemes: authSchemes,
           auth: authDetail,

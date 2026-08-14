@@ -114,6 +114,13 @@ export function generateServiceSnippets(
 ): ServiceSnippets | null {
   const url = service?.base_url;
   if (!isSnippetSafeUrl(url)) return null;
+  // A declared mutation (#11146): "GET the surface URL" stops being a valid
+  // entry point, and a wrong-verb snippet is worse than none. The service row
+  // carries `method` instead, and the agent reaches the surface through
+  // call_subnet_surface with the captured schema.
+  if (typeof service?.method === "string" && service.method !== "GET") {
+    return null;
+  }
   // Prefer the structured auth detail; fall back to the scheme-type guess only
   // when no structured detail is present at all. A structured detail is
   // authoritative — including an explicit scheme:"none" (→ no credential). Auth

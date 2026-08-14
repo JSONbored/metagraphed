@@ -1532,6 +1532,37 @@ describe("how_do_i_call — snippets fall through to null", () => {
     const res = await callTool("how_do_i_call", { netuid: 7 }, { deps });
     assert.equal(res.body.result.structuredContent.services[0].snippets, null);
   });
+
+  test("a declared non-GET service carries its method and snippets null (#11146)", async () => {
+    // The mutation arm: `...(s.method ? { method } : {})` true branch, and the
+    // regenerator's non-GET refusal (base_url present, still no snippets).
+    const deps = makeDeps({
+      "/metagraph/agent-catalog/7.json": {
+        netuid: 7,
+        name: "Data",
+        slug: "sn-7",
+        integration_readiness: 70,
+        services: [
+          {
+            surface_id: "sn-7-register",
+            kind: "subnet-api",
+            capability: "Registration API",
+            method: "POST",
+            base_url: "https://api.sn7.example/register",
+            auth_required: true,
+            auth_schemes: ["bearer"],
+            schema_artifact: null,
+            schema_url: null,
+            eligibility: { callable: true },
+          },
+        ],
+      },
+    });
+    const res = await callTool("how_do_i_call", { netuid: 7 }, { deps });
+    const svc = res.body.result.structuredContent.services[0];
+    assert.equal(svc.method, "POST");
+    assert.equal(svc.snippets, null);
+  });
 });
 
 // ── rankSubnetsForTask keyword docs fallback ───────────────────────────
