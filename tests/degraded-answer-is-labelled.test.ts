@@ -17,7 +17,7 @@
 // registered path, if the lakehouse declined while the request was served and
 // the answer was still a 200, that 200 must say so.
 import assert from "node:assert/strict";
-import { visibleInWindow } from "./helpers/block-window.ts";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import {

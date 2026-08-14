@@ -5,7 +5,8 @@
 // the collapsed counterparties UNION (see the module header for the
 // arguments each test pins down).
 import assert from "node:assert/strict";
-import { describe, test, vi } from "vitest";
+import { visibleInWindow } from "./helpers/scan-window.ts";
+import { afterAll, beforeAll, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // One store since #10179: the neuron-slot read goes through src/read-store.ts,
@@ -52,50 +53,26 @@ function transferRow(block: number, index = 0) {
 }
 
 /**
- * RANGE-AWARE since #11131 bounded the scattered-key reads by `block_number`.
- *
- * These reads now widen a block window until the page fills, so a stub that
- * replays its whole fixture for every window reports the SAME rows collected
- * once per step -- 4 windows x 25 TAO read as 100. Honouring the bound is what
- * makes these tests evidence that the walk reassembles exactly the rows the
- * unbounded query returned, rather than evidence about the stub.
- *
- * Rows carrying no `block_number` are passed through untouched, so the reads
- * that never grew a bound (the windowed aggregates) are unaffected.
+ * WINDOW-AWARE since #11131: the scattered-key reads widen an `observed_at`
+ * window until the page fills, so a stub that replays its whole fixture for
+ * every step reports the same rows once per window -- one transfer of 25 TAO
+ * read as 100. `visibleInWindow` models the bound the query actually carries.
  */
 function sqlFetch(...responses: unknown[][]) {
   const queries: string[] = [];
   let call = 0;
-  const visible = (sql: string, rows: unknown[]): unknown[] => {
-    const bound = sql.match(
-      /block_number >= (\d+)(?: AND block_number <= (\d+))?/,
-    );
-    const limit = Number(sql.match(/LIMIT (\d+)\s*$/)?.[1] ?? rows.length);
-    const kept = !bound
-      ? rows
-      : rows.filter((row) => {
-          const block = (row as { block_number?: unknown })?.block_number;
-          if (block == null) return true;
-          const n = Number(block);
-          return (
-            n >= Number(bound[1]) &&
-            (bound[2] === undefined || n <= Number(bound[2]))
-          );
-        });
-    return kept.slice(0, limit);
-  };
   globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    const sql = JSON.parse(String(init.body)).query as string;
+    const sql = String(JSON.parse(String(init.body)).query);
     queries.push(sql);
-    const rows = responses[Math.min(call, responses.length - 1)] ?? [];
+    const rows = visibleInWindow(
+      sql,
+      responses[Math.min(call, responses.length - 1)] ?? [],
+    );
     call += 1;
     return {
       ok: true,
       status: 200,
-      json: async () => ({
-        success: true,
-        result: { rows: visible(sql, rows) },
-      }),
+      json: async () => ({ success: true, result: { rows } }),
     } as unknown as Response;
   }) as unknown as typeof fetch;
   return queries;
@@ -129,6 +106,19 @@ function d1With(rows: unknown[] | (() => never)) {
   };
   return pgMockEnv();
 }
+
+// The fixtures below are dated by `1_700_000_000_000 + block`, and the scan
+// window (#11131) is two days wide off the wall clock -- so with a real clock
+// every read here would widen through the whole table before finding them.
+// Pinning Date to the fixtures' own era makes the FIRST window the one that
+// answers, which is the production shape for an account with recent activity.
+// Only Date is faked; timers are left alone.
+beforeAll(() => {
+  vi.useFakeTimers({ now: 1_700_000_100_000, toFake: ["Date"] });
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 describe("loadAccountTransfersColdTier", () => {
   test("reads both sides with one disjunction on the Transfer kind, newest first", async () => {

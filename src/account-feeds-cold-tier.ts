@@ -234,9 +234,9 @@ export async function loadAccountTransfersColdTier(
     where,
     order: ` ${FEED_ORDER}`,
     need: limit + paged,
-    // A cursor page already knows the block it resumes below, so it starts
-    // there rather than re-reading the head.
-    ceiling: cursor ? safeBlockNumber(cursor[1]) : null,
+    // A cursor page resumes from its own `observed_at` -- cursor[0] of the
+    // 3-part token -- rather than from now.
+    ceiling: cursor ? safeBlockNumber(cursor[0]) : null,
   });
   if (rows === null) return null;
 
@@ -803,10 +803,22 @@ export async function loadValidatorNominatorsColdTier(
  * the query still pays to select and sort by it. The parity it protected was
  * parity with a leg that no longer answers.
  */
+/** Exactly the columns `counterpartyScan` selects, so the read names its own
+ * projection rather than defaulting to an untyped row (#10261's ratchet). */
+type CounterpartyScanRow = Pick<
+  AccountEventsRow,
+  | "hotkey"
+  | "coldkey"
+  | "amount_tao"
+  | "block_number"
+  | "event_index"
+  | "observed_at"
+>;
+
 async function counterpartyScan(
   env: Env | null | undefined,
   predicate: string,
-): Promise<Record<string, unknown>[] | null> {
+): Promise<CounterpartyScanRow[] | null> {
   // BOUNDED (#11131), same reasoning as the transfer feed: the predicate pins
   // hotkey/coldkey, which file statistics cannot prune on. The cap is a row
   // count, not a scan bound -- reaching it still required reading every file.
@@ -814,7 +826,7 @@ async function counterpartyScan(
   // `scan_capped` is unaffected: the walk collects the newest CAP rows, which
   // is what the unbounded LIMIT returned, so the builder still sees CAP rows
   // exactly when there were at least that many.
-  return windowedRowRead<Record<string, unknown>>(env, {
+  return windowedRowRead<CounterpartyScanRow>(env, {
     table: "chain.account_events",
     columns: `hotkey, coldkey, amount_tao, block_number, event_index, observed_at`,
     where: ["event_kind = 'Transfer'", predicate],
@@ -1066,7 +1078,7 @@ export async function loadAccountSummaryColdTier(
         rows.reduce((n, row) => n + Number(row.count), 0) >
         ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
     }),
-    windowedRowRead<Record<string, unknown>>(env, {
+    windowedRowRead<AccountEventsRow>(env, {
       query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
       table: "chain.account_events",
       columns: EVENT_COLUMNS,

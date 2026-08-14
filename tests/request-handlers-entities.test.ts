@@ -4,7 +4,7 @@
 // through workers/api.ts.
 
 import assert from "node:assert/strict";
-import { visibleInWindow } from "./helpers/block-window.ts";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
   forbiddenDataApi,
   lakehouse,
@@ -2690,7 +2690,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
   test("handleAccountEvents serves the account feed from the lakehouse", async () => {
     // DISTINCT WINDOWS, not one response replayed. The reader steps down the
     // block range until the page fills, and lakeFetch now honours that bound
-    // (tests/helpers/block-window.ts) -- so this row is visible in exactly the
+    // (tests/helpers/scan-window.ts) -- so this row is visible in exactly the
     // window that contains block 4200 and nowhere else, which is what a real
     // lakehouse does. Before the stub understood the bound, the same fixture
     // came back once per window and the test had to pad with an empty response.

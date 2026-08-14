@@ -1,4 +1,4 @@
-import { visibleInWindow } from "./block-window.ts";
+import { visibleInWindow } from "./scan-window.ts";
 // Transport doubles for the readers that answer now that the Postgres tier is
 // gone (#10190).
 //

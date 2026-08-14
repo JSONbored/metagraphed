@@ -49,10 +49,7 @@ import {
   safeSs58Literal,
 } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
-import {
-  ACCOUNT_EVENTS_BLOCK_WINDOW,
-  windowedRowRead,
-} from "./account-events-window.ts";
+import { windowedRowRead } from "./account-events-window.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 
@@ -66,11 +63,11 @@ const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
 /** The 3-part key the account-events feed pages on, mirroring data-api. */
 const CURSOR_ARITY = 3;
 
-// The window constants and the walk itself moved to ./account-events-window.ts
-// in #11131, when the transfer feed, the counterparty scans and the summary
-// card needed the same bound. Re-exported because this module is where it was
-// measured and where callers still import it from.
-export { ACCOUNT_EVENTS_BLOCK_WINDOW };
+// The window constants and the walk itself live in ./account-events-window.ts
+// since #11131, when the transfer feed, the counterparty scans and the summary
+// card came to need the same bound. Not re-exported from here: nothing imports
+// them through this module, and an export nothing reads is the debt
+// validate:unreferenced-exports exists to stop.
 
 export interface AccountEventsQuery {
   limit: number;
@@ -137,8 +134,8 @@ export async function loadAccountEventsColdTier(
     where,
     order: ` ORDER BY observed_at DESC, block_number DESC, event_index DESC`,
     need: limit + paged,
-    ceiling: cursor ? (cursor[1] as number) : null,
-    network,
+    // cursor[0] is the token's `observed_at`, the column the walk slices on.
+    ceiling: cursor ? (cursor[0] as number) : null,
   });
   if (rows === null) return null;
 

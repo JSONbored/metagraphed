@@ -11,6 +11,7 @@
 // capped-scan boundary must survive the probe that used to answer it being
 // folded into the aggregate (it was the query that aborted -- see "two reads").
 import assert from "node:assert/strict";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
@@ -62,7 +63,12 @@ const GROUPS = [
   },
 ];
 const RECENT = [
-  { block_number: 8_760_000, event_kind: "AxonServed", netuid: 55 },
+  {
+    block_number: 8_760_000,
+    event_kind: "AxonServed",
+    netuid: 55,
+    observed_at: AGG.lo,
+  },
 ];
 
 /**
@@ -84,20 +90,6 @@ function fakeEngine(
   const errors: string[] = [];
   const pick = <T>(value: T | undefined, fallback: T) =>
     value === undefined ? fallback : value;
-  /**
-   * RANGE-AWARE, since #11131 bounded these reads by `block_number`.
-   *
-   * A double that ignores the bound and replays its whole fixture for every
-   * window would report the walk re-collecting the same rows N times and prove
-   * nothing about it. Honouring the range is what makes these tests evidence
-   * that the walk reassembles exactly the unbounded answer.
-   */
-  const inRange = (sql: string, block: unknown): boolean => {
-    const bound = sql.match(/block_number >= (\d+) AND block_number <= (\d+)/);
-    if (!bound) return true; // the unbounded fallback sees everything
-    const n = Number(block);
-    return n >= Number(bound[1]) && n <= Number(bound[2]);
-  };
   const query = async (
     _env: unknown,
     sql: string,
@@ -114,13 +106,14 @@ function fakeEngine(
       errors.push(sql);
       return answer;
     }
-    // A group's newest block is `lb`; a feed row carries its own block_number.
-    const visible = answer.filter((row) =>
-      inRange(sql, grouped ? row.lb : row.block_number),
+    // WINDOW-AWARE (#11131): a group row's newest observation is `lo`, a feed
+    // row carries its own `observed_at`. See tests/helpers/scan-window.ts for
+    // why a double that replays its fixture per window proves nothing.
+    return visibleInWindow(sql, answer as Row[], (row: Row) =>
+      grouped ? row.lo : row.observed_at,
     );
-    const limit = Number(sql.match(/LIMIT (\d+)\s*$/)?.[1] ?? visible.length);
-    return grouped ? visible : visible.slice(0, limit);
   };
+
   return {
     query,
     seen,
@@ -209,12 +202,21 @@ describe("loadAccountSummaryColdTier", () => {
     // account #9386 measured declining ~50% of the time was a HIGH-ACTIVITY
     // coldkey, which is exactly this case: its events fill the first window, so
     // each leg answers from a bounded read that measured 0.1 MB against 577.5.
+    // Dated NOW, because that is what "busy" means here: the events are inside
+    // the first two-day probe, so neither leg ever reaches for the full read.
+    const fresh = Date.now();
     const engine = fakeEngine({
-      groups: groupsSummingTo(ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1),
+      groups: [
+        {
+          ...groupsSummingTo(ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1)[0]!,
+          lo: fresh,
+        },
+      ],
       recent: Array.from({ length: ACCOUNT_SUMMARY_RECENT_LIMIT }, (_, i) => ({
         block_number: AGG.lb - i,
         event_kind: "AxonServed",
         netuid: 55,
+        observed_at: fresh - i,
       })),
     });
     await loadAccountSummaryColdTier({} as never, SS58, {
@@ -224,7 +226,7 @@ describe("loadAccountSummaryColdTier", () => {
     for (const sql of engine.seen) {
       assert.match(
         sql,
-        /block_number >= \d+/,
+        /observed_at >= \d+/,
         `a busy account must never reach the unbounded read: ${sql.slice(0, 140)}`,
       );
     }
@@ -247,11 +249,15 @@ describe("loadAccountSummaryColdTier", () => {
     await loadAccountSummaryColdTier({} as never, SS58, {
       query: engine.query as never,
     });
-    const unbounded = engine.seen.filter((s) => !/block_number >= \d+/.test(s));
+    // ONE floorless read per leg and no more. That read is the whole remainder,
+    // which is exactly the query this route always issued -- so a quiet account
+    // pays the probes on top of it and nothing else. Widening instead would buy
+    // the same scan several times over (8 queries / 3,834 MB, measured).
+    const floorless = engine.seen.filter((s) => !/observed_at >= \d+/.test(s));
     assert.equal(
-      unbounded.length,
-      1,
-      `only the aggregate leg may fall back:\n${unbounded.join("\n").slice(0, 400)}`,
+      floorless.length,
+      2,
+      `one per leg, no more:\n${floorless.join("\n").slice(0, 400)}`,
     );
     assert.ok(
       engine.seen.length <= 6,

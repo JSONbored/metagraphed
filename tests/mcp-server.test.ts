@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { visibleInWindow } from "./helpers/block-window.ts";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
   archiveEnv,
   forbiddenDataApi,
@@ -16359,7 +16359,10 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
       uid: null,
       amount_tao: 1.5,
       alpha_amount: null,
-      observed_at: 1_750_009_000_000,
+      // Dated NOW so the first two-day probe answers (#11131). The claim here
+      // is that "all" and omitted issue the SAME query, which a fixture old
+      // enough to force a widening walk would bury under three of them.
+      observed_at: Date.now(),
     };
     const seen: string[] = [];
     for (const args of [{ direction: "all" }, {}]) {
@@ -16383,7 +16386,19 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
         lake.restore();
       }
     }
-    assert.equal(seen[0], seen[1], "'all' and omitted must be one query");
+    // Compared with the scan bound's timestamp normalised. That floor is
+    // derived from the clock at call time (#11131), so two calls a millisecond
+    // apart differ by a digit -- and the claim here is about the PREDICATE,
+    // that "all" and omitted select the same rows, not about when the window
+    // started. Leaving the raw strings compared made this flake.
+    const withoutWindow = (sql: string) =>
+      sql.replace(/observed_at >= \d+/, "observed_at >= <now-2d>");
+    assert.equal(
+      withoutWindow(seen[0]),
+      withoutWindow(seen[1]),
+      "'all' and omitted must be one query",
+    );
+    assert.match(seen[0], /observed_at >= \d+/, "and it is bounded");
     assert.match(seen[0], /hotkey = '5G9hfkx/);
     assert.match(seen[0], /coldkey = '5G9hfkx/);
   });
@@ -16736,7 +16751,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
         },
       ],
       // ONE response, because the double now models the block window itself
-      // (tests/helpers/block-window.ts): this row is visible in exactly the
+      // (tests/helpers/scan-window.ts): this row is visible in exactly the
       // window containing block 4,200,000 and nowhere else. The second, empty
       // response used to stand in for that -- it suppressed the duplicates
       // without saying why they appeared, and it also hid the head-block read,

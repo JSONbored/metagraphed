@@ -11,6 +11,7 @@
 // tier that exists and fails must DECLINE rather than publish a zero card
 // that reads as fact.
 import assert from "node:assert/strict";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import { beforeEach, describe, test, vi } from "vitest";
 
 // The registration leg reads through readStore -> `new Client(...)` (#10179),
@@ -45,6 +46,8 @@ const NEURON_ROW = {
 };
 
 const RECENT_EVENT = {
+  // Dated at read time so it lands in the newest scan window (#11131); the card
+  // this test is about is the one served for an account with live activity.
   block_number: 8_763_529,
   event_index: 213,
   extrinsic_index: 22,
@@ -55,7 +58,7 @@ const RECENT_EVENT = {
   uid: null,
   amount_tao: null,
   alpha_amount: null,
-  observed_at: 1_785_759_000_000,
+  observed_at: Date.now(),
 };
 
 /** A lakehouse that answers all four of the summary reader's queries. */
@@ -89,21 +92,10 @@ function lakehouse({ fail = false }: { fail?: boolean } = {}) {
             ]
           : sql.includes("count(*) AS c FROM (")
             ? [{ c: 100 }]
-            : // RANGE-AWARE since #11131 bounded this feed by block_number: it
-              // now widens a window until the page fills, so a stub replaying
-              // its row for every window reports ONE event four times.
-              // Honouring the bound is what keeps the count honest.
-              [RECENT_EVENT].filter((row) => {
-                const bound = sql.match(
-                  /block_number >= (\d+)(?: AND block_number <= (\d+))?/,
-                );
-                if (!bound) return true;
-                const n = Number(row.block_number);
-                return (
-                  n >= Number(bound[1]) &&
-                  (bound[2] === undefined || n <= Number(bound[2]))
-                );
-              });
+            : // WINDOW-AWARE since #11131 bounded this feed on `observed_at`:
+              // it probes a window before reading the rest, so a stub replaying
+              // its row for every read reports ONE event three times.
+              visibleInWindow(sql, [RECENT_EVENT]);
     return {
       ok: true,
       status: 200,

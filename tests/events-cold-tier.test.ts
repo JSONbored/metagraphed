@@ -3,7 +3,7 @@
 // one equivalence specific to this module: the single OR disjunction must
 // stand in for data-api's two-scan hotkey/coldkey read.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterAll, beforeAll, describe, test, vi } from "vitest";
 import {
   loadAccountEventsColdTier,
   loadBlockChainEventsColdTier,
@@ -11,6 +11,7 @@ import {
   loadSubnetEventsColdTier,
 } from "../src/events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import { OFFSET_EMULATION_CAP } from "../src/r2-sql-blocks.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
@@ -37,12 +38,20 @@ function eventRow(block: number, index = 0) {
   };
 }
 
+/**
+ * WINDOW-AWARE since #11131 -- see tests/helpers/scan-window.ts for why a
+ * replaying double reports a windowed reader as a paging bug.
+ */
 function sqlFetch(...responses: unknown[][]) {
   const queries: string[] = [];
   let call = 0;
   globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query);
-    const rows = responses[Math.min(call, responses.length - 1)] ?? [];
+    const sql = String(JSON.parse(String(init.body)).query);
+    queries.push(sql);
+    const rows = visibleInWindow(
+      sql,
+      responses[Math.min(call, responses.length - 1)] ?? [],
+    );
     call += 1;
     return {
       ok: true,
@@ -52,6 +61,19 @@ function sqlFetch(...responses: unknown[][]) {
   }) as unknown as typeof fetch;
   return queries;
 }
+
+// The fixtures below are dated by `1_700_000_000_000 + block`, and the scan
+// window (#11131) is two days wide off the wall clock -- so with a real clock
+// every read here would widen through the whole table before finding them.
+// Pinning Date to the fixtures' own era makes the FIRST window the one that
+// answers, which is the production shape for an account with recent activity.
+// Only Date is faked; timers are left alone.
+beforeAll(() => {
+  vi.useFakeTimers({ now: 1_700_000_100_000, toFake: ["Date"] });
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 describe("loadAccountEventsColdTier", () => {
   test("reads both key sides with one disjunction, newest first", async () => {
@@ -71,15 +93,26 @@ describe("loadAccountEventsColdTier", () => {
     );
   });
 
-  test("bounds the scan to a block window instead of all history", async () => {
+  test("BOUNDS ON observed_at -- the column that actually prunes", async () => {
     // THE PERFORMANCE PROPERTY, and it is invisible in the response: the rows
-    // are identical either way. Measured end to end before this landed, the
-    // unbounded form took 6.35s/6.01s against 2.51s/1.76s with a block floor,
-    // because account_events is already clustered by block and the query
-    // simply was not using it.
-    const q = sqlFetch([eventRow(8_759_000, 1), eventRow(8_759_000, 0)]);
+    // are identical either way. This shipped in #10190 bounded on
+    // `block_number`, which was the wrong column. Measured against production
+    // 2026-08-14, the same 50-row page for one busy account:
+    //
+    //   no bound                          1,933.6 MB   48 files
+    //   block_number >= head - 250,000      957.7 MB   37 files
+    //   observed_at  >= now - 2 days           2.9 MB  18 files
+    //
+    // The writer orders by observed_at, so file statistics are tight on it and
+    // loose on block height -- 100x for the identical rows over the same span.
+    const q = sqlFetch([eventRow(10, 1), eventRow(10, 0)]);
     await loadAccountEventsColdTier(TOKEN as never, ADDR, { limit: 2 });
-    assert.match(q[0]!, /block_number >= \d+/);
+    assert.match(q[0]!, /observed_at >= \d+/);
+    assert.doesNotMatch(
+      q[0]!,
+      /block_number >= \d+/,
+      "a bound on block_number costs ~100x and looks identical in review",
+    );
   });
 
   test("THE FIRST SLICE HAS NO CEILING, so a row above the watermark is not hidden", async () => {
@@ -101,7 +134,8 @@ describe("loadAccountEventsColdTier", () => {
     // A sparse account: nothing in the first window, one row in the second.
     // The page must still come back FULL-shaped rather than short -- the whole
     // reason this loops internally instead of handing back a `next_before`.
-    const q = sqlFetch([], [eventRow(8_000_000)], [eventRow(7_000_000)]);
+    // Nothing in the first two-day window; one row a month back.
+    const q = sqlFetch([eventRow(-30 * 86_400_000)]);
     const data = await loadAccountEventsColdTier(TOKEN as never, ADDR, {
       limit: 1,
     });
@@ -110,9 +144,8 @@ describe("loadAccountEventsColdTier", () => {
     // Each window sits strictly below its predecessor, so concatenation is
     // globally ordered and no merge step is needed. The second slice is the
     // first to carry a ceiling, and it must sit below the first slice's floor.
-    const floor = (sql: string) =>
-      Number(/block_number >= (\d+)/.exec(sql)![1]);
-    const ceil = (sql: string) => Number(/block_number <= (\d+)/.exec(sql)![1]);
+    const floor = (sql: string) => Number(/observed_at >= (\d+)/.exec(sql)![1]);
+    const ceil = (sql: string) => Number(/observed_at <= (\d+)/.exec(sql)![1]);
     assert.ok(
       ceil(q[1]!) < floor(q[0]!),
       "the second window must read strictly below the first, so slices are disjoint",

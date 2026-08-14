@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { MIN_INCIDENT_SAMPLES } from "../src/health-serving.ts";
-import { visibleInWindow } from "./helpers/block-window.ts";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
   archiveEnv,
   forbiddenDataApi,
@@ -12188,7 +12188,11 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
                 uid: 1,
                 amount_tao: 0,
                 alpha_amount: 0,
-                observed_at: Date.parse("2026-07-19T00:00:00.000Z"),
+                // Inside the 7d window this query asks for. It was dated 26
+                // days back, which only passed because the double ignored the
+                // bound -- a fixture outside its own query's window is not a
+                // row the engine could have returned (#11131).
+                observed_at: Date.now() - 86_400_000,
               },
             ],
     );
@@ -16447,12 +16451,11 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     // A negative offset clamps to 0, and no filters were supplied -- so the read
     // is the unfiltered (hotkey OR coldkey) disjunction with no extra predicate.
     assert.match(sql, /\(hotkey = '[^']+' OR coldkey = '[^']+'\)/);
-    // The ONE block predicate here is the reader's own scan bound (#11131), not
-    // a caller filter. A supplied blockStart/blockEnd would add a second `>=`
-    // or a `<=`, so counting them still says "the caller filtered nothing" --
-    // which is what this test is about.
-    assert.doesNotMatch(sql, /block_number <=/);
-    assert.equal((sql.match(/block_number >=/g) ?? []).length, 1);
+    // No block predicate at all: the reader's own scan bound is on
+    // `observed_at` (#11131), so any `block_number` clause here could only have
+    // come from a caller filter -- and none was supplied.
+    assert.doesNotMatch(sql, /block_number [<>]/);
+    assert.match(sql, /observed_at >= \d+/, "the scan bound is still present");
     lake.restore();
   });
 
