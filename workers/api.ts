@@ -599,6 +599,7 @@ import {
   ResponseSchemaDriftError,
   validateResponseTripwire,
 } from "../src/response-validation-tripwire.ts";
+import { urlProjects } from "../src/projection-signal.ts";
 import {
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
@@ -2070,17 +2071,10 @@ export async function auditResponse(
   const url = new URL(request.url);
   const matched = matchRoute(url.pathname);
   if (!matched?.artifactTemplate) return response;
-  const projected =
-    url.searchParams.has("fields") ||
-    url.searchParams.has("sections") ||
-    // #9720's "send me less" toggle is a projection lever like the other two:
-    // include_points=false omits data.points BY REQUEST, and the schema's
-    // `required` describes the unprojected response (#10960). parseBooleanParam
-    // is strict -- any value other than the literal "false" either defaults to
-    // true or 400s before this seam sees a 200 -- so string equality here is
-    // exactly the handler's own condition (#11079: every MCP get_tao_usd call
-    // was fingerprinted as drift for asking for less).
-    url.searchParams.get("include_points") === "false";
+  // The three levers are declared once, in src/projection-signal.ts, because
+  // the MCP dispatch answers the same question about the same contract and was
+  // answering it differently -- which is to say not at all (#11142).
+  const projected = urlProjects(url.searchParams);
   const run = async (body: unknown) => {
     await validateResponseTripwire(
       matched.id,
