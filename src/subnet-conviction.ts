@@ -1,3 +1,4 @@
+import { chainRpc } from "./chain-rpc.ts";
 import type { FieldSources } from "./field-provenance.ts"; // Live subnet-ownership-contest ("conviction") leaderboard (#6638, part of
 // the conviction/ownership-contest tracker epic #4302) -- rolls each
 // captured subnet_locks row forward from its own last_update to "now" using
@@ -324,16 +325,14 @@ async function rpcCall(
   timeoutMs: number,
 ): Promise<{ ok: boolean; value: unknown }> {
   try {
-    const res = await fetch(rpcUrlForNetwork(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(timeoutMs),
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    // `ok` is this reader's contract: a ValueQuery item that is genuinely unset
+    // must be distinguishable from a read that failed, because the compiled
+    // default applies only to the first. chainRpc throws on both a bad
+    // transport and an error envelope, which is exactly the `ok: false` case.
+    const value = await chainRpc(rpcUrlForNetwork(), method, params, {
+      timeoutMs,
     });
-    if (!res.ok) return { ok: false, value: undefined };
-    const body = (await res.json()) as Row;
-    if (body?.error) return { ok: false, value: undefined };
-    return { ok: true, value: body?.result ?? null };
+    return { ok: true, value: value ?? null };
   } catch {
     return { ok: false, value: undefined };
   }

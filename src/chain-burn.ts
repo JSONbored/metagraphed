@@ -22,6 +22,7 @@
 // "this value is unset chain-wide" rather than like a bug. The control that catches it
 // is reading a value you already know by another route: Tempo[64] must be 360.
 
+import { chainRpc } from "./chain-rpc.ts";
 import {
   type ChainNetworkId,
   networkKvKey,
@@ -112,14 +113,19 @@ async function rpcCall(
   method: string,
   params: unknown[],
 ): Promise<unknown> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(CHAIN_BURN_RPC_TIMEOUT_MS),
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  });
-  if (!res?.ok) return null;
-  return ((await res.json()) as Row)?.result ?? null;
+  // NULL on any failure, which is this lane's contract and not the shared
+  // client's: chainRpc throws so a caller can tell why, and here every reason
+  // collapses to "no card". The envelope is parsed rather than cast on the way
+  // through (#11194).
+  try {
+    return (
+      (await chainRpc(url, method, params, {
+        timeoutMs: CHAIN_BURN_RPC_TIMEOUT_MS,
+      })) ?? null
+    );
+  } catch {
+    return null;
+  }
 }
 
 /**

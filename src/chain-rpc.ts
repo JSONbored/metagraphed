@@ -55,6 +55,15 @@ export interface ChainRpcOptions {
   /** Injected for tests and for callers that wrap fetch. */
   fetchImpl?: typeof fetch;
   /**
+   * The JSON-RPC request id.
+   *
+   * subtensor-pinned-storage increments one per call. Over HTTP with one
+   * request per response nothing correlates on it, so this changes no
+   * behaviour -- it is carried so that consolidating does not silently drop
+   * something a caller was deliberately doing.
+   */
+  id?: number;
+  /**
    * Abort after this long.
    *
    * Optional because two of the three callers had no timeout at all and adding
@@ -86,7 +95,12 @@ export async function chainRpc(
     ...(options.timeoutMs === undefined
       ? {}
       : { signal: AbortSignal.timeout(options.timeoutMs) }),
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: options.id ?? 1,
+      method,
+      params,
+    }),
   });
   if (!res.ok) throw new Error(`${method}: HTTP ${res.status}`);
 
