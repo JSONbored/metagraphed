@@ -189,7 +189,8 @@
     "build:featured-validators": "node scripts/generate-featured-validators.ts",
     "validate:archive-policy": "node scripts/validate-archive-policy.ts",
     "build:rpc-usage-slots": "node scripts/generate-rpc-usage-slots.ts",
-    "validate:rpc-usage-slots-drift": "node scripts/validate-rpc-usage-slots-drift.ts"
+    "validate:rpc-usage-slots-drift": "node scripts/validate-rpc-usage-slots-drift.ts",
+    "validate:r2-sql-scan-bounds": "node scripts/validate-r2-sql-scan-bounds.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.8.3",
