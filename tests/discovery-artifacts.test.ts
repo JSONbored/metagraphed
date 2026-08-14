@@ -231,6 +231,28 @@ describe("Discovery artifacts", () => {
   // /api/v1/blocks/{ref} URLs beneath the same prefix are not. Mirrors
   // apps/ui/src/server.robots.test.ts, which gates the apex's own copy — the two
   // hosts are one policy and a change to either alone reopens the walk.
+  test("robots.txt declares the Content Signals, before any group", async () => {
+    // contentsignals.org: the declaration of HOW fetched content may be used.
+    // All three yes is the deliberate posture of a public registry that exists
+    // to be read by machines -- see the comment at the writer.
+    const txt = await fs.readFile(path.join(publicDir, "robots.txt"), "utf8");
+    assert.match(
+      txt,
+      /^Content-Signal: search=yes, ai-input=yes, ai-train=yes$/m,
+    );
+  });
+
+  test("auth.md is served at the well-known path the scanners probe", async () => {
+    const root = await fs.readFile(path.join(publicDir, "auth.md"), "utf8");
+    const wellKnown = await fs.readFile(
+      path.join(publicDir, ".well-known/auth.md"),
+      "utf8",
+    );
+    // The SAME document, byte for byte: two copies that can drift are two
+    // answers to "how do I authenticate", and only one of them gets updated.
+    assert.equal(wellKnown, root);
+  });
+
   test("robots.txt withholds the unbounded per-entity spaces, not the collections", async () => {
     const txt = await fs.readFile(path.join(publicDir, "robots.txt"), "utf8");
 

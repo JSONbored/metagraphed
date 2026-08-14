@@ -119,4 +119,12 @@ describe("non-canonical hosts are withheld whole (#11002)", () => {
   it("still allows the apex itself — the guard is exact-host, not a prefix", () => {
     expect(isCrawlable(robotsBody("metagraph.sh"), "/subnets")).toBe(true);
   });
+
+  it("the canonical host declares the Content Signals", () => {
+    const body = robotsBody("metagraph.sh");
+    expect(body).toMatch(/^Content-Signal: search=yes, ai-input=yes, ai-train=yes$/m);
+    // And the non-canonical duplicate does not: it disallows everything, and a
+    // usage signal on a host nobody may crawl is noise.
+    expect(robotsBody("other.example")).not.toContain("Content-Signal");
+  });
 });

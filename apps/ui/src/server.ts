@@ -215,6 +215,10 @@ export function robotsBody(host: string): string {
   return (
     `# metagraph.sh — public Bittensor subnet integration registry.\n` +
     `# AI agents welcome; the machine API + discovery live on api.metagraph.sh.\n` +
+    // Content Signals (contentsignals.org): all three yes, deliberately —
+    // public data that exists to be read and reasoned over by machines. The
+    // API host carries the same declaration (scripts/build-artifacts.ts).
+    `Content-Signal: search=yes, ai-input=yes, ai-train=yes\n` +
     `User-agent: *\n` +
     `Allow: /\n` +
     `# Unbounded per-entity detail: not in the sitemap, one uncached scan per URL.\n` +
