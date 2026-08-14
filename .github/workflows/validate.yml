@@ -443,6 +443,7 @@ jobs:
           source .github/scripts/run-step.sh
           run_step npm run validate:contract-drift
           run_step npm run validate:db-types-drift
+          run_step npm run validate:lane-topology
           run_step npm run validate:lakehouse-types-drift
           run_step npm run validate:lakehouse-readers
           run_step npm run validate:store-type-parity
