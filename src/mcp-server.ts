@@ -14312,6 +14312,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           surface_id: s.surface_id,
           kind: s.kind,
           capability: s.capability,
+          // #11146 phase 3: present only on a declared non-GET service row;
+          // absent means GET, so every pre-existing answer is unchanged.
+          ...(s.method ? { method: s.method } : {}),
           base_url: s.base_url,
           callable: rowOf(s.eligibility)?.callable === true,
           auth: {

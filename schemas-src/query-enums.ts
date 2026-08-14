@@ -143,6 +143,12 @@ export const QUERY_ENUMS = {
     "generic-openapi-or-custom",
     "stream-adapter",
   ],
+  // The HTTP method a registered surface is invoked with (#11146 phase 3).
+  // Not a query filter but owned here like responseEnvelopeField: the manifest
+  // schema, the served SurfaceSchema, and the callable-execution seam all need
+  // the same closed set, and validate:schema-enums pins the manifest copy to
+  // this one. Absent on a surface means GET.
+  surfaceMethod: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   surfaceKind: [
     "archive",
     "dashboard",

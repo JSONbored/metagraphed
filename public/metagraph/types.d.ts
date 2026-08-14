@@ -5959,6 +5959,11 @@ export interface components {
                     status?: string;
                 };
                 kind: string;
+                /**
+                 * @description HTTP method this service is invoked with; absent means GET. A non-GET service is a declared mutation (#11146): it carries no GET snippets -- call it through call_subnet_surface with the captured schema.
+                 * @enum {string}
+                 */
+                method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
                 provider?: string | null;
                 schema_artifact?: string | null;
                 schema_source?: {
@@ -13103,6 +13108,11 @@ export interface components {
             key?: string;
             kind: components["schemas"]["SurfaceKind"];
             last_verified_at?: string | null;
+            /**
+             * @description HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.
+             * @enum {string}
+             */
+            method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
             name?: string;
             netuid: number;
             notes?: string;

@@ -1221,6 +1221,11 @@ type Surface {
   key: String
   kind: String!
   last_verified_at: String
+
+  """
+  HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.
+  """
+  method: String
   name: String
   netuid: Int!
   notes: String

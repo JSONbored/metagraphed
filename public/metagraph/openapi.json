@@ -18691,6 +18691,17 @@
                 "kind": {
                   "type": "string"
                 },
+                "method": {
+                  "description": "HTTP method this service is invoked with; absent means GET. A non-GET service is a declared mutation (#11146): it carries no GET snippets -- call it through call_subnet_surface with the captured schema.",
+                  "enum": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE"
+                  ],
+                  "type": "string"
+                },
                 "provider": {
                   "anyOf": [
                     {
@@ -59463,6 +59474,17 @@
                 "type": "null"
               }
             ]
+          },
+          "method": {
+            "description": "HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE"
+            ],
+            "type": "string"
           },
           "name": {
             "type": "string"

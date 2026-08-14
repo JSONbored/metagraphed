@@ -7908,6 +7908,8 @@ export type Surface = {
   key?: Maybe<Scalars['String']['output']>;
   kind: Scalars['String']['output'];
   last_verified_at?: Maybe<Scalars['String']['output']>;
+  /** HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution. */
+  method?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
   notes?: Maybe<Scalars['String']['output']>;
@@ -14231,6 +14233,7 @@ export type SurfaceResolvers<ContextType = GqlContext, ParentType extends Resolv
   key?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   last_verified_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  method?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;

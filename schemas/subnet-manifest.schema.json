@@ -186,6 +186,10 @@
             "data-artifact"
           ]
         },
+        "method": {
+          "description": "HTTP method this surface is invoked with. ABSENT MEANS GET -- every pre-existing surface keeps its meaning unchanged. A non-GET surface is a declared mutation (metagraphed#11146): it may never enable a probe (the prober only speaks GET/HEAD, and probing a mutation with GET would publish a route that answers a method nobody declared), and callers reach it through call_subnet_surface's schema-gated execution, not by fetching the URL.",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        },
         "url": {
           "type": "string",
           "format": "uri",
@@ -232,7 +236,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["state"],
-          "description": "Per-surface HUMAN review/governance state for the single-file contribution model: a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". Human-governance axis ONLY \u2014 machine verification + freshness (live or stale) is the separate probe-derived `verification` overlay (health, last_verified_at, incidents); subnet-level curation has its own `curation.review_state`.",
+          "description": "Per-surface HUMAN review/governance state for the single-file contribution model: a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". Human-governance axis ONLY — machine verification + freshness (live or stale) is the separate probe-derived `verification` overlay (health, last_verified_at, incidents); subnet-level curation has its own `curation.review_state`.",
           "properties": {
             "state": {
               "enum": ["community-submitted", "maintainer-reviewed", "rejected"]
@@ -366,7 +370,30 @@
         "notes": {
           "type": "string"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "enum": ["POST", "PUT", "PATCH", "DELETE"]
+              }
+            },
+            "required": ["method"]
+          },
+          "then": {
+            "properties": {
+              "probe": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "revenue": {
       "type": "object",

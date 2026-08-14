@@ -37,7 +37,11 @@ import {
 } from "../envelope.ts";
 import { IntegrationReadinessSchema } from "./subnet-profile.ts";
 import { AgentReadinessBlockerSchema } from "./coverage.ts";
-import { AuthSchema, LIVE_HEALTH_OVERLAY } from "./subnet-detail.ts";
+import {
+  AuthSchema,
+  LIVE_HEALTH_OVERLAY,
+  SurfaceMethodSchema,
+} from "./subnet-detail.ts";
 
 export const AgentReadinessStatusSchema = z
   .object({
@@ -212,6 +216,10 @@ export const AgentCatalogServiceSchema = z
     kind: z.string(),
     capability: z.string().optional(),
     description: z.string().nullable().optional(),
+    method: SurfaceMethodSchema.optional().meta({
+      description:
+        "HTTP method this service is invoked with; absent means GET. A non-GET service is a declared mutation (#11146): it carries no GET snippets -- call it through call_subnet_surface with the captured schema.",
+    }),
     base_url: z.string(),
     provider: z.string().nullable().optional(),
     authority: z.string().nullable().optional(),

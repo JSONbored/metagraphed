@@ -54,6 +54,13 @@ export const SURFACE_KIND_VALUES = QUERY_ENUMS.surfaceKind;
 export const SurfaceKindSchema = z.enum(SURFACE_KIND_VALUES);
 export type SurfaceKind = z.infer<typeof SurfaceKindSchema>;
 
+/** The HTTP method a surface is invoked with; absent means GET (#11146
+ * phase 3). The manifest schema's copy of this enum is pinned to the same
+ * QUERY_ENUMS declaration by validate:schema-enums. */
+export const SURFACE_METHOD_VALUES = QUERY_ENUMS.surfaceMethod;
+export const SurfaceMethodSchema = z.enum(SURFACE_METHOD_VALUES);
+export type SurfaceMethod = z.infer<typeof SurfaceMethodSchema>;
+
 export const SourceTierSchema = z.enum([
   "native-chain",
   "provider-claimed",
@@ -655,6 +662,10 @@ export const SurfaceSchema = z
     key: z.string().optional(),
     kind: SurfaceKindSchema,
     last_verified_at: z.string().nullable().optional(),
+    method: SurfaceMethodSchema.optional().meta({
+      description:
+        "HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.",
+    }),
     name: z.string().optional(),
     netuid: z.int().min(0),
     notes: z.string().optional(),
