@@ -1792,6 +1792,16 @@ export function normalizeSubnet(raw: unknown): Subnet {
   } as Subnet;
 }
 
+/**
+ * One-shot ceiling for "every active subnet" reads (#8248).
+ *
+ * /api/v1/subnets has no server-side sort and the registry is ~129 subnets, so
+ * the page fetches the whole set once and works over it client-side. Shared so
+ * the registry table and the crawlable index cannot drift onto two different
+ * limits and disagree about what "every subnet" means.
+ */
+export const SUBNETS_ALL_LIMIT = 200;
+
 export const subnetsQuery = (params?: QueryParams) =>
   queryOptions({
     queryKey: k("subnets", params ?? {}),
