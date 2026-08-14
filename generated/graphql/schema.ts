@@ -1079,6 +1079,7 @@ type Subnet {
   docs_url: String
   first_party: Boolean
   gap_count: Int
+  also_on: [SubnetIndexEntryAlsoOn!]
   integration_readiness: Int
   lifecycle: String
   logo_url: String
@@ -1096,6 +1097,13 @@ type Subnet {
   economics: SubnetEconomics
   surfaces(kind: String, provider: String, id: String, limit: Int, cursor: Int, sort: String, order: String): [Surface!]!
   endpoints(kind: String, layer: String, pool_eligible: Boolean, provider: String, publication_state: String, status: String, min_latency_ms: Int, max_latency_ms: Int, min_score: Float, max_score: Float, limit: Int, cursor: Int, sort: String, order: String): [Endpoint!]!
+}
+
+type SubnetIndexEntryAlsoOn {
+  network: String
+  netuid: Int
+  name: String
+  matched_by: String
 }
 
 type SubnetHealth {

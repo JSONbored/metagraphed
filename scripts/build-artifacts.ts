@@ -613,6 +613,11 @@ const subnetIndex: Row[] = mergedSubnets.map((subnet) => {
     github_stars: subnet.github_stars,
     github_commits_weekly: subnet.github_commits_weekly,
     github_unreachable: subnet.github_unreachable,
+    // #11099: the testnet lineage in bulk -- the same also_on list the profile
+    // carries, so a screen can find the free practice netuids for every
+    // candidate in one call instead of 129. Null (not []) when no testnet twin
+    // matched, same convention as the profile's lineage block.
+    also_on: lineageByMainnetNetuid.get(subnet.netuid) ?? null,
     status: subnet.status,
     subnet_type: subnet.subnet_type,
     surface_count: subnet.surface_count,

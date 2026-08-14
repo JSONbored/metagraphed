@@ -6025,6 +6025,7 @@ export type SourceSnapshotsArtifactSummary = {
 
 export type Subnet = {
   __typename?: 'Subnet';
+  also_on?: Maybe<Array<SubnetIndexEntryAlsoOn>>;
   categories?: Maybe<Array<Scalars['String']['output']>>;
   coverage_level: Scalars['String']['output'];
   curation_level: Scalars['String']['output'];
@@ -6743,6 +6744,14 @@ export type SubnetIdleStake = {
   netuid: Scalars['Int']['output'];
   neuron_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
+};
+
+export type SubnetIndexEntryAlsoOn = {
+  __typename?: 'SubnetIndexEntryAlsoOn';
+  matched_by?: Maybe<Scalars['String']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+  netuid?: Maybe<Scalars['Int']['output']>;
+  network?: Maybe<Scalars['String']['output']>;
 };
 
 /** Live subnet-lease state -- whether a subnet is currently under a lease and, if so, its terms (beneficiary, coldkey, hotkey, emissions_share_percent, end_block, cost_tao) and accumulated-but-undistributed alpha dividends. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). Mirrors GET /api/v1/subnets/{netuid}/lease. */
@@ -8715,6 +8724,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetIdentityHistory: ResolverTypeWrapper<SubnetIdentityHistory>;
   SubnetIdentityHistoryEntry: ResolverTypeWrapper<SubnetIdentityHistoryEntry>;
   SubnetIdleStake: ResolverTypeWrapper<SubnetIdleStake>;
+  SubnetIndexEntryAlsoOn: ResolverTypeWrapper<SubnetIndexEntryAlsoOn>;
   SubnetLease: ResolverTypeWrapper<SubnetLease>;
   SubnetLeaseArtifactLease: ResolverTypeWrapper<SubnetLeaseArtifactLease>;
   SubnetLeaseHistory: ResolverTypeWrapper<SubnetLeaseHistory>;
@@ -9182,6 +9192,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetIdentityHistory: SubnetIdentityHistory;
   SubnetIdentityHistoryEntry: SubnetIdentityHistoryEntry;
   SubnetIdleStake: SubnetIdleStake;
+  SubnetIndexEntryAlsoOn: SubnetIndexEntryAlsoOn;
   SubnetLease: SubnetLease;
   SubnetLeaseArtifactLease: SubnetLeaseArtifactLease;
   SubnetLeaseHistory: SubnetLeaseHistory;
@@ -12779,6 +12790,7 @@ export type SourceSnapshotsArtifactSummaryResolvers<ContextType = GqlContext, Pa
 }>;
 
 export type SubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Subnet'] = ResolversParentTypes['Subnet']> = ResolversObject<{
+  also_on?: Resolver<Maybe<Array<ResolversTypes['SubnetIndexEntryAlsoOn']>>, ParentType, ContextType>;
   categories?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   coverage_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -13301,6 +13313,13 @@ export type SubnetIdleStakeResolvers<ContextType = GqlContext, ParentType extend
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetIndexEntryAlsoOnResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetIndexEntryAlsoOn'] = ResolversParentTypes['SubnetIndexEntryAlsoOn']> = ResolversObject<{
+  matched_by?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  network?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetLeaseResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLease'] = ResolversParentTypes['SubnetLease']> = ResolversObject<{
@@ -14855,6 +14874,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetIdentityHistory?: SubnetIdentityHistoryResolvers<ContextType>;
   SubnetIdentityHistoryEntry?: SubnetIdentityHistoryEntryResolvers<ContextType>;
   SubnetIdleStake?: SubnetIdleStakeResolvers<ContextType>;
+  SubnetIndexEntryAlsoOn?: SubnetIndexEntryAlsoOnResolvers<ContextType>;
   SubnetLease?: SubnetLeaseResolvers<ContextType>;
   SubnetLeaseArtifactLease?: SubnetLeaseArtifactLeaseResolvers<ContextType>;
   SubnetLeaseHistory?: SubnetLeaseHistoryResolvers<ContextType>;
