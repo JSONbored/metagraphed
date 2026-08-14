@@ -105,6 +105,12 @@ export const NeuronSchema = z
       .describe(
         "Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture.",
       ),
+    is_burn_uid: z
+      .boolean()
+      .optional()
+      .describe(
+        "True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures.",
+      ),
   })
   .strict()
   .describe(

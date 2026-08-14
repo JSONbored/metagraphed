@@ -439,6 +439,7 @@ export function formatNeuron(
   row: Row | null | undefined,
   featuredHotkeys?: ReadonlySet<string>,
   immunityPeriod?: number | null,
+  burnHotkey?: string | null,
 ): Row | null {
   if (!row || typeof row !== "object") return null;
   const hotkey = row.hotkey ?? null;
@@ -476,6 +477,18 @@ export function formatNeuron(
   if (featuredHotkeys) {
     neuron.featured = Boolean(hotkey && featuredHotkeys.has(hotkey as string));
   }
+  // #11094: the burn sink, identified from chain state rather than inferred.
+  // A subnet with SubtensorModule.MinerBurned > 0 routes that fraction of
+  // miner incentive to the UID holding SubtensorModule.SubnetOwnerHotkey --
+  // verified against SN13 (uid 162 incentive 0.715557 vs MinerBurned
+  // 0.7155707) and the zero cases (SN53/SN75 owner UIDs at incentive 0).
+  // Emitted only when the caller resolved a burn hotkey (undefined otherwise,
+  // like `featured`), so builders without the join stay shape-stable.
+  if (burnHotkey !== undefined) {
+    neuron.is_burn_uid = Boolean(
+      burnHotkey !== null && hotkey && hotkey === burnHotkey,
+    );
+  }
   if (Number.isSafeInteger(immunityPeriod) && (immunityPeriod as number) >= 0) {
     Object.assign(
       neuron,
@@ -504,7 +517,10 @@ function snapshotStamp(rows: Row[]): {
 export function buildSubnetMetagraph(
   rows: Row[],
   netuid: unknown,
-  { immunityPeriod }: { immunityPeriod?: number | null } = {},
+  {
+    immunityPeriod,
+    burnHotkey,
+  }: { immunityPeriod?: number | null; burnHotkey?: string | null } = {},
 ): Row {
   const { captured_at, block_number } = snapshotStamp(rows);
   // Drop any malformed row (formatNeuron → null) so the array only holds real
@@ -513,7 +529,7 @@ export function buildSubnetMetagraph(
   // Wrapped (not a bare `rows.map(formatNeuron)`) so Array#map's index arg
   // never lands in formatNeuron's featuredHotkeys parameter.
   const neurons = rows
-    .map((row) => formatNeuron(row, undefined, immunityPeriod))
+    .map((row) => formatNeuron(row, undefined, immunityPeriod, burnHotkey))
     .filter((n): n is Row => Boolean(n));
   return {
     schema_version: 1,

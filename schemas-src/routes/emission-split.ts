@@ -40,7 +40,12 @@ const SubnetEmissionSplitPointSchema = z
         "Emission to validator-permit UIDs. ALPHA-denominated for every non-root subnet — safe to compare within one subnet, never across subnets without the price join.",
     }),
     miner_alpha: z.number().nullable().optional().meta({
-      description: "Emission to non-validator UIDs, alpha-denominated.",
+      description:
+        "Emission to non-validator UIDs, alpha-denominated -- the BURN SINK excluded (#11094): the SubnetOwnerHotkey UID carrying the MinerBurned fraction is its own `burned_alpha` leg, so this is what miners actually receive.",
+    }),
+    burned_alpha: z.number().nullable().optional().meta({
+      description:
+        "Emission landing on the subnet's burn sink -- the UID holding `SubtensorModule.SubnetOwnerHotkey` while `SubtensorModule.MinerBurned` > 0. It rode the miner leg before #11094, overstating what miners receive by 1/(1-burn); 0 on a subnet that burns nothing.",
     }),
     uid_alpha: z.number().nullable().optional().meta({
       description:
@@ -49,6 +54,10 @@ const SubnetEmissionSplitPointSchema = z
     validator_share_of_uid: z.number().nullable().optional().meta({
       description:
         "Validator share of the observed per-UID emission. MEASURED and parameter-free — a ratio of two sums this response also publishes. Null when the day emitted nothing, never 0, which would read as 'validators received none of it'.",
+    }),
+    burned_share_of_uid: z.number().nullable().optional().meta({
+      description:
+        "burned_alpha / uid_alpha. With `validator_share_of_uid` and `miner_share_of_uid` this sums to 1 over the UID set; null when the day emitted nothing.",
     }),
     miner_share_of_uid: z.number().nullable().optional().meta({
       description: "Miner share of the observed per-UID emission. Measured.",

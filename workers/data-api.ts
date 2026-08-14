@@ -6857,6 +6857,38 @@ export async function neuronDailyWindowBounds(
   };
 }
 
+/**
+ * The subnet's burn hotkey, or null when it burns nothing (#11094).
+ *
+ * A subnet with SubtensorModule.MinerBurned > 0 routes that fraction of miner
+ * incentive to the SubtensorModule.SubnetOwnerHotkey UID -- verified against
+ * SN13 (owner uid 162, incentive 0.715557 vs MinerBurned 0.7155707) and the
+ * zero cases (SN53/SN75, owner UIDs at incentive 0). Both halves are chain
+ * captures already in this database: the newest ownership row and the newest
+ * snapshot's burned fraction. Null -- no exclusion anywhere -- when either
+ * half is missing or the fraction is zero, so a subnet with no burn is
+ * untouched and a gap in the capture never invents one.
+ */
+async function resolveBurnHotkey(
+  sql: PgSql,
+  netuid: number,
+): Promise<string | null> {
+  const owner = await sql<{ owner_hotkey: string | null }>`
+    SELECT owner_hotkey FROM subnet_ownership
+    WHERE netuid = ${netuid}
+    ORDER BY captured_at DESC
+    LIMIT 1`;
+  const hotkey = owner[0]?.owner_hotkey;
+  if (!hotkey) return null;
+  const snapshot = await sql<{ miner_burned_fraction: number | null }>`
+    SELECT miner_burned_fraction FROM subnet_snapshots
+    WHERE netuid = ${netuid}
+    ORDER BY snapshot_date DESC
+    LIMIT 1`;
+  const fraction = Number(snapshot[0]?.miner_burned_fraction ?? 0);
+  return Number.isFinite(fraction) && fraction > 0 ? hotkey : null;
+}
+
 function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // GET /api/v1/subnets/:netuid/metagraph -- twin of the Postgres route of
   // the same name below. immunity_period comes from subnet_hyperparams,
@@ -6879,7 +6911,12 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
             [netuid],
           );
-      return json(buildSubnetMetagraph(rows, netuid, { immunityPeriod: null }));
+      return json(
+        buildSubnetMetagraph(rows, netuid, {
+          immunityPeriod: null,
+          burnHotkey: await resolveBurnHotkey(sql, netuid),
+        }),
+      );
     };
   }
 
@@ -7447,12 +7484,13 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       );
       const rows = await sql<{
         snapshot_date: NeuronDaily["snapshot_date"];
+        hotkey: NeuronDaily["hotkey"];
         validator_permit: NeuronDaily["validator_permit"];
         emission_tao: NeuronDaily["emission_tao"];
         alpha_out_emission: SubnetSnapshots["alpha_out_emission"];
         alpha_price_tao: SubnetSnapshots["alpha_price_tao"];
       }>`
-        SELECT nd.snapshot_date, nd.validator_permit, nd.emission_tao,
+        SELECT nd.snapshot_date, nd.hotkey, nd.validator_permit, nd.emission_tao,
                ss.alpha_out_emission, ss.alpha_price_tao
         FROM neuron_daily nd
         LEFT JOIN subnet_snapshots ss
@@ -7467,6 +7505,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
           ),
           capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
+          burnHotkey: await resolveBurnHotkey(sql, netuid),
         }),
       );
     };
@@ -7500,12 +7539,13 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         validator_permit: NeuronDaily["validator_permit"];
         emission_tao: NeuronDaily["emission_tao"];
       }>`
-        SELECT nd.snapshot_date, nd.uid, nd.coldkey, nd.validator_permit,
-               nd.emission_tao
+        SELECT nd.snapshot_date, nd.uid, nd.coldkey, nd.hotkey,
+               nd.validator_permit, nd.emission_tao
         FROM neuron_daily nd
         WHERE nd.netuid = ${netuid} AND nd.snapshot_date >= ${cutoff}
         ORDER BY nd.snapshot_date DESC, nd.uid ASC
         LIMIT ${MINER_FAIRNESS_ROW_CAP}`;
+      const burnHotkey = await resolveBurnHotkey(sql, netuid);
       // #11091: the CURRENT metagraph beside the window. A window aggregate
       // smooths away a mid-window capture event (SN75: 30d uid gini 0.77
       // while one UID held incentive 0.9908 live), so the builder publishes
@@ -7519,7 +7559,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         captured_at: Neurons["captured_at"];
         block_number: Neurons["block_number"];
       }>`
-        SELECT n.uid, n.coldkey, n.validator_permit, n.incentive,
+        SELECT n.uid, n.coldkey, n.hotkey, n.validator_permit, n.incentive,
                n.captured_at, n.block_number
         FROM neurons n
         WHERE n.netuid = ${netuid}
@@ -7533,6 +7573,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
           ),
           capped: rows.length >= MINER_FAIRNESS_ROW_CAP,
           liveRows,
+          burnHotkey,
         }),
       );
     };

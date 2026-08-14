@@ -142,6 +142,11 @@ export const SUBNET_EMISSION_SPLIT_FIELD_SOURCES = {
     kind: "measured",
     storage: "neuron_daily.emission_tao",
   },
+  "points.burned_alpha": {
+    kind: "measured",
+    storage: "SubtensorModule.SubnetOwnerHotkey",
+  },
+  "points.burned_share_of_uid": { kind: "reconstructed", storage: null },
   "points.miner_alpha": {
     kind: "measured",
     storage: "neuron_daily.emission_tao",
@@ -176,9 +181,11 @@ function emissionSplitPoint(
   date: string,
   dayRows: Row[],
   ownerCut: number,
+  burnHotkey?: string | null,
 ): Row {
   let validatorRao = 0n;
   let minerRao = 0n;
+  let burnedRao = 0n;
   let validatorCount = 0;
   let minerCount = 0;
   let earningValidatorCount = 0;
@@ -198,6 +205,14 @@ function emissionSplitPoint(
     // reads off this. Skipping it would shrink the denominator and overstate
     // how many UIDs earn.
     const rao = emission === null ? 0n : toRaoBig(emission);
+    // #11094: the burn sink is not a miner. The SubnetOwnerHotkey UID carries
+    // the MinerBurned fraction as incentive, so folding it into the miner leg
+    // overstated what miners receive by 1/(1-burn). Its own leg, beside the
+    // two real ones -- and it does not count toward either population.
+    if (burnHotkey != null && row?.hotkey === burnHotkey) {
+      burnedRao += rao;
+      continue;
+    }
     if (isValidator(row?.validator_permit)) {
       validatorCount += 1;
       validatorRao += rao;
@@ -211,7 +226,8 @@ function emissionSplitPoint(
 
   const validatorAlpha = raoBigToTao(validatorRao);
   const minerAlpha = raoBigToTao(minerRao);
-  const uidAlpha = raoBigToTao(validatorRao + minerRao);
+  const burnedAlpha = raoBigToTao(burnedRao);
+  const uidAlpha = raoBigToTao(validatorRao + minerRao + burnedRao);
 
   // Exact and parameter-free: the split of what was observed. Null rather than
   // 0/0 when the day emitted nothing -- a subnet the gate is emitting nothing
@@ -219,6 +235,7 @@ function emissionSplitPoint(
   const validatorShareOfUid =
     uidAlpha > 0 ? round9(validatorAlpha / uidAlpha) : null;
   const minerShareOfUid = uidAlpha > 0 ? round9(minerAlpha / uidAlpha) : null;
+  const burnedShareOfUid = uidAlpha > 0 ? round9(burnedAlpha / uidAlpha) : null;
 
   // The reconstructed half. `alpha_out_emission` is alpha per block; a day is
   // BLOCKS_PER_DAY of them, and the owner takes `ownerCut` of that. Computed as
@@ -242,9 +259,11 @@ function emissionSplitPoint(
     earning_miner_count: earningMinerCount,
     validator_alpha: round9(validatorAlpha),
     miner_alpha: round9(minerAlpha),
+    burned_alpha: round9(burnedAlpha),
     uid_alpha: round9(uidAlpha),
     validator_share_of_uid: validatorShareOfUid,
     miner_share_of_uid: minerShareOfUid,
+    burned_share_of_uid: burnedShareOfUid,
     owner_cut: round9(ownerCut),
     total_alpha: totals === null ? null : round9(totals.total),
     owner_alpha: totals === null ? null : round9(totals.owner),
@@ -284,7 +303,13 @@ export function buildSubnetEmissionSplitHistory(
     window,
     capped,
     ownerCut = OWNER_CUT,
-  }: { window?: string; capped?: boolean; ownerCut?: number } = {},
+    burnHotkey,
+  }: {
+    window?: string;
+    capped?: boolean;
+    ownerCut?: number;
+    burnHotkey?: string | null;
+  } = {},
 ): Row {
   const list = Array.isArray(rows) ? rows : [];
   // Rows arrive newest-first with same-date rows contiguous, so Map insertion
@@ -305,7 +330,7 @@ export function buildSubnetEmissionSplitHistory(
       ? ownerCut
       : OWNER_CUT;
   const points = days.map(([date, dayRows]) =>
-    emissionSplitPoint(date, dayRows, effectiveCut),
+    emissionSplitPoint(date, dayRows, effectiveCut, burnHotkey),
   );
   return {
     schema_version: 1,

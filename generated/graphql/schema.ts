@@ -2225,6 +2225,11 @@ type NeuronState {
   Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture.
   """
   take: Float
+
+  """
+  True when this UID is the subnet's BURN SINK (#11094): the chain routes \`SubtensorModule.MinerBurned\` of miner incentive to the UID holding \`SubtensorModule.SubnetOwnerHotkey\`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures.
+  """
+  is_burn_uid: Boolean
 }
 
 """
@@ -2570,8 +2575,15 @@ type SubnetEmissionSplitHistoryPoint {
   """
   validator_alpha: Float
 
-  """Emission to non-validator UIDs, alpha-denominated."""
+  """
+  Emission to non-validator UIDs, alpha-denominated -- the BURN SINK excluded (#11094): the SubnetOwnerHotkey UID carrying the MinerBurned fraction is its own \`burned_alpha\` leg, so this is what miners actually receive.
+  """
   miner_alpha: Float
+
+  """
+  Emission landing on the subnet's burn sink -- the UID holding \`SubtensorModule.SubnetOwnerHotkey\` while \`SubtensorModule.MinerBurned\` > 0. It rode the miner leg before #11094, overstating what miners receive by 1/(1-burn); 0 on a subnet that burns nothing.
+  """
+  burned_alpha: Float
 
   """
   Emission across the whole UID set. This is NOT the day's total emission: the subnet owner's cut is paid outside the UID set, so this is the distributable remainder — see \`total_alpha\`.
@@ -2582,6 +2594,11 @@ type SubnetEmissionSplitHistoryPoint {
   Validator share of the observed per-UID emission. MEASURED and parameter-free — a ratio of two sums this response also publishes. Null when the day emitted nothing, never 0, which would read as 'validators received none of it'.
   """
   validator_share_of_uid: Float
+
+  """
+  burned_alpha / uid_alpha. With \`validator_share_of_uid\` and \`miner_share_of_uid\` this sums to 1 over the UID set; null when the day emitted nothing.
+  """
+  burned_share_of_uid: Float
 
   """Miner share of the observed per-UID emission. Measured."""
   miner_share_of_uid: Float
@@ -2663,6 +2680,11 @@ type SubnetMinerFairness {
   THE CAPTURE TRIPWIRE: the same two lenses over the CURRENT metagraph, beside the windowed ones -- because a window aggregate smooths away a mid-window capture event. SN75 reported a 30d uid gini of 0.77 while one UID held incentive 0.9908 live; when these lenses diverge violently from \`concentration\`, trust these. Null when the current-metagraph store has no rows for this subnet.
   """
   live: SubnetMinerFairnessLive
+
+  """
+  The UID excluded from every figure above as the subnet's BURN SINK (#11094): the chain routes \`SubtensorModule.MinerBurned\` of miner incentive to the \`SubtensorModule.SubnetOwnerHotkey\` UID, so it is not a miner and counting it would inflate each distribution by 1/(1-burn). Null when the subnet burns nothing -- no row was excluded.
+  """
+  burn_uid: Int
 
   """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
@@ -3914,6 +3936,11 @@ type NeuronHistoryPoint {
   Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture.
   """
   take: Float
+
+  """
+  True when this UID is the subnet's BURN SINK (#11094): the chain routes \`SubtensorModule.MinerBurned\` of miner incentive to the UID holding \`SubtensorModule.SubnetOwnerHotkey\`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures.
+  """
+  is_burn_uid: Boolean
 }
 
 """

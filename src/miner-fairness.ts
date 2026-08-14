@@ -75,6 +75,10 @@ export const SUBNET_MINER_FAIRNESS_FIELD_SOURCES = {
   "concentration.uid": { kind: "measured", storage: "neuron_daily" },
   "live.entity": { kind: "measured", storage: "neurons" },
   "live.uid": { kind: "measured", storage: "neurons" },
+  burn_uid: {
+    kind: "measured",
+    storage: "SubtensorModule.SubnetOwnerHotkey",
+  },
   uids_per_entity: { kind: "measured", storage: "neuron_daily" },
 } as const;
 
@@ -220,9 +224,28 @@ export function buildSubnetMinerFairness(
     window,
     capped,
     liveRows,
-  }: { window?: string; capped?: boolean; liveRows?: Row[] | null } = {},
+    burnHotkey,
+  }: {
+    window?: string;
+    capped?: boolean;
+    liveRows?: Row[] | null;
+    burnHotkey?: string | null;
+  } = {},
 ): Row {
-  const list = Array.isArray(rows) ? rows : [];
+  const raw = Array.isArray(rows) ? rows : [];
+  // #11094: the burn sink is NOT a miner. A subnet with MinerBurned > 0
+  // routes that fraction of miner incentive to the SubnetOwnerHotkey UID, so
+  // counting it inflates every distribution figure by 1/(1-burn) -- SN13's
+  // uid lens read one "miner" holding 71.6% that was the chain's own burn.
+  // Excluded from the population and NAMED on the card, so a caller can see
+  // both the honest miner distribution and where the burn went.
+  const burnRows =
+    burnHotkey == null ? [] : raw.filter((row) => row?.hotkey === burnHotkey);
+  const list =
+    burnHotkey == null ? raw : raw.filter((row) => row?.hotkey !== burnHotkey);
+  const burnUidValue = burnRows.length
+    ? nonNegativeCellOrNull(burnRows[0]?.uid)
+    : null;
 
   const byDate = new Map<string, Row[]>();
   for (const row of list) {
@@ -317,7 +340,15 @@ export function buildSubnetMinerFairness(
       entity: entityLens as ConcentrationScorecard | null,
       uid: uidLens as ConcentrationScorecard | null,
     },
-    live: liveConcentration(liveRows),
+    live: liveConcentration(
+      burnHotkey == null
+        ? liveRows
+        : (liveRows ?? []).filter((row) => row?.hotkey !== burnHotkey),
+    ),
+    // Null carries two states apart on purpose: the subnet has no burn
+    // (burnHotkey null) OR the caller supplied no ownership join. Either way
+    // no row was excluded; a non-null uid says exactly which one was.
+    burn_uid: burnUidValue,
     field_sources: SUBNET_MINER_FAIRNESS_FIELD_SOURCES,
   };
 }

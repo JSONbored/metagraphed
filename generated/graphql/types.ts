@@ -3144,6 +3144,8 @@ export type NeuronHistoryPoint = {
   /** The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
   immunity_expires_at_block?: Maybe<Scalars['Int']['output']>;
   incentive?: Maybe<Scalars['Float']['output']>;
+  /** True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
+  is_burn_uid?: Maybe<Scalars['Boolean']['output']>;
   is_immunity_period?: Maybe<Scalars['Boolean']['output']>;
   /** 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
   rank?: Maybe<Scalars['Float']['output']>;
@@ -3177,6 +3179,8 @@ export type NeuronState = {
   /** The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
   immunity_expires_at_block?: Maybe<Scalars['Int']['output']>;
   incentive?: Maybe<Scalars['Float']['output']>;
+  /** True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
+  is_burn_uid?: Maybe<Scalars['Boolean']['output']>;
   is_immunity_period?: Maybe<Scalars['Boolean']['output']>;
   /** 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
   rank?: Maybe<Scalars['Float']['output']>;
@@ -6424,11 +6428,15 @@ export type SubnetEmissionSplitHistoryPoint = {
   __typename?: 'SubnetEmissionSplitHistoryPoint';
   /** The day's alpha price in TAO, from the same daily snapshot. This is `SubnetMovingPrice`, the chain's emission-weighting average — not a traded mark. */
   alpha_price_tao?: Maybe<Scalars['Float']['output']>;
+  /** Emission landing on the subnet's burn sink -- the UID holding `SubtensorModule.SubnetOwnerHotkey` while `SubtensorModule.MinerBurned` > 0. It rode the miner leg before #11094, overstating what miners receive by 1/(1-burn); 0 on a subnet that burns nothing. */
+  burned_alpha?: Maybe<Scalars['Float']['output']>;
+  /** burned_alpha / uid_alpha. With `validator_share_of_uid` and `miner_share_of_uid` this sums to 1 over the UID set; null when the day emitted nothing. */
+  burned_share_of_uid?: Maybe<Scalars['Float']['output']>;
   /** Non-validator UIDs that recorded emission above zero on this day. Against `miner_count` this is how many registered miners earned anything at all — the median subnet has almost none, and a miner count read alone overstates participation. */
   earning_miner_count?: Maybe<Scalars['Int']['output']>;
   /** Validator-permit UIDs that recorded emission above zero on this day. */
   earning_validator_count?: Maybe<Scalars['Int']['output']>;
-  /** Emission to non-validator UIDs, alpha-denominated. */
+  /** Emission to non-validator UIDs, alpha-denominated -- the BURN SINK excluded (#11094): the SubnetOwnerHotkey UID carrying the MinerBurned fraction is its own `burned_alpha` leg, so this is what miners actually receive. */
   miner_alpha?: Maybe<Scalars['Float']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;
   /** Miner share of the whole day. Reconstructed. */
@@ -6784,6 +6792,8 @@ export type SubnetList = {
 /** Whether a subnet's registered miners actually earn, measured over a 7d/30d/90d window rather than from a snapshot. Reports the daily zero-emission rate, how many days each miner UID earned on (persistent-zero and occasionally-zero are different facts a snapshot collapses), and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. DESCRIPTIVE ONLY — there is no fairness score and no grade: a high Gini on a subnet whose task genuinely has one best answer is not misconduct, and that context is not in this data. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness. */
 export type SubnetMinerFairness = {
   __typename?: 'SubnetMinerFairness';
+  /** The UID excluded from every figure above as the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the `SubtensorModule.SubnetOwnerHotkey` UID, so it is not a miner and counting it would inflate each distribution by 1/(1-burn). Null when the subnet burns nothing -- no row was excluded. */
+  burn_uid?: Maybe<Scalars['Int']['output']>;
   concentration?: Maybe<SubnetMinerFairnessConcentration>;
   /** How many days the series actually covers. Published beside every distribution figure: a distribution over 3 days and one over 31 are not the same claim, and `neuron_daily` is only ~27-33 days deep, so a 90d window is answered with the depth found rather than refused. */
   days_covered: Scalars['Int']['output'];
@@ -11743,6 +11753,7 @@ export type NeuronHistoryPointResolvers<ContextType = GqlContext, ParentType ext
   immunity_expires_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   immunity_expires_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  is_burn_uid?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   is_immunity_period?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -11767,6 +11778,7 @@ export type NeuronStateResolvers<ContextType = GqlContext, ParentType extends Re
   immunity_expires_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   immunity_expires_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  is_burn_uid?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   is_immunity_period?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -13018,6 +13030,8 @@ export type SubnetEmissionSplitHistoryResolvers<ContextType = GqlContext, Parent
 
 export type SubnetEmissionSplitHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEmissionSplitHistoryPoint'] = ResolversParentTypes['SubnetEmissionSplitHistoryPoint']> = ResolversObject<{
   alpha_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  burned_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  burned_share_of_uid?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   earning_miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   earning_validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   miner_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -13298,6 +13312,7 @@ export type SubnetListResolvers<ContextType = GqlContext, ParentType extends Res
 }>;
 
 export type SubnetMinerFairnessResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairness'] = ResolversParentTypes['SubnetMinerFairness']> = ResolversObject<{
+  burn_uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   concentration?: Resolver<Maybe<ResolversTypes['SubnetMinerFairnessConcentration']>, ParentType, ContextType>;
   days_covered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   entity_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;

@@ -2692,3 +2692,100 @@ test("the consumer refuses a neurons message that does not claim key-completenes
   assert.deepEqual(acked, ["ack"], "unparseable is acked, not retried");
   assert.equal(await count("neurons"), 2, "nothing written, nothing pruned");
 });
+
+// #11094: the burn derivation end-to-end through the real DDL -- ownership +
+// snapshot rows resolve the burn hotkey, the metagraph flags the sink, and
+// the fairness card excludes it.
+test("the burn sink is flagged on the metagraph and excluded from fairness", async () => {
+  await seed(
+    `INSERT INTO subnet_ownership (netuid, owner_coldkey, owner_hotkey, captured_at)
+     VALUES (?, ?, ?, ?)`,
+    [7, "5OwnerCold", "5OwnerHot", CAPTURED_AT],
+  );
+  await seed(
+    `INSERT INTO subnet_snapshots (netuid, snapshot_date, miner_burned_fraction)
+     VALUES (?, ?, ?)`,
+    [7, dayAgo(0), 0.7156],
+  );
+  await insertNeuron({
+    uid: 162,
+    hotkey: "5OwnerHot",
+    coldkey: "5OwnerCold",
+    validator_permit: 0,
+    incentive: 0.7156,
+  });
+  await insertNeuron({
+    uid: 1,
+    hotkey: "5Hot7-m1",
+    coldkey: "5Cold7-m1",
+    validator_permit: 0,
+    incentive: 0.14,
+  });
+  await insertDaily({
+    uid: 162,
+    hotkey: "5OwnerHot",
+    coldkey: "5OwnerCold",
+    validator_permit: 0,
+    emission_tao: 7,
+    snapshot_date: dayAgo(1),
+  });
+  await insertDaily({
+    uid: 1,
+    hotkey: "5Hot7-m1",
+    coldkey: "5Cold7-m1",
+    validator_permit: 0,
+    emission_tao: 1,
+    snapshot_date: dayAgo(1),
+  });
+
+  const mg = await call(req("/api/v1/subnets/7/metagraph"));
+  assert.equal(mg.status, 200);
+  const neurons = ((await mg.json()) as Row).neurons as Row[];
+  const sink = neurons.find((n) => n.uid === 162);
+  assert.equal(sink?.is_burn_uid, true);
+
+  const fair = await call(req("/api/v1/subnets/7/miner-fairness"));
+  assert.equal(fair.status, 200);
+  const body = (await fair.json()) as Row;
+  assert.equal(body.burn_uid, 162);
+  assert.equal(body.miner_uid_count, 1, "only the real miner counts");
+});
+
+test("no snapshot row, or a zero fraction, resolves no burn -- nothing excluded", async () => {
+  // The two degrade arms: ownership without a snapshot (the ?? 0 arm), and a
+  // snapshot whose fraction is zero (the > 0 refusal). Both must resolve null
+  // -- a capture gap or a burn-free subnet never invents an exclusion.
+  await seed(
+    `INSERT INTO subnet_ownership (netuid, owner_coldkey, owner_hotkey, captured_at)
+     VALUES (?, ?, ?, ?), (?, ?, ?, ?)`,
+    [8, "5OC8", "5OH8", CAPTURED_AT, 9, "5OC9", "5OH9", CAPTURED_AT],
+  );
+  await seed(
+    `INSERT INTO subnet_snapshots (netuid, snapshot_date, miner_burned_fraction)
+     VALUES (?, ?, ?)`,
+    [9, dayAgo(0), 0],
+  );
+  await insertNeuron({
+    netuid: 8,
+    uid: 0,
+    hotkey: "5OH8",
+    coldkey: "5OC8",
+    validator_permit: 0,
+    incentive: 0.5,
+  });
+  await insertNeuron({
+    netuid: 9,
+    uid: 0,
+    hotkey: "5OH9",
+    coldkey: "5OC9",
+    validator_permit: 0,
+    incentive: 0.5,
+  });
+
+  for (const netuid of [8, 9]) {
+    const res = await call(req(`/api/v1/subnets/${netuid}/metagraph`));
+    assert.equal(res.status, 200);
+    const rows = ((await res.json()) as Row).neurons as Row[];
+    assert.equal(rows[0]?.is_burn_uid, false, `netuid ${netuid}`);
+  }
+});
