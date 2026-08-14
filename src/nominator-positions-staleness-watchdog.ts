@@ -57,7 +57,7 @@ import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
-import { POSITION_SOURCE_ALPHA } from "./nominator-positions-neon-write.ts";
+import { requireFullScanValue } from "./lane-table-topology.ts";
 
 /**
  * How old the ledger may get before this is a stall.
@@ -197,10 +197,16 @@ export const NOMINATOR_POSITIONS_PASS_WINDOW_MS = passWindowMs(
  * reported /accounts/{ss58}/positions as serving silently-partial data for
  * hours, on a lane where BOTH producers had succeeded.
  */
-// The writer's own constant, imported rather than restated: the column exists
-// so two producers can share the table, and a second copy of that vocabulary
-// here would be free to drift from the value actually being stamped.
-export const NOMINATOR_POSITIONS_SCAN_SOURCE = POSITION_SOURCE_ALPHA;
+// DERIVED from the table's declared topology (#11183), not restated here.
+//
+// `src/lane-table-topology.ts` is where "this table has two producers and
+// `alpha` is the full scan" is stated once, checked against the introspected
+// schema by validate:lane-topology, and read by every rule that needs it. The
+// value still originates in the WRITER's own constant, so there remains exactly
+// one definition of what gets stamped.
+export const NOMINATOR_POSITIONS_SCAN_SOURCE = requireFullScanValue(
+  "nominator_positions",
+);
 
 /**
  * Coverage, scoped to the full-scan producer.
