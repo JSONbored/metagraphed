@@ -12,6 +12,7 @@ import { CopyButton, ExternalLink } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { classNames } from "@/lib/metagraphed/format";
 import type { AgentResource } from "@/lib/metagraphed/types";
+import { API_ORIGIN } from "@/lib/metagraphed/identity";
 
 const KIND_META = {
   agent: { icon: Bot, tone: "text-accent" },
@@ -84,7 +85,7 @@ export function AgentResourceGrid({ resources }: { resources: AgentResource[] })
                   href={r.url}
                   className="mt-1.5 inline-flex mg-type-data text-ink-muted hover:text-ink-strong"
                 >
-                  {r.url.replace("https://api.metagraph.sh", "")}
+                  {r.url.replace(API_ORIGIN, "")}
                 </ExternalLink>
               </div>
               <CopyButton value={r.url} label={`${r.title} URL`} compact />

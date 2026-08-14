@@ -1,3 +1,5 @@
+import { SITE_ORIGIN } from "./identity";
+
 // Builds the /og card URL a route puts in its own og:image (#8489).
 //
 // Deliberately a SEPARATE module from src/lib/og-image.ts (which renders the
@@ -18,8 +20,6 @@
 // routes emit their own og:image and server.ts skips those paths
 // (routeOwnsOgImage below is the single source of truth for which). That keeps
 // exactly one og:image tag on every page.
-
-const SITE_ORIGIN = "https://metagraph.sh";
 
 /** One "LABEL / value" cell in the card's stat rail. Max two are rendered. */
 export interface OgCardStat {

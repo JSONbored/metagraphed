@@ -1,3 +1,5 @@
+import { API_ORIGIN, GITHUB_REPO_URL } from "./identity";
+
 // Metagraphed API client config.
 //
 // Two independent runtime dimensions, both persisted to localStorage:
@@ -17,7 +19,7 @@ const EVT = "metagraphed:api-base-changed";
 export const DEFAULT_API_BASE = (
   env?.VITE_METAGRAPH_API_BASE ||
   env?.VITE_METAGRAPHED_API_BASE ||
-  "https://api.metagraph.sh"
+  API_ORIGIN
 ).replace(/\/$/, "");
 
 let cached: string | null = null;
@@ -284,7 +286,7 @@ export function onNetworkChange(cb: (next: ChainNetwork) => void): () => void {
   return () => window.removeEventListener(NETWORK_EVT, handler);
 }
 
-export const DEFAULT_GITHUB_REPO = "https://github.com/JSONbored/metagraphed";
+export const DEFAULT_GITHUB_REPO = GITHUB_REPO_URL;
 export const GITHUB_REPO = env?.VITE_METAGRAPHED_REPO || DEFAULT_GITHUB_REPO;
 
 export const DEFAULT_DISCORD_URL = "https://discord.gg/nj9m9yVDnb";

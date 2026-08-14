@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CopyableCode, SectionAnchor } from "@jsonbored/ui-kit";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
+import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
 
 // #8329: the subnet-team flywheel. A subnet that puts a live uptime badge in
 // its own README advertises the registry to exactly the audience we want, for
@@ -15,7 +16,6 @@ import { classNames } from "@/lib/metagraphed/format";
 // this is the production site rather than window.location.origin -- a snippet
 // copied from a preview deploy or localhost would otherwise carry that host
 // into someone else's repo.
-const SITE_ORIGIN = "https://metagraph.sh";
 
 const FORMATS = [
   { id: "markdown", label: "Markdown" },

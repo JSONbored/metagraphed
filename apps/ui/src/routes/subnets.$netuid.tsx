@@ -11,6 +11,9 @@ import {
 } from "@/lib/metagraphed/entity-not-found-meta";
 import { SubnetDetailPage } from "./-subnets-netuid-page";
 import { subnetFeedLinks } from "@/lib/metagraphed/feed-links";
+import { stringifyJsonLd, subnetDatasetJsonLd } from "@/lib/metagraphed/json-ld";
+import { repoSlugFrom, SITE_ORIGIN } from "@/lib/metagraphed/seo-meta";
+import { API_BASE } from "@/lib/metagraphed/config";
 
 export type SearchParams = {
   tab?: string;
@@ -63,10 +66,18 @@ export const Route = createFileRoute("/subnets/$netuid")({
       return {
         name: data.name ?? null,
         health: data.health ?? null,
+        // #11204: the subnet's own words, for the Dataset description and the
+        // meta description. Falls back inside the builder rather than here, so
+        // a subnet with no description still gets a valid, honest node.
+        description: data.description ?? null,
+        // The repo is what the measured demand actually pastes into search --
+        // GSC shows queries that are literally `github.com/<owner>/<repo>` --
+        // so it belongs in the description a searcher is matched against.
+        repo: data.repo ?? null,
         // #8489: whichever of these resolves first is the host the site's own
         // BrandIcon would use for this subnet.
         iconUrl: (data.icon_url ?? null) as string | { light?: string; dark?: string } | null,
-        website: (data.website ?? null) as string | null,
+        website: data.website ?? null,
         // The three facts the subnet masthead's own KPI band leads with
         // (#8247: price, emission share, total stake) -- the same ranking,
         // applied to the card that travels.
@@ -100,15 +111,28 @@ export const Route = createFileRoute("/subnets/$netuid")({
     if (!Number.isFinite(Number(params.netuid))) {
       return entityNotFoundMeta("Subnet", "This subnet identifier is not a valid netuid.");
     }
+    // #11204 item 5: the title is tuned to the demand Search Console actually
+    // records. The queries that already find us are subnet lookups — a pasted
+    // repo URL, `subnet-95`, a bare project name — so the netuid alias `SN<n>`
+    // leads (it matches both "sn38" and "subnet 38"), the project name follows,
+    // and the brand goes last where a truncation costs least. The old shape,
+    // "Apex (Subnet 1) — Metagraphed", buried the one token most likely to be
+    // typed inside parentheses.
+    const alias = `SN${params.netuid}`;
     const title = loaderData?.name
-      ? `${loaderData.name} (Subnet ${params.netuid}) — Metagraphed`
-      : `Subnet ${params.netuid} — Metagraphed`;
+      ? `${alias} · ${loaderData.name} — API, health & economics | Metagraphed`
+      : `${alias} — Bittensor subnet API, health & economics | Metagraphed`;
     const health = loaderData?.health && loaderData.health !== "unknown" ? loaderData.health : null;
+    // The repo slug (`owner/name`) is carried in the description because a
+    // pasted-repo-URL query is matched against it, and because it is the one
+    // fact that disambiguates two subnets with similar names. Appended only
+    // when the registry actually holds one.
+    const repoSlug = repoSlugFrom(loaderData?.repo);
     const description = loaderData?.name
-      ? `${loaderData.name}: Bittensor subnet ${params.netuid} — interfaces, endpoints, schemas${
+      ? `${loaderData.name} (${alias}): Bittensor subnet ${params.netuid} — interfaces, endpoints, schemas${
           health ? ` and live health (${health})` : ""
-        }, machine-readable on Metagraphed.`
-      : `Public-interface registry for Bittensor subnet ${params.netuid}: surfaces, endpoints, schemas, health.`;
+        }, machine-readable on Metagraphed.${repoSlug ? ` Source: ${repoSlug}.` : ""}`
+      : `Public-interface registry for Bittensor subnet ${params.netuid} (${alias}): surfaces, endpoints, schemas, health.`;
     return {
       meta: [
         { title },
@@ -155,6 +179,28 @@ export const Route = createFileRoute("/subnets/$netuid")({
       // advertising a feed for a netuid that is not a subnet would hand readers
       // a permanently empty subscription.
       links: subnetFeedLinks(params.netuid),
+      // #11204 item 4: the Dataset lives HERE rather than in server.ts's
+      // injected graph because it describes loader data -- the name and
+      // description -- that a path-only builder cannot see. Same reason the OG
+      // card moved to this route in #8489. server.ts still owns the
+      // Organization/WebSite/BreadcrumbList nodes on every page, so there is
+      // exactly one of each and no duplication between the two.
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: stringifyJsonLd(
+            subnetDatasetJsonLd({
+              netuid: params.netuid,
+              name: loaderData?.name ?? null,
+              description: loaderData?.description ?? null,
+              url: `${SITE_ORIGIN}/subnets/${params.netuid}`,
+              apiUrl: `${API_BASE}/api/v1/subnets/${params.netuid}`,
+              artifactUrl: `${API_BASE}/metagraph/subnets/${params.netuid}.json`,
+              sameAs: loaderData?.website ?? null,
+            }),
+          ),
+        },
+      ],
     };
   },
   component: SubnetDetailPage,

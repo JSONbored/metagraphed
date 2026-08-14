@@ -4,6 +4,14 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleOgImage } from "./lib/og-image";
 import { routeOwnsOgImage } from "./lib/metagraphed/og-card";
+import { breadcrumbListJsonLd, stringifyJsonLd } from "./lib/metagraphed/json-ld";
+import {
+  API_ORIGIN,
+  GITHUB_REPO_URL,
+  SITE_ORIGIN,
+  X_HANDLE,
+  X_PROFILE_URL,
+} from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
 
 type ServerEntry = {
@@ -29,8 +37,6 @@ declare const HTMLRewriter: {
 // PROXY the backend's resources (DRY + always current) and advertise them via a Link header on every
 // HTML page. Lives in the Worker entry (infra), never in Lovable's UI code, so it survives Lovable
 // regenerations.
-const API_ORIGIN = "https://api.metagraph.sh";
-const SITE_ORIGIN = "https://metagraph.sh";
 
 // Resources the backend serves canonically. The apex proxies them with a tight
 // response-header and media-type policy so API-origin cookies or active content
@@ -90,8 +96,8 @@ export const SEO_DEFAULT_TAGS =
   // X attributes the card to this account and shows it on the unfurl. `site`
   // and `creator` are the same handle because the site IS the author here --
   // there are no per-article bylines to differentiate.
-  `<meta name="twitter:site" content="@metagraphed">` +
-  `<meta name="twitter:creator" content="@metagraphed">`;
+  `<meta name="twitter:site" content="${X_HANDLE}">` +
+  `<meta name="twitter:creator" content="${X_HANDLE}">`;
 
 // Canonical human-facing pages for the sitemap (per-subnet pages are appended from the live list).
 const SITEMAP_STATIC_PATHS = [
@@ -438,6 +444,8 @@ function safeDecodePathSegment(segment: string): string {
 function buildBreadcrumb(pathname: string): unknown | null {
   const subnet = pathname.match(/^\/subnets\/([^/]+)\/?$/);
   const provider = pathname.match(/^\/providers\/([^/]+)\/?$/);
+  const validator = pathname.match(/^\/validators\/([^/]+)\/?$/);
+  const docs = pathname.match(/^\/docs\/(.+?)\/?$/);
   let trail: Array<{ name: string; path: string }> | null = null;
   if (subnet) {
     const name = safeDecodePathSegment(subnet[1]);
@@ -453,25 +461,54 @@ function buildBreadcrumb(pathname: string): unknown | null {
       { name: "Providers", path: "/apis/providers" },
       { name, path: `/providers/${provider[1]}` },
     ];
+  } else if (validator) {
+    // #11204: 1,023 validator pages are in the sitemap and every one of them
+    // was emitting no breadcrumb at all, which is most of why Search Console
+    // reported ONE valid breadcrumb item site-wide. The hotkey is truncated the
+    // way the page itself titles it -- a 48-character ss58 is not a crumb.
+    const hotkey = safeDecodePathSegment(validator[1]);
+    trail = [
+      { name: "Home", path: "/" },
+      { name: "Validators", path: "/validators" },
+      { name: shortKey(hotkey), path: `/validators/${validator[1]}` },
+    ];
+  } else if (docs) {
+    // 322 docs pages, likewise bare. The trail is derived from the path
+    // segments themselves, so a page added to content/docs/ is covered the
+    // moment it ships -- the same property that keeps it out of the sitemap's
+    // second list to forget.
+    const segments = docs[1].split("/").filter(Boolean);
+    trail = [
+      { name: "Home", path: "/" },
+      { name: "Docs", path: "/docs" },
+      ...segments.map((segment, index) => ({
+        name: titleCaseSlug(safeDecodePathSegment(segment)),
+        path: `/docs/${segments.slice(0, index + 1).join("/")}`,
+      })),
+    ];
   }
   if (!trail) return null;
-  return {
-    "@type": "BreadcrumbList",
-    itemListElement: trail.map((item, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: item.name,
-      item: `${SITE_ORIGIN}${item.path}`,
-    })),
-  };
+  return breadcrumbListJsonLd(
+    trail.map((item) => ({ name: item.name, item: `${SITE_ORIGIN}${item.path}` })),
+  );
+}
+
+/** `api-reference` -> `API reference`; a URL slug is not a breadcrumb label. */
+function titleCaseSlug(slug: string): string {
+  const words = slug.replace(/[-_]+/g, " ").trim();
+  if (!words) return slug;
+  const cased = words.charAt(0).toUpperCase() + words.slice(1);
+  return cased.replace(/\bapi\b/gi, "API").replace(/\bmcp\b/gi, "MCP");
 }
 
 // schema.org JSON-LD: Organization + WebSite (with a sitelinks SearchAction over
 // /subnets?q=) on every page, plus a BreadcrumbList on the detail routes. The
-// serialized JSON escapes every "<" character so a crafted path segment can
-// never break out of the <script> element. ItemList on listings is intentionally
-// omitted (needs per-request data, rarely yields rich results).
-function buildJsonLd(pathname: string): string {
+// serialized JSON is escaped by stringifyJsonLd (see json-ld.ts) so a crafted
+// path segment can never break out of the <script> element. ItemList on
+// listings is intentionally omitted (needs per-request data, rarely yields rich
+// results); the per-subnet Dataset lives in the route's own head(), where the
+// loader data it describes is available.
+export function buildJsonLd(pathname: string): string {
   const graph: unknown[] = [
     {
       "@type": "Organization",
@@ -480,6 +517,11 @@ function buildJsonLd(pathname: string): string {
       url: SITE_ORIGIN,
       description:
         "The Bittensor subnet integration registry — what each subnet exposes (APIs, docs, schemas), whether it is healthy, and how to call it.",
+      // #11204: the profiles that let a search engine resolve "Metagraphed" to
+      // one entity rather than treating each surface as an unrelated site.
+      // Only accounts this project actually controls are listed — a sameAs is
+      // an identity claim, and a wrong one merges us with someone else.
+      sameAs: [GITHUB_REPO_URL, X_PROFILE_URL],
     },
     {
       "@type": "WebSite",
@@ -499,10 +541,10 @@ function buildJsonLd(pathname: string): string {
   ];
   const breadcrumb = buildBreadcrumb(pathname);
   if (breadcrumb) graph.push(breadcrumb);
-  return JSON.stringify({
+  return stringifyJsonLd({
     "@context": "https://schema.org",
     "@graph": graph,
-  }).replace(/</g, "\\u003c");
+  });
 }
 
 /**

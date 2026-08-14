@@ -1,4 +1,5 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+import { GITHUB_REPO_URL } from "@/lib/metagraphed/identity";
 
 export function baseOptions(): BaseLayoutProps {
   return {
@@ -7,7 +8,7 @@ export function baseOptions(): BaseLayoutProps {
     // network switcher. Fumadocs' own nav row would just be a second,
     // redundant header stacked directly under the real one.
     nav: { enabled: false },
-    githubUrl: "https://github.com/JSONbored/metagraphed",
+    githubUrl: GITHUB_REPO_URL,
     // The app already has its own theme toggle (SettingsPopover, synced to
     // the pre-hydration bootstrap script in lib/theme.ts) -- a second one in
     // the docs nav would be redundant and could drift out of sync with it.
