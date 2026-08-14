@@ -3010,6 +3010,31 @@ export async function sweepableSubnets(
  * surface-less record would persist a `no-sources` finding built out of our own
  * outage. Same distinction `unreachable` keeps from `none-published`.
  */
+/**
+ * The declared template for one subnet's surfaces artifact, READ FROM THE
+ * CONTRACT rather than restated here.
+ *
+ * A literal `/metagraph/surfaces/${netuid}.json` would compile, pass every unit
+ * test, and silently stop resolving the day the contract moves the path -- which
+ * is the same failure mode as the bug this whole resolver exists to fix, one
+ * level up. `PUBLIC_ARTIFACTS` is the owner; this reads it.
+ *
+ * Throwing on a missing id is deliberate: the artifact is declared in
+ * `src/contracts.ts` and a build where it is not is a broken contract, not a
+ * condition to degrade through.
+ */
+const SURFACES_SUBNET_ARTIFACT_PATH = (() => {
+  const declared = PUBLIC_ARTIFACTS.find(
+    (entry) => entry.id === "surfaces-subnet",
+  )?.path;
+  if (!declared) {
+    throw new Error(
+      "contracts: PUBLIC_ARTIFACTS has no `surfaces-subnet` entry, which the attribution sweep resolves against",
+    );
+  }
+  return declared;
+})();
+
 export async function sweepRecordFor(
   env: Env,
   netuid: number,
@@ -3018,7 +3043,7 @@ export async function sweepRecordFor(
   if (!base) return null;
   const surfaces = await readArtifact(
     env,
-    `/metagraph/surfaces/${netuid}.json`,
+    artifactPathFromTemplate(SURFACES_SUBNET_ARTIFACT_PATH, { netuid }),
   );
   if (!surfaces.ok) {
     throw new Error(
