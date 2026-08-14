@@ -121,7 +121,39 @@ const SubnetEmissionSplitPointSchema = z
 
 export const SubnetEmissionSplitHistoryArtifactSchema =
   subnetHistoryArtifactSchema(SubnetEmissionSplitPointSchema)
-    .extend({ field_sources: FieldSourcesSchema.optional() })
+    .extend({
+      miner_earnings: z
+        .object({
+          earning_miner_count: z.int().min(0),
+          zero_miner_count: z.int().min(0).meta({
+            description:
+              "Miner UIDs seen in the window that never recorded emission -- published beside the percentiles because on the median subnet this is most of them, and a distribution over earners alone reads as universal income.",
+          }),
+          p50_alpha_day: z.number().nullable(),
+          p75_alpha_day: z.number().nullable(),
+          p90_alpha_day: z.number().nullable(),
+          top_alpha_day: z.number().nullable(),
+          p50_usd_day: z.number().nullable().meta({
+            description:
+              "What the MEDIAN earning miner makes per day in USD -- each UID's share of the window's summed miner emission (validators and the burn sink excluded) x the newest point's miner_usd_day. Null when that point's USD chain is (no priced tao-usd day, unknown alpha price).",
+          }),
+          p75_usd_day: z.number().nullable(),
+          p90_usd_day: z.number().nullable(),
+          top_usd_day: z.number().nullable(),
+          basis_date: z.string().nullable().meta({
+            description:
+              "The point whose per-day legs priced these figures -- the newest in the window.",
+          }),
+        })
+        .strict()
+        .nullable()
+        .optional()
+        .meta({
+          description:
+            "THE MINER INCOME DISTRIBUTION (#11096): what a miner here actually makes, per day, at p50/p75/p90 and the top earner, in alpha and USD -- shares measured from the window's per-UID emission (burn sink excluded), priced through the newest point's own legs. Null when the window holds no miner UIDs.",
+        }),
+      field_sources: FieldSourcesSchema.optional(),
+    })
     .describe(
       "Per-day split of one subnet's emission by recipient class — owner, validators, miners — over a 7d/30d/90d window, newest first. The validator/miner split is MEASURED from the per-UID neuron_daily rollup; the owner leg and every absolute figure are RECONSTRUCTED, because the owner's cut is paid outside the UID set and `SubnetOwnerCut` is unset on chain. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history.",
     );

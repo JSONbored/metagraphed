@@ -153,6 +153,12 @@ export const SUBNET_EMISSION_SPLIT_FIELD_SOURCES = {
   "points.validator_usd_day": { kind: "reconstructed", storage: null },
   "points.miner_usd_day": { kind: "reconstructed", storage: null },
   "points.burned_usd_day": { kind: "reconstructed", storage: null },
+  "miner_earnings.earning_miner_count": {
+    kind: "measured",
+    storage: "neuron_daily",
+  },
+  "miner_earnings.p50_usd_day": { kind: "reconstructed", storage: null },
+  "miner_earnings.top_usd_day": { kind: "reconstructed", storage: null },
   "points.miner_alpha": {
     kind: "measured",
     storage: "neuron_daily.emission_tao",
@@ -327,6 +333,16 @@ function emissionSplitPoint(
  * Null-safe: a cold or absent store yields `point_count: 0`, never a throw and
  * never a 404. A subnet with no daily rollup is a real state.
  */
+/** A sorted array's p-quantile by nearest-rank, or null on empty. */
+function quantile(sorted: number[], p: number): number | null {
+  if (sorted.length === 0) return null;
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.ceil(p * sorted.length) - 1),
+  );
+  return sorted[index];
+}
+
 export function buildSubnetEmissionSplitHistory(
   rows: Row[] | null | undefined,
   netuid: unknown,
@@ -372,12 +388,72 @@ export function buildSubnetEmissionSplitHistory(
       usdPerTaoByDay?.get(date) ?? null,
     ),
   );
+  // ── Per-UID miner earnings distribution (#11096) ─────────────────────────
+  // "What does a miner here make" -- the most common revenue question, derived
+  // wrong twice in a real research session before validation. Shares come from
+  // each MINER UID's window-summed emission samples (validators and the burn
+  // sink excluded); the money comes from the NEWEST point's own per-day legs,
+  // so the distribution and its pricing basis are one object.
+  const uidRao = new Map<number, bigint>();
+  const seenUids = new Set<number>();
+  for (const row of list) {
+    if (isValidator(row?.validator_permit)) continue;
+    if (burnHotkey != null && row?.hotkey === burnHotkey) continue;
+    const uid = nonNegativeCellOrNull(row?.uid);
+    if (uid === null) continue;
+    seenUids.add(uid);
+    const emission = nonNegativeCellOrNull(row?.emission_tao);
+    if (emission !== null && emission > 0) {
+      uidRao.set(uid, (uidRao.get(uid) ?? 0n) + toRaoBig(emission));
+    }
+  }
+  const masses = [...uidRao.values()].map(raoBigToTao).sort((a, b) => a - b);
+  const massTotal = masses.reduce((sum, v) => sum + v, 0);
+  const newest = points[0] as Row | undefined;
+  // miner_share is only ever a number when the point's `totals` object was
+  // built, and that object always writes total_alpha -- so one check suffices
+  // and a second would be an arm nothing can reach.
+  const minerAlphaDay =
+    newest && typeof newest.miner_share === "number"
+      ? (newest.total_alpha as number) * (newest.miner_share as number)
+      : null;
+  const minerUsdDay =
+    newest && typeof newest.miner_usd_day === "number"
+      ? (newest.miner_usd_day as number)
+      : null;
+  const legFor = (
+    share: number | null,
+    dayTotal: number | null,
+  ): number | null =>
+    share === null || dayTotal === null ? null : round9(share * dayTotal);
+  const shareAt = (p: number): number | null => {
+    const value = quantile(masses, p);
+    return value === null || massTotal <= 0 ? null : value / massTotal;
+  };
+  const minerEarnings =
+    seenUids.size === 0
+      ? null
+      : {
+          earning_miner_count: masses.length,
+          zero_miner_count: seenUids.size - masses.length,
+          p50_alpha_day: legFor(shareAt(0.5), minerAlphaDay),
+          p75_alpha_day: legFor(shareAt(0.75), minerAlphaDay),
+          p90_alpha_day: legFor(shareAt(0.9), minerAlphaDay),
+          top_alpha_day: legFor(shareAt(1), minerAlphaDay),
+          p50_usd_day: legFor(shareAt(0.5), minerUsdDay),
+          p75_usd_day: legFor(shareAt(0.75), minerUsdDay),
+          p90_usd_day: legFor(shareAt(0.9), minerUsdDay),
+          top_usd_day: legFor(shareAt(1), minerUsdDay),
+          basis_date: newest?.snapshot_date ?? null,
+        };
+
   return {
     schema_version: 1,
     netuid,
     window: window ?? null,
     point_count: points.length,
     points,
+    miner_earnings: minerEarnings,
     // Emitted by the BUILDER, not by each handler, so REST, MCP and GraphQL
     // publish byte-identical provenance. A per-surface copy is how one of them
     // ends up quietly claiming a reconstruction is a reading.

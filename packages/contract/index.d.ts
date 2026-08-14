@@ -11231,6 +11231,23 @@ export interface components {
                     storage: string | null;
                 };
             };
+            /** @description THE MINER INCOME DISTRIBUTION (#11096): what a miner here actually makes, per day, at p50/p75/p90 and the top earner, in alpha and USD -- shares measured from the window's per-UID emission (burn sink excluded), priced through the newest point's own legs. Null when the window holds no miner UIDs. */
+            miner_earnings?: {
+                /** @description The point whose per-day legs priced these figures -- the newest in the window. */
+                basis_date: string | null;
+                earning_miner_count: number;
+                p50_alpha_day: number | null;
+                /** @description What the MEDIAN earning miner makes per day in USD -- each UID's share of the window's summed miner emission (validators and the burn sink excluded) x the newest point's miner_usd_day. Null when that point's USD chain is (no priced tao-usd day, unknown alpha price). */
+                p50_usd_day: number | null;
+                p75_alpha_day: number | null;
+                p75_usd_day: number | null;
+                p90_alpha_day: number | null;
+                p90_usd_day: number | null;
+                top_alpha_day: number | null;
+                top_usd_day: number | null;
+                /** @description Miner UIDs seen in the window that never recorded emission -- published beside the percentiles because on the median subnet this is most of them, and a distribution over earners alone reads as universal income. */
+                zero_miner_count: number;
+            } | null;
             netuid: number;
             point_count: number;
             points: {
@@ -42031,6 +42048,19 @@ export interface operations {
                      *             "kind": "measured",
                      *             "storage": "example"
                      *           }
+                     *         },
+                     *         "miner_earnings": {
+                     *           "basis_date": "example",
+                     *           "earning_miner_count": 1,
+                     *           "p50_alpha_day": 0.5,
+                     *           "p50_usd_day": 0.5,
+                     *           "p75_alpha_day": 0.5,
+                     *           "p75_usd_day": 0.5,
+                     *           "p90_alpha_day": 0.5,
+                     *           "p90_usd_day": 0.5,
+                     *           "top_alpha_day": 0.5,
+                     *           "top_usd_day": 0.5,
+                     *           "zero_miner_count": 1
                      *         },
                      *         "netuid": 7,
                      *         "point_count": 1,

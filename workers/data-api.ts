@@ -7484,14 +7484,15 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       );
       const rows = await sql<{
         snapshot_date: NeuronDaily["snapshot_date"];
+        uid: NeuronDaily["uid"];
         hotkey: NeuronDaily["hotkey"];
         validator_permit: NeuronDaily["validator_permit"];
         emission_tao: NeuronDaily["emission_tao"];
         alpha_out_emission: SubnetSnapshots["alpha_out_emission"];
         alpha_price_tao: SubnetSnapshots["alpha_price_tao"];
       }>`
-        SELECT nd.snapshot_date, nd.hotkey, nd.validator_permit, nd.emission_tao,
-               ss.alpha_out_emission, ss.alpha_price_tao
+        SELECT nd.snapshot_date, nd.uid, nd.hotkey, nd.validator_permit,
+               nd.emission_tao, ss.alpha_out_emission, ss.alpha_price_tao
         FROM neuron_daily nd
         LEFT JOIN subnet_snapshots ss
           ON ss.netuid = nd.netuid AND ss.snapshot_date = nd.snapshot_date
