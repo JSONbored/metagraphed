@@ -115,6 +115,18 @@ describe("the declaration is load-bearing, not decorative", () => {
     );
   });
 
+  test("an undeclared table throws rather than returning undefined", () => {
+    // Unreachable through the typed API -- LaneTableName is `keyof typeof` the
+    // map, so indexing always yields a value. The guard is defence against a
+    // CAST, which is the only way in, and this documents that: a caller who
+    // casts gets a throw rather than an undefined that would flow on into an
+    // unscoped query.
+    assert.throws(
+      () => laneTableTopology("not_a_lane_table" as never),
+      /no declared topology for not_a_lane_table/,
+    );
+  });
+
   test("requireFullScanValue refuses a table with nothing to scope on", () => {
     // The guard a caller building `WHERE source = ?` depends on. Binding null
     // there matches no rows at all, so the rule would report zero coverage
