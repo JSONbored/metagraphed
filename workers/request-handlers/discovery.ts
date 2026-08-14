@@ -238,7 +238,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 
 // Shared headers for the worker-owned discovery surfaces: open CORS so agents
 // can fetch cross-origin, the discovery Link header, and a public cache.
-function discoveryHeaders(contentType: string): Headers {
+export function discoveryHeaders(contentType: string): Headers {
   const headers = new Headers();
   headers.set("access-control-allow-origin", "*");
   headers.set("content-type", contentType);

@@ -213,6 +213,7 @@ import {
   X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   type CacheProfile,
+  readBoundedRequestText,
 } from "./http.ts";
 import {
   latestPointer,
@@ -229,6 +230,10 @@ import {
   envelopeResponse,
   publishedAt,
 } from "./responses.ts";
+import {
+  A2A_CARD_PATH,
+  A2A_ENDPOINT_PATH,
+} from "./request-handlers/a2a-paths.ts";
 import {
   BADGE_SVG_PATTERN,
   homepageResponse,
@@ -6136,6 +6141,16 @@ async function dispatchRequest(
     return handleGraphQLRequest(request, env, ctx);
   }
 
+  // A2A endpoint (#11175): a POST surface, so it must dispatch before the
+  // write-method gate below -- which 405s any method a matched read route
+  // does not take -- exactly as /mcp and /graphql do above. Deferred import
+  // for the same reason as both of those (#10424): the handler pulls in the
+  // AI stack, and the router stays cheap for requests that never touch it.
+  if (url.pathname === A2A_ENDPOINT_PATH) {
+    const { handleA2ARequest } = await import("./request-handlers/a2a.ts");
+    return handleA2ARequest(request, env);
+  }
+
   if (!["GET", "HEAD"].includes(request.method)) {
     // 405 says "this resource exists, but not with that method", so it is only true of
     // a path that exists. Every write route has already returned by here, so anything
@@ -6289,6 +6304,16 @@ async function dispatchRequest(
 
   if (url.pathname === "/.well-known/mcp/server-card.json") {
     return mcpServerCardResponse(request, env);
+  }
+
+  // A2A card (#11175): the card and the endpoint ship together, because a
+  // card advertising a capability with nothing behind it is the
+  // discovery-document version of a dead link. The card names one skill
+  // (ask); the ENDPOINT route lives above the write-method gate with the
+  // other POST surfaces.
+  if (url.pathname === A2A_CARD_PATH) {
+    const { agentCardResponse } = await import("./request-handlers/a2a.ts");
+    return agentCardResponse(request);
   }
 
   // Agent tool specs for non-MCP runtimes (OpenAI function calling / Anthropic
@@ -10410,42 +10435,6 @@ function aiRateLimitedResponse(rateLimit: TieredRateLimitResult) {
   );
 }
 
-async function readBoundedRequestText(request: Request, maxBytes: number) {
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > maxBytes) {
-    return { ok: false, text: "" };
-  }
-
-  if (!request.body) {
-    return { ok: true, text: "" };
-  }
-
-  const reader = request.body.getReader();
-  const decoder = new TextDecoder();
-  let bytes = 0;
-  let text = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk =
-        typeof value === "string" ? new TextEncoder().encode(value) : value;
-      bytes += chunk.byteLength;
-      if (bytes > maxBytes) {
-        await reader.cancel();
-        return { ok: false, text: "" };
-      }
-      text += decoder.decode(chunk, { stream: true });
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  text += decoder.decode();
-  return { ok: true, text };
-}
-
 async function handleSemanticSearchRequest(
   request: Request,
   env: Env,
@@ -10766,7 +10755,9 @@ async function liveHealthOverlay(
 function allowedMethodsForPath(pathname: string): string {
   const url = { pathname };
   let methods = "GET, HEAD, OPTIONS";
-  if (url.pathname.startsWith("/rpc/")) {
+  if (url.pathname === A2A_ENDPOINT_PATH) {
+    methods = "POST, OPTIONS";
+  } else if (url.pathname.startsWith("/rpc/")) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";

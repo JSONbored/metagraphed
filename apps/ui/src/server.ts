@@ -38,6 +38,7 @@ const SITE_ORIGIN = "https://metagraph.sh";
 const DISCOVERY_CONTENT_TYPES = {
   "/.well-known/api-catalog": ["application/linkset+json", "application/json"],
   "/.well-known/mcp/server-card.json": ["application/json"],
+  "/.well-known/agent-card.json": ["application/json"],
   "/.well-known/agent-skills/index.json": ["application/json"],
   "/.well-known/security.txt": ["text/plain"],
   "/llms.txt": ["text/plain"],
