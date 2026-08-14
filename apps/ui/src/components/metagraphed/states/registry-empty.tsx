@@ -1,8 +1,25 @@
+import { ExternalLink } from "@jsonbored/ui-kit";
 import { Link } from "@tanstack/react-router";
 import { Inbox, AlertTriangle, Clock, RefreshCw, ArrowRight, Search, FileText } from "lucide-react";
 import type { ReactNode } from "react";
+import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
 import { formatFreshness, formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
+
+/**
+ * Resolve an evidence link to the host that serves it (#11204).
+ *
+ * Callers pass artifact paths in the form the API publishes them —
+ * `/metagraph/gaps.json` — which is NOT same-origin here: the artifacts live on
+ * api.metagraph.sh, so rendering the path as-is emitted an apex link that 404s,
+ * and those links were the crawl errors Search Console attributed to this
+ * prefix. Resolving against `API_BASE` makes every caller correct by
+ * construction and keeps an already-absolute href (e.g. the repo URL that
+ * -design-primitives-page passes) untouched.
+ */
+export function resolveEvidenceHref(href: string): string {
+  return href.startsWith("/") ? `${API_BASE}${href}` : href;
+}
 
 export type RegistryEmptyVariant = "empty" | "error" | "stale";
 
@@ -129,21 +146,18 @@ export function RegistryEmpty({
           {evidenceHref ? (
             <p className="mg-type-caption text-ink-muted">
               <span className="mg-type-caption opacity-70">where to verify · </span>
-              {/* Stays a raw anchor deliberately: evidenceHref is a
-                  same-origin relative artifact path (e.g. /metagraph/gaps.json
-                  on -gaps-page / -surfaces-page), and <ExternalLink>'s
-                  safeExternalUrl rejects relative URLs outright -- converting
-                  would render the "blocked unsafe URL" fallback and break the
-                  link (#8192). */}
-              <a
-                href={evidenceHref}
-                // eslint-disable-next-line no-restricted-syntax -- raw target="_blank" is genuinely required here: <ExternalLink>'s safeExternalUrl calls `new URL(href)` with no base URL, so the same-origin relative artifact paths this prop receives in production (/metagraph/gaps.json, /metagraph/endpoints.json, /metagraph/surfaces.json) all throw, get rejected, and would render as the "Blocked unsafe external URL" fallback instead of a working link
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* #11204: resolveEvidenceHref makes this absolute before it is
+                  rendered, so <ExternalLink>'s safeExternalUrl can parse it.
+                  The raw anchor this replaced existed only because the relative
+                  form threw in `new URL(href)` (#8192) — and that relative form
+                  was itself the defect: it pointed at the apex, which does not
+                  serve artifacts. */}
+              <ExternalLink
+                href={resolveEvidenceHref(evidenceHref)}
                 className="inline-flex items-center gap-1 text-accent hover:underline"
               >
                 <FileText className="size-3" /> evidence &amp; sources
-              </a>
+              </ExternalLink>
             </p>
           ) : null}
 

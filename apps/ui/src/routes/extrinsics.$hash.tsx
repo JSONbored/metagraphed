@@ -5,7 +5,11 @@ import { extrinsicQuery } from "@/lib/metagraphed/queries";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall, isValidExtrinsicHash } from "@/lib/metagraphed/extrinsics";
 import { ExtrinsicDetailPage } from "./-extrinsics-hash-page";
-import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
+import {
+  entityNotFoundMeta,
+  isMissingEntityError,
+  isNotFoundMatch,
+} from "@/lib/metagraphed/entity-not-found-meta";
 import { rateLimitedResponse } from "@/lib/metagraphed/rate-limited-response";
 
 export const Route = createFileRoute("/extrinsics/$hash")({
@@ -21,11 +25,9 @@ export const Route = createFileRoute("/extrinsics/$hash")({
   // any failure falls back to the hash-only copy and the page's own
   // useSuspenseQuery still drives the not-found/empty path.
   loader: async ({ context, params }) => {
+    let result;
     try {
-      const { data } = await context.queryClient.ensureQueryData(extrinsicQuery(params.hash));
-      return {
-        call: data ? extrinsicCall(data.call_module, data.call_function) : null,
-      };
+      result = await context.queryClient.ensureQueryData(extrinsicQuery(params.hash));
     } catch (error) {
       // #11000: a throttled PRIMARY query has no page to render, and answering
       // 200-with-an-error-card tells a crawler the render succeeded. Throw the
@@ -38,12 +40,18 @@ export const Route = createFileRoute("/extrinsics/$hash")({
       // failure keeps returning null so the page still renders and the
       // component's own query drives the error path -- marking a page noindex
       // on a transient blip would de-index real entities during an outage.
-      if (isMissingEntityError(error)) return { missing: true as const };
+      if (isMissingEntityError(error)) throw notFound();
       return null;
     }
+    // #11204: same second encoding as /blocks/$ref -- the API answers `ok:true`
+    // with `extrinsic: null` for a hash it has never seen, so absence arrives
+    // as a resolved query rather than an error. `normalizeExtrinsic` folds it
+    // to a null `data`.
+    if (!result.data) throw notFound();
+    return { call: extrinsicCall(result.data.call_module, result.data.call_function) };
   },
-  head: ({ params, loaderData }) => {
-    if (loaderData && "missing" in loaderData) {
+  head: ({ params, loaderData, match }) => {
+    if (isNotFoundMatch(match)) {
       return entityNotFoundMeta(
         "Extrinsic",
         "No indexed Bittensor extrinsic matches this reference.",
@@ -67,11 +75,13 @@ export const Route = createFileRoute("/extrinsics/$hash")({
       <PageHeading
         eyebrow="Explorer"
         title="Extrinsic not found"
-        description="Extrinsic references must be a 0x-prefixed hexadecimal hash or a block#index label (e.g. 123456-2)."
+        description="This reference names no indexed extrinsic."
       />
+      {/* #11204: serves both causes now -- malformed, and well-formed but
+          naming nothing -- so it no longer asserts the reference was invalid. */}
       <EmptyState
-        title="Invalid extrinsic reference"
-        description="Use a 0x-prefixed hexadecimal extrinsic hash or a block#index label (e.g. 123456-2)."
+        title="Extrinsic not found"
+        description="No indexed extrinsic matches this reference. It may not be indexed yet, or the reference may be malformed — use a 0x-prefixed hexadecimal extrinsic hash or a block#index label (e.g. 123456-2)."
         action={{ label: "Back to extrinsics", href: "/extrinsics" }}
       />
     </AppShell>
