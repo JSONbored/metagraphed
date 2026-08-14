@@ -899,6 +899,27 @@
       "review": {
         "state": "maintainer-reviewed"
       }
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The credential is the request body itself: registration requires the orchestrator's hotkey plus a wallet signature over the payload (verified against the live OpenAPI schema 2026-08-14). No header/apiKey applies; the spec declares no per-operation security."
+      },
+      "id": "sn-105-beam-orchestrators-register",
+      "name": "Beam POST orchestrators register",
+      "kind": "subnet-api",
+      "method": "POST",
+      "url": "https://beamcore.b1m.ai/orchestrators/register",
+      "provider": "beam",
+      "auth_required": true,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "notes": "Declared mutation (#11146 phase 3): POST /orchestrators/register on beamcore.b1m.ai, the mandatory registration step before an orchestrator can connect (the missing route named by the SN105 field report). Verified against the subnet's live OpenAPI schema 2026-08-14: POST-only, JSON body requiring `hotkey` with a wallet `signature` (the body IS the credential; the spec declares no per-operation security). Never probed -- the manifest schema forbids an enabled probe on a non-GET surface -- so it carries no probe-derived health; reach it through call_subnet_surface's schema-gated execution."
     }
   ],
   "website_url": "https://b1m.ai/"
