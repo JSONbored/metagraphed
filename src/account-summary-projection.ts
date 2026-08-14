@@ -43,6 +43,19 @@ export const ACCOUNT_SUMMARY_PROJECTION_PREFIX =
 /**
  * How many shards the producer fans accounts across.
  *
+ * SIZED FROM THE REAL PAYLOAD, because this number is what the route pays PER
+ * REQUEST -- one whole shard is fetched to answer for one account. Measured:
+ * 5,025,347 (account, event_kind, netuid) groups across ~1.2M accounts, 106 B
+ * of JSON per group plus 53 B per account key, so ~601 MB in total:
+ *
+ *     shards    per shard   accounts/shard
+ *        256      2294 KB             4688
+ *       1024       573 KB             1172
+ *       4096       143 KB              293
+ *      16384        36 KB               73
+ *
+ * 16384 keeps a request at ~36 KB, against the 4,374 MB scan it replaces.
+ *
  * MUST match `ACCOUNT_SUMMARY_SHARDS` on the writer. A mismatch does not error:
  * both sides compute a shard number happily and simply disagree about which
  * object holds an account, so every lookup misses and the route silently falls
@@ -51,7 +64,7 @@ export const ACCOUNT_SUMMARY_PROJECTION_PREFIX =
  * body's own `shard_count` could not detect the disagreement, because it would
  * have to fetch the right object first to learn it was fetching the wrong one.
  */
-export const ACCOUNT_SUMMARY_SHARDS = 256;
+export const ACCOUNT_SUMMARY_SHARDS = 16384;
 
 /** The payload shape this reader understands. A producer that changes a field's
  * MEANING bumps it, and this declines rather than misreading the new one. */

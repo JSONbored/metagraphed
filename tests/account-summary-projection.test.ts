@@ -65,6 +65,20 @@ function shardBody(
 }
 
 describe("accountShard", () => {
+  test("the fan-out is sized from the real payload", () => {
+    // This is what the route pays PER REQUEST: one whole shard is fetched to
+    // answer for one account. ~601 MB of groups over 16384 shards is ~36 KB a
+    // request; over 256 it would have been 2.3 MB.
+    assert.equal(ACCOUNT_SUMMARY_SHARDS, 16384);
+  });
+
+  test("MATCHES THE PRODUCER AT THE DEFAULT FAN-OUT", () => {
+    // Pinned identically in metagraphed-infra's test_account_summary_r2.py.
+    assert.equal(accountShard(HOT), 11213);
+    assert.equal(accountShard(COLD), 5958);
+    assert.equal(accountShard(""), 7621);
+  });
+
   test("MATCHES THE PRODUCER BYTE FOR BYTE", () => {
     // These three values are asserted IDENTICALLY in metagraphed-infra's
     // services/indexer-rs/loader/test_account_summary_r2.py. Two
@@ -83,7 +97,9 @@ describe("accountShard", () => {
     // loses precision past 2^53 and starts disagreeing with python.
     const long = "5" + "z".repeat(200);
     assert.ok(Number.isInteger(accountShard(long)));
-    assert.ok(accountShard(long) >= 0 && accountShard(long) < 256);
+    assert.ok(
+      accountShard(long) >= 0 && accountShard(long) < ACCOUNT_SUMMARY_SHARDS,
+    );
   });
 
   test("stays inside the shard count for every fan-out", () => {
@@ -98,7 +114,7 @@ describe("accountShard", () => {
   test("the key names the object the producer writes", () => {
     assert.equal(
       accountSummaryShardKey(HOT),
-      "metagraph/projections/account-summary/205.json",
+      "metagraph/projections/account-summary/11213.json",
     );
   });
 });
@@ -110,7 +126,7 @@ describe("loadAccountSummaryProjection", () => {
     });
     const groups = await loadAccountSummaryProjection(store.env, HOT);
     assert.deepEqual(store.asked, [
-      "metagraph/projections/account-summary/205.json",
+      "metagraph/projections/account-summary/11213.json",
     ]);
     assert.equal(groups!.length, 1);
     assert.deepEqual(groups![0], {
