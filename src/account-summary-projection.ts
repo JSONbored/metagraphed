@@ -66,6 +66,27 @@ export const ACCOUNT_SUMMARY_PROJECTION_PREFIX =
  */
 export const ACCOUNT_SUMMARY_SHARDS = 16384;
 
+/**
+ * How old a shard may be before this reader stops trusting it.
+ *
+ * A STALE PROJECTION SERVED AS FACT IS THE ONE WAY THIS CAN BE WRONG. Every
+ * other failure here declines and the caller reads the lakehouse; a shard that
+ * parses fine but was written a month ago would be published as the account's
+ * current totals, with nothing in the payload to say so -- the card's
+ * `generated_at` comes from the live recent-feed leg, so a frozen aggregate
+ * beside a fresh feed looks entirely healthy.
+ *
+ * Three days. The producer's own floor is 20 hours, so this clears a missed
+ * run, an overrunning one and a container redeploy, while still catching a dead
+ * lane in days rather than never. Past it the route returns to exactly the
+ * lakehouse read it used before the projection existed -- slower, correct, and
+ * self-healing the moment the producer recovers.
+ *
+ * The same reasoning the projection-staleness watchdog applies in missed ticks:
+ * a bound near one producer interval alerts on a lane that is merely working.
+ */
+export const ACCOUNT_SUMMARY_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
 /** The payload shape this reader understands. A producer that changes a field's
  * MEANING bumps it, and this declines rather than misreading the new one. */
 export const ACCOUNT_SUMMARY_SCHEMA_VERSION = 1;
@@ -147,7 +168,11 @@ function finite(value: unknown): number | null {
 export async function loadAccountSummaryProjection(
   env: Env | null | undefined,
   account: string,
-  { shards = ACCOUNT_SUMMARY_SHARDS }: { shards?: number } = {},
+  {
+    shards = ACCOUNT_SUMMARY_SHARDS,
+    now = Date.now,
+    maxAgeMs = ACCOUNT_SUMMARY_MAX_AGE_MS,
+  }: { shards?: number; now?: () => number; maxAgeMs?: number } = {},
 ): Promise<Record<string, unknown>[] | null> {
   // Same binding the thirteen sibling projections read from.
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
@@ -173,6 +198,18 @@ export async function loadAccountSummaryProjection(
   // partitioning, so its absence of this account proves nothing.
   const declared = finite(payload["shard_count"]);
   if (declared !== null && declared !== shards) return null;
+
+  // STALE IS A DECLINE, not a slightly-old answer. See
+  // ACCOUNT_SUMMARY_MAX_AGE_MS: this is the only failure mode that could
+  // publish something wrong rather than merely fall back.
+  // A STRING, not whatever coerces. `Date.parse(String(12345))` is a valid
+  // date -- the year 12345 -- so a numeric field would read as fresh forever.
+  // The producer writes an ISO instant; anything else is a shape this reader
+  // does not understand.
+  const stamp = payload["generated_at"];
+  const generated = typeof stamp === "string" ? Date.parse(stamp) : Number.NaN;
+  if (!Number.isFinite(generated)) return null;
+  if (maxAgeMs > 0 && now() - generated > maxAgeMs) return null;
 
   const accounts = payload["accounts"];
   if (!accounts || typeof accounts !== "object") return null;
