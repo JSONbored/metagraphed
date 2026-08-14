@@ -8636,6 +8636,22 @@ export interface components {
                 gaps: components["schemas"]["Gaps"];
                 name: string;
                 netuid: number;
+                schema_parity?: {
+                    /** @description The capture lane's declared cadence in hours. Compare it against the backing entries' `snapshot.observed_at` (GET /api/v1/schemas) to judge whether this measurement rests on a current capture. No age is baked: this document is served for hours after it is built, so a build-stamped age would be wrong on arrival. */
+                    capture_cadence_hours: number;
+                    /** @description Paths the subnet's captured spec(s) declare, summed across captured specs. */
+                    captured_path_count: number;
+                    /** @description Captured machine-readable specs backing this measurement. */
+                    captured_schema_count: number;
+                    /** @description Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero. */
+                    declared_non_get_count: number | null;
+                    /** @description True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing. Judge its currency from the entry's `observed_at` against the schema index's `capture_cadence_hours`. */
+                    flagged: boolean;
+                    /** @description Registered surfaces declaring a non-GET method (#11146 phase 3). */
+                    registered_non_get_count: number;
+                    /** @description Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route). */
+                    registered_route_surface_count: number;
+                };
                 slug: string;
             }[];
             generated_at: string;
@@ -10347,7 +10363,10 @@ export interface components {
             schema_version: 1;
             schemas: {
                 content_type?: string | null;
-                /** @enum {string} */
+                /**
+                 * @description How this capture compares to the PREVIOUS capture of the same surface by this registry -- NOT to the subnet's live spec. `unchanged` means 'our snapshot is what it was', never 'the upstream API has not changed'. Judge currency by comparing this entry's `snapshot.observed_at` against `capture_cadence_hours` on the subnet's /api/v1/gaps `schema_parity` block.
+                 * @enum {string}
+                 */
                 drift_status: "new" | "changed" | "unchanged" | "not-captured" | "missing-after-previous-capture";
                 error?: string | null;
                 hash?: string | null;
@@ -10370,6 +10389,7 @@ export interface components {
                     generated_at?: string | null;
                     hash?: string | null;
                     netuid?: number | null;
+                    non_get_operation_count?: number;
                     observed_at?: string | null;
                     openapi_version?: string | null;
                     path_count?: number;

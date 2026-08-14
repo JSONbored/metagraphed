@@ -47,6 +47,43 @@ export type CurationArtifact = z.infer<typeof CurationArtifactSchema>;
 
 export const GAPS_SORT_FIELDS = API_QUERY_COLLECTIONS.gaps.sort_fields;
 
+/** #11146 phase 4: captured spec vs registered catalogue, per subnet. Present
+ * only when the subnet has captured schema-index entries with stamped counts
+ * -- absence means "not measured", never "in parity". Not exported: the only
+ * consumer is GapsEntrySchema below, and an export nothing imports is what
+ * the unreferenced-exports ratchet counts. */
+const SchemaParitySchema = z
+  .object({
+    capture_cadence_hours: z.number().min(0).meta({
+      description:
+        "The capture lane's declared cadence in hours. Compare it against the backing entries' `snapshot.observed_at` (GET /api/v1/schemas) to judge whether this measurement rests on a current capture. No age is baked: this document is served for hours after it is built, so a build-stamped age would be wrong on arrival.",
+    }),
+    captured_schema_count: z.int().min(1).meta({
+      description: "Captured machine-readable specs backing this measurement.",
+    }),
+    captured_path_count: z.int().min(0).meta({
+      description:
+        "Paths the subnet's captured spec(s) declare, summed across captured specs.",
+    }),
+    declared_non_get_count: z.int().min(0).nullable().meta({
+      description:
+        "Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero.",
+    }),
+    registered_route_surface_count: z.int().min(0).meta({
+      description:
+        "Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route).",
+    }),
+    registered_non_get_count: z.int().min(0).meta({
+      description:
+        "Registered surfaces declaring a non-GET method (#11146 phase 3).",
+    }),
+    flagged: z.boolean().meta({
+      description:
+        "True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing. Judge its currency from the entry's `observed_at` against the schema index's `capture_cadence_hours`.",
+    }),
+  })
+  .strict();
+
 export const GapsEntrySchema = z
   .object({
     netuid: z.int().min(0),
@@ -61,6 +98,7 @@ export const GapsEntrySchema = z
     gaps: GapsSchema,
     gap_severity: z.enum(ENDPOINT_INCIDENT_SEVERITY_VALUES).optional(),
     gap_priority: z.int().min(0).optional(),
+    schema_parity: SchemaParitySchema.optional(),
   })
   .strict();
 
