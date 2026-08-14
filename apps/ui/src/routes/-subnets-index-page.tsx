@@ -70,6 +70,7 @@ import {
   CompareToggle,
 } from "@/components/metagraphed/subnets-compare-drawer";
 import {
+  SUBNETS_ALL_LIMIT,
   subnetsQuery,
   coverageQuery,
   healthQuery,
@@ -94,6 +95,7 @@ import { API_BASE } from "@/lib/metagraphed/config";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
 import { LeaderboardsSection, LeaderboardsCsvExportMenu } from "./-leaderboards-page";
 import { DomainsRollup } from "@/components/metagraphed/domains-rollup";
+import { SubnetIndexDirectory } from "@/components/metagraphed/subnet-index-directory";
 import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
 import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
 
@@ -102,7 +104,6 @@ import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
 // "Load more" tier anymore. 200 comfortably exceeds the live subnet count
 // (verified: GET /api/v1/subnets?limit=200 already returns all 129 with
 // next_cursor: null) with headroom for registry growth.
-const ALL_ROWS_LIMIT = 200;
 
 // #8362: the mobile card branch (unlike the desktop table) isn't virtualized
 // -- it's a plain map over every filtered/sorted row, so all 129 cards
@@ -232,7 +233,7 @@ export function SubnetsPage() {
       replace: true,
       resetScroll: false,
     });
-  const subnetsCsvUrl = buildUrl("/api/v1/subnets", { limit: ALL_ROWS_LIMIT });
+  const subnetsCsvUrl = buildUrl("/api/v1/subnets", { limit: SUBNETS_ALL_LIMIT });
   return (
     <AppShell>
       <PageMasthead
@@ -317,6 +318,16 @@ export function SubnetsPage() {
             <h2 className="mb-2 mg-type-label text-ink-muted">Registration churn</h2>
             <NetworkSubnetLifecycle />
           </section>
+          {/* #11204: the table above virtualizes, so its server-rendered HTML
+              carries anchors for ~30 of 129 subnets and the other 99 pages had
+              no internal link anywhere on the site. This is the complete index
+              — see the component for why it is not a duplicate of the table. */}
+          <AsyncPanel
+            context="subnet index"
+            fallback={<PanelSkeleton height="sm" className="mt-8" />}
+          >
+            <SubnetIndexDirectory />
+          </AsyncPanel>
         </>
       )}
       <ApiSourceFooter
@@ -517,7 +528,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // returns HTTP 400, `curation`/`health` are ignored) -- everything else is
   // applied client-side over this one page.
   const { data, isFetching } = useSuspenseQuery(
-    subnetsQuery({ q: search.q || undefined, limit: ALL_ROWS_LIMIT }),
+    subnetsQuery({ q: search.q || undefined, limit: SUBNETS_ALL_LIMIT }),
   );
 
   const watchlist = useWatchlist("subnet");
