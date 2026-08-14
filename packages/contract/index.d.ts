@@ -8636,6 +8636,20 @@ export interface components {
                 gaps: components["schemas"]["Gaps"];
                 name: string;
                 netuid: number;
+                schema_parity?: {
+                    /** @description Paths the subnet's captured spec(s) declare, summed across captured specs. */
+                    captured_path_count: number;
+                    /** @description Captured machine-readable specs backing this measurement. */
+                    captured_schema_count: number;
+                    /** @description Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero. */
+                    declared_non_get_count: number | null;
+                    /** @description True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing. Judge its currency from the entry's `observed_at` against the schema index's `capture_cadence_hours`. */
+                    flagged: boolean;
+                    /** @description Registered surfaces declaring a non-GET method (#11146 phase 3). */
+                    registered_non_get_count: number;
+                    /** @description Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route). */
+                    registered_route_surface_count: number;
+                };
                 slug: string;
             }[];
             generated_at: string;
@@ -10331,6 +10345,7 @@ export interface components {
             url: string;
         };
         SchemaIndexArtifact: {
+            capture_cadence_hours?: number;
             contract_version?: string;
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
@@ -10347,6 +10362,11 @@ export interface components {
             schema_version: 1;
             schemas: {
                 content_type?: string | null;
+                /**
+                 * @description What drift_status compares against: this registry's PREVIOUS capture of the same surface, never the subnet's live spec. `unchanged` means 'our snapshot is what it was', NOT 'the upstream API has not changed'. Judge currency from this entry's `snapshot.observed_at` against the artifact's `capture_cadence_hours`.
+                 * @constant
+                 */
+                drift_basis?: "previous-capture";
                 /** @enum {string} */
                 drift_status: "new" | "changed" | "unchanged" | "not-captured" | "missing-after-previous-capture";
                 error?: string | null;
@@ -10370,6 +10390,7 @@ export interface components {
                     generated_at?: string | null;
                     hash?: string | null;
                     netuid?: number | null;
+                    non_get_operation_count?: number;
                     observed_at?: string | null;
                     openapi_version?: string | null;
                     path_count?: number;
@@ -39252,6 +39273,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "capture_cadence_hours": 0.5,
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",

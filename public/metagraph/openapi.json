@@ -8240,6 +8240,7 @@
       "SchemaIndexArtifactResponse": {
         "value": {
           "data": {
+            "capture_cadence_hours": 0.5,
             "contract_version": "2026-06-29.1",
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
@@ -34250,6 +34251,61 @@
                   "minimum": 0,
                   "type": "integer"
                 },
+                "schema_parity": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "captured_path_count": {
+                      "description": "Paths the subnet's captured spec(s) declare, summed across captured specs.",
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "captured_schema_count": {
+                      "description": "Captured machine-readable specs backing this measurement.",
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "declared_non_get_count": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero."
+                    },
+                    "flagged": {
+                      "description": "True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing. Judge its currency from the entry's `observed_at` against the schema index's `capture_cadence_hours`.",
+                      "type": "boolean"
+                    },
+                    "registered_non_get_count": {
+                      "description": "Registered surfaces declaring a non-GET method (#11146 phase 3).",
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "registered_route_surface_count": {
+                      "description": "Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route).",
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "captured_schema_count",
+                    "captured_path_count",
+                    "declared_non_get_count",
+                    "registered_route_surface_count",
+                    "registered_non_get_count",
+                    "flagged"
+                  ],
+                  "type": "object"
+                },
                 "slug": {
                   "type": "string"
                 }
@@ -43396,6 +43452,10 @@
       "SchemaIndexArtifact": {
         "additionalProperties": false,
         "properties": {
+          "capture_cadence_hours": {
+            "minimum": 0,
+            "type": "number"
+          },
           "contract_version": {
             "type": "string"
           },
@@ -43445,6 +43505,11 @@
                       "type": "null"
                     }
                   ]
+                },
+                "drift_basis": {
+                  "const": "previous-capture",
+                  "description": "What drift_status compares against: this registry's PREVIOUS capture of the same surface, never the subnet's live spec. `unchanged` means 'our snapshot is what it was', NOT 'the upstream API has not changed'. Judge currency from this entry's `snapshot.observed_at` against the artifact's `capture_cadence_hours`.",
+                  "type": "string"
                 },
                 "drift_status": {
                   "enum": [
@@ -43633,6 +43698,11 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "non_get_operation_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
                     },
                     "observed_at": {
                       "anyOf": [

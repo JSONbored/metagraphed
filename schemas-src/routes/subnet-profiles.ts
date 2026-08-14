@@ -113,6 +113,9 @@ export const SchemaSnapshotSchema = z
     auth_schemes: z.array(z.string()).optional(),
     hash: z.string().nullable().optional(),
     previous_hash: z.string().nullable().optional(),
+    // #11146: how many declared operations are mutations. Absent on a snapshot
+    // captured before the stamp -- unmeasured, not zero.
+    non_get_operation_count: z.int().min(0).optional(),
     drift_status: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     generated_at: z.string().nullable().optional(),
@@ -125,6 +128,14 @@ const SchemaIndexEntrySchema = z
   .object({
     content_type: z.string().nullable().optional(),
     drift_status: SchemaDriftStatusSchema,
+    // #11146 phase 2: WHAT drift_status is measured against. It was being read
+    // as "in sync with the subnet's published spec" when it only ever meant
+    // "equal to OUR previous snapshot" -- and with the capture lane manual,
+    // that was true and meaningless on 23 of 24 drifted subnets.
+    drift_basis: z.literal("previous-capture").optional().meta({
+      description:
+        "What drift_status compares against: this registry's PREVIOUS capture of the same surface, never the subnet's live spec. `unchanged` means 'our snapshot is what it was', NOT 'the upstream API has not changed'. Judge currency from this entry's `snapshot.observed_at` against the artifact's `capture_cadence_hours`.",
+    }),
     error: z.string().nullable().optional(),
     hash: z.string().nullable().optional(),
     netuid: z.int().min(0).optional(),
@@ -159,6 +170,11 @@ export const SchemaIndexArtifactSchema = ArtifactBaseSchema.extend({
   // .optional() rather than required. Not in the hand-edited schema's named
   // properties, only legal today via additionalProperties:true.
   observed_at: z.string().optional(),
+  // #11146 phase 1: the lane's declared cadence in hours. Freshness is a
+  // READER-side subtraction (each entry carries observed_at) rather than a
+  // baked verdict: this artifact is served for hours after it is built, so an
+  // age stamped at build time is wrong on arrival.
+  capture_cadence_hours: z.number().min(0).optional(),
   summary: SchemaDriftSummarySchema.optional(),
   // The schema-snapshots cron's promotion provenance (SchemaIndexArtifact in
   // src/schema-snapshots-sync.ts: "with only summary/schemas replaced ... and

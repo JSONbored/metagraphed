@@ -86,6 +86,30 @@ export const SCHEMA_INDEX_ARTIFACT_PATH = "/metagraph/schemas/index.json";
  */
 export const SCHEMA_SNAPSHOT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * The capture lane's declared cadence (#11146 phase 1): how old a captured
+ * schema may be before a reader should treat it as stale.
+ *
+ * WHY A NUMBER RATHER THAN A STAMPED VERDICT. The artifact is published once
+ * and served for hours, so an age computed at BUILD time is wrong the moment
+ * it is read -- and `buildTimestamp()` is the 1970 epoch placeholder in every
+ * local build, which would publish a twelve-day-old capture as fresh. So the
+ * payload carries the two facts a reader needs -- each entry's `observed_at`
+ * and this cadence -- and the subtraction happens against the reader's own
+ * clock, where "now" is genuinely now.
+ *
+ * The lane itself stays manual by ADR 0006. Declaring the cadence does not run
+ * it; it makes the lane's silence MEASURABLE, which is the difference between
+ * an unpublished gap and a published one.
+ *
+ * 48 hours: two days of tolerance over a daily-ish refresh, so one skipped run
+ * is not noise while a lane that stopped shows within two days.
+ */
+export const SCHEMA_CAPTURE_CADENCE_HOURS = 48;
+
+/** What `drift_status` is measured against -- never the live upstream spec. */
+export const SCHEMA_DRIFT_BASIS = "previous-capture";
+
 /** Statuses that mean "we have a real document behind this entry". */
 const CAPTURED_STATUS = "captured";
 
