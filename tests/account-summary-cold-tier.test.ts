@@ -11,6 +11,7 @@
 // capped-scan boundary must survive the probe that used to answer it being
 // folded into the aggregate (it was the query that aborted -- see "two reads").
 import assert from "node:assert/strict";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
@@ -19,6 +20,7 @@ import {
 } from "../src/account-feeds-cold-tier.ts";
 import {
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+  ACCOUNT_SUMMARY_RECENT_LIMIT,
   buildAccountSummary,
 } from "../src/account-events.ts";
 
@@ -61,7 +63,12 @@ const GROUPS = [
   },
 ];
 const RECENT = [
-  { block_number: 8_760_000, event_kind: "AxonServed", netuid: 55 },
+  {
+    block_number: 8_760_000,
+    event_kind: "AxonServed",
+    netuid: 55,
+    observed_at: AGG.lo,
+  },
 ];
 
 /**
@@ -89,16 +96,24 @@ function fakeEngine(
     deps?: { onError?: (detail: string) => void },
   ) => {
     seen.push(sql);
-    const answer = sql.includes("GROUP BY event_kind, netuid")
+    const grouped = sql.includes("GROUP BY event_kind, netuid");
+    const answer = grouped
       ? pick(overrides.groups, GROUPS)
       : pick(overrides.recent, RECENT);
     if (answer === null) {
       // Mirrors r2SqlQuery: the engine's own explanation is reported, then null.
       deps?.onError?.("r2 sql: HTTP 500 (stubbed failure)");
       errors.push(sql);
+      return answer;
     }
-    return answer;
+    // WINDOW-AWARE (#11131): a group row's newest observation is `lo`, a feed
+    // row carries its own `observed_at`. See tests/helpers/scan-window.ts for
+    // why a double that replays its fixture per window proves nothing.
+    return visibleInWindow(sql, answer as Row[], (row: Row) =>
+      grouped ? row.lo : row.observed_at,
+    );
   };
+
   return {
     query,
     seen,
@@ -173,7 +188,7 @@ describe("loadAccountSummaryColdTier", () => {
     assert.equal(buildAccountSummary(SS58, cold as never).subnet_count, 2);
   });
 
-  test("two reads, not five", async () => {
+  test("TWO READS AND NEITHER IS A FULL SCAN, for a busy account", async () => {
     // The shape of the #9386 failure: five concurrent broad scans of an
     // unpartitioned table under Promise.all, so the success probability was the
     // PRODUCT of five. A single count(*) on account_events reports ~3,390 R2
@@ -182,11 +197,72 @@ describe("loadAccountSummaryColdTier", () => {
     // The third read went the same way for a measured reason: 32 of the 34
     // request-path r2-sql timeouts on 2026-08-10 were the cap probe, and it
     // declined this route on 92% of calls.
-    const engine = fakeEngine();
+    //
+    // #11131 keeps the count at two AND takes the full scan out of both. The
+    // account #9386 measured declining ~50% of the time was a HIGH-ACTIVITY
+    // coldkey, which is exactly this case: its events fill the first window, so
+    // each leg answers from a bounded read that measured 0.1 MB against 577.5.
+    // Dated NOW, because that is what "busy" means here: the events are inside
+    // the first two-day probe, so neither leg ever reaches for the full read.
+    const fresh = Date.now();
+    const engine = fakeEngine({
+      groups: [
+        {
+          ...groupsSummingTo(ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1)[0]!,
+          lo: fresh,
+        },
+      ],
+      recent: Array.from({ length: ACCOUNT_SUMMARY_RECENT_LIMIT }, (_, i) => ({
+        block_number: AGG.lb - i,
+        event_kind: "AxonServed",
+        netuid: 55,
+        observed_at: fresh - i,
+      })),
+    });
     await loadAccountSummaryColdTier({} as never, SS58, {
       query: engine.query as never,
     });
     assert.equal(engine.seen.length, 2, engine.seen.join("\n").slice(0, 400));
+    for (const sql of engine.seen) {
+      assert.match(
+        sql,
+        /observed_at >= \d+/,
+        `a busy account must never reach the unbounded read: ${sql.slice(0, 140)}`,
+      );
+    }
+  });
+
+  test("a QUIET account cannot cost more than one extra query per leg", async () => {
+    // The other direction, and the one a bound can make worse rather than
+    // better. Proving an account has fewer than CAP events means reading its
+    // whole history -- the widest window is `block_number >= 0`, which prunes
+    // nothing -- so widening repeatedly would charge extra queries for the same
+    // full scan it was trying to avoid.
+    //
+    // So the aggregate leg is deliberately two-phase (one window, then the
+    // unbounded read) rather than a walk, and the ceiling below is what stops a
+    // future "just widen once more" from quietly reintroducing #9386's product
+    // of five. The feed leg does walk, because its slices are disjoint: it pays
+    // the same bytes as one scan, split into queries that each finish under the
+    // 15s r2-sql ceiling the single one aborted on.
+    const engine = fakeEngine();
+    await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    // ONE floorless read per leg and no more. That read is the whole remainder,
+    // which is exactly the query this route always issued -- so a quiet account
+    // pays the probes on top of it and nothing else. Widening instead would buy
+    // the same scan several times over (8 queries / 3,834 MB, measured).
+    const floorless = engine.seen.filter((s) => !/observed_at >= \d+/.test(s));
+    assert.equal(
+      floorless.length,
+      2,
+      `one per leg, no more:\n${floorless.join("\n").slice(0, 400)}`,
+    );
+    assert.ok(
+      engine.seen.length <= 6,
+      `${engine.seen.length} reads for one quiet account:\n${engine.seen.join("\n").slice(0, 400)}`,
+    );
   });
 
   test("no read scans without an ORDER BY to stop early on", async () => {

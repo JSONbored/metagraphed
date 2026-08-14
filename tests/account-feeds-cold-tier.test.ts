@@ -5,7 +5,8 @@
 // the collapsed counterparties UNION (see the module header for the
 // arguments each test pins down).
 import assert from "node:assert/strict";
-import { describe, test, vi } from "vitest";
+import { visibleInWindow } from "./helpers/scan-window.ts";
+import { afterAll, beforeAll, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // One store since #10179: the neuron-slot read goes through src/read-store.ts,
@@ -51,12 +52,22 @@ function transferRow(block: number, index = 0) {
   };
 }
 
+/**
+ * WINDOW-AWARE since #11131: the scattered-key reads widen an `observed_at`
+ * window until the page fills, so a stub that replays its whole fixture for
+ * every step reports the same rows once per window -- one transfer of 25 TAO
+ * read as 100. `visibleInWindow` models the bound the query actually carries.
+ */
 function sqlFetch(...responses: unknown[][]) {
   const queries: string[] = [];
   let call = 0;
   globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query);
-    const rows = responses[Math.min(call, responses.length - 1)] ?? [];
+    const sql = String(JSON.parse(String(init.body)).query);
+    queries.push(sql);
+    const rows = visibleInWindow(
+      sql,
+      responses[Math.min(call, responses.length - 1)] ?? [],
+    );
     call += 1;
     return {
       ok: true,
@@ -95,6 +106,19 @@ function d1With(rows: unknown[] | (() => never)) {
   };
   return pgMockEnv();
 }
+
+// The fixtures below are dated by `1_700_000_000_000 + block`, and the scan
+// window (#11131) is two days wide off the wall clock -- so with a real clock
+// every read here would widen through the whole table before finding them.
+// Pinning Date to the fixtures' own era makes the FIRST window the one that
+// answers, which is the production shape for an account with recent activity.
+// Only Date is faked; timers are left alone.
+beforeAll(() => {
+  vi.useFakeTimers({ now: 1_700_000_100_000, toFake: ["Date"] });
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 describe("loadAccountTransfersColdTier", () => {
   test("reads both sides with one disjunction on the Transfer kind, newest first", async () => {

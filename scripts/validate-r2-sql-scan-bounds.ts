@@ -64,13 +64,69 @@ export const UNBOUNDED_BY_DESIGN: Readonly<Record<string, string>> = {
 export interface Finding {
   file: string;
   query: string;
+  /** The predicate is interpolated, so this gate cannot read it from source. */
+  unreadable?: boolean;
 }
 
-/** Whole `r2SqlQuery(env, ...)` calls, template literals joined. */
+/**
+ * Files whose WHERE is assembled at runtime, each naming the test that captures
+ * the SQL the reader ACTUALLY emits and asserts the bound on it.
+ *
+ * This is the honest form of the exemption. A static gate cannot read
+ * `WHERE ${where.join(" AND ")}`, and before #11131 it silently skipped every
+ * such call -- which was all four unbounded reads on `chain.account_events`.
+ * Pointing at a runtime test is the only way to actually cover them; pointing
+ * at nothing is how the gate reported "every reader satisfies this today" while
+ * the route it was protecting was timing out in production.
+ */
+export const INTERPOLATED_PREDICATES: Readonly<Record<string, string>> = {
+  "src/account-feeds-cold-tier.ts":
+    "tests/account-feeds-cold-tier.test.ts + tests/account-summary-cold-tier.test.ts capture the emitted SQL",
+  "src/events-cold-tier.ts":
+    "tests/events-cold-tier.test.ts asserts the windowed block bound",
+  "src/chain-events-cold-tier.ts":
+    "tests/chain-events-cold-tier.test.ts asserts the required window",
+  "src/r2-sql-blocks.ts":
+    "tests/blocks-cold-tier.test.ts asserts the block range on every read",
+};
+
+/**
+ * Whole `r2SqlQuery(...)` calls, template literals joined.
+ *
+ * TWO WAYS THIS WENT BLIND, both found by #11131 and both fixed here.
+ *
+ * 1. THE GENERIC. The pattern required `r2SqlQuery(env,` literally, so every
+ *    `r2SqlQuery<AccountEventsRow>(env, ...)` was invisible -- 16 of the 61 call
+ *    sites in `src/`, including all four unbounded reads on
+ *    `chain.account_events`. The type argument is now optional in the match.
+ *
+ * 2. THE INTERPOLATED PREDICATE. A query assembled as
+ *    `WHERE ${where.join(" AND ")}` carries neither its scattered key nor its
+ *    bound in the literal source, so the scattered test failed and the call was
+ *    skipped as out of scope -- silently, which is the worst way for a gate to
+ *    not apply. That is how essentially every cold-tier reader is written.
+ *
+ * The second one cannot be fixed by a better regex: the predicate does not
+ * exist until runtime. So an interpolated WHERE is reported as UNKNOWN rather
+ * than passed, and a file gets into `INTERPOLATED_PREDICATES` only by naming the
+ * test that captures its real SQL and asserts the bound. A gate that cannot see
+ * a query must say so.
+ *
+ * NARROWLY, THOUGH. Only a file that builds a scattered-key predicate ANYWHERE
+ * in its source can be hiding one in an interpolated WHERE. Without that
+ * condition this reports the netuid-filtered history readers too, and #11133's
+ * own lesson is that a gate crying wolf gets muted -- its first sweep reported
+ * 62 findings of which 3 were real.
+ */
 export function findUnbounded(file: string, source: string): Finding[] {
   const out: Finding[] = [];
+  // Does this file build a scattered-key predicate at all? `hotkey = '${addr}'`
+  // in a where-array push looks exactly like this, wherever it sits.
+  const buildsScattered = SCATTERED.some((c) =>
+    new RegExp(`\\b${c}\\b\\s*(=|IN|LIKE)`, "i").test(source),
+  );
   const call =
-    /r2SqlQuery\(\s*env,\s*(`(?:[^`\\]|\\.)*`(?:\s*\+\s*`(?:[^`\\]|\\.)*`)*)/gs;
+    /r2SqlQuery(?:<[^>]*>)?\(\s*\w+,\s*(`(?:[^`\\]|\\.)*`(?:\s*\+\s*`(?:[^`\\]|\\.)*`)*)/gs;
   for (const match of source.matchAll(call)) {
     const query = (match[1] ?? "").replace(/\s+/g, " ");
     // A first pass at this used a 300-char window and reported 62 findings,
@@ -80,6 +136,13 @@ export function findUnbounded(file: string, source: string): Finding[] {
     const scattered = SCATTERED.some((c) =>
       new RegExp(`\\b${c}\\b\\s*(=|IN|LIKE)`, "i").test(query),
     );
+    // An interpolated WHERE hides both halves of the question. Unreadable is
+    // not the same as safe.
+    if (!scattered && buildsScattered && /WHERE\s*\$\{/.test(query)) {
+      if (INTERPOLATED_PREDICATES[file]) continue;
+      out.push({ file, query: query.slice(0, 160), unreadable: true });
+      continue;
+    }
     if (!scattered) continue;
     if (PRUNABLE.some((c) => new RegExp(`\\b${c}\\b`, "i").test(query)))
       continue;
@@ -100,6 +163,9 @@ function main(): void {
   }
 
   const unexpected = findings.filter((f) => !UNBOUNDED_BY_DESIGN[f.file]);
+  const staleInterpolated = Object.keys(INTERPOLATED_PREDICATES).filter(
+    (file) => !readdirSync(dir).some((name) => `src/${name}` === file),
+  );
   const stale = Object.keys(UNBOUNDED_BY_DESIGN).filter(
     (file) => !findings.some((f) => f.file === file),
   );
@@ -108,12 +174,25 @@ function main(): void {
   if (unexpected.length) {
     problems.push(
       `${unexpected.length} lakehouse read(s) filter a scattered key with no bound:\n` +
-        unexpected.map((f) => `  ${f.file}\n     ${f.query}`).join("\n") +
+        unexpected
+          .map(
+            (f) =>
+              `  ${f.file}${f.unreadable ? "  (predicate interpolated -- UNREADABLE from source)" : ""}\n     ${f.query}`,
+          )
+          .join("\n") +
         `\n  -> add a predicate on one of: ${PRUNABLE.join(", ")}.` +
         `\n     Without one the engine reads EVERY file: measured 577.5 MB and` +
         `\n     3,480 R2 requests against 0.1 MB and 9 with a time bound.` +
         `\n     If a full scan is genuinely cheap, add the file to` +
         `\n     UNBOUNDED_BY_DESIGN with the measured cost.`,
+    );
+  }
+  if (staleInterpolated.length) {
+    problems.push(
+      `${staleInterpolated.length} INTERPOLATED_PREDICATES entr(ies) name a file that is gone:\n  ` +
+        staleInterpolated.join("\n  ") +
+        `\n  -> remove them; the exemption would otherwise cover whatever` +
+        `\n     takes that path next.`,
     );
   }
   if (stale.length) {
@@ -131,7 +210,8 @@ function main(): void {
   }
   process.stdout.write(
     `r2-sql-scan-bounds: every lakehouse read filtering a scattered key is ` +
-      `bounded (${Object.keys(UNBOUNDED_BY_DESIGN).length} exempt, each measured).\n`,
+      `bounded (${Object.keys(UNBOUNDED_BY_DESIGN).length} exempt, each measured; ` +
+      `${Object.keys(INTERPOLATED_PREDICATES).length} covered by runtime SQL capture).\n`,
   );
 }
 

@@ -4,6 +4,7 @@
 // through workers/api.ts.
 
 import assert from "node:assert/strict";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
   forbiddenDataApi,
   lakehouse,
@@ -2601,8 +2602,12 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     const queries: string[] = [];
     let call = 0;
     globalThis.fetch = (async (_u: string, init: RequestInit) => {
-      queries.push(JSON.parse(String(init.body)).query);
-      const rows = responses[Math.min(call, responses.length - 1)] ?? [];
+      const sql = String(JSON.parse(String(init.body)).query);
+      queries.push(sql);
+      const rows = visibleInWindow(
+        sql,
+        responses[Math.min(call, responses.length - 1)] ?? [],
+      );
       call += 1;
       return {
         ok: true,
@@ -2684,10 +2689,12 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
 
   test("handleAccountEvents serves the account feed from the lakehouse", async () => {
     // DISTINCT WINDOWS, not one response replayed. The reader steps down the
-    // block range until the page fills, and lakeFetch repeats its last response
-    // for every call -- so a single-element stub hands back the same row once
-    // per window, an arrangement no real lakehouse produces.
-    const q = lakeFetch([EVENT_ROW], []);
+    // block range until the page fills, and lakeFetch now honours that bound
+    // (tests/helpers/scan-window.ts) -- so this row is visible in exactly the
+    // window that contains block 4200 and nowhere else, which is what a real
+    // lakehouse does. Before the stub understood the bound, the same fixture
+    // came back once per window and the test had to pad with an empty response.
+    const q = lakeFetch([EVENT_ROW]);
     const body = await json(
       await handleAccountEvents(
         req(`/api/v1/accounts/${ADDR}/events`),
@@ -4370,7 +4377,10 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       return {
         ok: true,
         status: 200,
-        json: async () => ({ success: true, result: { rows: answer(sql) } }),
+        json: async () => ({
+          success: true,
+          result: { rows: visibleInWindow(sql, answer(sql)) },
+        }),
       } as unknown as Response;
     }) as unknown as typeof fetch;
     return () => {

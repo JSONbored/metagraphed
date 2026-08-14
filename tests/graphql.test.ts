@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { MIN_INCIDENT_SAMPLES } from "../src/health-serving.ts";
+import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
   archiveEnv,
   forbiddenDataApi,
@@ -5505,11 +5506,15 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
     const original = globalThis.fetch;
     const queries: string[] = [];
     globalThis.fetch = (async (_url: string, init: RequestInit) => {
-      queries.push(String(JSON.parse(String(init.body)).query));
+      const sql = String(JSON.parse(String(init.body)).query);
+      queries.push(sql);
       return {
         ok: true,
         status: 200,
-        json: async () => ({ success: true, result: { rows } }),
+        json: async () => ({
+          success: true,
+          result: { rows: visibleInWindow(sql, rows) },
+        }),
       } as unknown as Response;
     }) as unknown as typeof fetch;
     return { queries, restore: () => (globalThis.fetch = original) };
@@ -6799,10 +6804,18 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
 
     function withLakehouse(rows: Row[], fn: AnyFn) {
       const orig = globalThis.fetch;
-      globalThis.fetch = (async () => ({
+      globalThis.fetch = (async (_u: string, init: RequestInit) => ({
         ok: true,
         status: 200,
-        json: async () => ({ success: true, result: { rows } }),
+        json: async () => ({
+          success: true,
+          result: {
+            rows: visibleInWindow(
+              String(JSON.parse(String(init.body)).query),
+              rows,
+            ),
+          },
+        }),
       })) as unknown as typeof fetch;
       return Promise.resolve(fn()).finally(() => {
         globalThis.fetch = orig;
@@ -8688,24 +8701,21 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
     // #10190: the tier this doubled is retired; the lakehouse cold tier
     // answers, through the SAME builder. Given the lane's own columns, so
     // the envelope below is derived rather than echoed.
-    const lake = lakehouse(
-      [
-        {
-          block_number: 5,
-          extrinsic_index: 0,
-          extrinsic_hash: `0x${"a".repeat(64)}`,
-          signer: "5Signer",
-          call_module: "SubtensorModule",
-          call_function: "register",
-          call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
-          success: true,
-          fee_tao: 0.001,
-          tip_tao: 0,
-          observed_at: 1_752_451_200_000,
-        },
-      ],
-      { once: true },
-    );
+    const lake = lakehouse([
+      {
+        block_number: 5,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"a".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "SubtensorModule",
+        call_function: "register",
+        call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
+        success: true,
+        fee_tao: 0.001,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
@@ -12178,7 +12188,11 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
                 uid: 1,
                 amount_tao: 0,
                 alpha_amount: 0,
-                observed_at: Date.parse("2026-07-19T00:00:00.000Z"),
+                // Inside the 7d window this query asks for. It was dated 26
+                // days back, which only passed because the double ignored the
+                // bound -- a fixture outside its own query's window is not a
+                // row the engine could have returned (#11131).
+                observed_at: Date.now() - 86_400_000,
               },
             ],
     );
@@ -14330,24 +14344,21 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
     // #10190: the tier is retired; answerSubnetEvents composes over the lakehouse.
     // The kind and block bounds become SQL PREDICATES rather than query params,
     // which is where they actually go -- and the assertion below checks them there.
-    const lake = lakehouse(
-      [
-        {
-          block_number: 100,
-          event_index: 2,
-          event_kind: "StakeAdded",
-          hotkey: "5F",
-          coldkey: "5G",
-          netuid: 7,
-          uid: 3,
-          amount_tao: 1.5,
-          alpha_amount: 2.5,
-          observed_at: Date.parse("2026-07-01T00:00:00.000Z"),
-          extrinsic_index: 4,
-        },
-      ],
-      { once: true },
-    );
+    const lake = lakehouse([
+      {
+        block_number: 100,
+        event_index: 2,
+        event_kind: "StakeAdded",
+        hotkey: "5F",
+        coldkey: "5G",
+        netuid: 7,
+        uid: 3,
+        amount_tao: 1.5,
+        alpha_amount: 2.5,
+        observed_at: Date.parse("2026-07-01T00:00:00.000Z"),
+        extrinsic_index: 4,
+      },
+    ]);
     const env = { ...LAKEHOUSE_ENV };
     const { body } = await gql(
       `{ subnet_events(netuid: 7, kind: "StakeAdded", block_start: 10, block_end: 200, limit: 50) {
@@ -15954,7 +15965,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
     };
   }
   function transferStore(rows: Row[]) {
-    lake = lakehouse(rows, { once: true });
+    lake = lakehouse(rows);
     return { ...LAKEHOUSE_ENV } as unknown as Env;
   }
 
@@ -16440,7 +16451,11 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     // A negative offset clamps to 0, and no filters were supplied -- so the read
     // is the unfiltered (hotkey OR coldkey) disjunction with no extra predicate.
     assert.match(sql, /\(hotkey = '[^']+' OR coldkey = '[^']+'\)/);
+    // No block predicate at all: the reader's own scan bound is on
+    // `observed_at` (#11131), so any `block_number` clause here could only have
+    // come from a caller filter -- and none was supplied.
     assert.doesNotMatch(sql, /block_number [<>]/);
+    assert.match(sql, /observed_at >= \d+/, "the scan bound is still present");
     lake.restore();
   });
 
@@ -16473,7 +16488,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([{}], { once: true });
+    const lake = lakehouse([{}]);
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_transfers(ss58: "${SS58}") {
@@ -16566,24 +16581,21 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse(
-      [
-        {
-          block_number: 1200,
-          event_index: 3,
-          event_kind: "StakeAdded",
-          hotkey: SS58,
-          coldkey: OTHER,
-          netuid: 7,
-          uid: 42,
-          amount_tao: 1.5,
-          alpha_amount: 2.25,
-          observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
-          extrinsic_index: 4,
-        },
-      ],
-      { once: true },
-    );
+    const lake = lakehouse([
+      {
+        block_number: 1200,
+        event_index: 3,
+        event_kind: "StakeAdded",
+        hotkey: SS58,
+        coldkey: OTHER,
+        netuid: 7,
+        uid: 42,
+        amount_tao: 1.5,
+        alpha_amount: 2.25,
+        observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+        extrinsic_index: 4,
+      },
+    ]);
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
@@ -16622,7 +16634,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([], { once: true });
+    const lake = lakehouse([]);
     const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
       query(
@@ -16648,7 +16660,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // lakehouse reader takes no params -- the clamped limit becomes the SQL LIMIT
     // (limit+offset, since R2 SQL has no OFFSET) and an absent filter simply
     // produces no predicate. Asserting the SQL is what the clamp actually reaches.
-    const lake = lakehouse([], { once: true });
+    const lake = lakehouse([]);
     const env = { ...LAKEHOUSE_ENV };
     await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
     const sql = lake.queries[0];
@@ -16687,7 +16699,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([{}], { once: true });
+    const lake = lakehouse([{}]);
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);

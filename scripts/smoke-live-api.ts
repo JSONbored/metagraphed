@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { API_ROUTES } from "../src/contracts.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
+import { QUERY_TIMEOUT_MS } from "../src/r2-sql.ts";
 
 // Live production response bodies (API envelopes, MCP JSON-RPC results) --
 // every field below is read for assertion/reporting only, and an unexpected
@@ -17,7 +18,41 @@ const DEFAULT_BASE_URL = "https://api.metagraph.sh";
 const baseUrl = normalizeBaseUrl(
   process.env.METAGRAPH_LIVE_BASE_URL || DEFAULT_BASE_URL,
 );
-const timeoutMs = Number(process.env.METAGRAPH_LIVE_SMOKE_TIMEOUT_MS || 15000);
+/**
+ * The client must outlast the SERVER's own query ceiling, or it measures its own
+ * impatience (#11131).
+ *
+ * This was a flat 15000 -- byte for byte `QUERY_TIMEOUT_MS` in src/r2-sql.ts.
+ * So a request that hit the lakehouse ceiling could never be seen answering:
+ * the server needs its full 15s plus response overhead to produce the degraded
+ * card, and the client aborted at exactly 15s. Every such request was recorded
+ * as "The operation was aborted due to timeout", and 4 of the last 11 completed
+ * production publishes failed that way -- on routes the repo has ALREADY
+ * declared slow in check-operation-latency's DECLARED list.
+ *
+ * Derived from the server constant rather than restated, so the two cannot
+ * drift apart again, with 2x headroom for the response itself. This does not
+ * weaken the gate: a route that answers, or that correctly declares
+ * `x-metagraph-degraded` within its own budget, still passes; one that is
+ * genuinely broken still fails. It only stops the client from calling a
+ * server-side deadline its own failure.
+ */
+export const timeoutMs = Number(
+  process.env.METAGRAPH_LIVE_SMOKE_TIMEOUT_MS || QUERY_TIMEOUT_MS * 2,
+);
+
+/**
+ * An abort, however the runtime words it.
+ *
+ * `AbortSignal.timeout` raises a TimeoutError whose message is "The operation
+ * was aborted due to timeout" on Node 22, and undici has said "This operation
+ * was aborted" in the past. Matching the shape rather than one string keeps
+ * this from silently classifying every failure as a wrong answer after a
+ * runtime bump.
+ */
+export function isTimeout(message: string): boolean {
+  return /abort|timeout/i.test(message);
+}
 
 async function runLiveSmoke(): Promise<void> {
   const healthDate = await discoverHealthHistoryDate();
@@ -45,6 +80,7 @@ async function runLiveSmoke(): Promise<void> {
   // publish surfaced /api/v1/search/semantic, and each round trip costs a full
   // publish run to discover one route. Collecting means one run names them all.
   const failures: string[] = [];
+  let timeouts = 0;
   for (const check of apiChecks) {
     try {
       const result = await fetchJson(check.url);
@@ -85,14 +121,23 @@ async function runLiveSmoke(): Promise<void> {
         source: result.body.meta.source || null,
       });
     } catch (error) {
-      failures.push(
-        `${check.route}: ${(error as Error)?.message || String(error)}`,
-      );
+      const message = (error as Error)?.message || String(error);
+      failures.push(`${check.route}: ${message}`);
+      if (isTimeout(message)) timeouts += 1;
     }
   }
   if (failures.length) {
+    // NAME WHICH KIND. A timeout means the route did not answer in time; the
+    // publish itself already succeeded by the time smoke runs, so an operator
+    // reading a red deploy should not have to guess whether R2/KV is stale.
+    const kind =
+      timeouts === failures.length
+        ? " (all timeouts -- the routes did not answer in time; the publish itself already completed)"
+        : timeouts > 0
+          ? ` (${timeouts} timeout(s), ${failures.length - timeouts} wrong answer(s))`
+          : " (wrong answers, not timeouts)";
     throw new Error(
-      `${failures.length} live API route(s) failed:\n  ${failures.join("\n  ")}`,
+      `${failures.length} live API route(s) failed${kind}:\n  ${failures.join("\n  ")}`,
     );
   }
 
