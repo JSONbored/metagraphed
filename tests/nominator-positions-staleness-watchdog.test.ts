@@ -6,6 +6,7 @@
 // lakehouse export, which is exactly the condition that ran unnoticed for
 // 34 hours and produced this issue.
 import assert from "node:assert/strict";
+import { POSITION_SOURCE_ALPHA } from "../src/nominator-positions-neon-write.ts";
 import { readFileSync } from "node:fs";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
@@ -24,6 +25,7 @@ import {
   NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS,
   NOMINATOR_POSITIONS_EXPECTED_COLDKEYS,
   NOMINATOR_POSITIONS_PASS_WINDOW_MS,
+  NOMINATOR_POSITIONS_SCAN_SOURCE,
   NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
   evaluateNominatorPositionsStaleness,
   runNominatorPositionsStalenessWatchdog,
@@ -247,7 +249,27 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
       now: () => NOW,
       recordException: (async () => true) as never,
     }).then(() => {
-      assert.deepEqual(binds[0], [NOMINATOR_POSITIONS_PASS_WINDOW_MS]);
+      // Scoped to the full-scan producer on both ends: nominator_positions has
+      // two writers, and an unscoped MAX(captured_at) makes a healthy
+      // self-stake run look like a truncated alpha scan (#11167 follow-up).
+      assert.deepEqual(binds[0], [
+        NOMINATOR_POSITIONS_SCAN_SOURCE,
+        NOMINATOR_POSITIONS_PASS_WINDOW_MS,
+        NOMINATOR_POSITIONS_SCAN_SOURCE,
+      ]);
+      // `source =` without the placeholder: the pg layer rewrites `?` to `$n`.
+      assert.match(queries[0], /source = /);
+      // BOTH ends, which is the half-fix this guards against: scoping the outer
+      // aggregate while leaving the window's MAX(captured_at) global would
+      // measure the alpha scan's coverage against self-stake's clock and read
+      // as zero the moment the two producers' stamps diverged.
+      assert.equal(
+        queries[0].match(/source = \$\d/g)?.length,
+        2,
+        "the window anchor and the outer aggregate must both be scoped",
+      );
+      // The writer's vocabulary, not a copy of it.
+      assert.equal(NOMINATOR_POSITIONS_SCAN_SOURCE, POSITION_SOURCE_ALPHA);
       assert.ok(
         NOMINATOR_POSITIONS_PASS_WINDOW_MS < 24 * HOUR,
         "the window must stay under VALIDATOR_NOMINATORS_POLL_SECS (24h)",
@@ -261,7 +283,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
       // `?` reached Postgres unrewritten and matched nothing.
       assert.match(
         queries[0]!,
-        /captured_at >= \(SELECT MAX\(captured_at\) FROM nominator_positions\) - \$\d/,
+        /captured_at >= \(SELECT MAX\(captured_at\) FROM nominator_positions WHERE source = \$\d\) - \$\d/,
       );
     });
   });
@@ -303,7 +325,11 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     assert.equal(raised.alerted, true);
     assert.equal(raised.reason, "partial");
     assert.equal(raised.coverage_floor_coldkeys, 22_000);
-    assert.deepEqual(binds[0], [HOUR]);
+    assert.deepEqual(binds[0], [
+      NOMINATOR_POSITIONS_SCAN_SOURCE,
+      HOUR,
+      NOMINATOR_POSITIONS_SCAN_SOURCE,
+    ]);
 
     // Lowered under the same reading, the identical tick is quiet. This is the
     // documented remedy if the delegating population ever genuinely shrinks.

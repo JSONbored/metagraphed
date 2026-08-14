@@ -57,6 +57,7 @@ import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
+import { POSITION_SOURCE_ALPHA } from "./nominator-positions-neon-write.ts";
 
 /**
  * How old the ledger may get before this is a stall.
@@ -177,11 +178,47 @@ export const NOMINATOR_POSITIONS_PASS_WINDOW_MS = passWindowMs(
  * rule. Read together the pair is the diagnosis: `covered` well under `total`
  * is a scan that died partway through the keyspace.
  */
+/**
+ * The producer this rule is about.
+ *
+ * `nominator_positions` has TWO writers and they are not interchangeable.
+ * `alpha` is the 24h SubtensorModule::Alpha full scan whose completeness this
+ * alarm exists to police. `self-stake` is a targeted top-up that fills the gap
+ * that scan cannot reach -- an owner's own self-stake -- and it writes a
+ * legitimate SUBSET with its own fresh `captured_at`, pruning only its own
+ * source.
+ *
+ * Unscoped, `MAX(captured_at)` is therefore whichever producer ran last, and a
+ * healthy self-stake run makes the full scan look truncated. Measured
+ * 2026-08-14: self-stake wrote 9,254 coldkeys at 05:42 and reported
+ * `ok -- 37542 scanned, 33719 written, 0 error(s)`, while the alpha scan's own
+ * newest pass held 19,870 coldkeys and was marked complete in
+ * `nominator_positions_passes`. The alarm read the 9,254 as the newest pass and
+ * reported /accounts/{ss58}/positions as serving silently-partial data for
+ * hours, on a lane where BOTH producers had succeeded.
+ */
+// The writer's own constant, imported rather than restated: the column exists
+// so two producers can share the table, and a second copy of that vocabulary
+// here would be free to drift from the value actually being stamped.
+export const NOMINATOR_POSITIONS_SCAN_SOURCE = POSITION_SOURCE_ALPHA;
+
+/**
+ * Coverage, scoped to the full-scan producer.
+ *
+ * Every clause carries the source filter, including the `MAX(captured_at)` the
+ * window is measured from -- scoping the count while leaving the anchor global
+ * would compare the alpha scan's coverage against self-stake's clock and read
+ * as zero coverage the moment the two producers' stamps diverged.
+ *
+ * `total` stays scoped too, so the number the alarm reports as context is the
+ * same population the rule is judging rather than a second, larger one.
+ */
 const NOMINATOR_POSITIONS_COVERAGE_SQL =
   "SELECT COUNT(DISTINCT coldkey) AS total, MAX(captured_at) AS latest, " +
   "COUNT(DISTINCT CASE WHEN captured_at >= " +
-  "(SELECT MAX(captured_at) FROM nominator_positions) - ? THEN coldkey END) " +
-  "AS covered FROM nominator_positions";
+  "(SELECT MAX(captured_at) FROM nominator_positions WHERE source = ?) - ? " +
+  "THEN coldkey END) " +
+  "AS covered FROM nominator_positions WHERE source = ?";
 
 export type NominatorPositionsStalenessReason =
   "no_rows" | "stale" | "partial" | null;
@@ -296,8 +333,14 @@ export async function runNominatorPositionsStalenessWatchdog(
     NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS;
 
   try {
+    // Three binds, in statement order: the source anchoring the window's
+    // MAX(captured_at), the window itself, then the source scoping the outer
+    // aggregate. See NOMINATOR_POSITIONS_SCAN_SOURCE for why an unscoped read
+    // reports a healthy self-stake run as a truncated alpha scan.
     const row = (await db.first(NOMINATOR_POSITIONS_COVERAGE_SQL, [
+      NOMINATOR_POSITIONS_SCAN_SOURCE,
       passWindowMs,
+      NOMINATOR_POSITIONS_SCAN_SOURCE,
     ])) as {
       latest: number | null;
       covered: number | null;
