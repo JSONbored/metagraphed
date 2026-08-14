@@ -47,6 +47,42 @@ export type CurationArtifact = z.infer<typeof CurationArtifactSchema>;
 
 export const GAPS_SORT_FIELDS = API_QUERY_COLLECTIONS.gaps.sort_fields;
 
+/** #11146 phase 4: captured spec vs registered catalogue, per subnet. Present
+ * only when the subnet has captured schema-index entries with stamped counts
+ * -- absence means "not measured", never "in parity". */
+export const SchemaParitySchema = z
+  .object({
+    captured_schema_count: z.int().min(1).meta({
+      description: "Captured machine-readable specs backing this measurement.",
+    }),
+    captured_path_count: z.int().min(0).meta({
+      description:
+        "Paths the subnet's captured spec(s) declare, summed across captured specs.",
+    }),
+    declared_non_get_count: z.int().min(0).nullable().meta({
+      description:
+        "Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero.",
+    }),
+    registered_route_surface_count: z.int().min(0).meta({
+      description:
+        "Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route).",
+    }),
+    registered_non_get_count: z.int().min(0).meta({
+      description:
+        "Registered surfaces declaring a non-GET method (#11146 phase 3).",
+    }),
+    captured_stale: z.boolean().nullable().meta({
+      description:
+        "Whether any capture backing this measurement is past the lane's declared cadence. NULL when none can be dated. A parity verdict off a stale capture describes last week's spec (#11146 phase 1).",
+    }),
+    flagged: z.boolean().meta({
+      description:
+        "True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing.",
+    }),
+  })
+  .strict();
+export type SchemaParity = z.infer<typeof SchemaParitySchema>;
+
 export const GapsEntrySchema = z
   .object({
     netuid: z.int().min(0),
@@ -61,6 +97,7 @@ export const GapsEntrySchema = z
     gaps: GapsSchema,
     gap_severity: z.enum(ENDPOINT_INCIDENT_SEVERITY_VALUES).optional(),
     gap_priority: z.int().min(0).optional(),
+    schema_parity: SchemaParitySchema.optional(),
   })
   .strict();
 

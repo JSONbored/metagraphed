@@ -86,6 +86,66 @@ export const SCHEMA_INDEX_ARTIFACT_PATH = "/metagraph/schemas/index.json";
  */
 export const SCHEMA_SNAPSHOT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * The capture lane's declared cadence (#11146 phase 1): how old a captured
+ * schema may be before the served entry reports it STALE.
+ *
+ * The lane behind it (`schemas:snapshot`, inside `pipeline:refresh`) is
+ * deliberately manual -- ADR 0006 retired its schedule -- and that is exactly
+ * why a declared cadence is load-bearing rather than decorative. Without one,
+ * "when did we last look?" had no answer in the payload, so a capture 11 days
+ * behind upstream still served `drift_status: "unchanged"` and read as
+ * current. Declaring the number does not run the lane; it makes the lane's
+ * silence VISIBLE, which is the difference between an unpublished gap and a
+ * published one.
+ *
+ * 48 hours: two full days of tolerance over a daily-ish refresh, so a single
+ * skipped run is not noise while a lane that stopped shows within two days.
+ */
+export const SCHEMA_CAPTURE_CADENCE_HOURS = 48;
+
+export interface CaptureFreshness {
+  /** What `drift_status` is measured against -- never the live upstream spec. */
+  drift_basis: "previous-capture";
+  /** Hours between capture and the build serving it; null when unknowable. */
+  capture_age_hours: number | null;
+  /** Past the cadence? Null when the age is unknown -- unverifiable is not fresh. */
+  capture_stale: boolean | null;
+}
+
+/**
+ * The freshness stamp for one captured entry (#11146 phases 1-2).
+ *
+ * Lives here rather than inline in the artifact builder so the rule has ONE
+ * declaration: build-artifacts.ts is a top-level script (it runs on import),
+ * so a test could only re-implement it -- and a test asserting its own copy of
+ * the logic proves nothing.
+ *
+ * A NEGATIVE delta yields null, not zero. `buildTimestamp()` returns the 1970
+ * epoch placeholder whenever METAGRAPH_BUILD_TIMESTAMP is unset (every local
+ * and determinism build), so clamping to zero would publish a twelve-day-old
+ * capture as FRESH -- the exact dishonesty this phase removes, reintroduced by
+ * a Math.max. Same unknown-is-not-a-value convention as surface `stale`.
+ */
+export function captureFreshness(
+  buildStamp: string | null | undefined,
+  capturedAt: string | null | undefined,
+): CaptureFreshness {
+  const buildMs = Date.parse(String(buildStamp ?? ""));
+  const capturedMs = Date.parse(String(capturedAt ?? ""));
+  const deltaMs = buildMs - capturedMs;
+  const ageHours =
+    Number.isFinite(buildMs) && Number.isFinite(capturedMs) && deltaMs >= 0
+      ? Math.round((deltaMs / 3_600_000) * 10) / 10
+      : null;
+  return {
+    drift_basis: "previous-capture",
+    capture_age_hours: ageHours,
+    capture_stale:
+      ageHours === null ? null : ageHours > SCHEMA_CAPTURE_CADENCE_HOURS,
+  };
+}
+
 /** Statuses that mean "we have a real document behind this entry". */
 const CAPTURED_STATUS = "captured";
 

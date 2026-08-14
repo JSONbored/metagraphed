@@ -4440,6 +4440,40 @@ type GapsArtifactGaps {
   gaps: Gaps!
   gap_severity: String
   gap_priority: Int
+  schema_parity: GapsArtifactGapsSchemaParity
+}
+
+type GapsArtifactGapsSchemaParity {
+  """Captured machine-readable specs backing this measurement."""
+  captured_schema_count: Int!
+
+  """
+  Paths the subnet's captured spec(s) declare, summed across captured specs.
+  """
+  captured_path_count: Int!
+
+  """
+  Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero.
+  """
+  declared_non_get_count: Int
+
+  """
+  Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route).
+  """
+  registered_route_surface_count: Int!
+
+  """Registered surfaces declaring a non-GET method (#11146 phase 3)."""
+  registered_non_get_count: Int!
+
+  """
+  Whether any capture backing this measurement is past the lane's declared cadence. NULL when none can be dated. A parity verdict off a stale capture describes last week's spec (#11146 phase 1).
+  """
+  captured_stale: Boolean
+
+  """
+  True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing.
+  """
+  flagged: Boolean!
 }
 
 type EvidenceList {

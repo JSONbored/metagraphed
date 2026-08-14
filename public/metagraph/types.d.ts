@@ -8636,6 +8636,22 @@ export interface components {
                 gaps: components["schemas"]["Gaps"];
                 name: string;
                 netuid: number;
+                schema_parity?: {
+                    /** @description Paths the subnet's captured spec(s) declare, summed across captured specs. */
+                    captured_path_count: number;
+                    /** @description Captured machine-readable specs backing this measurement. */
+                    captured_schema_count: number;
+                    /** @description Whether any capture backing this measurement is past the lane's declared cadence. NULL when none can be dated. A parity verdict off a stale capture describes last week's spec (#11146 phase 1). */
+                    captured_stale: boolean | null;
+                    /** @description Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero. */
+                    declared_non_get_count: number | null;
+                    /** @description True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing. */
+                    flagged: boolean;
+                    /** @description Registered surfaces declaring a non-GET method (#11146 phase 3). */
+                    registered_non_get_count: number;
+                    /** @description Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route). */
+                    registered_route_surface_count: number;
+                };
                 slug: string;
             }[];
             generated_at: string;
@@ -10331,6 +10347,7 @@ export interface components {
             url: string;
         };
         SchemaIndexArtifact: {
+            capture_cadence_hours?: number;
             contract_version?: string;
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
@@ -10346,7 +10363,16 @@ export interface components {
             /** @constant */
             schema_version: 1;
             schemas: {
+                /** @description Hours between this entry's capture and the build that served it. NULL when the entry carries no usable capture timestamp. */
+                capture_age_hours?: number | null;
+                /** @description Whether the capture is older than the lane's declared cadence (SCHEMA_CAPTURE_CADENCE_HOURS). NULL when the age is unknown -- unverifiable is not fresh. A stale capture's `drift_status` describes an old comparison, not the current upstream. */
+                capture_stale?: boolean | null;
                 content_type?: string | null;
+                /**
+                 * @description What drift_status compares against: this registry's PREVIOUS capture of the same surface, never the subnet's live spec. `unchanged` therefore means 'our snapshot is what it was', not 'the upstream API has not changed' -- read it together with `capture_stale`.
+                 * @constant
+                 */
+                drift_basis?: "previous-capture";
                 /** @enum {string} */
                 drift_status: "new" | "changed" | "unchanged" | "not-captured" | "missing-after-previous-capture";
                 error?: string | null;
@@ -10370,6 +10396,7 @@ export interface components {
                     generated_at?: string | null;
                     hash?: string | null;
                     netuid?: number | null;
+                    non_get_operation_count?: number;
                     observed_at?: string | null;
                     openapi_version?: string | null;
                     path_count?: number;
@@ -39252,6 +39279,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "capture_cadence_hours": 0.5,
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
