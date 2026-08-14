@@ -5,8 +5,11 @@ import { API_ROUTES } from "../src/contracts.ts";
 import {
   apiRouteUrl,
   fixtureSurfaceIdFromIndex,
+  isTimeout,
   liveSmokeApiRoutes,
+  timeoutMs,
 } from "../scripts/smoke-live-api.ts";
+import { QUERY_TIMEOUT_MS } from "../src/r2-sql.ts";
 
 // PR-time guard for the recurring #1682 class: the live smoke substitutes path
 // placeholders ({netuid}/{slug}/{date}/{uid}/{hash}/{ref}/{ss58}) before
@@ -197,5 +200,48 @@ describe("the entry point runs after every declaration", () => {
         `temporal dead zone when it runs -- move the call to the foot of the ` +
         `file, not the declaration up.`,
     );
+  });
+});
+
+describe("the smoke client outlasts the server it is waiting on (#11131)", () => {
+  test("THE CLIENT BUDGET EXCEEDS THE SERVER'S OWN QUERY CEILING", () => {
+    // The bug this pins: both were 15000. A request that hit the lakehouse
+    // ceiling could never be seen answering -- the server needs its full
+    // QUERY_TIMEOUT_MS plus response overhead to produce the degraded card, and
+    // the client aborted at exactly that instant. 4 of the last 11 completed
+    // production publishes failed that way, every one on a route already listed
+    // in check-operation-latency's DECLARED register.
+    assert.ok(
+      timeoutMs > QUERY_TIMEOUT_MS,
+      `smoke client ${timeoutMs}ms must outlast the r2-sql ceiling ${QUERY_TIMEOUT_MS}ms`,
+    );
+  });
+
+  test("it is derived from the server constant, not restated", () => {
+    // Equal-by-coincidence is what broke; a hand-copied larger number would
+    // drift the same way the next time the server bound moves.
+    assert.equal(timeoutMs, QUERY_TIMEOUT_MS * 2);
+  });
+
+  test("isTimeout matches an abort however the runtime words it", () => {
+    for (const message of [
+      "The operation was aborted due to timeout",
+      "This operation was aborted",
+      "TimeoutError: signal timed out",
+    ]) {
+      assert.equal(isTimeout(message), true, message);
+    }
+  });
+
+  test("isTimeout does NOT swallow a wrong answer", () => {
+    // The whole point of counting the two kinds separately: a schema failure
+    // must not be reported as "the routes did not answer in time".
+    for (const message of [
+      "expected meta payload",
+      "unexpected status 500",
+      "expected 200, got 404",
+    ]) {
+      assert.equal(isTimeout(message), false, message);
+    }
   });
 });
