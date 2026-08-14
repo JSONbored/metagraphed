@@ -840,6 +840,65 @@
       "review": {
         "state": "maintainer-reviewed"
       }
+    },
+    {
+      "id": "sn-105-beam-docs-api-reference",
+      "name": "Beam API reference",
+      "kind": "docs",
+      "url": "https://data.b1m.ai/guide/api-reference",
+      "provider": "beam",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Beam-Network/beam/blob/main/README.md"
+      ],
+      "notes": "The subnet's own API reference, on the docs site served from the dashboard host the Beam-Network/beam README links. States the auth model the captured spec does not: every non-public route needs an x-api-key header, and keys are scoped by role (client, orchestrator, worker, validator) so a role only reaches its own routes.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "maintainer-reviewed"
+      }
+    },
+    {
+      "id": "sn-105-beam-redoc",
+      "name": "BeamCore ReDoc",
+      "kind": "docs",
+      "url": "https://beamcore.b1m.ai/redoc",
+      "provider": "beam",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": ["https://data.b1m.ai/guide/api-reference"],
+      "notes": "ReDoc rendering of the same /openapi.json this subnet already registers, named as one of the two interactive docs surfaces on the subnet's own API reference page. Human-readable companion to the machine-readable spec, not a second source of truth.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "maintainer-reviewed"
+      }
+    },
+    {
+      "id": "sn-105-beam-core-public-source-repo",
+      "name": "BeamCore transparency reference code",
+      "kind": "source-repo",
+      "url": "https://github.com/Beam-Network/beam-core-public",
+      "provider": "beam",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": ["https://github.com/Beam-Network"],
+      "notes": "The subnet's second public repository, distinct from the registered Beam-Network/beam: self-contained public copies of the BeamCore logic that decides transfer assignment, PRISM scoring, and the validator weights materialized each epoch. Reference code, not a runnable service, per its own README.",
+      "review": {
+        "state": "maintainer-reviewed"
+      }
     }
   ],
   "website_url": "https://b1m.ai/"
