@@ -296,7 +296,7 @@ registerModuleStateReset(
   },
 );
 
-function unmeasured<T>(stub: T): T {
+export function unmeasured<T>(stub: T): T {
   unmeasuredGeneration += 1;
   return stub;
 }

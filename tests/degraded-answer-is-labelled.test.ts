@@ -24,6 +24,7 @@ import {
   labelDegradedResponse,
 } from "../workers/request-handlers/analytics.ts";
 import { currentR2SqlFailureGeneration } from "../src/r2-sql.ts";
+import { OFFSET_EMULATION_CAP } from "../src/r2-sql-blocks.ts";
 import { API_ROUTES, FEED_ROUTES } from "../src/contracts.ts";
 import { concretePath } from "./concrete-path.ts";
 
@@ -128,6 +129,80 @@ describe("the counterparties zero says it is a zero (#10270)", () => {
     assert.equal(body.data.counterparty_count, 1);
     assert.equal(body.data.transfers_scanned, 1);
     assert.equal(res.headers.get(DEGRADED_HEADER), null);
+  });
+});
+
+describe("a page declined BEFORE the query says so too (#11142)", () => {
+  /** Records every request, and refuses -- so "no query issued" is provable. */
+  function countingLakehouse(calls: string[]): typeof fetch {
+    return (async (input: unknown) => {
+      calls.push(String(input));
+      throw new Error("r2 sql unreachable");
+    }) as unknown as typeof fetch;
+  }
+
+  test("a depth past OFFSET_EMULATION_CAP is labelled, not served as end-of-feed", async () => {
+    // The sweep below cannot catch this one. It keys off the r2-sql failure
+    // generation, and this decline is taken before any query is issued, so no
+    // generation moves -- which is exactly how it reached production
+    // unlabelled. Asserting `calls` is empty is what proves the label came
+    // from the cap and not from a query that happened to fail.
+    const calls: string[] = [];
+    const res = (await withFetch(countingLakehouse(calls), () =>
+      handleRequest(
+        apiRequest(
+          `/api/v1/extrinsics?limit=5&offset=${OFFSET_EMULATION_CAP + 10}`,
+        ),
+        LAKEHOUSE_ENV,
+        {},
+      ),
+    )) as Response;
+    const body = (await res.json()) as {
+      data: { extrinsic_count: number; next_cursor: string | null };
+    };
+
+    assert.equal(calls.length, 0, "the cap must decline before querying");
+    assert.equal(res.status, 200);
+    // Still the schema-stable empty (#9146). What changes is that a caller can
+    // now tell it apart from a real end-of-feed, which this payload is
+    // otherwise byte-identical to.
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.equal(body.data.next_cursor, null);
+    assert.equal(res.headers.get(DEGRADED_HEADER), "tier_unavailable");
+  });
+
+  test("a depth within the cap still asks the lakehouse", async () => {
+    // Non-vacuity for the assertion above: if the route short-circuited at
+    // every depth, `calls.length === 0` would prove nothing about the cap.
+    const calls: string[] = [];
+    await withFetch(countingLakehouse(calls), () =>
+      handleRequest(
+        apiRequest("/api/v1/extrinsics?limit=5&offset=0"),
+        LAKEHOUSE_ENV,
+        {},
+      ),
+    );
+    assert.ok(calls.length > 0, "a servable depth must reach the tier");
+  });
+
+  test("the call_hash arm is labelled too, having skipped the tier", async () => {
+    // A second, independent way into the same operand: call_hash has no column
+    // in the lakehouse table, so the read is skipped outright rather than
+    // declined. Unlabelled, that answered "no extrinsics match this hash" for
+    // a filter that was never evaluated.
+    const calls: string[] = [];
+    const res = (await withFetch(countingLakehouse(calls), () =>
+      handleRequest(
+        apiRequest(
+          `/api/v1/extrinsics?limit=5&call_module=SubtensorModule&call_hash=0x${"a".repeat(64)}`,
+        ),
+        LAKEHOUSE_ENV,
+        {},
+      ),
+    )) as Response;
+    assert.equal(calls.length, 0, "call_hash must skip the tier");
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get(DEGRADED_HEADER), "tier_unavailable");
   });
 });
 
