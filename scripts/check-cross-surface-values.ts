@@ -134,15 +134,25 @@ async function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>) {
  * surfaces agree about the data, one of them just could not read it this time.
  * So a labelled response counts as "did not answer" and lands in the incomplete
  * bucket, where a declining surface belongs.
+ *
+ * ALL THREE SURFACES SET IT, and until now only REST was asked. Measured
+ * 2026-08-14 against production, forcing the r2-sql timeout on
+ * /accounts/{ss58}/transfers: REST, the GraphQL POST and the MCP POST each
+ * answered the 15s abort with `x-metagraph-degraded: tier_unavailable`. Reading
+ * it on one surface only is what produced this sweep's three-day red streak --
+ * `get_account_transfers transfer_count: rest 100, graphql 0` was GraphQL
+ * declining, correctly labelled, and scored as a disagreement because nothing
+ * looked at the label.
  */
+function degradedHeader(res: Response): string | null {
+  return res.headers.get("x-metagraph-degraded");
+}
+
 async function restBody(path: string): Promise<Row | null> {
   try {
     const answer = await withTimeout(async (signal) => {
       const res = await fetch(`${REST_ORIGIN}${path}`, { signal });
-      return {
-        degraded: res.headers.get("x-metagraph-degraded"),
-        body: (await res.json()) as Row,
-      };
+      return { degraded: degradedHeader(res), body: (await res.json()) as Row };
     });
     if (answer.degraded) return null;
     const data = at(answer.body, "data");
@@ -156,16 +166,17 @@ async function restBody(path: string): Promise<Row | null> {
 
 async function graphqlField(plan: FieldPlan): Promise<Row | null> {
   try {
-    const body = await withTimeout(async (signal) => {
+    const answer = await withTimeout(async (signal) => {
       const res = await fetch(GRAPHQL_ENDPOINT, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ query: plan.query }),
         signal,
       });
-      return (await res.json()) as Row;
+      return { degraded: degradedHeader(res), body: (await res.json()) as Row };
     });
-    const value = at(body, "data", plan.field);
+    if (answer.degraded) return null;
+    const value = at(answer.body, "data", plan.field);
     return value && typeof value === "object" && !Array.isArray(value)
       ? (value as Row)
       : null;
@@ -174,10 +185,43 @@ async function graphqlField(plan: FieldPlan): Promise<Row | null> {
   }
 }
 
+/**
+ * The first path-parameter value REST is asked about that the GraphQL query
+ * does not mention, or null when they agree.
+ *
+ * Compares VALUES rather than names because that is what actually has to match:
+ * the two sweeps fill their arguments from separate tables, and a comparison
+ * across surfaces is only meaningful when both were handed the same subject.
+ *
+ * Only path parameters are checked. A query-string default that differs is a
+ * real divergence to report -- two surfaces answering the same subject with
+ * different defaults is exactly what this sweep exists to find.
+ */
+function mismatchedSubject(
+  template: string,
+  path: string,
+  query: string,
+): string | null {
+  const names = [...template.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]!);
+  if (names.length === 0) return null;
+  const templateParts = template.split("/");
+  const pathParts = path.split("?")[0]!.split("/");
+  for (const [index, part] of templateParts.entries()) {
+    if (!part.startsWith("{") || !part.endsWith("}")) continue;
+    const value = pathParts[index];
+    if (!value) continue;
+    const decoded = decodeURIComponent(value);
+    if (!query.includes(decoded)) {
+      return `${part} rest=${decoded}`;
+    }
+  }
+  return null;
+}
+
 let rpcId = 0;
 async function mcpTool(name: string, args: Row): Promise<Row | null> {
   try {
-    const body = await withTimeout(async (signal) => {
+    const answer = await withTimeout(async (signal) => {
       const res = await fetch(MCP_ENDPOINT, {
         method: "POST",
         headers: {
@@ -192,8 +236,10 @@ async function mcpTool(name: string, args: Row): Promise<Row | null> {
         }),
         signal,
       });
-      return (await res.json()) as Row;
+      return { degraded: degradedHeader(res), body: (await res.json()) as Row };
     });
+    if (answer.degraded) return null;
+    const body = answer.body;
     if (at(body, "error") || at(body, "result", "isError")) return null;
     const structured = at(body, "result", "structuredContent");
     return structured && typeof structured === "object"
@@ -286,6 +332,24 @@ export async function run(): Promise<CrossSurfaceReport> {
     if (!plan || !path) {
       report.unpaired.push(
         `${tool} (${template}) -- ${!plan ? "no GraphQL field mirrors it" : "a path parameter has no fixture"}`,
+      );
+      continue;
+    }
+    // The three surfaces must be asked the SAME question before their answers
+    // mean anything together. They are subjected independently -- REST from
+    // conformance-subjects.ts's SUBJECTS, GraphQL from
+    // check-graphql-conformance.ts's own ARGUMENT_FIXTURES -- and the two tables
+    // have drifted: `h160` is 0x1212..12 in one and 0xaaaa..aa in the other. The
+    // sweep duly reported that /evm/address/{h160} "diverges", when it had asked
+    // the two surfaces about two different addresses.
+    //
+    // The plan bakes its arguments into `query`, so the check is whether every
+    // subject value in the concrete REST path appears there. Cheap, and general
+    // over any future drift rather than over the one key that drifted.
+    const subject = mismatchedSubject(template, path, plan.query);
+    if (subject) {
+      report.unpaired.push(
+        `${tool} (${template}) -- surfaces asked different subjects (${subject})`,
       );
       continue;
     }
