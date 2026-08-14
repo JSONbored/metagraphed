@@ -107,6 +107,12 @@ Cursor / other clients: add an MCP server with url
   in any loop.
 - **Missing something?** Call `get_more_tools` with your goal in `context` —
   it records the capability gap so it can actually get built.
+- **`payment_required` names its own fix.** Every tool is callable at every
+  tier; what a key buys is depth. A call past a paid boundary (today: history
+  windows longer than 90 days on `get_economics_trends`) answers
+  `payment_required` with a `payment` block carrying `required_tier`,
+  `boundary` and `upgrade_url`. Retry inside the free depth, or relay the
+  upgrade path — the refusal is actionable, not a dead end.
 
 ## Develop before mainnet (local → testnet → mainnet)
 

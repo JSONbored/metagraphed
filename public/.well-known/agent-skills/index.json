@@ -3,7 +3,7 @@
   "skills": [
     {
       "description": "Use when a developer asks what a Bittensor subnet does, whether it's up right now, how to call/integrate its API, or what mining/validating one costs and earns — e.g. \"which subnet does image generation\", \"is subnet 7 healthy\", \"call the Beam API for me\", \"does mining subnet 3 need a GPU\", \"what does the median miner on subnet 13 make\". Can EXECUTE subnet API calls, not just describe them. Backed by metagraphed (api.metagraph.sh), the live operational + integration registry for ~129 subnets.",
-      "digest": "sha256:78c9793623bcba9c35286490b65b144c8b4f9be58cb9c44a6f27f93d143acd86",
+      "digest": "sha256:80c8a2ae9fe5138253dea4a5f4462d513f7f7242062c128796e1e4687d6cdc6c",
       "name": "bittensor",
       "type": "skill-md",
       "url": "https://api.metagraph.sh/skills/bittensor/SKILL.md"

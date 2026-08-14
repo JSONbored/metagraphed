@@ -1228,6 +1228,10 @@ import {
   parseEconomicsTrendsWindow,
 } from "./economics-trends.ts";
 import {
+  FREE_HISTORY_WINDOW_DAYS,
+  requireTierForDepth,
+} from "./mcp-tier-gate.ts";
+import {
   DEREGISTRATION_UNAVAILABLE_CODE,
   DEREGISTRATION_UNAVAILABLE_MESSAGE,
   projectDeregistrationRanking,
@@ -6586,7 +6590,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "subnet receives — spec 440 separates them by MinerBurned reweighting, " +
       "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
       "injection cap, and the liquidity balancer. Do not present it as TAO " +
-      "earned or emitted. get_network_parameters carries the gate parameters.",
+      "earned or emitted. get_network_parameters carries the gate parameters. " +
+      `Windows up to ${FREE_HISTORY_WINDOW_DAYS} days (7d/30d/90d) are open to ` +
+      "every caller; `1y` and `all` need a paid key and otherwise answer " +
+      "`payment_required` with the upgrade path attached.",
     inputSchema: inputJsonSchema(GetEconomicsTrendsInputSchema),
     async handler(
       args: z.infer<typeof GetEconomicsTrendsInputSchema>,
@@ -6602,6 +6609,23 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         throw toolError("invalid_params", message);
       }
       const { label, days } = parsed!;
+      // #11179 phase 3: the first paid depth boundary. The TOOL stays listed
+      // and callable at every tier -- what a tier buys is how far back it may
+      // read. `1y` and `all` scan the whole rollup; 7d/30d/90d do not.
+      requireTierForDepth({
+        // NO FALLBACK, for the reason enforceMcpRateLimit states two thousand
+        // lines down: applyTieredRateLimit ALWAYS sets a tier -- a tier name
+        // for a verified key, or the literal "anonymous". Inventing a `??`
+        // default here would add an arm no dispatch can reach and hide a
+        // future shape change instead of surfacing it. An absent value
+        // stringifies to something no tier rank knows, which clears nothing --
+        // the safe direction.
+        tier: String(ctx.authTier),
+        requiredTier: "paid",
+        boundary: "history_window_days",
+        requested: days,
+        limit: FREE_HISTORY_WINDOW_DAYS,
+      });
       // NO TIER READ (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
       // absent from FORWARDABLE_TIER_FLAGS, so the early return this replaces
       // could never be taken.
@@ -17001,7 +17025,16 @@ async function dispatchTool(
         // (rate_limited → back off, ai_unavailable → keyword fallback, etc.)
         // instead of substring-parsing the prose.
         structuredContent: {
-          error: { code: error.code, message: error.message },
+          error: {
+            code: error.code,
+            message: error.message,
+            // #11179: the payment_required refusal carries the tier it needs
+            // and where to get one, so an agent can relay an actionable
+            // upgrade path to its human instead of reporting a dead end. The
+            // block is shaped to later carry an x402 challenge as one more
+            // member rather than a second error vocabulary.
+            ...(error.payment ? { payment: error.payment } : {}),
+          },
         },
         isError: true,
       };
