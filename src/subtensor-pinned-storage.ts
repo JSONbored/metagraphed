@@ -19,6 +19,8 @@
 // how the two lanes would start disagreeing about which block they read, which
 // is the exact failure the pinning exists to prevent.
 
+import { chainRpc } from "./chain-rpc.ts";
+
 /** twox128("SubtensorModule") -- the pallet half of every key here. */
 const SUBTENSOR_PALLET_PREFIX = "658faa385070e074c85bf6b568cf0555";
 
@@ -92,21 +94,14 @@ export function createSubtensorPinnedStorage(
   let rpcId = 0;
 
   async function call<T>(method: string, params: unknown[]): Promise<T> {
-    const response = await doFetch(options.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: (rpcId += 1),
-        method,
-        params,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!response.ok) throw new Error(`${method}: HTTP ${response.status}`);
-    const body = (await response.json()) as { result?: T; error?: unknown };
-    if (body.error) throw new Error(`${method}: ${JSON.stringify(body.error)}`);
-    return body.result as T;
+    // The incrementing id is carried through rather than dropped -- see
+    // ChainRpcOptions.id. Everything else here was the shared client already,
+    // including the throw-on-error this reader depends on (#11194).
+    return (await chainRpc(options.rpcUrl, method, params, {
+      fetchImpl: doFetch,
+      timeoutMs,
+      id: (rpcId += 1),
+    })) as T;
   }
 
   return {
