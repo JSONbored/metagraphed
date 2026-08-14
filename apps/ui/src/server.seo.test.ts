@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { buildOgImageUrl, routeOwnsOgImage } from "./lib/metagraphed/og-card";
-import { handleArtifactHostRedirect, SEO_DEFAULT_TAGS, sitemapLastmod } from "./server";
+import {
+  buildJsonLd,
+  handleArtifactHostRedirect,
+  SEO_DEFAULT_TAGS,
+  sitemapLastmod,
+} from "./server";
 
 // #8624. These are the SEO properties that were silently wrong in production and
 // that nothing was asserting: every /docs/* page shared one OG card, and the
@@ -55,6 +60,76 @@ describe("docs cards are OURS, not an entity's (#8624)", () => {
   it("still defaults to entity=1, so the entity routes are unaffected", () => {
     const url = new URL(buildOgImageUrl({ title: "Chutes", eyebrow: "Subnet" }));
     expect(url.searchParams.get("entity")).toBe("1");
+  });
+});
+
+describe("site-wide JSON-LD graph (#11204)", () => {
+  const graphOf = (pathname: string) =>
+    JSON.parse(buildJsonLd(pathname))["@graph"] as Array<Record<string, unknown>>;
+  const typesOn = (pathname: string) => graphOf(pathname).map((node) => node["@type"]);
+  const breadcrumbOn = (pathname: string) =>
+    graphOf(pathname).find((node) => node["@type"] === "BreadcrumbList") as
+      { itemListElement: Array<{ position: number; name: string; item: string }> } | undefined;
+
+  it("carries Organization and WebSite on every page", () => {
+    for (const path of ["/", "/subnets", "/docs/economics", "/validators/5Grwva"]) {
+      expect(typesOn(path), path).toEqual(expect.arrayContaining(["Organization", "WebSite"]));
+    }
+  });
+
+  it("claims only profiles this project controls via sameAs", () => {
+    // A sameAs is an identity assertion: a wrong one merges this entity with
+    // someone else's in a knowledge graph.
+    const org = graphOf("/").find((node) => node["@type"] === "Organization");
+    expect(org?.sameAs).toEqual([
+      "https://github.com/JSONbored/metagraphed",
+      "https://x.com/metagraphed",
+    ]);
+  });
+
+  it("breadcrumbs the validator pages, which are the biggest indexed set", () => {
+    // 1,023 validator URLs are in the sitemap and every one of them emitted no
+    // breadcrumb, which is most of why Search Console saw ONE valid item
+    // site-wide. The hotkey is truncated rather than shown in full.
+    const crumb = breadcrumbOn("/validators/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+    expect(crumb?.itemListElement.map((entry) => entry.name)).toEqual([
+      "Home",
+      "Validators",
+      "5Grwva…GKutQY",
+    ]);
+  });
+
+  it("breadcrumbs docs pages one level per path segment", () => {
+    const crumb = breadcrumbOn("/docs/api-reference/subnets");
+    expect(crumb?.itemListElement.map((entry) => entry.name)).toEqual([
+      "Home",
+      "Docs",
+      "API reference",
+      "Subnets",
+    ]);
+    // Every `item` must be absolute — a crawler cannot resolve a relative one.
+    for (const entry of crumb?.itemListElement ?? []) {
+      expect(() => new URL(entry.item)).not.toThrow();
+    }
+  });
+
+  it("still breadcrumbs subnets and providers", () => {
+    expect(breadcrumbOn("/subnets/64")?.itemListElement).toHaveLength(3);
+    expect(breadcrumbOn("/providers/chutes")?.itemListElement).toHaveLength(3);
+  });
+
+  it("emits no breadcrumb on pages that are not a detail view", () => {
+    // A one-item "trail" on a hub page is noise, and Google flags a breadcrumb
+    // that does not describe a real position in the hierarchy.
+    for (const path of ["/", "/subnets", "/validators", "/docs"]) {
+      expect(breadcrumbOn(path), path).toBeUndefined();
+    }
+  });
+
+  it("escapes a crafted path segment so it cannot break out of the script", () => {
+    const serialized = buildJsonLd("/subnets/</script><script>alert(1)</script>");
+    expect(serialized).not.toContain("</script>");
+    expect(serialized).not.toContain("<");
   });
 });
 

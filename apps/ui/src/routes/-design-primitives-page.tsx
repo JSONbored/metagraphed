@@ -136,6 +136,7 @@ import {
   Wordmark,
   YieldPercentileStrip,
 } from "@jsonbored/ui-kit";
+import { GITHUB_REPO_URL } from "@/lib/metagraphed/identity";
 
 const COLUMNS: ColumnDef[] = [
   { id: "netuid", label: "Netuid", required: true },
@@ -712,7 +713,7 @@ function DataDisplaySection() {
               variant="filtered"
               title="No surfaces match this filter"
               hint="Widen the kind filter or clear the provider constraint to see more results."
-              evidenceHref="https://github.com/JSONbored/metagraphed"
+              evidenceHref={GITHUB_REPO_URL}
             />
           </Panel>
           <Panel

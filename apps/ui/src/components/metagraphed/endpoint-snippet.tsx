@@ -90,8 +90,12 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
   const [lang, setLang] = useState<ApiSnippetLang>("url");
   return (
     <>
+      {/* Deliberately not <Panel>: this is a segmented language switcher
+          (role="tablist"), and Panel would impose card padding and semantics on
+          it. The no-restricted-syntax suppression that used to sit here went
+          dead — ESLint reports it as unused, so the rule no longer matches this
+          class list and the directive was only suppressing itself. */}
       <div
-        // eslint-disable-next-line no-restricted-syntax -- this is a segmented language switcher (role="tablist"), not a card shell; <Panel> would impose card padding/semantics. The rule's rounded+border+bg-card matcher is a false positive here
         className="mb-3 inline-flex rounded border border-border bg-card p-0.5"
         role="tablist"
         aria-label="Snippet language"
