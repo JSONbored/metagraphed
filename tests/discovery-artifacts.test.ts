@@ -37,6 +37,33 @@ describe("Discovery artifacts", () => {
     assert.equal(card.endpoint, "https://api.metagraph.sh/mcp");
     assert.equal(card.transport, "streamable-http");
     assert.ok(card.capabilities?.tools, "card must advertise tool capability");
+    // #11170: the card is a discovery document, not the catalogue. The SEP
+    // explicitly excludes primitive definitions -- the runtime list operations
+    // own them -- and embedding all 240 tools made the card 3.27 MB, double
+    // tools/list itself. Counts and pointers replace the payload.
+    assert.equal(card.tools, undefined, "primitives are not embedded");
+    assert.equal(card.prompts, undefined);
+    assert.equal(card.resource_templates, undefined);
+    const counts = card.primitive_counts as Row;
+    assert.ok((counts.tools as number) >= 200, "tool count rides the card");
+    assert.ok((counts.prompts as number) >= 1);
+    assert.ok((counts.resource_templates as number) >= 1);
+    const defs = card.primitive_definitions as Row;
+    for (const key of ["mcp", "index", "openai", "anthropic"] as const) {
+      assert.match(String(defs[key]), /api\.metagraph\.sh/);
+    }
+    assert.deepEqual(card.remotes, [
+      { type: "streamable-http", url: "https://api.metagraph.sh/mcp" },
+    ]);
+    assert.equal(card.websiteUrl, "https://metagraph.sh");
+    // The budget that keeps this a card. The pre-#11170 card was 3,272,859
+    // bytes and the Cloudflare agent-readiness scan would not swallow it; a
+    // regression past this line means someone re-embedded a catalogue.
+    const body = JSON.stringify(card);
+    assert.ok(
+      body.length < 64_000,
+      `server card must stay a card: ${body.length} bytes`,
+    );
     // Bidirectional registry backlink, under our own domain namespace (not the
     // registry-reserved io.modelcontextprotocol.registry/* namespace).
     assert.equal(
