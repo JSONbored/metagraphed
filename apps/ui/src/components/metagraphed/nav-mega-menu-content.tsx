@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Boxes, RefreshCw, Search } from "lucide-react";
+import { ArrowUpRight, Boxes, Plug, RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { classNames } from "@/lib/metagraphed/format";
@@ -575,6 +575,26 @@ export function MobileMegaMenuBody({ onNavigate }: { onNavigate?: () => void }) 
           );
         })}
       </Accordion>
+      {/* MCP mirrors the desktop nav's plain top-level link — one setup page,
+          nothing to accordion. Styled like an accordion trigger row so it
+          reads as a sibling of the five panels above. */}
+      <Link
+        to="/docs/$"
+        params={{ _splat: "mcp" }}
+        onClick={onNavigate}
+        className="flex items-center gap-2 px-2 py-2.5 text-sm"
+        preload="intent"
+      >
+        <Plug
+          className={classNames(
+            "size-3.5",
+            pathname === "/docs/mcp" ? "text-accent" : "text-ink-muted",
+          )}
+        />
+        <span className={pathname === "/docs/mcp" ? "text-ink-strong font-medium" : "text-ink"}>
+          MCP
+        </span>
+      </Link>
     </div>
   );
 }

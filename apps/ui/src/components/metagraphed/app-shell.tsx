@@ -533,6 +533,7 @@ function SiteFooter() {
           <FooterLink to="/docs/search-ai">Search & AI</FooterLink>
           <FooterLink to="/docs/feeds">Feeds</FooterLink>
           <FooterLink to="/docs/graphql">GraphQL</FooterLink>
+          <FooterLink to="/docs/mcp">MCP</FooterLink>
           <FooterLink to="/docs/rpc">RPC</FooterLink>
         </FooterCol>
       </div>

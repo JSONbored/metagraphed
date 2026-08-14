@@ -1,0 +1,101 @@
+---
+title: MCP
+description: Bittensor in a box — the whole registry as Model Context Protocol tools over one streamable-HTTP endpoint, with a curated 23-tool core profile for context-limited agents. No API key required.
+---
+
+Point any MCP client at the registry and it gets metagraphed as callable tools: subnet discovery and comparison, per-subnet health and economics, OpenAPI schemas for every registered subnet API (callable through the registry itself), chain blocks/extrinsics/events, account lookup, and grounded question-answering — the same data every REST route serves, shaped for agents. Bittensor in a box: one connect, no key, no account, no local install.
+
+```
+https://api.metagraph.sh/mcp        streamable HTTP — full catalog, 240 tools
+https://api.metagraph.sh/mcp/core   streamable HTTP — core profile, 23 tools
+```
+
+## Which endpoint
+
+**Default to `/mcp/core`.** The full `/mcp` tool list serializes to ~406K tokens of tool schemas — more than most model context windows — and a client that holds tool definitions in context pays that on every session. `/mcp/core` lists the curated golden path (discover → verify → integrate → call → screen economically) at ~43K tokens.
+
+|                      | `/mcp`                                        | `/mcp/core`                            |
+| -------------------- | --------------------------------------------- | -------------------------------------- |
+| Tools listed         | 240                                           | 23 (the curated golden path)           |
+| `tools/list` context | ~406K tokens                                  | ~43K tokens                            |
+| Tools callable       | all 240                                       | all 240 — listing filters, calls don't |
+| Pick it when         | context is cheap (subagents, offline tooling) | context is model context — most agents |
+
+<Callout title="A context diet, not an authorization boundary">
+  A session connected to `/mcp/core` can still `tools/call` every one of the 240 tools. When a thin
+  session needs more, `get_more_tools` pages additional tool definitions in on demand, and `ask`
+  answers whole questions without any further tools at all — a core session is never stranded.
+</Callout>
+
+## Authentication
+
+Optional. Anonymous access works on both endpoints at 100 requests/60s per client IP. Clients that support MCP authorization prompt an OAuth sign-in (GitHub) on first connect; an `Authorization: Bearer mg_…` [API key](/settings) header works too. Authenticating raises rate limits (500 requests/60s per account, higher on paid tiers) — it does not unlock additional tools or surfaces.
+
+## Connect a client
+
+### Claude Code
+
+One CLI command, no config file to hand-edit:
+
+```bash
+claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core
+```
+
+### Claude Desktop & claude.ai
+
+Both take the endpoint as a custom connector: **Settings → Connectors → Add custom connector**, then paste `https://api.metagraph.sh/mcp/core`. Claude Desktop also accepts a config-file entry:
+
+```json title="claude_desktop_config.json"
+{
+  "mcpServers": {
+    "metagraphed": {
+      "transport": { "type": "http", "url": "https://api.metagraph.sh/mcp/core" }
+    }
+  }
+}
+```
+
+### Cursor
+
+```json title=".cursor/mcp.json"
+{
+  "mcpServers": {
+    "metagraphed": { "url": "https://api.metagraph.sh/mcp/core" }
+  }
+}
+```
+
+### VS Code
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "metagraphed": { "type": "http", "url": "https://api.metagraph.sh/mcp/core" }
+  }
+}
+```
+
+### Any other client
+
+Any client that speaks streamable-HTTP MCP connects directly — no install, no key:
+
+```json title="Generic streamable-HTTP entry"
+{
+  "type": "streamable-http",
+  "url": "https://api.metagraph.sh/mcp/core"
+}
+```
+
+## First calls to try
+
+All three are in the core profile:
+
+| Tool                  | Try                                                      | What it shows                                                                    |
+| --------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `search_subnets`      | `{"query": "inference"}`                                 | Keyword discovery across every subnet's curated profile.                         |
+| `ask`                 | `{"question": "which subnets expose an inference API?"}` | A grounded natural-language answer with citations — the whole-question shortcut. |
+| `call_subnet_surface` | a surface id from `list_subnet_apis`                     | Calling a subnet's own registered API through the registry, schema-checked.      |
+
+Every tool mirrors a documented REST route — the [API reference](/docs/api-reference) covers the request/response shapes behind them, and [For agents](/agents) has the rest of the machine surface: playbooks, `llms.txt`, the served skill, and prompt-ready links.
+
+<ApiSourceFooter paths={["/mcp", "/mcp/core"]} />
