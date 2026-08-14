@@ -10,6 +10,8 @@ import {
   loadBlockFeedFromR2Sql,
   loadBlockFromR2Sql,
   OFFSET_EMULATION_CAP,
+  currentOffsetCapDeclineGeneration,
+  offsetBeyondEmulationCap,
   safeAuthorLiteral,
 } from "../src/r2-sql-blocks.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
@@ -88,6 +90,35 @@ describe("loadBlockFeedFromR2Sql", () => {
     assert.ok(!/OFFSET/i.test(queries[0]!), "never emits an OFFSET clause");
     assert.equal(data!.blocks[0]!.block_number, 8);
     assert.equal(data!.blocks.length, 2);
+  });
+
+  test("the cap check RECORDS the decline it takes (#11142)", () => {
+    // The counter is the only way a declined page can be told from an empty
+    // one: the cap is checked before any SQL is built, so the r2-sql failure
+    // generation -- which is what handleRequest compares around a dispatch --
+    // never moves. A bare `offset > CAP` comparison is therefore invisible to
+    // the labeller, which is how ten routes shipped answering a declined page
+    // as end-of-feed.
+    const start = currentOffsetCapDeclineGeneration();
+
+    // At or below the ceiling: servable, and nothing to declare.
+    assert.equal(offsetBeyondEmulationCap(0), false);
+    assert.equal(offsetBeyondEmulationCap(OFFSET_EMULATION_CAP), false);
+    assert.equal(
+      currentOffsetCapDeclineGeneration(),
+      start,
+      "a servable depth must not report a decline, or the marker means nothing",
+    );
+
+    // Past it: declined, and said so.
+    assert.equal(offsetBeyondEmulationCap(OFFSET_EMULATION_CAP + 1), true);
+    assert.equal(currentOffsetCapDeclineGeneration(), start + 1);
+    assert.equal(offsetBeyondEmulationCap(OFFSET_EMULATION_CAP + 10_000), true);
+    assert.equal(
+      currentOffsetCapDeclineGeneration(),
+      start + 2,
+      "each decline counts, so concurrent reads on one isolate cannot mask one another",
+    );
   });
 
   test("the offset cap keeps the worst measured page under the body cap (#11140)", () => {

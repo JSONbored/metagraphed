@@ -47,7 +47,7 @@ import {
   safeNameLiteral,
   safeSs58Literal,
 } from "./r2-sql.ts";
-import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import {
   ACCOUNT_EVENTS_COLUMNS,
   EXTRINSICS_COLUMNS,
@@ -174,7 +174,7 @@ async function feedRows(
   if (limit === null || offset === null || limit <= 0) return null;
   // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
   // reasonable trade and declining beats serving a page that is quietly wrong.
-  if (offset > OFFSET_EMULATION_CAP) return null;
+  if (offsetBeyondEmulationCap(offset)) return null;
 
   const base = feedPredicates(query);
   if (base === null) return null;
