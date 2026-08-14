@@ -381,6 +381,110 @@ describe("no paginated route declines a deep offset in silence (#11142)", () => 
   });
 });
 
+describe("no route answers an inexpressible filter in silence (#11153)", () => {
+  /**
+   * The second way a read declines before querying: a filter it cannot express.
+   *
+   * R2 SQL has no bound parameters, so every value is string-built and each one
+   * goes through a literal guard. `safeNameLiteral` accepts
+   * `/^[A-Za-z][A-Za-z0-9_]{0,63}$/`, while the ROUTE accepts a free string --
+   * so `call_module=Foo-Bar` is contract-valid and guard-rejected. The reader
+   * then declines the whole query rather than dropping the filter, which is the
+   * right call: a filter silently ignored returns every row as though it
+   * matched. But the decline is taken before any SQL is built, so it is
+   * invisible to the failure generations for exactly the reason the offset cap
+   * was.
+   *
+   * Same discriminator as the depth sweep, one axis over: a param that reaches
+   * the lakehouse with a benign value but goes silent with a guard-rejected one
+   * has declined without querying, and that answer must say so.
+   */
+  const EVERY_ROUTE = [...API_ROUTES, ...FEED_ROUTES];
+
+  /** Valid per every route contract; outside every literal guard's charset. */
+  const GUARD_REJECTED = "Foo-Bar";
+  const BENIGN = "Benign";
+
+  function freeStringParams(route: { query_parameters?: unknown }): string[] {
+    return ((route.query_parameters ?? []) as Array<Record<string, never>>)
+      .filter((q) => {
+        const s = (q as { schema?: Record<string, unknown> }).schema;
+        return s?.type === "string" && !s.enum && !s.pattern;
+      })
+      .map((q) => (q as unknown as { name: string }).name);
+  }
+
+  test("a guard-rejected filter value is labelled, not answered empty", async () => {
+    const calls: string[] = [];
+    const countingLakehouse = (async (input: unknown) => {
+      calls.push(String(input));
+      throw new Error("r2 sql unreachable");
+    }) as unknown as typeof fetch;
+
+    const filtered: string[] = [];
+    const unlabelled: string[] = [];
+
+    await withFetch(countingLakehouse, async () => {
+      for (const route of EVERY_ROUTE) {
+        const path = concretePath(route.path);
+        for (const name of freeStringParams(route)) {
+          calls.length = 0;
+          try {
+            await handleRequest(
+              apiRequest(`${path}?${name}=${BENIGN}`),
+              LAKEHOUSE_ENV,
+              {},
+            );
+          } catch {
+            continue;
+          }
+          // This param does not reach the lakehouse (registry artifact, or the
+          // route rejects it outright), so it cannot decline pre-query.
+          if (calls.length === 0) continue;
+          filtered.push(`${route.path}?${name}`);
+
+          calls.length = 0;
+          let res: Response;
+          try {
+            res = (await handleRequest(
+              apiRequest(`${path}?${name}=${GUARD_REJECTED}`),
+              LAKEHOUSE_ENV,
+              {},
+            )) as Response;
+          } catch {
+            continue;
+          }
+          if (calls.length > 0) continue;
+          if (res.status !== 200) continue;
+          if (!res.headers.get(DEGRADED_HEADER)) {
+            unlabelled.push(`${route.path}?${name}`);
+          }
+        }
+      }
+    });
+
+    assert.deepEqual(
+      unlabelled,
+      [],
+      "these refused to express a filter and answered 200 anyway, so the caller cannot tell a declined filter from a genuine no-match",
+    );
+    // Named, not counted: two different handler families, so a refactor that
+    // stopped either from reaching the lakehouse cannot let this sweep go
+    // quietly green on a smaller surface. Measured 2026-08-14, it exercises 19
+    // param paths across extrinsics, chain-events, sudo, governance and the
+    // cursor-bearing feeds.
+    for (const anchor of [
+      "/api/v1/extrinsics?call_module",
+      "/api/v1/chain-events?pallet",
+    ]) {
+      assert.ok(
+        filtered.includes(anchor),
+        `${anchor} no longer filters at the lakehouse -- this sweep is measuring less than it thinks`,
+      );
+    }
+  });
+});
+
 describe("what the router label refuses to touch", () => {
   // The four early returns, each stated once. Driving them through a route
   // would need a route that happens to be in each state, which is how a
