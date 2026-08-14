@@ -1549,6 +1549,42 @@ describe("ai-search defensive branches", () => {
     assert.equal(r.ok, true);
   });
 
+  test("a large prune is deleted in chunks of 100, not one oversized call", async () => {
+    // Vectorize caps deleteByIds at 100 and rejects the WHOLE call past it.
+    // Seen in production as `VECTOR_DELETE_ERROR (code = 40007): too many ids
+    // in payload; max id count is 100, got 173`. A rejected delete leaves every
+    // stale vector in the index while the manifest is written as though it
+    // succeeded, so semantic_search keeps returning documents the registry no
+    // longer has.
+    const stale: Record<string, string> = {};
+    for (let i = 0; i < 173; i += 1) stale[`subnet:gone-${i}`] = `hash-${i}`;
+    const kv = memKv({ [EMBED_MANIFEST_KEY]: JSON.stringify(stale) });
+    const vectorize = stubVectorize();
+    const deletes: unknown[][] = [];
+    (vectorize as Row).deleteByIds = (ids: unknown[]) => {
+      deletes.push(ids);
+      return Promise.resolve({ count: ids.length });
+    };
+    const env = { AI: stubAi(), VECTORIZE: vectorize, METAGRAPH_CONTROL: kv };
+
+    await runEmbeddingSync(mockEnv(env), {
+      readArtifact: (() => Promise.resolve(oneDoc)) as unknown as ReadArtifact,
+    });
+
+    assert.ok(deletes.length >= 2, "173 ids must not go in one call");
+    for (const batch of deletes) {
+      assert.ok(
+        batch.length <= 100,
+        `a delete carried ${batch.length} ids, over the cap of 100`,
+      );
+    }
+    assert.equal(
+      deletes.flat().length,
+      173,
+      "every stale id must still be deleted",
+    );
+  });
+
   test("runEmbeddingSync skips deletion when VECTORIZE lacks deleteByIds", async () => {
     const kv = memKv({
       [EMBED_MANIFEST_KEY]: JSON.stringify({ "subnet:9": "stalehash" }),
