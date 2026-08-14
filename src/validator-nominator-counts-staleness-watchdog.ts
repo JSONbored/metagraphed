@@ -73,22 +73,57 @@ export const VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS =
 /**
  * How many hotkeys a COMPLETE pass is expected to write.
  *
- * 112,245, read off production on 2026-08-05 as the row count at the newest
- * `captured_at`. The table is keyed on (hotkey) alone, so a row IS a hotkey --
- * every hotkey the SubtensorModule::Alpha scan found with at least one
- * nominator.
+ * 21,547, COUNTED ON CHAIN on 2026-08-14 rather than read off our own table:
+ *
+ *   prefix = twox128("SubtensorModule") ++ twox128("Alpha")
+ *   state_getKeysPaged(prefix, 1000, last, finalizedHead), walked to exhaustion
+ *   -> 120,253 entries over 121 pages, final page 253 (a SHORT page, so this is
+ *      end-of-iteration and not a truncated walk)
+ *   -> 21,547 distinct hotkeys, 24,605 distinct coldkeys
+ *
+ * ## WHY THIS WAS 112,245, AND WHY THAT NUMBER WAS THE BUG
+ *
+ * The old figure was "read off production on 2026-08-05 as the row count at the
+ * newest `captured_at`". That was true when written and became false without
+ * anything failing: the Alpha keyspace dropped ~84%, which the poller's own
+ * scan floor was re-anchored for on 2026-08-13 (762,577 -> 120,314 there, also
+ * by walking the map directly against two nodes). This constant was not
+ * re-anchored alongside it, so the two halves of the same lane disagreed about
+ * how big the network is.
+ *
+ * The result was an alarm that fired continuously on CORRECT data, saying
+ * `/validators` "serves a nominator_count that is silently a pass old" while
+ * the pass was in fact complete: it wrote 21,548 hotkeys against a chain that
+ * has 21,547. A stale constant does not fail loudly, it fails plausibly -- the
+ * same lesson the poller's floor comment records, one repo over.
+ *
+ * ## DO NOT RE-DERIVE THIS FROM THE TABLE
+ *
+ * `validator_nominator_counts` ACCUMULATES: it is keyed on (hotkey), and a
+ * hotkey that loses its last nominator keeps its row rather than being deleted.
+ * At the time of writing the table held 112,250 rows against those 21,547 live
+ * hotkeys, which is why reading the table's row count reproduces exactly the
+ * stale number this replaces. The expectation is a property of the CHAIN, so
+ * measure it there.
  */
-export const VALIDATOR_NOMINATOR_COUNTS_EXPECTED_HOTKEYS = 112_245;
+export const VALIDATOR_NOMINATOR_COUNTS_EXPECTED_HOTKEYS = 21_547;
 
 /**
  * How much of that a single pass must cover before it counts as complete.
  *
- * EIGHTY PERCENT, placed against the chunking rather than picked round: the
- * sync route caps a request at 25,000 rows, so a full pass is ~5 requests and a
- * death partway lands near 25k / 50k / 75k / 100k. This floor (~89,800) catches
- * every one of those but the last, which is the right trade -- tightening it
- * far enough to catch a 4-of-5 death would put the alarm inside the noise band
- * of ordinary population change.
+ * EIGHTY PERCENT. This was originally placed against the chunking -- the sync
+ * route caps a request at 25,000 rows, so at the old 112,245 expectation a full
+ * pass was ~5 requests and a death partway landed near 25k / 50k / 75k / 100k,
+ * which a ~89,800 floor caught in every case but the last.
+ *
+ * THAT REASONING NO LONGER APPLIES, and saying so matters more than keeping the
+ * number. At the measured 21,547 a full pass fits in ONE request, so there are
+ * no interior chunk boundaries for a death to land on: a pass either lands or
+ * it does not, and a partial one now means the SCAN died rather than the upload.
+ * 80% is kept because it still catches any shortfall over a fifth of the
+ * population while sitting outside the noise band of ordinary churn -- but it is
+ * now a plain tolerance, not a number derived from the chunk layout. If the
+ * population grows back past ~25,000 the original argument returns on its own.
  *
  * THE DRIFT DIRECTION IS DIFFERENT HERE than on account_balances, and worth
  * knowing before retuning. That lane's expectation only grows (it counts
