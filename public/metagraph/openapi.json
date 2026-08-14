@@ -10710,6 +10710,31 @@
       "SubnetOverviewArtifactResponse": {
         "value": {
           "data": {
+            "compute_requirements": {
+              "evidence": {
+                "observed_at": "2026-06-01T00:00:00.000Z",
+                "path": "example",
+                "read_at_sha": "example",
+                "source_url": "https://api.metagraph.sh/example",
+                "spec_version": "2026-06-29.1"
+              },
+              "field_sources": {},
+              "found": false,
+              "miner": {
+                "gpu_required": "required",
+                "min_cores": 0.5,
+                "min_ram_gb": 0.5,
+                "min_storage_gb": 0.5,
+                "min_vram_gb": 0.5
+              },
+              "validator": {
+                "gpu_required": "required",
+                "min_cores": 0.5,
+                "min_ram_gb": 0.5,
+                "min_storage_gb": 0.5,
+                "min_vram_gb": 0.5
+              }
+            },
             "contract_version": "2026-06-29.1",
             "counts": {
               "candidates": 1,
@@ -51350,6 +51375,21 @@
           "github_unreachable": {
             "type": "boolean"
           },
+          "gpu_required": {
+            "anyOf": [
+              {
+                "enum": [
+                  "required",
+                  "not-required",
+                  "declared-inconsistently"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "integration_readiness": {
             "maximum": 100,
             "minimum": 0,
@@ -51379,6 +51419,16 @@
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "min_vram_gb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "name": {
             "type": "string"
@@ -52914,6 +52964,271 @@
       "SubnetOverviewArtifact": {
         "additionalProperties": false,
         "properties": {
+          "compute_requirements": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "evidence": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "observed_at": {
+                        "description": "When this reading was taken.",
+                        "type": "string"
+                      },
+                      "path": {
+                        "description": "Which candidate path answered. 38 of 39 repos publish `min_compute.yml`; one publishes `compute.min.yaml`.",
+                        "type": "string"
+                      },
+                      "read_at_sha": {
+                        "description": "The commit that last touched THIS PATH when the file was read -- not the branch head, so the citation moves when the declaration moves and not when the repo does.",
+                        "minLength": 7,
+                        "type": "string"
+                      },
+                      "source_url": {
+                        "description": "The raw file that was read. Points at a branch, so a human clicking it gets the current file; the pinned half is `read_at_sha`.",
+                        "type": "string"
+                      },
+                      "spec_version": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The file's own `version:` key. A subnet that has bumped it has revisited the declaration; one still on the template's default has not."
+                      }
+                    },
+                    "required": [
+                      "source_url",
+                      "read_at_sha",
+                      "path",
+                      "spec_version",
+                      "observed_at"
+                    ],
+                    "type": "object"
+                  },
+                  "field_sources": {
+                    "additionalProperties": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "measured",
+                            "reconstructed"
+                          ],
+                          "type": "string"
+                        },
+                        "read_at": {
+                          "enum": [
+                            "capture",
+                            "chain_state.block"
+                          ],
+                          "type": "string"
+                        },
+                        "storage": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "storage"
+                      ],
+                      "type": "object"
+                    },
+                    "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "found": {
+                    "description": "The file was fetched AND carried a parseable `compute_spec`. False is a reading: we opened it at that commit and it declared nothing readable. A subnet whose repo publishes no file has no facet at all (null), which is a different answer.",
+                    "type": "boolean"
+                  },
+                  "miner": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "gpu_required": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "required",
+                                  "not-required",
+                                  "declared-inconsistently"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Whether this role needs a GPU, as the declaration supports it. Null means the role declared no `gpu.required` at all -- a fourth answer, and NOT a no."
+                          },
+                          "min_cores": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Declared `cpu.min_cores`."
+                          },
+                          "min_ram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Declared `memory.min_ram`."
+                          },
+                          "min_storage_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Declared `storage.min_space`."
+                          },
+                          "min_vram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Declared `gpu.min_vram`. Present beside a `not-required` GPU on several subnets, which is what makes the requirement tri-state."
+                          }
+                        },
+                        "required": [
+                          "gpu_required",
+                          "min_vram_gb",
+                          "min_ram_gb",
+                          "min_storage_gb",
+                          "min_cores"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "validator": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "gpu_required": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "required",
+                                  "not-required",
+                                  "declared-inconsistently"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Whether this role needs a GPU, as the declaration supports it. Null means the role declared no `gpu.required` at all -- a fourth answer, and NOT a no."
+                          },
+                          "min_cores": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Declared `cpu.min_cores`."
+                          },
+                          "min_ram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Declared `memory.min_ram`."
+                          },
+                          "min_storage_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Declared `storage.min_space`."
+                          },
+                          "min_vram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Declared `gpu.min_vram`. Present beside a `not-required` GPU on several subnets, which is what makes the requirement tri-state."
+                          }
+                        },
+                        "required": [
+                          "gpu_required",
+                          "min_vram_gb",
+                          "min_ram_gb",
+                          "min_storage_gb",
+                          "min_cores"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "found",
+                  "miner",
+                  "validator",
+                  "evidence"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "contract_version": {
             "type": "string"
           },
@@ -67310,7 +67625,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on.",
+        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.",
         "tags": [
           "subnets"
         ],
@@ -68752,7 +69067,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List active Finney subnets.",
+        "summary": "List active Finney subnets. The screening fields ride the `fields=` projection: `gpu_required`/`min_vram_gb` are the MINER hardware floor from the subnet's own min_compute.yml (four-valued -- `required`, `not-required`, `declared-inconsistently`, and null for the subnets whose repo publishes no readable file -- a null is NOT a no), and `also_on` names the testnet twin. The whole declaration, both roles and the commit it was read at, is the `compute_requirements` section on /subnets/{netuid}/overview.",
         "tags": [
           "subnets"
         ],
@@ -81516,7 +81831,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on.",
+        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.",
         "tags": [
           "subnets"
         ],
@@ -93643,7 +93958,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List active Finney subnets.",
+        "summary": "List active Finney subnets. The screening fields ride the `fields=` projection: `gpu_required`/`min_vram_gb` are the MINER hardware floor from the subnet's own min_compute.yml (four-valued -- `required`, `not-required`, `declared-inconsistently`, and null for the subnets whose repo publishes no readable file -- a null is NOT a no), and `also_on` names the testnet twin. The whole declaration, both roles and the commit it was read at, is the `compute_requirements` section on /subnets/{netuid}/overview.",
         "tags": [
           "subnets"
         ],
@@ -98805,12 +99120,12 @@
             }
           },
           {
-            "description": "Comma-separated top-level sections to return, e.g. `profile,health`. One of: counts, curation, gap_priorities, gaps, health, name, netuid, notes, profile, slug, status. Selecting sections never removes the response envelope (schema_version, contract_version, generated_at, operational_observed_at, health_source) -- a smaller document still has to say what it is. An unknown name is rejected rather than ignored. A projected document omits every non-selected section, including ones the document schema marks required: `required` describes the unprojected response (#10960), so a client validating responses should skip validation or treat sections as optional when it sends this parameter. NOT the same parameter as `fields`, which projects columns out of the rows of a list.",
+            "description": "Comma-separated top-level sections to return, e.g. `profile,health`. One of: compute_requirements, counts, curation, gap_priorities, gaps, health, name, netuid, notes, profile, slug, status. Selecting sections never removes the response envelope (schema_version, contract_version, generated_at, operational_observed_at, health_source) -- a smaller document still has to say what it is. An unknown name is rejected rather than ignored. A projected document omits every non-selected section, including ones the document schema marks required: `required` describes the unprojected response (#10960), so a client validating responses should skip validation or treat sections as optional when it sends this parameter. NOT the same parameter as `fields`, which projects columns out of the rows of a list.",
             "in": "query",
             "name": "sections",
             "required": false,
             "schema": {
-              "pattern": "^(?:counts|curation|gap_priorities|gaps|health|name|netuid|notes|profile|slug|status)(?:,(?:counts|curation|gap_priorities|gaps|health|name|netuid|notes|profile|slug|status))*$",
+              "pattern": "^(?:compute_requirements|counts|curation|gap_priorities|gaps|health|name|netuid|notes|profile|slug|status)(?:,(?:compute_requirements|counts|curation|gap_priorities|gaps|health|name|netuid|notes|profile|slug|status))*$",
               "type": "string"
             }
           }

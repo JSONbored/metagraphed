@@ -10,6 +10,7 @@
 // route() call in src/contracts.ts for "subnets").
 import { z } from "zod";
 import { LineageAlsoOnEntrySchema } from "./subnet-profile.ts";
+import { GpuRequirementSchema } from "../compute.ts";
 import {
   SocialLinksSchema,
   GithubReleaseSchema,
@@ -53,6 +54,15 @@ export const SubnetIndexEntrySchema = z
       .array(z.object({ week: z.iso.datetime(), count: z.int().min(0) }))
       .nullable()
       .optional(),
+    // #11097: the miner hardware floor this subnet's own min_compute.yml
+    // declares, in bulk, because "does it need a GPU" is the first screening
+    // filter a capital-constrained operator applies and answering it used to
+    // mean opening 129 repos by hand. Null on the 90 subnets whose resolved
+    // source repo publishes no readable file -- never a guessed `false`. The
+    // whole declaration, both roles and its citation, is the
+    // `compute_requirements` section on /subnets/{netuid}/overview.
+    gpu_required: GpuRequirementSchema.nullable().optional(),
+    min_vram_gb: z.number().nullable().optional(),
     // #11099: the testnet lineage in bulk (the profile's also_on list) -- a
     // screen can name the free practice netuids for every candidate in one
     // call. Null when no testnet twin matched.

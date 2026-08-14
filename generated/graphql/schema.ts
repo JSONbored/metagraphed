@@ -1079,6 +1079,8 @@ type Subnet {
   docs_url: String
   first_party: Boolean
   gap_count: Int
+  gpu_required: String
+  min_vram_gb: Float
   also_on: [SubnetIndexEntryAlsoOn!]
   integration_readiness: Int
   lifecycle: String

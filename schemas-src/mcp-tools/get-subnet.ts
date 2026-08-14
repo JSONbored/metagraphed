@@ -30,6 +30,7 @@
 // against a live get_subnet response.
 import { z } from "zod";
 import { sectionsSchema } from "../query-params.ts";
+import { SubnetOverviewArtifactSchema } from "../routes/subnet-overview.ts";
 import { SUBNET_OVERVIEW_SECTIONS } from "../routes/subnet-overview.ts";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import { OverlaidSubnetHealthSchema } from "../routes/health.ts";
@@ -103,6 +104,10 @@ export const GetSubnetOutputSchema = z
     // say WHY a subnet is on the list and what to do about it -- were served
     // undeclared on every call. One declaration, in the file that owns it.
     gap_priorities: z.array(ReviewGapPrioritySchema).optional(),
+    // #11097: the declared hardware floor, the section a screening agent asks
+    // for by name. The ROUTE'S OWN declaration, imported rather than restated.
+    compute_requirements:
+      SubnetOverviewArtifactSchema.shape.compute_requirements,
     // The artifact stamps the overview carries. `get_subnet` reads
     // /metagraph/overview/{netuid}.json whole, so it carries them too.
     schema_version: z.literal(1).optional(),

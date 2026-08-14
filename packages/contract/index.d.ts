@@ -589,7 +589,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on.
+         * List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["economicsByNetwork"];
@@ -749,7 +749,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List active Finney subnets.
+         * List active Finney subnets. The screening fields ride the `fields=` projection: `gpu_required`/`min_vram_gb` are the MINER hardware floor from the subnet's own min_compute.yml (four-valued -- `required`, `not-required`, `declared-inconsistently`, and null for the subnets whose repo publishes no readable file -- a null is NOT a no), and `also_on` names the testnet twin. The whole declaration, both roles and the commit it was read at, is the `compute_requirements` section on /subnets/{netuid}/overview.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetsByNetwork"];
@@ -2367,7 +2367,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on. */
+        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required. */
         get: operations["economics"];
         put?: never;
         post?: never;
@@ -3840,7 +3840,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List active Finney subnets. */
+        /** List active Finney subnets. The screening fields ride the `fields=` projection: `gpu_required`/`min_vram_gb` are the MINER hardware floor from the subnet's own min_compute.yml (four-valued -- `required`, `not-required`, `declared-inconsistently`, and null for the subnets whose repo publishes no readable file -- a null is NOT a no), and `also_on` names the testnet twin. The whole declaration, both roles and the commit it was read at, is the `compute_requirements` section on /subnets/{netuid}/overview. */
         get: operations["subnets"];
         put?: never;
         post?: never;
@@ -11673,11 +11673,13 @@ export interface components {
             }[] | null;
             github_stars?: number | null;
             github_unreachable?: boolean;
+            gpu_required?: ("required" | "not-required" | "declared-inconsistently") | null;
             integration_readiness?: number;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
             logo_url?: string | null;
             mechanism_count?: number;
+            min_vram_gb?: number | null;
             name: string;
             native_name?: string | null;
             /** @enum {string} */
@@ -11953,6 +11955,56 @@ export interface components {
             usd_unavailable?: ("no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price" | "read_failed") | null;
         };
         SubnetOverviewArtifact: {
+            compute_requirements?: {
+                evidence: {
+                    /** @description When this reading was taken. */
+                    observed_at: string;
+                    /** @description Which candidate path answered. 38 of 39 repos publish `min_compute.yml`; one publishes `compute.min.yaml`. */
+                    path: string;
+                    /** @description The commit that last touched THIS PATH when the file was read -- not the branch head, so the citation moves when the declaration moves and not when the repo does. */
+                    read_at_sha: string;
+                    /** @description The raw file that was read. Points at a branch, so a human clicking it gets the current file; the pinned half is `read_at_sha`. */
+                    source_url: string;
+                    /** @description The file's own `version:` key. A subnet that has bumped it has revisited the declaration; one still on the template's default has not. */
+                    spec_version: string | null;
+                };
+                /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+                field_sources?: {
+                    [key: string]: {
+                        /** @enum {string} */
+                        kind: "measured" | "reconstructed";
+                        /** @enum {string} */
+                        read_at?: "capture" | "chain_state.block";
+                        storage: string | null;
+                    };
+                };
+                /** @description The file was fetched AND carried a parseable `compute_spec`. False is a reading: we opened it at that commit and it declared nothing readable. A subnet whose repo publishes no file has no facet at all (null), which is a different answer. */
+                found: boolean;
+                miner: {
+                    /** @description Whether this role needs a GPU, as the declaration supports it. Null means the role declared no `gpu.required` at all -- a fourth answer, and NOT a no. */
+                    gpu_required: ("required" | "not-required" | "declared-inconsistently") | null;
+                    /** @description Declared `cpu.min_cores`. */
+                    min_cores: number | null;
+                    /** @description Declared `memory.min_ram`. */
+                    min_ram_gb: number | null;
+                    /** @description Declared `storage.min_space`. */
+                    min_storage_gb: number | null;
+                    /** @description Declared `gpu.min_vram`. Present beside a `not-required` GPU on several subnets, which is what makes the requirement tri-state. */
+                    min_vram_gb: number | null;
+                } | null;
+                validator: {
+                    /** @description Whether this role needs a GPU, as the declaration supports it. Null means the role declared no `gpu.required` at all -- a fourth answer, and NOT a no. */
+                    gpu_required: ("required" | "not-required" | "declared-inconsistently") | null;
+                    /** @description Declared `cpu.min_cores`. */
+                    min_cores: number | null;
+                    /** @description Declared `memory.min_ram`. */
+                    min_ram_gb: number | null;
+                    /** @description Declared `storage.min_space`. */
+                    min_storage_gb: number | null;
+                    /** @description Declared `gpu.min_vram`. Present beside a `not-required` GPU on several subnets, which is what makes the requirement tri-state. */
+                    min_vram_gb: number | null;
+                } | null;
+            } | null;
             contract_version?: string;
             counts: {
                 candidates: number;
@@ -45259,7 +45311,7 @@ export interface operations {
     subnetOverview: {
         parameters: {
             query?: {
-                /** @description Comma-separated top-level sections to return, e.g. `profile,health`. One of: counts, curation, gap_priorities, gaps, health, name, netuid, notes, profile, slug, status. Selecting sections never removes the response envelope (schema_version, contract_version, generated_at, operational_observed_at, health_source) -- a smaller document still has to say what it is. An unknown name is rejected rather than ignored. A projected document omits every non-selected section, including ones the document schema marks required: `required` describes the unprojected response (#10960), so a client validating responses should skip validation or treat sections as optional when it sends this parameter. NOT the same parameter as `fields`, which projects columns out of the rows of a list. */
+                /** @description Comma-separated top-level sections to return, e.g. `profile,health`. One of: compute_requirements, counts, curation, gap_priorities, gaps, health, name, netuid, notes, profile, slug, status. Selecting sections never removes the response envelope (schema_version, contract_version, generated_at, operational_observed_at, health_source) -- a smaller document still has to say what it is. An unknown name is rejected rather than ignored. A projected document omits every non-selected section, including ones the document schema marks required: `required` describes the unprojected response (#10960), so a client validating responses should skip validation or treat sections as optional when it sends this parameter. NOT the same parameter as `fields`, which projects columns out of the rows of a list. */
                 sections?: string;
             };
             header?: never;
@@ -45282,6 +45334,31 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "compute_requirements": {
+                     *           "evidence": {
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "path": "example",
+                     *             "read_at_sha": "example",
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "spec_version": "2026-06-29.1"
+                     *           },
+                     *           "field_sources": {},
+                     *           "found": false,
+                     *           "miner": {
+                     *             "gpu_required": "required",
+                     *             "min_cores": 0.5,
+                     *             "min_ram_gb": 0.5,
+                     *             "min_storage_gb": 0.5,
+                     *             "min_vram_gb": 0.5
+                     *           },
+                     *           "validator": {
+                     *             "gpu_required": "required",
+                     *             "min_cores": 0.5,
+                     *             "min_ram_gb": 0.5,
+                     *             "min_storage_gb": 0.5,
+                     *             "min_vram_gb": 0.5
+                     *           }
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "counts": {
                      *           "candidates": 1,
