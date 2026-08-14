@@ -207,18 +207,66 @@ describe("loadAccountSummaryProjection", () => {
     assert.equal(await loadAccountSummaryProjection(store.env, HOT), null);
   });
 
-  test("A SHARD WRITTEN FOR A DIFFERENT FAN-OUT IS REFUSED", async () => {
-    // The dangerous case, because it does not look like an error: both sides
-    // compute a shard number happily and disagree about which object holds an
-    // account. Without this the reader would read a real, parseable object,
-    // fail to find the account in it, and report "not projected" forever.
+  test("A DIFFERENT FAN-OUT IS CORRECTED, not refused", async () => {
+    // THE PRODUCER OWNS THIS NUMBER. It lives in two repositories and nothing
+    // can diff a python function against a typescript one, so the compiled
+    // value is a starting GUESS and the payload's own claim is the contract.
+    //
+    // Refusing here was safe but silent: the route simply returned to the
+    // 4,374 MB scan until somebody noticed it had got slow again.
     const store = archive({
-      [accountSummaryShardKey(HOT)]: shardBody(
+      // What the reader guesses at, holding the producer's real fan-out.
+      [accountSummaryShardKey(HOT)]: shardBody({}, { shard_count: 64 }),
+      // Where the account actually lives under that fan-out.
+      [accountSummaryShardKey(HOT, 64)]: shardBody(
         { [HOT]: [group()] },
         { shard_count: 64 },
       ),
     });
+    const groups = await loadAccountSummaryProjection(store.env, HOT);
+    assert.equal(groups!.length, 1);
+    assert.deepEqual(store.asked, [
+      accountSummaryShardKey(HOT),
+      accountSummaryShardKey(HOT, 64),
+    ]);
+  });
+
+  test("it re-derives ONCE, never in a loop", async () => {
+    // A producer declaring a third value on the retry would otherwise be
+    // chased forever, one GET per hop, on every request.
+    const store = archive({
+      [accountSummaryShardKey(HOT)]: shardBody({}, { shard_count: 64 }),
+      [accountSummaryShardKey(HOT, 64)]: shardBody({}, { shard_count: 8 }),
+    });
     assert.equal(await loadAccountSummaryProjection(store.env, HOT), null);
+    assert.equal(store.asked.length, 2, store.asked.join(" "));
+  });
+
+  test("a plain MISS does not trigger a retry", async () => {
+    // Nothing was declared, so there is no other fan-out to try -- a second
+    // GET would just be a wasted round trip on the common cold-cache path.
+    const store = archive({});
+    assert.equal(await loadAccountSummaryProjection(store.env, HOT), null);
+    assert.equal(store.asked.length, 1);
+  });
+
+  test("the retry is still bound by freshness", async () => {
+    // Otherwise a shrunk fan-out would leave stale objects above the new count
+    // that the reader would happily re-read.
+    const written = Date.parse("2026-08-01T00:00:00Z");
+    const store = archive({
+      [accountSummaryShardKey(HOT)]: shardBody({}, { shard_count: 64 }),
+      [accountSummaryShardKey(HOT, 64)]: shardBody(
+        { [HOT]: [group()] },
+        { shard_count: 64, generated_at: "2026-08-01T00:00:00Z" },
+      ),
+    });
+    assert.equal(
+      await loadAccountSummaryProjection(store.env, HOT, {
+        now: () => written + ACCOUNT_SUMMARY_MAX_AGE_MS + 1,
+      }),
+      null,
+    );
   });
 
   test("an account present with NO usable groups declines", async () => {

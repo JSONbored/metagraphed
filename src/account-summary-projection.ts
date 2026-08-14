@@ -174,30 +174,65 @@ export async function loadAccountSummaryProjection(
     maxAgeMs = ACCOUNT_SUMMARY_MAX_AGE_MS,
   }: { shards?: number; now?: () => number; maxAgeMs?: number } = {},
 ): Promise<Record<string, unknown>[] | null> {
+  const first = await readShard(env, account, shards, now, maxAgeMs);
+  if (first.groups) return first.groups;
+  // THE PRODUCER OWNS THE FAN-OUT, so a disagreement is corrected rather than
+  // refused. `shards` above is a compiled STARTING GUESS: the number lives in
+  // two repositories and nothing can diff a python function against a
+  // typescript one, so the only durable contract is the one the payload states
+  // about itself.
+  //
+  // Re-derived ONCE, never in a loop -- a producer that declared a third value
+  // would otherwise be chased forever. And only ever downward in trust: the
+  // retry re-reads with the count the object itself declared, so growing the
+  // fan-out is picked up on the next request instead of silently returning the
+  // route to the 4,374 MB scan until someone notices it got slow again.
+  if (first.declared === null || first.declared === shards) return null;
+  const second = await readShard(env, account, first.declared, now, maxAgeMs);
+  return second.groups;
+}
+
+/** Nothing usable here, and nothing to retry with. */
+const MISS: ShardRead = { groups: null, declared: null };
+
+interface ShardRead {
+  groups: Record<string, unknown>[] | null;
+  /** The fan-out the object claimed, when it claimed one at all. */
+  declared: number | null;
+}
+
+async function readShard(
+  env: Env | null | undefined,
+  account: string,
+  shards: number,
+  now: () => number,
+  maxAgeMs: number,
+): Promise<ShardRead> {
   // Same binding the thirteen sibling projections read from.
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get || !account) return null;
+  if (!bucket?.get || !account) return MISS;
   let body: unknown;
   try {
     const object = await bucket.get(accountSummaryShardKey(account, shards));
-    if (!object) return null;
+    if (!object) return MISS;
     body = await object.json();
   } catch {
     // A shard that cannot be fetched or parsed is not a fault to report: the
     // caller reads the lakehouse and answers correctly, just slower.
-    return null;
+    return MISS;
   }
-  if (!body || typeof body !== "object") return null;
+  if (!body || typeof body !== "object") return MISS;
   const payload = body as Record<string, unknown>;
   if (Number(payload["schema_version"]) !== ACCOUNT_SUMMARY_SCHEMA_VERSION) {
-    return null;
+    return MISS;
   }
   // A shard written for a DIFFERENT fan-out is not this account's shard, even
   // though the object exists and parses -- it is the wrong bucket of the wrong
   // partitioning, so its absence of this account proves nothing.
   const declared = finite(payload["shard_count"]);
-  if (declared !== null && declared !== shards) return null;
+  if (declared !== null && declared !== shards)
+    return { groups: null, declared };
 
   // STALE IS A DECLINE, not a slightly-old answer. See
   // ACCOUNT_SUMMARY_MAX_AGE_MS: this is the only failure mode that could
@@ -208,13 +243,13 @@ export async function loadAccountSummaryProjection(
   // does not understand.
   const stamp = payload["generated_at"];
   const generated = typeof stamp === "string" ? Date.parse(stamp) : Number.NaN;
-  if (!Number.isFinite(generated)) return null;
-  if (maxAgeMs > 0 && now() - generated > maxAgeMs) return null;
+  if (!Number.isFinite(generated)) return MISS;
+  if (maxAgeMs > 0 && now() - generated > maxAgeMs) return MISS;
 
   const accounts = payload["accounts"];
-  if (!accounts || typeof accounts !== "object") return null;
+  if (!accounts || typeof accounts !== "object") return MISS;
   const raw = (accounts as Record<string, unknown>)[account];
-  if (!Array.isArray(raw)) return null;
+  if (!Array.isArray(raw)) return MISS;
 
   const groups: Record<string, unknown>[] = [];
   for (const entry of raw as ProjectedGroup[]) {
@@ -234,6 +269,6 @@ export async function loadAccountSummaryProjection(
   }
   // An account present with no usable groups is not an answer -- the caller
   // reads the lakehouse rather than publishing an empty card from a shard.
-  if (!groups.length) return null;
-  return groups;
+  if (!groups.length) return MISS;
+  return { groups, declared };
 }
