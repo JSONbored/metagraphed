@@ -2745,7 +2745,26 @@ export type GapsArtifactGaps = {
   gaps: Gaps;
   name: Scalars['String']['output'];
   netuid: Scalars['Int']['output'];
+  schema_parity?: Maybe<GapsArtifactGapsSchemaParity>;
   slug: Scalars['String']['output'];
+};
+
+export type GapsArtifactGapsSchemaParity = {
+  __typename?: 'GapsArtifactGapsSchemaParity';
+  /** The capture lane's declared cadence in hours. Compare it against the backing entries' `snapshot.observed_at` (GET /api/v1/schemas) to judge whether this measurement rests on a current capture. No age is baked: this document is served for hours after it is built, so a build-stamped age would be wrong on arrival. */
+  capture_cadence_hours: Scalars['Float']['output'];
+  /** Paths the subnet's captured spec(s) declare, summed across captured specs. */
+  captured_path_count: Scalars['Int']['output'];
+  /** Captured machine-readable specs backing this measurement. */
+  captured_schema_count: Scalars['Int']['output'];
+  /** Declared POST/PUT/PATCH/DELETE operations. NULL when the captured entries predate the capture-time stamp -- unmeasured, not zero. */
+  declared_non_get_count?: Maybe<Scalars['Int']['output']>;
+  /** True when the subnet declares more paths than the catalogue registers as routes -- a caller reading only the registry cannot tell which routes are missing. Judge its currency from the entry's `observed_at` against the schema index's `capture_cadence_hours`. */
+  flagged: Scalars['Boolean']['output'];
+  /** Registered surfaces declaring a non-GET method (#11146 phase 3). */
+  registered_non_get_count: Scalars['Int']['output'];
+  /** Registered concrete route surfaces (subnet-api/sse/data-artifact; the openapi spec surface itself is not a route). */
+  registered_route_surface_count: Scalars['Int']['output'];
 };
 
 /** Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps). */
@@ -8592,6 +8611,7 @@ export type ResolversTypes = ResolversObject<{
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   Gaps: ResolverTypeWrapper<Gaps>;
   GapsArtifactGaps: ResolverTypeWrapper<GapsArtifactGaps>;
+  GapsArtifactGapsSchemaParity: ResolverTypeWrapper<GapsArtifactGapsSchemaParity>;
   GapsList: ResolverTypeWrapper<GapsList>;
   GlobalHealth: ResolverTypeWrapper<GlobalHealth>;
   GlobalIncidentSurface: ResolverTypeWrapper<GlobalIncidentSurface>;
@@ -9061,6 +9081,7 @@ export type ResolversParentTypes = ResolversObject<{
   Float: Scalars['Float']['output'];
   Gaps: Gaps;
   GapsArtifactGaps: GapsArtifactGaps;
+  GapsArtifactGapsSchemaParity: GapsArtifactGapsSchemaParity;
   GapsList: GapsList;
   GlobalHealth: GlobalHealth;
   GlobalIncidentSurface: GlobalIncidentSurface;
@@ -11475,7 +11496,18 @@ export type GapsArtifactGapsResolvers<ContextType = GqlContext, ParentType exten
   gaps?: Resolver<ResolversTypes['Gaps'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_parity?: Resolver<Maybe<ResolversTypes['GapsArtifactGapsSchemaParity']>, ParentType, ContextType>;
   slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type GapsArtifactGapsSchemaParityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GapsArtifactGapsSchemaParity'] = ResolversParentTypes['GapsArtifactGapsSchemaParity']> = ResolversObject<{
+  capture_cadence_hours?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  captured_path_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  captured_schema_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  declared_non_get_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  flagged?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  registered_non_get_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  registered_route_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type GapsListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GapsList'] = ResolversParentTypes['GapsList']> = ResolversObject<{
@@ -14748,6 +14780,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   FailureReasonsDay?: FailureReasonsDayResolvers<ContextType>;
   Gaps?: GapsResolvers<ContextType>;
   GapsArtifactGaps?: GapsArtifactGapsResolvers<ContextType>;
+  GapsArtifactGapsSchemaParity?: GapsArtifactGapsSchemaParityResolvers<ContextType>;
   GapsList?: GapsListResolvers<ContextType>;
   GlobalHealth?: GlobalHealthResolvers<ContextType>;
   GlobalIncidentSurface?: GlobalIncidentSurfaceResolvers<ContextType>;

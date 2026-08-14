@@ -633,6 +633,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   EvidenceLedgerArtifactSummary: "EvidenceLedgerArtifactSummary",
   Gaps: "Gaps",
   GapsArtifactGaps: "GapsArtifactGaps",
+  GapsArtifactGapsSchemaParity: "GapsArtifactGapsSchemaParity",
   GlobalIncidentsArtifactSummary: "GlobalIncidentsArtifactSummary",
   HealthHistoryArtifactSurfaces: "HealthHistoryArtifactSurfaces",
   HealthIncidentsArtifactSurfaces: "HealthIncidentsArtifactSurfaces",

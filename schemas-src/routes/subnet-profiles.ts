@@ -113,6 +113,9 @@ export const SchemaSnapshotSchema = z
     auth_schemes: z.array(z.string()).optional(),
     hash: z.string().nullable().optional(),
     previous_hash: z.string().nullable().optional(),
+    // #11146: how many declared operations are mutations. Absent on a snapshot
+    // captured before the stamp -- unmeasured, not zero.
+    non_get_operation_count: z.int().min(0).optional(),
     drift_status: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     generated_at: z.string().nullable().optional(),
@@ -124,7 +127,17 @@ export const SchemaSnapshotSchema = z
 const SchemaIndexEntrySchema = z
   .object({
     content_type: z.string().nullable().optional(),
-    drift_status: SchemaDriftStatusSchema,
+    // #11146 phase 2: the description IS the fix. This value compares our
+    // snapshot against OUR PREVIOUS snapshot of the same surface -- never the
+    // subnet's live spec -- and with the capture lane manual-only it read as
+    // "in sync with upstream" while 23 of 24 measurably-drifted subnets
+    // reported `unchanged`. Stated at the point of consumption, in the
+    // published contract, because the artifact itself is a deploy-owned
+    // capture cache a PR cannot annotate.
+    drift_status: SchemaDriftStatusSchema.meta({
+      description:
+        "How this capture compares to the PREVIOUS capture of the same surface by this registry -- NOT to the subnet's live spec. `unchanged` means 'our snapshot is what it was', never 'the upstream API has not changed'. Judge currency by comparing this entry's `snapshot.observed_at` against `capture_cadence_hours` on the subnet's /api/v1/gaps `schema_parity` block.",
+    }),
     error: z.string().nullable().optional(),
     hash: z.string().nullable().optional(),
     netuid: z.int().min(0).optional(),

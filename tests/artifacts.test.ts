@@ -1461,6 +1461,41 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(curation.curation.length, native.subnets.length);
   assert.equal(gaps.gaps.length, native.subnets.length);
+  // #11146 phase 4: the schema-parity ledger. Present exactly on subnets with
+  // captured schema-index entries; every block internally consistent, and the
+  // flag is the arithmetic it claims. At least one subnet must be measured
+  // (the committed index seed carries 58 captured entries) and at least one
+  // flagged -- under-registration is measured to exist, so a build where
+  // nothing is flagged means the ledger broke rather than that parity is met.
+  const parityRows = gaps.gaps.filter((row: Row) => row.schema_parity);
+  assert.equal(parityRows.length > 0, true, "no subnet measured for parity");
+  for (const row of parityRows) {
+    const parity = row.schema_parity as Row;
+    assert.equal((parity.captured_schema_count as number) >= 1, true);
+    // #11146 phase 1: freshness is judged by the reader, so the block must
+    // carry the cadence rather than a build-stamped age.
+    assert.equal((parity.capture_cadence_hours as number) > 0, true);
+    assert.equal("captured_age_hours" in parity, false);
+    assert.equal(Number.isInteger(parity.captured_path_count), true);
+    assert.equal(
+      parity.declared_non_get_count === null ||
+        Number.isInteger(parity.declared_non_get_count),
+      true,
+      "an unmeasured mutation count must be null, never zero",
+    );
+    assert.equal(
+      parity.flagged,
+      (parity.registered_route_surface_count as number) <
+        (parity.captured_path_count as number),
+      `parity flag must be the arithmetic it claims (netuid ${row.netuid})`,
+    );
+  }
+  assert.equal(
+    parityRows.some((row: Row) => (row.schema_parity as Row).flagged),
+    true,
+    "no subnet flagged -- under-registration is measured to exist (#11146)",
+  );
+
   assert.equal(verification.candidate_count, verification.results.length);
   assert.equal(
     verification.results.length <= candidates.candidates.length,
