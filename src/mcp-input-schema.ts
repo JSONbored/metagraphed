@@ -145,6 +145,36 @@ export function inputJsonSchema(schema: z.ZodType) {
  * schemas -- and `$defs` cannot reach it, because each tool's schema has to be
  * self-contained. Shrinking that means the schemas carrying less, not being
  * encoded more cleverly (#9685, #9981).
+ *
+ * ## TWO MORE ENCODINGS, MEASURED 2026-08-14 AND ALSO NOT TAKEN (#11164)
+ *
+ * Asked again, so measured again -- on the live 240-tool payload, which
+ * serializes to 1.537 MB:
+ *
+ *   collapse `anyOf: [{type: X}, {type: "null"}]` -> `type: [X, "null"]`
+ *     3,231 occurrences, worth 2.95%
+ *   drop the per-schema `$schema` declaration
+ *     worth 1.78% (and unsafe beside `$defs`, which needs the dialect stated)
+ *   both together                                      4.72%
+ *
+ * Both are semantics-preserving and both fail the SAME test `$defs` failed:
+ * they change the emitted shape for every external caller to save single
+ * digits. A consumer reading `type` as a string, or keying on `$schema`, is
+ * broken by a saving smaller than the one already declined above.
+ *
+ * ## AND THE WIRE WAS NEVER THE PROBLEM
+ *
+ * The same payload, same endpoint, same session:
+ *
+ *   no Accept-Encoding      1,536,823 B   1.72 s
+ *   Accept-Encoding: gzip     189,028 B   0.27 s
+ *
+ * 8x, already, for every client that sends the header. What remains is MODEL
+ * CONTEXT for clients that load tool definitions into a prompt, and no
+ * encoding reaches that -- only carrying less does, which is the same
+ * conclusion #9685 and #9981 reached from the other direction. Brotli is not
+ * offered at the edge and is the one free win left; it is a zone setting, so
+ * it is tracked in metagraphed-infra#558 rather than here.
  */
 /**
  * The `degraded` block DISPATCH can stamp on any tool result (#10790).
