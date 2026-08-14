@@ -39,16 +39,29 @@ import { ChainRpcEnvelopeSchema } from "../schemas-src/chain-rpc-envelope.ts";
  * the message and falling back to JSON is strictly better than either and
  * changes no existing message that was already useful.
  */
+/**
+ * A non-empty description of an RPC error envelope, always.
+ *
+ * NEVER EMPTY, and the return type is the reason. `JSON.stringify(undefined)`
+ * returns `undefined` -- not the string "undefined" -- so this used to be able
+ * to hand back a non-string while declaring `string`, and a node sending
+ * `{ message: "" }` produced an empty one. Both reach the caller as
+ * `state_getStorage: ` with nothing after the colon: a decline that does not
+ * say why, which is the failure the message prefix exists to prevent.
+ */
 export function describeRpcError(error: unknown): string {
   if (
     error !== null &&
     typeof error === "object" &&
     "message" in error &&
-    typeof (error as { message?: unknown }).message === "string"
+    typeof (error as { message?: unknown }).message === "string" &&
+    (error as { message: string }).message.trim() !== ""
   ) {
     return (error as { message: string }).message;
   }
-  return JSON.stringify(error);
+  // `?? "undefined"` covers the one input JSON.stringify does not stringify.
+  const serialized = JSON.stringify(error) ?? String(error);
+  return serialized.trim() === "" ? String(error) : serialized;
 }
 
 export interface ChainRpcOptions {

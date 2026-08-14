@@ -11,6 +11,8 @@
 // three new tools, the resolution order, the deprecation notice).
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { normalizeSurfaceCredentialArgument } from "../src/mcp-server.ts";
+import { StoredSurfaceCredentialSchema } from "../schemas-src/mcp-tools/ai-integration.ts";
 import {
   SURFACE_CREDENTIAL_KV_PREFIX,
   clampSurfaceCredentialTtl,
@@ -384,5 +386,63 @@ describe("surface credential TTL", () => {
       delta >= 3_600_000 && delta < 3_610_000,
       `expiry ${expiresAt} should be ~1h out, saw ${delta}ms`,
     );
+  });
+});
+
+// The write rule and the read rule must accept exactly the same values
+// (#11194). `normalizeSurfaceCredentialArgument` guards the store and produces
+// caller-facing messages naming the offending key;
+// `StoredSurfaceCredentialSchema` guards the read, because KV hands back what
+// an EARLIER DEPLOY's normaliser allowed and a credential is the last value in
+// the system to take on trust.
+//
+// BOTH DIRECTIONS. Asserting only "everything the normaliser accepts, the
+// schema parses" would hide the schema being the stricter of the two, which is
+// the direction that silently turns a stored credential into "nothing stored".
+describe("the stored-credential rule, pinned at both ends", () => {
+  const CASES: Array<{ value: unknown; label: string }> = [
+    { value: "Bearer abc123", label: "a bearer string" },
+    { value: "x", label: "a one-character string" },
+    { value: { "X-Api-Key": "abc" }, label: "a single header bundle" },
+    { value: { a: "1", b: "2" }, label: "a multi-entry bundle" },
+    { value: "", label: "an empty string" },
+    { value: {}, label: "an empty object" },
+    { value: { a: "" }, label: "a bundle with an empty value" },
+    { value: { a: 123 }, label: "a bundle with a number value" },
+    { value: { a: null }, label: "a bundle with a null value" },
+    { value: { a: { nested: "x" } }, label: "a nested bundle" },
+    { value: ["a"], label: "an array" },
+    { value: null, label: "null" },
+    { value: undefined, label: "undefined" },
+    { value: 42, label: "a number" },
+    { value: true, label: "a boolean" },
+  ];
+
+  for (const { value, label } of CASES) {
+    test(`${label}: write and read agree`, () => {
+      let writeAccepts = true;
+      try {
+        normalizeSurfaceCredentialArgument(value);
+      } catch {
+        writeAccepts = false;
+      }
+      const readAccepts =
+        StoredSurfaceCredentialSchema.safeParse(value).success;
+      assert.equal(
+        readAccepts,
+        writeAccepts,
+        `write ${writeAccepts ? "accepts" : "rejects"} but read ${
+          readAccepts ? "accepts" : "rejects"
+        } ${JSON.stringify(value)}`,
+      );
+    });
+  }
+
+  test("a value the write path normalises round-trips through the read schema", () => {
+    // The normaliser may TRANSFORM (it rebuilds the object); whatever it
+    // returns is what actually lands in KV, so that is what the read must
+    // accept -- not merely the input it was given.
+    const normalized = normalizeSurfaceCredentialArgument({ a: "1", b: "2" });
+    assert.ok(StoredSurfaceCredentialSchema.safeParse(normalized).success);
   });
 });

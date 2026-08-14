@@ -297,6 +297,40 @@ export type CallSubnetSurfaceOutput = z.infer<
 // src/mcp-server.ts's MCP_TOOLS array, backed by
 // src/mcp-surface-credentials.ts.
 
+/**
+ * A credential AS STORED -- the shape that survives encryption, KV and a
+ * redeploy.
+ *
+ * Distinct from the INPUT union below, and deliberately tighter. The input
+ * accepts `OpenObjectSchema` (`catchall(z.unknown())`) and
+ * `normalizeSurfaceCredentialArgument` then rejects any non-string value with
+ * a caller-facing message, so what actually reaches the store is always
+ * `string | Record<string, string>`. This schema states that post-normalisation
+ * shape once, so the READ side can parse against it instead of casting.
+ *
+ * Why the read needs it at all: the bytes come back from KV, written by an
+ * EARLIER DEPLOY. `JSON.parse(...) as StoredSurfaceCredential` trusts whatever
+ * that deploy's normaliser happened to allow, and a credential is the last
+ * value in the system that should be taken on trust.
+ *
+ * `min(1)` on both branches matches the normaliser exactly: it rejects an empty
+ * string and an empty value, and `tests/mcp-surface-credentials.test.ts` pins
+ * the two against each other in both directions so they cannot drift apart.
+ */
+export const StoredSurfaceCredentialSchema = z.union([
+  z.string().min(1),
+  // `.refine` for the non-empty check, because `z.record` has no `.min()`.
+  // Without it the read accepts `{}` while the normaliser rejects it -- the
+  // read being LOOSER than the write, which the bidirectional parity test
+  // caught on its first run. An empty bundle is a credential that sends
+  // nothing, which is why the write refuses it.
+  z
+    .record(z.string(), z.string().min(1))
+    .refine((bundle) => Object.keys(bundle).length > 0, {
+      message: "credential object must have at least one entry",
+    }),
+]);
+
 export const StoreSurfaceCredentialInputSchema = z
   .object({
     surface_id: surfaceIdSchema(),
