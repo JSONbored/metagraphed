@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 606,
+  "surface_count": 607,
   "surfaces": [
     {
       "auth_required": false,
@@ -12395,6 +12395,26 @@
       "surface_id": "sn-105-beam-routing-orchestrators",
       "surface_key": "srf-dc7e0b51c0d1384d",
       "url": "https://beamcore.b1m.ai/routing/orchestrators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 105,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "revenue": null,
+      "schema_source": null,
+      "subnet_name": "Beam",
+      "subnet_slug": "sn-105",
+      "surface_id": "sn-105-beam-uid-ranges",
+      "surface_key": "srf-9efb169daf6cd0a7",
+      "url": "https://beamcore.b1m.ai/config/uid-ranges"
     },
     {
       "auth_required": false,
