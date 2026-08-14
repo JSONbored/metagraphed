@@ -104,11 +104,29 @@ export function neuronsStalenessThresholdMs(
 }
 
 /**
- * How many subnets a COMPLETE pass is expected to cover.
+ * How many netuids a COMPLETE pass is expected to cover.
  *
- * 129, read off production on 2026-08-05 as `COUNT(DISTINCT netuid)` at the
- * newest stamp, and matching the 129 native subnets `npm run validate` reports
- * from the registry -- two independent counts of the same thing.
+ * 129, and NETUIDS rather than subnets: that is 128 subnets plus root
+ * (netuid 0), max netuid 128. The distinction matters when re-measuring,
+ * because a source that counts "subnets" returns 128 and would look like an
+ * off-by-one against this.
+ *
+ * THREE independent counts now agree, one of them the chain itself:
+ *
+ *   production   COUNT(DISTINCT netuid) at the newest stamp   (2026-08-05)
+ *   registry     native subnets reported by `npm run validate`
+ *   CHAIN        SubtensorModule::TotalNetworks = 129, and
+ *                NetworksAdded walked to exhaustion = 129 entries (2026-08-14)
+ *
+ * The third is the one that matters and the one its siblings lacked. #11166 and
+ * #11167 both re-anchored constants that had been read off our own tables and
+ * had no chain check behind them; each was correct when written and became
+ * false without anything failing. Audited under #11185 and found CORRECT --
+ * recorded here so the next audit does not have to re-derive it.
+ *
+ * To re-measure:
+ *   key = twox128("SubtensorModule") ++ twox128("TotalNetworks")
+ *   state_getStorage(key, finalizedHead) -> u16 little-endian
  */
 export const NEURONS_EXPECTED_NETUIDS = 129;
 

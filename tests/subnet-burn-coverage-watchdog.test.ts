@@ -133,6 +133,38 @@ describe("the lane record", () => {
     };
   }
 
+  test("both counts span ONE pass, not one against all history", async () => {
+    // The hotkey-alpha shape (#11170): `covered` scoped to the newest stamp
+    // while `expected` counted a whole table that never prunes. It has not
+    // fired here only because no netuid has ever been removed -- measured
+    // 2026-08-14, subnet_hyperparams held 129 distinct netuids in total AND 129
+    // at its newest stamp, and chain agrees (TotalNetworks = 129: 128 subnets
+    // plus root). The first deregistration that leaves a stale row breaks that
+    // coincidence and the alarm fires forever on complete passes.
+    const seen: string[] = [];
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = (q: { text: string }) => seen.push(q.text);
+    pg.control.answers.push({
+      match: /FROM subnet_burn_history/,
+      rows: [{ latest: NOW - 60_000, covered: 129, expected: 129 }],
+    });
+    pg.control.answers.push({ match: /.*/, rows: [] });
+    await runSubnetBurnCoverageWatchdog(pgMockEnv() as unknown as Env, {
+      now: () => NOW,
+      recordVerdict: (async () => true) as never,
+    });
+    pg.control.onQuery = null;
+    const coverage = seen.find((q) => /FROM subnet_burn_history/.test(q));
+    assert.ok(coverage, "the coverage read must have been issued");
+    assert.match(
+      coverage,
+      /FROM subnet_hyperparams WHERE captured_at =[\s\S]*MAX\(captured_at\) FROM subnet_hyperparams/,
+      "the expected side must be bounded to that table's own newest pass",
+    );
+  });
+
   test("the detail carries the NUMBERS, not just the word", async () => {
     // "stale" alone sends an operator looking for a dead lane; "3 of 129
     // netuids (partial)" is the finding itself.
