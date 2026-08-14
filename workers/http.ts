@@ -176,3 +176,49 @@ export function ifNoneMatchSatisfied(
     .map((candidate) => candidate.trim())
     .some((candidate) => candidate === "*" || opaqueTag(candidate) === current);
 }
+
+/**
+ * Read a request body up to `maxBytes`, refusing larger ones.
+ *
+ * Moved here from workers/api.ts when the A2A endpoint needed the same
+ * bounded read (#11175): the alternative was a copy, and a body bound that
+ * exists twice is a body bound that disagrees with itself eventually.
+ */
+export async function readBoundedRequestText(
+  request: Request,
+  maxBytes: number,
+) {
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > maxBytes) {
+    return { ok: false, text: "" };
+  }
+
+  if (!request.body) {
+    return { ok: true, text: "" };
+  }
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk =
+        typeof value === "string" ? new TextEncoder().encode(value) : value;
+      bytes += chunk.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        return { ok: false, text: "" };
+      }
+      text += decoder.decode(chunk, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  text += decoder.decode();
+  return { ok: true, text };
+}
