@@ -29,7 +29,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, type ReadStoreDb } from "./read-store.ts";
 
 /**
  * How far behind the lane may fall before this is a stall.
@@ -91,10 +91,6 @@ export function evaluateChainDetailStaleness(input: {
   };
 }
 
-interface StatementClientLike {
-  first(text: string, values?: unknown[]): Promise<unknown>;
-}
-
 /**
  * The live-follow lane's head, as one read.
  *
@@ -107,7 +103,7 @@ export async function readChainDetailHead(
   env: Record<string, unknown> | null | undefined,
 ): Promise<{ latestObservedAtMs: number | null; headBlock: number | null }> {
   const db = readStore(env, ["chain_detail_blocks"]) as unknown as
-    StatementClientLike | undefined;
+    ReadStoreDb | undefined;
   if (!db?.first) return { latestObservedAtMs: null, headBlock: null };
   const row = (await db.first(
     "SELECT MAX(observed_at) AS latest, MAX(block_number) AS head " +
@@ -150,7 +146,7 @@ export async function runChainDetailStalenessWatchdog(
   // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["chain_detail_blocks"]) as unknown as
-    StatementClientLike | undefined;
+    ReadStoreDb | undefined;
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

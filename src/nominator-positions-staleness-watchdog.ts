@@ -56,7 +56,13 @@ import { laneHealthStore } from "./lane-health-store.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore } from "./read-store.ts";
+import {
+  countOrZero,
+  numberOrNull,
+  readStore,
+  type ReadStoreDb,
+} from "./read-store.ts";
+import type { NominatorPositions } from "../generated/db/types.ts";
 import { requireFullScanValue } from "./lane-table-topology.ts";
 
 /**
@@ -288,16 +294,20 @@ export function evaluateNominatorPositionsStaleness(input: {
   return { ...base, stale: false, reason: null, age_ms: age };
 }
 
-/** A null count over no rows, or a shim that stringifies, must land on 0 rather
- * than NaN -- a NaN compares false against the floor and would report a
- * half-scanned keyspace healthy. */
-function countOrZero(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-interface StatementClientLike {
-  first(text: string, values?: unknown[]): Promise<unknown>;
+/**
+ * The single row the coverage read returns.
+ *
+ * `latest` is typed through the GENERATED column type, so a stamp that changes
+ * type in Neon changes here rather than silently arriving as something else.
+ * The counts are `string | number` for the driver's reason, not the column's:
+ * COUNT() is BIGINT and node-postgres hands a bigint back as a string whenever
+ * it is not exactly representable. Every member is nullable because each
+ * subselect answers null on an empty table.
+ */
+interface NominatorPositionsCoverageRow {
+  latest: NominatorPositions["captured_at"] | null;
+  covered: string | number | null;
+  total: string | number | null;
 }
 
 export interface NominatorPositionsStalenessDeps {
@@ -325,7 +335,7 @@ export async function runNominatorPositionsStalenessWatchdog(
   // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
   const db = readStore(env, ["nominator_positions"]) as unknown as
-    StatementClientLike | undefined;
+    ReadStoreDb | undefined;
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
@@ -343,17 +353,16 @@ export async function runNominatorPositionsStalenessWatchdog(
     // MAX(captured_at), the window itself, then the source scoping the outer
     // aggregate. See NOMINATOR_POSITIONS_SCAN_SOURCE for why an unscoped read
     // reports a healthy self-stake run as a truncated alpha scan.
-    const row = (await db.first(NOMINATOR_POSITIONS_COVERAGE_SQL, [
-      NOMINATOR_POSITIONS_SCAN_SOURCE,
-      passWindowMs,
-      NOMINATOR_POSITIONS_SCAN_SOURCE,
-    ])) as {
-      latest: number | null;
-      covered: number | null;
-      total: number | null;
-    } | null;
+    const row = await db.first<NominatorPositionsCoverageRow>(
+      NOMINATOR_POSITIONS_COVERAGE_SQL,
+      [
+        NOMINATOR_POSITIONS_SCAN_SOURCE,
+        passWindowMs,
+        NOMINATOR_POSITIONS_SCAN_SOURCE,
+      ],
+    );
     const verdict = evaluateNominatorPositionsStaleness({
-      latestCapturedAtMs: row?.latest ?? null,
+      latestCapturedAtMs: numberOrNull(row?.latest),
       coveredColdkeys: countOrZero(row?.covered),
       totalColdkeys: countOrZero(row?.total),
       nowMs: now(),

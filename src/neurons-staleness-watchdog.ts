@@ -50,7 +50,13 @@ import {
 } from "./neon-write-buffer.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore } from "./read-store.ts";
+import {
+  countOrZero,
+  numberOrNull,
+  readStore,
+  type ReadStoreDb,
+} from "./read-store.ts";
+import type { Neurons } from "../generated/db/types.ts";
 
 /** The buffer lane these rows are written on, when buffering is on. */
 export const NEURONS_BUFFER_LANE = "neurons";
@@ -244,16 +250,20 @@ export function evaluateNeuronsStaleness(input: {
   return { ...base, stale: false, reason: null, age_ms: age };
 }
 
-/** A null count over no rows, or a shim that stringifies, must land on 0 rather
- * than NaN -- a NaN compares false against the floor and would report a
- * half-scanned network healthy. */
-function countOrZero(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-interface StatementClientLike {
-  first(text: string, values?: unknown[]): Promise<unknown>;
+/**
+ * The single row the coverage read returns.
+ *
+ * `latest` is typed through the GENERATED column type, so a stamp that changes
+ * type in Neon changes here rather than silently arriving as something else.
+ * The counts are `string | number` for the driver's reason, not the column's:
+ * COUNT() is BIGINT and node-postgres hands a bigint back as a string whenever
+ * it is not exactly representable. Every member is nullable because each
+ * subselect answers null on an empty table.
+ */
+interface NeuronsCoverageRow {
+  latest: Neurons["captured_at"] | null;
+  covered: string | number | null;
+  total: string | number | null;
 }
 
 export interface NeuronsStalenessDeps {
@@ -280,8 +290,7 @@ export async function runNeuronsStalenessWatchdog(
   // laneHealthStore already; this read did not, so the watchdog was measuring
   // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
-  const db = readStore(env, ["neurons"]) as unknown as
-    StatementClientLike | undefined;
+  const db = readStore(env, ["neurons"]) as unknown as ReadStoreDb | undefined;
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs = neuronsStalenessThresholdMs(env);
@@ -292,13 +301,11 @@ export async function runNeuronsStalenessWatchdog(
     NEURONS_COVERAGE_FLOOR_NETUIDS;
 
   try {
-    const row = (await db.first(NEURONS_COVERAGE_SQL, [passWindowMs])) as {
-      latest: number | null;
-      covered: number | null;
-      total: number | null;
-    } | null;
+    const row = await db.first<NeuronsCoverageRow>(NEURONS_COVERAGE_SQL, [
+      passWindowMs,
+    ]);
     const verdict = evaluateNeuronsStaleness({
-      latestCapturedAtMs: row?.latest ?? null,
+      latestCapturedAtMs: numberOrNull(row?.latest),
       coveredNetuids: countOrZero(row?.covered),
       totalNetuids: countOrZero(row?.total),
       nowMs: now(),
