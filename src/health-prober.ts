@@ -33,7 +33,6 @@ import {
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
 import { OPERATIONAL_SURFACES_R2_KEY } from "./operational-surfaces-sync.ts";
 import {
-  neonOwnsObservations,
   persistProbesToNeon,
   pruneChecksNeon,
   rollupFailureReasonsToNeon,
@@ -42,7 +41,7 @@ import {
   type ObservationsSql,
 } from "./observations-neon.ts";
 import { observationsReadDb } from "./observations-read-runner.ts";
-import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
+import { createPgSql } from "./pg-sql.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordSubnetIdentityChanges } from "./subnet-identity-history.ts";
@@ -66,6 +65,7 @@ import {
 import { emptyStatusCounts } from "./endpoint-score.ts";
 import { readLiveSurfaceStatus } from "./health-status-live.ts";
 import { LIVE_CRON_PROBER } from "./field-provenance.ts";
+import { hyperdriveConnectionString, recordsOrEmpty } from "./read-store.ts";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 type Row = Record<string, unknown>;
@@ -526,9 +526,14 @@ function observationsRunner(
   ctx?: ExecutionContext,
 ): ObservationsSql | null {
   if (!ctx) return null;
-  const bag = env;
-  if (!neonOwnsObservations(bag)) return null;
-  return createPgSql(env.HYPERDRIVE as unknown as HyperdriveLike, ctx);
+  // ONE check, not two. `neonOwnsObservations` is now literally
+  // `hyperdriveConnectionString(env) !== null`, so asking both left the
+  // compiler unable to see that the string was already proven -- which is what
+  // the `env.HYPERDRIVE as unknown as HyperdriveLike` cast here was covering
+  // for (#11339).
+  const connectionString = hyperdriveConnectionString(env);
+  if (!connectionString) return null;
+  return createPgSql({ connectionString }, ctx);
 }
 
 // Run one full probe sweep and persist results. Returns a small summary object.
@@ -725,7 +730,9 @@ export async function runHealthProber(
   if (probeSql) {
     await persistProbesToNeon(
       probeSql,
-      probed as unknown as Record<string, unknown>[],
+      // A real conversion, not an assertion: these are plain objects at
+      // runtime, and `recordsOrEmpty` is what says so (#11339).
+      recordsOrEmpty(probed),
       runAt,
     );
   }
@@ -1137,7 +1144,7 @@ export async function writeSubnetSnapshotRows(
   if (!snapshotSql) return { synced: false, reason: "unavailable" };
   const write = upsertSubnetSnapshotsToNeon(
     snapshotSql,
-    rows as unknown as Record<string, unknown>[],
+    recordsOrEmpty(rows),
   ).then((r) => ({ ok: r.ok, reason: r.reason }));
   return write.then((result) =>
     // The write's own verdict is the lane's verdict, rather than being

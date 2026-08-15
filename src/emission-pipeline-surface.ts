@@ -22,8 +22,8 @@ import {
   parseFieldsParam,
   projectRows,
   unknownAgainstRows,
-  type Row,
 } from "./field-projection.ts";
+import { recordOrNull } from "./read-store.ts";
 
 /**
  * The per-subnet columns this surface can rank by (#9720).
@@ -271,8 +271,10 @@ export function narrowEmissionPipeline(
     // measures point in opposite directions and need per-key defaults.
     const factor = narrowing.order === "asc" ? 1 : -1;
     subnets = [...subnets].sort((a, b) => {
-      const left = (a as unknown as Row)[key];
-      const right = (b as unknown as Row)[key];
+      // `recordOrNull`, not a cast: reading a key off a typed interface needs
+      // an index signature, which TypeScript never gives an interface (#11339).
+      const left = recordOrNull(a)?.[key];
+      const right = recordOrNull(b)?.[key];
       // A row missing the sort column sinks in EITHER direction rather than
       // riding a null to the top of an ascending list.
       const leftMissing = left == null || !Number.isFinite(Number(left));
@@ -291,10 +293,7 @@ export function narrowEmissionPipeline(
 
   return {
     ...surface,
-    subnets: projectRows(
-      limited as unknown as Row[],
-      narrowing.fields,
-    ) as unknown as typeof surface.subnets,
+    subnets: projectRows(limited, narrowing.fields),
     // Published only when the list was actually narrowed, so today's body is
     // byte-for-byte unchanged for every caller who does not narrow it -- and
     // when they do, a 20-row page and a network that really has 20 subnets stop

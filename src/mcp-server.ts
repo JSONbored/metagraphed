@@ -18527,7 +18527,7 @@ async function serveMcpThroughSdk(
 // a request that never reached a handler.
 export async function handleMcpRequest(
   request: Request,
-  env: Env = {} as unknown as Env,
+  env: Env,
   deps: McpDeps = {},
 ) {
   const response = await dispatchMcpRequest(request, env, deps);
@@ -18537,7 +18537,7 @@ export async function handleMcpRequest(
 
 async function dispatchMcpRequest(
   request: Request,
-  env: Env = {} as unknown as Env,
+  env: Env,
   deps: McpDeps = {},
 ) {
   const { rejection, authTier, accountId, quotaPending } =

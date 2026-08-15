@@ -3332,8 +3332,8 @@ export const LANE_PRODUCERS: ReadonlyArray<{
 
 export async function handleScheduled(
   controller: ScheduledController,
-  env: Env = {} as unknown as Env,
-  ctx: ExecutionContext = {} as unknown as ExecutionContext,
+  env: Env,
+  ctx: ExecutionContext,
 ) {
   const startedAt = Date.now();
   const label = cronLabel(controller?.cron || "");
@@ -3449,8 +3449,8 @@ export const API_HANDLED_CRONS: readonly string[] = [
 
 async function dispatchScheduled(
   controller: ScheduledController,
-  env: Env = {} as unknown as Env,
-  ctx: ExecutionContext = {} as unknown as ExecutionContext,
+  env: Env,
+  ctx: ExecutionContext,
 ) {
   const cron = controller?.cron || "";
   // The former fast-load cron (#1346 Option A, EVENTS_LOAD_CRON, "*/3 * * * *")
@@ -5921,22 +5921,14 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
  * early returns, and wrapping it from outside is what makes the label
  * unforgettable rather than 40 more places to remember.
  */
-export async function handleRequest(
-  request: Request,
-  env: Env = {} as unknown as Env,
-  ctx: Ctx = {},
-) {
+export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
   const before = degradedSnapshot();
   const response = await dispatchRequest(request, env, ctx);
   labelDegradedResponse(response, before);
   return response;
 }
 
-async function dispatchRequest(
-  request: Request,
-  env: Env = {} as unknown as Env,
-  ctx: Ctx = {},
-) {
+async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   let url = new URL(request.url);
 
   if (request.method === "OPTIONS") {
