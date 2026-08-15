@@ -613,6 +613,7 @@ import {
 import { runRegistrySyncLane } from "../src/registry-sync-lane.ts";
 import { runRegistryResyncLane } from "../src/registry-resync-lane.ts";
 import { runDailySeriesCoverageWatchdog } from "../src/daily-series-coverage-watchdog.ts";
+import { runAxonAnnouncementWatchdog } from "../src/axon-announcement-watchdog.ts";
 import { runDegenerateOutputWatchdog } from "../src/degenerate-output-watchdog.ts";
 import { runSubnetLifecycleLane } from "../src/subnet-lifecycle.ts";
 import { runSubnetDeregistrationDailyLane } from "../src/subnet-deregistration-daily.ts";
@@ -3902,18 +3903,25 @@ async function dispatchScheduled(
     // in the middle. neuron_daily is the history source and only ~26 days deep,
     // so a missed day ages out of any recomputable window and becomes permanent.
     //
-    // TWO WATCHDOGS, ONE MINUTE (#11226). The degenerate-output check shares
-    // this tick rather than taking a cron of its own: #10709 is open to halve
-    // the 43 crons this Worker already declares, and spending one while that
-    // is in flight works against it. The cadence argument is the same one
-    // written above -- a lane that classifies nothing does not heal on its own
-    // either, so the value is noticing at all, not noticing fast. They record
-    // separate lane verdicts, so sharing a minute does not merge their
-    // reporting.
+    // THREE WATCHDOGS, ONE MINUTE (#11226, #11328). The degenerate-output and
+    // axon-announcement checks share this tick rather than taking crons of
+    // their own: #10709 halved nothing by adding two more, and this Worker
+    // still declares 39. The cadence argument is the same one written above --
+    // neither a lane that classifies nothing nor a subnet whose miners stopped
+    // announcing heals on its own, so the value is noticing at all, not
+    // noticing fast. They record separate lane verdicts, so sharing a minute
+    // does not merge their reporting.
+    //
+    // The axon check belongs on THIS tick specifically rather than any spare
+    // one: it reads `neuron_daily`, which is the table the coverage watchdog
+    // beside it already opens, and 07:35/19:35 is after both daily rollup
+    // windows -- so it compares a day that is complete rather than one being
+    // written underneath it.
     const bag = env;
     const [series] = await Promise.all([
       runDailySeriesCoverageWatchdog(bag),
       runDegenerateOutputWatchdog(bag),
+      runAxonAnnouncementWatchdog(bag),
     ]);
     return series;
   }
