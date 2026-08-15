@@ -723,7 +723,13 @@ async function loadLaneRuns(
 
 /** The GitHub calls this needs, as one injectable seam. */
 export interface LaneAlarmGitHub {
-  listOpen(): Promise<Record<string, number>>;
+  /** The open alarms by lane, or NULL when GitHub could not be asked.
+   *
+   * The null is the whole contract. `{}` means "no alarm is open" and the
+   * runner acts on it by opening one for every alarming lane; "we could not
+   * ask" must never produce that action, and the two are indistinguishable
+   * once a failure has been flattened into an empty object. */
+  listOpen(): Promise<Record<string, number> | null>;
   open(alarm: LaneAlarm, title: string, body: string): Promise<number | null>;
   close(issue: number, comment: string): Promise<boolean>;
 }
@@ -749,7 +755,14 @@ export function laneAlarmGitHub(
         `${GITHUB_API}/repos/${repo}/issues?state=open&per_page=100`,
         { headers },
       );
-      if (!response.ok) return {};
+      // NULL, not `{}` -- runLaneAlarm's own comment says an unreadable issue
+      // list must not be read as "no alarms are open", and then this returned
+      // exactly that for every non-2xx. A token that cannot list issues cannot
+      // create them either, so the tick would plan a full set of opens, watch
+      // every create fail, and report nothing: which is the state production
+      // was in, with zero `alarm(lane):` issues ever filed against days of
+      // alarming lanes.
+      if (!response.ok) return null;
       // PARSED, NOT CAST (#11194). The `Array.isArray` below was doing the
       // schema's job for one field and nothing for the rest; the parse does
       // both, and a body that is not a list at all now yields no alarms rather
@@ -757,7 +770,9 @@ export function laneAlarmGitHub(
       // issues" -- the difference between "nothing to close" and "we could not
       // ask", on the lane that closes alarms.
       const page = GithubIssueListSchema.safeParse(await response.json());
-      if (!page.success) return {};
+      // Same reasoning as the status check: a body we cannot read is not a
+      // report that nothing is open.
+      if (!page.success) return null;
       const out: Record<string, number> = {};
       for (const row of page.data) {
         // Per ROW, so one issue GitHub shapes unexpectedly costs that issue
@@ -912,6 +927,35 @@ export async function runLaneAlarm(
       .catch(() => null);
     if (number !== null) opened += 1;
   }
+  // THE ALARM'S ONLY PUSH CHANNEL, CHECKED (#11226's class, on this lane).
+  //
+  // `opened` was a number in a return value nothing reads. A tick that planned
+  // four alarms and got zero of them accepted looked -- in telemetry, in the
+  // lane's own verdict, in the summary string -- exactly like a tick with
+  // nothing to report, because the reader IS ok whenever it ran and every
+  // create failure was swallowed by `.catch(() => null)`.
+  //
+  // Production sat in that state: `alarm(lane):` issues have never existed,
+  // against days of alarming lanes. The per-lane events kept firing into
+  // PostHog, so the fleet looked instrumented while the channel a maintainer
+  // actually reads was empty.
+  //
+  // Its OWN fingerprint, deliberately: filed under a lane it would hide behind
+  // that lane's alarm and read as one more stale producer, when it is the
+  // opposite -- the watchdog cannot report at all.
+  if (github && plan.open.length > 0 && opened === 0) {
+    await record(env as never, {
+      error: new Error(
+        `lane-alarm delivered nothing: ${plan.open.length} alarming lane(s) planned, ` +
+          "GitHub accepted none. The alarm's only push channel is not working " +
+          "-- check GITHUB_TOKEN's issues:write scope on this Worker.",
+      ),
+      route: "watchdog:lane-alarm",
+      fingerprintDetail: "delivery",
+      errorCode: "alarm_undelivered",
+    }).catch(() => false);
+  }
+
   // Guarded as a whole rather than per entry: with no client there are no open
   // alarms to have recovered, so the loop body is unreachable, not skipped.
   if (github) {
