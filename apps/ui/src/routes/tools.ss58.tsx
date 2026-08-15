@@ -6,6 +6,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 // components/metagraphed/ss58-inspector.tsx).
 export const Route = createFileRoute("/tools/ss58")({
   beforeLoad: () => {
-    throw redirect({ to: "/accounts", replace: true });
+    throw redirect({ to: "/accounts", replace: true, statusCode: 301 });
   },
 });

@@ -8,6 +8,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  */
 export const Route = createFileRoute("/surfaces")({
   beforeLoad: ({ search }) => {
-    throw redirect({ to: "/apis", search, replace: true });
+    throw redirect({ to: "/apis", search, replace: true, statusCode: 301 });
   },
 });

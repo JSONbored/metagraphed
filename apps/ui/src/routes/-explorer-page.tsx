@@ -1,4 +1,5 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import type { ChainOverviewSearch } from "./chain.index";
 import { useQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { useState } from "react";
 import { Activity, Boxes, ChevronDown, Coins, Layers, UserPlus, Zap } from "lucide-react";
@@ -1478,7 +1479,7 @@ function ExplorerDashboard({
   showAnalytics: boolean;
   onShowAnalytics: () => void;
 }) {
-  const search = useSearch({ from: "/chain/" });
+  const search = useSearch({ from: "/chain/" }) as ChainOverviewSearch;
   const navigate = useNavigate({ from: "/chain/" });
   const win = search.window;
 

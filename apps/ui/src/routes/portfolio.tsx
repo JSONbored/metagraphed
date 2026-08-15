@@ -6,6 +6,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 // just lives beside the account lookup it belongs with now.
 export const Route = createFileRoute("/portfolio")({
   beforeLoad: () => {
-    throw redirect({ to: "/accounts", replace: true });
+    throw redirect({ to: "/accounts", replace: true, statusCode: 301 });
   },
 });

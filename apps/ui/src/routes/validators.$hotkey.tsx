@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -32,6 +33,7 @@ const validatorDetailSearchSchema = z.object({
 
 export const Route = createFileRoute("/validators/$hotkey")({
   validateSearch: zodValidator(validatorDetailSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(validatorDetailSearchSchema)] },
   // #6429: validate the hotkey at the router level, matching blocks.$ref.tsx
   // (#3422) and subnets.$netuid.tsx. parseParams runs before head()/the loader,
   // so an invalid hotkey renders the real not-found boundary instead of a

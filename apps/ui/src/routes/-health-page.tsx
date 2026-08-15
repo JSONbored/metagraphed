@@ -1,4 +1,5 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import type { HealthSearch } from "./health";
 import { useSuspenseQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
@@ -58,7 +59,7 @@ const VIEW_SECTION_ID: Record<HealthView, string | null> = {
 };
 
 export function HealthPage() {
-  const search = useSearch({ from: "/health" });
+  const search = useSearch({ from: "/health" }) as HealthSearch;
   const [enabled, setEnabled] = useState(true);
   const [intervalMs, setIntervalMs] = useState(30_000);
   const visible = usePageVisible();
@@ -590,7 +591,7 @@ function Incidents({ interval }: { interval: number | false }) {
   // pass that straddles a UTC midnight (or simply runs seconds earlier) builds
   // a different set of days than the client's first pass (#8241).
   const hydrated = useHydrated();
-  const search = useSearch({ from: "/health" });
+  const search = useSearch({ from: "/health" }) as HealthSearch;
   const navigate = useNavigate({ from: "/health" });
   const filter = search.status;
   const setFilter = (next: StateFilter) =>

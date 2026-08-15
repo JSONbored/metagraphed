@@ -8,6 +8,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  */
 export const Route = createFileRoute("/explorer")({
   beforeLoad: ({ search }) => {
-    throw redirect({ to: "/chain", search, replace: true });
+    throw redirect({ to: "/chain", search, replace: true, statusCode: 301 });
   },
 });

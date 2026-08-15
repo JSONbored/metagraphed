@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 
@@ -12,11 +13,17 @@ export const leaderboardsSearchSchema = z.object({
 // lands on the same range it named.
 export const Route = createFileRoute("/leaderboards")({
   validateSearch: zodValidator(leaderboardsSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(leaderboardsSearchSchema)] },
   beforeLoad: ({ search }) => {
     throw redirect({
       to: "/subnets",
       search: { section: "rankings", window: search.window },
       replace: true,
+      // 301, not the 307 default: this route is RETIRED, not temporarily
+      // moved. A temporary redirect tells a search engine to keep the old URL
+      // and re-check it; a permanent one transfers the signals to /subnets and
+      // lets the old URL drop out.
+      statusCode: 301,
     });
   },
 });

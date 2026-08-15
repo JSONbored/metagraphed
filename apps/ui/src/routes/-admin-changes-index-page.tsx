@@ -51,7 +51,7 @@ export function NetworkParametersCard() {
 }
 
 export function AdminChangesTable() {
-  const search = useSearch({ from: "/chain/governance" });
+  const search = useSearch({ from: "/chain/governance" }) as GovernanceSearch;
   const navigate = useNavigate({ from: "/chain/governance" });
   const queryParams = adminChangesQueryParams(search);
 

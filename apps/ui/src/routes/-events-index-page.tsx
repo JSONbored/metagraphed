@@ -1,4 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import type { EventsSearch } from "./chain.events";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ChainEventsFeed, chainEventsBaseParams } from "@/components/metagraphed/chain-events-feed";
 import { ShareButton, DownloadCsvButton, ActionBar } from "@jsonbored/ui-kit";
@@ -6,7 +7,7 @@ import { buildUrl } from "@/lib/metagraphed/client";
 import { ChainTabActions } from "./-chain-hub";
 
 export function EventsPage() {
-  const search = useSearch({ from: "/chain/events" });
+  const search = useSearch({ from: "/chain/events" }) as EventsSearch;
   const navigate = useNavigate({ from: "/chain/events" });
   const eventsCsvUrl = buildUrl(
     "/api/v1/chain-events",

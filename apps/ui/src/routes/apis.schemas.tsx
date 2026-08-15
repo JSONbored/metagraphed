@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { SchemasPage } from "./-schemas-page";
@@ -12,6 +13,7 @@ const schemasSearchSchema = z.object({
 
 export const Route = createFileRoute("/apis/schemas")({
   validateSearch: schemasSearchSchema,
+  search: { middlewares: [stripDefaultSearchParams(schemasSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Schemas — Metagraphed" },

@@ -65,7 +65,7 @@ export function SudoKeyCard() {
 }
 
 export function SudoTable() {
-  const search = useSearch({ from: "/chain/governance" });
+  const search = useSearch({ from: "/chain/governance" }) as GovernanceSearch;
   const navigate = useNavigate({ from: "/chain/governance" });
   const queryParams = sudoQueryParams(search);
 

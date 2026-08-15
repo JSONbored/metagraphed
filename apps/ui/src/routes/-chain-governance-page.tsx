@@ -1,4 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import type { GovernanceSearch } from "./chain.governance";
 import {
   ActionBar,
   DownloadCsvButton,
@@ -49,7 +50,7 @@ const VIEWS: ReadonlyArray<{ id: GovernanceView; label: string; blurb: string }>
 ];
 
 export function ChainGovernancePage() {
-  const search = useSearch({ from: "/chain/governance" });
+  const search = useSearch({ from: "/chain/governance" }) as GovernanceSearch;
   const navigate = useNavigate({ from: "/chain/governance" });
   const view: GovernanceView = search.view === "admin" ? "admin" : "sudo";
 

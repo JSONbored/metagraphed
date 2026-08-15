@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { EventsPage } from "./-events-index-page";
@@ -17,8 +18,11 @@ const eventsSearchSchema = z.object({
   noise: fallback(z.boolean(), false).default(false),
 });
 
+export type EventsSearch = z.infer<typeof eventsSearchSchema>;
+
 export const Route = createFileRoute("/chain/events")({
   validateSearch: zodValidator(eventsSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(eventsSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Chain events — Metagraphed" },

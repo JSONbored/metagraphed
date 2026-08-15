@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChainGovernancePage } from "./-chain-governance-page";
@@ -18,6 +19,7 @@ export type GovernanceSearch = z.infer<typeof governanceSearchSchema>;
 
 export const Route = createFileRoute("/chain/governance")({
   validateSearch: zodValidator(governanceSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(governanceSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Governance — Metagraphed" },
