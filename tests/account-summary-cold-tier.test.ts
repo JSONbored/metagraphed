@@ -1005,6 +1005,39 @@ describe("mergeNewestEvents", () => {
     );
   });
 
+  test("a row missing a sort column sorts LAST, and does not crash", () => {
+    // REACHABLE, which is why the fallback is here rather than deleted. The
+    // published half is parsed and cannot carry a null in these three, but the
+    // head probe's half comes untyped out of R2 SQL and every one of those
+    // columns is nullable on `chain.account_events`. A missing key must not
+    // throw and must not sort ABOVE a real event -- the card's top row is the
+    // most visible thing on it.
+    const merged = mergeNewestEvents(
+      [{ observed_at: 50, block_number: 1, event_index: 3 }],
+      [
+        // One row per nullable sort column, each with an identity of its own so
+        // the de-duplication does not fold them together first.
+        { block_number: 1, event_index: 0 },
+        { observed_at: 100, event_index: 2 },
+        { observed_at: 100, block_number: 9 },
+      ],
+      4,
+    );
+    assert.deepEqual(
+      merged.map((r) => [
+        r.observed_at ?? null,
+        r.block_number ?? null,
+        r.event_index ?? null,
+      ]),
+      [
+        [100, 9, null],
+        [100, null, 2],
+        [50, 1, 3],
+        [null, 1, 0],
+      ],
+    );
+  });
+
   test("either half may be empty", () => {
     assert.deepEqual(mergeNewestEvents([], [], 10), []);
     assert.equal(mergeNewestEvents([row(1, 1)], [], 10).length, 1);

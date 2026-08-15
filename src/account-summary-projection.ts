@@ -128,18 +128,23 @@ export interface AccountSummaryProjectionRead {
   /** The (kind, netuid) groups -- the card's aggregate leg. */
   groups: Record<string, unknown>[];
   /**
-   * The account's newest published events, newest first, or null when this
-   * generation carries no usable recent map for it. Null is not "no events" --
-   * it means the caller must read that leg from the lakehouse, exactly as it
-   * did before #575.
+   * The account's newest published events and where the probe resumes, or null
+   * when this generation carries no usable recent map for it. Null is not "no
+   * events" -- it means the caller reads that leg from the lakehouse, exactly
+   * as it did before #575.
    *
-   * THE PARSED TYPE, carried out of `safeParse` rather than widened back to a
-   * bag of unknowns. The rows go straight into the feed the card publishes, so
-   * the one place that knows their shape is the one that validated them.
+   * ONE OBJECT, NOT TWO FIELDS, and that is the point. The rows are unusable
+   * without the floor -- serving them alone would freeze the feed at the last
+   * complete day the producer folded -- so a shape that let one exist without
+   * the other put an invariant in the caller's hands and left it with a guard
+   * no test could ever fail. Here the type carries it.
+   *
+   * THE PARSED ROW TYPE, carried out of `safeParse` rather than widened back
+   * to a bag of unknowns. The rows go straight into the feed the card
+   * publishes, so the one place that knows their shape is the one that
+   * validated them.
    */
-  recent: AccountSummaryRecentEvent[] | null;
-  /** Where the head probe must start when `recent` is non-null. */
-  floorMs: number | null;
+  recent: { rows: AccountSummaryRecentEvent[]; floorMs: number } | null;
 }
 
 /** The R2 key holding this account's groups, within a generation. */
@@ -305,8 +310,8 @@ function readRecent(
   account: string,
   pointer: { through?: string; recent_limit?: number },
   need: number,
-): { recent: AccountSummaryRecentEvent[] | null; floorMs: number | null } {
-  const none = { recent: null, floorMs: null };
+): Pick<AccountSummaryProjectionRead, "recent"> {
+  const none = { recent: null };
   // Zero asks for the aggregate leg only, and `undefined` is a producer that
   // publishes no recent map. Neither is a failure worth reading further for.
   if (need <= 0) return none;
@@ -330,5 +335,5 @@ function readRecent(
   // Declining sends this leg to the lakehouse; it does not zero the feed.
   const parsed = AccountSummaryRecentSchema.safeParse(map.data[account]);
   if (!parsed.success || !parsed.data.length) return none;
-  return { recent: parsed.data, floorMs };
+  return { recent: { rows: parsed.data, floorMs } };
 }

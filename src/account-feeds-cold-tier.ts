@@ -1186,13 +1186,13 @@ export async function loadAccountSummaryColdTier(
     // yet. The two halves meet at the edge of the last complete day rather
     // than overlapping or leaving a gap -- see `recentFloorMs` for why that
     // edge is `through` and emphatically not `generated_at`.
-    projected?.recent && projected.floorMs !== null
+    projected?.recent
       ? headProbe(env, {
           query: (e, sql) => query(e, sql, { onError: track("recent-head") }),
           where,
-          floorMs: projected.floorMs,
+          floorMs: projected.recent.floorMs,
           limit,
-          published: projected.recent,
+          published: projected.recent.rows,
         })
       : windowedRowRead<AccountEventsRow>(env, {
           query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
