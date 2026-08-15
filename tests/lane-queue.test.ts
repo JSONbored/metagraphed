@@ -42,6 +42,11 @@ describe("a retry reports its reason", () => {
     assert.deepEqual(a.calls, ["retry"]);
     assert.equal(result.retried, 1);
     assert.deepEqual(seen, [["r2 sql: HTTP 500", 1]]);
+    // RETURNED as well as reported. `onRetry` fires inside this call, and every
+    // probe-job handler left it unset -- so the reason went to console.error
+    // and the caller got a result carrying nothing about it. See
+    // ConsumeResult.firstFailure.
+    assert.equal(result.firstFailure, "r2 sql: HTTP 500");
   });
 
   test("a handler returning FALSE is reported too", async () => {
@@ -118,6 +123,9 @@ describe("a retry reports its reason", () => {
     });
     assert.equal(result.done, 1);
     assert.deepEqual(seen, [], "success is not something to report");
+    // Null, not "". "Nothing was retried" and "retried for a reason nobody
+    // recorded" are different answers, and a reporter has to tell them apart.
+    assert.equal(result.firstFailure, null);
   });
 
   test("a batch that only DROPS reports nothing", async () => {
@@ -132,6 +140,7 @@ describe("a retry reports its reason", () => {
     });
     assert.equal(result.dropped, 1);
     assert.deepEqual(seen, []);
+    assert.equal(result.firstFailure, null);
   });
 
   test("with no onRetry the loop still says so, on console.error", async () => {

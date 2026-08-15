@@ -772,7 +772,12 @@ describe("consuming a sweep batch", () => {
   test("acks a swept subnet", async () => {
     const m = message({ netuid: 64 });
     const out = await handleSweepBatch([m], store(), deps());
-    assert.deepEqual(out, { done: 1, retried: 0, dropped: 0 });
+    assert.deepEqual(out, {
+      done: 1,
+      retried: 0,
+      dropped: 0,
+      firstFailure: null,
+    });
     assert.equal(m.calls.acked, 1);
   });
 
@@ -817,7 +822,14 @@ describe("consuming a sweep batch", () => {
     // reading the store is concerned.
     const m = message({ netuid: 64 });
     const out = await handleSweepBatch([m], null, deps());
-    assert.deepEqual(out, { done: 0, retried: 1, dropped: 0 });
+    assert.deepEqual(out, {
+      done: 0,
+      retried: 1,
+      dropped: 0,
+      // The quieter of the two failures -- no stack, no message. Returned
+      // now rather than only logged: see ConsumeResult.firstFailure.
+      firstFailure: "run() declined without throwing",
+    });
     assert.equal(m.calls.retried, 1);
   });
 
@@ -831,7 +843,12 @@ describe("consuming a sweep batch", () => {
       message({ netuid: -1 }),
     ];
     const out = await handleSweepBatch(bad, store(), deps());
-    assert.deepEqual(out, { done: 0, retried: 0, dropped: 4 });
+    assert.deepEqual(out, {
+      done: 0,
+      retried: 0,
+      dropped: 4,
+      firstFailure: null,
+    });
     for (const m of bad) assert.equal(m.calls.acked, 1);
   });
 
@@ -1069,7 +1086,14 @@ describe("the last of the queue shapes", () => {
         },
       },
     );
-    assert.deepEqual(out, { done: 0, retried: 1, dropped: 0 });
+    assert.deepEqual(out, {
+      done: 0,
+      retried: 1,
+      dropped: 0,
+      // A thrown reason reaches the caller verbatim, which is what makes a
+      // dead-lettering lane answerable.
+      firstFailure: "artifact read exploded",
+    });
     assert.equal(calls.retried, 1);
   });
 

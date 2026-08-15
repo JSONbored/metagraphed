@@ -17,6 +17,7 @@
 // it a nullable amount column would invite a reader to coalesce it to 0 -- the
 // exact confusion the lane exists to prevent (see migrations/neon/0016).
 import {
+  READABLE_PROVENANCES,
   runRevenueProbe,
   type ProbeSurfaceInput,
   type RevenueProbeResult,
@@ -230,6 +231,35 @@ export function eligibleRevenueSurfaces(
     // them so the reason a surface is skipped here matches the reason it would
     // have failed there.
     if (!revenue.shape || !revenue.currency) continue;
+    // AND THE TWO `probeEligibility` REFUSES WITHOUT, which this claimed to
+    // mirror and did not.
+    //
+    // The comment above says a surface skipped here is skipped for the reason
+    // it would have failed later. That was only ever true of `extractRevenue`.
+    // `probeEligibility` -- the gate the lane actually applies on delivery --
+    // opens with `role !== "external-revenue"` and then a readable
+    // `provenance`, and neither was asked here, so a surface that can never be
+    // probed was enqueued anyway, once an hour, forever.
+    //
+    // Measured 2026-08-15 against the published artifact: five surfaces carry a
+    // shape and a currency, and `sn-64-chutes-invocations-usage` is
+    // `role: "usage-proxy"` -- a usage signal, deliberately not revenue. The
+    // `revenue-probe` lane's verdict read `5 enqueued` every hour while four is
+    // the true number, so the count a reader judges the lane by overstated it.
+    //
+    // The other two gates are deliberately NOT copied. `auth_required` is
+    // carried below and checked there; `probe.enabled` is ASSERTED below rather
+    // than read, because the operational-surfaces artifact carries no `probe`
+    // block at all -- reading it here would make every surface ineligible and
+    // stop the lane dead. See the test that pins that to the build filter.
+    if (revenue.role !== "external-revenue") continue;
+    if (
+      !(READABLE_PROVENANCES as readonly string[]).includes(
+        revenue.provenance ?? "",
+      )
+    ) {
+      continue;
+    }
     out.push({
       id: String(surface.surface_id ?? ""),
       netuid: Number(surface.netuid),

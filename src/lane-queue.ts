@@ -93,6 +93,27 @@ export interface ConsumeResult {
   retried: number;
   /** Acked WITHOUT doing the work: unparseable, or a subject that is gone. */
   dropped: number;
+  /**
+   * Why the first retry happened, or null when nothing was retried.
+   *
+   * RETURNED, not only reported. `onRetry` fires inside this call and every
+   * probe-job handler left it unset, so the reason went to `console.error` --
+   * and then the result carrying nothing about it was discarded by the
+   * dispatcher too. Workers logs are not a channel anybody watches here, so a
+   * lane could retry every message of every batch until it dead-lettered and
+   * leave no record a reader could reach.
+   *
+   * Measured 2026-08-15 on #11251: `sn-51-lium-revenue-for-validators` retried
+   * and dead-lettered roughly hourly for 3.7 days -- 89 rows on the DLQ -- while
+   * its endpoint answered 200 with a payload this repo's own extractor turns
+   * into 20 valid observations. The diagnosis existed on every one of those
+   * ticks and was thrown away each time.
+   *
+   * Null rather than the empty string: "nothing was retried" and "something was
+   * retried for a reason nobody recorded" are different answers, and a reporter
+   * has to be able to tell them apart.
+   */
+  firstFailure: string | null;
 }
 
 export interface ConsumeHandlers<TSubject> {
@@ -187,5 +208,5 @@ export async function consumeBatch<TSubject>(
       // Deliberately empty: see above.
     }
   }
-  return { done, retried, dropped };
+  return { done, retried, dropped, firstFailure };
 }

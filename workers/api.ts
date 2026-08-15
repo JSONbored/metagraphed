@@ -832,7 +832,11 @@ import {
 } from "../src/projection-lanes.ts";
 import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
-import type { EnqueueResult, LaneMessage } from "../src/lane-queue.ts";
+import type {
+  ConsumeResult,
+  EnqueueResult,
+  LaneMessage,
+} from "../src/lane-queue.ts";
 import {
   OPERATIONAL_SURFACES_ARTIFACT,
   eligibleRevenueSurfaces,
@@ -2155,7 +2159,7 @@ async function runAttributionSweepJobs(
   messages: LaneMessage[],
   env: Env,
   ctx: ExecutionContext,
-): Promise<void> {
+): Promise<ConsumeResult> {
   // One subnet per message. The registry record is read HERE rather than
   // carried in the message, so a message that waited in the queue cannot
   // sweep a stale copy of the subnet's surfaces.
@@ -2164,7 +2168,7 @@ async function runAttributionSweepJobs(
     const byNetuid = new Map(
       (await sweepableSubnets(env)).map((s) => [s.netuid, s.record]),
     );
-    await handleSweepBatch(messages, store.db as SweepStoreDb, {
+    return await handleSweepBatch(messages, store.db as SweepStoreDb, {
       fetchText: fetchSweepText,
       recordFor: async (netuid: number) =>
         sweepRecordFor(env, netuid, byNetuid.get(netuid)),
@@ -2178,7 +2182,7 @@ async function runRevenueProbeJobs(
   messages: LaneMessage[],
   env: Env,
   ctx: ExecutionContext,
-): Promise<void> {
+): Promise<ConsumeResult> {
   // The eligible set is re-read HERE, so a message that waited cannot probe
   // a surface the registry has since withdrawn.
   const store = producerStore(env, ctx, [...REVENUE_OBSERVATION_TABLES]);
@@ -2192,7 +2196,7 @@ async function runRevenueProbeJobs(
         artifact.ok ? (artifact.data as Row | undefined) : null,
       ).map((s) => [s.id, s]),
     );
-    await handleRevenueProbeBatch(messages, store.db as RevenueStoreDb, {
+    return await handleRevenueProbeBatch(messages, store.db as RevenueStoreDb, {
       fetchPayload: (url: string) => fetchRevenuePayload(url),
       hash: sha256Hex,
       now: Date.now,
@@ -2207,15 +2211,19 @@ async function runComputeDeclarationJobs(
   messages: LaneMessage[],
   env: Env,
   ctx: ExecutionContext,
-): Promise<void> {
+): Promise<ConsumeResult> {
   const store = producerStore(env, ctx, [...COMPUTE_DECLARATIONS_TABLES]);
   try {
-    await handleComputeDeclarationBatch(messages, store.db as ComputeStoreDb, {
-      // The same token the link lane uses. Without one the GitHub API
-      // allows 60 requests an hour, which still covers 17 surfaces --
-      // so a missing token degrades the rate limit, never the lane.
-      githubAuth: githubAuthHeader(env),
-    });
+    return await handleComputeDeclarationBatch(
+      messages,
+      store.db as ComputeStoreDb,
+      {
+        // The same token the link lane uses. Without one the GitHub API
+        // allows 60 requests an hour, which still covers 17 surfaces --
+        // so a missing token degrades the rate limit, never the lane.
+        githubAuth: githubAuthHeader(env),
+      },
+    );
   } finally {
     store.close();
   }
@@ -2225,13 +2233,13 @@ async function runOriginReachabilityJobs(
   messages: LaneMessage[],
   env: Env,
   ctx: ExecutionContext,
-): Promise<void> {
+): Promise<ConsumeResult> {
   // The surfaces are resolved HERE, so a message that waited cannot check a
   // stale copy of what the registry advertises.
   const store = producerStore(env, ctx, [...ORIGIN_REACHABILITY_TABLES]);
   try {
     const byOrigin = surfacesByOrigin(await registeredSurfaces(env));
-    await handleOriginBatch(messages, store.db as OriginStoreDb, {
+    return await handleOriginBatch(messages, store.db as OriginStoreDb, {
       probe: probeOrigin,
       surfacesFor: async (origin: string) => byOrigin.get(origin) ?? [],
     });
@@ -2256,7 +2264,11 @@ async function runOriginReachabilityJobs(
  */
 const PROBE_JOB_HANDLERS: Record<
   ProbeJobType,
-  (messages: LaneMessage[], env: Env, ctx: ExecutionContext) => Promise<void>
+  (
+    messages: LaneMessage[],
+    env: Env,
+    ctx: ExecutionContext,
+  ) => Promise<ConsumeResult>
 > = {
   "attribution-sweep": runAttributionSweepJobs,
   "origin-reachability": runOriginReachabilityJobs,
@@ -2327,7 +2339,47 @@ export default {
       // would make a half-deployed rename look like a healthy queue draining.
       declineUnknownProbeJobs(unrecognised);
       for (const [jobType, messages] of byType) {
-        await PROBE_JOB_HANDLERS[jobType](messages, env, ctx);
+        const outcome = await PROBE_JOB_HANDLERS[jobType](messages, env, ctx);
+        // WHY A MESSAGE WENT BACK, on a channel somebody reads.
+        //
+        // `consumeBatch` has computed this since #10777 replaced a bare
+        // `catch { message.retry(); }` -- its comment says exactly why, that "a
+        // retry nobody can explain is how a lane dies silently". It then handed
+        // the string to `console.error` and returned a result every one of these
+        // handlers discarded. Workers logs are not a channel anybody watches
+        // here, so the reason reached nothing: not PostHog, not `lane_health`,
+        // and not the dead-letter verdict, which names the lost SUBJECT and
+        // never the cause.
+        //
+        // Measured on the first `alarm(lane):` issue this repo ever filed
+        // (#11251): `sn-51-lium-revenue-for-validators` retried and
+        // dead-lettered roughly hourly for 3.7 days -- 89 rows -- while its
+        // endpoint answered 200 and this repo's own extractor turned that
+        // payload into 20 valid observations. The diagnosis was recomputed on
+        // every one of those ticks and discarded each time.
+        //
+        // FINGERPRINTED ON THE JOB TYPE, not on `batch.queue`. Since #10894
+        // there is one queue for all four lanes, so the queue name is a
+        // constant -- and the fingerprint is also the storm guard's throttle
+        // key, so using it would put four independent lanes in one window and
+        // drop the second lane to fail as a repeat of the first. `jobType` IS
+        // the lane name these verdicts already use, and the set is closed by
+        // ProbeJobType.
+        //
+        // Unguarded: `recordExceptionEvent` wraps its whole body and returns
+        // false rather than rejecting, so there is no failure to catch, and a
+        // `.catch()` would be a branch no test could reach. Every message is
+        // acked or retried by the time this runs either way.
+        if (outcome.firstFailure !== null) {
+          await recordExceptionEvent(env, {
+            error: new Error(
+              `${jobType}: ${outcome.retried} message(s) retried -- ${outcome.firstFailure}`,
+            ),
+            route: "lane:retry",
+            fingerprintDetail: jobType,
+            errorCode: "lane_retry",
+          });
+        }
       }
       return;
     }

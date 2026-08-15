@@ -19,6 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { SEND_BATCH_MAX } from "../src/lane-queue.ts";
+import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import worker, {
   handleScheduled,
   probeOrigin,
@@ -681,7 +682,12 @@ describe("consuming an origin batch", () => {
   test("acks a checked origin", async () => {
     const m = message({ origin: "https://x.example" });
     const out = await handleOriginBatch([m], store(), deps() as never);
-    assert.deepEqual(out, { done: 1, retried: 0, dropped: 0 });
+    assert.deepEqual(out, {
+      done: 1,
+      retried: 0,
+      dropped: 0,
+      firstFailure: null,
+    });
     assert.equal(m.calls.acked, 1);
   });
 
@@ -705,7 +711,12 @@ describe("consuming an origin batch", () => {
   test("RETRIES when the check succeeded but the WRITE failed", async () => {
     const m = message({ origin: "https://x.example" });
     const out = await handleOriginBatch([m], null, deps() as never);
-    assert.deepEqual(out, { done: 0, retried: 1, dropped: 0 });
+    assert.deepEqual(out, {
+      done: 0,
+      retried: 1,
+      dropped: 0,
+      firstFailure: "run() declined without throwing",
+    });
   });
 
   test("RETRIES when resolving the surfaces throws", async () => {
@@ -726,7 +737,12 @@ describe("consuming an origin batch", () => {
   test("ACKS a malformed message rather than looping it to the dead letter", async () => {
     const bad = [message({ origin: 42 }), message({}), message(null)];
     const out = await handleOriginBatch(bad, store(), deps() as never);
-    assert.deepEqual(out, { done: 0, retried: 0, dropped: 3 });
+    assert.deepEqual(out, {
+      done: 0,
+      retried: 0,
+      dropped: 3,
+      firstFailure: null,
+    });
     for (const m of bad) assert.equal(m.calls.acked, 1);
   });
 
@@ -853,6 +869,63 @@ describe("the origin queue, through the Worker's own handler", () => {
         { waitUntil: () => {} } as never,
       ),
     );
+  });
+
+  // THE REASON REACHES A CHANNEL SOMEBODY READS. `consumeBatch` computed it all
+  // along and every probe-job handler discarded the result, so a lane could
+  // retry every message of every batch until it dead-lettered with the cause
+  // recorded nowhere reachable -- which is how #11251 sat undiagnosable for 3.7
+  // days.
+  test("a retried batch reports WHY, as a $exception", async () => {
+    const posted: Record<string, unknown>[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      try {
+        const body = JSON.parse(String(init?.body ?? "null"));
+        if (body && typeof body === "object") posted.push(body);
+      } catch {
+        // The origin probe's own requests land here too and are not what this
+        // test reads.
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    let retried = 0;
+    try {
+      await worker.queue!(
+        {
+          queue: "probe-jobs",
+          messages: [
+            {
+              body: {
+                job_type: "origin-reachability",
+                origin: "https://x.example",
+              },
+              ack: () => {},
+              retry: () => void (retried += 1),
+            },
+          ],
+        } as never,
+        env(registry, {
+          [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+        }) as never,
+        { waitUntil: () => {} } as never,
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+    assert.equal(retried, 1, "with no store bound the write cannot land");
+    const exception = posted.find(
+      (body) => (body as { event?: string }).event === "$exception",
+    ) as { properties?: Record<string, unknown> } | undefined;
+    assert.ok(exception, "the retry reason must reach PostHog");
+    assert.equal(exception.properties?.error_code, "lane_retry");
+    assert.equal(exception.properties?.route, "lane:retry");
+    // ON THE JOB TYPE, not the queue. Since #10894 one queue carries all four
+    // lanes, so `batch.queue` is a constant -- and the fingerprint is the storm
+    // guard's throttle key, so it would drop the second lane to fail in a
+    // window as a repeat of the first.
+    const list = exception.properties?.$exception_list as { value: string }[];
+    assert.match(list[0].value, /^origin-reachability: 1 message\(s\) retried/);
   });
 
   test("an origin with no registered surfaces resolves to an empty list", async () => {
