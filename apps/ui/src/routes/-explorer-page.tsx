@@ -76,6 +76,7 @@ import type {
   ChainPrometheus,
   ChainTransfers,
 } from "@/lib/metagraphed/types";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 
 // #3373: compact live chain-head tip in the hero — "head #NNNN · N ago" from the
 // live /api/v1/blocks feed (limit 1), linking to that block. Mirrors #3372's
@@ -361,6 +362,8 @@ export function ExplorerPage() {
           "/api/v1/chain/yield",
         ]}
       />
+      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/chain" />
     </>
   );
 }

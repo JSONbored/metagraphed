@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SUBNET_SLOT_CAP } from "./bittensor";
-import {
-  HUB_COPY,
-  HUB_DESCRIPTION_MAX,
-  HUB_TITLE_MAX,
-  hubMeta,
-  type HubPath,
-} from "./hub-copy";
+import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX, hubMeta, type HubPath } from "./hub-copy";
 
 const PATHS = Object.keys(HUB_COPY) as HubPath[];
 
@@ -22,10 +16,9 @@ describe("hub copy budgets", () => {
   it.each(PATHS)("%s has a description inside the snippet budget", (path) => {
     const { description } = HUB_COPY[path];
     expect(description.length).toBeGreaterThan(0);
-    expect(
-      description.length,
-      `${path}: ${description.length} chars`,
-    ).toBeLessThanOrEqual(HUB_DESCRIPTION_MAX);
+    expect(description.length, `${path}: ${description.length} chars`).toBeLessThanOrEqual(
+      HUB_DESCRIPTION_MAX,
+    );
   });
 });
 

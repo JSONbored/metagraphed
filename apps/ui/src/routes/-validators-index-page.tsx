@@ -38,6 +38,7 @@ import {
   ValidatorsCompareDrawer,
   ValidatorCompareToggle,
 } from "@/components/metagraphed/validators-compare-drawer";
+import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
 import { SortHeader, ariaSort, SearchInput } from "@/components/metagraphed/table-controls";
 import { TableColGroup } from "@jsonbored/ui-kit";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
@@ -75,7 +76,9 @@ export function ValidatorsPage() {
         eyebrow="Directory"
         live
         title="Validators"
-        description="Network-wide validator directory — every hotkey ranked across all Bittensor subnets, computed live from the chain-direct metagraph."
+        // #11320: from HUB_COPY -- this slot and the meta description were two
+        // separately written copies of the same fact.
+        description={hubLede("/validators")}
         actions={
           <>
             <ActionBar>
@@ -102,6 +105,8 @@ export function ValidatorsPage() {
       </section>
       <ApiSourceFooter paths={["/api/v1/validators", "/api/v1/validators/economics"]} />
       <ValidatorsCompareDrawer />
+      {/* Below the table on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/validators" />
     </AppShell>
   );
 }

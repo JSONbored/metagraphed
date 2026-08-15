@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 
+import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
+import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX } from "../../src/lib/metagraphed/hub-copy";
+
 // #11204: a URL we ask Google to index must ANSWER, and a URL we have retired
 // must say so permanently.
 //
@@ -306,5 +309,94 @@ test.describe("#11283 every breadcrumb link goes somewhere", () => {
       }
     }
     expect(dead, `breadcrumbs link ${dead.length} dead paths`).toStrictEqual([]);
+  });
+});
+
+test.describe("#11320 the hub pages compete for the category queries", () => {
+  // Measured against production 2026-08-15, before this shipped:
+  //
+  //   /subnets     "Subnets — Metagraphed"      21 chars, 1 H2
+  //   /validators  "Validators — Metagraphed"   24 chars, 0 H2s
+  //   /apis        "API catalog — Metagraphed"  25 chars, 1 H2
+  //
+  // Eight sites rank for "bittensor subnets list" — taostats, bittensor.ai,
+  // CoinGecko, TaoMarketCap, SubnetRadar and more — and we were on none of
+  // them, while /subnets/38 (tuned in #11230) ranks 4–8 when it appears. The
+  // detail pages were fixed; the hubs pointing at them never were.
+  //
+  // The subjects are HUB_COPY's own keys, not a list written here: a hub added
+  // without an entry fails, an entry added without a route fails. Every gate in
+  // this repo that listed its own subjects has since gone blind to something
+  // (#11288's ALLOW_GENERIC, #11234's tag list).
+  const HUB_PATHS = Object.keys(HUB_COPY) as Array<keyof typeof HUB_COPY>;
+
+  /**
+   * Entities inflate a raw attribute — `&amp;` is five characters for one
+   * ampersand — so a compliant 56-character title measures 60 unless decoded.
+   * This exact mistake reported a 149-char description as 164 in #11259.
+   */
+  const decode = (value: string) =>
+    value
+      .replace(/&amp;/g, "&")
+      .replace(/&#x27;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">");
+
+  for (const path of HUB_PATHS) {
+    test(`${path} emits the copy HUB_COPY defines`, async ({ request }) => {
+      const html = await (await request.get(path)).text();
+      const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "");
+      const description = decode(
+        /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "",
+      );
+
+      // The rendered page must carry the module's strings, not a copy that
+      // drifted from them — which is the whole reason HUB_COPY exists.
+      expect(title, `${path} title`).toBe(HUB_COPY[path].title);
+      expect(description, `${path} description`).toBe(HUB_COPY[path].description);
+    });
+
+    test(`${path} stays inside Google's truncation`, async ({ request }) => {
+      const html = await (await request.get(path)).text();
+      const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "");
+      const description = decode(
+        /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "",
+      );
+      expect(title.length, `${path}: "${title}"`).toBeLessThanOrEqual(HUB_TITLE_MAX);
+      expect(description.length, `${path}: ${description.length} chars`).toBeLessThanOrEqual(
+        HUB_DESCRIPTION_MAX,
+      );
+    });
+
+    test(`${path} does not lead with the brand`, async ({ request }) => {
+      // A brand search for this project returns the Bittensor SDK's own
+      // bt.metagraph docs and not us, so the front of the tag has to earn the
+      // click on terms. Brand rides at the end.
+      const html = await (await request.get(path)).text();
+      const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "");
+      expect(title.startsWith("Metagraphed")).toBe(false);
+      expect(title).toContain("Bittensor");
+    });
+
+    test(`${path} has the headings a scannable page needs`, async ({ request }) => {
+      // A hub that is a bare table answers no informational question. The H2s
+      // come from ui-kit's SectionHeading via HubSections, so this fails if the
+      // prose is dropped or rendered as <span> — which is exactly what
+      // /validators was doing with ten metric definitions already written.
+      const html = await (await request.get(path)).text();
+      const headings = [...html.matchAll(/<h2[^>]*>/g)].length;
+      expect(headings, `${path} renders ${headings} H2s`).toBeGreaterThanOrEqual(3);
+    });
+  }
+
+  test("the subnet count comes from the protocol cap, and the page agrees", async ({ request }) => {
+    // 128, not 129: root (netuid 0) is governance, and a title claiming 129
+    // would disagree with the rows the page lists — the same defect as a
+    // breadcrumb that renames its own target (#11303).
+    const html = await (await request.get("/subnets")).text();
+    const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "");
+    expect(title).toContain(String(SUBNET_SLOT_CAP));
+    expect(title).not.toContain("129");
   });
 });

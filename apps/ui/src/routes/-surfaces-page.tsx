@@ -49,6 +49,7 @@ import {
   subnetsQuery,
   metagraphedQueryKey,
 } from "@/lib/metagraphed/queries";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { sortBy } from "@/lib/metagraphed/url-state";
 import { matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
@@ -131,6 +132,8 @@ export function SurfacesPage() {
         paths={["/api/v1/surfaces", "/api/v1/fixtures/{surface_id}"]}
         artifacts={["/metagraph/surfaces.json"]}
       />
+      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/apis" />
     </>
   );
 }

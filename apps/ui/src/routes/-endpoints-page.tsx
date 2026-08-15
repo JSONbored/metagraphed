@@ -67,6 +67,7 @@ import type {
   Provider,
   Subnet,
 } from "@/lib/metagraphed/types";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 import { activeFilterCount } from "@/lib/metagraphed/filter-disclosure";
 import type { EndpointsSearch } from "./apis.endpoints";
 
@@ -259,6 +260,8 @@ export function EndpointsPage() {
           "/api/v1/endpoint-incidents",
         ]}
       />
+      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/apis/endpoints" />
     </>
   );
 }

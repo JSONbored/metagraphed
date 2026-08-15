@@ -41,6 +41,7 @@ import {
   TimeAgo,
   ActionBar,
 } from "@jsonbored/ui-kit";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 import { ProvidersPulseRail } from "@/components/metagraphed/providers-pulse-rail";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import type { Provider } from "@/lib/metagraphed/types";
@@ -115,6 +116,8 @@ export function ProvidersPage() {
         paths={["/api/v1/providers", "/api/v1/source-health"]}
         artifacts={["/metagraph/providers.json"]}
       />
+      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/apis/providers" />
     </>
   );
 }
