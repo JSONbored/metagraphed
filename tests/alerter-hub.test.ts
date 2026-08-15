@@ -919,6 +919,30 @@ test("matchingTriggers: filters the cache via triggerMatchesEvent", () => {
   );
 });
 
+test("matchingTriggers: a trigger with NO filters matches every event (#11339)", () => {
+  // The evaluator's fields used to reach `triggerMatchesEvent` through
+  // `trigger as unknown as EvaluatorAlertTrigger`; the schema names them now
+  // and the call site turns each ABSENT one into `null`. That distinction is
+  // the whole behaviour here: `null` means "no filter", so an unfiltered
+  // trigger fires on anything -- while `undefined` reaching a strict
+  // comparison would have made it fire on nothing.
+  const hub = new AlerterHub(STATE, mockEnv());
+  hub.triggers = [
+    // Every optional filter absent: the shape a hand-created trigger has.
+    triggerRow({ id: "bare" }),
+    triggerRow({ id: "scoped", netuid: 8 }),
+  ];
+  const matches = hub.matchingTriggers({
+    table: "account_events",
+    netuid: 7,
+  });
+  assert.deepEqual(
+    matches.map((t) => t.id),
+    ["bare"],
+    "the unfiltered trigger fired; the netuid-scoped one did not",
+  );
+});
+
 test("matchingTriggers: a condition trigger matches against the hub's own cached metricSnapshot", () => {
   const hub = new AlerterHub(STATE, mockEnv());
   hub.triggers = [

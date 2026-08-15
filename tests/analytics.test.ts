@@ -1197,6 +1197,15 @@ describe("writeSubnetSnapshot", () => {
     });
     assert.equal(r.reason, "no_profiles");
   });
+  test("a profiles artifact whose `profiles` is NOT an array declines too", async () => {
+    // Distinct from the empty-array case above: an artifact that parsed but
+    // carries the wrong shape must not be read as "zero profiles today". Both
+    // arms of that `Array.isArray` matter, and only one had a test (#11339).
+    const r = await writeSubnetSnapshot(mockEnv(), {
+      readArtifact: reader({ ok: true, data: { profiles: "not an array" } }),
+    });
+    assert.equal(r.reason, "no_profiles");
+  });
   test("writes one row per integer-netuid profile to the store", async () => {
     const { env, ctx } = snapshotEnv();
     const r = await writeSubnetSnapshot(mockEnv(env), {

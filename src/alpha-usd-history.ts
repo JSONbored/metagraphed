@@ -373,8 +373,11 @@ export function withAlphaUsdTrendDays<T extends object>(
   data: T,
   byBucket: Map<number, TaoUsdReading> | null,
 ): T & AlphaUsdTrendOverlay {
-  const bag = recordOrNull(data) ?? {};
-  const days = recordsOrEmpty(bag.days);
+  // Optional-chained rather than defaulted: `T extends object` already
+  // guarantees an object, so a `?? {}` fallback here could only ever fire for
+  // an array -- a branch no caller reaches and no test can honestly cover
+  // (#11339).
+  const days = recordsOrEmpty(recordOrNull(data)?.days);
   // Same uniform-shape rule as the candles: a failed read still emits every USD
   // field as null, and only the top-level reason says why.
   const readFailed = byBucket === null;
