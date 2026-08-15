@@ -3027,7 +3027,16 @@ async function requireCredentialStoreSurface(
  * scheme:signature bundle, moved to registration so a bad bundle fails when
  * it is stored instead of on some later call.
  */
-function normalizeSurfaceCredentialArgument(
+// EXPORTED FOR THE PARITY PIN (#11194). This is the WRITE-side rule and
+// `StoredSurfaceCredentialSchema` is the READ-side one, and they must accept
+// exactly the same values or a credential stored today reads as "nothing
+// stored" tomorrow. The messages below are why the two are not collapsed into
+// one: they name the offending key (`credential.x must be a non-empty string`)
+// for an MCP caller, which a zod issue would not. So the rule lives twice and
+// tests/mcp-surface-credentials.test.ts asserts agreement in BOTH directions --
+// a one-directional check would hide the case where the schema is the stricter
+// of the two.
+export function normalizeSurfaceCredentialArgument(
   credential: unknown,
 ): StoredSurfaceCredential {
   if (typeof credential === "string") {

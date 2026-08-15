@@ -2037,6 +2037,22 @@ test("mcpSubscribeSession / mcpUnsubscribeSession: idempotent Set add/delete", (
   assert.equal(hub.mcpSubscribedSessions.size, 0);
 });
 
+test("ChainFirehoseHub.fetch: /mcp-unsubscribe refuses the same bodies", async () => {
+  // Both halves, because an unsubscribe that accepted an absent id would call
+  // `delete(undefined)` -- a silent no-op that reports ok while the real
+  // session stays subscribed.
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  hub.mcpSubscribeSession("s1");
+  const res = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/mcp-unsubscribe", {
+      method: "POST",
+      body: "{}",
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(hub.mcpSubscribedSessions.has("s1"), true);
+});
+
 test("ChainFirehoseHub.fetch: GET /latest returns the latest broadcast payload, null before any broadcast", async () => {
   const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const before = await hub.fetch(
@@ -2078,6 +2094,29 @@ test("ChainFirehoseHub.fetch: POST /mcp-unsubscribe removes the session", async 
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { ok: true });
   assert.equal(hub.mcpSubscribedSessions.has("s1"), false);
+});
+
+// #11194. `as { sessionId: string }` over a body without one added `undefined`
+// to mcpSubscribedSessions, and broadcast() calls
+// `MCP_SESSION_HUB.idFromName(sessionId)` on EVERY member for EVERY block --
+// inside a best-effort `catch`, so the poisoned entry costs one swallowed throw
+// per block for the life of the object, and nothing ever removes it. The
+// unsubscribe path cannot: no caller sends `{ sessionId: undefined }` twice.
+//
+// Both halves are asserted, because the 400 alone would not prove the Set was
+// left clean, and a clean Set alone would not prove the caller was told.
+test("ChainFirehoseHub.fetch: a body with no sessionId is refused, not indexed", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  for (const body of ["{}", '{"sessionId":null}', '{"sessionId":""}', "junk"]) {
+    const res = await hub.fetch(
+      new Request("https://chain-firehose-hub.internal/mcp-subscribe", {
+        method: "POST",
+        body,
+      }),
+    );
+    assert.equal(res.status, 400, `expected 400 for body ${body}`);
+  }
+  assert.equal(hub.mcpSubscribedSessions.size, 0);
 });
 
 test("broadcast: with no MCP-subscribed sessions, never calls MCP_SESSION_HUB", async () => {

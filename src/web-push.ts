@@ -20,15 +20,16 @@
 // subscriber's browser, keyed by material only they hold (`p256dh` + `auth`).
 // That is why a payload is encrypted rather than sent as plain JSON.
 
-/** A browser PushSubscription's server-relevant fields, as posted by the UI. */
-export interface PushSubscriptionKeys {
-  /** The push service URL the browser handed us. Origin identifies the service. */
-  endpoint: string;
-  /** UA public key, P-256 uncompressed point (65 bytes), base64url. */
-  p256dh: string;
-  /** UA auth secret (16 bytes), base64url. */
-  auth: string;
-}
+/**
+ * A browser PushSubscription's server-relevant fields, as posted by the UI.
+ *
+ * INFERRED from the schema that validates it (#11194), not written beside it:
+ * this was a hand-written interface, and AlerterHub cast an internal response
+ * to it without checking a single field. Re-exported from here so the existing
+ * import sites keep working unchanged.
+ */
+import type { PushSubscriptionKeys } from "../schemas-src/internal-wire.ts";
+export type { PushSubscriptionKeys };
 
 /** VAPID identity. Values come from Worker secrets — never the repo. */
 export interface VapidKeys {

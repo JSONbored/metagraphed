@@ -1229,3 +1229,125 @@ test("a terminated session is not resurrected by a late register", async () => {
   assert.equal(response.status, 404, "the terminated gate answers first");
   assert.equal(hub.terminated, true);
 });
+
+// --- boundary parsing (#11194) ---------------------------------------------
+//
+// Both of these used to pass silently. `as { sessionId: string }` over a body
+// without one assigned `undefined` onto session state; `as string[]` over a
+// stored STRING was handed to `new Set(...)`, which iterates a string by
+// character. Neither threw, and both produce a session that looks alive and
+// delivers nothing.
+
+test("handleSubscribe: a body missing sessionId is a 400, not an undefined session", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  assert.equal(res.status, 400);
+  // The cast assigned `undefined` here and carried on.
+  assert.equal(hub.sessionId, null);
+  assert.equal(hub.subscribedUris.size, 0);
+});
+
+test("handleSubscribe: a body whose sessionId is the wrong type is a 400", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: 42,
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(hub.sessionId, null);
+});
+
+test("handleUnsubscribe: a body missing sessionId is a 400, and removes nothing", async () => {
+  // The direction that matters: an unsubscribe accepted with `undefined` would
+  // set `this.sessionId = undefined` and then delete the uri anyway, leaving a
+  // session subscribed upstream (ChainFirehoseHub still holds the id) while
+  // this object believes it is not.
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/unsubscribe", {
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(hub.sessionId, "session-1");
+  assert.equal(hub.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI), true);
+});
+
+test("handleTerminate: a body this hub cannot read is a 400, not a tombstone", async () => {
+  // Terminate is the one route that can create durable state for an ARBITRARY
+  // Durable Object name, so an unreadable body must not reach it.
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const res = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/terminate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "not json at all",
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(hub.terminated, false);
+});
+
+test("handleNotify: a body missing uri is a 400", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/notify", {}),
+  );
+  assert.equal(res.status, 400);
+});
+
+test("hydrate: a stored value of the WRONG TYPE does not become a set of characters", async () => {
+  // THE SILENT ONE. `new Set("abc")` is {"a","b","c"} -- three single-letter
+  // "uris" that match nothing, so the session subscribes to nothing and no
+  // notification is ever delivered.
+  const hub = new McpSessionHub(
+    stubState({
+      sessionId: "session-1",
+      subscribedUris: "metagraph://chain/stream",
+      sequence: 3,
+    }),
+    mockEnv(),
+  );
+  await hub.hydrate();
+  assert.equal(hub.subscribedUris.size, 0);
+  assert.equal(hub.subscribedUris.has("m"), false);
+});
+
+test("hydrate: a well-formed record still round-trips every field", async () => {
+  const hub = new McpSessionHub(
+    stubState({
+      sessionId: "session-9",
+      subscribedUris: [MCP_CHAIN_STREAM_RESOURCE_URI],
+      pendingUris: [MCP_CHAIN_STREAM_RESOURCE_URI],
+      sequence: 7,
+      terminated: false,
+    }),
+    mockEnv(),
+  );
+  await hub.hydrate();
+  assert.equal(hub.sessionId, "session-9");
+  assert.equal(hub.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI), true);
+  assert.equal(hub.pendingUris.has(MCP_CHAIN_STREAM_RESOURCE_URI), true);
+  assert.equal(hub.sequence, 7);
+});
+
+test("hydrate: an empty object hydrates to defaults rather than throwing", async () => {
+  const hub = new McpSessionHub(stubState({}), mockEnv());
+  await hub.hydrate();
+  assert.equal(hub.sessionId, null);
+  assert.equal(hub.subscribedUris.size, 0);
+  assert.equal(hub.sequence, 0);
+  assert.equal(hub.terminated, false);
+});

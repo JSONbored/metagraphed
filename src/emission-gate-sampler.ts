@@ -37,6 +37,7 @@ import {
 } from "./emission-flow-monitor.ts";
 import type { GateParamReading } from "./emission-gate-history.ts";
 import { blockEmissionForIssuance } from "./block-emission.ts";
+import { chainRpc } from "./chain-rpc.ts";
 
 export const SUBNET_EMISSION_ENABLED_PREFIX =
   "0x658faa385070e074c85bf6b568cf0555c97bb5c5631e5f593b5bd2da84a5fa16";
@@ -113,20 +114,22 @@ export async function sampleEmissionGate(
   const now = options.now ?? Date.now;
 
   async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-    const resp = await doFetch(options.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(timeoutMs),
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    });
-    if (!resp.ok) throw new Error(`${method}: HTTP ${resp.status}`);
-    const body = (await resp.json()) as {
-      result?: T;
-      error?: { message?: string };
-    };
-    if (body.error)
-      throw new Error(`${method}: ${body.error.message ?? "rpc error"}`);
-    return body.result as T;
+    // THE FIFTH CALL SITE (#11194). #11214 and #11216 routed the other four
+    // through the shared client and this one was missed -- it declared its own
+    // `{ result?: T; error?: { message?: string } }` and cast the body to it,
+    // which is the pattern the shared client exists to end. Same throws, same
+    // method-prefixed messages, and now the same parse: a proxy answering 200
+    // with an HTML error page is a decline here rather than a `result` read off
+    // a string.
+    //
+    // `as T` at the seam is the client's documented contract: it guarantees an
+    // ENVELOPE arrived and that an `error` member was raised, and leaves the
+    // result's shape to the caller that knows the method -- see
+    // subtensor-pinned-storage.ts, which does the same.
+    return (await chainRpc(options.rpcUrl, method, params, {
+      fetchImpl: doFetch,
+      timeoutMs,
+    })) as T;
   }
 
   async function keysPaged(prefix: string, at: string): Promise<string[]> {

@@ -102,24 +102,27 @@ describe("systemAccountStorageKey", () => {
   });
 });
 
+// TAKES THE RESULT, NOT THE ENVELOPE (#11194). The envelope is now parsed by
+// `chainRpc` -- `safeParse` against ChainRpcEnvelopeSchema, throwing on a
+// non-2xx, a non-JSON body, a body that is not an envelope, or an envelope
+// carrying `error`. So the error case that used to be asserted here moved to
+// the ChainRpc describe below rather than being dropped; what is left is what
+// this function was always really doing: decoding a SCALE blob.
 describe("accountInfoTotalRao", () => {
   test("sums free + reserved from a SCALE AccountInfo blob", () => {
-    assert.equal(accountInfoTotalRao({ result: accountInfoHex(7n, 3n) }), 10n);
+    assert.equal(accountInfoTotalRao(accountInfoHex(7n, 3n)), 10n);
   });
 
   test("decodes the live finney u64 layout — reserved > 0 must not corrupt free (#8239)", () => {
     // The real captured blob: the u128 misread returned ~2.32e27 rao here.
-    assert.equal(
-      accountInfoTotalRao({ result: REAL_FINNEY_BLOB }),
-      REAL_FINNEY_TOTAL_RAO,
-    );
+    assert.equal(accountInfoTotalRao(REAL_FINNEY_BLOB), REAL_FINNEY_TOTAL_RAO);
   });
 
   test("decodes a synthetic 56-byte u64 blob with nonzero frozen and flags", () => {
     assert.equal(
-      accountInfoTotalRao({
-        result: accountInfoU64Hex(5_000_000_000n, 250_000_000n, 111n),
-      }),
+      accountInfoTotalRao(
+        accountInfoU64Hex(5_000_000_000n, 250_000_000n, 111n),
+      ),
       5_250_000_000n,
     );
   });
@@ -127,42 +130,40 @@ describe("accountInfoTotalRao", () => {
   test("u64-layout blobs with reserved = 0 decode to the same value as before", () => {
     // Accounts with reserved = 0 were accidentally correct pre-fix; lock that in.
     assert.equal(
-      accountInfoTotalRao({ result: accountInfoU64Hex(13_687_971_778n, 0n) }),
+      accountInfoTotalRao(accountInfoU64Hex(13_687_971_778n, 0n)),
       13_687_971_778n,
     );
   });
 
   test("decodes a full 80-byte u128 AccountData at the u128 offsets", () => {
     assert.equal(
-      accountInfoTotalRao({
-        result: accountInfoU128FullHex(2_000_000_000n, 500_000_000n, 42n, 1n),
-      }),
+      accountInfoTotalRao(
+        accountInfoU128FullHex(2_000_000_000n, 500_000_000n, 42n, 1n),
+      ),
       2_500_000_000n,
     );
   });
 
   test("treats an absent storage entry as a zero balance", () => {
-    assert.equal(accountInfoTotalRao({ result: null }), 0n);
+    // Both spellings: `result: null` from the node, and a validated envelope
+    // that carried no `result` key at all -- the schema makes it optional.
+    assert.equal(accountInfoTotalRao(null), 0n);
+    assert.equal(accountInfoTotalRao(undefined), 0n);
   });
 
-  test("returns null for an RPC error, a missing body, or a non-string result", () => {
-    assert.equal(accountInfoTotalRao({ error: { code: -32601 } }), null);
-    assert.equal(accountInfoTotalRao(null), null);
-    assert.equal(accountInfoTotalRao({ result: 42 }), null);
+  test("returns null for a non-string result", () => {
+    assert.equal(accountInfoTotalRao(42), null);
   });
 
   test("returns null for a truncated or non-hex blob", () => {
-    assert.equal(accountInfoTotalRao({ result: "0xdeadbeef" }), null);
-    assert.equal(accountInfoTotalRao({ result: "0xzz" }), null);
-    assert.equal(accountInfoTotalRao({ result: "0x123" }), null);
-    assert.equal(accountInfoTotalRao({ result: "0x" }), null);
+    assert.equal(accountInfoTotalRao("0xdeadbeef"), null);
+    assert.equal(accountInfoTotalRao("0xzz"), null);
+    assert.equal(accountInfoTotalRao("0x123"), null);
+    assert.equal(accountInfoTotalRao("0x"), null);
   });
 
   test("tolerates a blob without the 0x prefix", () => {
-    assert.equal(
-      accountInfoTotalRao({ result: accountInfoHex(7n, 3n).slice(2) }),
-      10n,
-    );
+    assert.equal(accountInfoTotalRao(accountInfoHex(7n, 3n).slice(2)), 10n);
   });
 });
 

@@ -5,25 +5,33 @@
 // Network is the POOL id (`<network>-wss`), NOT a per-endpoint field, and the
 // pool already kind-filters + score-sorts. No I/O — unit-tested.
 
-export interface PoolEndpoint {
-  id?: string;
-  url?: unknown;
-  kind?: string;
-  pool_eligible?: unknown;
-  score?: unknown;
-  status?: string;
-  latest_block?: unknown;
-}
+// INFERRED from the schema `loadPools` parses against (#11194), not written
+// beside it. These were three hand-written interfaces describing a payload
+// nothing validated -- the shape someone believed, kept in step with the
+// validator by hand, which is the arrangement this repo keeps finding drifted.
+// Re-exported under their original names so every import site is unchanged.
+import type {
+  WssPool,
+  WssPoolEndpoint,
+  WssPoolsArtifact,
+} from "../schemas-src/internal-wire.ts";
 
-export interface Pool {
-  id?: string;
-  kind?: string;
-  endpoints?: PoolEndpoint[];
-}
+export type PoolEndpoint = WssPoolEndpoint;
+export type Pool = WssPool;
+export type PoolsArtifact = WssPoolsArtifact;
 
-export interface PoolsArtifact {
-  pools?: Pool[];
-}
+/**
+ * What the selectors below ACCEPT, which is broader than what `loadPools`
+ * returns.
+ *
+ * `pools` is required on the parsed artifact -- a body without it is a decline,
+ * not an empty pool list, which is the distinction #11194 restored. But these
+ * functions are pure and are called with `null`, with a stale value, and with
+ * a hand-built object in tests, and they already answer `[]` for every one of
+ * those through their own `Array.isArray` guard. Saying so is more honest than
+ * making the parsed shape looser to suit its consumers.
+ */
+export type PoolsArtifactInput = Partial<PoolsArtifact>;
 
 function scoreOf(e: PoolEndpoint): number {
   const n = Number(e.score);
@@ -57,7 +65,7 @@ export function isWssUpstream(e: unknown): e is PoolEndpoint & { url: string } {
 
 // The subtensor-wss pool for `network` (pool id `<network>-wss`, e.g. finney-wss).
 export function wssPoolFor(
-  poolsArtifact: PoolsArtifact | null | undefined,
+  poolsArtifact: PoolsArtifactInput | null | undefined,
   network: string,
 ): Pool | null {
   const pools = Array.isArray(poolsArtifact?.pools) ? poolsArtifact.pools : [];
@@ -73,7 +81,7 @@ export function wssPoolFor(
 // no reported block is kept — benefit of the doubt), score desc. Empty when the
 // pool is absent or has no eligible members (the caller 503s).
 export function selectWssUpstreams(
-  poolsArtifact: PoolsArtifact | null | undefined,
+  poolsArtifact: PoolsArtifactInput | null | undefined,
   network: string,
   opts: { maxBlockLag?: number } = {},
 ): string[] {

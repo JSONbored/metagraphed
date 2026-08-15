@@ -42,6 +42,12 @@ import {
 } from "../src/web-push.ts";
 import { buildPushNotificationPayload } from "../src/web-push-payload.ts";
 import {
+  AlertTriggerRowSchema,
+  AlertTriggersActiveResponseSchema,
+  AlerterDeregRiskSnapshotResponseSchema,
+  AlerterPushSubscriptionResponseSchema,
+} from "../schemas-src/internal-wire.ts";
+import {
   buildDiscordDeliveryRequest,
   buildEmailDeliveryRequest,
   buildTelegramDeliveryRequest,
@@ -183,12 +189,16 @@ async function loadPushSubscription(
       },
     );
     if (!upstream.ok) return null;
-    const body = (await upstream.json()) as {
-      subscription?: PushSubscriptionKeys | null;
-    };
-    const sub = body?.subscription;
-    if (!sub?.endpoint || !sub.p256dh || !sub.auth) return null;
-    return sub;
+    // PARSED, NOT CAST (#11194). The three-field truthiness check this
+    // replaced enforced the same rule the schema now declares, but stated it
+    // here rather than where the shape is owned -- and it could not tell a
+    // response that is not JSON at all (a proxy, an error page) from one
+    // carrying no subscription. Both are `null` to this function, which is
+    // right, but only one of them was ever intended.
+    const parsed = AlerterPushSubscriptionResponseSchema.safeParse(
+      await upstream.json(),
+    );
+    return parsed.success ? (parsed.data.subscription ?? null) : null;
   } catch {
     return null;
   }
@@ -516,9 +526,20 @@ export class AlerterHub implements DurableObject {
         });
         return;
       }
-      const body = (await upstream.json()) as { triggers?: Trigger[] };
-      if (Array.isArray(body?.triggers)) {
-        this.triggers = body.triggers;
+      // PARSED, NOT CAST (#11194). `Array.isArray` checked the envelope and
+      // nothing checked the ROWS -- so a trigger without an `id` reached the
+      // rate-limit map keyed on `undefined`, where it shares one bucket with
+      // every other id-less trigger and rate-limits them against each other.
+      // Per row, so one malformed trigger costs that trigger rather than the
+      // whole refresh.
+      const body = AlertTriggersActiveResponseSchema.safeParse(
+        await upstream.json(),
+      );
+      if (body.success) {
+        this.triggers = body.data.triggers.flatMap((row) => {
+          const parsed = AlertTriggerRowSchema.safeParse(row);
+          return parsed.success ? [parsed.data as Trigger] : [];
+        });
         this.triggersLoadedAt = Date.now();
         // #5024: prune any lastDeliveredAt entry for a trigger id that is
         // no longer present in the fresh active-trigger list (deleted or
@@ -572,6 +593,7 @@ export class AlerterHub implements DurableObject {
     if (!this.env.DATA_API || !this.env.ALERT_TRIGGERS_INTERNAL_TOKEN) {
       return;
     }
+    const refreshStartedAt = Date.now();
     try {
       const upstream = await this.env.DATA_API.fetch(
         "https://data-api.internal/api/v1/internal/alert-triggers-dereg-risk-snapshot",
@@ -583,22 +605,58 @@ export class AlerterHub implements DurableObject {
           signal: AbortSignal.timeout(ALERT_TRIGGER_REFRESH_TIMEOUT_MS),
         },
       );
-      if (!upstream.ok) return;
-      const body = (await upstream.json()) as {
-        subnets?: unknown;
-        immune_neurons?: unknown;
-        current_block?: unknown;
-      };
+      // #9440's lesson, applied to this refresh too. Its sibling
+      // (refreshTriggers) reports a non-ok upstream because a refresh that
+      // silently does not happen looks exactly like one that had nothing to
+      // do. THIS one said nothing at all -- and it is the refresh that is
+      // currently failing every time: the route's chain-table reads ran on the
+      // box's Postgres and went with it (#9193), so it answers 503 and
+      // `metricSnapshot` has been empty since. Every condition trigger has
+      // been evaluating against an empty snapshot, fail-closed and silent.
+      //
+      // Bounded by the same gate the call itself is behind: this only runs
+      // when at least one ACTIVE trigger has a condition, so it cannot emit
+      // for the (overwhelmingly common) zero-condition deployment.
+      if (!upstream.ok) {
+        this.emitTelemetry({
+          route: "alerter-hub:metric-snapshot-refresh",
+          ok: false,
+          durationMs: Date.now() - refreshStartedAt,
+        });
+        return;
+      }
+      // PARSED, NOT CAST (#11194). Not because the casts were unsafe --
+      // buildDeregRiskSnapshot re-validates every field it is handed, so a
+      // wrong-typed one already yielded an empty snapshot -- but because
+      // "the producer sent nothing" and "the producer sent something this hub
+      // could not read" were the same silent empty. They are different faults
+      // and only one of them is ours.
+      const parsed = AlerterDeregRiskSnapshotResponseSchema.safeParse(
+        await upstream.json(),
+      );
+      if (!parsed.success) {
+        this.emitTelemetry({
+          route: "alerter-hub:metric-snapshot-refresh",
+          ok: false,
+          durationMs: Date.now() - refreshStartedAt,
+        });
+        return;
+      }
       this.metricSnapshot = buildDeregRiskSnapshot({
-        economicsRows: body?.subnets as Array<Record<string, unknown>>,
-        neuronRows: body?.immune_neurons as Array<Record<string, unknown>>,
-        currentBlock: body?.current_block as number,
+        economicsRows: parsed.data.subnets,
+        neuronRows: parsed.data.immune_neurons,
+        currentBlock: parsed.data.current_block ?? undefined,
       });
     } catch {
       // Best-effort -- keep serving the stale (or empty) snapshot rather
       // than throwing out of evaluate(); a condition trigger just keeps
       // failing closed against stale data until the next successful
       // refresh, never against a thrown error.
+      this.emitTelemetry({
+        route: "alerter-hub:metric-snapshot-refresh",
+        ok: false,
+        durationMs: Date.now() - refreshStartedAt,
+      });
     }
   }
 

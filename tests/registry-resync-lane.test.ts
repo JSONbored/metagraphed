@@ -260,6 +260,31 @@ describe("a pass", () => {
     );
   });
 
+  // #11194: the pass state is PARSED, not cast. The four-clause guard this
+  // replaced accepted anything that passed all four checks and nothing said
+  // what the state WAS; the schema does both. Either way a state this lane
+  // cannot read is discarded and the next tick starts a clean pass -- which is
+  // the recovery, and the only behaviour a caller can observe.
+  test("a stored state the schema rejects starts a clean pass", async () => {
+    const store = kv({
+      "registry-resync:state": JSON.stringify({
+        head: "aaa",
+        paths: ["registry/subnets/a.json"],
+        offset: -1,
+      }),
+    });
+    const result = await withGithub(
+      githubFetch({ subnets: ["a", "b"], providers: [] }),
+      () => runRegistryResyncLane(ENV, { kv: store, registrySyncApi: OK_API }),
+    );
+    assert.equal(result.ok, true);
+    assert.equal(
+      result.offset,
+      2,
+      "restarted from zero and walked the fresh listing, not the rejected state",
+    );
+  });
+
   test("stays pinned to the commit it started on", async () => {
     // A pass that re-resolved head each tick would mix files from two commits
     // and write them as though they were one.

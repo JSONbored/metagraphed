@@ -25,6 +25,13 @@ import {
   buildSubnetStatusResourceUri,
   parseSubnetStatusResourceUri,
 } from "../src/subnet-status-subscribe.ts";
+import { badRequest, parseRequestBody } from "../src/hub-request.ts";
+import {
+  HubNetuidSchema,
+  HubNotifyChangedBodySchema,
+  HubRequiredSessionIdBodySchema,
+  HubSubnetSessionBodySchema,
+} from "../schemas-src/internal-wire.ts";
 
 type NetuidIndex = Map<number, Set<string>>;
 type SessionIndex = Map<string, Set<number>>;
@@ -237,29 +244,29 @@ export class SubnetStatusHub implements DurableObject {
   }
 
   async handleSubscribe(request: Request): Promise<Response> {
-    const { sessionId, netuid } = (await request.json()) as {
-      sessionId?: unknown;
-      netuid?: unknown;
-    };
+    // PARSED, NOT CAST AND RE-NARROWED (#11194). The `{ sessionId?: unknown }`
+    // cast was safe -- every field was checked before use -- but it restated
+    // "a session id is a non-empty string" and "a netuid is an int in range"
+    // in each of the four handlers below, which is where this hub and
+    // ChainFirehoseHub drifted: the same `/mcp-subscribe` path refused an
+    // absent id here and accepted it there. One declared vocabulary now, in
+    // schemas-src/internal-wire.ts.
+    const body = await parseRequestBody(request, HubSubnetSessionBodySchema);
+    if (!body) return badRequest("sessionId and netuid are required");
+    // The URI spelling stays accepted: `handleSubscribe` has always resolved
+    // `metagraph://subnet/{netuid}/status` here, and the schema's union is
+    // what keeps that an alternate spelling rather than an unchecked cast.
     const n =
-      typeof netuid === "number"
-        ? netuid
-        : parseSubnetStatusResourceUri(
-            typeof netuid === "string" ? netuid : "",
-          );
-    if (typeof sessionId !== "string" || sessionId.length === 0) {
-      return new Response(JSON.stringify({ error: "sessionId required" }), {
-        status: 400,
-        headers: { "content-type": "application/json" },
-      });
-    }
-    if (n === null || !Number.isInteger(n) || n < 0) {
-      return new Response(JSON.stringify({ error: "netuid required" }), {
-        status: 400,
-        headers: { "content-type": "application/json" },
-      });
-    }
-    addSessionSubscription(this.byNetuid, this.sessionByNetuid, sessionId, n);
+      typeof body.netuid === "number"
+        ? body.netuid
+        : parseSubnetStatusResourceUri(body.netuid);
+    if (n === null) return badRequest("netuid required");
+    addSessionSubscription(
+      this.byNetuid,
+      this.sessionByNetuid,
+      body.sessionId,
+      n,
+    );
     await this.persist();
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -268,18 +275,26 @@ export class SubnetStatusHub implements DurableObject {
   }
 
   async handleUnsubscribe(request: Request): Promise<Response> {
-    const { sessionId, netuid } = (await request.json()) as {
-      sessionId?: unknown;
-      netuid?: unknown;
-    };
-    if (typeof sessionId === "string" && Number.isInteger(netuid)) {
-      removeSessionSubscription(
-        this.byNetuid,
-        this.sessionByNetuid,
-        sessionId,
-        netuid,
-      );
-      await this.persist();
+    const body = await parseRequestBody(request, HubSubnetSessionBodySchema);
+    // UNCHANGED SEMANTICS: an unsubscribe this hub cannot read still answers
+    // ok. Unsubscribing something never subscribed is a no-op by design (the
+    // Set semantics the module header describes), and a client tearing a
+    // session down should not have to handle a 400 from a call whose only
+    // effect is removal.
+    if (body) {
+      const n =
+        typeof body.netuid === "number"
+          ? body.netuid
+          : parseSubnetStatusResourceUri(body.netuid);
+      if (n !== null) {
+        removeSessionSubscription(
+          this.byNetuid,
+          this.sessionByNetuid,
+          body.sessionId,
+          n,
+        );
+        await this.persist();
+      }
     }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -288,9 +303,16 @@ export class SubnetStatusHub implements DurableObject {
   }
 
   async handleUnsubscribeSession(request: Request): Promise<Response> {
-    const { sessionId } = (await request.json()) as { sessionId?: unknown };
-    if (typeof sessionId === "string") {
-      removeSessionEverywhere(this.byNetuid, this.sessionByNetuid, sessionId);
+    const body = await parseRequestBody(
+      request,
+      HubRequiredSessionIdBodySchema,
+    );
+    if (body) {
+      removeSessionEverywhere(
+        this.byNetuid,
+        this.sessionByNetuid,
+        body.sessionId,
+      );
       await this.persist();
     }
     return new Response(JSON.stringify({ ok: true }), {
@@ -302,11 +324,21 @@ export class SubnetStatusHub implements DurableObject {
   // Called by the health prober after a real status/surface diff. Pointer-
   // only notify per (session, uri); coalescing lives in McpSessionHub.
   async handleNotifyChanged(request: Request): Promise<Response> {
-    const { netuids } = (await request.json()) as { netuids?: unknown };
-    const list = Array.isArray(netuids)
+    const body = await parseRequestBody(request, HubNotifyChangedBodySchema);
+    // Element filtering stays HERE rather than in the schema: a prober that
+    // sends one bad netuid among fifty should still deliver the other
+    // forty-nine, so a bad element drops and a bad envelope declines.
+    //
+    // Each element is parsed against the SAME netuid bound the subscribe path
+    // uses, not a hand-rolled `Number.isInteger(n) && n >= 0`. Those two
+    // disagreed: the old test admitted 999999, a netuid no subscription can
+    // exist for, so the fan-out looked up an index key nothing can ever write.
+    const list = body
       ? [
           ...new Set(
-            netuids.filter((n): n is number => Number.isInteger(n) && n >= 0),
+            body.netuids
+              .map((n) => HubNetuidSchema.safeParse(n))
+              .flatMap((parsed) => (parsed.success ? [parsed.data] : [])),
           ),
         ]
       : [];

@@ -58,6 +58,15 @@ import {
 } from "../src/usage-telemetry.ts";
 
 import { parseSubnetStatusResourceUri } from "../src/subnet-status-subscribe.ts";
+import { badRequest, parseRequestBody } from "../src/hub-request.ts";
+import {
+  MCP_SESSION_STATE_KEYS,
+  type McpSessionState,
+  HubNotifyBodySchema,
+  HubSessionIdBodySchema,
+  McpSessionStateSchema,
+  HubSessionUriBodySchema,
+} from "../schemas-src/internal-wire.ts";
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 
@@ -165,34 +174,60 @@ export class McpSessionHub implements DurableObject {
 
   async hydrate(): Promise<void> {
     if (this.hydrated) return;
+    // Keys DERIVED from the schema -- see MCP_SESSION_STATE_KEYS. A
+    // hand-written list here was the third place the field set was stated.
     const stored = await this.state.storage.get<
       string | string[] | number | boolean
-    >(["sessionId", "subscribedUris", "pendingUris", "sequence", "terminated"]);
-    this.sessionId = (stored.get("sessionId") as string | undefined) || null;
-    this.subscribedUris = new Set(
-      (stored.get("subscribedUris") as string[] | undefined) || [],
+    >([...MCP_SESSION_STATE_KEYS]);
+    // PARSED, NOT CAST (#11194). These come back from a PREVIOUS deploy's
+    // `persist()`, so their shape is a contract with code that is no longer
+    // running. `as string[]` over a value that is actually a string would be
+    // handed to `new Set(...)`, which iterates a string BY CHARACTER -- a set
+    // of single-letter "uris" matching nothing, with no error anywhere. The
+    // session would look alive and deliver no notifications.
+    //
+    // Every field is optional in the schema and defaulted here: a first
+    // hydration has none of them, and `pendingUris` was never persisted at all
+    // by older deploys.
+    const state = McpSessionStateSchema.safeParse(
+      Object.fromEntries(
+        MCP_SESSION_STATE_KEYS.map((key) => [key, stored.get(key)]),
+      ),
     );
+    const persisted = state.success ? state.data : {};
+    this.sessionId = persisted.sessionId || null;
+    this.subscribedUris = new Set(persisted.subscribedUris || []);
     // pendingUris was the one session field never persisted or hydrated, so a
     // DO eviction between /notify and the next GET /stream discarded the
     // coalesced notification the flush loop exists to replay -- the client was
     // never told the resource changed and never re-read.
-    this.pendingUris = new Set(
-      (stored.get("pendingUris") as string[] | undefined) || [],
-    );
-    this.sequence = (stored.get("sequence") as number | undefined) || 0;
-    this.terminated =
-      (stored.get("terminated") as boolean | undefined) || false;
+    this.pendingUris = new Set(persisted.pendingUris || []);
+    this.sequence = persisted.sequence || 0;
+    this.terminated = persisted.terminated || false;
     this.hydrated = true;
   }
 
-  async persist(): Promise<void> {
-    await this.state.storage.put({
+  /**
+   * This session as the storage record, with EVERY schema field required.
+   *
+   * The `-?` is the point: it makes a missing key a COMPILE error, so adding a
+   * field to `McpSessionStateSchema` cannot leave the writer behind. That is
+   * the exact failure `pendingUris` already had -- written by nobody, hydrated
+   * by nobody, so a DO eviction between /notify and the next GET discarded the
+   * coalesced notification the flush loop exists to replay.
+   */
+  private sessionStateRecord(): { [K in keyof McpSessionState]-?: unknown } {
+    return {
       sessionId: this.sessionId,
       subscribedUris: [...this.subscribedUris],
       pendingUris: [...this.pendingUris],
       sequence: this.sequence,
       terminated: this.terminated,
-    });
+    };
+  }
+
+  async persist(): Promise<void> {
+    await this.state.storage.put(this.sessionStateRecord());
   }
 
   async touch(): Promise<void> {
@@ -299,12 +334,12 @@ export class McpSessionHub implements DurableObject {
    * `terminated` session stays terminated rather than being resurrected by a late call.
    */
   async handleRegister(request: Request): Promise<Response> {
-    const { sessionId } = (await request.json()) as { sessionId: string };
+    const body = await parseRequestBody(request, HubSessionIdBodySchema);
+    const sessionId = body?.sessionId;
     if (!sessionId) {
-      return new Response(JSON.stringify({ error: "sessionId is required" }), {
-        status: 400,
-        headers: { "content-type": "application/json" },
-      });
+      // Unchanged message: a malformed body and an absent id are the same
+      // answer to this caller -- it has not named a session.
+      return badRequest("sessionId is required");
     }
     // A client-supplied id is authority only over the DO it names, which is derived
     // from that same id -- so this can only ever register the session it IS.
@@ -324,10 +359,9 @@ export class McpSessionHub implements DurableObject {
   }
 
   async handleSubscribe(request: Request): Promise<Response> {
-    const { sessionId, uri } = (await request.json()) as {
-      sessionId: string;
-      uri: string;
-    };
+    const body = await parseRequestBody(request, HubSessionUriBodySchema);
+    if (!body) return badRequest("sessionId and uri are required");
+    const { sessionId, uri } = body;
     this.sessionId = sessionId;
     const statusNetuid = parseSubnetStatusResourceUri(uri);
     if (uri !== MCP_CHAIN_STREAM_RESOURCE_URI && statusNetuid == null) {
@@ -366,10 +400,9 @@ export class McpSessionHub implements DurableObject {
   }
 
   async handleUnsubscribe(request: Request): Promise<Response> {
-    const { sessionId, uri } = (await request.json()) as {
-      sessionId: string;
-      uri: string;
-    };
+    const body = await parseRequestBody(request, HubSessionUriBodySchema);
+    if (!body) return badRequest("sessionId and uri are required");
+    const { sessionId, uri } = body;
     this.sessionId = sessionId;
     const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
     const statusNetuid = parseSubnetStatusResourceUri(uri);
@@ -415,7 +448,9 @@ export class McpSessionHub implements DurableObject {
   // not a growing queue, since resources/read always returns CURRENT state
   // regardless of how many events fired in between.
   async handleNotify(request: Request): Promise<Response> {
-    const { uri } = (await request.json()) as { uri: string };
+    const body = await parseRequestBody(request, HubNotifyBodySchema);
+    if (!body) return badRequest("uri is required");
+    const { uri } = body;
     if (!this.subscribedUris.has(uri)) {
       return new Response(JSON.stringify({ ok: true, delivered: false }), {
         status: 200,
@@ -486,9 +521,9 @@ export class McpSessionHub implements DurableObject {
     // way. A client-supplied id is authority only after this object already
     // knows the session from resources/subscribe; otherwise DELETE must not
     // create/persist a tombstone for an arbitrary Durable Object name.
-    const { sessionId } = (await request.json()) as {
-      sessionId: string | null;
-    };
+    const body = await parseRequestBody(request, HubSessionIdBodySchema);
+    if (!body) return badRequest("sessionId is required");
+    const { sessionId } = body;
     if (!this.sessionId || (sessionId && sessionId !== this.sessionId)) {
       return new Response(JSON.stringify({ error: "session not found" }), {
         status: 404,

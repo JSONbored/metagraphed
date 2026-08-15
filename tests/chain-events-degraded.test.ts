@@ -15,6 +15,7 @@ import {
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
   hotTierBlockChainEvents,
+  parseCachedColdTierAnswer,
 } from "../src/chain-events-degraded.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { handleChainEventsFamily, handleRequest } from "../workers/api.ts";
@@ -659,5 +660,144 @@ describe("a failed testnet read is a miss, not an empty block", () => {
       "testnet",
     );
     assert.equal(answer?.kind, "miss");
+  });
+});
+
+// --- the edge cache is a boundary too (#11194) ------------------------------
+//
+// `(await cacheHit.json()) as ColdTierAnswer` was the last cast on this path,
+// and the case it could not see is the one that actually happens: an entry
+// written by a PREVIOUS deploy, whose shape is whatever this type was then.
+// A hit that no longer parses must read as a MISS -- recompute -- rather than
+// as an answer served under a `meta.source` claiming a tier it never came from.
+describe("parseCachedColdTierAnswer", () => {
+  test("a well-formed entry survives the round trip", () => {
+    const answer = parseCachedColdTierAnswer({
+      data: { events: [{ block_number: 1 }] },
+      source: "lakehouse-cold-tier",
+    });
+    assert.equal(answer?.source, "lakehouse-cold-tier");
+    assert.deepEqual(answer?.data, { events: [{ block_number: 1 }] });
+  });
+
+  test("an entry missing the tier is a miss, not an untiered answer", () => {
+    // `source` is the one field a hit MUST carry: reporting the wrong tier is
+    // the mislabelling this type was introduced to stop (#9319).
+    assert.equal(parseCachedColdTierAnswer({ data: {} }), null);
+  });
+
+  test("every other unreadable entry is a miss", () => {
+    for (const entry of [
+      null,
+      undefined,
+      "a string",
+      { source: "lakehouse-cold-tier" },
+      { data: [], source: "lakehouse-cold-tier" },
+      { data: {}, source: 7 },
+    ]) {
+      assert.equal(
+        parseCachedColdTierAnswer(entry),
+        null,
+        `expected a miss for ${JSON.stringify(entry)}`,
+      );
+    }
+  });
+});
+
+// --- and the same boundary, reached through the real route ------------------
+//
+// `parseCachedColdTierAnswer` above is the unit; this is the wiring. It matters
+// separately because the ternary it sits in has a `cacheHit` arm that NOTHING
+// in this suite reached before -- an entry could have stopped parsing in
+// production and every test would still have been green.
+describe("the chain-events edge cache is read through the parse", () => {
+  const globalWithCaches = globalThis as unknown as { caches: Row | undefined };
+
+  /** A `caches.default` stand-in whose stored body the test can rewrite. */
+  function installCaches() {
+    const store = new Map<string, Response>();
+    globalWithCaches.caches = {
+      default: {
+        async match(request: Request) {
+          const hit = store.get(request.url);
+          return hit ? hit.clone() : undefined;
+        },
+        async put(request: Request, response: Response) {
+          store.set(request.url, response.clone());
+        },
+      },
+    } as unknown as Row;
+    return store;
+  }
+
+  /** The cache PUT rides on waitUntil, so a ctx is required to observe it. */
+  function collectingCtx() {
+    const pending: Promise<unknown>[] = [];
+    return {
+      ctx: {
+        waitUntil: (p: Promise<unknown>) => pending.push(p),
+      } as unknown as ExecutionContext,
+      settle: () => Promise.all(pending),
+    };
+  }
+
+  test("a second request is served from the cache", async () => {
+    const original = globalWithCaches.caches;
+    const store = installCaches();
+    try {
+      const env = envWith("ok");
+      const write = collectingCtx();
+      const first = await handleRequest(
+        req("/api/v1/chain-events"),
+        env,
+        write.ctx,
+      );
+      assert.equal(first.status, 200);
+      await write.settle();
+      assert.ok(store.size > 0, "premise: the first answer was cached");
+
+      // The tier is now unreachable. A served answer can only have come from
+      // the cache.
+      const second = await handleRequest(req("/api/v1/chain-events"), {
+        ...envWith("down"),
+      } as Env);
+      assert.equal(second.status, 200);
+      assert.equal(second.headers.get("x-metagraph-degraded"), null);
+      const body = (await second.json()) as Row;
+      assert.equal((body.data as Row).count, 1);
+    } finally {
+      globalWithCaches.caches = original;
+    }
+  });
+
+  test("an entry that no longer parses is a MISS, not a mislabelled answer", async () => {
+    const original = globalWithCaches.caches;
+    const store = installCaches();
+    try {
+      const write = collectingCtx();
+      await handleRequest(
+        req("/api/v1/chain-events"),
+        envWith("ok"),
+        write.ctx,
+      );
+      await write.settle();
+      // An older deploy's shape: the payload is there, the tier label is not.
+      for (const [key] of store) {
+        store.set(key, Response.json({ data: { count: 99 } }));
+      }
+      const res = await handleRequest(
+        req("/api/v1/chain-events"),
+        envWith("ok"),
+      );
+      assert.equal(res.status, 200);
+      const body = (await res.json()) as Row;
+      assert.equal(
+        (body.data as Row).count,
+        1,
+        "recomputed from the tier rather than served under an unknown source",
+      );
+    } finally {
+      globalWithCaches.caches = original;
+    }
   });
 });

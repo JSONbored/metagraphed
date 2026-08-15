@@ -296,6 +296,12 @@ describe("sampleEmissionGate", () => {
     );
     assert.deepEqual(sample.current_ema, [], "empty page yields no entries");
 
+    // An error envelope with NO message still names the method and shows what
+    // the node actually sent. This used to read `chain_getFinalizedHead: rpc
+    // error` -- a hardcoded literal that says only "something went wrong". Now
+    // it carries the serialized error (`{}` here), which is the shared client's
+    // rule since #11194: the envelope IS the diagnosis, and a decline that does
+    // not say why is the failure the method prefix exists to prevent.
     const bare = (async () =>
       ({
         ok: true,
@@ -303,7 +309,7 @@ describe("sampleEmissionGate", () => {
       }) as unknown as Response) as unknown as typeof fetch;
     await assert.rejects(
       () => sampleEmissionGate({ rpcUrl: "https://rpc.test", fetchImpl: bare }),
-      /rpc error/,
+      /^Error: chain_getFinalizedHead: \{\}$/,
     );
   });
 

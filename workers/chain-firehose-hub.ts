@@ -91,6 +91,8 @@ function chainEventsGraphqlSchema(): Promise<GraphQLSchema> {
   ));
 }
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
+import { badRequest, parseRequestBody } from "../src/hub-request.ts";
+import { HubRequiredSessionIdBodySchema } from "../schemas-src/internal-wire.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
 
@@ -1192,17 +1194,32 @@ export class ChainFirehoseHub implements DurableObject {
         headers: { "content-type": "application/json" },
       });
     }
+    // PARSED, NOT CAST (#11194). `as { sessionId: string }` over a body that
+    // lacks it put `undefined` into `mcpSubscribedSessions`, and the broadcast
+    // loop calls `idFromName(sessionId)` on every member of that Set for every
+    // block -- so one malformed POST cost a throw per block, forever, swallowed
+    // by that loop's own best-effort `catch`, with nothing that ever removes
+    // the poisoned entry. A 400 here is the same call, refused where it can be
+    // seen.
     if (url.pathname === "/mcp-subscribe" && request.method === "POST") {
-      const { sessionId } = (await request.json()) as { sessionId: string };
-      this.mcpSubscribeSession(sessionId);
+      const body = await parseRequestBody(
+        request,
+        HubRequiredSessionIdBodySchema,
+      );
+      if (!body) return badRequest("sessionId is required");
+      this.mcpSubscribeSession(body.sessionId);
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
     }
     if (url.pathname === "/mcp-unsubscribe" && request.method === "POST") {
-      const { sessionId } = (await request.json()) as { sessionId: string };
-      this.mcpUnsubscribeSession(sessionId);
+      const body = await parseRequestBody(
+        request,
+        HubRequiredSessionIdBodySchema,
+      );
+      if (!body) return badRequest("sessionId is required");
+      this.mcpUnsubscribeSession(body.sessionId);
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "content-type": "application/json" },

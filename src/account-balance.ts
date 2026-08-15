@@ -10,6 +10,7 @@
 // is audited, zero-dependency, pure JS, and verified working in workerd
 // (wrangler dev) with output identical to node:crypto's blake2b512.
 import { blake2b } from "@noble/hashes/blake2.js";
+import { chainRpc } from "./chain-rpc.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import { RAO_PER_TAO } from "./lib/rao.ts";
 import {
@@ -158,20 +159,21 @@ export function systemAccountStorageKey(accountId: Uint8Array): string {
   )}${toHex(accountId)}`;
 }
 
-interface JsonRpcResponseLike {
-  error?: unknown;
-  result?: unknown;
-}
-
-// free + reserved (in rao) from a state_getStorage AccountInfo response, or null
-// when the node reported an error or returned an undecodable blob.
-export function accountInfoTotalRao(
-  rpcBody: JsonRpcResponseLike | null | undefined,
-): bigint | null {
-  if (!rpcBody || rpcBody.error) return null;
-  const result = rpcBody.result;
+// free + reserved (in rao) from a state_getStorage AccountInfo RESULT, or null
+// when the node returned an undecodable blob.
+//
+// TAKES THE RESULT, NOT THE ENVELOPE. This used to accept `{ result, error }`
+// and hand-check `error`, which meant the envelope was cast here
+// (`as JsonRpcResponseLike`) rather than parsed — the last site in the repo
+// still doing that after #11216 claimed the three remaining ones. `chainRpc`
+// safeParses the envelope and throws on `error`, so by the time a value
+// reaches this function it is a validated `result` and nothing else. What is
+// left here is what this function was always really doing: decoding a SCALE
+// blob.
+export function accountInfoTotalRao(result: unknown): bigint | null {
   // A never-seen account has no System::Account entry at all — that is a
-  // successful read of a zero balance, not an RPC failure.
+  // successful read of a zero balance, not an RPC failure. `undefined` reaches
+  // here for an envelope with no `result` key, which the schema allows.
   if (result == null) return 0n;
   if (typeof result !== "string") return null;
   const bytes = hexToBytes(result);
@@ -265,31 +267,31 @@ async function loadAccountBalanceSnapshot(
     // a violation would throw below, caught by the same try/catch as any
     // other RPC failure, leaving balance_tao null (unchanged behavior).
     const accountId = accountIdFromSs58(ss58)!;
-    const rpcResp = await fetch(rpcUrlForNetwork(network), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(BALANCE_RPC_TIMEOUT_MS),
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "state_getStorage",
-        params: [systemAccountStorageKey(accountId)],
-      }),
-    });
-    if (rpcResp.ok) {
-      const totalRao = accountInfoTotalRao(
-        (await rpcResp.json()) as JsonRpcResponseLike,
-      );
-      if (totalRao != null) {
-        // Sum in BigInt rao space, then divide once — avoids float precision loss
-        // on large on-chain balances before converting the remainder to TAO.
-        balanceTao =
-          Number(totalRao / RAO_PER_TAO) + Number(totalRao % RAO_PER_TAO) / 1e9;
-        rpcOk = true;
-      }
+    // THROUGH THE VALIDATED CLIENT, not a hand-built envelope. `chainRpc`
+    // safeParses the response and throws on a non-2xx, a body that is not JSON,
+    // a body that is not a JSON-RPC envelope, or an envelope carrying `error` —
+    // every one of which this site previously either ignored (`rpcResp.ok`) or
+    // read off a cast. The catch below already turns any of them into
+    // "balance_tao stays null", so the failure behaviour is unchanged; what
+    // changes is that a proxy answering 200 with HTML can no longer reach the
+    // decoder as a value-shaped object.
+    const result = await chainRpc(
+      rpcUrlForNetwork(network),
+      "state_getStorage",
+      [systemAccountStorageKey(accountId)],
+      { timeoutMs: BALANCE_RPC_TIMEOUT_MS },
+    );
+    const totalRao = accountInfoTotalRao(result);
+    if (totalRao != null) {
+      // Sum in BigInt rao space, then divide once — avoids float precision loss
+      // on large on-chain balances before converting the remainder to TAO.
+      balanceTao =
+        Number(totalRao / RAO_PER_TAO) + Number(totalRao % RAO_PER_TAO) / 1e9;
+      rpcOk = true;
     }
   } catch {
-    // RPC fetch failed — balance_tao stays null.
+    // RPC fetch failed, the transport lied, or the node reported an error —
+    // balance_tao stays null.
   }
 
   const payload: AccountBalanceResultSnapshot = {

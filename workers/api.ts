@@ -188,6 +188,7 @@ import {
 import { SUBNET_DETAIL_SECTIONS } from "../schemas-src/routes/subnet-detail.ts";
 import { SUBNET_OVERVIEW_SECTIONS } from "../schemas-src/routes/subnet-overview.ts";
 import { SUBNET_PROFILE_SECTIONS } from "../schemas-src/routes/subnet-profiles.ts";
+import { AbuseScanAnomaliesResponseSchema } from "../schemas-src/internal-wire.ts";
 
 /**
  * Route id -> the sections that route serves (#10600).
@@ -547,6 +548,7 @@ import {
 import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import {
   type ColdTierAnswer,
+  parseCachedColdTierAnswer,
   chainEventsQueryFromUrl,
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
@@ -1059,10 +1061,15 @@ export async function runAbuseScan(env: Env, ctx?: Ctx) {
     );
     if (!upstream.ok)
       return { ok: false, reason: `upstream_${upstream.status}` };
-    const body = (await upstream.json()) as {
-      flagged_count?: number;
-      accounts_seen?: number;
-    };
+    // PARSED, NOT CAST (#11194). `Number(...) || 0` below already coerced,
+    // so this changes no arithmetic -- what it changes is that a body we
+    // cannot read now scans as zero flagged accounts EXPLICITLY rather than
+    // by accident, on a job whose only output is an alert threshold.
+    const parsedBody = AbuseScanAnomaliesResponseSchema.safeParse(
+      await upstream.json(),
+    );
+    if (!parsedBody.success) return { ok: false, reason: "unreadable_body" };
+    const body = parsedBody.data;
     const flagged = Number(body?.flagged_count) || 0;
     // Quiet when there is nothing to say. A daily "0 flagged" event would
     // train whoever watches this channel to skip it.
@@ -2394,9 +2401,11 @@ export async function dispatchWebhooksFromChangelog(
   const event = await loadEvent(env);
 
   const eventId = await webhookEventId(JSON.stringify(event));
-  const last = (await env.METAGRAPH_CONTROL.get(
-    WEBHOOK_LAST_DISPATCHED_KEY,
-  )) as string | null;
+  // No cast (#11194): `KVNamespace.get(key)` with no type option already
+  // returns `string | null`, so this asserted nothing the compiler did not
+  // already know -- and asserting it anyway is how a real type change would
+  // have been hidden the day the second argument was added.
+  const last = await env.METAGRAPH_CONTROL.get(WEBHOOK_LAST_DISPATCHED_KEY);
   if (!shouldDispatchChangeEvent(event, eventId, last)) {
     return { ok: true, reason: "unchanged" };
   }
@@ -4330,8 +4339,12 @@ export async function handleChainEventsFamily(
     ? await cacheable.store.match(cacheable.key)
     : null;
   // The tier travels WITH the payload through the cache, so a hit reports the
-  // same `meta.source` the miss did rather than guessing one back.
-  let answer = cacheHit ? ((await cacheHit.json()) as ColdTierAnswer) : null;
+  // same `meta.source` the miss did rather than guessing one back. PARSED, not
+  // cast (#11194) -- see parseCachedColdTierAnswer for why a cache read is a
+  // boundary even though this Worker wrote the bytes.
+  let answer: ColdTierAnswer | null = cacheHit
+    ? parseCachedColdTierAnswer(await cacheHit.json())
+    : null;
 
   if (!answer) {
     // #9208/#9260: the TIERED block-detail read first. /blocks/{n}/chain-events

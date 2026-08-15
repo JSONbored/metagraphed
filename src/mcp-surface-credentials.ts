@@ -29,6 +29,8 @@
 // the caller as a typed tool error -- silently degrading to plaintext (or to
 // pretending a credential was stored) would be worse than refusing.
 
+import { StoredSurfaceCredentialSchema } from "../schemas-src/mcp-tools/ai-integration.ts";
+
 export const SURFACE_CREDENTIAL_KV_PREFIX = "mcp-surface-credential:";
 
 // 30 days: long enough that an agent configured once keeps working across
@@ -182,9 +184,18 @@ async function decryptCredential(
       key,
       base64ToBytes(envelope.data),
     );
-    return JSON.parse(
-      new TextDecoder().decode(plaintext),
-    ) as StoredSurfaceCredential;
+    // PARSED, NOT CAST (#11194). Decrypting proves the bytes are ours; it
+    // proves nothing about their SHAPE. These were written by an earlier
+    // deploy, so the cast this replaces trusted whichever normaliser that
+    // deploy shipped -- and a credential is the last value in the system to
+    // take on trust. A shape this does not recognise reads as "nothing
+    // stored", which is the same answer an undecryptable envelope already
+    // gives, so callers re-register rather than sending a malformed secret to
+    // a third-party surface.
+    const parsed = StoredSurfaceCredentialSchema.safeParse(
+      JSON.parse(new TextDecoder().decode(plaintext)),
+    );
+    return parsed.success ? parsed.data : null;
   } catch {
     // Undecryptable means the secret rotated (or the envelope is corrupt).
     // Either way the record is unusable -- callers treat null as "nothing

@@ -42,6 +42,7 @@
 //   inlines must come from a validated, non-caller-controlled source.
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import { AnalyticsEngineSqlResponseSchema } from "../schemas-src/foreign-wire.ts";
 
 /**
  * Cloudflare API token with the `Account | Account Analytics | Read`
@@ -100,14 +101,6 @@ export interface AnalyticsSqlDeps {
    * see that module's comment on why a real timer is not dependable in CI's
    * shared-registry pass. */
   scheduleAbort?: (abort: () => void, ms: number) => () => void;
-}
-
-/** The default FORMAT JSON envelope: `meta` (column names/types), `data`
- * (row objects) and a `rows` count. */
-interface AnalyticsSqlBody {
-  data?: unknown;
-  rows?: number;
-  meta?: unknown;
 }
 
 /** True when this deployment can talk to the AE SQL API at all. */
@@ -194,14 +187,16 @@ export async function analyticsSqlQuery(
         `analytics engine sql: HTTP ${res?.status}${await rejectionDetail(res)}`,
       );
     }
-    const body = (await res.json()) as AnalyticsSqlBody;
-    const rows = body?.data;
-    if (!Array.isArray(rows)) {
+    // PARSED, NOT CAST (#11194). The `Array.isArray` guard below it was the
+    // real contract and the cast said nothing; the schema states it once, in
+    // the file that owns the shape, and still raises the same message.
+    const body = AnalyticsEngineSqlResponseSchema.safeParse(await res.json());
+    if (!body.success) {
       throw new Error("analytics engine sql: response had no data array");
     }
     // A successful query with no rows is a legitimate answer (an untouched
     // window), and must not be conflated with a failure -- hence [].
-    return rows as Record<string, unknown>[];
+    return body.data.data;
   } catch (error) {
     analyticsSqlFailureGeneration += 1;
     console.error(
