@@ -3,7 +3,7 @@ title: Registry
 description: Every Registry endpoint in the metagraphed API, with its method and path.
 ---
 
-17 endpoints.
+18 endpoints.
 
 - [Compare](/docs/api-reference/registry/compare) — `GET /api/v1/compare`  
   Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order.
@@ -27,6 +27,8 @@ description: Every Registry endpoint in the metagraphed API, with its method and
   Fetch registry leaderboards computed live from the store + registry projections + the economics tier.
 - [Registry Summary](/docs/api-reference/registry/registry-summary) — `GET /api/v1/registry/summary`  
   Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
+- [Review Attribution Candidates](/docs/api-reference/registry/review-attribution-candidates) — `GET /api/v1/review/attribution-candidates`  
+  Fetch the attribution sweep's review queue.
 - [Review Enrichment Evidence](/docs/api-reference/registry/review-enrichment-evidence) — `GET /api/v1/review/enrichment-evidence`  
   Fetch detailed candidate evidence behind the enrichment queue.
 - [Review Enrichment Queue](/docs/api-reference/registry/review-enrichment-queue) — `GET /api/v1/review/enrichment-queue`  

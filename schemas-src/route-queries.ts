@@ -92,6 +92,8 @@ import {
   LEADERBOARDS_LIMIT_MAX,
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
+  ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT,
+  ATTRIBUTION_CANDIDATES_LIMIT_MAX,
   DEREGISTRATION_HISTORY_WINDOWS,
   PIPELINE_HISTORY_WINDOWS,
   SEMANTIC_LIMIT_DEFAULT,
@@ -1116,6 +1118,29 @@ export const ROUTE_QUERY_SCHEMAS = {
       PIPELINE_HISTORY_WINDOWS as [string, ...string[]],
       "30d",
     ).optional(),
+  }),
+  "/api/v1/review/attribution-candidates": z.object({
+    // The subnet filter. Optional, because the queue is normally read whole --
+    // 162 rows across 49 subnets -- and per-subnet is the drill-down.
+    netuid: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(65535)
+      .describe(
+        "Narrow the queue to one subnet. Omit to read every subnet's candidates, which is the normal way to work the queue.",
+      )
+      // NO default: the absence of this parameter means "no filter", which is a
+      // different answer from any netuid -- so there is nothing to publish one
+      // as. The examples still ride, because a generated client needs a value
+      // it can fill the field with.
+      .meta({ examples: [64, 74] })
+      .optional(),
+    limit: limitSchema(
+      ATTRIBUTION_CANDIDATES_LIMIT_MAX,
+      ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT,
+    ).optional(),
+    offset: offsetSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/deregistration-ranking/history": z.object({
     window: windowSchema(

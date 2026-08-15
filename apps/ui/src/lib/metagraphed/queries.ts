@@ -10474,6 +10474,60 @@ export const reviewEnrichmentEvidenceQuery = () =>
     staleTime: STALE_LONG,
   });
 
+// #11227: the attribution sweep's REVIEW QUEUE -- addresses found in the text
+// of pages subnets publish, which no human has judged yet.
+//
+// DISTINCT FROM EVERY OTHER BOARD ON THIS PAGE, and the difference is not the
+// dataset but the CLAIM. The enrichment and gap boards say "this subnet is
+// missing something we can go and add". This one says "this string looked like
+// an address on that page" -- it is a lead, and rendering it as an attribution
+// is the exact error src/attribution-sweep.ts refuses to make. Which is why
+// `sourceUrl` is carried on every row and rendered as a link: the review is
+// opening it.
+//
+// `reviewableCount` is read off the payload rather than from `rows.length`.
+// The array is trimmed by the route's `?limit=`, so counting it would report
+// the limit as the population -- the defect the older registry list routes
+// carry, and one this route publishes a real total specifically to avoid.
+export const reviewAttributionCandidatesQuery = () =>
+  queryOptions({
+    queryKey: k("review-attribution-candidates"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/review/attribution-candidates", {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const rows = (Array.isArray(d.candidates) ? d.candidates : [])
+        .map((raw) => {
+          if (!isRecord(raw)) return null;
+          const ss58 = firstString(raw.ss58);
+          const sourceUrl = firstString(raw.source_url);
+          const netuid = firstFiniteNumber(raw.netuid);
+          if (!ss58 || !sourceUrl || netuid == null) return null;
+          return {
+            id: `${netuid}:${ss58}:${sourceUrl}`,
+            netuid,
+            ss58,
+            sourceUrl,
+            firstSeen: firstString(raw.first_seen) ?? null,
+            lastSeen: firstString(raw.last_seen) ?? null,
+            sourceAddressCount: firstFiniteNumber(raw.source_address_count) ?? null,
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+      return {
+        ...res,
+        data: rows,
+        // NOT defaulted to rows.length -- see the note above.
+        reviewableCount: firstFiniteNumber(d.reviewable_count) ?? null,
+        suppressedCount: firstFiniteNumber(d.suppressed_count) ?? null,
+        suppressedSourceCount: firstFiniteNumber(d.suppressed_source_count) ?? null,
+        listingAddressCap: firstFiniteNumber(d.listing_address_cap) ?? null,
+      };
+    },
+    staleTime: STALE_LONG,
+  });
+
 // #3356: the priority-scored per-subnet gap board -- distinct from gapsQuery()
 // (/api/v1/gaps, the interface-facet dataset already on this page) and from
 // the enrichment-queue/-targets/-evidence sections above. GET
