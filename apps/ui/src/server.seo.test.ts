@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildOgImageUrl, routeOwnsOgImage } from "./lib/metagraphed/og-card";
-import { subnetDatasetJsonLd } from "./lib/metagraphed/json-ld";
+import { subnetDatasetJsonLd, validatorDatasetJsonLd } from "./lib/metagraphed/json-ld";
 import {
   buildJsonLd,
   handleArtifactHostRedirect,
@@ -284,5 +284,40 @@ describe("registry records assert their own freshness (#11314)", () => {
       }),
     );
     expect(node.dateModified).toBe(sitemapLastmod(value));
+  });
+});
+
+describe("validator records are typed, not just breadcrumbed (#11313)", () => {
+  it("names the operator when the chain carries an identity", () => {
+    // 1,023 URLs -- 53% of the sitemap -- carried a BreadcrumbList and nothing
+    // else. The largest structured-data gap on the site.
+    const node = validatorDatasetJsonLd({
+      hotkey: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      name: "Datura",
+      subnetCount: 12,
+      dateModified: "2026-08-14T12:14:17.177Z",
+    }) as Record<string, unknown>;
+    expect(node["@type"]).toBe("Dataset");
+    expect(node.name).toBe("Datura — Bittensor validator");
+    expect(node.identifier).toBe("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+    expect(node.url).toBe(
+      "https://metagraph.sh/validators/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+    );
+    expect(node.dateModified).toBe("2026-08-14T12:14:17.177Z");
+  });
+
+  it("does not invent a name for a hotkey with no declared identity", () => {
+    // 424 of 1,022 have no coldkey_identity.name. Naming them anything is a
+    // claim about someone's business that the chain does not support.
+    const node = validatorDatasetJsonLd({ hotkey: "5Grwva" }) as Record<string, unknown>;
+    expect(node.name).toBe("Bittensor validator record");
+    expect(node).not.toHaveProperty("dateModified");
+  });
+
+  it("puts the record in the same catalog as every other registry record", () => {
+    // What makes 1,023 Datasets one catalog rather than 1,023 loose files.
+    const node = validatorDatasetJsonLd({ hotkey: "5Grwva" }) as Record<string, unknown>;
+    expect(node.includedInDataCatalog).toBeTruthy();
+    expect(node.publisher).toBeTruthy();
   });
 });

@@ -11,6 +11,8 @@ import {
   isMissingEntityError,
   isNotFoundMatch,
 } from "@/lib/metagraphed/entity-not-found-meta";
+import { recordModifiedAt } from "@/lib/metagraphed/freshness";
+import { stringifyJsonLd, validatorDatasetJsonLd } from "@/lib/metagraphed/json-ld";
 import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { validatorDetailQuery } from "@/lib/metagraphed/queries";
@@ -50,11 +52,13 @@ export const Route = createFileRoute("/validators/$hotkey")({
   // truncated-hotkey form.
   loader: async ({ context, params }) => {
     try {
-      const { data } = await context.queryClient.ensureQueryData(
+      const { data, meta } = await context.queryClient.ensureQueryData(
         validatorDetailQuery(params.hotkey),
       );
       const identity = data.coldkey_identity;
       return {
+        // #11313: same publish timestamp the subnet and provider records use.
+        dateModified: recordModifiedAt(meta) ?? null,
         name: identity?.name ?? null,
         // Same candidate ladder the site's BrandIcon uses for a validator.
         logoHost: logoHostFrom(identity?.image, identity?.url, identity?.github),
@@ -123,6 +127,28 @@ export const Route = createFileRoute("/validators/$hotkey")({
               : []),
           ],
         }),
+      ],
+      // #11313: these are 1,023 URLs -- 53% of the sitemap -- and every one of
+      // them carried a BreadcrumbList and nothing else. No node saying what the
+      // page is about, no link to the machine-readable form, no place in the
+      // catalog. The largest structured-data gap on the site, missed because
+      // #11230's audit sampled subnets and providers.
+      //
+      // Emitted only on the resolved path: a Dataset built for a hotkey that is
+      // not a validator would assert a record that does not exist, which is the
+      // same reason the feed links and the OG card are withheld there.
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: stringifyJsonLd(
+            validatorDatasetJsonLd({
+              hotkey: params.hotkey,
+              name: loaderData?.name ?? null,
+              subnetCount: loaderData?.subnetCount ?? null,
+              dateModified: loaderData?.dateModified ?? null,
+            }),
+          ),
+        },
       ],
     };
   },

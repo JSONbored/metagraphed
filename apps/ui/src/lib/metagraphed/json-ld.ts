@@ -425,6 +425,47 @@ export function registryFacetDatasetJsonLd(input: RegistryFacetDatasetInput) {
   });
 }
 
+export interface ValidatorDatasetInput {
+  /** The hotkey ss58 — the validator's stable on-chain identifier. */
+  hotkey: string;
+  /** Operator's self-declared coldkey identity, when the chain carries one. */
+  name?: string | null;
+  /** Subnets this hotkey validates on, when known. */
+  subnetCount?: number | null;
+  dateModified?: string | null;
+}
+
+/**
+ * schema.org Dataset for one validator's registry record (#11313).
+ *
+ * These are **1,023 URLs — 53% of the sitemap** — and every one of them carried
+ * a BreadcrumbList and nothing else: no node saying what the page is about, no
+ * link to the machine-readable form, no place in the catalog. The biggest
+ * structured-data gap on the site, and the one nobody had measured because the
+ * audit that found it (#11230) sampled subnets and providers.
+ *
+ * Dataset for the same reason the subnet records are: what this page publishes
+ * is OUR measured record of a hotkey's participation — stake, take, the subnets
+ * it validates on — not the validator's software, and not an endorsement of it.
+ */
+export function validatorDatasetJsonLd(input: ValidatorDatasetInput) {
+  const label = input.name?.trim();
+  return registryDatasetJsonLd({
+    name: label ? `${label} — Bittensor validator` : "Bittensor validator record",
+    identifier: input.hotkey,
+    description: label
+      ? `Registry record for ${label}: the subnets this Bittensor validator operates on, its stake, take and probe-derived participation.`
+      : "Registry record for a Bittensor validator hotkey: the subnets it operates on, its stake, take and probe-derived participation.",
+    url: `${SITE_ORIGIN}/validators/${encodeURIComponent(input.hotkey)}`,
+    apiUrl: `${API_ORIGIN}/api/v1/validators/${encodeURIComponent(input.hotkey)}`,
+    // No per-validator generated artifact exists; the API route is the
+    // machine-readable form, named once rather than duplicated into a second
+    // DataDownload pointing at the same bytes.
+    artifactUrl: `${API_ORIGIN}/api/v1/validators/${encodeURIComponent(input.hotkey)}`,
+    dateModified: input.dateModified ?? null,
+  });
+}
+
 interface RegistryDatasetInput {
   name: string;
   identifier: string;
