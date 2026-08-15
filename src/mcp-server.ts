@@ -9709,7 +9709,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const loadParams =
         (ctx as { loadNetworkParameters?: typeof loadNetworkParameters })
           .loadNetworkParameters ?? loadNetworkParameters;
-      const parameters = await loadParams(ctx.env as never);
+      const parameters = await loadParams(ctx.env);
       const ownerCut = parameters?.subnet_owner_cut_effective;
       // #10930: the same flow read REST does, from the same cold-tier
       // function over the same window. Wiring this on one surface only would
@@ -9728,7 +9728,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         (ctx as { loadStakeFlow?: typeof loadAccountStakeFlowColdTier })
           .loadStakeFlow ?? loadAccountStakeFlowColdTier;
       const flows = ownerColdkey
-        ? await loadFlows(ctx.env as never, ownerColdkey, {
+        ? await loadFlows(ctx.env, ownerColdkey, {
             window: OWNER_CUT_FLOW_WINDOW,
           })
         : null;

@@ -26,6 +26,7 @@
 
 import { buildChainConcentration } from "./concentration.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
@@ -89,7 +90,7 @@ export async function rollupChainConcentration(
     nowMs = Date.now(),
     maxDays = CHAIN_CONCENTRATION_ROLLUP_MAX_DAYS_PER_TICK,
     env = null,
-  }: { nowMs?: number; maxDays?: number; env?: unknown } = {},
+  }: { nowMs?: number; maxDays?: number; env?: R2SqlEnv | null } = {},
 ): Promise<Row> {
   if (!db?.query || !db?.run) return { rolled: false, reason: "unavailable" };
 
@@ -100,7 +101,7 @@ export async function rollupChainConcentration(
       .map((r) => r?.day)
       .filter((d): d is string => typeof d === "string" && d.length > 0);
   } catch (error) {
-    await recordExceptionEvent(env as never, {
+    await recordExceptionEvent(env, {
       error,
       route: "chain-concentration-rollup-scan",
     });
@@ -157,7 +158,7 @@ export async function rollupChainConcentration(
       rolled.push(day);
     } catch (error) {
       failed.push(day);
-      await recordExceptionEvent(env as never, {
+      await recordExceptionEvent(env, {
         error,
         route: "chain-concentration-rollup",
       });

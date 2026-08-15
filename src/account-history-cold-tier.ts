@@ -39,6 +39,7 @@ import {
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
@@ -100,7 +101,7 @@ export interface AccountHistoryQuery {
  * rather than being indistinguishable from a broken tier.
  */
 export async function loadAccountHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: AccountHistoryQuery,
   { queryFn = r2SqlQuery }: { queryFn?: R2SqlReader } = {},
@@ -208,7 +209,7 @@ export async function loadAccountHistoryColdTier(
  * scan the account's entire history to answer a question about no rows.
  */
 async function loadKindsForPage(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   where: string[],
   page: Array<Row & { day: string }>,
   queryFn: R2SqlReader,

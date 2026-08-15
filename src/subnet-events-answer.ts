@@ -26,6 +26,12 @@
 
 import { loadSubnetEventsColdTier } from "./events-cold-tier.ts";
 import { buildSubnetEvents } from "./account-events.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { ArtifactEnv } from "../workers/storage.ts";
+
+/** One env, forwarded to both legs: the Neon store and the lakehouse. */
+type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
 
 type Row = Record<string, unknown>;
 
@@ -53,7 +59,7 @@ export interface AnswerSubnetEventsOptions {
  * the same route rather than each inventing it.
  */
 export async function answerSubnetEvents(
-  env: unknown,
+  env: ComposerEnv | null | undefined,
   netuid: number,
   tierResult: Row | null | undefined,
   query: AnswerSubnetEventsQuery,
@@ -61,7 +67,7 @@ export async function answerSubnetEvents(
 ): Promise<Row> {
   return (
     tierResult ??
-    ((await coldTier(env as never, netuid, {
+    ((await coldTier(env, netuid, {
       limit: query.limit,
       offset: query.offset,
       cursor: query.cursor ?? null,

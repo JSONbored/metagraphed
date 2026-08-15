@@ -41,6 +41,12 @@ import {
 import { SUBNET_IDENTITY_HISTORY_TABLES } from "./read-store-tables.ts";
 import { readStore } from "./read-store.ts";
 import { storeAll } from "./analytics-live.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { ArtifactEnv } from "../workers/storage.ts";
+
+/** One env, forwarded to both legs: the Neon store and the lakehouse. */
+type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
 
 type Row = Record<string, unknown>;
 
@@ -71,8 +77,10 @@ type Row = Record<string, unknown>;
  * And a live-store MISS still falls through, so the frozen history stays
  * readable for the range that predates the writer.
  */
-async function liveStore(env: unknown): Promise<SqlRunner | null> {
-  const db = readStore(env as never, SUBNET_IDENTITY_HISTORY_TABLES);
+async function liveStore(
+  env: ComposerEnv | null | undefined,
+): Promise<SqlRunner | null> {
+  const db = readStore(env, SUBNET_IDENTITY_HISTORY_TABLES);
   return db ? (sql, params) => storeAll(db as never, sql, params) : null;
 }
 
@@ -107,17 +115,17 @@ function nonEmpty(result: Row | null, key: "entries" | "changes"): Row | null {
 export interface AnswerSubnetIdentityHistoryOptions {
   coldTier?: typeof loadSubnetIdentityHistoryColdTier;
   /** Injectable so a test can drive the live leg without a store. */
-  live?: (env: unknown) => Promise<SqlRunner | null>;
+  live?: (env: ComposerEnv | null | undefined) => Promise<SqlRunner | null>;
 }
 
 export interface AnswerChainIdentityHistoryOptions {
   coldTier?: typeof loadChainIdentityHistoryColdTier;
-  live?: (env: unknown) => Promise<SqlRunner | null>;
+  live?: (env: ComposerEnv | null | undefined) => Promise<SqlRunner | null>;
 }
 
 /** One subnet's identity timeline from whichever store can answer. */
 export async function answerSubnetIdentityHistory(
-  env: unknown,
+  env: ComposerEnv | null | undefined,
   netuid: number,
   tierResult: Row | null | undefined,
   query: { limit: number; offset?: number | null; cursor?: unknown },
@@ -143,7 +151,7 @@ export async function answerSubnetIdentityHistory(
   return (
     tierResult ??
     fresh ??
-    ((await coldTier(env as never, netuid, {
+    ((await coldTier(env, netuid, {
       limit: query.limit,
       offset: query.offset ?? null,
       cursor: query.cursor ?? null,
@@ -158,7 +166,7 @@ export async function answerSubnetIdentityHistory(
 
 /** The network-wide identity feed from whichever store can answer. */
 export async function answerChainIdentityHistory(
-  env: unknown,
+  env: ComposerEnv | null | undefined,
   tierResult: Row | null | undefined,
   query: { limit?: unknown } = {},
   {
@@ -181,7 +189,7 @@ export async function answerChainIdentityHistory(
   return (
     tierResult ??
     fresh ??
-    ((await coldTier(env as never, { limit: query.limit })) as Row | null) ??
+    ((await coldTier(env, { limit: query.limit })) as Row | null) ??
     (buildChainIdentityHistory([], {
       limit: query.limit,
     }) as unknown as Row)

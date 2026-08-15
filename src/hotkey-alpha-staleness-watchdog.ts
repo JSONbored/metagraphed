@@ -319,7 +319,7 @@ export async function runHotkeyAlphaStalenessWatchdog(
         verdict.reason === "partial"
           ? `hotkey-alpha lane truncated: the newest pass wrote only ${verdict.covered_rows} pool totals against a floor of ${verdict.coverage_floor_rows} derived from the ${verdict.referenced_pairs} (hotkey, netuid) pairs nominator_positions references (${verdict.total_rows} rows in the table, newest stamp ${age}) -- the capture is RECENT and PARTIAL, so every position naming a pool the pass never reached prices against nothing and its holder is UNDERSTATED rather than missing`
           : `hotkey-alpha lane ${verdict.reason === "no_rows" ? "has never landed a pass" : "stalled"}: ${age} (threshold ${thresholdMs / 3_600_000} h) -- /accounts/top-holders is answering delegated_tao/total_tao from the frozen 2026-08-02 materialization and /subnets/{netuid}/holders is declining every request with pool_totals_unproven`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:hotkey-alpha-staleness",
         errorCode: "stale_lane",

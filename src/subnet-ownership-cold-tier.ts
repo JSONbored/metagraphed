@@ -28,6 +28,7 @@ import {
   OWNERSHIP_CHANGE_EVENT_METHOD,
 } from "./subnet-ownership-history.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -51,7 +52,7 @@ const OWNERSHIP_EVENT_COLUMNS =
  * ownership transfers are rare chain-wide events, not a feed.
  */
 async function loadOwnershipChangeRows(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
 ): Promise<Record<string, unknown>[] | null> {
   const rows = await r2SqlQuery(
     env,
@@ -92,7 +93,7 @@ async function loadOwnershipChangeRows(
  * schema-stable empty-ties fallback.
  */
 export async function loadAccountEntitiesColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   coldkey: string,
 ): Promise<ReturnType<typeof buildAccountEntities> | null> {
   const rows = await loadOwnershipChangeRows(env);
@@ -117,7 +118,7 @@ export async function loadAccountEntitiesColdTier(
  * echoing a nonsense value back into the payload.
  */
 export async function loadSubnetOwnershipHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: unknown,
 ): Promise<ReturnType<typeof buildSubnetOwnershipHistory> | null> {
   const subnet = safeBlockNumber(netuid);
@@ -163,7 +164,7 @@ const OWNER_OBSERVATION_COLUMNS = "owner_coldkey, captured_at";
  * watched since".
  */
 export async function loadSubnetOwnerObservations(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: number,
 ): Promise<Record<string, unknown>[] | null> {
   return await r2SqlQuery(

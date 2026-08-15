@@ -1247,7 +1247,7 @@ export async function runLaneAlarm(
     // Measured on production before the fix: exactly one event per tick for six
     // consecutive hours, while this watchdog's own verdict read "4 alarming".
     // The lane set is declared and small, so per-lane windows are bounded.
-    await record(env as never, {
+    await record(env, {
       error: new Error(laneAlarmSummary(alarm, nowMs)),
       route: "watchdog:lane-alarm",
       fingerprintDetail: alarm.lane,
@@ -1279,7 +1279,7 @@ export async function runLaneAlarm(
     // Its own code, because the two are different problems with different
     // fixes: this one is "we could not ask GitHub what is already open", and
     // the one below is "we asked, and it refused everything we sent".
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `lane-alarm could not read its issue list: ${plan.open.length} alarming lane(s) ` +
           "recorded but none filed, because opening without the list would " +
@@ -1291,7 +1291,7 @@ export async function runLaneAlarm(
     }).catch(() => false);
   }
   if (github && !listUnavailable && plan.open.length > 0 && opened === 0) {
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `lane-alarm delivered nothing: ${plan.open.length} alarming lane(s) planned, ` +
           "GitHub accepted none. The alarm's only push channel is not working. " +
@@ -1319,7 +1319,7 @@ export async function runLaneAlarm(
       // GitHub write is one channel, and a loss nobody can see is the thing
       // this whole list exists to end. Its own code, because "more was lost on
       // a queue already alarming" is a different event from the first loss.
-      await record(env as never, {
+      await record(env, {
         error: new Error(
           `lane ${entry.lane} lost more while already alarming` +
             (entry.record.detail ? ` -- ${entry.record.detail}` : ""),

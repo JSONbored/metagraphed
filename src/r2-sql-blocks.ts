@@ -34,6 +34,7 @@ import {
   safeHexLiteral,
   safeSs58Literal,
 } from "./r2-sql.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Columns the formatters need — kept identical to the Postgres tier's SELECT
  * list so both tiers hand the formatter the same shape. */
@@ -167,7 +168,7 @@ export function safeAuthorLiteral(value: unknown): string | null {
  * cannot serve faithfully) so the caller keeps its existing fallback.
  */
 export async function loadBlockFeedFromR2Sql(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   query: BlockFeedQuery,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -191,7 +192,7 @@ export async function loadBlockFeedFromR2Sql(
  * over rows from every source.
  */
 export async function fetchBlockRowsFromR2Sql(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   query: BlockFeedQuery,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -271,7 +272,7 @@ export async function fetchBlockRowsFromR2Sql(
  * validated here rather than trusted, because it reaches a string-built query.
  */
 export async function loadBlockFromR2Sql(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ref: string,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,

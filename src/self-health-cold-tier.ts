@@ -24,6 +24,7 @@
 import { r2SqlQuery } from "./r2-sql.ts";
 import { utcWindowCutoffDay } from "./health-serving.ts";
 import { buildSelfHealth, type SelfHealthDailyRow } from "./self-health.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** The exact day::text shape the Postgres route selects. A cell that does
  * not serialize to this cannot be windowed or served faithfully. */
@@ -56,7 +57,7 @@ function restoreDailyRow(
  * so the caller keeps its schema-stable empty card.
  */
 export async function loadSelfHealthColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   nowMs: number = Date.now(),
 ): Promise<ReturnType<typeof buildSelfHealth> | null> {
   const rows = await r2SqlQuery(

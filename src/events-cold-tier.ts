@@ -52,6 +52,7 @@ import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { windowedRowRead } from "./account-events-window.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -85,7 +86,7 @@ export interface AccountEventsQuery {
  * existing fallback.
  */
 export async function loadAccountEventsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: AccountEventsQuery,
   /** Which chain's lakehouse namespace to read (#8700). */
@@ -183,7 +184,7 @@ export interface SubnetEventsQuery {
  * seek continues correctly past its cursor.
  */
 export async function loadSubnetEventsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: number,
   query: SubnetEventsQuery,
   /** Which chain's lakehouse namespace to read (#8700). */
@@ -249,7 +250,7 @@ export async function loadSubnetEventsColdTier(
  * top-to-bottom). `ref` is a height or a block hash.
  */
 export async function loadBlockEventsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ref: string,
   page: { limit: number; offset?: number | null },
   /** Which chain's lakehouse namespace to read (#8700). */
@@ -281,7 +282,7 @@ export async function loadBlockEventsColdTier(
 
 /** A block hash resolved to its height, or the height itself. */
 async function resolveBlockHeight(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ref: string,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -332,7 +333,7 @@ export interface BlockChainEventsColdResult {
  * schema-stable empty rather than inventing one here.
  */
 export async function loadBlockChainEventsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ref: string,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,

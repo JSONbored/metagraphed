@@ -198,7 +198,7 @@ export type SafeModeExtrinsicReader = (
  * the decoded range holds no SafeMode call.
  */
 export const readSafeModeExtrinsics: SafeModeExtrinsicReader = async (env) => {
-  const feed = await loadExtrinsicFeedColdTier(env as never, {
+  const feed = await loadExtrinsicFeedColdTier(env, {
     limit: SAFE_MODE_EXTRINSIC_LIMIT,
     module: "SafeMode",
   });
@@ -264,7 +264,7 @@ export async function runSafeModeWatchdog(
     // CHAIN condition, not a staleness of ours -- filing it as a stale lane
     // would publish a false statement about our own freshness.
     if (reasons.length > 0) {
-      await record(env as never, {
+      await record(env, {
         error: new Error(`SafeMode watchdog: ${reasons.join(", ")}`),
         route: "watchdog:safe-mode",
         // fingerprintDetail (#10813). This route reports TWO independent
@@ -286,7 +286,7 @@ export async function runSafeModeWatchdog(
     // reported at all because "the history read has been failing for a week"
     // is exactly the fact that went unnoticed while the 522 ran.
     if (extrinsics === null) {
-      await record(env as never, {
+      await record(env, {
         error:
           historyError ??
           new Error("SafeMode history: the extrinsics tier declined the read"),
@@ -310,7 +310,7 @@ export async function runSafeModeWatchdog(
     // SafeMode monitor is itself worth reporting, because its silence is
     // indistinguishable from "the chain is fine". That equivalence is the
     // whole reason this monitor exists.
-    await record(env as never, {
+    await record(env, {
       error: err,
       route: "watchdog:safe-mode",
       // See above: the two subjects must not share a throttle window.

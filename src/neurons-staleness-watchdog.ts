@@ -335,7 +335,7 @@ export async function runNeuronsStalenessWatchdog(
         verdict.reason === "partial"
           ? `neurons lane truncated: the newest pass covered only ${verdict.covered_netuids} of ${verdict.total_netuids} subnets against a floor of ${verdict.coverage_floor_netuids} (newest stamp ${age}) -- the capture is RECENT and PARTIAL, so every route over a subnet the scan never reached is serving a pass-old metagraph behind a MAX(captured_at) that just advanced`
           : `neurons lane stalled: the newest READABLE snapshot is ${age} (threshold ${thresholdMs / 60_000} min) -- ${suspects}`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:neurons-staleness",
         errorCode: "stale_lane",

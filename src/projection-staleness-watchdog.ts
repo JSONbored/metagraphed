@@ -253,7 +253,7 @@ export async function runProjectionStalenessWatchdog(
           })`,
       )
       .join(", ");
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `projection lanes stalled: ${detail} (threshold ${(
           thresholdMs / 3_600_000

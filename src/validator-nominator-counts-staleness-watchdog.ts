@@ -340,7 +340,7 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
         verdict.reason === "partial"
           ? `validator-nominator-counts lane truncated: the newest pass reached only ${verdict.covered_rows} hotkeys against a floor of ${verdict.coverage_floor_rows} (${verdict.total_rows} rows in the table, newest stamp ${age}) -- the capture is RECENT and PARTIAL, so /validators serves a nominator_count that is silently a pass old for every hotkey the scan never got to`
           : `validator-nominator-counts lane stalled: latest snapshot is ${age} (threshold ${thresholdMs / 3_600_000} h) -- /validators is serving nominator_count from a table nothing is refreshing`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:validator-nominator-counts-staleness",
         errorCode: "stale_lane",

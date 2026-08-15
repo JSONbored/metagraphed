@@ -335,7 +335,7 @@ export async function runLakehouseSeamWatchdog(
   // this one was simply never wired to either.
   if (reasons.length > 0) {
     const record = deps.recordExceptionEvent ?? recordExceptionEvent;
-    await record(env as never, {
+    await record(env, {
       error: new Error(`lakehouse decode seam drifted: ${reasons.join(", ")}`),
       route: "watchdog:lakehouse-seam",
       errorCode: "stale_lane",

@@ -23,7 +23,7 @@ import {
   type WatermarkStore,
 } from "./raw-chain-capture.ts";
 import { RAW_CAPTURE_CRON } from "../workers/config.ts";
-import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import type { WaitUntilLike } from "./pg-sql.ts";
@@ -226,7 +226,7 @@ export const RAW_CAPTURE_LANES: readonly RawCaptureLane[] = [
   },
 ];
 
-interface RawCaptureEnv {
+interface RawCaptureEnv extends TelemetryEnv {
   METAGRAPH_ARCHIVE?: { put(key: string, value: string): Promise<unknown> };
   RAW_CAPTURE_ENABLED?: string;
   CHAIN_HEAD_RPC_URL?: string;
@@ -361,7 +361,7 @@ export async function runRawCaptureSync(
   const capture = deps.recordException ?? recordExceptionEvent;
   const loud = async (reason: string, message: string) => {
     console.error(`[raw-capture-sync] ${message}`);
-    await capture(env as never, {
+    await capture(env, {
       error: new Error(message),
       route: "raw-capture-sync",
     });
@@ -497,7 +497,7 @@ async function runLane(
   } catch (error) {
     const message = String((error as Error)?.message ?? error);
     console.error(`[raw-capture-sync] ${lane.network}`, message);
-    await capture(env as never, {
+    await capture(env, {
       error,
       route: `raw-capture-sync:${lane.network}`,
     });

@@ -47,6 +47,7 @@ import {
   SUBNET_LEASE_CREATED_KIND,
   SUBNET_LEASE_TERMINATED_KIND,
 } from "./subnet-lease-history.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the deleted handler's SELECT list so both tiers hand the
  * caller the same event shape. */
@@ -146,7 +147,7 @@ export function chainEventsQueryError(query: ChainEventsQuery): string | null {
  * faithfully so the caller keeps its schema-stable empty.
  */
 export async function loadChainEventsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   query: ChainEventsQuery,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -281,7 +282,7 @@ export interface ChainEventsStats {
  * key, so the block bound alone does the work it was always meant to.
  */
 export async function loadChainEventsStatsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   blocks?: unknown,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -339,7 +340,7 @@ export async function loadChainEventsStatsColdTier(
  *            visible instead of silently attributing events to netuid 0.
  */
 export async function loadSubnetLeaseHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: number,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,

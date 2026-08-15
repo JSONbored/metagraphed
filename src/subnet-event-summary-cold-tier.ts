@@ -39,6 +39,7 @@ import { SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT } from "./route-limits.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
@@ -119,7 +120,7 @@ function byKind(rows: Row[]): Map<string, unknown> {
  * broken tier -- the inverse of the bug this fixes.
  */
 export async function loadSubnetEventSummaryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: number,
   {
     window,

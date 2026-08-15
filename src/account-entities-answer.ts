@@ -36,6 +36,12 @@ import {
   type SubnetOwnerSnapshot,
 } from "./entity-labels.ts";
 import { readArtifact } from "../workers/storage.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { ArtifactEnv } from "../workers/storage.ts";
+
+/** One env, forwarded to both legs: the Neon store and the lakehouse. */
+type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
 
 type Row = Record<string, unknown>;
 
@@ -60,7 +66,7 @@ export interface AnswerAccountEntitiesOptions {
  * the same route.
  */
 export async function answerAccountEntities(
-  env: unknown,
+  env: ComposerEnv | null | undefined,
   coldkey: string,
   tierResult: Row | null | undefined,
   {
@@ -78,8 +84,7 @@ export async function answerAccountEntities(
   // half must not disappear just because the transfer half declined.
   const ownerSnapshot = await owners();
 
-  const answered =
-    tierResult ?? ((await coldTier(env as never, coldkey)) as Row | null);
+  const answered = tierResult ?? ((await coldTier(env, coldkey)) as Row | null);
 
   // A tier that answered already shaped its payload from the transfer stream.
   // Its ties are merged with the owned ones rather than rebuilt, so the tier
@@ -127,7 +132,7 @@ function withOwnedTies(
  * `owners_observed_at` publishes.
  */
 async function readSubnetOwners(
-  env: unknown,
+  env: ComposerEnv | null | undefined,
 ): Promise<SubnetOwnerSnapshot | null> {
   // BOTH guards, because they catch different failures. readArtifact reports
   // `{ ok: false }` for a miss or a timeout -- but it THROWS when the binding
@@ -136,7 +141,7 @@ async function readSubnetOwners(
   // into a 500. Every one of those outcomes means the same thing to a caller:
   // we could not read who owns what, which `owners_observed_at: null` says.
   try {
-    const artifact = await readArtifact(env as never, ECONOMICS_ARTIFACT);
+    const artifact = await readArtifact(env, ECONOMICS_ARTIFACT);
     return artifact.ok ? subnetOwnersFromEconomics(artifact.data) : null;
   } catch {
     return null;

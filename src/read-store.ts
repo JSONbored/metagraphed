@@ -345,6 +345,18 @@ export function pgReadStore(
  * comes back when no store is available -- which every caller already handles,
  * because an unbound store has always been possible.
  */
+/**
+ * The one binding `readStore` looks for.
+ *
+ * `readStore` itself keeps taking `unknown` -- see its own note -- because its
+ * callers hand in an `Env`, a bag, or nothing. This names the same shape for
+ * COMPOSERS, which forward one env to both legs (the Neon store and the
+ * lakehouse) and therefore need a type that admits either (#11339).
+ */
+export interface StoreEnv {
+  HYPERDRIVE?: { connectionString?: string };
+}
+
 export function readStore(
   // Deliberately loose: callers hand in an `Env`, a bag, or `unknown`, and a
   // narrower type would push a cast to every one of them.

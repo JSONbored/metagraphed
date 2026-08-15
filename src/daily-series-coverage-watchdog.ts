@@ -274,7 +274,7 @@ export async function runDailySeriesCoverageWatchdog(
   const holed = verdicts.some((v) => v.missing.length > 0 || v.thin.length > 0);
   const detail = coverageDetail(verdicts);
   if (holed) {
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `daily series has a hole: ${detail} -- a missing day is invisible to every freshness check, ` +
           `and neuron_daily is only ~26 days deep, so it ages out of any recomputable window`,

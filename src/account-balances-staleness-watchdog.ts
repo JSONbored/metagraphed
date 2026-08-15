@@ -383,7 +383,7 @@ export async function runAccountBalancesStalenessWatchdog(
         verdict.reason === "partial"
           ? `account-balances lane truncated: the newest pass covered only ${verdict.covered_rows} accounts against a floor of ${verdict.coverage_floor_rows} (${verdict.total_rows} rows in the table, newest stamp ${age}) -- the capture is RECENT and PARTIAL, so /accounts/top-holders ranks free_tao over whatever fraction landed and a real top holder the pass never reached is silently absent, not merely stale`
           : `account-balances lane stalled: latest snapshot is ${age} (threshold ${thresholdMs / 3_600_000} h) -- /accounts/top-holders is answering from a free_tao column nothing is refreshing`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:account-balances-staleness",
         errorCode: "stale_lane",

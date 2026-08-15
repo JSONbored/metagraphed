@@ -407,7 +407,7 @@ export async function runNominatorPositionsStalenessWatchdog(
         verdict.reason === "partial"
           ? `nominator-positions lane truncated: the newest pass covered only ${verdict.covered_coldkeys} of ${verdict.total_coldkeys} coldkeys against a floor of ${verdict.coverage_floor_coldkeys} (newest stamp ${age}) -- the capture is RECENT and PARTIAL, so /accounts/{ss58}/positions answers for every coldkey the scan never reached with a confident position set that is silently a pass old`
           : `nominator-positions lane stalled: latest snapshot is ${age} (threshold ${thresholdMs / 3_600_000} h) -- /accounts/{ss58}/positions is answering from a ledger nothing is refreshing`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:nominator-positions-staleness",
         errorCode: "stale_lane",

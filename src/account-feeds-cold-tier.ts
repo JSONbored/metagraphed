@@ -107,6 +107,7 @@ import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore, type OptionalRowQuerier } from "./read-store.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -171,7 +172,7 @@ export interface AccountTransfersQuery {
  * Returns null when the lakehouse cannot answer faithfully.
  */
 export async function loadAccountTransfersColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: AccountTransfersQuery,
 ): Promise<ReturnType<typeof buildAccountTransfers> | null> {
@@ -268,7 +269,7 @@ export async function loadAccountTransfersColdTier(
  * Returns data-api's `{ data, generatedAt }` wrapped shape.
  */
 export async function loadAccountStakeFlowColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: { window?: string | null; direction?: unknown } = {},
 ): Promise<{
@@ -342,7 +343,7 @@ export async function loadAccountStakeFlowColdTier(
  * StakeMoved footprint, GROUP BY netuid. Same wrapped shape as stake-flow.
  */
 export async function loadAccountStakeMovesColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -401,7 +402,7 @@ const ACCOUNT_STAKE_MOVES_PRICE_TABLES = ["subnet_snapshots"] as const;
  * this enrichment had no caller at all.
  */
 async function alphaPriceByNetuidDate(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   rows: Array<Record<string, unknown>>,
   cutoff: number,
 ): Promise<Map<string, number>> {
@@ -450,7 +451,7 @@ async function alphaPriceByNetuidDate(
  * shape this request-time module is for; see the header above.
  */
 export async function loadAccountRegistrationsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -485,7 +486,7 @@ export async function loadAccountRegistrationsColdTier(
  * reads (`announcements`).
  */
 export async function loadAccountServingColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -523,7 +524,7 @@ export async function loadAccountServingColdTier(
  * card answered from the same PrometheusServed stream.
  */
 export async function loadAccountPrometheusColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -557,7 +558,7 @@ export async function loadAccountPrometheusColdTier(
  * without them the hotkey-less WeightsSet rows would be silently dropped --
  * a degrade, and this family declines rather than degrades. */
 async function neuronSlots(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   addr: string,
 ): Promise<{ netuid: number; uid: number }[] | null> {
   const db = readStore(env, ["neurons"]) as unknown as
@@ -591,7 +592,7 @@ async function neuronSlots(
  * one disjunction here; see the module header for the equivalence.
  */
 export async function loadAccountWeightSettersColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -694,7 +695,7 @@ export interface ValidatorNominatorsQuery {
  * 2.06 GB at ~4.1s, against a 15s ceiling.
  */
 export async function loadValidatorNominatorsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   hotkey: string,
   query: ValidatorNominatorsQuery,
 ): Promise<{
@@ -811,7 +812,7 @@ type CounterpartyScanRow = Pick<
 >;
 
 async function counterpartyScan(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   predicate: string,
 ): Promise<CounterpartyScanRow[] | null> {
   // BOUNDED (#11131), same reasoning as the transfer feed: the predicate pins
@@ -836,7 +837,7 @@ async function counterpartyScan(
  * the same builder every tier feeds.
  */
 export async function loadAccountCounterpartiesColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: { limit?: number } = {},
 ): Promise<ReturnType<typeof buildCounterparties> | null> {
@@ -877,7 +878,7 @@ export interface CounterpartyDrilldownResult {
  * one relationship's fund-flow totals plus the transfer evidence.
  */
 export async function loadCounterpartyRelationshipColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   counterparty: string,
   query: { limit?: number } = {},
@@ -1035,7 +1036,7 @@ export function mergeNewestEvents(
  * the card -- with nothing in the payload to say so.
  */
 async function headProbe(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   options: {
     query: R2SqlReader;
     where: string;
@@ -1055,7 +1056,7 @@ async function headProbe(
 }
 
 export async function loadAccountSummaryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   {
     recentLimit = ACCOUNT_SUMMARY_RECENT_LIMIT,

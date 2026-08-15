@@ -63,6 +63,7 @@ import {
   BlocksRowSchema,
   ExtrinsicsRowSchema,
 } from "../schemas-src/lakehouse.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -158,7 +159,7 @@ function feedPredicates(query: ExtrinsicFeedQuery): string[] | null {
 
 /** Rows for a feed-shaped query, offset emulated by over-fetch + slice. */
 async function feedRows(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   query: ExtrinsicFeedQuery,
   extraWhere: string[] = [],
   /** Which chain's lakehouse namespace to read (#8700). */
@@ -213,7 +214,7 @@ async function feedRows(
 
 /** The recent-extrinsic feed, and the filtered variants built on it. */
 export async function loadExtrinsicFeedColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   query: ExtrinsicFeedQuery,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -229,7 +230,7 @@ export async function loadExtrinsicFeedColdTier(
 
 /** Every extrinsic in one block. `ref` is a height or a block hash. */
 export async function loadBlockExtrinsicsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ref: string,
   page: { limit: number; offset?: number | null },
   /** Which chain's lakehouse namespace to read (#8700). */
@@ -258,7 +259,7 @@ export async function loadBlockExtrinsicsColdTier(
 
 /** One account's extrinsics, newest first. */
 export async function loadAccountExtrinsicsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   page: {
     limit: number;
@@ -295,7 +296,7 @@ export async function loadAccountExtrinsicsColdTier(
 
 /** A block hash resolved to its height, or the height itself. */
 async function resolveBlockHeight(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ref: string,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -320,7 +321,7 @@ async function resolveBlockHeight(
  * account_events it emitted embedded exactly as the Postgres tier embeds them.
  */
 export async function loadExtrinsicColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ref: string,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,

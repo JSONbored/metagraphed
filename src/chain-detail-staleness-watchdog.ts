@@ -159,7 +159,7 @@ export async function runChainDetailStalenessWatchdog(
         verdict.age_ms === null
           ? "no blocks at all"
           : `${(verdict.age_ms / 60_000).toFixed(1)} min behind`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(
           `chain-detail lane stalled: the live-follow window is ${age} ` +
             `(threshold ${thresholdMs / 60_000} min, head block ` +

@@ -301,7 +301,7 @@ export async function runTopHoldersStalenessWatchdog(
       flow.age_ms === null
         ? "age unknown"
         : `${(flow.age_ms / 3_600_000).toFixed(1)} h old`;
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `top-holders flow lane ${flow.reason}: the net_flow_* ranking is ` +
           `${age} (threshold ${(flowThresholdMs / 3_600_000).toFixed(1)} h) ` +
@@ -326,7 +326,7 @@ export async function runTopHoldersStalenessWatchdog(
       holdings.age_ms === null
         ? "age unknown"
         : `${(holdings.age_ms / 3_600_000).toFixed(1)} h old`;
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `top-holders holdings refresh ${holdings.reason}: free_tao, ` +
           `delegated_tao and total_tao are ${age} (threshold ` +

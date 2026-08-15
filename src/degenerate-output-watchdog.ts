@@ -225,7 +225,7 @@ export async function runDegenerateOutputWatchdog(
       // ONE LANE'S FAILURE IS NOT THE TICK'S. A table that does not exist yet
       // -- a migration applied by hand, which is how they land here -- must not
       // stop the lanes after it being checked.
-      await (deps.recordException ?? recordExceptionEvent)(env as never, {
+      await (deps.recordException ?? recordExceptionEvent)(env, {
         error: err instanceof Error ? err : new Error(String(err)),
         route: `watchdog:${DEGENERATE_OUTPUT_LANE}`,
         errorCode: "degenerate_output_query_failed",
