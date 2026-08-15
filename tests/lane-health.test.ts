@@ -174,13 +174,19 @@ describe("loadLatestLaneHealth", () => {
   // and later writes land on top of it: a sync flush writing `ok` beside a
   // staleness watchdog writing `unknown`, same lane, same millisecond.
   //
-  // Measured 2026-08-15 03:58Z: the lane alarm read the `ok` side of exactly
-  // that tie and CLOSED #11252 and #11253 as recovered, while
-  // /api/v1/self-health served `unknown` for the same lanes at the same
-  // millisecond. Both lanes had been dead 76 hours.
+  // The lane here is the `neon:` spelling deliberately: the bare
+  // `validator-nominator-counts` is a retired #10851 fossil, so
+  // loadLatestLaneHealth drops it before this rule can be reached at all.
+  //
+  // NOTE ON PROVENANCE. This rule was written believing a tie explained the
+  // alarm closing #11252/#11253 as recovered while /api/v1/self-health served
+  // `unknown` for the same lanes. It did not -- `withLaneHealth` DERIVES that
+  // `unknown` from silence, so there was no tie (see #11266). The rule stands
+  // on its own: rows CAN share a stamp, because the prune is `checked_at < ?`
+  // and the table has no key, and resolving that by row order is not a rule.
   const tiedRows = (first: string, second: string) => [
     {
-      lane: "validator-nominator-counts",
+      lane: "neon:validator-nominator-counts",
       verdict: first,
       age_ms: null,
       detail:
@@ -188,7 +194,7 @@ describe("loadLatestLaneHealth", () => {
       checked_at: NOW,
     },
     {
-      lane: "validator-nominator-counts",
+      lane: "neon:validator-nominator-counts",
       verdict: second,
       age_ms: null,
       detail:
@@ -205,14 +211,14 @@ describe("loadLatestLaneHealth", () => {
       const { db } = fakeDb(tiedRows(a, b));
       const latest = await loadLatestLaneHealth(db);
       assert.equal(
-        latest["validator-nominator-counts"].verdict,
+        latest["neon:validator-nominator-counts"].verdict,
         "unknown",
         `order ${a},${b}: a finding must survive a tie with ok`,
       );
       // And it carries THAT row's detail, so the reader is not shown the
       // reassuring half of a contradiction.
       assert.match(
-        latest["validator-nominator-counts"].detail ?? "",
+        latest["neon:validator-nominator-counts"].detail ?? "",
         /no verdict for/,
       );
     }
@@ -225,7 +231,7 @@ describe("loadLatestLaneHealth", () => {
     ]) {
       const { db } = fakeDb(tiedRows(a, b));
       const latest = await loadLatestLaneHealth(db);
-      assert.equal(latest["validator-nominator-counts"].verdict, "stale");
+      assert.equal(latest["neon:validator-nominator-counts"].verdict, "stale");
     }
   });
 

@@ -111,6 +111,34 @@ export const RETIRED_LANES: readonly string[] = [
   // therefore live, these two are written only from inside the Worker.
   "neurons",
   "tao-usd-index",
+  // THE SAME #10851 FOSSIL, two more spellings -- and these two had been open
+  // alarms (#11268, #11269) reading "silent 3.2 days" while their producer was
+  // healthy the whole time.
+  //
+  // Every row either bare name has ever carried is a WRITE-BUFFER FLUSH
+  // verdict: `nominator-positions` has 10 rows and
+  // `validator-nominator-counts` 5, all of the form "N statement(s) flushed",
+  // and both stop at 2026-08-11T23:35:17Z / 23:27:52Z -- the same instant as
+  // the three above, which is the signature of a writer that changed its key
+  // rather than of two lanes independently dying. `recordFlushVerdicts`
+  // (workers/neon-write-buffer-hub.ts) is the only thing that emits that
+  // sentence, and it has filed under `neonLaneKey(lane)` since #10851, so
+  // nothing can write these spellings again.
+  //
+  // NOT SUPPRESSION, and the poller test is what separates them from
+  // `account-balances` and `validator-nominators`: those bare names carry the
+  // POLLER's own scan outcome ("558009 scanned, 366107 written") and are
+  // therefore live. These two never have -- not one scan-outcome row exists
+  // under either spelling. What still watches this producer, on the same read
+  // that showed these two frozen:
+  //
+  //   validator-nominators                  ok  2026-08-14T11:40Z (the poller's)
+  //   neon:nominator-positions              ok  2026-08-14T11:51Z (3,111 rows)
+  //   neon:validator-nominator-counts       ok  2026-08-14T11:50Z (1,942 rows)
+  //   nominator-positions-staleness         ok  (the table's own watchdog)
+  //   validator-nominator-counts-staleness  ok
+  "nominator-positions",
+  "validator-nominator-counts",
   // The DLQ whose QUEUE was deleted (#10894, merged as #11254). Four probe
   // dead letters collapsed into one `probe-jobs-dlq`, and `revenue-probes`
   // went with the account's queue list.

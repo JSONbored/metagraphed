@@ -23,6 +23,15 @@ import {
   loadLatestLaneHealth,
 } from "../src/lane-health.ts";
 import { neonLaneKey } from "../src/neon-write.ts";
+import { NOMINATOR_POSITIONS_NEON_LANE } from "../src/nominator-positions-neon-write.ts";
+import { LEDGER_MIRROR_PLANS } from "../src/ledger-neon-write.ts";
+
+/** The counts lane has no exported constant of its own -- it is a key in the
+ * ledger mirror plan table. Derived from there rather than retyped, so a rename
+ * of the mirror breaks this instead of silently retiring a name nothing uses. */
+const VALIDATOR_NOMINATOR_COUNTS_LANE = Object.keys(LEDGER_MIRROR_PLANS).find(
+  (lane) => lane === "validator-nominator-counts",
+) as string;
 import {
   DEAD_LETTER_LANE_NAMES,
   isDeadLetterQueue,
@@ -50,6 +59,10 @@ const PRODUCERS: Record<string, string | null> = {
   // below: nothing can write a `*-dlq` lane that DEAD_LETTER_LANES no longer
   // names.
   "revenue-probes-dlq": null,
+  // The same #10851 key change as `neurons` / `tao-usd-index` above --
+  // justified by the code assertion below, not by a deleted file.
+  "nominator-positions": null,
+  "validator-nominator-counts": null,
 };
 
 function fakeDb(rows: Record<string, unknown>[]) {
@@ -95,6 +108,8 @@ describe("retired lanes (#10222)", () => {
       RAW_CAPTURE_STATE_NEON_LANE,
       NEURONS_NEON_LANE,
       TAO_USD_INDEX_NEON_LANE,
+      NOMINATOR_POSITIONS_NEON_LANE,
+      VALIDATOR_NOMINATOR_COUNTS_LANE,
     ]) {
       assert.equal(isRetiredLane(lane), true, `${lane} (bare) is retired`);
       assert.equal(
@@ -118,6 +133,28 @@ describe("retired lanes (#10222)", () => {
     // would be suppression rather than cleanup, and it has a live writer.
     assert.equal(isDeadLetterQueue("probe-jobs-dlq"), true);
     assert.equal(isRetiredLane("probe-jobs-dlq"), false);
+  });
+
+  test("retiring the nominator fossils leaves the producer watched", () => {
+    // The claim that makes this a retirement rather than suppression. Every row
+    // either bare name ever carried was a write-buffer flush ("N statement(s)
+    // flushed"), frozen at the #10851 key change -- while the poller's own
+    // lane, both `neon:` mirrors and both staleness watchdogs kept reporting.
+    for (const retired of [
+      NOMINATOR_POSITIONS_NEON_LANE,
+      VALIDATOR_NOMINATOR_COUNTS_LANE,
+    ]) {
+      assert.equal(isRetiredLane(retired), true, `${retired} is a fossil`);
+      assert.equal(
+        isRetiredLane(neonLaneKey(retired)),
+        false,
+        `${neonLaneKey(retired)} is the live writer's key and stays watched`,
+      );
+      // The table's OWN watchdog, which is a different lane and unaffected.
+      assert.equal(isRetiredLane(`${retired}-staleness`), false);
+    }
+    // And the producer both fossils belonged to.
+    assert.equal(isRetiredLane("validator-nominators"), false);
   });
 
   test("the POLLER's own bare lanes are NOT retired", () => {
