@@ -92,3 +92,54 @@ test.describe("#11204 indexable routes answer, retired routes redirect permanent
     });
   }
 });
+
+// #11261: what the docs <head> says, against the raw response.
+//
+// Two separate budgets that were both wrong. The 290 generated API-reference
+// pages shipped `content=""` — an EMPTY description, worse than none, on 83% of
+// the docs (#11258). The 25 hand-written pages ran the other way, to 256
+// characters, because their frontmatter `description` is also the visible
+// subtitle and was written as prose.
+//
+// Both are bounded in the head now, and NEITHER changes what the page shows.
+const DOCS_META_MAX = 160;
+
+test.describe("#11258 docs pages describe themselves, within budget", () => {
+  const PAGES = [
+    "/docs",
+    "/docs/feeds",
+    "/docs/mcp",
+    "/docs/economics",
+    "/docs/api-reference/subnets/domains",
+    "/docs/api-reference/blocks/block-detail-by-network",
+  ];
+
+  for (const path of PAGES) {
+    test(`${path} has a non-empty description inside the budget`, async ({ request }) => {
+      const html = await (await request.get(path)).text();
+      const raw = /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? null;
+      expect(raw, `${path} emits no description meta tag at all`).not.toBeNull();
+      // Entities inflate the raw attribute (&#x27; is 6 characters for one
+      // apostrophe), so measure the decoded value — measuring the raw string
+      // reports a page as over budget when it is not.
+      const decoded = raw!
+        .replace(/&#x27;/g, "'")
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"');
+      expect(decoded.length, `${path} description is empty`).toBeGreaterThan(0);
+      expect(decoded.length, `${path}: ${decoded.length} chars`).toBeLessThanOrEqual(DOCS_META_MAX);
+      // Markdown renders literally in a meta tag.
+      expect(decoded, `${path} carries markdown`).not.toContain("`");
+    });
+  }
+
+  test("bounding the head does not truncate what the page shows", async ({ request }) => {
+    // /docs/feeds carries the longest hand-written description (256 chars). The
+    // subtitle under the H1 must still be all of it.
+    const html = await (await request.get("/docs/feeds")).text();
+    const subtitle = /<h1[^>]*>[\s\S]*?<\/h1>\s*<p[^>]*>([\s\S]*?)<\/p>/.exec(html)?.[1] ?? "";
+    const text = subtitle.replace(/<[^>]+>/g, "");
+    expect(text.length).toBeGreaterThan(DOCS_META_MAX);
+    expect(text).toContain("no API key");
+  });
+});
