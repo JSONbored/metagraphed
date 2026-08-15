@@ -36,6 +36,12 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
+import {
+  DECLARATIONS_REQUIRING_A_GPU,
+  MIN_COMPUTE_SURFACES_REGISTERED,
+  SUBNETS_IN_REGISTRY,
+  SUBNETS_WITHOUT_A_DECLARATION,
+} from "./compute-declaration-figures.ts";
 import { isMcpCorePath } from "./github-oauth.ts";
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import { clampToolLimit } from "../workers/request-params.ts";
@@ -7764,7 +7770,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "inconsistently across the fleet. `earnings` is what miners there " +
       "actually earned. " +
       "DO NOT COMPUTE A PROFIT. No cost per day is published and none can be " +
-      "derived here: of the 17 registered declarations exactly ONE asks for a " +
+      `derived here: of the ${MIN_COMPUTE_SURFACES_REGISTERED} registered declarations ${DECLARATIONS_REQUIRING_A_GPU} ask for a ` +
       "GPU, so pricing the fleet against a rental rate charges most subnets " +
       "for hardware they never asked for. A declared minimum is the floor to " +
       "RUN, not the spec to EARN -- on a subnet where most miners earn " +
@@ -7775,7 +7781,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape " +
       "an unedited template field takes beside an edited one -- and you must " +
       "NOT report it as either boolean. `null` means NO DECLARATION HAS BEEN " +
-      "READ, which is the state 111 of 128 subnets are in, and is never a " +
+      `READ, which is the state ${SUBNETS_WITHOUT_A_DECLARATION} of ${SUBNETS_IN_REGISTRY} subnets are in, and is never a ` +
       "'this subnet needs no GPU'. A CPU-only subnet reports no GPU cost " +
       "rather than a zero: those are different claims. " +
       "`not_modelled` is served in the payload and every entry in it applies " +

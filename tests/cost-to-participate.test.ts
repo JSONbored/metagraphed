@@ -199,7 +199,7 @@ describe("buildSubnetCostToParticipate", () => {
       validator: null,
       evidence: null,
     });
-    // The state 111 of 128 subnets are in. Every one of these must be null
+    // The state most subnets are in. Every one of these must be null
     // rather than a zero or a false: "nobody has looked" is not "needs
     // nothing".
     assert.equal(card.earnings, null);
@@ -502,7 +502,7 @@ describe("buildSubnetCostToParticipate", () => {
 // The builder returns Record<string, unknown>, so nothing checks the payload
 // against the schema unless a test does. Both a POPULATED and a COLD payload
 // are parsed: they take different branches, and the cold one is the answer
-// served for 111 of 128 subnets.
+// served for the majority of subnets.
 describe("the contract", () => {
   test("a populated card satisfies its own artifact schema", () => {
     const parsed = SubnetCostToParticipateArtifactSchema.safeParse(

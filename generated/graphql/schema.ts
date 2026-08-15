@@ -321,7 +321,7 @@ type Query {
   subnet_miner_fairness(netuid: Int!, window: String): SubnetMinerFairness!
 
   """
-  What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number that are not interchangeable: \`entry_cost\` is measured on chain and exact (the registration burn and the validator permit/earning floors, re-served from the routes that already compute them); \`declared_compute\` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; \`earnings\` is what miners there actually earned, projected from miner-fairness so a floor-to-run never appears without it. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued: required, not-required, declared-inconsistently (a \`required: False\` beside a non-zero minimum VRAM, never coerced to either boolean) and null (no declaration read at all, which is the state 111 of 128 subnets are in). Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.
+  What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number that are not interchangeable: \`entry_cost\` is measured on chain and exact (the registration burn and the validator permit/earning floors, re-served from the routes that already compute them); \`declared_compute\` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; \`earnings\` is what miners there actually earned, projected from miner-fairness so a floor-to-run never appears without it. NO COST PER DAY IS PUBLISHED — of the 18 registered declarations 5 ask for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued: required, not-required, declared-inconsistently (a \`required: False\` beside a non-zero minimum VRAM, never coerced to either boolean) and null (no declaration read at all, which is the state 111 of 129 subnets are in). Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.
   """
   subnet_cost_to_participate(netuid: Int!): SubnetCostToParticipate!
 
@@ -2899,7 +2899,7 @@ type SubnetMinerFairnessLiveUid {
 }
 
 """
-What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number, not interchangeable: \`entry_cost\` is measured on chain and exact; \`declared_compute\` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; \`earnings\` is what miners there actually earned. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. A declared minimum is the floor to RUN, not the spec to EARN. Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.
+What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number, not interchangeable: \`entry_cost\` is measured on chain and exact; \`declared_compute\` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; \`earnings\` is what miners there actually earned. NO COST PER DAY IS PUBLISHED — of the 18 registered declarations 5 ask for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. A declared minimum is the floor to RUN, not the spec to EARN. Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.
 """
 type SubnetCostToParticipate {
   schema_version: Int!
@@ -2911,7 +2911,7 @@ type SubnetCostToParticipate {
   entry_cost: SubnetEntryCost!
 
   """
-  How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 128 subnets register none, and a card with \`declarations_read: 0\` makes no claim about what running here takes.
+  How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 129 subnets register none, and a card with \`declarations_read: 0\` makes no claim about what running here takes.
   """
   declarations_read: Int!
 

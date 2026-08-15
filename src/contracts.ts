@@ -1,3 +1,9 @@
+import {
+  DECLARATIONS_REQUIRING_A_GPU,
+  MIN_COMPUTE_SURFACES_REGISTERED,
+  SUBNETS_IN_REGISTRY,
+  SUBNETS_WITHOUT_A_DECLARATION,
+} from "./compute-declaration-figures.ts";
 import { z } from "zod";
 import {
   fieldsSchema,
@@ -1544,7 +1550,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-cost-to-participate",
     "/metagraph/subnets/{netuid}/cost-to-participate.json",
-    "What one subnet says it takes to participate and what the chain charges to enter, served live at /api/v1/subnets/{netuid}/cost-to-participate from the compute_declarations store plus the burn and validator-economics tiers, no static file. Three kinds of number that are not interchangeable: entry_cost is measured on chain and exact; declared_compute is what the subnet's own min_compute file says, from a template filled in inconsistently across the fleet; earnings is what miners there actually earned. NO COST PER DAY IS PUBLISHED -- of the 18 registered declarations five ask for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued and declared-inconsistently is a real answer, never coerced to a boolean.",
+    `What one subnet says it takes to participate and what the chain charges to enter, served live at /api/v1/subnets/{netuid}/cost-to-participate from the compute_declarations store plus the burn and validator-economics tiers, no static file. Three kinds of number that are not interchangeable: entry_cost is measured on chain and exact; declared_compute is what the subnet's own min_compute file says, from a template filled in inconsistently across the fleet; earnings is what miners there actually earned. NO COST PER DAY IS PUBLISHED -- of the ${MIN_COMPUTE_SURFACES_REGISTERED} registered declarations ${DECLARATIONS_REQUIRING_A_GPU} ask for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued and declared-inconsistently is a real answer, never coerced to a boolean.`,
     "SubnetCostToParticipateArtifact",
     COMPUTED_LIVE,
   ),
@@ -3437,7 +3443,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/cost-to-participate",
     "/metagraph/subnets/{netuid}/cost-to-participate.json",
-    "Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter. THREE KINDS OF NUMBER, NOT INTERCHANGEABLE. entry_cost is MEASURED on chain and exact -- the registration burn from the burn tier and the validator permit and earning floors from validator-economics, re-served here rather than recomputed. declared_compute is what the subnet's own min_compute file SAYS, which is a declaration and not a measurement of anything: the file is an upstream template and it is filled in inconsistently across the fleet. earnings is what miners on this subnet actually earned, projected from miner-fairness, so a floor-to-run never appears on the page without the distribution that says whether running is worth it. NO COST PER DAY IS PUBLISHED. Of the 18 registered declarations five ask for a GPU, so crossing the fleet with a rental rate prices hardware most subnets never asked for. THE GPU ANSWER IS FOUR-VALUED: required, not-required, declared-inconsistently (a declared required:False sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape an unedited template field takes, never coerced to either boolean), and null, which means no declaration has been read and is the state 111 of 129 subnets are in. A declared minimum is the floor to RUN, not the spec to EARN, and what the card does not model is served in the payload rather than left on a docs page.",
+    `Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter. THREE KINDS OF NUMBER, NOT INTERCHANGEABLE. entry_cost is MEASURED on chain and exact -- the registration burn from the burn tier and the validator permit and earning floors from validator-economics, re-served here rather than recomputed. declared_compute is what the subnet's own min_compute file SAYS, which is a declaration and not a measurement of anything: the file is an upstream template and it is filled in inconsistently across the fleet. earnings is what miners on this subnet actually earned, projected from miner-fairness, so a floor-to-run never appears on the page without the distribution that says whether running is worth it. NO COST PER DAY IS PUBLISHED. Of the ${MIN_COMPUTE_SURFACES_REGISTERED} registered declarations ${DECLARATIONS_REQUIRING_A_GPU} ask for a GPU, so crossing the fleet with a rental rate prices hardware most subnets never asked for. THE GPU ANSWER IS FOUR-VALUED: required, not-required, declared-inconsistently (a declared required:False sitting beside a non-zero minimum VRAM or CUDA-core count -- the shape an unedited template field takes, never coerced to either boolean), and null, which means no declaration has been read and is the state ${SUBNETS_WITHOUT_A_DECLARATION} of ${SUBNETS_IN_REGISTRY} subnets are in. A declared minimum is the floor to RUN, not the spec to EARN, and what the card does not model is served in the payload rather than left on a docs page.`,
     "short",
     ["subnets", "registry"],
     [],

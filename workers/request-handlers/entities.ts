@@ -2791,7 +2791,7 @@ export async function handleSubnetMinerFairness(
 // derived a second time from the same tables.
 //
 // A cold/absent store answers 200 with declarations_read:0 and null specs --
-// the correct answer for the 111 of 128 subnets that register no min_compute
+// the correct answer for the majority of subnets that register no min_compute
 // surface, and distinguishable in the payload from one read with nothing found.
 export async function handleSubnetCostToParticipate(
   request: Request,

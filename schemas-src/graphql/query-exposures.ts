@@ -20,6 +20,13 @@
 // describe this field's return type" -- is `reshapes`, separate, because
 // conflating the two is what #10772 spent an issue undoing.
 
+import {
+  DECLARATIONS_REQUIRING_A_GPU,
+  MIN_COMPUTE_SURFACES_REGISTERED,
+  SUBNETS_IN_REGISTRY,
+  SUBNETS_WITHOUT_A_DECLARATION,
+} from "../../src/compute-declaration-figures.ts";
+
 /**
  * Every Query field, the operation it exposes, and the type it returns.
  *
@@ -505,8 +512,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     field: "subnet_cost_to_participate",
     operation: "subnet-cost-to-participate",
     returns: "SubnetCostToParticipate!",
-    description:
-      "What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number that are not interchangeable: `entry_cost` is measured on chain and exact (the registration burn and the validator permit/earning floors, re-served from the routes that already compute them); `declared_compute` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; `earnings` is what miners there actually earned, projected from miner-fairness so a floor-to-run never appears without it. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued: required, not-required, declared-inconsistently (a `required: False` beside a non-zero minimum VRAM, never coerced to either boolean) and null (no declaration read at all, which is the state 111 of 128 subnets are in). Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.",
+    description: `What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number that are not interchangeable: \`entry_cost\` is measured on chain and exact (the registration burn and the validator permit/earning floors, re-served from the routes that already compute them); \`declared_compute\` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; \`earnings\` is what miners there actually earned, projected from miner-fairness so a floor-to-run never appears without it. NO COST PER DAY IS PUBLISHED — of the ${MIN_COMPUTE_SURFACES_REGISTERED} registered declarations ${DECLARATIONS_REQUIRING_A_GPU} ask for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. The GPU answer is four-valued: required, not-required, declared-inconsistently (a \`required: False\` beside a non-zero minimum VRAM, never coerced to either boolean) and null (no declaration read at all, which is the state ${SUBNETS_WITHOUT_A_DECLARATION} of ${SUBNETS_IN_REGISTRY} subnets are in). Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.`,
   },
   {
     field: "subnet_treasury",
