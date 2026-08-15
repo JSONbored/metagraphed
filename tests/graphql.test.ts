@@ -8377,64 +8377,37 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
     });
   });
 
-  test("resolves the Postgres-tier positions (flat body, matches GET /api/v1/accounts/{ss58}/positions parity)", async () => {
+  test("never forwards to DATA_API -- that Worker has no branch for this path", async () => {
+    // THE SECOND COPY of the dead forward. #11290 removed it from REST after
+    // measuring that DATA_API's dispatcher does not claim
+    // /accounts/:ss58/positions; this resolver kept its own, so the doomed hop
+    // and its awaited PostHog $exception carried on -- 09:11Z, 09:17Z and
+    // 10:04Z on 2026-08-15, all after the REST fix went live at 09:54Z.
+    //
+    // A `fetch` that THROWS is the assertion. If the leg came back, the stub is
+    // called and this fails rather than quietly paying the toll again. The
+    // counter proves it was never called at all, not merely that the answer
+    // came from elsewhere.
+    let dataApiCalls = 0;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            captured_at: "2026-07-10T00:00:00.000Z",
-            position_count: 2,
-            total_stake_alpha: 1500,
-            positions: [
-              {
-                hotkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-                netuid: 3,
-                share_fraction: 0.5,
-                stake_tao: 1000,
-              },
-              {
-                hotkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-                netuid: 7,
-                share_fraction: 0.25,
-                stake_tao: 500,
-              },
-            ],
-          }),
+        fetch: async () => {
+          dataApiCalls += 1;
+          throw new Error("DATA_API must not be consulted for this route");
+        },
       },
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(dataApiCalls, 0, "the DATA_API leg is gone, not merely quiet");
+    // Still a schema-stable card: dropping a hop that could never answer did
+    // not change what a caller reads.
     const p = body.data.account_positions;
-    assert.equal(p.position_count, 2);
-    assert.equal(p.total_stake_alpha, 1500);
-    assert.equal(p.positions[0].netuid, 3);
-    assert.equal(p.positions[0].share_fraction, 0.5);
-    assert.equal(
-      p.positions[1].hotkey,
-      "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-    );
-  });
-
-  test("ss58 is forwarded on the Postgres-tier request path", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_NEURONS_SOURCE: "data-api",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            positions: [],
-          });
-        },
-      },
-    };
-    await gql(query(`(ss58: "${SS58}")`), env);
-    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/positions`);
+    assert.equal(p.ss58, SS58);
+    assert.equal(p.position_count, 0);
+    assert.deepEqual(p.positions, []);
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty card", async () => {
@@ -24545,32 +24518,26 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
   });
 
   test("account_positions forwards the degraded marker behind a zero", async () => {
+    // The resolver enumerates its return shape, and `degraded` was dropped by
+    // that enumeration once (#9803) -- GraphQL served `position_count: 0` with
+    // nothing to tell "holds nothing" from "we could not price what it holds".
+    // This pins that it survives.
+    //
+    // Reached by letting every tier decline rather than by a DATA_API stub:
+    // this route no longer forwards there at all (DATA_API has no branch for
+    // /accounts/:ss58/positions), so the marker now arrives from
+    // unavailableAccountPositions, which is the card the real chain ends at.
     const { body } = await gql(
       `{ account_positions(ss58: "${SS58}") {
           position_count degraded { reason snapshot_captured_at latest_stake_event_at }
         } }`,
-      api(
-        {
-          schema_version: 1,
-          ss58: SS58,
-          position_count: 0,
-          total_stake_alpha: 0,
-          positions: [],
-          degraded: {
-            reason: "positions_unpriceable",
-            snapshot_captured_at: "2026-07-01T00:00:00.000Z",
-            latest_stake_event_at: "2026-07-02T00:00:00.000Z",
-          },
-        },
-        neurons,
-      ),
     );
     assert.equal(body.errors, undefined);
     // The whole point: a zero a client can tell apart from "holds nothing".
     assert.equal(body.data.account_positions.position_count, 0);
     assert.equal(
       body.data.account_positions.degraded.reason,
-      "positions_unpriceable",
+      "tier_unavailable",
     );
   });
 

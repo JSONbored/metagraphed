@@ -6589,22 +6589,27 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> lakehouse cold tier ->
-    // buildAccountPositions([], new Map(), ss58) fallback contract
-    // handleAccountPositions uses -- no D1 predecessor, flat body (like
+    // Hot store -> lakehouse cold tier -> labelled empty card, which is the
+    // chain REST's handleAccountPositions and MCP's get_account_positions both
+    // resolve. The cold-tier reader is the SAME one they fall to, so the three
+    // surfaces cannot disagree about what a coldkey holds. Flat body (like
     // account_portfolio's), not the { data, generatedAt } envelope the
-    // account-event-footprint family uses. The cold-tier reader is the SAME one
-    // REST and MCP's get_account_positions fall to, so the three surfaces
-    // cannot disagree about what a coldkey holds.
+    // account-event-footprint family uses.
+    //
+    // NO DATA_API LEG, and this was the SECOND one. #11290 removed it from the
+    // REST handler after measuring that DATA_API has no branch for
+    // /accounts/:ss58/positions -- 55 of 55 captured neurons-tier declines were
+    // that single path -- and this resolver kept its own copy, so the tier
+    // fallbacks carried on: 09:11Z, 09:17Z and 10:04Z on 2026-08-15, all after
+    // the REST fix deployed at 09:54Z. The comment here even asserted parity
+    // with a handler that had stopped forwarding, which is how a duplicated
+    // contract goes stale without anything failing.
+    //
+    // Checked exhaustively rather than by handler this time: of the 36 distinct
+    // paths any caller hands `postgresTierRequest`, this is the only one
+    // DATA_API's dispatcher does not claim. Two surfaces named it; both are
+    // now off it.
     const data =
-      ((await tryDataApiTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/accounts/${encodeURIComponent(ss58)}/positions`,
-        ),
-        "METAGRAPH_NEURONS_SOURCE",
-      )) as Row | null) ??
       ((await loadAccountPositionsFromStore(
         context.env,
         ss58,
