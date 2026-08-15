@@ -1802,10 +1802,14 @@ export type ChainTurnover = {
   __typename?: 'ChainTurnover';
   /** False when the window resolved to fewer than two distinct snapshots, so start/end churn is not measurable. */
   comparable: Scalars['Boolean']['output'];
+  /** Days actually spanned between start_date and end_date. Null when either bound is unresolvable. */
+  covered_days?: Maybe<Scalars['Int']['output']>;
   /** End snapshot date; null on a cold store. */
   end_date?: Maybe<Scalars['String']['output']>;
   /** Network-wide validator-set rollup: every subnet's validators combined, deduplicated across the network. */
   network: ChainTurnoverNetwork;
+  /** Days the requested window asked for (7, 30 or 90). Null when the label is not one this route serves. */
+  requested_days?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   /** Null when no subnet had a stability score in the window (nothing to distribute). */
   stability_distribution?: Maybe<ChainTurnoverStabilityDistribution>;
@@ -1814,6 +1818,8 @@ export type ChainTurnover = {
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainTurnoverSubnet>;
   window?: Maybe<Scalars['String']['output']>;
+  /** True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: turnover compares the window's endpoints, so a shortened span reports LOWER churn and HIGHER stability -- a network that replaced its whole validator set over a quarter reads as a calm month. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete. */
+  window_truncated?: Maybe<Scalars['Boolean']['output']>;
 };
 
 /** Network-wide validator-set rollup: every subnet's validators combined, deduplicated across the network. */
@@ -10733,14 +10739,17 @@ export type ChainTransfersResolvers<ContextType = GqlContext, ParentType extends
 
 export type ChainTurnoverResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainTurnover'] = ResolversParentTypes['ChainTurnover']> = ResolversObject<{
   comparable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  covered_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   end_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainTurnoverNetwork'], ParentType, ContextType>;
+  requested_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   stability_distribution?: Resolver<Maybe<ResolversTypes['ChainTurnoverStabilityDistribution']>, ParentType, ContextType>;
   start_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainTurnoverSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  window_truncated?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
 export type ChainTurnoverNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainTurnoverNetwork'] = ResolversParentTypes['ChainTurnoverNetwork']> = ResolversObject<{

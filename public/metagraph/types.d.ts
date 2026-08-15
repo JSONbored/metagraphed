@@ -7325,6 +7325,8 @@ export interface components {
         ChainTurnoverArtifact: {
             /** @description False when the window resolved to fewer than two distinct snapshots, so start/end churn is not measurable. */
             comparable: boolean;
+            /** @description Days actually spanned between start_date and end_date. Null when either bound is unresolvable. */
+            covered_days: number | null;
             /** @description End snapshot date; null on a cold store. */
             end_date: string | null;
             /** @description Network-wide validator-set rollup: every subnet's validators combined, deduplicated across the network. */
@@ -7338,6 +7340,8 @@ export interface components {
                 validators_exited: number;
                 validators_start: number;
             };
+            /** @description Days the requested window asked for (7, 30 or 90). Null when the label is not one this route serves. */
+            requested_days: number | null;
             schema_version: number;
             /** @description Null when no subnet had a stability score in the window (nothing to distribute). */
             stability_distribution: {
@@ -7363,6 +7367,8 @@ export interface components {
                 validators_start: number;
             }[];
             window: ("7d" | "30d" | "90d") | null;
+            /** @description True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: turnover compares the window's endpoints, so a shortened span reports LOWER churn and HIGHER stability -- a network that replaced its whole validator set over a quarter reads as a calm month. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete. */
+            window_truncated: boolean | null;
         };
         /** @description An unsigned 64-bit integer read from chain storage. Published as Float in GraphQL: the runtime's range exceeds that of GraphQL's Int. */
         ChainU64: number;
@@ -29616,6 +29622,7 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "comparable": false,
+                     *         "covered_days": 1,
                      *         "end_date": "2026-06-01",
                      *         "network": {
                      *           "stability_score": 100,
@@ -29625,6 +29632,7 @@ export interface operations {
                      *           "validators_exited": 1,
                      *           "validators_start": 1
                      *         },
+                     *         "requested_days": 1,
                      *         "schema_version": 1,
                      *         "stability_distribution": {
                      *           "count": 1,
@@ -29649,7 +29657,8 @@ export interface operations {
                      *             "validators_start": 1
                      *           }
                      *         ],
-                     *         "window": "7d"
+                     *         "window": "7d",
+                     *         "window_truncated": false
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

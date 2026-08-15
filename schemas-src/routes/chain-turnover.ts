@@ -29,6 +29,24 @@ export const ChainTurnoverArtifactSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable()
       .describe("End snapshot date; null on a cold store."),
+    covered_days: z
+      .int()
+      .nullable()
+      .describe(
+        "Days actually spanned between start_date and end_date. Null when either bound is unresolvable.",
+      ),
+    requested_days: z
+      .int()
+      .nullable()
+      .describe(
+        "Days the requested window asked for (7, 30 or 90). Null when the label is not one this route serves.",
+      ),
+    window_truncated: z
+      .boolean()
+      .nullable()
+      .describe(
+        "True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: turnover compares the window's endpoints, so a shortened span reports LOWER churn and HIGHER stability -- a network that replaced its whole validator set over a quarter reads as a calm month. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete.",
+      ),
     comparable: z
       .boolean()
       .describe(
