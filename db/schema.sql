@@ -416,11 +416,12 @@ CREATE TABLE public.compute_declarations (
     spec_version text,
     miner jsonb,
     validator jsonb,
-    CONSTRAINT compute_declarations_finding_needs_a_stanza CHECK (((found = false) OR (miner IS NOT NULL) OR (validator IS NOT NULL))),
+    unscoped jsonb,
+    CONSTRAINT compute_declarations_finding_needs_a_stanza CHECK (((found = false) OR (miner IS NOT NULL) OR (validator IS NOT NULL) OR (unscoped IS NOT NULL))),
     CONSTRAINT compute_declarations_first_seen_is_millis CHECK ((first_seen >= '1000000000000'::bigint)),
-    CONSTRAINT compute_declarations_nothing_found_declares_nothing CHECK (((found = true) OR ((miner IS NULL) AND (validator IS NULL)))),
+    CONSTRAINT compute_declarations_nothing_found_declares_nothing CHECK (((found = true) OR ((miner IS NULL) AND (validator IS NULL) AND (unscoped IS NULL)))),
     CONSTRAINT compute_declarations_observed_at_is_millis CHECK ((observed_at >= '1000000000000'::bigint)),
-    CONSTRAINT compute_declarations_stanzas_are_objects CHECK ((((miner IS NULL) OR (jsonb_typeof(miner) = 'object'::text)) AND ((validator IS NULL) OR (jsonb_typeof(validator) = 'object'::text))))
+    CONSTRAINT compute_declarations_stanzas_are_objects CHECK ((((miner IS NULL) OR (jsonb_typeof(miner) = 'object'::text)) AND ((validator IS NULL) OR (jsonb_typeof(validator) = 'object'::text)) AND ((unscoped IS NULL) OR (jsonb_typeof(unscoped) = 'object'::text))))
 );
 
 --
