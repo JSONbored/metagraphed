@@ -208,6 +208,8 @@ import type {
   SubnetIdleStake,
   ChainIdleStake,
   ChainIdleStakeSubnet,
+  AccountIdentityHistory,
+  AccountIdentityHistoryEntry,
   SubnetIdentityHistory,
   SubnetWeightSetter,
   SubnetWeightSetters,
@@ -7342,6 +7344,69 @@ function normalizeSubnetIdentityHistory(netuid: number, raw: unknown): SubnetIde
     next_cursor: firstString(rec.next_cursor) ?? null,
   };
 }
+
+/** One account identity revision. Dropped when it carries no hash: that is the
+ * only field identifying a revision, so a row without it cannot be keyed or
+ * de-duplicated against its neighbours. */
+export function normalizeAccountIdentityHistoryEntry(
+  raw: unknown,
+): AccountIdentityHistoryEntry | null {
+  if (!isRecord(raw)) return null;
+  const identity_hash = firstString(raw.identity_hash);
+  if (!identity_hash) return null;
+  return {
+    identity_hash,
+    observed_at: firstString(raw.observed_at) ?? null,
+    name: firstString(raw.name) ?? null,
+    url: firstString(raw.url) ?? null,
+    github: firstString(raw.github) ?? null,
+    image: firstString(raw.image) ?? null,
+    discord: firstString(raw.discord) ?? null,
+    description: firstString(raw.description) ?? null,
+    additional: firstString(raw.additional) ?? null,
+  };
+}
+
+function normalizeAccountIdentityHistory(ss58: string, raw: unknown): AccountIdentityHistory {
+  const rec = isRecord(raw) ? raw : {};
+  const entries = Array.isArray(rec.entries)
+    ? rec.entries
+        .map(normalizeAccountIdentityHistoryEntry)
+        .filter((e): e is AccountIdentityHistoryEntry => e !== null)
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    account: firstString(rec.account) ?? ss58,
+    // The SERVED count, not the parsed length, when the payload states one --
+    // they differ exactly when a row was dropped above, and flattening that to
+    // the survivors would hide the drop.
+    entry_count: firstFiniteNumber(rec.entry_count) ?? entries.length,
+    entries,
+    limit: firstFiniteNumber(rec.limit) ?? null,
+    offset: firstFiniteNumber(rec.offset) ?? null,
+    next_cursor: firstString(rec.next_cursor) ?? null,
+  };
+}
+
+/** Append-only on-chain identity timeline for one account (#10517), newest
+ * first. Published since #1647's account sibling and rendered nowhere -- its
+ * only mention anywhere in apps/ui was a row in a docs table. */
+export const accountIdentityHistoryQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-identity-history", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountIdentityHistory>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/identity-history`,
+        { signal },
+      );
+      return {
+        data: normalizeAccountIdentityHistory(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
 
 // #1647: append-only on-chain identity timeline for one subnet (newest first),
 // from the subnet_identity_history store tier. No paging params surfaced yet — the

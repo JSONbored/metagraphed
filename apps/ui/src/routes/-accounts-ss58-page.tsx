@@ -75,6 +75,7 @@ import {
   accountRegistrationsQuery,
   accountWeightSettersQuery,
   accountBalanceQuery,
+  accountIdentityHistoryQuery,
   accountIdentityQuery,
   accountEventsQuery,
   accountExtrinsicsQuery,
@@ -2353,7 +2354,79 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
           <p className="mt-2 mg-type-data text-ink-muted">{identity.additional}</p>
         ) : null}
       </div>
+      <AccountIdentityTimeline ss58={ss58} />
     </SectionAnchor>
+  );
+}
+
+/**
+ * Every earlier revision of this account's identity (#10517).
+ *
+ * INSIDE the Identity section rather than a section of its own: it is the same
+ * subject at an earlier time, and a reader comparing "what does this account
+ * claim now" against "what did it claim before" wants them adjacent. It also
+ * renders only when the account HAS an identity, because the parent returns
+ * null otherwise -- a history panel above an account that never registered one
+ * would be a heading over a permanent empty state.
+ *
+ * WHY THIS EXISTS AT ALL. `/api/v1/accounts/{ss58}/identity-history` has been
+ * published since #1647's account sibling and rendered nowhere. It passed
+ * `validate:ui-route-coverage` at a ceiling of zero because that check matches
+ * route strings against a blob that includes `content/docs`, and the route's
+ * only occurrence anywhere in apps/ui was a row in `docs/accounts.mdx`. The
+ * gate could not tell a documentation table from a consumer.
+ *
+ * NOT SUSPENSE. The parent already resolves the identity read; making this one
+ * suspend would hold the whole section on a secondary timeline that is empty
+ * for most accounts (630 revisions across 522 identities, so the median account
+ * with an identity has one and no history worth showing).
+ */
+function AccountIdentityTimeline({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountIdentityHistoryQuery(ss58));
+  const entries = result.data?.data.entries ?? [];
+
+  // A FAILED READ IS SILENT HERE, deliberately, and it is the one place on this
+  // page where that is right: the current identity above is already rendered
+  // and correct, and replacing a supplementary timeline with an error card
+  // would report the page as broken when one optional enrichment did not load.
+  if (result.isPending || result.isError || entries.length === 0) return null;
+
+  return (
+    <div className="mt-3">
+      <h3 className="mg-type-caption mb-2 text-ink-muted">Previous revisions ({entries.length})</h3>
+      <ol className="space-y-2">
+        {entries.map((entry) => (
+          <li key={entry.identity_hash} className="rounded-md border border-border bg-card p-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="font-display text-sm font-semibold text-ink-strong">
+                {entry.name ?? "Unnamed"}
+              </span>
+              <span className="mg-type-data text-ink-muted">
+                {entry.observed_at ? <TimeAgo at={entry.observed_at} /> : "unknown time"}
+              </span>
+            </div>
+            {entry.description ? (
+              <p className="mt-1 text-xs text-ink-muted">{entry.description}</p>
+            ) : null}
+            {entry.url || entry.github || entry.discord ? (
+              <div className="mt-1.5 flex flex-wrap gap-3 mg-type-caption">
+                {entry.url ? (
+                  <ExternalLink href={entry.url} className="text-accent-text hover:underline">
+                    website
+                  </ExternalLink>
+                ) : null}
+                {entry.github ? (
+                  <ExternalLink href={entry.github} className="text-accent-text hover:underline">
+                    github
+                  </ExternalLink>
+                ) : null}
+                {entry.discord ? <span className="text-ink-muted">{entry.discord}</span> : null}
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 

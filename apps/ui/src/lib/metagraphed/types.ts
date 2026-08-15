@@ -1965,6 +1965,37 @@ export interface ChainIdleStake {
   subnets: ChainIdleStakeSubnet[];
 }
 
+/** One on-chain identity revision for one ACCOUNT, from
+ * GET /api/v1/accounts/{ss58}/identity-history (#10517).
+ *
+ * NOT the subnet shape: an account identity carries `additional` (the raw
+ * registrar field) and has no `symbol`, `netuid` or `block_number`. Declared
+ * separately rather than sharing `SubnetIdentityHistoryEntry`, which would have
+ * to make four fields optional and would then accept either shape from either
+ * route. */
+export interface AccountIdentityHistoryEntry {
+  identity_hash: string;
+  observed_at: string | null;
+  name: string | null;
+  url: string | null;
+  github: string | null;
+  image: string | null;
+  discord: string | null;
+  description: string | null;
+  additional: string | null;
+}
+
+/** Append-only on-chain identity timeline for one account, newest first. */
+export interface AccountIdentityHistory {
+  schema_version: number;
+  account: string;
+  entry_count: number;
+  entries: AccountIdentityHistoryEntry[];
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+}
+
 /** Append-only on-chain identity timeline for one subnet (#1647), newest first. */
 export interface SubnetIdentityHistory {
   schema_version: number;
