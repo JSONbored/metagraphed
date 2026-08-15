@@ -17,13 +17,15 @@
     "emission_gate_bar": "7c9b0d2964cc73e7519676c3cc4d5df9",
     "emission_bar_quantile": "a772007dde2ed63e0f21b5f9d7f16650",
     "emission_gate_exponent": "88c70e8dd0cf4af3aeb977ba2eee1df4",
-    "total_issuance": "57c875e4cff74148e4628f264b974c80"
+    "total_issuance": "57c875e4cff74148e4628f264b974c80",
+    "total_networks": "5f3bb7bcd0a076a48abf8c256d221721"
   },
   "values": {
     "emission_gate_bar": "0x9d7438777bb45f020000000000000000",
     "emission_bar_quantile": "0x00000000000000c00000000000000000",
     "emission_gate_exponent": null,
-    "total_issuance": "0x974c8037cfb92700"
+    "total_issuance": "0x974c8037cfb92700",
+    "total_networks": "0x8000"
   },
   "maps": {
     "moving_price": {
