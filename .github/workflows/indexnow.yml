@@ -1,0 +1,100 @@
+name: IndexNow
+
+# #11246: tells Bing/Yandex which pages changed, within minutes of a merge,
+# instead of waiting for the sitemap to be re-read.
+#
+# THE CHANGE SIGNAL IS THE GIT DIFF, deliberately. The obvious source is the
+# registry changelog, and it is the wrong one: measured on 2026-08-15, a single
+# publish reports ~2,837 modified artifacts, because the 15-minute health probe
+# rewrites nearly every artifact every time. "Artifact changed" says nothing
+# about whether the PAGE changed, and IndexNow discounts hosts that submit
+# unchanged URLs — a changelog-driven feed would have been a spam generator
+# wearing the costume of a signal. A page's content, by contrast, cannot change
+# without one of the files this diff sees changing.
+#
+# So most pushes submit nothing. That is the design, not a fault: the job says
+# "no page content changed" and exits 0.
+#
+# Runs AFTER the deploy, never before. Submitting a URL that Cloudflare has not
+# published yet asks a crawler to fetch the old page and marks it fresh.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/ui/content/docs/**"
+      - "registry/subnets/**"
+      - "registry/providers/**"
+  workflow_dispatch:
+    inputs:
+      sitemap:
+        description: "Submit every sitemap URL (initial discovery, not routine)"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Print the submission without sending it"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    name: Submit changed URLs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Two commits, so a push can be diffed against its parent. The default
+          # shallow clone has no parent to compare against and would silently
+          # produce an empty change set on every run.
+          fetch-depth: 2
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+
+      # The key is PUBLIC by protocol — IndexNow authenticates by serving it at
+      # https://metagraph.sh/<key>.txt, so the committed file IS the proof of
+      # ownership. Reading it from the repo rather than a secret keeps the
+      # submitted key and the published key impossible to disagree.
+      - name: Read the published IndexNow key
+        id: key
+        run: |
+          key_file=$(ls apps/ui/public/*.txt | head -1)
+          key=$(basename "$key_file" .txt)
+          if [ "$(cat "$key_file")" != "$key" ]; then
+            echo "::error::$key_file must contain exactly its own basename — that is what IndexNow verifies."
+            exit 1
+          fi
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Collect changed paths
+        if: github.event_name == 'push'
+        run: git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" > changed.txt
+
+      - name: Wait for the deploy to publish
+        if: github.event_name == 'push'
+        # Cloudflare builds on the same push. Submitting before it lands asks a
+        # crawler to fetch the OLD page and record it as fresh, which is worse
+        # than submitting late.
+        run: sleep 180
+
+      - name: Submit
+        working-directory: apps/ui
+        env:
+          INDEXNOW_KEY: ${{ steps.key.outputs.key }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            mode="--sitemap"
+            [ "${{ inputs.sitemap }}" = "true" ] || { echo "Nothing to do: dispatch without sitemap=true."; exit 0; }
+            [ "${{ inputs.dry_run }}" = "true" ] && mode="$mode --dry-run"
+          else
+            mode="--changed ../../changed.txt"
+          fi
+          node scripts/submit-indexnow.ts $mode
