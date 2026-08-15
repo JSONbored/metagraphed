@@ -96,7 +96,12 @@ describe("thresholds are unchanged by the refactor", () => {
     assert.equal(HOTKEY_ALPHA_PASS_WINDOW_MS, 6 * HOUR);
     assert.equal(NEURONS_STALENESS_THRESHOLD_MS, 45 * MINUTE);
     assert.equal(NEURONS_PASS_WINDOW_MS, 5 * MINUTE);
-    assert.equal(NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS, 30 * HOUR);
+    // MOVED DELIBERATELY, and this pin is what made it deliberate. 30h was
+    // the pre-#10291 literal and is no longer the bound: measured over 29
+    // consecutive pass gaps on 2026-08-15 the producer's worst case is 34.57h,
+    // and lane_health carried 9 age-based `stale` verdicts between 30.02h and
+    // 33.02h on a lane that never skipped a pass. 36h clears the ceiling.
+    assert.equal(NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS, 36 * HOUR);
     assert.equal(NOMINATOR_POSITIONS_PASS_WINDOW_MS, 4 * HOUR);
     assert.equal(VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS, 4 * HOUR);
     assert.equal(TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS, 48 * HOUR);
@@ -150,10 +155,10 @@ describe("the cadence table", () => {
   });
 
   test("missedTicksMs is the cadence times the ticks, fractional allowed", () => {
-    // nominator-positions sits at 1.25 ticks; forcing an integer would change
-    // a live threshold for the sake of the abstraction.
+    // nominator-positions sits at 1.5 ticks; forcing an integer would change a
+    // live threshold for the sake of the abstraction.
     assert.equal(missedTicksMs("account_balances", 2), 12 * HOUR);
-    assert.equal(missedTicksMs("validator_nominators", 1.25), 30 * HOUR);
+    assert.equal(missedTicksMs("validator_nominators", 1.5), 36 * HOUR);
   });
 
   test("passWindowMs is a fraction of the same cadence", () => {
@@ -322,5 +327,34 @@ describe("cronIntervalSecs", () => {
     ]) {
       assert.equal(cronIntervalSecs(bad), null, JSON.stringify(bad));
     }
+  });
+});
+
+// The bound must clear the producer's measured worst case, not its nominal
+// cadence. This is the assertion #9301 and #10329 both exist because nobody
+// wrote: a threshold sized on "cadence plus jitter" alarms on a working lane
+// the first time the producer runs late, and a late pass is not a missed one.
+describe("nominator-positions is bounded above its producer's real ceiling", () => {
+  // Measured against production 2026-08-15, 29 consecutive pass gaps of
+  // `nominator_positions.captured_at`: min 0.66h, p90 24.41h, max 34.57h.
+  const OBSERVED_MAX_GAP_MS = 34.57 * HOUR;
+
+  test("the threshold clears the observed maximum pass gap", () => {
+    assert.ok(
+      NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS > OBSERVED_MAX_GAP_MS,
+      `threshold ${NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS}ms is at or under ` +
+        `the observed ${OBSERVED_MAX_GAP_MS}ms worst case -- a healthy lane ` +
+        `will read stale`,
+    );
+  });
+
+  test("and is not so loose that a stopped writer hides for days", () => {
+    // The other direction, so this cannot be widened without a reason. Two
+    // full ticks is where "late" stops being a credible explanation.
+    assert.ok(
+      NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS <
+        2 * cadenceMs("validator_nominators"),
+      "a bound at or above two full ticks cannot distinguish a late pass from a skipped one",
+    );
   });
 });
