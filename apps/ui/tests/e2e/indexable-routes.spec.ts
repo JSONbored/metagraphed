@@ -181,3 +181,29 @@ test.describe("#11266 the weekly digests are reachable at all", () => {
     expect(response.status(), `${digest} is in the sitemap but does not answer 200`).toBe(200);
   });
 });
+
+test.describe("#11279 the digests are typed, and say what week they cover", () => {
+  test("a digest emits an Article whose temporalCoverage matches its own text", async ({
+    request,
+  }) => {
+    const html = await (await request.get("/news/sn38/2026-w25")).text();
+    const blocks = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map(
+      (m) => JSON.parse(m[1]!) as Record<string, unknown>,
+    );
+    const article = blocks.find((b) => b["@type"] === "Article");
+    expect(article, "no Article node on a digest page").toBeTruthy();
+    expect(article!.temporalCoverage).toBe("2026-06-15/2026-06-21");
+    // The structured data must agree with what the reader can see, which is the
+    // rule every builder in json-ld.ts ships under.
+    expect(html).toContain("15–21 June 2026");
+  });
+
+  test("the archive index is an Article with no week to claim", async ({ request }) => {
+    const html = await (await request.get("/news")).text();
+    const article = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)]
+      .map((m) => JSON.parse(m[1]!) as Record<string, unknown>)
+      .find((b) => b["@type"] === "Article");
+    expect(article).toBeTruthy();
+    expect(article).not.toHaveProperty("temporalCoverage");
+  });
+});

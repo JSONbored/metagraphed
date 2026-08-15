@@ -91,6 +91,23 @@ function escapeYaml(value: string): string {
 }
 
 /**
+ * The same week as a machine-readable ISO 8601 interval, `2026-07-20/2026-07-26`.
+ *
+ * schema.org `temporalCoverage`, for the Article node the page emits (#11279).
+ * Derived from `isoWeekStart` exactly as `weekSpan` is, so the interval and the
+ * words under the H1 cannot disagree — and it is a statement about the period
+ * the digest COVERS, never about when it was published. There is no honest
+ * publication timestamp available (the store records the week, not the run), so
+ * none is claimed.
+ */
+function weekInterval(year: number, week: number): string {
+  const start = isoWeekStart(year, week);
+  const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const day = (d: Date) => d.toISOString().slice(0, 10);
+  return `${day(start)}/${day(end)}`;
+}
+
+/**
  * `20–26 July 2026` — the week the digest covers, in words.
  *
  * The dates come from isoWeekStart, the same function the store uses to decide
@@ -158,6 +175,7 @@ function digestPage(digest: WeeklyDigest): string {
     "---",
     `title: "${escapeYaml(title)}"`,
     `description: "${escapeYaml(description)}"`,
+    `temporalCoverage: "${weekInterval(digest.year, digest.week)}"`,
     "---",
     "",
     `**${span}**`,

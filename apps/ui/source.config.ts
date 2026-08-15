@@ -14,6 +14,15 @@ import { z } from "zod";
 // generation date already on the page.
 export const news = defineDocs({
   dir: "content/news",
+  docs: {
+    // #11279: declared, or fumadocs' frontmatter schema strips it before
+    // page.data and the Article node silently loses its temporalCoverage --
+    // exactly how metaDescription vanished in #11258.
+    schema: frontmatterSchema.extend({
+      /** ISO 8601 interval, `2026-07-20/2026-07-26`: the week this digest covers. */
+      temporalCoverage: z.string().optional(),
+    }),
+  },
 });
 
 export const docs = defineDocs({

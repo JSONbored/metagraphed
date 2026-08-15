@@ -318,3 +318,35 @@ describe("providerDatasetJsonLd (#11204) — 138 records that had no node", () =
     );
   });
 });
+
+describe("Article vs TechArticle (#11279) — a digest is not documentation", () => {
+  const base = { headline: "Subnet 38 — 2026-W25", url: "https://metagraph.sh/news/sn38/2026-w25" };
+
+  it("defaults to TechArticle and takes Article when asked", () => {
+    // Typing a weekly report as documentation of an interface would be the same
+    // over-claim the rest of this module avoids.
+    expect(techArticleJsonLd(base)["@type"]).toBe("TechArticle");
+    expect(techArticleJsonLd({ ...base, type: "Article" })["@type"]).toBe("Article");
+  });
+
+  it("carries temporalCoverage as the period, never as a publication date", () => {
+    const out = techArticleJsonLd({
+      ...base,
+      type: "Article",
+      temporalCoverage: "2026-06-15/2026-06-21",
+    }) as unknown as Record<string, unknown>;
+    expect(out.temporalCoverage).toBe("2026-06-15/2026-06-21");
+    // The digest store records the week, not the run, so there is no honest
+    // publication timestamp and none is invented.
+    expect(out).not.toHaveProperty("datePublished");
+    expect(out).not.toHaveProperty("dateModified");
+  });
+
+  it("omits temporalCoverage when the page covers no single period", () => {
+    // The /news archive index is not about one week.
+    expect(techArticleJsonLd({ ...base, type: "Article" })).not.toHaveProperty("temporalCoverage");
+    expect(
+      techArticleJsonLd({ ...base, type: "Article", temporalCoverage: null }),
+    ).not.toHaveProperty("temporalCoverage");
+  });
+});
