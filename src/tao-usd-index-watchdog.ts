@@ -336,8 +336,7 @@ export async function runTaoUsdIndexWatchdog(
 ): Promise<TaoUsdIndexVerdict & { recorded: boolean }> {
   const now = deps.now ?? Date.now;
   const nowMs = now();
-  const db =
-    deps.db ?? (readStore(env, TAO_USD_TABLES) as unknown as TaoUsdWatchdogDb);
+  const db = deps.db ?? readStore(env, TAO_USD_TABLES);
 
   let rows: Row[] | null;
   try {

@@ -43,7 +43,7 @@
 // `subnet_hyperparams` has its own staleness lane, so restating its verdict
 // here would put two lanes' names on one fault.
 import { laneHealthStore } from "./lane-health-store.ts";
-import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
+import { recordLaneVerdict } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
 import type { SubnetBurnHistory } from "../generated/db/types.ts";
 
@@ -210,7 +210,7 @@ export async function runSubnetBurnCoverageWatchdog(
 ): Promise<SubnetBurnCoverageVerdict | null> {
   const now = deps.now ?? Date.now;
   const record = deps.recordVerdict ?? recordLaneVerdict;
-  const db = readStore(env, SUBNET_BURN_COVERAGE_TABLES as unknown as string[]);
+  const db = readStore(env, SUBNET_BURN_COVERAGE_TABLES);
   if (!db) return null;
   let row: SubnetBurnCoverageRow | undefined;
   try {
@@ -231,7 +231,7 @@ export async function runSubnetBurnCoverageWatchdog(
     thresholdMs: SUBNET_BURN_COVERAGE_THRESHOLD_MS,
     coverageFloorRatio: SUBNET_BURN_COVERAGE_FLOOR_RATIO,
   });
-  await record(laneHealthStore(env) as unknown as LaneHealthDb, {
+  await record(laneHealthStore(env), {
     lane: SUBNET_BURN_COVERAGE_LANE,
     verdict: verdict.stale ? "stale" : "ok",
     age_ms: verdict.age_ms,

@@ -309,7 +309,7 @@ export function pgReadStore(
   const run = async (text: string, values: unknown[]) => {
     const client =
       deps.clientFactory?.(connectionString) ??
-      (new Client({ connectionString }) as unknown as ReadStoreClient);
+      new Client({ connectionString });
     await client.connect();
     try {
       const result = await client.query(toPositionalPlaceholders(text), values);

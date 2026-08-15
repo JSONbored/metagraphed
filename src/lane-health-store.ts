@@ -58,7 +58,7 @@ export function pgLaneHealthDb(
   const exec = async (text: string, values: unknown[]) => {
     const client =
       deps.clientFactory?.(connectionString) ??
-      (new Client({ connectionString }) as unknown as LaneHealthPgClient);
+      new Client({ connectionString });
     await client.connect();
     try {
       const result = await client.query(toPositionalPlaceholders(text), values);
