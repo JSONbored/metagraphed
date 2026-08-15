@@ -103,6 +103,10 @@ export const SEO_DEFAULT_TAGS =
 const SITEMAP_STATIC_PATHS = [
   "/",
   "/subnets",
+  // #11316: the one faceted page this epic shipped. Sitemap-only is the profile
+  // that lands a URL in "Crawled - currently not indexed" (#11277), so it is
+  // also linked from /subnets rather than relying on this entry alone.
+  "/subnets/with-api",
   "/apis/providers",
   "/apis",
   "/apis/endpoints",

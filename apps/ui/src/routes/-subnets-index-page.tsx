@@ -348,6 +348,18 @@ export function SubnetsPage() {
         }
         artifacts={search.section === "rankings" ? undefined : ["/metagraph/subnets.json"]}
       />
+      {/*
+        #11316: a REAL anchor, not prose naming a path. Sitemap-only is the
+        profile that lands a URL in "Crawled - currently not indexed" (#11277),
+        and the faceted page needs an inbound link from the hub it filters.
+      */}
+      <p className="mt-8 mg-type-caption text-ink-muted">
+        Looking for the ones you can integrate with?{" "}
+        <Link to="/subnets/with-api" className="text-accent-text hover:underline">
+          Subnets publishing a machine-readable API spec
+        </Link>
+        .
+      </p>
       {/* Below the table on purpose -- see hub-prose.tsx. */}
       <HubSections path="/subnets" />
       <SubnetsCompareDrawer />

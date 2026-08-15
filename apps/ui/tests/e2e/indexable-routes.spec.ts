@@ -270,6 +270,64 @@ test.describe("#11294 the markdown twin is reachable, and a stale one 404s", () 
   }
 });
 
+test.describe("#11316 the faceted page earns its URL", () => {
+  // The epic proposed THREE faceted pages. Two did not survive measurement:
+  // `gpu_required` is set on zero of 129 subnets and `status` is uniformly
+  // "active" — one empty URL and one duplicate of /subnets. Shipping them would
+  // have been the July mistake, which is what §3 of #11313 exists to prevent.
+  //
+  // These assertions are what stop this page decaying into the same thing.
+
+  test("selects a real subset rather than duplicating /subnets", async ({ request }) => {
+    const html = await (await request.get("/subnets/with-api")).text();
+    const listed = new Set([...html.matchAll(/href="\/subnets\/(\d+)"/g)].map((m) => m[1]!));
+    // A facet that selects everything is a canonical duplicate of the hub, and
+    // a facet that selects nothing is a page with no reason to be crawled.
+    expect(listed.size, "the facet lists no subnets").toBeGreaterThan(10);
+    expect(listed.size, "the facet lists every subnet — it is not a facet").toBeLessThan(120);
+  });
+
+  test("leads with synthesis, not a bare table", async ({ request }) => {
+    // The rule every new URL in this epic ships under: the numbers above the
+    // list are derived from probe data no competitor holds, and they are what
+    // makes this a page rather than a query string.
+    const html = await (await request.get("/subnets/with-api")).text();
+    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(text).toContain("catalogued subnets publish a machine-readable API");
+    expect(text).toContain("15-minute probe cycle");
+  });
+
+  test("is reachable from /subnets, not sitemap-only", async ({ request }) => {
+    // Sitemap-only is the textbook profile for "Crawled – currently not
+    // indexed" (#11277) — discoverable, with nothing saying it matters.
+    const html = await (await request.get("/subnets")).text();
+    expect(html, "/subnets does not link the faceted page").toContain('href="/subnets/with-api"');
+  });
+
+  test("is in the sitemap and answers without a redirect", async ({ request }) => {
+    const xml = await (await request.get("/sitemap.xml")).text();
+    expect(xml).toContain("<loc>https://metagraph.sh/subnets/with-api</loc>");
+    const res = await request.get("/subnets/with-api", { maxRedirects: 0 });
+    expect(res.status()).toBe(200);
+  });
+
+  test("does not shadow the subnet detail route", async ({ request }) => {
+    // A static segment beside /subnets/$netuid. If precedence ever flipped,
+    // every one of the 129 detail pages would resolve to this one.
+    //
+    // netuid 1, not 64: the e2e stub's fixture carries subnet 1 and not 64, so
+    // asserting on 64 tests the fixture rather than the routing.
+    const res = await request.get("/subnets/1", { maxRedirects: 0 });
+    expect(res.status()).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain("catalogued subnets publish a machine-readable API");
+    // And an unknown netuid must still reach the detail route's not-found, not
+    // fall through to the facet page.
+    const missing = await (await request.get("/subnets/999999")).text();
+    expect(missing).not.toContain("catalogued subnets publish a machine-readable API");
+  });
+});
+
 test.describe("#11283 every breadcrumb link goes somewhere", () => {
   // buildCrumbs (components/metagraphed/breadcrumb-nav.ts) makes a link out of
   // EVERY path segment, so a page at /a/b/c offers /a and /a/b whether or not
@@ -443,6 +501,8 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
     "/apis/endpoints": 2200,
     "/apis/schemas": 700,
     "/chain": 240,
+    // #11316: a filtered projection of 66 rows, so it is small by construction.
+    "/subnets/with-api": 300,
   };
 
   for (const path of Object.keys(HUB_COPY) as Array<keyof typeof HUB_COPY>) {

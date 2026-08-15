@@ -388,6 +388,43 @@ export function providerDatasetJsonLd(input: ProviderDatasetInput) {
   });
 }
 
+export interface RegistryFacetDatasetInput {
+  name: string;
+  identifier: string;
+  description: string;
+  /** Site-relative path of the page this dataset describes. */
+  path: string;
+  /** API-relative route the same selection can be computed from. */
+  apiUrl: string;
+}
+
+/**
+ * schema.org Dataset for a FACETED view of the registry (#11316).
+ *
+ * A filtered projection is still a dataset, and typing it as one is what ties
+ * `/subnets/with-api` to the same `DataCatalog` node every subnet record already
+ * points at -- otherwise the page is a table Google has no reason to connect to
+ * the 129 records it selects from.
+ *
+ * Deliberately reuses `registryDatasetJsonLd`: the creator/publisher/catalog
+ * wiring is the part that must not be re-typed per page, which is exactly how
+ * the inline copy this replaced minted a second unrelated publisher on all 129
+ * subnet pages.
+ */
+export function registryFacetDatasetJsonLd(input: RegistryFacetDatasetInput) {
+  return registryDatasetJsonLd({
+    name: input.name,
+    identifier: input.identifier,
+    description: input.description,
+    url: `${SITE_ORIGIN}${input.path}`,
+    apiUrl: `${API_ORIGIN}${input.apiUrl}`,
+    // A facet has no single generated artifact of its own; the API route IS
+    // the machine-readable form, so it is named once rather than duplicated
+    // into a second DataDownload that would point at the same bytes.
+    artifactUrl: `${API_ORIGIN}${input.apiUrl}`,
+  });
+}
+
 interface RegistryDatasetInput {
   name: string;
   identifier: string;
