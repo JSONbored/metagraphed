@@ -2233,6 +2233,13 @@
     "required": false
   },
   {
+    "table": "compute_declarations",
+    "field_id": 10,
+    "column": "unscoped",
+    "type": "string",
+    "required": false
+  },
+  {
     "table": "emission_flow_watch",
     "field_id": 1,
     "column": "id",

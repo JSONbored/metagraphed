@@ -1027,6 +1027,12 @@
   },
   {
     "table": "compute_declarations",
+    "column": "unscoped",
+    "udt": "jsonb",
+    "nullable": true
+  },
+  {
+    "table": "compute_declarations",
     "column": "validator",
     "udt": "jsonb",
     "nullable": true

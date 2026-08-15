@@ -702,6 +702,7 @@ export const ComputeDeclarationsRowSchema = z
     spec_version: z.string().nullable(),
     miner: z.string().nullable(),
     validator: z.string().nullable(),
+    unscoped: z.string().nullable(),
   })
   .partial()
   .catchall(z.unknown());

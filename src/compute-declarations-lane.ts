@@ -35,7 +35,7 @@
 //
 // ## THE CITATION IS RESOLVED, NOT ASSUMED
 //
-// 14 of the 17 registered surfaces point at `main`, which moves under the
+// 14 of the 18 registered surfaces point at `main`, which moves under the
 // claim. The reading resolves the commit that last touched THAT PATH rather
 // than the branch head, because a branch head advances on commits that never
 // went near this file -- so `read_at_sha` would change hourly and a re-read
@@ -170,7 +170,7 @@ export interface ComputeReadDeps {
   fetchImpl?: typeof fetch;
   /** Authorization header for api.github.com, when a token is configured.
    * Without one the API allows 60 requests an hour, which still covers this
-   * lane's 17 surfaces; with one it is 5,000. */
+   * lane's 18 surfaces; with one it is 5,000. */
   githubAuth?: string | null;
   now?: () => number;
 }
@@ -208,6 +208,8 @@ export interface ParsedComputeSpec {
   spec_version: string | null;
   miner: Row | null;
   validator: Row | null;
+  /** The whole `compute_spec`, when it named no role at all. */
+  unscoped: Row | null;
 }
 
 /**
@@ -241,6 +243,8 @@ export function parseComputeSpec(text: string): ParsedComputeSpec | null {
       ? (value as Row)
       : null;
   const version = root.version;
+  const miner = object((spec as Row).miner);
+  const validator = object((spec as Row).validator);
   return {
     // A YAML `version: 0.3.6` is a number, and `version: '0.3.6'` a string.
     // Both are the file's own answer; the column is TEXT so both survive.
@@ -248,8 +252,32 @@ export function parseComputeSpec(text: string): ParsedComputeSpec | null {
       typeof version === "string" || typeof version === "number"
         ? String(version)
         : null,
-    miner: object((spec as Row).miner),
-    validator: object((spec as Row).validator),
+    miner,
+    validator,
+    // A DECLARATION THAT NAMES NO ROLE (#11282). Two of the 18 registered
+    // surfaces -- SN29 coldint and SN108 talkhead -- publish a FLAT spec:
+    //
+    //     compute_spec:
+    //       cpu: {...}
+    //       gpu: {required: true, min_vram: 24GB}
+    //
+    // That is a real declaration, and both of those ask for a GPU. It fits
+    // neither role column, so the record was `found: true` with nothing in it,
+    // the write failed `compute_declarations_finding_needs_a_stanza`, and the
+    // message dead-lettered on every pass since 2026-08-13. Neither subnet has
+    // ever had a row.
+    //
+    // PRESERVED, NOT COERCED. Writing it into `miner` AND `validator` would
+    // assert a role split the document does not make; calling it `found: false`
+    // would say a file declaring a GPU declared nothing. 0029's own rule is the
+    // third option: "a stanza we have no rule for yet is still preserved, so
+    // the fix later is a code change rather than a re-read".
+    //
+    // Only when NEITHER role is present. A file that splits by role has said
+    // where its requirements apply, and anything left beside those stanzas is
+    // not an unscoped declaration -- it is a key this parser has no rule for,
+    // which stays out of the column rather than being swept into it.
+    unscoped: miner === null && validator === null ? object(spec) : null,
   };
 }
 
@@ -262,6 +290,9 @@ export interface ComputeDeclarationRecord {
   spec_version: string | null;
   miner: Row | null;
   validator: Row | null;
+  /** Requirements the document declared without attributing them to a role.
+   * Null whenever `miner` or `validator` is set -- see parseComputeSpec. */
+  unscoped: Row | null;
 }
 
 /**
@@ -307,6 +338,7 @@ export async function readComputeDeclaration(
     spec_version: parsed?.spec_version ?? null,
     miner: parsed?.miner ?? null,
     validator: parsed?.validator ?? null,
+    unscoped: parsed?.unscoped ?? null,
   };
 }
 
@@ -343,18 +375,20 @@ export async function persistComputeDeclaration(
   // this makes true at the source rather than relying on the write to bounce.
   const miner = record.found ? record.miner : null;
   const validator = record.found ? record.validator : null;
+  const unscoped = record.found ? record.unscoped : null;
   await db.run(
     `INSERT INTO compute_declarations
        (netuid, source_url, read_at_sha, observed_at, first_seen, found,
-        spec_version, miner, validator)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        spec_version, miner, validator, unscoped)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (netuid, source_url) DO UPDATE SET
        read_at_sha = EXCLUDED.read_at_sha,
        observed_at = EXCLUDED.observed_at,
        found = EXCLUDED.found,
        spec_version = EXCLUDED.spec_version,
        miner = EXCLUDED.miner,
-       validator = EXCLUDED.validator`,
+       validator = EXCLUDED.validator,
+       unscoped = EXCLUDED.unscoped`,
     [
       record.netuid,
       record.source_url,
@@ -365,6 +399,7 @@ export async function persistComputeDeclaration(
       record.spec_version,
       miner === null ? null : JSON.stringify(miner),
       validator === null ? null : JSON.stringify(validator),
+      unscoped === null ? null : JSON.stringify(unscoped),
     ],
   );
   return { ok: true };

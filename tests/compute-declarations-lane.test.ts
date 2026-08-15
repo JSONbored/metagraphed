@@ -256,7 +256,57 @@ describe("resolveReadSha", () => {
   });
 });
 
+/** SN29 coldint, verbatim. A FLAT `compute_spec` -- the shape two of the 18
+ * registered surfaces actually publish, and the one 0029 had no column for. */
+const FLAT_YML = `version: '1.0'
+
+compute_spec:
+  cpu:
+    min_cores: 4
+    min_speed: 2.5GHz
+  gpu:
+    required: true
+    min_vram: 24GB
+  memory:
+    min_ram: 32GB
+
+network:
+  bandwidth:
+    download: ">=100Mbps"
+`;
+
 describe("parseComputeSpec", () => {
+  // A DECLARATION THAT NAMES NO ROLE. SN29 (coldint) and SN108 (talkhead)
+  // publish this shape, both asking for a GPU. Before #11282 it parsed to
+  // `found: true` with nothing in either stanza, the write failed
+  // `compute_declarations_finding_needs_a_stanza`, and the message dead-lettered
+  // on every pass since 2026-08-13 -- neither subnet has ever had a row.
+  test("a role-less compute_spec is preserved whole, not discarded", () => {
+    const parsed = parseComputeSpec(FLAT_YML);
+    assert.equal(parsed?.miner, null);
+    assert.equal(parsed?.validator, null);
+    assert.equal(parsed?.spec_version, "1.0");
+    // The requirements survive, raw, including the GPU ask that was being lost.
+    assert.deepEqual((parsed?.unscoped as Record<string, unknown>)?.gpu, {
+      required: true,
+      min_vram: "24GB",
+    });
+    // `network:` is a sibling of `compute_spec`, not part of it.
+    assert.equal(
+      (parsed?.unscoped as Record<string, unknown>)?.network,
+      undefined,
+    );
+  });
+
+  test("a role-SPLIT spec leaves unscoped null", () => {
+    // Only when NEITHER role is present. A file that splits by role has said
+    // where its requirements apply; sweeping the rest of the node into
+    // `unscoped` would invent a third declaration the document never made.
+    const parsed = parseComputeSpec(TEMPLAR_YML);
+    assert.ok(parsed?.miner);
+    assert.equal(parsed?.unscoped, null);
+  });
+
   test("takes the two stanzas raw, and the file's own version", () => {
     const parsed = parseComputeSpec(TEMPLAR_YML);
     assert.equal(parsed?.spec_version, "0.3.6");
@@ -403,6 +453,54 @@ describe("persistComputeDeclaration", () => {
     assert.equal(typeof call.params[7], "string");
   });
 
+  test("a role-less declaration reaches the INSERT instead of being refused", async () => {
+    // The end of the failure: `found: true` with no role stanza used to violate
+    // `compute_declarations_finding_needs_a_stanza`, so the write threw and the
+    // message retried until it dead-lettered. The row now carries the spec.
+    const store = db();
+    const record = await readComputeDeclaration(
+      { netuid: 29, source_url: RAW },
+      okDeps({ [RAW]: () => new Response(FLAT_YML) }),
+    );
+    assert.ok(record);
+    assert.equal(record.found, true, "a parseable spec was read");
+    assert.equal(record.miner, null);
+    assert.equal(record.validator, null);
+    assert.ok(record.unscoped, "and its requirements are carried");
+    assert.deepEqual(await persistComputeDeclaration(store, record), {
+      ok: true,
+    });
+    const [call] = store.calls;
+    assert.match(call.sql, /unscoped/);
+    assert.match(call.sql, /unscoped = EXCLUDED\.unscoped/);
+    // JSON text, like the other two stanzas; the column is JSONB.
+    const unscoped = call.params[9];
+    assert.equal(typeof unscoped, "string");
+    assert.deepEqual(
+      (JSON.parse(String(unscoped)) as Record<string, unknown>).gpu,
+      { required: true, min_vram: "24GB" },
+    );
+  });
+
+  test("a found:false row still carries no stanza at all", async () => {
+    // The other half of the widened constraint: `unscoped` is nulled with the
+    // rest when nothing was found, so a non-finding cannot smuggle one in.
+    const store = db();
+    await persistComputeDeclaration(store, {
+      netuid: 9,
+      source_url: RAW,
+      read_at_sha: "a".repeat(40),
+      observed_at: 1_786_320_000_000,
+      found: false,
+      spec_version: null,
+      miner: { cpu: {} },
+      validator: { cpu: {} },
+      unscoped: { cpu: {} },
+    });
+    const [call] = store.calls;
+    assert.deepEqual(call.params.slice(7), [null, null, null]);
+  });
+
   test("a found:false row carries no stanza, whatever it was handed", async () => {
     // The CHECK constraint refuses this at the database. Making it true at the
     // source means the write never has to bounce to be correct.
@@ -416,6 +514,7 @@ describe("persistComputeDeclaration", () => {
       spec_version: null,
       miner: { cpu: {} },
       validator: { cpu: {} },
+      unscoped: null,
     });
     assert.equal(store.calls[0].params[7], null);
     assert.equal(store.calls[0].params[8], null);
@@ -432,6 +531,7 @@ describe("persistComputeDeclaration", () => {
         spec_version: null,
         miner: {},
         validator: null,
+        unscoped: null,
       }),
       // NAMED, not a bare false. The reason rides out to the retry report, so
       // "this lane is retrying" and "this lane has no store bound" stop

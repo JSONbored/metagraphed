@@ -4,11 +4,22 @@
 // ## WHY THIS PUBLISHES NO COST PER DAY
 //
 // The original framing crossed the registered `min_compute` declarations with a
-// GPU rental feed to produce a cost/day per subnet. Fetching all 17 declarations
-// (2026-08-13) killed it: ONE subnet declares `required: True`. Seven declare
-// `required: False`, eight carry no parseable GPU stanza, one 404s. Two rows of
-// that issue's own worked table priced an A100 for subnets that do not ask for
-// one.
+// GPU rental feed to produce a cost/day per subnet. Reading all 18 registered
+// declarations killed it. Re-counted 2026-08-15, once the `unscoped` stanza
+// admitted the two flat specs the CHECK had rejected since 2026-08-13:
+//
+//   5  declare `required: True`      SN3, SN29, SN63, SN81, SN108
+//   6  declare `required: False`     SN43, SN48, SN65, SN98, SN101, SN124
+//   1  declares INCONSISTENTLY       SN83 -- `required: False` beside 8GB VRAM
+//   3  carry no GPU stanza at all    SN16, SN69, SN93
+//   2  carry no parseable spec       SN44, SN59
+//   1  404s                          SN103 (Djinn), which the prober owns
+//
+// Two rows of that issue's own worked table priced an A100 for subnets that do
+// not ask for one. Five of eighteen is a larger minority than the ONE this
+// comment claimed while those two rows were missing -- and it is still a
+// minority, so the conclusion below is unchanged and now rests on a count that
+// includes every declaration rather than the ones that happened to persist.
 //
 // So this card answers the question that the data can support -- what is
 // DECLARED, and what is EXACTLY CHARGED -- and stops. Hardware pricing is
@@ -30,7 +41,7 @@
 //
 // ## THE FOURTH STATE IS `null`, AND IT IS THE COMMON ONE
 //
-// 111 of 128 subnets register no min_compute surface. They publish null
+// 111 of 129 subnets register no min_compute surface. They publish null
 // throughout -- distinguishable from a subnet read with no GPU stanza, and from
 // one that declares it needs no GPU. A CPU-only subnet reports NO GPU COST
 // rather than a zero, because those are different claims (requirement 2).
