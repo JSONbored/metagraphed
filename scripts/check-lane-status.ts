@@ -156,12 +156,26 @@ export const EXPECTED_LANES: Readonly<Record<string, LaneRule>> = {
  * outage that is already tracked, and the sweep reports a lane that LEAVES this
  * set so the baseline has to shrink. A baseline that is only ever added to
  * becomes a way of not looking.
+ *
+ * EMPTY, AND THE ONE ENTRY IT HELD IS WHY THAT MATTERS. `account-summary-status`
+ * sat here from 2026-08-14, and `regressions` filters this map out before the
+ * webhook fires -- so the lane died on every pass for a day and nothing could
+ * report it. The two-day pre-warning the reader's trust bound buys was spent
+ * on silence.
+ *
+ * Worse, the entry named its own remedy wrongly: it said metagraphed-infra#570
+ * would move the lane to "its own sized container class", and that could never
+ * have worked -- `standard-4` is the largest named type, so a new class
+ * inherits the same 12,221 MB ceiling. Anyone reading the baseline to decide
+ * whether to worry was told a fix was coming that could not fix it.
+ *
+ * The lane was fixed for real in metagraphed-infra#584 (fold days forward
+ * rather than rebuild 455M rows) plus #585/#586/#587, and now completes at
+ * 2,156 MB against that ceiling. An entry here should record an outage that is
+ * genuinely tracked AND genuinely remediable, and should be deleted the day it
+ * stops being either.
  */
-export const KNOWN_STALE: Readonly<Record<string, string>> = {
-  "account-summary-status.json":
-    "SIGKILLed inside window 20 of 21 on every pass since 2026-08-14 15:07Z; " +
-    "metagraphed-infra#570 moves it to its own sized container class",
-};
+export const KNOWN_STALE: Readonly<Record<string, string>> = {};
 
 export interface LaneReading {
   lane: string;
