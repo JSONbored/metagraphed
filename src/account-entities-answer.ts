@@ -39,6 +39,10 @@ import { readArtifact } from "../workers/storage.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { ArtifactEnv } from "../workers/storage.ts";
+import {
+  AccountEntitiesReadSchema,
+  type AccountEntitiesRead,
+} from "../schemas-src/routes/account-entities.ts";
 
 /** One env, forwarded to both legs: the Neon store and the lakehouse. */
 type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
@@ -73,7 +77,7 @@ export async function answerAccountEntities(
     coldTier = loadAccountEntitiesColdTier,
     owners = () => readSubnetOwners(env),
   }: AnswerAccountEntitiesOptions = {},
-): Promise<Row> {
+): Promise<AccountEntitiesRead> {
   // CURRENT OWNERSHIP IS RESOLVED HERE, not per tier (#9313).
   //
   // The transfer stream can only answer who has TRADED a subnet, and exactly
@@ -92,10 +96,24 @@ export async function answerAccountEntities(
   // had access to.
   if (answered) return withOwnedTies(answered, coldkey, ownerSnapshot);
 
-  return buildAccountEntities(coldkey, {
-    entities: [],
-    owners: ownerSnapshot,
-  }) as unknown as Row;
+  return (
+    entities(
+      buildAccountEntities(coldkey, { entities: [], owners: ownerSnapshot }),
+    ) ?? {
+      schema_version: 1,
+      ss58: coldkey,
+      labels: [],
+      ownership_tie_count: 0,
+      ownership_ties: [],
+      owners_observed_at: null,
+    }
+  );
+}
+
+/** A tier's answer, parsed into the payload it claims to be -- or null. */
+function entities(value: unknown): AccountEntitiesRead | null {
+  const parsed = AccountEntitiesReadSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 /**

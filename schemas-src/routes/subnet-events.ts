@@ -68,4 +68,24 @@ export const SubnetEventsArtifactSchema = z
   .describe(
     "One subnet's paginated first-party chain-event feed (#7172), newest first, offset-paginated. event_count is the page count, not a grand total. Each item is an AccountEvent. Empty feed on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/events' data envelope.",
   );
+/**
+ * The same feed as a READ path must take it.
+ *
+ * Partial + catchall at both levels, the contract every lakehouse row schema
+ * carries and the one the identity timelines took for the same reason: this
+ * feed is assembled from tiers, and rejecting a tier's whole answer over one
+ * absent key would fall through to the empty builder and publish "this subnet
+ * has no events". The strict schema above stays the RESPONSE contract, where
+ * an undeclared key is real drift (#11339).
+ *
+ * What survives is the half that catches a defect: the TYPE of any declared
+ * key that IS present.
+ */
+export const SubnetEventsReadSchema = SubnetEventsArtifactSchema.extend({
+  events: z.array(AccountEventSchema.partial().catchall(z.unknown())),
+})
+  .partial()
+  .catchall(z.unknown());
+export type SubnetEventsRead = z.infer<typeof SubnetEventsReadSchema>;
+
 export type SubnetEventsArtifact = z.infer<typeof SubnetEventsArtifactSchema>;

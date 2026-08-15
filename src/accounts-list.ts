@@ -42,6 +42,7 @@ import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "./route-limits.ts";
+import { recordOrNull } from "./read-store.ts";
 export { ACCOUNTS_LIST_LIMIT_DEFAULT, ACCOUNTS_LIST_LIMIT_MAX };
 export const ACCOUNTS_LIST_SORTS = [
   "total_stake",
@@ -203,7 +204,7 @@ const ACCOUNTS_LIST_SORT_FIELDS: Record<string, string> = {
 
 function accountSortValue(row: AccountsListEntry, key: string): number {
   const field = ACCOUNTS_LIST_SORT_FIELDS[key] ?? key;
-  const value = (row as unknown as Record<string, unknown>)[field];
+  const value = recordOrNull(row)?.[field];
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : Number.NEGATIVE_INFINITY;

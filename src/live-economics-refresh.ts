@@ -467,7 +467,7 @@ export async function refreshLiveEconomics(
   if (typeof deps.readArtifact !== "function") {
     return { ok: false, reason: "reader_unavailable" };
   }
-  const kv = env.METAGRAPH_CONTROL as unknown as KvLike | undefined;
+  const kv: KvLike | undefined = env.METAGRAPH_CONTROL;
   if (!kv?.put) return { ok: false, reason: "kv_binding_missing" };
   // Whichever store holds the metagraph (#10158). This publishes the
   // live-economics KV blob from a full neuron aggregate plus the alpha price
