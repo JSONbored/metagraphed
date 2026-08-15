@@ -837,6 +837,7 @@ export type ComputeDeclarationsRow = {
   spec_version: string | null;
   miner: string | null;
   validator: string | null;
+  unscoped: string | null;
 };
 
 /** `chain.compute_declarations` columns, in field-id order. */
@@ -850,6 +851,7 @@ export const COMPUTE_DECLARATIONS_COLUMNS = [
   "spec_version",
   "miner",
   "validator",
+  "unscoped",
 ] as const;
 
 /** `chain.emission_flow_watch` */

@@ -262,6 +262,7 @@ export interface ComputeDeclarations {
   read_at_sha: string;
   source_url: string;
   spec_version: string | null;
+  unscoped: unknown | null;
   validator: unknown | null;
 }
 

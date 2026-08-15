@@ -62,6 +62,11 @@ const MIGRATIONS = [
   // #10932: same argument for the compute declarations -- the extractor writes
   // from a private lane, so its CHECK constraints are the only enforcement.
   "migrations/neon/0029_compute_declarations.sql",
+  // #11282: and the migration that widened those CHECKs for a declaration
+  // naming no role. Applied here because this file exists to run the REAL DDL
+  // -- omitting it would test the extractor against a schema production no
+  // longer has, which is the failure mode the hand-curated fixture set had.
+  "migrations/neon/0030_compute_declarations_unscoped.sql",
 ]
   .map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"))
   // #11095: the emission-split USD legs read tao_usd_index, whose home
@@ -1789,6 +1794,7 @@ test("the lane's own write survives the real DDL and reaches the card", async ()
       gpu: { required: false, min_vram: 8, recommended_gpu: "NVIDIA A100" },
     },
     validator: null,
+    unscoped: null,
   };
   await persistComputeDeclaration(
     { run: (sql: string, params: unknown[]) => seed(sql, params) },
