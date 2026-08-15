@@ -140,6 +140,67 @@ export const FLUSH_LIST_LIMIT = 500;
  */
 export const FLUSH_BACKLOG_RETRY_MS = 10_000;
 
+/**
+ * Postgres SQLSTATEs that mean "retry this exact statement", and nothing else
+ * (#11357).
+ *
+ * These two are the only classes the server itself declares retriable: it
+ * chooses one transaction as the victim, aborts ONLY that one, and leaves the
+ * connection healthy. Every other failure the drain can see -- a broken socket,
+ * a constraint violation, a syntax error -- is either fatal to the connection
+ * or fatal to the row, and retrying it is a wasted round trip.
+ *
+ *   40P01  deadlock_detected
+ *   40001  serialization_failure
+ *
+ * The distinction matters because the drain's stop-on-first-failure rule is
+ * built on "a failure here is nearly always the connection rather than the
+ * row". That is true, except for these -- and treating a deadlock as a
+ * connection fault turns ONE retriable row into a head-of-line block on the
+ * whole buffer. Measured 2026-08-15: a 93-second deadlock stalled four
+ * consecutive flushes, which drained 491, 1, 0 and 93 statements while
+ * re-attempting the same poisoned statement first every time.
+ */
+const RETRIABLE_SQLSTATES = new Set(["40P01", "40001"]);
+
+/**
+ * How long ONE flush may spend retrying, in total.
+ *
+ * A BUDGET FOR THE WHOLE DRAIN, not per statement, and that is the whole
+ * design. This runs inside a Durable Object alarm that drains up to
+ * FLUSH_LIST_LIMIT statements; a per-statement allowance of even two short
+ * retries is 500 x 2 x delay in the worst case, which spends the alarm on
+ * waiting rather than writing. One shared budget makes the worst case the
+ * budget itself.
+ *
+ * 1.5 SECONDS, sized against what a deadlock actually costs: Postgres aborts
+ * the victim as soon as its detector runs (`deadlock_timeout`, 1s by default,
+ * and the loser is already dead when the error arrives), so a retry usually
+ * succeeds immediately. The budget is there for the case where it does not --
+ * and when it runs out the drain stops exactly as it does today, which is a
+ * behaviour this change never removes.
+ */
+export const FLUSH_RETRY_BUDGET_MS = 1_500;
+
+/** Backoffs between retries of one statement, in order. Two attempts, because
+ * a third inside one alarm is worth less than coming back on the next: the
+ * first covers "the victim was already aborted", the second covers "the winner
+ * had not committed yet". */
+const RETRY_BACKOFF_MS = [50, 250];
+
+/**
+ * Whether an error is one Postgres told us to retry.
+ *
+ * Reads `code` off the error, which is where node-postgres puts the SQLSTATE.
+ * A TYPE TEST rather than a cast: the drain catches `unknown`, and a thrown
+ * string or a plain object must answer `false` here rather than crash the
+ * handler that exists to keep the buffer draining.
+ */
+export function isRetriableWriteError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "string" && RETRIABLE_SQLSTATES.has(code);
+}
+
 /** The storage surface this hub uses, narrowed so a test can supply a fake. */
 export interface BufferStorage {
   get<T>(key: string): Promise<T | undefined>;
@@ -234,11 +295,17 @@ export async function flushBuffer(
     sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
     now?: () => number;
     captureException?: typeof recordExceptionEvent;
+    /** The retry backoff, injectable so a test exercises the retry path
+     * without spending its budget in real time. Defaults to a real wait. */
+    sleep?: (ms: number) => Promise<void>;
   } = {},
 ): Promise<FlushOutcome> {
   const now = deps.now ?? Date.now;
   const laneDb = deps.laneHealthDb ?? laneHealthStore(env);
   const capture = deps.captureException ?? recordExceptionEvent;
+  const sleep =
+    deps.sleep ??
+    ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const stored = await storage.list<Uint8Array>({
     prefix: STATEMENT_PREFIX,
     limit: FLUSH_LIST_LIMIT,
@@ -300,6 +367,9 @@ export async function flushBuffer(
   const perLane = new Map<string, { ok: number; failed: number }>();
   let undecodable = 0;
   let drained = 0;
+  // Shared across every statement in this flush -- see FLUSH_RETRY_BUDGET_MS.
+  let retrySpentMs = 0;
+  let retriedStatements = 0;
   for (const group of groups) {
     const parts = group.keys.map((key) => stored.get(key) ?? new Uint8Array(0));
     const statement = decodeStatement(joinPayload(parts));
@@ -322,7 +392,30 @@ export async function flushBuffer(
     }
     const tally = perLane.get(statement.lane) ?? { ok: 0, failed: 0 };
     try {
-      await sql.unsafe(statement.text, statement.values);
+      // RETRIED IN PLACE, never skipped: order is the reason the drain stops on
+      // a failure at all, and replaying a backlog out of order is the one thing
+      // worse than replaying it late. Only the SQLSTATEs Postgres declares
+      // retriable are retried, and only while the flush's shared budget lasts
+      // -- everything else, including a budget that has run out, falls through
+      // to the stop below exactly as before (#11357).
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          await sql.unsafe(statement.text, statement.values);
+          break;
+        } catch (error) {
+          const backoff = RETRY_BACKOFF_MS[attempt];
+          if (
+            backoff === undefined ||
+            !isRetriableWriteError(error) ||
+            retrySpentMs + backoff > FLUSH_RETRY_BUDGET_MS
+          ) {
+            throw error;
+          }
+          retrySpentMs += backoff;
+          retriedStatements += 1;
+          await sleep(backoff);
+        }
+      }
       tally.ok += 1;
       drained += 1;
       drainedKeys.push(...group.keys);
@@ -354,7 +447,14 @@ export async function flushBuffer(
         lane: BUFFER_FLUSH_LANE,
         verdict: "stale",
         age_ms: null,
-        detail: `drained ${drained}, stopped on ${statement.lane}: ${reason}`,
+        detail:
+          `drained ${drained}, stopped on ${statement.lane}: ${reason}` +
+          // Says whether the budget was spent before giving up, so "stopped on
+          // a deadlock" is distinguishable from "stopped on a deadlock after
+          // trying twice" -- different repairs.
+          (retriedStatements > 0
+            ? ` (after ${retriedStatements} retr${retriedStatements === 1 ? "y" : "ies"})`
+            : ""),
         checked_at: now(),
       });
       // Stopped mid-backlog: everything from here on is still stored.
@@ -392,8 +492,16 @@ export async function flushBuffer(
     lane: BUFFER_FLUSH_LANE,
     verdict: "ok",
     age_ms: null,
+    // A RETRY THAT SUCCEEDED IS STILL NEWS. Recovering silently would make the
+    // deadlock frequency this change exists to survive invisible -- and that
+    // number is what says whether the write pattern needs fixing rather than
+    // retrying (#11357).
     detail: `drained ${drained} statement(s)${
       undecodable > 0 ? `, discarded ${undecodable} unreadable` : ""
+    }${
+      retriedStatements > 0
+        ? `, retried ${retriedStatements} after a retriable conflict`
+        : ""
     }`,
     checked_at: now(),
   });
