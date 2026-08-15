@@ -3,7 +3,7 @@ title: Subnets
 description: Every Subnets endpoint in the metagraphed API, with its method and path.
 ---
 
-69 endpoints.
+70 endpoints.
 
 - [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`  
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
@@ -37,6 +37,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e.
 - [Subnet Cost To Participate](/docs/api-reference/subnets/subnet-cost-to-participate) — `GET /api/v1/subnets/{netuid}/cost-to-participate`  
   Read what one subnet says it takes to participate there, beside what the chain exactly charges to enter.
+- [Subnet Deregistration Ranking History](/docs/api-reference/subnets/subnet-deregistration-ranking-history) — `GET /api/v1/subnets/{netuid}/deregistration-ranking/history`  
+  Fetch one subnet's deregistration-rank trajectory.
 - [Subnet Deregistrations](/docs/api-reference/subnets/subnet-deregistrations) — `GET /api/v1/subnets/{netuid}/deregistrations`  
   Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, DERIVED from UID reuse in the NeuronRegistered stream (NeuronDeregistered has never been emitted by the runtime).
 - [Subnet Detail](/docs/api-reference/subnets/subnet-detail) — `GET /api/v1/subnets/{netuid}`  

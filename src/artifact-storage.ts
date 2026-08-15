@@ -97,6 +97,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // snapshot rollup -- a baked copy would stop the day it built, on a route
   // whose subject is how the pipeline MOVED.
   /^subnets\/(?:\d+|\{netuid\})\/emission-pipeline\/history\.json$/,
+  // One subnet's deregistration-rank series (#10296), REPLAYED live from the
+  // daily lane's stored inputs. A baked copy would freeze one version of the
+  // pallet rule into the artifact, which is the one thing that lane's
+  // store-the-inputs design exists to prevent.
+  /^subnets\/(?:\d+|\{netuid\})\/deregistration-ranking\/history\.json$/,
   // The emission-gate change log (#9615), read live from three append-on-change
   // store tables -- a baked copy would stop recording the moment it built.
   /^chain\/governance\/emission-changes\.json$/,

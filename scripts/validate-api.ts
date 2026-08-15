@@ -1764,6 +1764,55 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/74/deregistration-ranking/history",
+    (body) => {
+      // #10296. The same honesty contract as the pipeline series above, over a
+      // REPLAYED rank rather than a stored one.
+      if (body.data.degraded) {
+        assert.equal(body.data.point_count, null);
+        assert.equal(body.data.distinct_observations, null);
+        return;
+      }
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(body.data.point_count, body.data.points.length);
+      assert.equal(typeof body.data.first_captured_day, "string");
+      assert.equal(
+        body.data.distinct_observations <= body.data.point_count,
+        true,
+      );
+      let previousBlock: number | null = null;
+      let distinct = 0;
+      for (const p of body.data.points as Array<{
+        day: string;
+        pinned_block: number;
+        repeats_previous_observation: boolean;
+        rank: number | null;
+        immune: boolean;
+        ranked_count: number;
+      }>) {
+        assert.equal(Number.isInteger(p.pinned_block), true);
+        // THE INVARIANT THIS ROUTE LIVES OR DIES ON: an immune subnet holds no
+        // position in the prunable order, and a prunable one always holds a
+        // position inside the field it was ranked against. A rank on an immune
+        // day is a standing the pallet never granted.
+        if (p.immune) assert.equal(p.rank, null);
+        else {
+          assert.equal(Number.isInteger(p.rank), true);
+          assert.equal((p.rank as number) >= 1, true);
+          assert.equal((p.rank as number) <= p.ranked_count, true);
+        }
+        const repeats: boolean =
+          previousBlock !== null && p.pinned_block === previousBlock;
+        assert.equal(p.repeats_previous_observation, repeats);
+        if (!repeats) distinct += 1;
+        previousBlock = p.pinned_block;
+      }
+      assert.equal(body.data.distinct_observations, distinct);
+      const days = body.data.points.map((p: { day: string }) => p.day);
+      assert.deepEqual(days, [...days].sort());
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either

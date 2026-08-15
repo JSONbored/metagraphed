@@ -76,6 +76,7 @@ import { SubnetOwnershipHistory } from "@/components/metagraphed/subnet-ownershi
 import { SubnetLeasePanel } from "@/components/metagraphed/subnet-lease-panel";
 import { SubnetLifecyclePanel } from "@/components/metagraphed/subnet-lifecycle-panel";
 import { SubnetValidatorEconomicsPanel } from "@/components/metagraphed/subnet-validator-economics-panel";
+import { SubnetDeregistrationHistoryPanel } from "@/components/metagraphed/subnet-deregistration-history";
 import { SubnetEmissionPipelineHistoryPanel } from "@/components/metagraphed/subnet-emission-pipeline-history";
 import { SubnetSurfaceHistoryPanel } from "@/components/metagraphed/subnet-surface-history";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
@@ -745,10 +746,14 @@ function GovernancePanel({ netuid }: { netuid: number }) {
         id="lifecycle"
         title="Lifecycle & deregistration standing"
         subtitle="When this subnet registered, and where it sits in the order the chain would prune."
-        info="GET /api/v1/subnets/{netuid}/lifecycle and /api/v1/chain/deregistration-ranking — an append-only registration/deregistration log (a transition older than capture carries a NULL block and says so, rather than reading as block 0), beside the pallet's own pruning order. That order is NOT a price sort: immunity excludes a subnet entirely, and a Stable-mechanism subnet is compared at a flat 1.0 rather than its moving price."
+        info="GET /api/v1/subnets/{netuid}/lifecycle, /api/v1/chain/deregistration-ranking and /api/v1/subnets/{netuid}/deregistration-ranking/history — an append-only registration/deregistration log (a transition older than capture carries a NULL block and says so, rather than reading as block 0), the pallet's own pruning order, and how this subnet's position in it has MOVED. That order is NOT a price sort: immunity excludes a subnet entirely, and a Stable-mechanism subnet is compared at a flat 1.0 rather than its moving price. The trajectory is replayed from stored inputs rather than from a stored rank, so a correction to the rule reaches the whole series."
       >
         <QueryErrorBoundary>
           <SubnetLifecyclePanel netuid={netuid} />
+          {/* #10296: the standing above is one day. This is its DIRECTION,
+              which is the part an owner can act on -- "rank 94" says almost
+              nothing, "94, was 71 a month ago" says a great deal. */}
+          <SubnetDeregistrationHistoryPanel netuid={netuid} />
           {/* #10300: validator-economics and its history were published and
               rendered nowhere. */}
           <SubnetValidatorEconomicsPanel netuid={netuid} />

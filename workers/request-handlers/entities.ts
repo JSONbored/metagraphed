@@ -89,6 +89,11 @@ import {
 } from "../../src/metagraph-neurons.ts";
 import { buildAccountsList } from "../../src/accounts-list.ts";
 import { buildTopHoldersList } from "../../src/top-holders.ts";
+import {
+  buildDeregistrationHistory,
+  declineDeregistrationHistory,
+  loadDeregistrationHistory,
+} from "../../src/subnet-deregistration-history.ts";
 import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.ts";
 import {
@@ -510,6 +515,7 @@ import {
   INDEXER_LAG_TABLES,
   SUBNET_BURN_HISTORY_TABLES,
   REVENUE_OBSERVATION_TABLES,
+  SUBNET_DEREGISTRATION_DAILY_TABLES,
   SUBNET_SNAPSHOT_TABLES,
   SURFACE_HISTORY_TABLES,
   TAO_USD_TABLES,
@@ -6418,6 +6424,43 @@ export async function handleSubnetPipelineHistory(
     rows === null
       ? declinePipelineHistory("unavailable", netuid, { window })
       : buildPipelineHistory(rows, netuid, { window });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/deregistration-ranking/history (#10296): one
+// subnet's trajectory toward or away from the pruning bar.
+// /chain/deregistration-ranking answers one block; this answers the series --
+// and REPLAYS the pallet rule over stored inputs rather than reading a stored
+// rank, so a later correction to that rule reaches the whole history.
+export async function handleSubnetDeregistrationHistory(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  const validationError = validateResponseFormat(url);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const window = routeValue<string>(url, "window");
+  // NOT filtered to `netuid`: rank is relative and does not exist in one
+  // subnet's row, so each day is loaded whole and narrowed in the builder.
+  const rows = await loadDeregistrationHistory(
+    readStore(
+      env,
+      SUBNET_DEREGISTRATION_DAILY_TABLES,
+    ) as never as unknown as Parameters<typeof loadDeregistrationHistory>[0],
+    { window },
+  );
+  // An empty series is a MEASUREMENT -- a subnet registered after the lane
+  // began returns one legitimately -- so only a failed read declines.
+  const data =
+    rows === null
+      ? declineDeregistrationHistory("unavailable", netuid, { window })
+      : buildDeregistrationHistory(rows, netuid, { window });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

@@ -292,6 +292,32 @@ export const PIPELINE_HISTORY_WINDOWS = Object.keys(
 export const DEFAULT_PIPELINE_HISTORY_WINDOW = "30d";
 
 /**
+ * `/api/v1/subnets/{netuid}/deregistration-ranking/history` -- one subnet's
+ * trajectory toward or away from the pruning bar (#10296).
+ *
+ * The same four windows as the pipeline series above, for the same reason: the
+ * source is a DAILY lane, so a free day count would imply a resolution it does
+ * not have. 30d is the default with six days written, because the payload
+ * reports the depth it FOUND and publishes `first_captured_day` beside it.
+ *
+ * 180d is the widest deliberately. Each day here is EVERY subnet's row -- rank
+ * is relative, so a one-subnet series ranks the whole field per day -- which is
+ * ~129 rows a day against the pipeline series' one. 180 days is ~23,000 rows on
+ * the `(snapshot_date, netuid)` index; a year would be ~47,000 for a question
+ * nobody has asked, and the series is not that deep yet either way.
+ */
+export const DEREGISTRATION_HISTORY_WINDOW_DAYS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+  "180d": 180,
+};
+export const DEREGISTRATION_HISTORY_WINDOWS = Object.keys(
+  DEREGISTRATION_HISTORY_WINDOW_DAYS,
+);
+export const DEFAULT_DEREGISTRATION_HISTORY_WINDOW = "30d";
+
+/**
  * `list_candidates` (MCP) -- the network-wide candidate-surface catalog.
  *
  * The DEFAULT that used to live here is MCP_LIST_LIMIT_DEFAULT below now: the

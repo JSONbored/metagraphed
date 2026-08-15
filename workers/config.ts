@@ -825,6 +825,11 @@ export const SUBNET_SURFACE_HISTORY_PATH_PATTERN =
  * was captured at. */
 export const SUBNET_PIPELINE_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/emission-pipeline\/history$/;
+/** GET /api/v1/subnets/{netuid}/deregistration-ranking/history (#10296) -- one
+ * subnet's trajectory toward or away from the pruning bar, replayed from the
+ * daily lane's stored inputs rather than from a stored rank. */
+export const SUBNET_DEREGISTRATION_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/deregistration-ranking\/history$/;
 
 export const SUBNET_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/history$/;

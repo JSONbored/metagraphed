@@ -18,6 +18,7 @@
     "subnet-concentration-history",
     "subnet-conviction",
     "subnet-cost-to-participate",
+    "subnet-deregistration-ranking-history",
     "subnet-deregistrations",
     "subnet-detail",
     "subnet-detail-by-network",

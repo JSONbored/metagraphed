@@ -167,6 +167,14 @@ export const CHAIN_CONCENTRATION_HISTORY_TABLES = [
  * lane, not the table: its value is "subnet_snapshots". */
 export const SUBNET_SNAPSHOT_TABLES = ["subnet_snapshots"] as const;
 
+/** loadDeregistrationHistory -- the daily lane's own table and nothing else
+ * (#10296). The rank is REPLAYED from these rows in the builder rather than
+ * joined to anything, which is why a series over the whole field still reads
+ * one table. */
+export const SUBNET_DEREGISTRATION_DAILY_TABLES = [
+  "subnet_deregistration_daily",
+] as const;
+
 /** loadSubnetHealthTrends, loadSubnetPercentiles, loadSubnetIncidents,
  *  loadGlobalIncidents -- all four read the per-probe check log. */
 export const HEALTH_CHECK_TABLES = ["surface_checks"] as const;
