@@ -4,6 +4,7 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { RoutePending } from "@/components/metagraphed/primitives";
 import { ProvidersPage } from "./-providers-index-page";
+import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 export const providerSortKeys = ["name", "surfaces", "endpoints", "subnets", "updated"] as const;
 export type ProviderSortKey = (typeof providerSortKeys)[number];
@@ -26,18 +27,7 @@ export const Route = createFileRoute("/apis/providers")({
   validateSearch: zodValidator(providersSearchSchema),
   search: { middlewares: [stripDefaultSearchParams(providersSearchSchema)] },
   head: () => ({
-    meta: [
-      { title: "Providers — Metagraphed" },
-      {
-        name: "description",
-        content: "Subnet teams, infrastructure providers, docs registries, and resource sources.",
-      },
-      { property: "og:title", content: "Providers — Metagraphed" },
-      {
-        property: "og:description",
-        content: "Subnet teams, infrastructure providers, docs registries, and resource sources.",
-      },
-    ],
+    meta: hubMeta("/apis/providers"),
   }),
   pendingComponent: () => <RoutePending panels={3} />,
   component: ProvidersPage,
