@@ -35,7 +35,6 @@ export const GithubIssueSchema = z.object({
   title: z.string().nullish(),
   pull_request: z.unknown().optional(),
 });
-export type GithubIssue = z.infer<typeof GithubIssueSchema>;
 
 /**
  * `GET /repos/{repo}/issues?state=open` — the list, which must be a LIST.

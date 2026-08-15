@@ -49,7 +49,6 @@ const SessionIdSchema = z.string().min(1);
 export const HubSessionIdBodySchema = z.object({
   sessionId: SessionIdSchema.nullable(),
 });
-export type HubSessionIdBody = z.infer<typeof HubSessionIdBodySchema>;
 
 /**
  * The same body where null is NOT a valid answer.
@@ -63,22 +62,17 @@ export type HubSessionIdBody = z.infer<typeof HubSessionIdBodySchema>;
 export const HubRequiredSessionIdBodySchema = HubSessionIdBodySchema.extend({
   sessionId: SessionIdSchema,
 });
-export type HubRequiredSessionIdBody = z.infer<
-  typeof HubRequiredSessionIdBodySchema
->;
 
 /** `POST /subscribe` and `/unsubscribe` on McpSessionHub. */
 export const HubSessionUriBodySchema = z.object({
   sessionId: SessionIdSchema,
   uri: z.string().min(1),
 });
-export type HubSessionUriBody = z.infer<typeof HubSessionUriBodySchema>;
 
 /** `POST /notify` — a resource changed; the hub coalesces and replays it. */
 export const HubNotifyBodySchema = z.object({
   uri: z.string().min(1),
 });
-export type HubNotifyBody = z.infer<typeof HubNotifyBodySchema>;
 
 /**
  * SubnetStatusHub's `/mcp-subscribe` and `/mcp-unsubscribe`.
@@ -98,7 +92,6 @@ export const HubSubnetSessionBodySchema = z.object({
   sessionId: SessionIdSchema,
   netuid: z.union([HubNetuidSchema, z.string().min(1)]),
 });
-export type HubSubnetSessionBody = z.infer<typeof HubSubnetSessionBodySchema>;
 
 /**
  * SubnetStatusHub's `/notify-changed`, from the health prober.
@@ -112,7 +105,6 @@ export type HubSubnetSessionBody = z.infer<typeof HubSubnetSessionBodySchema>;
 export const HubNotifyChangedBodySchema = z.object({
   netuids: z.array(z.unknown()),
 });
-export type HubNotifyChangedBody = z.infer<typeof HubNotifyChangedBodySchema>;
 
 /**
  * A browser PushSubscription's server-relevant fields.
@@ -132,7 +124,7 @@ export type HubNotifyChangedBody = z.infer<typeof HubNotifyChangedBodySchema>;
  * error message, which is where a malformed subscription should be refused;
  * re-deriving that rule here would be a second owner for it.
  */
-export const PushSubscriptionKeysSchema = z.object({
+const PushSubscriptionKeysSchema = z.object({
   /** The push service URL the browser handed us. Origin identifies the service. */
   endpoint: z.string().min(1),
   /** UA public key, P-256 uncompressed point (65 bytes), base64url. */
@@ -217,7 +209,7 @@ export const ColdTierAnswerSchema = z.object({
  * is eligible right now". One of those is an outage; the other is Tuesday.
  * An EMPTY list still parses, because that genuinely is the second case.
  */
-export const WssPoolEndpointSchema = z.object({
+const WssPoolEndpointSchema = z.object({
   id: z.string().optional(),
   url: z.unknown().optional(),
   kind: z.string().optional(),
@@ -228,14 +220,14 @@ export const WssPoolEndpointSchema = z.object({
 });
 export type WssPoolEndpoint = z.infer<typeof WssPoolEndpointSchema>;
 
-export const WssPoolSchema = z.object({
+const WssPoolSchema = z.object({
   id: z.string().optional(),
   kind: z.string().optional(),
   endpoints: z.array(WssPoolEndpointSchema).optional(),
 });
 export type WssPool = z.infer<typeof WssPoolSchema>;
 
-export const WssPoolsArtifactSchema = z.object({
+const WssPoolsArtifactSchema = z.object({
   pools: z.array(WssPoolSchema),
 });
 export type WssPoolsArtifact = z.infer<typeof WssPoolsArtifactSchema>;
