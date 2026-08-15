@@ -75,6 +75,7 @@
 // have.
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { recordOrNull } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -134,16 +135,29 @@ export type SdkDispatch = (message: Row) => Promise<Row | null>;
  * conventions are translated, so it is the one place a mistranslation could
  * hide.
  */
-export function unwrapDispatchResponse(response: Row | null): unknown {
-  const error = response?.error as Row | undefined;
+/**
+ * The `result` of a dispatch response, or a throw carrying its `error`.
+ *
+ * Returns a JSON-RPC RESULT rather than `unknown` (#11339). `unknown` is what
+ * forced `unwrapDispatchResponse(...) as never` at the SDK handler below, and
+ * `as never` there also stopped the compiler checking the request object being
+ * built in the same expression.
+ *
+ * The error fields are read through guards rather than asserted: this unwraps
+ * whatever `dispatchMessage` produced, and a malformed error object must not
+ * become a `JsonRpcFailure` carrying `undefined` as its code.
+ */
+export function unwrapDispatchResponse(response: Row | null): Row {
+  const error = recordOrNull(response?.error);
   if (error) {
     throw new JsonRpcFailure(
-      error.code as number,
-      error.message as string,
+      typeof error.code === "number" ? error.code : RPC_INTERNAL_ERROR,
+      typeof error.message === "string" ? error.message : "Internal error.",
       error.data,
     );
   }
-  if (response && "result" in response) return response.result;
+  const result = recordOrNull(response?.result);
+  if (result) return result;
   // Unreachable through dispatchMessage, which answers every request with a
   // result or an error. Not left to fall through as `undefined`: an SDK
   // handler returning undefined publishes `{"result":undefined}`, which
@@ -194,7 +208,7 @@ export async function serveWithSdk(
         method: req.method,
         params: (req as Row).params,
       }),
-    ) as never;
+    );
 
   // Notifications are dispatched for their SIDE EFFECT ONLY -- the protocol
   // usage event dispatchMessage emits in its `finally`. The return value is

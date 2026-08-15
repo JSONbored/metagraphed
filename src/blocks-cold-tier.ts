@@ -48,7 +48,7 @@ import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
 import type { BlocksHead, ChainDetailBlocks } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, recordOrNull } from "./read-store.ts";
 import {
   resolveDecodeWatermark,
   type DecodeWatermarkDeps,
@@ -445,7 +445,7 @@ export async function loadBlockColdTier(
         [value],
       );
       const row = rows[0];
-      if (row) return buildBlock(row as never, ref);
+      if (row) return buildBlock(recordOrNull(row), ref);
     } catch {
       // Fall through to the lakehouse rather than failing the request.
     }
@@ -453,6 +453,6 @@ export async function loadBlockColdTier(
 
   // A height above the seam that D1 did not have is a genuine miss, not a
   // reason to scan the lakehouse for a block it cannot contain.
-  if (aboveSeam) return buildBlock(undefined as never, ref);
+  if (aboveSeam) return buildBlock(undefined, ref);
   return loadBlockFromR2Sql(env, ref, network);
 }

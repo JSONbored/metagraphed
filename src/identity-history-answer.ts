@@ -87,7 +87,7 @@ async function liveStore(
   env: ComposerEnv | null | undefined,
 ): Promise<SqlRunner | null> {
   const db = readStore(env, SUBNET_IDENTITY_HISTORY_TABLES);
-  return db ? (sql, params) => storeAll(db as never, sql, params) : null;
+  return db ? (sql, params) => storeAll(db, sql, params) : null;
 }
 
 type SqlRunner = (

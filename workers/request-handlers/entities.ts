@@ -531,7 +531,12 @@ import {
   VALIDATOR_ECONOMICS_TABLES,
 } from "../../src/read-store-tables.ts";
 import { loadSelfHealthNeon } from "../../src/self-health-neon.ts";
-import { createPgSql } from "../../src/pg-sql.ts";
+import { canWaitUntil, createPgSql } from "../../src/pg-sql.ts";
+import type {
+  HistoryCapRow,
+  HistoryEmissionRow,
+  HistoryRow,
+} from "../../src/validator-economics.ts";
 
 const RESPONSE_FORMATS = ["json", "csv"];
 const NEURON_CSV_COLUMNS = [
@@ -2147,8 +2152,8 @@ export async function handleSelfHealth(
     // the cold tier can only ever answer current_ok:null, and once the probe
     // lane is running there is a current reading to give.
     (await loadSelfHealthNeon(
-      env.HYPERDRIVE && typeof ctx?.waitUntil === "function"
-        ? createPgSql(env.HYPERDRIVE, ctx as never)
+      env.HYPERDRIVE && canWaitUntil(ctx)
+        ? createPgSql(env.HYPERDRIVE, ctx)
         : null,
     )) ??
     // Lakehouse cold tier (src/self-health-cold-tier.ts): the preserved daily
@@ -3999,7 +4004,7 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
     ReadStoreDb | undefined;
 
   const neuronRows = db
-    ? await db.query(
+    ? await db.query<HistoryRow>(
         // `hotkey` is selected only so the owner's unconditional permit can be kept
         // out of the observed floor.
         "SELECT snapshot_date, hotkey, stake_tao, validator_permit, dividends, active " +
@@ -4010,7 +4015,7 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
     : [];
 
   const emissionRows = db
-    ? await db.query(
+    ? await db.query<HistoryEmissionRow>(
         "SELECT snapshot_date, tao_in_emission_tao FROM subnet_snapshots " +
           "WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC",
         [netuid, cutoff],
@@ -4025,7 +4030,7 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   // never happened. Rows before the window still matter — the cap in force on day one is
   // whatever the last change before it set — so this is not bounded by the cutoff.
   const capHistory = db
-    ? await db.query(
+    ? await db.query<HistoryCapRow>(
         "SELECT observed_at, max_validators FROM subnet_hyperparams_history " +
           "WHERE netuid = ? AND max_validators IS NOT NULL ORDER BY observed_at ASC",
         [netuid],
@@ -4039,21 +4044,17 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
       schema_version: 1,
       netuid: Number(netuid),
       window: windowLabel,
-      points: buildValidatorEconomicsHistory(
-        neuronRows as never,
-        emissionRows as never,
-        {
-          maxValidators:
-            economics?.max_validators != null
-              ? Number(economics.max_validators)
-              : null,
-          capHistory: capHistory as never,
-          ownerHotkey:
-            economics?.owner_hotkey != null
-              ? String(economics.owner_hotkey)
-              : null,
-        },
-      ),
+      points: buildValidatorEconomicsHistory(neuronRows, emissionRows, {
+        maxValidators:
+          economics?.max_validators != null
+            ? Number(economics.max_validators)
+            : null,
+        capHistory,
+        ownerHotkey:
+          economics?.owner_hotkey != null
+            ? String(economics.owner_hotkey)
+            : null,
+      }),
       field_sources: VALIDATOR_ECONOMICS_HISTORY_FIELD_SOURCES,
     },
   };
