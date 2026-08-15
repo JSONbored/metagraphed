@@ -13,6 +13,8 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   BUFFER_FLUSH_LANE,
+  FLUSH_RETRY_BUDGET_MS,
+  isRetriableWriteError,
   BUFFER_ROUTE,
   countPending,
   FLUSH_LIST_LIMIT,
@@ -951,5 +953,250 @@ describe("the counter may be absent, and the drain must cope", () => {
     });
     assert.equal(out.ok, false);
     assert.equal(await storage.get("pending"), 0, "clamped, never negative");
+  });
+});
+
+// #11357: a Postgres deadlock is a ROW-level failure -- the server aborts one
+// victim and leaves the connection healthy -- but the drain's stop-on-first-
+// failure rule was built on "a failure here is nearly always the connection".
+// Treating the two the same turned ONE retriable row into a head-of-line block
+// on the whole buffer: measured 2026-08-15, a 93-second deadlock stalled four
+// consecutive flushes, which drained 491, 1, 0 and 93 statements while
+// re-attempting the same poisoned statement first every time.
+describe("a retriable conflict is retried in place, not treated as a stop", () => {
+  /** A pg-shaped error: node-postgres puts the SQLSTATE on `code`. */
+  function pgError(code: string, message = "deadlock detected") {
+    return Object.assign(new Error(message), { code });
+  }
+
+  /** A sql double whose Nth call fails with `error`, then succeeds. */
+  function failingTimes(times: number, error: unknown) {
+    const seen: string[] = [];
+    let failures = 0;
+    return {
+      seen,
+      get attempts() {
+        return seen.length;
+      },
+      sql: {
+        async unsafe(text: string) {
+          seen.push(text);
+          if (failures < times) {
+            failures += 1;
+            throw error;
+          }
+          return [];
+        },
+      },
+    };
+  }
+
+  test("isRetriableWriteError names only what Postgres declares retriable", () => {
+    assert.equal(isRetriableWriteError(pgError("40P01")), true, "deadlock");
+    assert.equal(
+      isRetriableWriteError(pgError("40001")),
+      true,
+      "serialization",
+    );
+    // Everything else is either fatal to the connection or fatal to the row,
+    // and retrying it is a wasted round trip.
+    assert.equal(
+      isRetriableWriteError(pgError("23505")),
+      false,
+      "unique violation",
+    );
+    assert.equal(
+      isRetriableWriteError(pgError("42601")),
+      false,
+      "syntax error",
+    );
+    assert.equal(
+      isRetriableWriteError(pgError("08006")),
+      false,
+      "connection failure",
+    );
+    // The drain catches `unknown`, so a non-error must answer false rather
+    // than crash the handler that exists to keep the buffer draining.
+    for (const junk of [null, undefined, "deadlock", 17, {}, { code: 40001 }]) {
+      assert.equal(isRetriableWriteError(junk), false, JSON.stringify(junk));
+    }
+  });
+
+  test("a deadlock that clears on the retry drains the whole backlog", async () => {
+    const storage = fakeStorage();
+    for (const t of ["A", "B", "C"])
+      await enqueueStatement(storage, stmt("l", t), NOW);
+    const runner = failingTimes(1, pgError("40P01"));
+    const slept: number[] = [];
+    const spy = laneSpy();
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      sql: runner.sql,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+    });
+    // A retried, not skipped: the failing statement runs again IN PLACE, so
+    // the order the backlog replays in is unchanged.
+    assert.deepEqual(runner.seen, ["A", "A", "B", "C"]);
+    assert.equal(out.drained, 3);
+    assert.equal(out.ok, true);
+    assert.equal(await countPending(storage), 0);
+    assert.deepEqual(slept, [50]);
+  });
+
+  test("the retry is announced, because recovering silently hides the frequency", async () => {
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("l", "A"), NOW);
+    const spy = laneSpy();
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      sql: failingTimes(1, pgError("40P01")).sql,
+      sleep: async () => {},
+    });
+    const verdict = spy.rows.find((r) => r.lane === BUFFER_FLUSH_LANE);
+    assert.equal(verdict?.verdict, "ok");
+    assert.match(
+      String(verdict?.detail),
+      /retried 1 after a retriable conflict/,
+    );
+  });
+
+  // The behaviour this change must never remove.
+  test("a NON-retriable failure still stops the drain immediately", async () => {
+    const storage = fakeStorage();
+    for (const t of ["A", "B", "C"])
+      await enqueueStatement(storage, stmt("l", t), NOW);
+    const runner = failingTimes(99, pgError("08006", "connection terminated"));
+    const slept: number[] = [];
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: runner.sql,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+    });
+    // ONE attempt, no sleep: a broken connection would fail for every
+    // remaining statement, so stopping is what saves the round trips.
+    assert.deepEqual(runner.seen, ["A"]);
+    assert.deepEqual(slept, []);
+    assert.equal(out.ok, false);
+    assert.equal(out.remaining, true);
+    // And the rows are still there -- the invariant that must never regress.
+    assert.equal(await countPending(storage), 3);
+  });
+
+  test("a deadlock that outlasts the retries stops, keeping every row", async () => {
+    const storage = fakeStorage();
+    for (const t of ["A", "B", "C"])
+      await enqueueStatement(storage, stmt("l", t), NOW);
+    const runner = failingTimes(99, pgError("40P01"));
+    const slept: number[] = [];
+    const spy = laneSpy();
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      sql: runner.sql,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+    });
+    // Both backoffs spent on the one statement, then the existing stop.
+    assert.deepEqual(runner.seen, ["A", "A", "A"]);
+    assert.deepEqual(slept, [50, 250]);
+    assert.equal(out.ok, false);
+    assert.equal(await countPending(storage), 3);
+    const verdict = spy.rows.find((r) => r.lane === BUFFER_FLUSH_LANE);
+    assert.match(String(verdict?.detail), /after 2 retries/);
+  });
+
+  // The failure message has to read correctly at ONE, which is the count a
+  // single transient produces and therefore the one an operator sees most.
+  test("one spent retry then a hard failure reads as `after 1 retry`", async () => {
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("l", "A"), NOW);
+    let calls = 0;
+    const spy = laneSpy();
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          calls += 1;
+          // Retriable first, then the connection genuinely goes.
+          throw calls === 1
+            ? pgError("40P01")
+            : pgError("08006", "connection terminated");
+        },
+      },
+      sleep: async () => {},
+    });
+    const verdict = spy.rows.find((r) => r.lane === BUFFER_FLUSH_LANE);
+    assert.match(String(verdict?.detail), /after 1 retry\)/);
+    assert.doesNotMatch(String(verdict?.detail), /retries/);
+    assert.equal(await countPending(storage), 1);
+  });
+
+  // Every other test injects a sleep, so the REAL one is otherwise never run --
+  // and a broken default would only show up in production, as a flush that
+  // either never waits or never returns.
+  test("the default backoff is a real wait, and the flush still completes", async () => {
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("l", "A"), NOW);
+    const runner = failingTimes(1, pgError("40P01"));
+    const started = Date.now();
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: runner.sql,
+      // no `sleep` dep -- the production path
+    });
+    const elapsed = Date.now() - started;
+    assert.equal(out.ok, true);
+    assert.equal(out.drained, 1);
+    assert.deepEqual(runner.seen, ["A", "A"]);
+    // It genuinely waited the first backoff rather than spinning.
+    assert.ok(
+      elapsed >= 40,
+      `elapsed ${elapsed}ms, expected the ~50ms backoff`,
+    );
+    assert.equal(await countPending(storage), 0);
+  });
+
+  // THE BUDGET IS THE WHOLE DESIGN. A per-statement allowance would be
+  // FLUSH_LIST_LIMIT x attempts x delay in the worst case, which spends the
+  // alarm on waiting instead of writing. One shared budget makes the worst
+  // case the budget itself.
+  test("the retry budget is shared across the flush, not per statement", async () => {
+    const storage = fakeStorage();
+    for (const t of ["A", "B", "C", "D", "E", "F"])
+      await enqueueStatement(storage, stmt("l", t), NOW);
+    const slept: number[] = [];
+    // Every statement deadlocks once. Unbudgeted this would sleep 6 x 50ms;
+    // budgeted it stops as soon as the next backoff would exceed the cap.
+    let calls = 0;
+    const failEveryOther = {
+      async unsafe() {
+        calls += 1;
+        if (calls % 2 === 1) throw pgError("40P01");
+        return [];
+      },
+    };
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: failEveryOther,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+    });
+    const spent = slept.reduce((a, b) => a + b, 0);
+    assert.ok(
+      spent <= FLUSH_RETRY_BUDGET_MS,
+      `spent ${spent}ms against a ${FLUSH_RETRY_BUDGET_MS}ms budget`,
+    );
   });
 });
