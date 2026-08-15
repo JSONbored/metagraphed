@@ -8,7 +8,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "../src/account-events.ts";
-import { AccountSummaryPointerSchema } from "../schemas-src/artifacts/account-summary-projection.ts";
+import {
+  AccountSummaryPointerSchema,
+  AccountSummaryRecentEventSchema,
+} from "../schemas-src/artifacts/account-summary-projection.ts";
+import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import {
   ACCOUNT_SUMMARY_MAX_AGE_MS,
   ACCOUNT_SUMMARY_POINTER_KEY,
@@ -16,6 +20,7 @@ import {
   accountShard,
   accountSummaryShardKey,
   loadAccountSummaryProjection,
+  recentFloorMs,
 } from "../src/account-summary-projection.ts";
 
 const HOT = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
@@ -113,17 +118,23 @@ describe("loadAccountSummaryProjection", () => {
       ACCOUNT_SUMMARY_POINTER_KEY,
       accountSummaryShardKey(HOT, SHARDS, GEN),
     ]);
-    assert.deepEqual(groups, [
-      {
-        kind: "AxonServed",
-        netuid: 7,
-        count: 3,
-        fb: 10,
-        lb: 90,
-        fo: 1000,
-        lo: 9000,
-      },
-    ]);
+    assert.deepEqual(groups, {
+      groups: [
+        {
+          kind: "AxonServed",
+          netuid: 7,
+          count: 3,
+          fb: 10,
+          lb: 90,
+          fo: 1000,
+          lo: 9000,
+        },
+      ],
+      // No `recentLimit` asked for, so the feed leg is not read at all -- the
+      // aggregate leg is what every caller before #575 wanted and still gets.
+      recent: null,
+      floorMs: null,
+    });
   });
 
   test("THE FAN-OUT COMES FROM THE POINTER, not a compiled constant", async () => {
@@ -138,7 +149,7 @@ describe("loadAccountSummaryProjection", () => {
       },
     });
     const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
-    assert.equal(groups!.length, 1);
+    assert.equal(groups!.groups.length, 1);
   });
 
   test("A HALF-PUBLISHED GENERATION IS INVISIBLE", async () => {
@@ -154,7 +165,11 @@ describe("loadAccountSummaryProjection", () => {
       },
     });
     const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
-    assert.equal(groups![0]!.count, 1, "must read the pointed-at generation");
+    assert.equal(
+      groups!.groups[0]!.count,
+      1,
+      "must read the pointed-at generation",
+    );
   });
 
   test("no pointer means no answer", async () => {
@@ -301,17 +316,21 @@ describe("loadAccountSummaryProjection", () => {
     );
     assert.deepEqual(
       await loadAccountSummaryProjection(store.env, HOT, FRESH),
-      [
-        {
-          kind: "Transfer",
-          netuid: null,
-          count: 2,
-          fb: null,
-          lb: null,
-          fo: null,
-          lo: null,
-        },
-      ],
+      {
+        recent: null,
+        floorMs: null,
+        groups: [
+          {
+            kind: "Transfer",
+            netuid: null,
+            count: 2,
+            fb: null,
+            lb: null,
+            fo: null,
+            lo: null,
+          },
+        ],
+      },
     );
   });
 
@@ -389,7 +408,7 @@ describe("loadAccountSummaryProjection", () => {
     const atCap = [group({ count: ACCOUNT_EVENT_SUMMARY_SCAN_CAP })];
     const store = archive(published({ [HOT]: atCap }));
     const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
-    assert.equal(groups!.length, 1);
+    assert.equal(groups!.groups.length, 1);
   });
 
   test("an account present with no usable groups declines", async () => {
@@ -476,6 +495,214 @@ describe("the pointer is PARSED, not indexed (metagraphed-infra#580)", () => {
     assert.equal(
       await loadAccountSummaryProjection(store.env, HOT, FRESH),
       null,
+    );
+  });
+});
+
+// --- the feed leg (metagraphed-infra#575) ------------------------------------
+
+/** One published event, in the producer's column names. */
+function event(over: Record<string, unknown> = {}) {
+  return {
+    block_number: 900,
+    event_index: 1,
+    extrinsic_index: 2,
+    event_kind: "AxonServed",
+    hotkey: HOT,
+    coldkey: COLD,
+    netuid: 7,
+    uid: 3,
+    amount_tao: null,
+    alpha_amount: null,
+    observed_at: Date.parse("2026-08-13T12:00:00Z"),
+    ...over,
+  };
+}
+
+/** A generation that carries a recent map, with the pointer fields #575 adds. */
+function withRecent(
+  recent: Record<string, unknown>,
+  { over = {}, limit = 10 as number | undefined } = {},
+) {
+  const objects = published(
+    { [HOT]: [group()] },
+    {
+      through: "2026-08-13",
+      ...(limit === undefined ? {} : { recent_limit: limit }),
+      ...over,
+    },
+  ) as Record<string, Record<string, unknown>>;
+  objects[accountSummaryShardKey(HOT, SHARDS, GEN)]!.recent = recent;
+  return objects;
+}
+
+describe("recentFloorMs", () => {
+  test("the floor is the END of the last complete day, not the run's clock", () => {
+    // THE ARITHMETIC THE WHOLE MERGE RESTS ON. `through` names a complete day,
+    // so the projection describes up to its last millisecond and the probe
+    // must start at the next one. Anchoring on `generated_at` instead would
+    // skip every event between midnight and the run -- six hours on the
+    // generation measured 2026-08-15.
+    assert.equal(
+      recentFloorMs("2026-08-13"),
+      Date.parse("2026-08-14T00:00:00.000Z"),
+    );
+  });
+
+  test("anything that is not a plain calendar day places no floor", () => {
+    // A floor that is a guess is worse than the lakehouse read it replaces, so
+    // every one of these declines the leg rather than approximating it.
+    for (const bad of [
+      undefined,
+      "",
+      "2026-08",
+      "2026-8-13",
+      "2026-08-13T00:00:00Z",
+      "yesterday",
+      "0000-00-00",
+    ]) {
+      assert.equal(recentFloorMs(bad), null, String(bad));
+    }
+  });
+});
+
+describe("the projection's recent map", () => {
+  test("is returned with the floor the probe resumes from", async () => {
+    const store = archive(withRecent({ [HOT]: [event()] }));
+    const read = await loadAccountSummaryProjection(store.env, HOT, {
+      ...FRESH,
+      recentLimit: 10,
+    });
+    assert.deepEqual(read!.recent, [event()]);
+    assert.equal(read!.floorMs, Date.parse("2026-08-14T00:00:00.000Z"));
+    // The aggregate leg is unaffected by any of this.
+    assert.equal(read!.groups.length, 1);
+  });
+
+  test("A SHORTER PUBLISHED LIMIT DECLINES, rather than serving a short feed", async () => {
+    // The reason the N travels in the pointer at all. The producer is in
+    // another repository, so a reader that assumed the published N matched its
+    // own would serve nine events as though they were the newest ten, with
+    // nothing on the card to say the tenth was never published.
+    const store = archive(withRecent({ [HOT]: [event()] }, { limit: 9 }));
+    const read = await loadAccountSummaryProjection(store.env, HOT, {
+      ...FRESH,
+      recentLimit: 10,
+    });
+    assert.equal(read!.recent, null);
+    assert.equal(read!.groups.length, 1, "the aggregate leg still answers");
+  });
+
+  test("an equal published limit is enough", async () => {
+    // The boundary the test above brackets: >= is the rule, not >.
+    const store = archive(withRecent({ [HOT]: [event()] }, { limit: 10 }));
+    const read = await loadAccountSummaryProjection(store.env, HOT, {
+      ...FRESH,
+      recentLimit: 10,
+    });
+    assert.deepEqual(read!.recent, [event()]);
+  });
+
+  test("a generation published before #575 declines the leg alone", async () => {
+    // Every generation written before the producer change has no recent map
+    // and no `recent_limit`, and those pointers stay perfectly good for the
+    // expensive half. Failing both would throw away the aggregate saving to
+    // fix the feed.
+    const store = archive(
+      published({ [HOT]: [group()] }, { through: "2026-08-13" }),
+    );
+    const read = await loadAccountSummaryProjection(store.env, HOT, {
+      ...FRESH,
+      recentLimit: 10,
+    });
+    assert.equal(read!.recent, null);
+    assert.equal(read!.floorMs, null);
+    assert.equal(read!.groups.length, 1);
+  });
+
+  test("no `through` means no floor, so the list is refused", async () => {
+    // A recent list with nowhere to resume from would freeze the feed at the
+    // last day the producer folded -- the card would stop updating and look
+    // exactly like a quiet account.
+    const store = archive(
+      withRecent({ [HOT]: [event()] }, { over: { through: undefined } }),
+    );
+    const read = await loadAccountSummaryProjection(store.env, HOT, {
+      ...FRESH,
+      recentLimit: 10,
+    });
+    assert.equal(read!.recent, null);
+  });
+
+  test("a malformed row declines the whole list", async () => {
+    // The same rule the groups follow: a card quietly short some events is
+    // confidently wrong, which costs more than being slow. Note the row is
+    // WELL-FORMED apart from one field -- a shape check that only looked at
+    // the array would pass it.
+    const store = archive(
+      withRecent({ [HOT]: [event(), event({ block_number: null })] }),
+    );
+    const read = await loadAccountSummaryProjection(store.env, HOT, {
+      ...FRESH,
+      recentLimit: 10,
+    });
+    assert.equal(read!.recent, null);
+  });
+
+  test("an undeclared column declines the list", async () => {
+    // `.strict()` is doing work here: a producer that added a column would
+    // otherwise have it silently dropped from every card, and the divergence
+    // would only show up as a field the API stopped serving.
+    const store = archive(withRecent({ [HOT]: [{ ...event(), surprise: 1 }] }));
+    const read = await loadAccountSummaryProjection(store.env, HOT, {
+      ...FRESH,
+      recentLimit: 10,
+    });
+    assert.equal(read!.recent, null);
+  });
+
+  test("an account absent from the map, or empty in it, declines", async () => {
+    for (const map of [{}, { [HOT]: [] }, { [COLD]: [event()] }]) {
+      const store = archive(withRecent(map));
+      const read = await loadAccountSummaryProjection(store.env, HOT, {
+        ...FRESH,
+        recentLimit: 10,
+      });
+      assert.equal(read!.recent, null, JSON.stringify(map));
+    }
+  });
+
+  test("a non-object recent map is refused rather than indexed", async () => {
+    for (const map of ["nope", 7, null] as unknown[]) {
+      const store = archive(withRecent(map as Record<string, unknown>));
+      const read = await loadAccountSummaryProjection(store.env, HOT, {
+        ...FRESH,
+        recentLimit: 10,
+      });
+      assert.equal(read!.recent, null, String(map));
+    }
+  });
+
+  test("asking for no recent events reads no recent map at all", async () => {
+    // The default. Every caller before #575 wants the aggregate leg only, and
+    // must not start paying to parse a list it will not use.
+    const store = archive(withRecent({ [HOT]: [event()] }));
+    const read = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    assert.equal(read!.recent, null);
+    assert.equal(read!.floorMs, null);
+  });
+});
+
+describe("AccountSummaryRecentEventSchema", () => {
+  test("ITS KEYS ARE THE LAKEHOUSE TABLE'S, exactly", () => {
+    // The reader merges these rows with rows selected straight out of
+    // `chain.account_events`, into one feed. A column added to the table and
+    // not to this schema would be dropped from the projection's half only --
+    // half a card carrying a field the other half does not. Pinned against the
+    // GENERATED list so the table is the thing that has to change first.
+    assert.deepEqual(
+      Object.keys(AccountSummaryRecentEventSchema.shape).sort(),
+      [...ACCOUNT_EVENTS_COLUMNS].sort(),
     );
   });
 });

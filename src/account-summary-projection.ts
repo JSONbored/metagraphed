@@ -53,6 +53,7 @@ import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "./account-events.ts";
 import {
   AccountSummaryGroupsSchema,
   AccountSummaryPointerSchema,
+  AccountSummaryRecentSchema,
 } from "../schemas-src/artifacts/account-summary-projection.ts";
 
 /** Objects the producer writes, one per shard. Contract with
@@ -92,6 +93,47 @@ export function accountShard(account: string, shards: number): number {
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h % shards;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The first millisecond of `observed_at` the projection does NOT describe.
+ *
+ * `through` is the last COMPLETE day the producer folded, so the recent list
+ * covers everything up to the end of that day and nothing after it. The head
+ * probe must start exactly there, and the arithmetic is the whole reason
+ * `through` is published rather than inferred.
+ *
+ * NOT `generated_at`, which is the trap. A run that folds through 2026-08-14
+ * and finishes at 2026-08-15T06:26Z has a `generated_at` SIX HOURS LATER than
+ * the data it describes -- so a probe floored at `generated_at` would skip
+ * every event between midnight and 06:26 and the card would silently lose them.
+ * The two halves have to meet at the data's edge, not at the run's.
+ *
+ * Returns null for anything not a plain `YYYY-MM-DD`. A pointer without a
+ * usable `through` cannot place the floor, and a floor that is a guess is worse
+ * than the lakehouse read it would replace.
+ */
+export function recentFloorMs(through: string | undefined): number | null {
+  if (!through || !/^\d{4}-\d{2}-\d{2}$/.test(through)) return null;
+  const midnight = Date.parse(`${through}T00:00:00.000Z`);
+  return Number.isFinite(midnight) ? midnight + DAY_MS : null;
+}
+
+/** What this reader answers with when the projection can serve the account. */
+export interface AccountSummaryProjectionRead {
+  /** The (kind, netuid) groups -- the card's aggregate leg. */
+  groups: Record<string, unknown>[];
+  /**
+   * The account's newest published events, newest first, or null when this
+   * generation carries no usable recent map for it. Null is not "no events" --
+   * it means the caller must read that leg from the lakehouse, exactly as it
+   * did before #575.
+   */
+  recent: Record<string, unknown>[] | null;
+  /** Where the head probe must start when `recent` is non-null. */
+  floorMs: number | null;
 }
 
 /** The R2 key holding this account's groups, within a generation. */
@@ -147,8 +189,19 @@ export async function loadAccountSummaryProjection(
   {
     now = Date.now,
     maxAgeMs = ACCOUNT_SUMMARY_MAX_AGE_MS,
-  }: { now?: () => number; maxAgeMs?: number } = {},
-): Promise<Record<string, unknown>[] | null> {
+    recentLimit = 0,
+  }: {
+    now?: () => number;
+    maxAgeMs?: number;
+    /**
+     * How many recent events the caller needs. The recent map is only offered
+     * when the pointer declares at least this many, so a producer publishing a
+     * shorter list declines that leg instead of serving a short feed. Zero --
+     * the default -- asks for the aggregate leg only.
+     */
+    recentLimit?: number;
+  } = {},
+): Promise<AccountSummaryProjectionRead | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get || !account) return null;
@@ -223,5 +276,54 @@ export async function loadAccountSummaryProjection(
   // already paying.
   const scanned = groups.reduce((n, g) => n + Number(g.count), 0);
   if (scanned > ACCOUNT_EVENT_SUMMARY_SCAN_CAP) return null;
-  return groups;
+
+  return { groups, ...readRecent(payload, account, pointer, recentLimit) };
+}
+
+/**
+ * The account's published newest events, and where the head probe resumes.
+ *
+ * SEPARATE FROM THE GROUPS, and failing separately. A generation published
+ * before metagraphed-infra#575 carries no recent map at all, and one published
+ * after it may still not carry enough for this caller -- in both cases the
+ * AGGREGATE leg is perfectly good and only the feed leg goes back to the
+ * lakehouse. Folding the two decisions together would throw away the expensive
+ * half to fix the cheap one.
+ *
+ * A MALFORMED LIST DECLINES rather than being repaired. The same rule the
+ * groups follow, for the same reason: a card that is quietly short some events
+ * is confidently wrong, which costs more than being slow.
+ */
+function readRecent(
+  payload: Record<string, unknown>,
+  account: string,
+  pointer: { through?: string; recent_limit?: number },
+  need: number,
+): { recent: Record<string, unknown>[] | null; floorMs: number | null } {
+  const none = { recent: null, floorMs: null };
+  // Zero asks for the aggregate leg only, and `undefined` is a producer that
+  // publishes no recent map. Neither is a failure worth reading further for.
+  if (need <= 0) return none;
+  const published = pointer.recent_limit;
+  if (published === undefined || published < need) return none;
+
+  // The floor before the rows, because a list with nowhere to resume from is
+  // unusable: serving it without a probe would freeze the feed at the last
+  // complete day the producer folded.
+  const floorMs = recentFloorMs(pointer.through);
+  if (floorMs === null) return none;
+
+  const map = payload["recent"];
+  if (!map || typeof map !== "object") return none;
+  // An account absent from the map has no published events, which for an
+  // account that IS in the groups means the producer wrote a partial shard.
+  // Declining sends this leg to the lakehouse; it does not zero the feed.
+  const parsed = AccountSummaryRecentSchema.safeParse(
+    (map as Record<string, unknown>)[account],
+  );
+  if (!parsed.success || !parsed.data.length) return none;
+  return {
+    recent: parsed.data as unknown as Record<string, unknown>[],
+    floorMs,
+  };
 }

@@ -21,6 +21,7 @@ import { describe, test } from "vitest";
 import {
   foldSummaryGroups,
   loadAccountSummaryColdTier,
+  mergeNewestEvents,
 } from "../src/account-feeds-cold-tier.ts";
 import {
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
@@ -788,5 +789,225 @@ describe("the projection short-circuits the aggregate leg (#11131)", () => {
     const card = buildAccountSummary(SS58, cold as never);
     assert.equal(card.event_count, 6);
     assert.equal(card.event_scan_capped, false);
+  });
+});
+
+describe("the projection short-circuits the FEED leg too (#11222)", () => {
+  const GEN = "20260814T100000Z";
+  const SHARDS = 16384;
+  const SHARD_KEY = accountSummaryShardKey(SS58, SHARDS, GEN);
+  const THROUGH = "2026-08-13";
+  const FLOOR = Date.parse("2026-08-14T00:00:00.000Z");
+
+  /** One published event, in the lakehouse table's column names. */
+  function event(over: Row = {}): Row {
+    return {
+      block_number: 8_700_000,
+      event_index: 0,
+      extrinsic_index: null,
+      event_kind: "AxonServed",
+      hotkey: SS58,
+      coldkey: null,
+      netuid: 55,
+      uid: 1,
+      amount_tao: null,
+      alpha_amount: null,
+      observed_at: Date.parse("2026-08-13T09:00:00Z"),
+      ...over,
+    };
+  }
+
+  /** An archive holding this account's groups AND its published newest events. */
+  function archive(recent: Row[] | null, { limit = 10 } = {}) {
+    const stamp = new Date().toISOString();
+    return {
+      METAGRAPH_ARCHIVE: {
+        get: async (key: string) => {
+          if (key === ACCOUNT_SUMMARY_POINTER_KEY) {
+            return {
+              json: async () => ({
+                schema_version: 1,
+                generation: GEN,
+                shard_count: SHARDS,
+                generated_at: stamp,
+                account_count: 1,
+                through: THROUGH,
+                ...(recent ? { recent_limit: limit } : {}),
+              }),
+            };
+          }
+          if (key === SHARD_KEY) {
+            return {
+              json: async () => ({
+                schema_version: 1,
+                accounts: { [SS58]: groupsSummingTo(6) },
+                ...(recent ? { recent: { [SS58]: recent } } : {}),
+              }),
+            };
+          }
+          return null;
+        },
+      },
+    } as never;
+  }
+
+  test("THE UNBOUNDED SCAN IS REPLACED BY ONE FLOORED PROBE", async () => {
+    // The read that times this route out. `windowedRowRead`'s last step has no
+    // floor at all, and 95.8% of accounts reach it -- measured on production
+    // 2026-08-15, three of nine real accounts 503'd at the 15s ceiling and the
+    // rest took 10-19s.
+    const engine = fakeEngine({ recent: [] });
+    const cold = await loadAccountSummaryColdTier(archive([event()]), SS58, {
+      query: engine.query as never,
+    });
+    assert.equal(cold.declined, undefined);
+    const feed = engine.seen.filter((s) => !s.includes("GROUP BY"));
+    assert.equal(feed.length, 1, "one probe, not a walk");
+    assert.match(feed[0]!, new RegExp(`observed_at >= ${FLOOR}\\b`));
+    // And no read may be issued without that floor -- an unfloored SELECT here
+    // is the whole defect coming back.
+    for (const sql of feed) {
+      assert.match(
+        sql,
+        /observed_at >= /,
+        `unfloored read: ${sql.slice(0, 90)}`,
+      );
+    }
+  });
+
+  test("the floor is the END of `through`, not the pointer's clock", async () => {
+    // `generated_at` is the run's stamp and sits HOURS after the data it
+    // describes -- six, on the generation measured 2026-08-15. Flooring there
+    // would drop every event between midnight and the run from the card.
+    const engine = fakeEngine({ recent: [] });
+    await loadAccountSummaryColdTier(archive([event()]), SS58, {
+      query: engine.query as never,
+    });
+    const probe = engine.seen.find((s) => !s.includes("GROUP BY"))!;
+    assert.match(probe, new RegExp(`observed_at >= ${FLOOR}\\b`));
+    assert.ok(FLOOR > Date.parse(THROUGH), "the floor is past the day named");
+  });
+
+  test("the probe's rows come FIRST, and the published ones fill the page", async () => {
+    // The merge is what makes the two halves one feed. A newer event landing
+    // after the generation must outrank everything published, or the card
+    // freezes at the last day the producer folded.
+    const newer = event({
+      block_number: 8_900_000,
+      event_index: 3,
+      observed_at: Date.parse("2026-08-14T06:00:00Z"),
+    });
+    const engine = fakeEngine({ recent: [newer] });
+    const cold = await loadAccountSummaryColdTier(
+      archive([event(), event({ block_number: 8_690_000, event_index: 9 })]),
+      SS58,
+      { query: engine.query as never },
+    );
+    const recent = (cold as { recent: Row[] }).recent;
+    assert.deepEqual(
+      recent.map((r) => r.block_number),
+      [8_900_000, 8_700_000, 8_690_000],
+    );
+  });
+
+  test("A FAILED PROBE DECLINES -- it does not serve the published half alone", async () => {
+    // Serving what the projection had would publish a feed silently missing
+    // the newest events, which are the most visible rows on the card, with
+    // nothing in the payload to say so.
+    const engine = fakeEngine({ recent: null });
+    const cold = await loadAccountSummaryColdTier(archive([event()]), SS58, {
+      query: engine.query as never,
+    });
+    assert.ok(cold.declined, "a failed head probe declines the read");
+    assert.ok(
+      cold.declined!.some((r) => r.startsWith("recent-head:")),
+      `the leg names itself: ${JSON.stringify(cold.declined)}`,
+    );
+  });
+
+  test("no published recent list falls back to the walk, unchanged", async () => {
+    // Every generation before metagraphed-infra#575 lands here, and the route
+    // must behave exactly as it did -- the aggregate leg still short-circuits.
+    const engine = fakeEngine();
+    const cold = await loadAccountSummaryColdTier(archive(null), SS58, {
+      query: engine.query as never,
+    });
+    assert.equal(cold.declined, undefined);
+    const feed = engine.seen.filter((s) => !s.includes("GROUP BY"));
+    assert.ok(feed.length >= 1);
+    assert.equal(
+      feed.some((s) => s.includes(`observed_at >= ${FLOOR}`)),
+      false,
+      "no floor is placed without a published list to meet it",
+    );
+  });
+
+  test("a published limit under the caller's need falls back too", async () => {
+    const engine = fakeEngine();
+    const cold = await loadAccountSummaryColdTier(
+      archive([event()], { limit: ACCOUNT_SUMMARY_RECENT_LIMIT - 1 }),
+      SS58,
+      { query: engine.query as never },
+    );
+    assert.equal(cold.declined, undefined);
+    const feed = engine.seen.filter((s) => !s.includes("GROUP BY"));
+    assert.equal(
+      feed.some((s) => s.includes(`observed_at >= ${FLOOR}`)),
+      false,
+    );
+  });
+});
+
+describe("mergeNewestEvents", () => {
+  const row = (observed_at: number, block_number: number, event_index = 0) => ({
+    observed_at,
+    block_number,
+    event_index,
+  });
+
+  test("orders on all THREE feed columns, in FEED_ORDER's precedence", () => {
+    // Sorting on observed_at alone would reorder events inside a block, and
+    // the cursor token the Postgres tier issues encodes the whole triple.
+    const merged = mergeNewestEvents(
+      [row(100, 5, 0), row(100, 5, 1), row(100, 6, 0), row(99, 9, 9)],
+      [],
+      10,
+    );
+    assert.deepEqual(
+      merged.map((r) => [r.observed_at, r.block_number, r.event_index]),
+      [
+        [100, 6, 0],
+        [100, 5, 1],
+        [100, 5, 0],
+        [99, 9, 9],
+      ],
+    );
+  });
+
+  test("de-duplicates on the pair that IDENTIFIES an event", () => {
+    // Disjointness is the producer's property, asserted across a repository
+    // boundary. A producer that widened its window by an hour would put the
+    // same event in both halves, and a duplicated row in a card is a visible
+    // wrong answer.
+    const merged = mergeNewestEvents([row(100, 5, 0)], [row(100, 5, 0)], 10);
+    assert.equal(merged.length, 1);
+  });
+
+  test("the page is cut to the limit, newest kept", () => {
+    const merged = mergeNewestEvents(
+      [row(1, 1), row(2, 2), row(3, 3)],
+      [row(4, 4)],
+      2,
+    );
+    assert.deepEqual(
+      merged.map((r) => r.block_number),
+      [4, 3],
+    );
+  });
+
+  test("either half may be empty", () => {
+    assert.deepEqual(mergeNewestEvents([], [], 10), []);
+    assert.equal(mergeNewestEvents([row(1, 1)], [], 10).length, 1);
+    assert.equal(mergeNewestEvents([], [row(1, 1)], 10).length, 1);
   });
 });

@@ -976,6 +976,90 @@ export type AccountSummaryColdTierResult =
     }
   | { declined: string[] };
 
+/**
+ * The feed's own sort key, as a comparable tuple.
+ *
+ * The SAME three columns `FEED_ORDER` names, in the same precedence, because
+ * the merged page has to be indistinguishable from what the single ordered
+ * query returned. Sorting on `observed_at` alone would reorder events inside a
+ * block, and the cursor token the other tier issues encodes all three.
+ */
+function feedKey(row: Record<string, unknown>): [number, number, number] {
+  return [
+    Number(row.observed_at ?? 0),
+    Number(row.block_number ?? 0),
+    Number(row.event_index ?? 0),
+  ];
+}
+
+/**
+ * Merge the published newest events with whatever landed after them.
+ *
+ * THE RANGES ARE DISJOINT BY CONSTRUCTION -- the projection describes up to the
+ * end of its last complete day, the probe starts at the first millisecond
+ * after it -- so this is a merge, not a reconciliation, and no row can be
+ * counted twice by arithmetic.
+ *
+ * IT STILL DE-DUPLICATES, on the pair that identifies an event. Disjointness is
+ * a property of the producer, asserted across a repository boundary, and the
+ * failure it guards against is not symmetric: a producer that widened its
+ * window by an hour would put the same event in both halves, and a duplicated
+ * row in a card is a visible wrong answer, while the cost of the check is a Set
+ * over at most twenty rows.
+ */
+export function mergeNewestEvents(
+  published: readonly Record<string, unknown>[],
+  head: readonly Record<string, unknown>[],
+  limit: number,
+): Record<string, unknown>[] {
+  const seen = new Set<string>();
+  const merged: Record<string, unknown>[] = [];
+  for (const row of [...head, ...published]) {
+    const id = `${String(row.block_number)}:${String(row.event_index)}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(row);
+  }
+  merged.sort((a, b) => {
+    const [ao, ab, ae] = feedKey(a);
+    const [bo, bb, be] = feedKey(b);
+    return bo - ao || bb - ab || be - ae;
+  });
+  return merged.slice(0, limit);
+}
+
+/**
+ * Everything newer than the projection's edge, merged onto what it published.
+ *
+ * ONE BOUNDED QUERY, and the bound is not a guess: `observed_at >= floorMs`
+ * covers exactly the days the producer had not folded when it ran, which its
+ * own freshness ceiling holds to a small number. That is the difference from
+ * the walk this replaces, whose last step had no floor at all.
+ *
+ * A FAILED PROBE FAILS THE READ. Returning the published half alone would serve
+ * a feed that is silently missing the newest events -- the most visible rows on
+ * the card -- with nothing in the payload to say so.
+ */
+async function headProbe(
+  env: Env | null | undefined,
+  options: {
+    query: R2SqlReader;
+    where: string;
+    floorMs: number;
+    limit: number;
+    published: readonly Record<string, unknown>[];
+  },
+): Promise<Record<string, unknown>[] | null> {
+  const { query, where, floorMs, limit, published } = options;
+  const head = await query(
+    env,
+    `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} ` +
+      `AND observed_at >= ${Math.trunc(floorMs)} ${FEED_ORDER} LIMIT ${limit}`,
+  );
+  if (!head) return null;
+  return mergeNewestEvents(published, head, limit);
+}
+
 export async function loadAccountSummaryColdTier(
   env: Env | null | undefined,
   ss58: string,
@@ -1060,11 +1144,13 @@ export async function loadAccountSummaryColdTier(
   // request, which is the read that aborts at the 15s ceiling. A sharded R2
   // artifact answers the identical question in one GET, and a miss returns null
   // so this arm simply does not run. It can make the route faster, never wrong.
-  const projected = await loadAccountSummaryProjection(env, ss58);
+  const projected = await loadAccountSummaryProjection(env, ss58, {
+    recentLimit: limit,
+  });
 
   const [groupRows, recentRows] = await Promise.all([
     projected
-      ? Promise.resolve(projected)
+      ? Promise.resolve(projected.groups)
       : windowedFloorRead<Record<string, unknown>[]>(env, {
           query,
           attempt: (bound, run) =>
@@ -1088,14 +1174,34 @@ export async function loadAccountSummaryColdTier(
             rows.reduce((n, row) => n + Number(row.count), 0) >
             ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
         }),
-    windowedRowRead<AccountEventsRow>(env, {
-      query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
-      table: "chain.account_events",
-      columns: EVENT_COLUMNS,
-      where: [where],
-      order: ` ${FEED_ORDER}`,
-      need: limit,
-    }),
+    // THE FEED LEG, and the read that actually times this route out
+    // (#11222). `windowedRowRead` probes `now-2d` then `now-8d` and then reads
+    // the WHOLE remainder -- and 95.8% of accounts are past both probes, so
+    // for almost every request the third read is an unbounded scattered scan.
+    // Measured on production 2026-08-15: nine real accounts, three 503s at the
+    // 15s ceiling and a 10-19s spread across the rest.
+    //
+    // When the projection carries this account's newest events, the scan is
+    // replaced by ONE bounded probe of everything the producer had not folded
+    // yet. The two halves meet at the edge of the last complete day rather
+    // than overlapping or leaving a gap -- see `recentFloorMs` for why that
+    // edge is `through` and emphatically not `generated_at`.
+    projected?.recent && projected.floorMs !== null
+      ? headProbe(env, {
+          query: (e, sql) => query(e, sql, { onError: track("recent-head") }),
+          where,
+          floorMs: projected.floorMs,
+          limit,
+          published: projected.recent,
+        })
+      : windowedRowRead<AccountEventsRow>(env, {
+          query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
+          table: "chain.account_events",
+          columns: EVENT_COLUMNS,
+          where: [where],
+          order: ` ${FEED_ORDER}`,
+          need: limit,
+        }),
   ]);
 
   // Either half missing is a decline: a card mixing measured aggregates with a

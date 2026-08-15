@@ -46,6 +46,24 @@ export const AccountSummaryPointerSchema = z
     generated_at: z.string().min(1),
     account_count: z.number().int().nonnegative(),
     through: z.string().min(1).optional(),
+    /**
+     * How many events per account the shards carry in their `recent` map
+     * (metagraphed-infra#575), when they carry one at all.
+     *
+     * THE LIMIT TRAVELS WITH THE DATA. `ACCOUNT_SUMMARY_RECENT_LIMIT` lives in
+     * this repository and the producer lives in another, so a reader that
+     * assumed the published N matched its own would serve a short feed the
+     * moment the two diverged -- and no CI here could see it. Declaring the N
+     * actually written lets the reader DECLINE when the artifact carries fewer
+     * than it needs, exactly as `shard_count` already travels rather than being
+     * agreed by convention.
+     *
+     * OPTIONAL, because every generation published before #575 lacks it, and
+     * those pointers are still valid to read for their aggregate leg. Absent
+     * means "no recent map" -- not "some unknown number" -- so the reader falls
+     * back to the lakehouse for that leg alone.
+     */
+    recent_limit: z.number().int().positive().optional(),
   })
   .strict();
 
@@ -88,3 +106,44 @@ export const AccountSummaryGroupSchema = z
  * does not exist -- the first is a decline and the second is an answer.
  */
 export const AccountSummaryGroupsSchema = z.array(AccountSummaryGroupSchema);
+
+/**
+ * One published event inside a shard's `recent` map (metagraphed-infra#575).
+ *
+ * THE COLUMNS ARE THE LAKEHOUSE TABLE'S, not a shape invented here. The reader
+ * merges these rows with rows the head probe selects straight out of
+ * `chain.account_events`, and the two go into the same feed -- so a field named
+ * differently on one side would surface as a missing value on half a card
+ * rather than as an error. `tests/account-summary-projection.test.ts` pins the
+ * key set against the generated `ACCOUNT_EVENTS_COLUMNS`, so a column added to
+ * the table fails here rather than being silently dropped from the projection.
+ *
+ * EVERY VALUE IS NULLABLE except the two that identify the event. `hotkey` is
+ * null on WeightsSet, `netuid` on Transfer and Deposit, and the amount columns
+ * on anything that is not a balance movement -- nullability here is the table's,
+ * not a concession.
+ */
+export const AccountSummaryRecentEventSchema = z
+  .object({
+    // The event's identity, and the reason it cannot be null: the reader
+    // de-duplicates the projection's rows against the head probe's on this
+    // pair. A null half would collapse distinct events onto one key and drop
+    // real rows from the feed.
+    block_number: z.number().int().nonnegative(),
+    event_index: z.number().int().nonnegative(),
+    extrinsic_index: z.number().int().nullable(),
+    event_kind: z.string().nullable(),
+    hotkey: z.string().nullable(),
+    coldkey: z.string().nullable(),
+    netuid: z.number().int().nullable(),
+    uid: z.number().int().nullable(),
+    amount_tao: z.number().nullable(),
+    alpha_amount: z.number().nullable(),
+    observed_at: z.number().int().nonnegative(),
+  })
+  .strict();
+
+/** One account's published newest events, newest first. */
+export const AccountSummaryRecentSchema = z.array(
+  AccountSummaryRecentEventSchema,
+);
