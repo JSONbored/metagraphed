@@ -436,10 +436,11 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
     "/validators": 1300,
     "/apis": 620,
     "/apis/providers": 400,
-    // #11326: 2,609 KB here and 4,948 KB in production, dominated by `points`
-    // and `reason` arrays this page never reads — the same defect the
-    // `subnets` projection fixes for /validators, on a different query.
-    "/apis/endpoints": 2700,
+    // #11326 lowered this from 2,700 after dropping five API fields nothing in
+    // the app reads: 2,609 -> 2,128 KiB here, 4,948 -> 3,883 KiB in production.
+    // Still the heaviest page on the site — it fetches all 3,372 endpoints —
+    // so this ceiling has further to fall.
+    "/apis/endpoints": 2200,
     "/apis/schemas": 700,
     "/chain": 240,
   };

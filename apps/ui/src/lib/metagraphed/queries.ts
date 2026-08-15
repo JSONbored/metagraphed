@@ -9420,11 +9420,41 @@ export function statusToHealth(v: unknown): HealthState | undefined {
   return "unknown";
 }
 
+/**
+ * Fields the API sends on every endpoint row that this app reads NOWHERE
+ * (#11326).
+ *
+ * `normalizeEndpoint` spreads the raw row, so anything the API adds survives
+ * into the react-query cache and therefore into the SSR dehydration inlined in
+ * the document. `/apis/endpoints` fetches the whole catalogue — **3,372 rows** —
+ * which is why it is the heaviest page on the site at **4,948 KB uncompressed**
+ * in production, nearly 4x /validators.
+ *
+ * Each name below was checked across the whole of apps/ui: zero references
+ * outside queries.ts and types.ts, and none is declared on `Endpoint`. Fields
+ * that ARE read somewhere — `source_urls`, `rate_limit_notes`,
+ * `classification` — are deliberately absent from this list and still pass
+ * through.
+ *
+ * This is dead data, not a per-query projection: there is no caller for whom
+ * these are live, so unlike `validatorsQuery`'s `subnets` option this needs no
+ * cache-key split. Re-check with a grep before adding to it.
+ */
+const UNREAD_ENDPOINT_FIELDS = [
+  "monitoring_policy",
+  "method_support",
+  "method_tested",
+  "score_reasons",
+  "pool_eligibility_reasons",
+] as const;
+
 function normalizeEndpoint(raw: unknown): Endpoint {
   if (!raw || typeof raw !== "object") return raw as Endpoint;
   const e = raw as Record<string, unknown>;
+  const lean: Record<string, unknown> = { ...e };
+  for (const field of UNREAD_ENDPOINT_FIELDS) delete lean[field];
   return {
-    ...(e as object),
+    ...(lean as object),
     id: asString(e.id) ?? "",
     health: (e.health as HealthState) ?? statusToHealth(e.status) ?? "unknown",
     provider_slug: asString(e.provider_slug) ?? asString(e.provider) ?? asString(e.operator),
