@@ -111,6 +111,30 @@ export const RETIRED_LANES: readonly string[] = [
   // therefore live, these two are written only from inside the Worker.
   "neurons",
   "tao-usd-index",
+  // The SAME #10851 fossil, and the two the sweep above MISSED. Both stopped
+  // at 2026-08-11T23:27Z and 23:35Z -- the same instant as the three names
+  // above, which is the signature of a writer that changed its key rather than
+  // of two lanes independently dying.
+  //
+  // WHY THEY WERE MISSED, which is the part worth keeping. The three above were
+  // retired on 2026-08-12 because they had ALARMED by then. These two had not:
+  // their producer polls DAILY, so their silence bound is 24h against the
+  // sub-hourly bound the others carry, and they did not cross it until
+  // 2026-08-15 -- three days after the list that should have contained them was
+  // written. A fossil set enumerated from the alarms open at one moment is a
+  // SAMPLE of itself, and the slow lanes are precisely what a sample misses.
+  // tests/lane-health-retired.test.ts now DERIVES the set instead of listing it.
+  //
+  // Neither bare name ever carried a poller verdict. ONE poller writes both
+  // tables and reports under `validator-nominators` ("120221 scanned, 130194
+  // written, 0 error(s)", `ok` at 2026-08-14T11:40Z), which is why these two
+  // spellings had no writer left once the flush moved onto `neonLaneKey` while
+  // `account-balances` and `hotkey-alpha` -- buffered by the same flush -- kept
+  // theirs. `neon:nominator-positions` ("403 statement(s) flushed") and
+  // `neon:validator-nominator-counts` ("26 statement(s) flushed") were both `ok`
+  // on the same production read that showed these two frozen, and stay watched.
+  "nominator-positions",
+  "validator-nominator-counts",
   // The DLQ whose QUEUE was deleted (#10894, merged as #11254). Four probe
   // dead letters collapsed into one `probe-jobs-dlq`, and `revenue-probes`
   // went with the account's queue list.
