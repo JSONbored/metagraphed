@@ -21,6 +21,7 @@ import {
   enqueueRevenueProbes,
   handleRevenueProbeBatch,
   fetchRevenuePayload,
+  REVENUE_PROBE_USER_AGENT,
   loadRevenueObservations,
   persistRevenueProbe,
   runRevenueProbeLane,
@@ -612,6 +613,30 @@ describe("fetchRevenuePayload", () => {
     } finally {
       globalThis.fetch = original;
     }
+  });
+
+  // THE HEADER THAT WAS THE OUTAGE. Workers send no User-Agent by default, and
+  // a WAF that refuses UA-less traffic answers 403. Measured 2026-08-15 against
+  // lium.io: no User-Agent -> 403 (3/3), any User-Agent -> 200. That is the
+  // whole of SN51's 3.7-day failure -- the surface was never down, and the live
+  // health prober got 200 throughout because it has always identified itself.
+  test("identifies itself, or a WAF refuses the lane and not the URL", async () => {
+    const original = globalThis.fetch;
+    let sent: Headers | undefined;
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      sent = new Headers(init?.headers);
+      return new Response("{}");
+    }) as typeof fetch;
+    try {
+      await fetchRevenuePayload("https://example/x");
+    } finally {
+      globalThis.fetch = original;
+    }
+    assert.equal(sent?.get("user-agent"), REVENUE_PROBE_USER_AGENT);
+    assert.equal(sent?.get("accept"), "application/json");
+    // One recognisable family in somebody else's access log, so they can rate
+    // limit us deliberately rather than by accident.
+    assert.match(REVENUE_PROBE_USER_AGENT, /^metagraphed-/);
   });
 
   test("returns the parsed body and the exact text it came from", async () => {
