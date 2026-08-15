@@ -877,7 +877,7 @@ describe("the queue wiring", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /case "attribution-sweep":/);
+    assert.match(api, /"attribution-sweep": run[A-Za-z]+Jobs,/);
   });
 });
 

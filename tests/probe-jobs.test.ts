@@ -211,6 +211,24 @@ describe("an unrecognised job is DECLINED, never dropped", () => {
     assert.deepEqual(reports, []);
   });
 
+  test("the DEFAULT reporter writes to console.error", () => {
+    // The default exists so that opting out of reporting has to be deliberate
+    // rather than the result of forgetting an argument -- which means the
+    // default itself is the path production takes, and every other test here
+    // passes a reporter and never exercises it.
+    const seen: string[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => void seen.push(args.join(" "));
+    try {
+      declineUnknownProbeJobs([message({ job_type: "gone" })]);
+    } finally {
+      console.error = original;
+    }
+    assert.equal(seen.length, 1);
+    assert.match(seen[0]!, /probe-jobs: 1 message\(s\) declined/);
+    assert.match(seen[0]!, /unrecognised job_type/);
+  });
+
   test("a throwing reporter cannot make the batch worse", () => {
     // Every message is already acked by the time reporting runs, so a throwing
     // reporter loses nothing -- but it would turn a diagnosable fault into an

@@ -886,7 +886,7 @@ describe("the queue lane (#10715)", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /case "revenue-probe":/);
+    assert.match(api, /"revenue-probe": run[A-Za-z]+Jobs,/);
   });
 });
 

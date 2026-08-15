@@ -766,7 +766,7 @@ describe("the origin queue wiring", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /case "origin-reachability":/);
+    assert.match(api, /"origin-reachability": run[A-Za-z]+Jobs,/);
   });
 });
 

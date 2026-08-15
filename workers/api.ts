@@ -175,7 +175,10 @@ import {
   handleDeadLetterBatch,
   isDeadLetterQueue,
 } from "../src/dead-letter.ts";
-import { PROBE_JOBS_QUEUE } from "../schemas-src/probe-jobs.ts";
+import {
+  PROBE_JOBS_QUEUE,
+  type ProbeJobType,
+} from "../schemas-src/probe-jobs.ts";
 import {
   declineUnknownProbeJobs,
   partitionProbeJobs,
@@ -2237,6 +2240,30 @@ async function runOriginReachabilityJobs(
   }
 }
 
+/**
+ * Which lane owns which job type.
+ *
+ * A `Record<ProbeJobType, ...>` RATHER THAN A SWITCH, and the difference is not
+ * style. A switch needs a `default` for exhaustiveness -- `const _: never =
+ * jobType` -- and that branch is unreachable by construction, so it can never be
+ * covered and costs the patch-coverage gate a line nobody can test. This gets
+ * the same guarantee from the type: adding a member to `ProbeJobTypeSchema`
+ * without adding it here is a compile error, and there is no runtime arm to
+ * leave untested.
+ *
+ * `partitionProbeJobs` only ever yields keys from the vocabulary, so the lookup
+ * cannot miss.
+ */
+const PROBE_JOB_HANDLERS: Record<
+  ProbeJobType,
+  (messages: LaneMessage[], env: Env, ctx: ExecutionContext) => Promise<void>
+> = {
+  "attribution-sweep": runAttributionSweepJobs,
+  "origin-reachability": runOriginReachabilityJobs,
+  "revenue-probe": runRevenueProbeJobs,
+  "compute-declaration": runComputeDeclarationJobs,
+};
+
 export default {
   async fetch(request: Request, env: Env, ctx: Ctx) {
     const response = await withUsageTelemetry(request, env, ctx, () =>
@@ -2300,27 +2327,7 @@ export default {
       // would make a half-deployed rename look like a healthy queue draining.
       declineUnknownProbeJobs(unrecognised);
       for (const [jobType, messages] of byType) {
-        switch (jobType) {
-          case "attribution-sweep":
-            await runAttributionSweepJobs(messages, env, ctx);
-            break;
-          case "origin-reachability":
-            await runOriginReachabilityJobs(messages, env, ctx);
-            break;
-          case "revenue-probe":
-            await runRevenueProbeJobs(messages, env, ctx);
-            break;
-          case "compute-declaration":
-            await runComputeDeclarationJobs(messages, env, ctx);
-            break;
-          default: {
-            // EXHAUSTIVE. Adding a member to the vocabulary without a branch
-            // here fails the typecheck rather than reaching production as a
-            // lane whose messages are silently declined.
-            const unreachable: never = jobType;
-            throw new Error(`unhandled probe job type: ${String(unreachable)}`);
-          }
-        }
+        await PROBE_JOB_HANDLERS[jobType](messages, env, ctx);
       }
       return;
     }
