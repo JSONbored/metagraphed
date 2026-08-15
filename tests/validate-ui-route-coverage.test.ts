@@ -7,13 +7,17 @@
 // matching any character. So the tests are about the matcher being WRONG in
 // the specific ways that look right.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, test } from "vitest";
 import {
   MAX_UNREFERENCED_ROUTES,
   publishedRoutes,
   routePattern,
   unreferencedRoutes,
+  PROSE_ONLY_ROUTES,
 } from "../scripts/validate-ui-route-coverage.ts";
+import { repoRoot } from "../scripts/lib.ts";
 
 describe("matching a route against UI source", () => {
   test("a {token} matches a template-literal segment, the UI's actual idiom", () => {
@@ -114,5 +118,48 @@ describe("the ratchet", () => {
     // report everything missing, not report success over an empty set.
     const routes = ["/api/v1/a", "/api/v1/b"];
     assert.deepEqual(unreferencedRoutes(routes, ""), routes);
+  });
+});
+
+describe("the named prose-only exemption (#10517)", () => {
+  test("every exempt route is a real published route, spelled the same way", () => {
+    // An entry with a typo, or one for a route that has since been withdrawn,
+    // exempts nothing and reads as though it does -- the failure mode of every
+    // allowlist. Checked against the published contract rather than a literal.
+    const openapi = JSON.parse(
+      readFileSync(
+        path.join(repoRoot, "public/metagraph/openapi.json"),
+        "utf8",
+      ),
+    ) as { paths: Record<string, Record<string, unknown>> };
+    const published = new Set(publishedRoutes(openapi));
+    for (const route of PROSE_ONLY_ROUTES) {
+      assert.ok(
+        published.has(route),
+        `${route} is exempt but is not a published non-feed GET route -- ` +
+          "delete the entry or fix the spelling",
+      );
+    }
+  });
+
+  test("the list stays SHORT, because it is a gap register and not an allowance", () => {
+    // The ceiling's own note: an undifferentiated allowance is what let the
+    // backlog reach 35 unnoticed. A named list has the opposite property only
+    // while it is short enough to read, so this bounds it rather than trusting
+    // that nobody appends.
+    assert.ok(
+      PROSE_ONLY_ROUTES.length <= 3,
+      `${PROSE_ONLY_ROUTES.length} prose-only routes: past a handful this has ` +
+        "become the allowlist MAX_UNREFERENCED_ROUTES refuses to be. Render one.",
+    );
+  });
+
+  test("exempting a route does not exempt its siblings", () => {
+    // /accounts/{ss58}/identity-history is exempt; the two rendered siblings
+    // must not be swept along by a prefix or a loose match.
+    assert.ok(!PROSE_ONLY_ROUTES.includes("/api/v1/chain/identity-history"));
+    assert.ok(
+      !PROSE_ONLY_ROUTES.includes("/api/v1/subnets/{netuid}/identity-history"),
+    );
   });
 });
