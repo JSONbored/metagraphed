@@ -475,6 +475,53 @@ describe("a dead-letter verdict ages out of the serving read", () => {
     assert.equal(card([dlq(now - 1_000)], now).stale_lane_count, 1);
   });
 
+  test("A DLQ IS NEVER MARKED SILENT -- its quiet is the goal", () => {
+    // `laneSilenceCadenceMs` reads the gaps between a lane's rows. For a dlq
+    // those are the spacing between FAILURES, so a queue that lost messages
+    // hourly for an afternoon gets a "cadence" of an hour and then reads
+    // `unknown -- no verdict for 186m (cadence ~60m)`: "expected to lose a
+    // message every hour and has not". Measured in production, that string.
+    const now = 1_785_000_000_000;
+    const out = withLaneHealth(
+      buildSelfHealth([], []),
+      // Five hours against a 3x-of-60m bound, so it is PAST the threshold
+      // rather than exactly on it -- at exactly 3x the comparison is `>` and
+      // the test would pass with the exemption removed.
+      { "probe-jobs-dlq": dlq(now - 5 * 60 * 60 * 1000) },
+      { nowMs: now, cadences: { "probe-jobs-dlq": 60 * 60 * 1000 } },
+    );
+    assert.equal(
+      out.lanes[0]?.verdict,
+      "stale",
+      "still a real loss, still counted",
+    );
+    assert.equal(out.stale_lane_count, 1);
+    assert.doesNotMatch(String(out.lanes[0]?.detail), /cadence/);
+  });
+
+  test("an ordinary lane IS still marked silent on the same input", () => {
+    // Non-vacuity for the test above: the exemption is what changes the
+    // outcome, not the fixture being unreachable by the silence path.
+    const now = 1_785_000_000_000;
+    const out = withLaneHealth(
+      buildSelfHealth([], []),
+      {
+        "chain-detail": {
+          lane: "chain-detail",
+          verdict: "stale" as const,
+          age_ms: 1,
+          detail: "frozen",
+          // Five hours against a 3x-of-60m threshold, so it is past the bound
+          // rather than exactly on it.
+          checked_at: now - 5 * 60 * 60 * 1000,
+        },
+      },
+      { nowMs: now, cadences: { "chain-detail": 60 * 60 * 1000 } },
+    );
+    assert.equal(out.lanes[0]?.verdict, "unknown");
+    assert.match(String(out.lanes[0]?.detail), /cadence/);
+  });
+
   test("an ORDINARY lane's old stale verdict is left alone", () => {
     // The scope of this rule is exactly the family that cannot say `ok`.
     // Ageing out every stale verdict would hide genuinely broken lanes, which
