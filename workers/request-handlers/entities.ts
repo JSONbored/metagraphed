@@ -142,7 +142,6 @@ import {
   buildAccountHistory,
   buildAccountSummary,
   buildAccountEvents,
-  buildSubnetEvents,
   buildSubnetEventSummary,
   buildAccountTransfers,
   buildAccountSubnets,
@@ -342,7 +341,6 @@ import {
   buildChainIdleStake,
   buildSubnetIdleStake,
 } from "../../src/subnet-idle-stake.ts";
-import { buildChainIdentityHistory } from "../../src/chain-identity-history.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -510,7 +508,6 @@ import {
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "../../src/chain-turnover.ts";
-import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.ts";
 import {
   readStore,
   recordsOrEmpty,
@@ -1825,11 +1822,11 @@ export async function handleSubnetIdentityHistory(
   // Through the composer (src/identity-history-answer.ts): same formatter and
   // data-api's exact cursor token, so a page started on one tier finishes
   // correctly on the other -- and MCP/GraphQL now reach it by the same route.
-  const data = (await answerSubnetIdentityHistory(env, netuid, null, {
+  const data = await answerSubnetIdentityHistory(env, netuid, null, {
     limit,
     offset,
     cursor: routeText(url, "cursor"),
-  })) as unknown as ReturnType<typeof buildSubnetIdentityHistory>;
+  });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
   // JSON path would. Cold store -> empty entries -> header-only CSV.
@@ -2103,9 +2100,9 @@ export async function handleChainIdentityHistory(
   // Through the composer (src/identity-history-answer.ts): the frozen verified
   // history through the SAME formatter as the Postgres tier, for all three
   // surfaces rather than this one.
-  const data = (await answerChainIdentityHistory(env, null, {
+  const data = await answerChainIdentityHistory(env, null, {
     limit,
-  })) as unknown as ReturnType<typeof buildChainIdentityHistory>;
+  });
   return envelopeResponse(
     request,
     {
@@ -5649,14 +5646,14 @@ export async function handleSubnetEvents(
   // Through the composer (src/subnet-events-answer.ts). This cascade used to
   // live here only, which is precisely why MCP and GraphQL published
   // event_count 0 for subnets this route served real rows for.
-  const data = (await answerSubnetEvents(env, Number(netuid), tierResult, {
+  const data = await answerSubnetEvents(env, Number(netuid), tierResult, {
     limit: parsedLimit,
     offset: parsedOffset,
     cursor: routeText(url, "cursor"),
     kind,
     blockStart,
     blockEnd,
-  })) as unknown as ReturnType<typeof buildSubnetEvents>;
+  });
   if (csvRequested(url, request)) {
     return csvResponse(
       data.events as unknown[],

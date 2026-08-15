@@ -34,16 +34,22 @@ import {
   buildSubnetIdentityHistory,
   loadSubnetIdentityHistory,
 } from "./subnet-identity-history.ts";
-import {
-  buildChainIdentityHistory,
-  loadChainIdentityHistory,
-} from "./chain-identity-history.ts";
+import { loadChainIdentityHistory } from "./chain-identity-history.ts";
 import { SUBNET_IDENTITY_HISTORY_TABLES } from "./read-store-tables.ts";
 import { readStore } from "./read-store.ts";
 import { storeAll } from "./analytics-live.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { ArtifactEnv } from "../workers/storage.ts";
+import {
+  SubnetIdentityHistoryReadSchema,
+  type SubnetIdentityHistoryRead,
+} from "../schemas-src/routes/subnet-identity-history.ts";
+import {
+  ChainIdentityHistoryReadSchema,
+  type ChainIdentityHistoryRead,
+} from "../schemas-src/routes/chain-identity-history.ts";
+import { numberOrNull, recordOrNull } from "./read-store.ts";
 
 /** One env, forwarded to both legs: the Neon store and the lakehouse. */
 type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
@@ -107,9 +113,42 @@ async function tryLive<T>(read: () => Promise<T>): Promise<T | null> {
  * whose identity last changed in July has zero live rows and a real frozen
  * timeline. Treating the empty read as authoritative would publish "this
  * subnet has never changed its identity" for most of the network. */
-function nonEmpty(result: Row | null, key: "entries" | "changes"): Row | null {
-  const rows = result?.[key];
+/**
+ * The result, if its list is non-empty -- otherwise null, so the cascade moves
+ * on. Generic so it preserves whatever the leg handed it rather than flattening
+ * every tier back to `Row` (#11339).
+ */
+function nonEmpty<T>(result: T | null, key: "entries" | "changes"): T | null {
+  const rows = recordOrNull(result)?.[key];
   return Array.isArray(rows) && rows.length > 0 ? result : null;
+}
+
+/**
+ * A tier's answer, parsed into the timeline it claims to be -- or null.
+ *
+ * PARSED, NOT ASSERTED (#11339). Both composers declared `Promise<Row>` and
+ * reached it with `as unknown as Row`, while every REST caller cast it straight
+ * back with `as unknown as ReturnType<typeof buildSubnetIdentityHistory>`. A
+ * round trip through `Row` that discarded the type at one end and re-asserted
+ * it at the other, with nothing checking in between.
+ *
+ * READ-TOLERANT on purpose. Reading through the strict RESPONSE schema would
+ * reject a tier's whole answer over one absent key, fall through to the empty
+ * builder, and publish "no identity has ever changed" for most of the network.
+ * The read schema pins the TYPE of any declared key that is present and
+ * tolerates the rest -- so a null answer here means the tier returned something
+ * genuinely malformed, which is exactly what the `??` cascade already treats as
+ * "this tier did not answer".
+ */
+function subnetTimeline(value: unknown): SubnetIdentityHistoryRead | null {
+  const parsed = SubnetIdentityHistoryReadSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+/** The network-wide twin of {@link subnetTimeline}. */
+function chainTimeline(value: unknown): ChainIdentityHistoryRead | null {
+  const parsed = ChainIdentityHistoryReadSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 export interface AnswerSubnetIdentityHistoryOptions {
@@ -133,34 +172,37 @@ export async function answerSubnetIdentityHistory(
     coldTier = loadSubnetIdentityHistoryColdTier,
     live = liveStore,
   }: AnswerSubnetIdentityHistoryOptions = {},
-): Promise<Row> {
+): Promise<SubnetIdentityHistoryRead> {
   const db = tierResult ? null : await tryLive(() => live(env));
   const fresh = db
     ? nonEmpty(
-        await tryLive(
-          async () =>
-            (await loadSubnetIdentityHistory(db, netuid, {
-              limit: query.limit,
-              offset: query.offset ?? null,
-              cursor: query.cursor ?? null,
-            })) as Row,
+        await tryLive(async () =>
+          loadSubnetIdentityHistory(db, netuid, {
+            limit: query.limit,
+            offset: query.offset ?? null,
+            cursor: query.cursor ?? null,
+          }),
         ),
         "entries",
       )
     : null;
   return (
-    tierResult ??
-    fresh ??
-    ((await coldTier(env, netuid, {
-      limit: query.limit,
-      offset: query.offset ?? null,
-      cursor: query.cursor ?? null,
-    })) as Row | null) ??
-    (buildSubnetIdentityHistory([], netuid, {
+    subnetTimeline(tierResult) ??
+    subnetTimeline(fresh) ??
+    // INSIDE the chain. `??` short-circuits, so the cold tier -- an R2 SQL
+    // scan -- is only paid for once both faster legs have declined.
+    subnetTimeline(
+      await coldTier(env, netuid, {
+        limit: query.limit,
+        offset: query.offset ?? null,
+        cursor: query.cursor ?? null,
+      }),
+    ) ??
+    buildSubnetIdentityHistory([], netuid, {
       limit: query.limit,
       offset: query.offset ?? null,
       nextCursor: null,
-    }) as unknown as Row)
+    })
   );
 }
 
@@ -173,25 +215,27 @@ export async function answerChainIdentityHistory(
     coldTier = loadChainIdentityHistoryColdTier,
     live = liveStore,
   }: AnswerChainIdentityHistoryOptions = {},
-): Promise<Row> {
+): Promise<ChainIdentityHistoryRead> {
   const db = tierResult ? null : await tryLive(() => live(env));
   const fresh = db
     ? nonEmpty(
-        await tryLive(
-          async () =>
-            (await loadChainIdentityHistory(db, {
-              limit: query.limit as number | null,
-            })) as unknown as Row,
+        await tryLive(async () =>
+          loadChainIdentityHistory(db, { limit: numberOrNull(query.limit) }),
         ),
         "changes",
       )
     : null;
   return (
-    tierResult ??
-    fresh ??
-    ((await coldTier(env, { limit: query.limit })) as Row | null) ??
-    (buildChainIdentityHistory([], {
-      limit: query.limit,
-    }) as unknown as Row)
+    chainTimeline(tierResult) ??
+    chainTimeline(fresh) ??
+    // Lazy, for the same reason as the subnet leg.
+    chainTimeline(await coldTier(env, { limit: query.limit })) ??
+      // The empty feed, spelled out rather than taken from
+      // `buildChainIdentityHistory([], ...)`. That builder types its rows as
+      // `Record<string, unknown>` -- honestly, since it formats whatever it is
+      // given -- so its return is not provably this shape, and casting it back
+      // was half of the round trip this change removes. With no rows there is
+      // exactly one answer, and here the compiler can see it.
+      { schema_version: 1, count: 0, subnet_count: 0, changes: [] }
   );
 }
