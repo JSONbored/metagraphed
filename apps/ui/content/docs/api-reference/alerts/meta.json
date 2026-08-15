@@ -1,6 +1,7 @@
 {
   "title": "Alerts",
   "pages": [
+    "index",
     "alert-trigger"
   ]
 }

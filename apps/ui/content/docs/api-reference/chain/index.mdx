@@ -1,0 +1,113 @@
+---
+title: Chain
+description: Every Chain endpoint in the metagraphed API, with its method and path.
+---
+
+53 endpoints.
+
+- [Chain Activity](/docs/api-reference/chain/chain-activity) — `GET /api/v1/chain/activity`  
+  Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first.
+- [Chain Activity By Network](/docs/api-reference/chain/chain-activity-by-network) — `GET /api/v1/{network}/chain/activity`  
+  Network-addressed form of the route above.
+- [Chain Alpha Volume](/docs/api-reference/chain/chain-alpha-volume) — `GET /api/v1/chain/alpha-volume`  
+  Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit \<=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/\{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume.
+- [Chain Alpha Volume By Network](/docs/api-reference/chain/chain-alpha-volume-by-network) — `GET /api/v1/{network}/chain/alpha-volume`  
+  Network-addressed form of the route above.
+- [Chain Axon Removals](/docs/api-reference/chain/chain-axon-removals) — `GET /api/v1/chain/axon-removals`  
+  Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity.
+- [Chain Burn](/docs/api-reference/chain/chain-burn) — `GET /api/v1/chain/burn`  
+  Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399).
+- [Chain Burn By Network](/docs/api-reference/chain/chain-burn-by-network) — `GET /api/v1/{network}/chain/burn`  
+  Network-addressed form of the route above.
+- [Chain Calls](/docs/api-reference/chain/chain-calls) — `GET /api/v1/chain/calls`  
+  Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=.
+- [Chain Calls By Network](/docs/api-reference/chain/chain-calls-by-network) — `GET /api/v1/{network}/chain/calls`  
+  Network-addressed form of the route above.
+- [Chain Concentration](/docs/api-reference/chain/chain-concentration) — `GET /api/v1/chain/concentration`  
+  Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons store; schema-stable nulls when cold.
+- [Chain Concentration History](/docs/api-reference/chain/chain-concentration-history) — `GET /api/v1/chain/concentration/history`  
+  Fetch the network-wide concentration series.
+- [Chain Concentration Subnets](/docs/api-reference/chain/chain-concentration-subnets) — `GET /api/v1/chain/concentration/subnets`  
+  Fetch every subnet ranked by distribution spread.
+- [Chain Deregistrations](/docs/api-reference/chain/chain-deregistrations) — `GET /api/v1/chain/deregistrations`  
+  Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity.
+- [Chain Deregistrations By Network](/docs/api-reference/chain/chain-deregistrations-by-network) — `GET /api/v1/{network}/chain/deregistrations`  
+  Network-addressed form of the route above.
+- [Chain Events Feed](/docs/api-reference/chain/chain-events-feed) — `GET /api/v1/chain-events`  
+  Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream.
+- [Chain Events Feed By Network](/docs/api-reference/chain/chain-events-feed-by-network) — `GET /api/v1/{network}/chain-events`  
+  Network-addressed form of the route above.
+- [Chain Events Stats](/docs/api-reference/chain/chain-events-stats) — `GET /api/v1/chain-events/stats`  
+  Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table.
+- [Chain Events Stats By Network](/docs/api-reference/chain/chain-events-stats-by-network) — `GET /api/v1/{network}/chain-events/stats`  
+  Network-addressed form of the route above.
+- [Chain Fees](/docs/api-reference/chain/chain-fees) — `GET /api/v1/chain/fees`  
+  Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=.
+- [Chain Fees By Network](/docs/api-reference/chain/chain-fees-by-network) — `GET /api/v1/{network}/chain/fees`  
+  Network-addressed form of the route above.
+- [Chain Holders](/docs/api-reference/chain/chain-holders) — `GET /api/v1/chain/holders`  
+  Fetch every subnet ranked by alpha-ownership concentration.
+- [Chain Identity History](/docs/api-reference/chain/chain-identity-history) — `GET /api/v1/chain/identity-history`  
+  Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed from the frozen lakehouse export of subnet_identity_history; schema-stable empty feed when cold.
+- [Chain Idle Stake](/docs/api-reference/chain/chain-idle-stake) — `GET /api/v1/chain/idle-stake`  
+  Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons store; schema-stable empty ranking when cold.
+- [Chain Performance](/docs/api-reference/chain/chain-performance) — `GET /api/v1/chain/performance`  
+  Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the neurons store; schema-stable nulls when cold.
+- [Chain Prometheus](/docs/api-reference/chain/chain-prometheus) — `GET /api/v1/chain/prometheus`  
+  Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity.
+- [Chain Registrations](/docs/api-reference/chain/chain-registrations) — `GET /api/v1/chain/registrations`  
+  Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity.
+- [Chain Registrations By Network](/docs/api-reference/chain/chain-registrations-by-network) — `GET /api/v1/{network}/chain/registrations`  
+  Network-addressed form of the route above.
+- [Chain Revenue Coverage](/docs/api-reference/chain/chain-revenue-coverage) — `GET /api/v1/chain/revenue-coverage`  
+  Fetch every subnet's revenue coverage in one response.
+- [Chain Serving](/docs/api-reference/chain/chain-serving) — `GET /api/v1/chain/serving`  
+  Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity.
+- [Chain Signers](/docs/api-reference/chain/chain-signers) — `GET /api/v1/chain/signers`  
+  Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=.
+- [Chain Signers By Network](/docs/api-reference/chain/chain-signers-by-network) — `GET /api/v1/{network}/chain/signers`  
+  Network-addressed form of the route above.
+- [Chain Stake Flow](/docs/api-reference/chain/chain-stake-flow) — `GET /api/v1/chain/stake-flow`  
+  Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit \<=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow.
+- [Chain Stake Flow By Network](/docs/api-reference/chain/chain-stake-flow-by-network) — `GET /api/v1/{network}/chain/stake-flow`  
+  Network-addressed form of the route above.
+- [Chain Stake Moves](/docs/api-reference/chain/chain-stake-moves) — `GET /api/v1/chain/stake-moves`  
+  Fetch network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): a per-subnet leaderboard (StakeMoved event count, distinct movers, and average movements per mover) ranked by total movements, a network rollup with the true distinct mover count (an account moving stake out of several subnets counts once) and total movements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-move intensity.
+- [Chain Stake Moves By Network](/docs/api-reference/chain/chain-stake-moves-by-network) — `GET /api/v1/{network}/chain/stake-moves`  
+  Network-addressed form of the route above.
+- [Chain Stake Transfers](/docs/api-reference/chain/chain-stake-transfers) — `GET /api/v1/chain/stake-transfers`  
+  Fetch network-wide stake-transfer activity over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (StakeTransferred event count, distinct senders, and average transfers per sender) ranked by total transfers, a network rollup with the true distinct sender count (an account transferring stake out of several subnets counts once) and total transfers, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet transfer intensity.
+- [Chain Stake Transfers By Network](/docs/api-reference/chain/chain-stake-transfers-by-network) — `GET /api/v1/{network}/chain/stake-transfers`  
+  Network-addressed form of the route above.
+- [Chain Stream](/docs/api-reference/chain/chain-stream) — `GET /api/v1/chain/stream`  
+  Subscribe to decoded chain activity as it is captured (#4982, ADR 0015).
+- [Chain Subnet Lifecycle](/docs/api-reference/chain/chain-subnet-lifecycle) — `GET /api/v1/chain/subnet-lifecycle`  
+  Fetch every subnet's registrations and deregistrations across the network (#10263), newest first, from the subnet_lifecycle Neon table.
+- [Chain Transfer Pairs](/docs/api-reference/chain/chain-transfer-pairs) — `GET /api/v1/chain/transfer-pairs`  
+  Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, \<=100).
+- [Chain Transfer Pairs By Network](/docs/api-reference/chain/chain-transfer-pairs-by-network) — `GET /api/v1/{network}/chain/transfer-pairs`  
+  Network-addressed form of the route above.
+- [Chain Transfers](/docs/api-reference/chain/chain-transfers) — `GET /api/v1/chain/transfers`  
+  Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, \<=100), and the top senders' share of total volume.
+- [Chain Transfers By Network](/docs/api-reference/chain/chain-transfers-by-network) — `GET /api/v1/{network}/chain/transfers`  
+  Network-addressed form of the route above.
+- [Chain Turnover](/docs/api-reference/chain/chain-turnover) — `GET /api/v1/chain/turnover`  
+  Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores.
+- [Chain Weight Setters](/docs/api-reference/chain/chain-weight-setters) — `GET /api/v1/chain/weights/setters`  
+  Fetch the network-wide weight-setter leaderboard over a 7d or 30d window: the individual validators driving consensus across every subnet ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time.
+- [Chain Weights](/docs/api-reference/chain/chain-weights) — `GET /api/v1/chain/weights`  
+  Fetch network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): a per-subnet leaderboard (distinct weight-setting validators, WeightsSet event count, and average updates per validator) ranked by total events, a network rollup with the true distinct setter count (a validator setting weights on several subnets counts once) and total events, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet update intensity.
+- [Chain Yield](/docs/api-reference/chain/chain-yield) — `GET /api/v1/chain/yield`  
+  Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons store; schema-stable nulls when cold.
+- [Crowdloan Detail](/docs/api-reference/chain/crowdloan-detail) — `GET /api/v1/crowdloans/{crowdloan_id}`  
+  Fetch one crowdloan's live state (#8696) from the Crowdloan pallet's Crowdloans storage map at request time with 120s KV cache.
+- [Crowdloan Detail By Network](/docs/api-reference/chain/crowdloan-detail-by-network) — `GET /api/v1/{network}/crowdloans/{crowdloan_id}`  
+  Network-addressed form of the route above.
+- [Crowdloans](/docs/api-reference/chain/crowdloans) — `GET /api/v1/crowdloans`  
+  List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache.
+- [Crowdloans By Network](/docs/api-reference/chain/crowdloans-by-network) — `GET /api/v1/{network}/crowdloans`  
+  Network-addressed form of the route above.
+- [Emission Gate Changes](/docs/api-reference/chain/emission-gate-changes) — `GET /api/v1/chain/governance/emission-changes`  
+  Fetch the emission-gate change log.
+- [Indexer Lag](/docs/api-reference/chain/indexer-lag) — `GET /api/v1/chain/indexer-lag`  
+  Fetch the block-indexing latency card.

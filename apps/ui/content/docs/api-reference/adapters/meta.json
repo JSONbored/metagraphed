@@ -1,6 +1,7 @@
 {
   "title": "Adapters",
   "pages": [
+    "index",
     "adapter",
     "review-adapter-candidates"
   ]

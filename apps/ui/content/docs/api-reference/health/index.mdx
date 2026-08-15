@@ -1,0 +1,29 @@
+---
+title: Health
+description: Every Health endpoint in the metagraphed API, with its method and path.
+---
+
+11 endpoints.
+
+- [Failure Reasons](/docs/api-reference/health/failure-reasons) — `GET /api/v1/health/failure-reasons`  
+  Fetch the probe failure-reason mix.
+- [Health](/docs/api-reference/health/health) — `GET /api/v1/health`  
+  Fetch global health summary.
+- [Health History](/docs/api-reference/health/health-history) — `GET /api/v1/health/history/{date}`  
+  Fetch compact daily health history.
+- [Health Trends Bulk](/docs/api-reference/health/health-trends-bulk) — `GET /api/v1/health/trends`  
+  Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from the store).
+- [Incidents](/docs/api-reference/health/incidents) — `GET /api/v1/incidents`  
+  Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from the store).
+- [Self Health](/docs/api-reference/health/self-health) — `GET /api/v1/self-health`  
+  metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, served from the self_health_daily lakehouse rollup at /api/v1/self-health (no static file).
+- [Subnet Health](/docs/api-reference/health/subnet-health) — `GET /api/v1/subnets/{netuid}/health`  
+  Fetch health detail for one subnet.
+- [Subnet Health Incidents](/docs/api-reference/health/subnet-health-incidents) — `GET /api/v1/subnets/{netuid}/health/incidents`  
+  Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from the store).
+- [Subnet Health Percentiles](/docs/api-reference/health/subnet-health-percentiles) — `GET /api/v1/subnets/{netuid}/health/percentiles`  
+  Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from the store).
+- [Subnet Health Trends](/docs/api-reference/health/subnet-health-trends) — `GET /api/v1/subnets/{netuid}/health/trends`  
+  Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from the store).
+- [Subnet Uptime](/docs/api-reference/health/subnet-uptime) — `GET /api/v1/subnets/{netuid}/uptime`  
+  Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily rollup).

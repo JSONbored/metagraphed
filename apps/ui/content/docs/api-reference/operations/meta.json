@@ -1,6 +1,7 @@
 {
   "title": "Operations",
   "pages": [
+    "index",
     "build",
     "changelog",
     "freshness",

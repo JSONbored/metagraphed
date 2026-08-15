@@ -1,6 +1,7 @@
 {
   "title": "Evidence",
   "pages": [
+    "index",
     "evidence",
     "subnet-evidence"
   ]

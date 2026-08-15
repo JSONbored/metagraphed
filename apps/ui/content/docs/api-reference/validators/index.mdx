@@ -1,0 +1,19 @@
+---
+title: Validators
+description: Every Validators endpoint in the metagraphed API, with its method and path.
+---
+
+6 endpoints.
+
+- [Compare Validators](/docs/api-reference/validators/compare-validators) — `GET /api/v1/compare/validators`  
+  Place several validators side by side for a stake/delegate decision: each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates.
+- [Global Validators](/docs/api-reference/validators/global-validators) — `GET /api/v1/validators`  
+  Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows.
+- [Validator Detail](/docs/api-reference/validators/validator-detail) — `GET /api/v1/validators/{hotkey}`  
+  Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table.
+- [Validator Economics Ranking](/docs/api-reference/validators/validator-economics-ranking) — `GET /api/v1/validators/economics`  
+  Fetch every subnet ranked by what it costs to become an EARNING validator there.
+- [Validator History](/docs/api-reference/validators/validator-history) — `GET /api/v1/validators/{hotkey}/history`  
+  Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily rollup tier.
+- [Validator Nominators](/docs/api-reference/validators/validator-nominators) — `GET /api/v1/validators/{hotkey}/nominators`  
+  Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity.

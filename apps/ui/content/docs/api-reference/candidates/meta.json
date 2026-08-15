@@ -1,6 +1,7 @@
 {
   "title": "Candidates",
   "pages": [
+    "index",
     "candidates",
     "subnet-candidates"
   ]

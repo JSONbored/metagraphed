@@ -151,6 +151,64 @@ function primaryTag(tags) {
   return tags.find((t) => t !== CATCH_ALL_TAG) ?? tags[0];
 }
 
+/** First sentence of a description, for a one-line entry in a group index. */
+function firstSentence(text) {
+  const flat = String(text).replace(/\s+/g, " ").trim();
+  if (!flat) return "";
+  const end = flat.search(/\.\s|\.$/);
+  return end === -1 ? flat : flat.slice(0, end + 1);
+}
+
+/**
+ * Escape the two characters MDX treats as syntax, for prose taken from the spec.
+ *
+ * Operation descriptions are written for an API reference, not for MDX, and they
+ * are full of both: `?counterparty=<ss58>` parses as an unclosed JSX tag and
+ * `{network}` as a JS expression. Either one fails the build outright — which is
+ * how this was caught, rather than by rendering wrongly in production.
+ */
+function escapeMdx(text) {
+  return String(text).replace(/([<{])/g, "\\$1");
+}
+
+/**
+ * The index page for one tag folder (#11204).
+ *
+ * WHY THIS IS GENERATED, not hand-written: every operation page links its own
+ * group path (`/docs/api-reference/accounts`) in the docs navigation, and those
+ * 27 paths had no page behind them — they 404'd. So the docs shipped ~300
+ * internal links to 404s, a reader clicking a sidebar category got an error,
+ * and the site-wide BreadcrumbList (#11230) named those URLs as crumb targets,
+ * which Google validates.
+ *
+ * Generating it means a new API tag gets its index automatically, rather than
+ * silently reintroducing the same 404 the next time the spec grows a group.
+ *
+ * It is a real page, not a stub: every operation in the group with its title,
+ * method, path and first line of prose. That also flattens the docs tree —
+ * before this, reaching some reference pages took eleven hops from /docs.
+ */
+function tagIndexPage(tag, operations) {
+  const title = tagTitle(tag);
+  const rows = [...operations]
+    .sort((a, b) => a.slug.localeCompare(b.slug))
+    .map((op) => {
+      // The method+path needs no escaping — it is inside a code span, where MDX
+      // does not parse JSX. The description is bare prose and does.
+      const line = `- [${escapeMdx(op.title)}](/docs/api-reference/${tag}/${op.slug}) — \`${op.method} ${op.route}\``;
+      return op.description ? `${line}  \n  ${escapeMdx(op.description)}` : line;
+    })
+    .join("\n");
+  return (
+    `---\n` +
+    `title: ${title}\n` +
+    `description: Every ${title} endpoint in the metagraphed API, with its method and path.\n` +
+    `---\n\n` +
+    `${operations.length} endpoint${operations.length === 1 ? "" : "s"}.\n\n` +
+    `${rows}\n`
+  );
+}
+
 async function main() {
   // path.resolve (CWD-relative) -- this script always runs as
   // `node scripts/generate-openapi-docs.ts` from apps/ui/.
@@ -164,6 +222,26 @@ async function main() {
     }
   }
   splitOperationSummaries(spec);
+
+  // #11204: what each tag's index page lists. Collected AFTER
+  // splitOperationSummaries, so `summary` is the short humanized title and
+  // `description` is the original prose — the same pair the operation page
+  // itself renders.
+  const operationsByTag = new Map();
+  for (const [route, methods] of Object.entries(spec.paths ?? {})) {
+    for (const [method, op] of Object.entries(methods ?? {})) {
+      if (!op || typeof op !== "object" || !op.operationId) continue;
+      const tag = primaryTag(op.tags);
+      if (!operationsByTag.has(tag)) operationsByTag.set(tag, []);
+      operationsByTag.get(tag).push({
+        slug: kebabCase(op.operationId),
+        title: op.summary ?? humanizeOperationId(op.operationId),
+        method: method.toUpperCase(),
+        route,
+        description: firstSentence(op.description ?? ""),
+      });
+    }
+  }
 
   // index.mdx is hand-authored (a landing page, not generated), but lives
   // inside OUTPUT_DIR alongside the generated tree -- preserve it across
@@ -226,9 +304,16 @@ async function main() {
   }
 
   for (const [tag, pages] of pagesByTag) {
+    // #11204: the group's own page. Without it `/docs/api-reference/<tag>` —
+    // which every page in the group links, and which the site-wide breadcrumb
+    // names as a crumb target — is a 404.
+    const operations = (operationsByTag.get(tag) ?? []).filter((op) => pages.includes(op.slug));
+    await writeFile(path.join(OUTPUT_DIR, tag, "index.mdx"), tagIndexPage(tag, operations));
     await writeFile(
       path.join(OUTPUT_DIR, tag, "meta.json"),
-      JSON.stringify({ title: tagTitle(tag), pages: pages.sort() }, null, 2) + "\n",
+      // "index" first so the group page heads its own section in the nav,
+      // matching how the reference root orders its own index.
+      JSON.stringify({ title: tagTitle(tag), pages: ["index", ...pages.sort()] }, null, 2) + "\n",
     );
   }
 

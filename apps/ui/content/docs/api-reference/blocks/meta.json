@@ -1,6 +1,7 @@
 {
   "title": "Blocks",
   "pages": [
+    "index",
     "block-chain-events",
     "block-chain-events-by-network",
     "block-detail",

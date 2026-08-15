@@ -1,6 +1,7 @@
 {
   "title": "Accounts",
   "pages": [
+    "index",
     "account-axon-removals",
     "account-balance",
     "account-balance-by-network",

@@ -1,6 +1,7 @@
 {
   "title": "Validators",
   "pages": [
+    "index",
     "compare-validators",
     "global-validators",
     "validator-detail",
