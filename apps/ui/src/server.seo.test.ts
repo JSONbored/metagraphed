@@ -117,6 +117,42 @@ describe("site-wide JSON-LD graph (#11204)", () => {
     }
   });
 
+  it("breadcrumbs the weekly digests, which render a crumb row and emitted no node", () => {
+    // #11303: 285 digest URLs -- 15% of the sitemap -- painted a breadcrumb the
+    // reader can see while emitting no BreadcrumbList, because they shipped
+    // (#8705) after this function was written. The structured data has to agree
+    // with what is on screen, which is the rule every builder here ships under.
+    const crumb = breadcrumbOn("/news/sn38/2026-w25");
+    expect(crumb?.itemListElement.map((entry) => entry.name)).toEqual([
+      "Home",
+      "News",
+      "SN38",
+      "2026-W25",
+    ]);
+    expect(crumb?.itemListElement.map((entry) => entry.item)).toEqual([
+      "https://metagraph.sh/",
+      "https://metagraph.sh/news",
+      "https://metagraph.sh/news/sn38",
+      "https://metagraph.sh/news/sn38/2026-w25",
+    ]);
+  });
+
+  it("labels a digest segment the way the site writes it, not the way the URL does", () => {
+    // `Sn38` and `2026 w25` are what the generic slug rule produces, and the
+    // site writes neither. A crumb that renames the thing it points at is a
+    // crumb Google reports as not matching the page.
+    expect(breadcrumbOn("/news/network/2026-w03")?.itemListElement.map((e) => e.name)).toEqual([
+      "Home",
+      "News",
+      "Network",
+      "2026-W03",
+    ]);
+    // The docs trail must be untouched by those two new rules.
+    expect(breadcrumbOn("/docs/api-reference/subnets")?.itemListElement.map((e) => e.name)).toEqual(
+      ["Home", "Docs", "API reference", "Subnets"],
+    );
+  });
+
   it("still breadcrumbs subnets and providers", () => {
     expect(breadcrumbOn("/subnets/64")?.itemListElement).toHaveLength(3);
     expect(breadcrumbOn("/providers/chutes")?.itemListElement).toHaveLength(3);
@@ -125,7 +161,7 @@ describe("site-wide JSON-LD graph (#11204)", () => {
   it("emits no breadcrumb on pages that are not a detail view", () => {
     // A one-item "trail" on a hub page is noise, and Google flags a breadcrumb
     // that does not describe a real position in the hierarchy.
-    for (const path of ["/", "/subnets", "/validators", "/docs"]) {
+    for (const path of ["/", "/subnets", "/validators", "/docs", "/news"]) {
       expect(breadcrumbOn(path), path).toBeUndefined();
     }
   });

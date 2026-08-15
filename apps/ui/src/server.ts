@@ -472,6 +472,7 @@ function buildBreadcrumb(pathname: string): unknown | null {
   const provider = pathname.match(/^\/providers\/([^/]+)\/?$/);
   const validator = pathname.match(/^\/validators\/([^/]+)\/?$/);
   const docs = pathname.match(/^\/docs\/(.+?)\/?$/);
+  const news = pathname.match(/^\/news\/(.+?)\/?$/);
   let trail: Array<{ name: string; path: string }> | null = null;
   if (subnet) {
     const name = safeDecodePathSegment(subnet[1]);
@@ -512,6 +513,22 @@ function buildBreadcrumb(pathname: string): unknown | null {
         path: `/docs/${segments.slice(0, index + 1).join("/")}`,
       })),
     ];
+  } else if (news) {
+    // #11303: the 285 weekly digests -- 15% of the sitemap -- rendered a
+    // breadcrumb the reader can see and emitted no BreadcrumbList for it. They
+    // shipped in #8705, after this function was written, and adding a route
+    // family here is a step nothing forced. Derived from the path segments for
+    // the same reason the docs trail is: a new subject folder is covered the
+    // moment it ships.
+    const segments = news[1].split("/").filter(Boolean);
+    trail = [
+      { name: "Home", path: "/" },
+      { name: "News", path: "/news" },
+      ...segments.map((segment, index) => ({
+        name: titleCaseSlug(safeDecodePathSegment(segment)),
+        path: `/news/${segments.slice(0, index + 1).join("/")}`,
+      })),
+    ];
   }
   if (!trail) return null;
   return breadcrumbListJsonLd(
@@ -521,10 +538,22 @@ function buildBreadcrumb(pathname: string): unknown | null {
 
 /** `api-reference` -> `API reference`; a URL slug is not a breadcrumb label. */
 function titleCaseSlug(slug: string): string {
+  // An ISO week slug is checked FIRST, because its hyphen is meaningful and the
+  // general rule below would turn `2026-w25` into `2026 w25`. The digest pages
+  // print it as `2026-W25` and so does the crumb.
+  const week = /^(\d{4})-w(\d{1,2})$/i.exec(slug);
+  if (week) return `${week[1]}-W${week[2]}`;
   const words = slug.replace(/[-_]+/g, " ").trim();
   if (!words) return slug;
   const cased = words.charAt(0).toUpperCase() + words.slice(1);
-  return cased.replace(/\bapi\b/gi, "API").replace(/\bmcp\b/gi, "MCP");
+  return (
+    cased
+      .replace(/\bapi\b/gi, "API")
+      .replace(/\bmcp\b/gi, "MCP")
+      // `sn38` is the subject folder of a digest, and the site never writes it
+      // `Sn38` -- every page, title and card says SN38.
+      .replace(/\bsn(\d+)\b/gi, "SN$1")
+  );
 }
 
 // schema.org JSON-LD: Organization + WebSite (with a sitelinks SearchAction over
