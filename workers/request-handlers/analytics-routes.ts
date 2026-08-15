@@ -44,7 +44,6 @@ import {
   DEREGISTRATION_UNAVAILABLE_MESSAGE,
   projectDeregistrationRanking,
 } from "../../src/subnet-deregistration-ranking.ts";
-import type { Row as FieldProjectionRow } from "../../src/field-projection.ts";
 import { economicsCurrentKvReader, type EdgeCacheCtx } from "./analytics.ts";
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import {
@@ -365,9 +364,9 @@ export async function handleEconomicsTrends(
       bucketMs: DAY_MS,
     });
     data = withAlphaUsdTrendDays(
-      data as unknown as Record<string, unknown>,
+      data,
       usdRows === null ? null : taoUsdBucketMap(usdRows),
-    ) as typeof data;
+    );
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -1192,7 +1191,7 @@ export async function handleEmissionPipeline(
   // rather than before it.
   const narrowing = parseEmissionPipelineNarrowing(
     url.searchParams,
-    surface.subnets as unknown as FieldProjectionRow[],
+    surface.subnets,
     { limitMax: EMISSION_PIPELINE_LIMIT_MAX },
   );
   if ("error" in narrowing) return analyticsQueryError(narrowing.error);

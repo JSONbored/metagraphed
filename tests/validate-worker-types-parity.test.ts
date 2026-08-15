@@ -19,13 +19,18 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   declaredBindings,
+  envInterfaceErrors,
   workerTypesParityErrors,
   WORKERS,
   findUnlistedConfigs,
 } from "../scripts/validate-worker-types-parity.ts";
 import { repoRoot, stripJsonComments } from "../scripts/lib.ts";
 
-const worker = { config: "wrangler.jsonc", types: "types.d.ts" };
+const worker = {
+  config: "wrangler.jsonc",
+  types: "types.d.ts",
+  envInterface: "Env",
+};
 
 describe("var literal parity", () => {
   it("accepts a var whose literal matches", () => {
@@ -201,5 +206,65 @@ describe("the worker list", () => {
     expect(findUnlistedConfigs(WORKERS.map((w) => w.config))).toEqual([]);
     // Not every .jsonc is a wrangler config.
     expect(findUnlistedConfigs(["tsconfig.jsonc", "knip.jsonc"])).toEqual([]);
+  });
+});
+
+describe("env interface names (#11339)", () => {
+  // The invariant the gate was missing. `wrangler types` names the interface
+  // `Env` unless told otherwise, and every top-level `interface Env` in the
+  // program merges into one -- so four generated envs became their union, and
+  // every Worker's env advertised every other Worker's bindings.
+  const dataApi = {
+    config: "wrangler.data.jsonc",
+    types: "data.d.ts",
+    envInterface: "DataApiEnv",
+  };
+
+  it("accepts a file declaring its own interface", () => {
+    expect(
+      envInterfaceErrors(
+        dataApi,
+        "interface __BaseEnv_DataApiEnv {\n}\ninterface DataApiEnv extends __BaseEnv_DataApiEnv {}\n",
+      ),
+    ).toEqual([]);
+  });
+
+  it("FAILS on the bare `Env` -- the exact regression", () => {
+    // What `npm run types:workers` produces if the --env-interface flag is
+    // dropped from one of its four invocations.
+    const errors = envInterfaceErrors(
+      dataApi,
+      "interface __BaseEnv_Env {\n}\ninterface Env extends __BaseEnv_Env {}\n",
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("declares Env, not `DataApiEnv`");
+    expect(errors[0]).toContain("--env-interface DataApiEnv");
+  });
+
+  it("FAILS on another Worker's interface", () => {
+    // A copy-paste between the four invocations, which produces a file that
+    // looks right and types the wrong Worker's bindings.
+    expect(
+      envInterfaceErrors(
+        dataApi,
+        "interface RegistrySyncApiEnv extends __BaseEnv_RegistrySyncApiEnv {}\n",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("reports a file with no env interface at all", () => {
+    const errors = envInterfaceErrors(dataApi, "// nothing here\n");
+    expect(errors[0]).toContain("no env interface");
+  });
+
+  it("ignores the __BaseEnv_ helper the generator emits", () => {
+    // It is always present and never the name a Worker is typed by; matching
+    // it would make every file pass.
+    expect(
+      envInterfaceErrors(
+        dataApi,
+        "interface __BaseEnv_DataApiEnv extends Whatever {}\n",
+      ),
+    ).toHaveLength(1);
   });
 });

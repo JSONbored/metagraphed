@@ -121,6 +121,7 @@ import { loadChainTransferPairsFromArtifact } from "../../src/chain-transfer-pai
 import { loadChainStakeMovesFromArtifact } from "../../src/chain-stake-moves-artifact.ts";
 import { buildChainAlphaVolume } from "../../src/chain-alpha-volume.ts";
 import { LIVE_CRON_PROBER } from "../../src/field-provenance.ts";
+import { recordsOrEmpty } from "../../src/read-store.ts";
 
 // The shape of the api.ts-local in-isolate memoized KV read (see
 // configureAnalytics below) -- loose on the return value beyond `last_run_at`
@@ -1862,10 +1863,10 @@ export async function handleChainAlphaVolume(
       // same answer, and at ONE named rate -- the window's close -- because
       // the window is fixed at 24h. See src/alpha-usd-overlay.ts.
       const priced = withChainAlphaVolumeUsd(
-        data as unknown as Record<string, unknown>,
+        data,
         await readTaoUsdCurrentKv(env),
         Date.now(),
-      ) as unknown as typeof data;
+      );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // volume_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
@@ -2413,8 +2414,7 @@ export async function handleChainSubnetLifecycle(
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/subnet-lifecycle.json",
-            (data.entries as unknown as Array<Record<string, unknown>>)[0]
-              ?.observed_at ?? null,
+            recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
           ),
         },
         "short",
