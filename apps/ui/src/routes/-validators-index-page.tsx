@@ -93,7 +93,8 @@ export function ValidatorsPage() {
         context="validators"
         fallback={<TableSkeleton rows={10} columns={8} />}
         retryQueryKeys={[
-          validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT }).queryKey,
+          validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT, subnets: false })
+            .queryKey,
         ]}
       >
         <ValidatorsDirectory density={density} onDensityChange={onDensityChange} />
@@ -127,7 +128,7 @@ function ValidatorsDirectory({
   // key never changes with UI state, so sorting/searching re-uses the cached
   // full set instead of refetching.
   const res = useSuspenseQuery(
-    validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT }),
+    validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT, subnets: false }),
   ).data;
   const all = res.data.validators;
   const generatedAt = res.meta?.generated_at ?? null;
@@ -215,7 +216,8 @@ function ValidatorsDirectory({
         <StaleBanner
           generatedAt={generatedAt}
           refreshQueryKeys={[
-            validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT }).queryKey,
+            validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT, subnets: false })
+              .queryKey,
           ]}
         />
       ) : null}

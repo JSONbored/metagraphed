@@ -400,3 +400,90 @@ test.describe("#11320 the hub pages compete for the category queries", () => {
     expect(title).not.toContain("129");
   });
 });
+
+test.describe("#11315 the hubs stay within a payload ratchet", () => {
+  // Measured against production 2026-08-15, and the first number was a trap
+  // worth recording: `curl | wc -c` reports the UNCOMPRESSED document, and
+  // these pages ship brotli at roughly 8:1.
+  //
+  //   page          uncompressed    on the wire
+  //   /validators      1,297 KB        164 KB
+  //   /apis              690 KB         82 KB
+  //   /subnets           513 KB         68 KB
+  //   /                   99 KB         24 KB
+  //
+  // So the cost is not bandwidth — it is main-thread work. /validators renders
+  // 50 rows and dehydrates 1,447, and that JSON is decompressed, parsed and
+  // deserialised on whatever phone loaded the page.
+  //
+  // This is a RATCHET, not a target: each ceiling sits just above what that
+  // page renders today, so a regression fails while a page that gets lighter
+  // simply passes with room to spare. Lower a number when a page shrinks;
+  // never raise one to admit a regression.
+  //
+  // Per page, not one global ceiling, and that distinction was earned: a single
+  // number large enough for /apis/endpoints (4,948 KB in production, the worst
+  // page on the site and one this epic had not sampled) would let every other
+  // hub quadruple without failing.
+  //
+  // Measured against the e2e stub, which is what CI runs. Production is larger
+  // for the data-heavy pages — /apis/endpoints 4,948 KB, /validators 1,297 KB —
+  // because the stub's fixtures are smaller; the ratchet still catches a code
+  // change that inflates the document, which is what it is for.
+  const MAX_HTML_KIB: Record<keyof typeof HUB_COPY, number> = {
+    "/": 130,
+    "/subnets": 560,
+    "/validators": 1300,
+    "/apis": 620,
+    "/apis/providers": 400,
+    // #11326: 2,609 KB here and 4,948 KB in production, dominated by `points`
+    // and `reason` arrays this page never reads — the same defect the
+    // `subnets` projection fixes for /validators, on a different query.
+    "/apis/endpoints": 2700,
+    "/apis/schemas": 700,
+    "/chain": 240,
+  };
+
+  for (const path of Object.keys(HUB_COPY) as Array<keyof typeof HUB_COPY>) {
+    test(`${path} stays under the HTML ratchet`, async ({ request }) => {
+      const html = await (await request.get(path)).text();
+      const kib = Math.round(Buffer.byteLength(html, "utf8") / 1024);
+      expect(
+        kib,
+        `${path} renders ${kib} KiB of HTML against a ceiling of ${MAX_HTML_KIB[path]} KiB. ` +
+          `This is a ratchet — lower it when a page gets lighter, never raise it ` +
+          `to admit a regression.`,
+      ).toBeLessThanOrEqual(MAX_HTML_KIB[path]);
+    });
+  }
+
+  test("the validators hub keeps its internal links while shedding payload", async ({
+    request,
+  }) => {
+    // The one thing this workstream must not trade away. #11231 found 99 of 129
+    // subnet pages with no inbound link anywhere on the site; paginating or
+    // virtualising away anchors to save bytes would reintroduce exactly that,
+    // and it is the most expensive regression available here.
+    const html = await (await request.get("/validators")).text();
+    const links = new Set([...html.matchAll(/href="\/validators\/([^"?#]+)"/g)].map((m) => m[1]));
+    expect(links.size, "the hub stopped linking validator pages").toBeGreaterThanOrEqual(50);
+  });
+
+  test("the directory dehydrates rows without the per-subnet breakdown", async ({ request }) => {
+    // `subnets` is 66% of every API row (1,090 of 1,641 bytes) and neither
+    // consumer of this cache key reads it — the heatmap that does uses
+    // limit: 15, a different key. Dropping it during normalization keeps it out
+    // of the react-query cache and therefore out of the SSR dehydration.
+    const html = await (await request.get("/validators")).text();
+    const inline = [...html.matchAll(/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/g)]
+      .map((m) => m[1]!)
+      .sort((a, b) => b.length - a.length)[0]!;
+    // Fields that exist ONLY inside subnets[].
+    expect(inline, "the per-subnet breakdown is back in the dehydration").not.toContain(
+      "stake_alpha",
+    );
+    expect(inline).not.toContain("emission_alpha");
+    // …while the row fields the table actually renders are still there.
+    expect(inline).toContain("total_stake_tao");
+  });
+});
