@@ -503,6 +503,72 @@ describe("laneAlarmPlan", () => {
     );
   });
 
+  // AN `ok` THAT HAS STOPPED BEING SAID IS NOT A RECOVERY, and until this the
+  // alarm fought itself: the silent loop opened an issue because the lane had
+  // stopped speaking, and the close loop shut it because the stored row said
+  // `ok`. Measured on the first day this alarm could write --
+  //
+  //   03:28Z opened #11252 (silent 3.2 days) -> 03:58Z CLOSED "reported ok at
+  //   2026-08-11T23:27:52Z" -> 04:28Z opened #11261 -> 04:58Z CLOSED again
+  //
+  // -- while neither lane changed state at any point.
+  test("does NOT close a lane whose `ok` is older than its silence bound", () => {
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        a: record({
+          lane: "a",
+          verdict: "ok",
+          // The shape that did it: a sync flush stamped with the producer's own
+          // pass time, days old and never revised.
+          detail: "127 statement(s) flushed",
+          checked_at: NOW - 76 * HOUR,
+        }),
+      },
+      observedMaxGap: { a: 24 * HOUR },
+      openAlarms: { a: { issue: 77, updatedAt: NOW } },
+    });
+    assert.deepEqual(plan.close, [], "a four-day-old ok is not a recovery");
+    // ...and the lane is still a finding, so the issue stays open rather than
+    // being closed and immediately re-opened.
+    assert.deepEqual(plan.open, [], "its issue is already open");
+  });
+
+  test("a lane that really recovered still closes", () => {
+    // The property that must not regress: a recovery writes a FRESH row, so
+    // the same bound leaves it alone.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        a: record({ lane: "a", verdict: "ok", checked_at: NOW - 60_000 }),
+      },
+      observedMaxGap: { a: 24 * HOUR },
+      openAlarms: { a: { issue: 77, updatedAt: NOW } },
+    });
+    assert.deepEqual(
+      plan.close.map((c) => c.issue),
+      [77],
+    );
+  });
+
+  test("an UNCALIBRATED lane still closes on ok", () => {
+    // No cadence sample means no bound that is not a guess -- the same rule the
+    // silent loop follows, so the two paths cannot disagree about which lanes
+    // they can judge.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        a: record({ lane: "a", verdict: "ok", checked_at: NOW - 76 * HOUR }),
+      },
+      observedMaxGap: { a: null },
+      openAlarms: { a: { issue: 77, updatedAt: NOW } },
+    });
+    assert.deepEqual(
+      plan.close.map((c) => c.issue),
+      [77],
+    );
+  });
+
   test("does NOT close on `unknown` -- absence of measurement is not recovery", () => {
     const plan = laneAlarmPlan({
       ...base,
