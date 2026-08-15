@@ -1231,6 +1231,42 @@ describe("runLaneAlarm", () => {
     ]);
   });
 
+  // The GitHub write is the load-bearing half here, so neither a loss with no
+  // detail to quote nor a capture pipeline that throws may cost it. Same
+  // contract every other write in this file keeps: the second channel failing
+  // must not take the first one with it.
+  test("a detail-less loss still comments, even when the capture throws", async () => {
+    const db = healthDb({
+      latest: [
+        {
+          lane: "sync-batches-dlq",
+          verdict: "stale",
+          age_ms: null,
+          detail: null,
+          checked_at: NOW,
+        },
+      ],
+      runs: [{ lane: "sync-batches-dlq", since: NOW - 28 * HOUR, ticks: 2 }],
+    });
+    const github = fakeGitHub({
+      "sync-batches-dlq": { issue: 55, updatedAt: NOW - HOUR },
+    });
+    const out = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      {
+        github,
+        now: () => NOW,
+        recordException: async () => {
+          throw new Error("posthog is down");
+        },
+      },
+    );
+    assert.equal(out.commented, 1);
+    assert.equal(github.commented.length, 1);
+    // No detail means no trailing quote, not a dangling separator.
+    assert.doesNotMatch(github.commented[0].body, /--\s*$/m);
+  });
+
   test("a comment GitHub refuses is not counted as delivered", async () => {
     const db = healthDb({
       latest: [

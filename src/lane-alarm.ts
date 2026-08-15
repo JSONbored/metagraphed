@@ -725,7 +725,7 @@ function issueOpening(alarm: LaneAlarm, forHow: string): string {
   if (isDeadLetterLane(alarm.lane)) {
     return (
       `\`${alarm.lane}\` has dead-lettered **${alarm.ticks} time(s)** in the **${forHow}** since the first loss. ` +
-      "Each row is a message that exhausted its retries and was acked to keep it out of a second-order queue -- so this is a count of losses, not of ticks."
+      "Each one is a batch whose messages exhausted their retries and were acked to keep them out of a second-order queue -- so this is a count of losses, not of ticks."
     );
   }
   switch (alarm.kind) {
