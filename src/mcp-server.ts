@@ -17803,6 +17803,7 @@ async function readLimitedMcpBody(request: Request) {
       error: jsonResponse(
         rpcError(null, RPC_PARSE_ERROR, "Request body is not valid JSON."),
         400,
+        { [MCP_REFUSAL_HEADER]: "invalid_json" },
       ),
     };
   }
@@ -17826,6 +17827,7 @@ function validateMcpProtocolVersionHeader(request: Request) {
         `${MCP_PROTOCOL_VERSIONS.join(", ")}.`,
     ),
     400,
+    { [MCP_REFUSAL_HEADER]: "unsupported_protocol_version" },
   );
 }
 
@@ -17962,24 +17964,28 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
     `https://mcp-session-hub.internal/stream?sessionId=${encodeURIComponent(rawSessionId)}`,
   );
   if (!upstream.ok) {
-    // 404 (session unknown/already terminated) or 409 (a stream is already
-    // open for this session) from the DO -- pass the status through with a
-    // client-facing message, never the DO's own internal response body.
+    // 404 (session unknown/already terminated) from the DO -- a client-facing
+    // message, never the DO's own internal response body.
+    //
+    // THE 409 ARM IS GONE with the refusal that produced it. `/stream` now
+    // answers 200 or 404 and nothing else: a second GET takes the channel over
+    // rather than being told a stream is already open, because the stream we
+    // were holding is the doubtful one and the client asking now is not. The
+    // branch (and the test that stubbed a 409 to reach it) described a state
+    // production can no longer produce.
     return jsonResponse(
       rpcError(
         null,
         RPC_INVALID_REQUEST,
-        upstream.status === 409
-          ? "A stream is already open for this session."
-          : // #8632: "call initialize again" was wrong advice -- initialize
-            // mints a session id but does NOT register it here, so following
-            // it produces this same 404 forever. The missing step is the
-            // subscription.
-            "No stream is open for this Mcp-Session-Id. A session is only " +
-              "registered by resources/subscribe -- call it (on " +
-              "metagraph://chain/stream or metagraph://subnet/{netuid}/status) " +
-              "before opening the GET stream. If the session has since expired, " +
-              "re-run initialize and subscribe again.",
+        // #8632: "call initialize again" was wrong advice -- initialize
+        // mints a session id but does NOT register it here, so following
+        // it produces this same 404 forever. The missing step is the
+        // subscription.
+        "No stream is open for this Mcp-Session-Id. A session is only " +
+          "registered by resources/subscribe -- call it (on " +
+          "metagraph://chain/stream or metagraph://subnet/{netuid}/status) " +
+          "before opening the GET stream. If the session has since expired, " +
+          "re-run initialize and subscribe again.",
       ),
       // 405, not 404, for the no-subscription case. The Streamable HTTP transport
       // names 405 as the sanctioned "this endpoint offers no SSE stream", and a
@@ -17992,9 +17998,8 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
       // and began reconnecting — which is the churn that then walked into the
       // OAuth-route 401 (see matchesMcpApiRoute in src/github-oauth.ts).
       //
-      // 409 keeps its own status: a stream IS on offer there, just already taken.
-      upstream.status === 409 ? 409 : 405,
-      upstream.status === 409 ? undefined : { allow: "POST, DELETE, OPTIONS" },
+      405,
+      { allow: "POST, DELETE, OPTIONS" },
     );
   }
   return new Response(upstream.body, {
@@ -18066,6 +18071,16 @@ async function handleMcpTerminateRequest(request: Request, env: Env) {
  * this purpose (#8608 added it so a 429 is actionable), rather than by
  * threading a label up from each `return`.
  */
+/**
+ * How a refusal names itself to the telemetry that reads it back.
+ *
+ * A RESPONSE HEADER rather than a thrown label, because these refusals are
+ * early returns from four different gates and the recorder sees only the
+ * Response. It never reaches a client's own tooling as anything but an extra
+ * header, and it carries a fixed vocabulary -- never a caller-supplied value.
+ */
+export const MCP_REFUSAL_HEADER = "x-mcp-refusal";
+
 export function mcpRefusalReason(response: Response): string | null {
   switch (response.status) {
     case 429: {
@@ -18092,8 +18107,18 @@ export function mcpRefusalReason(response: Response): string | null {
       return "method_not_allowed";
     case 413:
       return "body_too_large";
+    // FOUR DIFFERENT FAULTS wear this status, and `bad_request` named none of
+    // them: a body that is not JSON, a protocol version this server does not
+    // speak, an empty batch, and a batch over the ceiling. Measured on the
+    // deployed version: 27 of these from REAL Claude clients in a week, with
+    // nothing anywhere saying which -- the same "an anonymous number somebody
+    // has to go and decode" problem the 409 note below already describes.
+    //
+    // Split on a header the refusal sets, exactly as 429 splits on
+    // `x-ratelimit-scope` above: the alternative is threading a label up from
+    // each `return`, through code whose whole shape is early returns.
     case 400:
-      return "bad_request";
+      return response.headers.get(MCP_REFUSAL_HEADER) ?? "bad_request";
     case 401:
       return "unauthorized";
     default:
@@ -18497,6 +18522,7 @@ async function dispatchMcpRequest(
       return jsonResponse(
         rpcError(null, RPC_INVALID_REQUEST, "Empty JSON-RPC batch."),
         400,
+        { [MCP_REFUSAL_HEADER]: "empty_batch" },
       );
     }
     if (body.length > MAX_MCP_BATCH_LENGTH) {
@@ -18507,6 +18533,7 @@ async function dispatchMcpRequest(
           `JSON-RPC batch length exceeds the maximum of ${MAX_MCP_BATCH_LENGTH}.`,
         ),
         400,
+        { [MCP_REFUSAL_HEADER]: "batch_too_large" },
       );
     }
   }

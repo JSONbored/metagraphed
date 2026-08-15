@@ -6,12 +6,15 @@
 // APIs under Node/vitest -- nothing in this file needs WebSocketPair, so
 // there is no v8-ignored branch to account for.
 import assert from "node:assert/strict";
+import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.ts";
 import { test, vi } from "vitest";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   MCP_SESSION_ID_MAX_LENGTH,
   MCP_SESSION_IDLE_TTL_MS,
+  MCP_SESSION_KEEPALIVE_FRAME,
   MCP_SESSION_MAX_STREAM_DURATION_MS,
+  MCP_SESSION_STREAM_KEEPALIVE_MS,
   McpSessionHub,
   buildResourceUpdatedNotification,
   formatMcpSseEvent,
@@ -376,7 +379,15 @@ test("handleStream: opens fine with no sessionId query param (already known from
   await res.body!.cancel();
 });
 
-test("handleStream: a second concurrent stream request for the same session is rejected with 409", async () => {
+// WAS A 409, and the refusal was measured doing harm: 112 of them on one
+// deployed version, every one from a real client reconnecting on a five-minute
+// metronome -- the same period as this class's own stream cap, whose entire
+// design depends on that reconnect being allowed.
+//
+// The refusal asked "is a stream registered?" when what matters is "is a stream
+// ALIVE?", and those come apart whenever a connection drops without the
+// runtime running `cancel`. Then the corpse holds the slot forever.
+test("handleStream: a second GET TAKES OVER, and the first stream is closed", async () => {
   const hub = new McpSessionHub(stubState(), mockEnv());
   await hub.fetch(
     jsonRequest("https://mcp-session-hub.internal/subscribe", {
@@ -388,11 +399,130 @@ test("handleStream: a second concurrent stream request for the same session is r
     new Request("https://mcp-session-hub.internal/stream?sessionId=session-1"),
   );
   assert.equal(first.status, 200);
+  const firstReader = first.body!.getReader();
+
   const second = await hub.fetch(
     new Request("https://mcp-session-hub.internal/stream?sessionId=session-1"),
   );
-  assert.equal(second.status, 409);
-  await first.body!.cancel();
+  assert.equal(second.status, 200, "the client asking now is the live one");
+
+  // The first stream is ENDED, not abandoned: a client holding it reads EOF
+  // and reconnects rather than waiting forever on a channel we stopped using.
+  assert.equal((await firstReader.read()).done, true);
+
+  // And the notification channel belongs to the second.
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/notify", {
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  const secondReader = second.body!.getReader();
+  const frame = new TextDecoder().decode((await secondReader.read()).value);
+  assert.match(frame, /notifications\/resources\/updated/);
+  await secondReader.cancel();
+});
+
+// The other half of the repair: nothing used to be written to an idle stream,
+// so a connection dropped without `cancel` was discovered only by the next real
+// notification -- which on a quiet session is never.
+// A frame that never landed must not consume an event id: the ids are the only
+// record of what a client has seen, and a gap in them is a gap in that record.
+test("deliverNow: a failed enqueue leaves the uri pending AND the sequence untouched", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  hub.streamController = {
+    enqueue: () => {
+      throw new Error("stream is gone");
+    },
+  } as unknown as ReadableStreamDefaultController;
+  hub.pendingUris.add(MCP_CHAIN_STREAM_RESOURCE_URI);
+  const before = hub.sequence;
+
+  hub.deliverNow(MCP_CHAIN_STREAM_RESOURCE_URI);
+
+  assert.equal(hub.sequence, before, "an undelivered frame consumed no id");
+  assert.equal(
+    hub.pendingUris.has(MCP_CHAIN_STREAM_RESOURCE_URI),
+    true,
+    "and the uri is still owed to the client",
+  );
+  assert.equal(hub.streamController, null, "the dead stream was released");
+});
+
+// The invariant deliverNow's own comment describes, now that ONE guard owns it:
+// when the flush loop's first enqueue throws, it releases the stream -- and
+// every REMAINING pending uri must stay pending rather than being dropped by a
+// silent no-op that still deleted it.
+test("deliverNow: once the stream dies mid-flush, the rest stay pending", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const second = buildSubnetStatusResourceUri(7);
+  for (const uri of [MCP_CHAIN_STREAM_RESOURCE_URI, second]) {
+    await hub.fetch(
+      jsonRequest("https://mcp-session-hub.internal/subscribe", {
+        sessionId: "session-1",
+        uri,
+      }),
+    );
+    hub.pendingUris.add(uri);
+  }
+  hub.streamController = {
+    enqueue: () => {
+      throw new Error("stream is gone");
+    },
+  } as unknown as ReadableStreamDefaultController;
+
+  for (const uri of [...hub.pendingUris]) hub.deliverNow(uri);
+
+  assert.deepEqual(
+    [...hub.pendingUris].sort(),
+    [MCP_CHAIN_STREAM_RESOURCE_URI, second].sort(),
+    "both are still owed; the second never even had a stream to try",
+  );
+  assert.equal(hub.sequence, 0, "and neither consumed an event id");
+});
+
+test("handleStream: an idle stream is kept alive, and a dead one is discovered", async () => {
+  vi.useFakeTimers();
+  try {
+    const hub = new McpSessionHub(stubState(), mockEnv());
+    await hub.fetch(
+      jsonRequest("https://mcp-session-hub.internal/subscribe", {
+        sessionId: "session-1",
+        uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+      }),
+    );
+    const res = await hub.fetch(
+      new Request(
+        "https://mcp-session-hub.internal/stream?sessionId=session-1",
+      ),
+    );
+    const reader = res.body!.getReader();
+
+    vi.advanceTimersByTime(MCP_SESSION_STREAM_KEEPALIVE_MS);
+    const frame = new TextDecoder().decode((await reader.read()).value);
+    assert.equal(frame, MCP_SESSION_KEEPALIVE_FRAME);
+    assert.match(frame, /^:/, "an SSE comment, ignored by every client");
+
+    // Now the connection dies WITHOUT the runtime telling us -- the case that
+    // produced the metronome. The next keepalive finds it, within 30 seconds,
+    // and releases the slot so the client's reconnect is served.
+    hub.streamController = {
+      enqueue: () => {
+        throw new Error("stream is gone");
+      },
+    } as unknown as ReadableStreamDefaultController;
+    vi.advanceTimersByTime(MCP_SESSION_STREAM_KEEPALIVE_MS);
+    assert.equal(hub.streamController, null);
+    assert.equal(hub.streamKeepaliveTimer, null);
+    await reader.cancel();
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("handleNotify: with a stream already open, delivers immediately (deliverNow) instead of coalescing into pendingUris", async () => {
@@ -466,8 +596,24 @@ test("handleStream: auto-closes after MCP_SESSION_MAX_STREAM_DURATION_MS, per th
     await vi.runAllTimersAsync();
     assert.equal(hub.streamController, null);
     assert.equal(hub.streamCloseTimer, null);
-    const { done } = await reader.read();
-    assert.equal(done, true);
+    assert.equal(hub.streamKeepaliveTimer, null, "the keepalive stops with it");
+    // Drain the keepalives the stream wrote while it was idle, then EOF. The
+    // frames are the point of them: an idle stream is now visibly alive.
+    let read = await reader.read();
+    let keepalives = 0;
+    while (!read.done) {
+      assert.equal(
+        new TextDecoder().decode(read.value),
+        MCP_SESSION_KEEPALIVE_FRAME,
+      );
+      keepalives += 1;
+      read = await reader.read();
+    }
+    assert.equal(read.done, true);
+    assert.ok(
+      keepalives > 0,
+      "an idle stream did not sit silent for 5 minutes",
+    );
   } finally {
     vi.useRealTimers();
   }

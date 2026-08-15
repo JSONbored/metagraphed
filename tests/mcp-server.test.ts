@@ -33,6 +33,8 @@ import {
   toolResultContent,
   MCP_SERVER_INFO,
   MAX_MCP_BATCH_LENGTH,
+  MCP_REFUSAL_HEADER,
+  mcpRefusalReason,
   MAX_MCP_BODY_BYTES,
   listToolDefinitions,
   UNTRUSTED_DATA_NOTE,
@@ -1340,6 +1342,64 @@ describe("MCP transport handling", () => {
     assert.deepEqual(calls, []);
   });
 
+  // Four faults wore one label. `bad_request` told a reader that something was
+  // wrong with a POST and nothing about WHICH -- and 27 of them arrived from
+  // real Claude clients in a week, undiagnosable. Each gate names itself now,
+  // through the same header mechanism 429 already splits on.
+  //
+  // Driven through the real entry point rather than by handing mcpRefusalReason
+  // a synthetic Response: what has to hold is that the GATES set the header, and
+  // a unit test of the mapping cannot see whether they do.
+  test("each 400 gate names its own refusal, so telemetry can tell them apart", async () => {
+    const seen: Array<[string, string | null]> = [];
+
+    const notJson = await handleMcpRequest(
+      new Request(MCP_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{not json",
+      }),
+      {} as unknown as Env,
+      makeDeps(),
+    );
+    seen.push(["invalid_json", notJson.headers.get(MCP_REFUSAL_HEADER)]);
+
+    const badVersion = await rpc(
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      { headers: { "mcp-protocol-version": "1999-01-01" } },
+    );
+    seen.push([
+      "unsupported_protocol_version",
+      badVersion.headers.get(MCP_REFUSAL_HEADER),
+    ]);
+
+    const empty = await rpc([]);
+    seen.push(["empty_batch", empty.headers.get(MCP_REFUSAL_HEADER)]);
+
+    const tooLong = await rpc(
+      Array.from({ length: MAX_MCP_BATCH_LENGTH + 1 }, (_, index) => ({
+        jsonrpc: "2.0",
+        id: index + 1,
+        method: "tools/list",
+      })),
+    );
+    seen.push(["batch_too_large", tooLong.headers.get(MCP_REFUSAL_HEADER)]);
+
+    for (const [expected, actual] of seen) {
+      assert.equal(actual, expected);
+      // And the label the recorder derives from it, which is the whole point.
+      assert.equal(
+        mcpRefusalReason(
+          new Response(null, {
+            status: 400,
+            headers: { [MCP_REFUSAL_HEADER]: actual as string },
+          }),
+        ),
+        expected,
+      );
+    }
+  });
+
   test("an oversized decoded body is rejected before JSON parsing", async () => {
     const request = new Request(MCP_URL, {
       method: "POST",
@@ -1902,20 +1962,39 @@ describe("MCP transport handling", () => {
       assert.doesNotMatch(body.error.message, /call initialize again/);
     });
 
-    test("a 409 from the session hub (a stream is already open) passes through as 409", async () => {
-      const hub = fakeMcpSessionHubBinding({
-        "/stream": () => new Response(null, { status: 409 }),
-      });
-      const request = new Request(MCP_URL, {
-        method: "GET",
-        headers: { "mcp-session-id": A_SESSION_ID },
-      });
-      const response = await handleMcpRequest(request, {
-        MCP_SESSION_HUB: hub,
-      } as unknown as Env);
-      assert.equal(response.status, 409);
-      const body = (await response.json()) as Row;
-      assert.match(body.error.message, /already open/);
+    // The 409 pass-through is gone with the refusal that produced it: a second
+    // GET now TAKES OVER the channel rather than being refused, so `/stream`
+    // answers 200 or 404 and nothing else. Its test stubbed a 409 the hub can
+    // no longer return -- a state production cannot reach, asserted anyway.
+    //
+    // What replaces it is the property that actually matters and held either
+    // way: whatever the hub declines with, the client is told what to DO about
+    // it, and never handed the hub's own internal body.
+    test("any decline from the session hub is a 405 that names the missing step", async () => {
+      for (const status of [404, 409, 500]) {
+        const hub = fakeMcpSessionHubBinding({
+          "/stream": () =>
+            new Response(JSON.stringify({ error: "internal detail" }), {
+              status,
+            }),
+        });
+        const request = new Request(MCP_URL, {
+          method: "GET",
+          headers: { "mcp-session-id": A_SESSION_ID },
+        });
+        const response = await handleMcpRequest(request, {
+          MCP_SESSION_HUB: hub,
+        } as unknown as Env);
+        assert.equal(response.status, 405, `hub ${status}`);
+        assert.equal(response.headers.get("allow"), "POST, DELETE, OPTIONS");
+        const body = (await response.json()) as Row;
+        assert.match(body.error.message, /resources\/subscribe/);
+        assert.doesNotMatch(
+          body.error.message,
+          /internal detail/,
+          "the hub's own body never reaches a client",
+        );
+      }
     });
 
     // The canonical initialize-then-GET sequence ALWAYS lands here, because a

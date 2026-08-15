@@ -91,6 +91,26 @@ export function isValidMcpSessionId(id: unknown): id is string {
 // residency for an abandoned/misbehaving one.
 export const MCP_SESSION_MAX_STREAM_DURATION_MS = 5 * 60 * 1000;
 
+/**
+ * How often an otherwise-idle stream writes a comment frame.
+ *
+ * THE STREAM HAS NOTHING TO SAY MOST OF THE TIME, and that is its normal
+ * state: it carries `notifications/resources/updated`, so a session watching a
+ * quiet subnet writes nothing for minutes. An idle TCP connection is what every
+ * intermediary in the path reaps -- and when one is reaped without the
+ * ReadableStream's `cancel` running, this object keeps believing it holds a
+ * live stream. See handleStream for what that cost.
+ *
+ * 30 seconds, comfortably under the shortest idle timeout in the path, and at
+ * most nine writes over the stream's whole bounded life. SSE comment frames
+ * (`: ...`) are ignored by every conformant client, including the EventSource
+ * built into browsers -- they exist in the spec for exactly this.
+ */
+export const MCP_SESSION_STREAM_KEEPALIVE_MS = 30 * 1000;
+
+/** The comment frame itself. Content is irrelevant; the bytes are the point. */
+export const MCP_SESSION_KEEPALIVE_FRAME = ": keepalive\n\n";
+
 // How long a session may sit with no subscribe/stream/touch activity before
 // this class self-terminates it (via a Durable Object alarm). Bounds a
 // session's total lifetime independent of whether any client ever reconnects
@@ -151,6 +171,7 @@ export class McpSessionHub implements DurableObject {
   terminated: boolean;
   streamController: ReadableStreamDefaultController | null;
   streamCloseTimer: ReturnType<typeof setTimeout> | null;
+  streamKeepaliveTimer: ReturnType<typeof setInterval> | null;
   hydrated: boolean;
   sessionId: string | null;
 
@@ -163,6 +184,7 @@ export class McpSessionHub implements DurableObject {
     this.terminated = false;
     this.streamController = null;
     this.streamCloseTimer = null;
+    this.streamKeepaliveTimer = null;
     this.hydrated = false;
     // A Durable Object cannot recover the string it was named with
     // (idFromName is one-way -- there is no idToName) -- every route that
@@ -487,22 +509,49 @@ export class McpSessionHub implements DurableObject {
     // and nulled the controller, every REMAINING pending uri was dropped
     // instead of being kept for the next open -- the exact opposite of what the
     // catch block is written to do.
-    if (!this.streamController) return;
-    this.sequence += 1;
+    //
+    // The absence check itself lives in writeToStream, which is now the only
+    // place that touches the controller: two guards for one fact is two places
+    // for it to be got wrong, and only the one beside the write can be sure.
+    //
+    // The sequence advances only on a frame that LANDED. It used to advance
+    // first, so an enqueue that threw still consumed an id -- and the ids are
+    // what a Last-Event-ID replay would count on, so a gap in them is a gap in
+    // the only record of what a client has seen.
     const frame = formatMcpSseEvent(
-      this.sequence,
+      this.sequence + 1,
       buildResourceUpdatedNotification(uri),
     );
+    if (!this.writeToStream(frame)) return;
+    this.sequence += 1;
+    this.pendingUris.delete(uri);
+  }
+
+  /**
+   * Write one frame, and tear the stream down if it will not take it.
+   *
+   * ONE WRITE PATH for notifications and keepalives alike, because "the
+   * enqueue threw" means the same thing either way: the stream is gone. The
+   * keepalive going through here is what turns a silently-dead connection into
+   * a discovered-dead one within 30 seconds -- previously nothing wrote to an
+   * idle stream at all, so a corpse was found only by the next real
+   * notification, which on a quiet session might be never.
+   *
+   * Returns whether the frame landed, so a caller can decide what to do with
+   * what it was trying to say. deliverNow leaves the uri pending for the next
+   * open; a keepalive has nothing to keep.
+   */
+  private writeToStream(frame: string): boolean {
+    if (!this.streamController) return false;
     try {
       this.streamController.enqueue(new TextEncoder().encode(frame));
-      this.pendingUris.delete(uri);
+      return true;
     } catch (error) {
-      // stream already closed/errored -- leave it pending for the next open
-      this.streamController = null;
       // #8997: the client silently stops receiving server-initiated messages,
-      // and nothing anywhere said so. Bounded, not a storm risk: clearing
-      // streamController above means handleNotify takes the pendingUris branch
-      // from here on, so this fires at most once per opened stream.
+      // and nothing anywhere said so. Bounded, not a storm risk: clearing the
+      // stream state means handleNotify takes the pendingUris branch from here
+      // on, so this fires at most once per opened stream.
+      this.clearStreamState();
       this.emit(() =>
         recordExceptionEvent(this.env, {
           error,
@@ -510,6 +559,45 @@ export class McpSessionHub implements DurableObject {
           errorCode: "upstream_unavailable",
         }),
       );
+      return false;
+    }
+  }
+
+  /**
+   * Forget the stream without touching the controller.
+   *
+   * For the two cases where the controller is ALREADY gone: the runtime ran
+   * `cancel`, or an enqueue threw. Calling `close()` on either would throw
+   * again in the middle of the handler that is cleaning up.
+   */
+  private clearStreamState(): void {
+    this.streamController = null;
+    // Casts: @types/node's global clear* overloads (auto-included repo-wide
+    // since scripts/tests run under real Node) do not cleanly accept a
+    // `Timeout | null` union even though each half is individually valid --
+    // see the workers/-specifics note in docs/typescript-migration-checklist.md.
+    clearTimeout(this.streamCloseTimer as unknown as number);
+    this.streamCloseTimer = null;
+    clearInterval(this.streamKeepaliveTimer as unknown as number);
+    this.streamKeepaliveTimer = null;
+  }
+
+  /**
+   * End the stream WE hold, from our side.
+   *
+   * The duration cap, a takeover by a newer GET, and termination all want this
+   * exact sequence, and each used to inline its own partial version -- the
+   * duration cap in particular closed the controller and nulled it without ever
+   * clearing the timers, which is how a takeover could inherit a stale one.
+   */
+  private closeStream(): void {
+    const controller = this.streamController;
+    this.clearStreamState();
+    if (!controller) return;
+    try {
+      controller.close();
+    } catch {
+      // already closed by the runtime; the state is cleared either way
     }
   }
 
@@ -533,18 +621,7 @@ export class McpSessionHub implements DurableObject {
     const effectiveSessionId = sessionId ?? this.sessionId;
     if (!this.terminated) {
       this.terminated = true;
-      if (this.streamController) {
-        try {
-          this.streamController.close();
-        } catch {
-          // already closed
-        }
-        this.streamController = null;
-      }
-      if (this.streamCloseTimer) {
-        clearTimeout(this.streamCloseTimer);
-        this.streamCloseTimer = null;
-      }
+      this.closeStream();
       const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
       const hadStatus = [...this.subscribedUris].some(
         (u) => parseSubnetStatusResourceUri(u) != null,
@@ -602,16 +679,29 @@ export class McpSessionHub implements DurableObject {
         headers: { "content-type": "application/json" },
       });
     }
-    if (this.streamController) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "a stream is already open for this session; only one concurrent " +
-            "SSE stream per session is supported",
-        }),
-        { status: 409, headers: { "content-type": "application/json" } },
-      );
-    }
+    // THE NEWEST GET WINS, and this used to be a 409.
+    //
+    // Measured on the deployed server: 112 `stream_taken` refusals on one
+    // version, every one of them from a REAL client (claude-code, python-httpx)
+    // rather than a scanner, arriving on a five-minute metronome for
+    // three-quarters of an hour at a time. That is a client reconnecting and
+    // being told no, over and over, while its session sits with no push channel
+    // at all.
+    //
+    // The refusal was answering the wrong question. It asked "is a stream
+    // registered?" when what matters is "is a stream ALIVE?" -- and those come
+    // apart constantly, because a dropped connection does not reliably run the
+    // ReadableStream's `cancel` callback. When it does not, `streamController`
+    // stays set on a corpse and every reconnect is refused for the life of the
+    // session. This class's own five-minute cap depends on the reconnect it was
+    // refusing: the whole design is "we close, the client comes back".
+    //
+    // So the stream we are HOLDING is the doubtful one, and the client asking
+    // right now is demonstrably present. Closing the old one and handing over
+    // is strictly better in every case: if it was dead, the session is repaired;
+    // if it was alive, that client just replaced its own channel, which is what
+    // it asked to do.
+    this.closeStream();
     void this.touch();
     const stream = new ReadableStream({
       start: (controller) => {
@@ -621,31 +711,22 @@ export class McpSessionHub implements DurableObject {
         for (const uri of this.pendingUris) {
           this.deliverNow(uri);
         }
+        // The bytes that keep an idle stream from being reaped. Enqueued
+        // through the same guarded path a notification takes, so a keepalive
+        // landing on a stream that HAS died tears it down here -- which is the
+        // second half of the repair: the connection is now discovered dead
+        // within 30 seconds rather than never.
+        this.streamKeepaliveTimer = setInterval(() => {
+          this.writeToStream(MCP_SESSION_KEEPALIVE_FRAME);
+        }, MCP_SESSION_STREAM_KEEPALIVE_MS);
         this.streamCloseTimer = setTimeout(() => {
-          try {
-            controller.close();
-          } catch {
-            // already closed
-          }
-          this.streamController = null;
-          this.streamCloseTimer = null;
+          this.closeStream();
         }, MCP_SESSION_MAX_STREAM_DURATION_MS);
       },
+      // The client went away and the runtime told us. Clear the state without
+      // closing the controller -- it is already gone.
       cancel: () => {
-        // clearTimeout(null) is a safe no-op, and this callback can only
-        // ever run while the stream is still "readable" -- which by
-        // construction means streamCloseTimer is already set (start() sets
-        // it synchronously before returning control to any caller) -- so an
-        // unconditional clear is simpler than a defensive guard that can
-        // never see a falsy value.
-        this.streamController = null;
-        // Cast needed because @types/node's global clearTimeout overloads
-        // (auto-included repo-wide since scripts/tests run under real Node)
-        // don't cleanly accept a `Timeout | null` union even though each
-        // half is individually valid -- see the workers/-specifics note in
-        // docs/typescript-migration-checklist.md.
-        clearTimeout(this.streamCloseTimer as unknown as number);
-        this.streamCloseTimer = null;
+        this.clearStreamState();
       },
     });
     void url; // reserved for a future Last-Event-ID replay-from-cursor read

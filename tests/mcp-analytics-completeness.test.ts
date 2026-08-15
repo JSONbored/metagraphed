@@ -113,7 +113,23 @@ describe("pre-dispatch refusals reach the $mcp_* family", () => {
     ],
     [429, { "x-ratelimit-scope": "blocked" }, "blocked", "permission"],
     [401, {}, "unauthorized", "permission"],
+    // The bare 400 keeps the generic label -- a refusal that sets no header is
+    // one this vocabulary has not been taught yet, and it must still bucket.
     [400, {}, "bad_request", "validation"],
+    [400, { "x-mcp-refusal": "invalid_json" }, "invalid_json", "validation"],
+    [
+      400,
+      { "x-mcp-refusal": "unsupported_protocol_version" },
+      "unsupported_protocol_version",
+      "validation",
+    ],
+    [400, { "x-mcp-refusal": "empty_batch" }, "empty_batch", "validation"],
+    [
+      400,
+      { "x-mcp-refusal": "batch_too_large" },
+      "batch_too_large",
+      "validation",
+    ],
     [405, {}, "method_not_allowed", "validation"],
     [413, {}, "body_too_large", "validation"],
     // Named after the refusal usage_event started landing and showed 8 of
