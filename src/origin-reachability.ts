@@ -268,7 +268,11 @@ export interface OriginStoreDb {
 export async function persistOriginCheck(
   db: OriginStoreDb | null | undefined,
   check: OriginCheck,
-): Promise<{ ok: boolean; reason?: string }> {
+  // A DECLINE MUST SAY WHY, at the type level. `reason?: string` let a caller
+  // collapse the outcome to a boolean and lose the diagnosis, which is exactly
+  // what left the retry report reading "run() declined without throwing" while
+  // this function had already computed the answer.
+): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!db?.run) return { ok: false, reason: "no_store_binding" };
   try {
     await db.run(
@@ -394,7 +398,10 @@ export async function handleOriginBatch(
     run: async (origin) => {
       const surfaces = await deps.surfacesFor(origin);
       const check = await checkOrigin(origin, surfaces, deps);
-      return (await persistOriginCheck(db, check)).ok;
+      // Same as the sweep lane: the reason exists, so report it rather than
+      // collapsing the outcome to a boolean.
+      const written = await persistOriginCheck(db, check);
+      return written.ok || written.reason;
     },
   });
 }

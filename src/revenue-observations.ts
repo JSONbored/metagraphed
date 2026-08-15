@@ -53,11 +53,20 @@ export interface RevenueStoreDb {
  * dispatch can record it rather than discard it, which is how #10172's frozen
  * series went unnoticed for five hours.
  */
-export async function persistRevenueProbe(
-  db: RevenueStoreDb | null | undefined,
-  result: RevenueProbeResult,
-): Promise<{
-  ok: boolean;
+/**
+ * What a probe pass did, and -- when it declined -- WHY.
+ *
+ * A DECLINE ALWAYS CARRIES A REASON, at the type level. One shape with
+ * `reason?: string` let every caller collapse the outcome to a boolean and lose
+ * the diagnosis, which is what left the retry report reading "run() declined
+ * without throwing" while this function had already computed the answer.
+ * Splitting the union makes the compiler ask, and removes the `?? false`
+ * fallback that would otherwise be a branch no test could reach.
+ *
+ * `ok: true` may still carry a reason: a pass that probed an empty eligible set
+ * succeeded and is still worth explaining.
+ */
+export type RevenueProbeOutcome = {
   written: number;
   failed: number;
   /**
@@ -69,8 +78,12 @@ export async function persistRevenueProbe(
    * them is what dead-lettered a deterministic extraction failure hourly.
    */
   retryable: boolean;
-  reason?: string;
-}> {
+} & ({ ok: true; reason?: string } | { ok: false; reason: string });
+
+export async function persistRevenueProbe(
+  db: RevenueStoreDb | null | undefined,
+  result: RevenueProbeResult,
+): Promise<RevenueProbeOutcome> {
   if (!db?.run) {
     // Nothing was recorded, so the next delivery is the only chance this work
     // gets. Retryable even though a missing binding will not fix itself: the
@@ -142,17 +155,41 @@ export async function persistRevenueProbe(
   // real state -- every surface skipped as ineligible -- but it is not success,
   // because a lane silently probing an empty set looks exactly like one whose
   // every surface passed.
-  return {
-    ok: observations.length > 0 || failures.length === 0,
-    written: observations.length,
-    failed: failures.length,
-    // The rows ARE on disk by here. Only a transient failure is worth another
-    // delivery; a terminal one would re-fetch and rewrite the identical row.
-    retryable: failures.some((failure) => !failure.terminal),
-    ...(observations.length === 0 && failures.length === 0
-      ? { reason: "no_eligible_surfaces" }
-      : {}),
-  };
+  const counts = { written: observations.length, failed: failures.length };
+  // The rows ARE on disk by here. Only a transient failure is worth another
+  // delivery; a terminal one would re-fetch and rewrite the identical row.
+  const retryable = failures.some((failure) => !failure.terminal);
+  // A pass that wrote nothing and failed something is the ONE decline this
+  // function used to make without saying why -- the only branch that set a
+  // reason was the probed-nothing case below. So the diagnosis travelled to
+  // `revenue_probe_failures`, which no route, watchdog or serving surface
+  // reads, and the retry report said "run() declined without throwing".
+  //
+  // Measured 2026-08-15: `sn-51-lium-revenue-for-validators` dead-lettered
+  // roughly hourly for 3.7 days in exactly this state, while its endpoint
+  // answered 200 and this repo's own extractor turned that payload into 20
+  // valid observations.
+  //
+  // THE SUBJECT RIDES WITH THE REASON: "fetch failed: HTTP 503" with no surface
+  // named is the same dead end one layer down. Bounded to two and a count,
+  // because a lane whose dependency is down fails every surface identically and
+  // a reason string is not a log.
+  if (observations.length === 0 && failures.length > 0) {
+    const named = failures
+      .slice(0, 2)
+      .map((failure) => `${failure.surface_id}: ${failure.reason}`)
+      .join("; ");
+    const more = failures.length > 2 ? ` (+${failures.length - 2} more)` : "";
+    return { ...counts, ok: false, retryable, reason: `${named}${more}` };
+  }
+  // A pass that observed nothing AND failed nothing probed nothing. That is a
+  // real state -- every surface skipped as ineligible -- but it is not success,
+  // because a lane silently probing an empty set looks exactly like one whose
+  // every surface passed.
+  if (observations.length === 0) {
+    return { ...counts, ok: true, retryable, reason: "no_eligible_surfaces" };
+  }
+  return { ...counts, ok: true, retryable };
 }
 
 /** One pass, end to end: probe the eligible surfaces and persist what came back. */
@@ -160,15 +197,11 @@ export async function runRevenueProbeLane(
   surfaces: ProbeSurfaceInput[],
   db: RevenueStoreDb | null | undefined,
   deps: Parameters<typeof runRevenueProbe>[1],
-): Promise<{
-  ok: boolean;
-  written: number;
-  failed: number;
-  skipped: number;
-  /** See persistRevenueProbe: whether another delivery could answer differently. */
-  retryable: boolean;
-  reason?: string;
-}> {
+  // DERIVED from the store's outcome rather than restated. This re-declared the
+  // shape with `reason?: string`, which collapsed the union one layer above and
+  // put the maybe back -- so the handler could not tell that a decline always
+  // carries a reason, and had to fall back to a branch no test could reach.
+): Promise<RevenueProbeOutcome & { skipped: number }> {
   const result = await runRevenueProbe(surfaces, deps);
   const persisted = await persistRevenueProbe(db, result);
   return { ...persisted, skipped: result.skipped.length };
@@ -429,7 +462,14 @@ export async function handleRevenueProbeBatch(
       //
       // A transient failure still retries: `retryable` is true for a fetch that
       // threw and for a write that did not land.
-      return outcome.ok || !outcome.retryable;
+      // Split rather than `||`ed, so the union narrows: after both guards
+      // `outcome` is the decline arm and its reason is a string, not a maybe.
+      if (outcome.ok) return true;
+      if (!outcome.retryable) return true;
+      // THE REASON, not just the decline. The union above guarantees a decline
+      // carries one, so there is no `?? false` fallback and no branch a test
+      // could not reach.
+      return outcome.reason;
     },
   });
 }

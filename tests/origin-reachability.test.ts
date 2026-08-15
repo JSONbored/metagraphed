@@ -568,7 +568,11 @@ describe("shapes the store can really produce", () => {
         surface_ids: [],
       },
     );
-    assert.match(String(out.reason), /a bare string/);
+    // Narrowed, not asserted through: the union now says a decline carries a
+    // reason and a success does not, so reading it requires establishing which
+    // one this is -- which is the property being tested.
+    assert.equal(out.ok, false);
+    assert.match(out.ok ? "" : out.reason, /a bare string/);
   });
 
   // "a driver returning no results key" retired with D1's envelope
@@ -715,7 +719,8 @@ describe("consuming an origin batch", () => {
       done: 0,
       retried: 1,
       dropped: 0,
-      firstFailure: "run() declined without throwing",
+      // The store's own reason, carried out to the retry report.
+      firstFailure: "no_store_binding",
     });
   });
 

@@ -206,7 +206,11 @@ export interface SweepStoreDb {
 export async function persistSweep(
   db: SweepStoreDb | null | undefined,
   result: SweepResult,
-): Promise<{ ok: boolean; reason?: string }> {
+  // A DECLINE MUST SAY WHY, at the type level. `reason?: string` let a caller
+  // collapse the outcome to a boolean and lose the diagnosis, which is exactly
+  // what left the retry report reading "run() declined without throwing" while
+  // this function had already computed the answer.
+): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!db?.run) return { ok: false, reason: "no_store_binding" };
   try {
     await db.run(
@@ -362,7 +366,10 @@ export async function handleSweepBatch(
     run: async (netuid) => {
       const record = await deps.recordFor(netuid);
       const result = await sweepSubnet(netuid, record, deps);
-      return (await persistSweep(db, result)).ok;
+      // The store already says WHY it declined; returning `.ok` alone threw
+      // that away and left the retry reading "run() declined without throwing".
+      const written = await persistSweep(db, result);
+      return written.ok || written.reason;
     },
   });
 }
