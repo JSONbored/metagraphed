@@ -668,6 +668,40 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     // measurement is the confident-wrong-answer this repo avoids everywhere
     // else. A lane with no record at all keeps its issue for the same reason.
     if (record?.verdict !== "ok") continue;
+    // AND AN `ok` THAT HAS STOPPED BEING SAID IS NOT A RECOVERY.
+    //
+    // This loop read the STORED verdict while the silence loop above reads the
+    // same rows through a liveness bound, so the two disagreed about the same
+    // lane on the same tick -- and the alarm fought itself. `laneSilenceCadenceMs`
+    // and `laneSilenceThresholdMs` are already resolved here for the open path;
+    // the close path simply never asked.
+    //
+    // Measured 2026-08-15, on the first day this alarm could write:
+    //
+    //   03:28Z  opened  #11252 validator-nominator-counts  (silent 3.2 days)
+    //   03:58Z  CLOSED  "reported ok at 2026-08-11T23:27:52Z"
+    //   04:28Z  opened  #11261                              (same lane, same fault)
+    //   04:58Z  CLOSED  again
+    //
+    // Neither lane changed state at any point -- both had been silent since
+    // 2026-08-11. The stored row really did say `ok` ("127 statement(s)
+    // flushed"): a sync flush stamped with the producer's own pass time, four
+    // days old and never revised. `GET /api/v1/self-health` showed `unknown`
+    // for those lanes throughout, because `withLaneHealth` applies exactly this
+    // bound before serving. The alarm was the only reader taking a four-day-old
+    // `ok` at face value, and a false recovery is the worst thing it can
+    // report: indistinguishable from the outage being over.
+    //
+    // Same predicate as the silent loop, deliberately. Two spellings of "has
+    // this lane stopped speaking" is how they came to disagree in the first
+    // place.
+    const cadenceMs = cadenceFor(lane);
+    if (
+      cadenceMs !== null &&
+      nowMs - record.checked_at >= laneSilenceThresholdMs(cadenceMs)
+    ) {
+      continue;
+    }
     close.push({ lane, issue: open.issue, record });
   }
 
