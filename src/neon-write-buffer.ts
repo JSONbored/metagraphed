@@ -57,6 +57,37 @@ import {
   type HyperdriveLike,
   type WaitUntilLike,
 } from "./pg-sql.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+/**
+ * What a Neon WRITE lane needs from its environment.
+ *
+ * Exported, because the lanes that route through this buffer need the same
+ * three vars and were each declaring `Record<string, unknown>` -- which is not
+ * loose enough for an `Env` and so put `env as unknown as Record<…>` on every
+ * one of their call sites (#11339).
+ *
+ * `unknown` per var rather than `string`: every read here goes through a
+ * coercion that takes unknown, and nothing in this module assumes otherwise.
+ */
+export type NeonWriteEnv = StoreEnv &
+  TelemetryEnv & {
+    NEON_WRITE_BUFFER?: unknown;
+    NEON_WRITE_BUFFER_LANES?: unknown;
+    NEON_DUAL_WRITE_LANES?: unknown;
+  };
+
+type NeonWriteBufferEnv = NeonWriteEnv;
 
 /**
  * One buffered statement, exactly as the lane would have executed it.
@@ -266,7 +297,7 @@ export function shouldFlushEarly(
  * here: an unbuffered lane still writes, it just writes directly.
  */
 export function neonWriteBufferLanes(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteBufferEnv | null | undefined,
 ): Set<string> {
   const raw = env?.NEON_WRITE_BUFFER_LANES;
   if (typeof raw !== "string" || raw.trim() === "") return new Set();
@@ -316,7 +347,7 @@ export const NEVER_BUFFER_LANES: ReadonlySet<string> = new Set([
 
 /** Whether one lane's writes go through the buffer. */
 export function neonWriteBufferEnabled(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteBufferEnv | null | undefined,
   lane: string,
 ): boolean {
   if (NEVER_BUFFER_LANES.has(lane)) return false;
@@ -474,7 +505,7 @@ export function createBufferedPgSql(
  * binding, which is the wrong direction to fail.
  */
 export function neonWriteRunner(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteBufferEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   lane: string,
   hyperdrive: HyperdriveLike | undefined,

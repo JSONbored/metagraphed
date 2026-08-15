@@ -32,6 +32,7 @@ import {
   type ChainNetworkId,
   DEFAULT_CHAIN_NETWORK,
 } from "./chain-network.ts";
+import type { StoreEnv } from "./read-store.ts";
 
 /** Kill switch, matching CHAIN_HEAD_POLL_ENABLED's convention on the head
  * poller: absent or anything but "true" means this lane does not run. */
@@ -226,7 +227,7 @@ export const RAW_CAPTURE_LANES: readonly RawCaptureLane[] = [
   },
 ];
 
-interface RawCaptureEnv extends TelemetryEnv {
+interface RawCaptureEnv extends TelemetryEnv, StoreEnv {
   METAGRAPH_ARCHIVE?: { put(key: string, value: string): Promise<unknown> };
   RAW_CAPTURE_ENABLED?: string;
   CHAIN_HEAD_RPC_URL?: string;
@@ -257,7 +258,7 @@ export interface WatermarkReadDb {
  * read must never be mistaken for a genesis restart.
  */
 function neonWatermarkRead(
-  env: Record<string, unknown> | null | undefined,
+  env: StoreEnv | null | undefined,
   waitUntil: WaitUntilLike | undefined,
   network: string,
 ): (() => Promise<number | null>) | null {
@@ -293,7 +294,7 @@ function neonWatermarkRead(
  * be mistaken for a genesis restart.
  */
 export function neonWatermark(
-  env: Record<string, unknown> | null | undefined,
+  env: StoreEnv | null | undefined,
   waitUntil: WaitUntilLike | undefined,
   network: string,
   now: () => number,
@@ -468,12 +469,7 @@ async function runLane(
       rpcUrl: (env[lane.rpcUrlEnv] as string | undefined) || lane.defaultRpcUrl,
       store,
       // THE TABLE IS THE WATERMARK, so this store is the whole write path.
-      watermark: neonWatermark(
-        ctx.env as unknown as Record<string, unknown>,
-        ctx.waitUntil,
-        lane.network,
-        now,
-      ),
+      watermark: neonWatermark(ctx.env, ctx.waitUntil, lane.network, now),
       genesisFloor: lane.genesisFloor,
       maxPerTick: lane.maxPerTick,
       network: lane.network,

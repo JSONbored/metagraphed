@@ -38,6 +38,7 @@ import {
   writeRowsToNeon,
   type NeonWriteResult,
 } from "./neon-write.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 // ---------------------------------------------------------------------------
 // Moved here when D1 was deleted (#10179). These describe the TABLE -- its
@@ -296,7 +297,7 @@ export interface FamilyMirrorOutcome {
  * this function has one behaviour rather than two.
  */
 export async function mirrorFamilyToNeon(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   lane: string,
   input: FamilyMirrorInput,

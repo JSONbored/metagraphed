@@ -57,6 +57,22 @@ import {
   type ReadStoreDb,
 } from "./read-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type NeuronsStalenessWatchdogEnv = NeonWriteEnv & {
+  NEURONS_COVERAGE_FLOOR_NETUIDS?: unknown;
+  NEURONS_PASS_WINDOW_MS?: unknown;
+  NEURONS_STALENESS_THRESHOLD_MS?: unknown;
+};
 
 /** The buffer lane these rows are written on, when buffering is on. */
 export const NEURONS_BUFFER_LANE = "neurons";
@@ -98,7 +114,7 @@ export const NEURONS_STALENESS_THRESHOLD_MS = missedTicksMs("metagraph", 3);
  * slack behind a flag nobody re-reads.
  */
 export function neuronsStalenessThresholdMs(
-  env: Record<string, unknown> | null | undefined,
+  env: NeuronsStalenessWatchdogEnv | null | undefined,
 ): number {
   const declared =
     Number(env?.NEURONS_STALENESS_THRESHOLD_MS) ||
@@ -281,7 +297,7 @@ export interface NeuronsStalenessDeps {
  * outage, and a cron that throws is a cron nobody can read the result of.
  */
 export async function runNeuronsStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: NeuronsStalenessWatchdogEnv | null | undefined,
   deps: NeuronsStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;

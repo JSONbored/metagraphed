@@ -290,7 +290,7 @@ export async function handleTrajectory(
   // analytics.ts.
   const readFailureGeneration = currentStoreReadFailureGeneration();
   const data = (await loadSubnetTrajectory(netuid, {
-    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+    db: observationsReadDb(env, ctx),
   })) as ReturnType<typeof formatTrajectory>;
   const isFallback =
     !env.HYPERDRIVE?.connectionString ||
@@ -341,7 +341,7 @@ export async function handleEconomicsTrends(
   const loaded = await loadEconomicsTrends({
     windowLabel: label,
     windowDays: days,
-    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+    db: observationsReadDb(env, ctx),
   });
   // `let`, not `const`: the USD overlay below reassigns it (#10382).
   let data = loaded.data;
@@ -423,7 +423,7 @@ export async function handleUptime(
     window: windowParam,
     observedAt: healthMeta?.last_run_at || null,
     minSamples: (minSamples as number | undefined) ?? null,
-    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+    db: observationsReadDb(env, ctx),
   })) as ReturnType<typeof formatUptime>;
   const isFallback =
     !env.HYPERDRIVE?.connectionString ||

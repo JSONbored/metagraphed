@@ -64,6 +64,24 @@ import {
 } from "./read-store.ts";
 import type { NominatorPositions } from "../generated/db/types.ts";
 import { requireFullScanValue } from "./lane-table-topology.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type NominatorPositionsStalenessWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS?: unknown;
+    NOMINATOR_POSITIONS_PASS_WINDOW_MS?: unknown;
+    NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS?: unknown;
+  };
 
 /**
  * How old the ledger may get before this is a stall.
@@ -351,7 +369,7 @@ export interface NominatorPositionsStalenessDeps {
  * and a cron that throws is a cron nobody can read the result of.
  */
 export async function runNominatorPositionsStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: NominatorPositionsStalenessWatchdogEnv | null | undefined,
   deps: NominatorPositionsStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;

@@ -709,7 +709,7 @@ export async function handleBulkHealthTrends(
       const storeGeneration = currentStoreReadFailureGeneration();
       const result = await loadBulkHealthTrends({
         observedAt: meta?.last_run_at || null,
-        db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+        db: observationsReadDb(env, ctx),
         window: trendsWindow ?? null,
         limit: trendsLimit ?? null,
         offset: trendsOffset ?? 0,
@@ -775,7 +775,7 @@ export async function handleHealthTrends(
     const meta = await readHealthMetaKv(env);
     const data = await loadSubnetHealthTrends(netuid, {
       observedAt: meta?.last_run_at || null,
-      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+      db: observationsReadDb(env, ctx),
     });
     const usedFallback =
       !env.HYPERDRIVE?.connectionString ||
@@ -831,7 +831,7 @@ export async function handleHealthPercentiles(
       const data = await loadSubnetPercentiles(netuid, {
         window: label,
         observedAt: meta?.last_run_at || null,
-        db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+        db: observationsReadDb(env, ctx),
       });
       const usedFallback =
         !env.HYPERDRIVE?.connectionString ||
@@ -885,7 +885,7 @@ export async function handleHealthIncidents(
       const data = await loadSubnetIncidents(netuid, {
         window: label,
         observedAt: meta?.last_run_at || null,
-        db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+        db: observationsReadDb(env, ctx),
       });
       const usedFallback =
         !env.HYPERDRIVE?.connectionString ||

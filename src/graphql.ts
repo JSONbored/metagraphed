@@ -2598,10 +2598,7 @@ const rootValue = {
     // every deployed config and is absent from FORWARDABLE_TIER_FLAGS, so that
     // arm resolved to null on every request.
     const data = await loadSubnetTrajectory(netuid, {
-      db: observationsReadDb(
-        context.env as unknown as Record<string, unknown>,
-        context.ctx,
-      ),
+      db: observationsReadDb(context.env, context.ctx),
     });
     return {
       schema_version: data.schema_version ?? 1,
@@ -4470,10 +4467,7 @@ const rootValue = {
       netuids: parsedNetuids,
       dimensions: parsedDimensions!,
       observedAt: await loadObservedAt(context),
-      db: observationsReadDb(
-        context.env as unknown as Record<string, unknown>,
-        context.ctx,
-      ),
+      db: observationsReadDb(context.env, context.ctx),
     });
   },
 
@@ -4983,10 +4977,7 @@ const rootValue = {
       await loadSubnetPercentiles(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
-        db: observationsReadDb(
-          context.env as unknown as Record<string, unknown>,
-          context.ctx,
-        ),
+        db: observationsReadDb(context.env, context.ctx),
       });
     return {
       schema_version: data.schema_version ?? 1,
@@ -5247,10 +5238,7 @@ const rootValue = {
       await loadSubnetIncidents(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
-        db: observationsReadDb(
-          context.env as unknown as Record<string, unknown>,
-          context.ctx,
-        ),
+        db: observationsReadDb(context.env, context.ctx),
       });
     return {
       // THE PRODUCER (#10786). MIN_INCIDENT_SAMPLES is the threshold this
@@ -7481,10 +7469,7 @@ const rootValue = {
       await loadEconomicsTrends({
         windowLabel: label,
         windowDays: days,
-        db: observationsReadDb(
-          context.env as unknown as Record<string, unknown>,
-          context.ctx,
-        ),
+        db: observationsReadDb(context.env, context.ctx),
       })
     ).data;
     // Normalized the same way blocks/validators/accounts are (schema-stable,
@@ -8784,10 +8769,7 @@ const rootValue = {
       (
         await loadBulkHealthTrends({
           observedAt: await loadObservedAt(context),
-          db: observationsReadDb(
-            context.env as unknown as Record<string, unknown>,
-            context.ctx,
-          ),
+          db: observationsReadDb(context.env, context.ctx),
           window: window ?? null,
           limit: limit ?? null,
           offset: offset ?? 0,
@@ -8818,10 +8800,7 @@ const rootValue = {
       // resolved to null before it could touch DATA_API.
       await loadSubnetHealthTrends(netuid, {
         observedAt: await loadObservedAt(context),
-        db: observationsReadDb(
-          context.env as unknown as Record<string, unknown>,
-          context.ctx,
-        ),
+        db: observationsReadDb(context.env, context.ctx),
       });
     return {
       schema_version: data.schema_version ?? 1,
@@ -8963,10 +8942,7 @@ const rootValue = {
       (await loadSubnetUptime(netuid, {
         window: windowParam,
         observedAt: await loadObservedAt(context),
-        db: observationsReadDb(
-          context.env as unknown as Record<string, unknown>,
-          context.ctx,
-        ),
+        db: observationsReadDb(context.env, context.ctx),
       })) as Row;
     return {
       schema_version: data.schema_version ?? 1,

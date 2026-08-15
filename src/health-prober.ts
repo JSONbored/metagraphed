@@ -526,7 +526,7 @@ function observationsRunner(
   ctx?: ExecutionContext,
 ): ObservationsSql | null {
   if (!ctx) return null;
-  const bag = env as unknown as Record<string, unknown>;
+  const bag = env;
   if (!neonOwnsObservations(bag)) return null;
   return createPgSql(env.HYPERDRIVE as unknown as HyperdriveLike, ctx);
 }
@@ -711,7 +711,7 @@ export async function runHealthProber(
   // written by the same sweep, so reading it from the other store would rank on
   // whatever that store last happened to hold.
   const reliability = await loadEndpointReliability(
-    observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+    observationsReadDb(env, ctx),
     runAt,
   );
   const nextCurrent = await persistToKv(kv, probed, runAt, reliability);

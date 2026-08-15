@@ -323,7 +323,7 @@ export function evaluateTaoUsdIndex({
  * failure this issue is about.
  */
 export async function runTaoUsdIndexWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: unknown,
   deps: {
     db?: TaoUsdWatchdogDb | null;
     laneHealthDb?: Parameters<typeof recordLaneVerdict>[0];

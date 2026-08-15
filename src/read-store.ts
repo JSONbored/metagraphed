@@ -35,7 +35,7 @@
 // answer, which is the failure mode this whole migration keeps having to
 // design against.
 import { Client } from "pg";
-import { toPositionalPlaceholders, type HyperdriveLike } from "./pg-sql.ts";
+import { toPositionalPlaceholders } from "./pg-sql.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
 export interface ReadStoreClient {
@@ -357,6 +357,31 @@ export interface StoreEnv {
   HYPERDRIVE?: { connectionString?: string };
 }
 
+/**
+ * The Hyperdrive connection string an env carries, or null.
+ *
+ * ONE NARROWING, SHARED. `readStore`, `laneHealthStore` and
+ * `neonOwnsObservations` each did this by hand with two casts apiece
+ * (`env as Record<string, unknown>`, then `?.HYPERDRIVE as HyperdriveLike`),
+ * which is the whole binding-detection rule copy-pasted three times -- and it
+ * is the rule that decides whether a lane writes to Neon or silently declines.
+ *
+ * Takes `unknown` for the reason `readStore` documents: callers hand in an
+ * `Env`, a bag, or nothing. `Record<string, unknown>` READS as loose but is
+ * not -- `Env` is an interface, and TypeScript never gives interfaces implicit
+ * index signatures, so every caller holding a real `Env` had to write
+ * `env` to get past it. That is 65 casts
+ * across this repo whose only cause was a parameter type trying to be lenient
+ * and landing one step too strict (#11339).
+ */
+export function hyperdriveConnectionString(env: unknown): string | null {
+  const hyperdrive = recordOrNull(recordOrNull(env)?.HYPERDRIVE);
+  const connectionString = hyperdrive?.connectionString;
+  return typeof connectionString === "string" && connectionString
+    ? connectionString
+    : null;
+}
+
 export function readStore(
   // Deliberately loose: callers hand in an `Env`, a bag, or `unknown`, and a
   // narrower type would push a cast to every one of them.
@@ -366,12 +391,11 @@ export function readStore(
   deps: ReadStoreDeps = {},
 ): ReadStoreDb | undefined {
   if (injected) return injected;
-  const bag = env as Record<string, unknown> | null | undefined;
-  const hyperdrive = bag?.HYPERDRIVE as HyperdriveLike | undefined;
-  if (!hyperdrive?.connectionString) return undefined;
+  const connectionString = hyperdriveConnectionString(env);
+  if (!connectionString) return undefined;
   // Empty `tables` must never read as "Neon owns them all" -- that would send a
   // caller who forgot to declare its tables to Postgres unconditionally.
   if (tables.length === 0) return undefined;
   // the ownership check collapsed with the flag (#10051): Neon is the only store, so the question answered itself.
-  return pgReadStore(hyperdrive.connectionString, deps);
+  return pgReadStore(connectionString, deps);
 }

@@ -43,6 +43,7 @@ import {
   neonWriteRunner,
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 /** The lane name this writer files its `lane_health` verdict under (`neon:<lane>`). */
 export const NOMINATOR_POSITIONS_NEON_LANE = "nominator-positions";
@@ -103,7 +104,7 @@ export interface NominatorPositionsMirrorDeps {
  * raised, and both callers turn it into the request's failure.
  */
 export async function mirrorNominatorPositionsToNeon(
-  env: Record<string, unknown> | null | undefined,
+  env: (NeonWriteEnv & { METAGRAPH_HEALTH_DB?: unknown }) | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   input: {
     rows: Row[];

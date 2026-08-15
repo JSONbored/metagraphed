@@ -321,7 +321,7 @@ export default {
     if (controller?.cron !== SELF_HEALTH_PROBE_CRON) {
       return { ok: false, skipped: true, reason: "unknown cron" };
     }
-    return runSelfHealthProbe(env as unknown as Record<string, unknown>, ctx);
+    return runSelfHealthProbe(env, ctx);
   },
   async fetch(request: Request, env: Env): Promise<Response> {
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span

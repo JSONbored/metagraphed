@@ -15,7 +15,11 @@
 // So most of these pin the cases a cast silently accepted and a parse must not.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { recordOrNull, recordsOrEmpty } from "../src/read-store.ts";
+import {
+  hyperdriveConnectionString,
+  recordOrNull,
+  recordsOrEmpty,
+} from "../src/read-store.ts";
 
 describe("recordOrNull", () => {
   test("NULL IS NOT AN OBJECT, whatever typeof says", () => {
@@ -85,5 +89,54 @@ describe("recordsOrEmpty", () => {
 
   test("EMPTY ARRAY IN, EMPTY ARRAY OUT -- not an error", () => {
     assert.deepEqual(recordsOrEmpty([]), []);
+  });
+});
+
+describe("hyperdriveConnectionString", () => {
+  // The rule that decides whether a lane writes to Neon or silently declines.
+  // It lived in three copies (readStore, laneHealthStore, neonOwnsObservations),
+  // each with two casts, so a divergence between them was one edit away.
+  test("it reads the string off a real binding", () => {
+    assert.equal(
+      hyperdriveConnectionString({
+        HYPERDRIVE: { connectionString: "postgres://x" },
+      }),
+      "postgres://x",
+    );
+  });
+
+  test("AN EMPTY STRING IS NOT A CONNECTION", () => {
+    // A bound-but-blank var used to pass the `?.connectionString` truthiness
+    // check in one copy and not another. Blank means unconfigured.
+    assert.equal(
+      hyperdriveConnectionString({ HYPERDRIVE: { connectionString: "" } }),
+      null,
+    );
+  });
+
+  test("a non-string connectionString declines rather than being stringified", () => {
+    // `String(42)` would hand pg a connection string of "42" and fail deep in
+    // the driver instead of declining here.
+    assert.equal(
+      hyperdriveConnectionString({ HYPERDRIVE: { connectionString: 42 } }),
+      null,
+    );
+  });
+
+  test("a bound-but-empty HYPERDRIVE declines", () => {
+    assert.equal(hyperdriveConnectionString({ HYPERDRIVE: {} }), null);
+  });
+
+  test("HYPERDRIVE that is not an object declines", () => {
+    for (const v of [null, "postgres://x", 7, []]) {
+      assert.equal(hyperdriveConnectionString({ HYPERDRIVE: v }), null);
+    }
+  });
+
+  test("no env at all declines rather than throwing", () => {
+    assert.equal(hyperdriveConnectionString(null), null);
+    assert.equal(hyperdriveConnectionString(undefined), null);
+    assert.equal(hyperdriveConnectionString({}), null);
+    assert.equal(hyperdriveConnectionString("not an env"), null);
   });
 });

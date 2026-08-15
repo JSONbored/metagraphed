@@ -32,6 +32,12 @@ import {
 } from "./registry-sync-payload.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 
+/** The two vars the registry sync lanes read (#11339). */
+type RegistrySyncEnvVars = {
+  GITHUB_TOKEN?: unknown;
+  REGISTRY_SYNC_SECRET?: unknown;
+};
+
 /** Where the registry lives. Not configurable: this lane exists to mirror THIS
  * repo's registry, and a wrong value would silently sync someone else's. */
 export const REPO = "JSONbored/metagraphed";
@@ -62,14 +68,16 @@ interface ServiceLike {
   fetch(request: Request): Promise<Response>;
 }
 
-function githubHeaders(env: Record<string, unknown>): Record<string, string> {
+function githubHeaders(
+  env: RegistrySyncEnvVars | null | undefined,
+): Record<string, string> {
   const headers: Record<string, string> = {
     accept: "application/vnd.github+json",
     // GitHub rejects API requests with no user-agent.
     "user-agent": "metagraphed-registry-sync",
     "x-github-api-version": "2022-11-28",
   };
-  const token = env.GITHUB_TOKEN;
+  const token = env?.GITHUB_TOKEN;
   if (typeof token === "string" && token.trim() !== "") {
     headers.authorization = `Bearer ${token.trim()}`;
   }
@@ -77,7 +85,7 @@ function githubHeaders(env: Record<string, unknown>): Record<string, string> {
 }
 
 export async function ghJson(
-  env: Record<string, unknown>,
+  env: RegistrySyncEnvVars | null | undefined,
   path: string,
 ): Promise<unknown | null> {
   try {
@@ -94,7 +102,7 @@ export async function ghJson(
 
 /** One file's parsed overlay at a commit, or null when it is not there. */
 export async function fileAt(
-  env: Record<string, unknown>,
+  env: RegistrySyncEnvVars | null | undefined,
   path: string,
   ref: string,
 ): Promise<Row | null> {
@@ -127,7 +135,7 @@ export async function fileAt(
  * in surface_history -- which is the exact failure this lane exists to end.
  */
 export async function runRegistrySyncLane(
-  env: unknown,
+  env: RegistrySyncEnvVars | null | undefined,
   deps: {
     kv?: KvLike | null;
     registrySyncApi?: ServiceLike | null;
@@ -172,7 +180,7 @@ function laneDetail(result: RegistrySyncLaneResult): string {
 }
 
 async function runRegistrySyncTick(
-  env: unknown,
+  env: RegistrySyncEnvVars | null | undefined,
   deps: {
     kv?: KvLike | null;
     registrySyncApi?: ServiceLike | null;

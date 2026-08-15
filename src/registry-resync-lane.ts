@@ -56,6 +56,12 @@ import {
   type RegistryResyncPassState,
 } from "../schemas-src/internal-wire.ts";
 
+/** The two vars the registry sync lanes read (#11339). */
+type RegistrySyncEnvVars = {
+  GITHUB_TOKEN?: unknown;
+  REGISTRY_SYNC_SECRET?: unknown;
+};
+
 export const REGISTRY_RESYNC_LANE = "registry-resync";
 const STATE_KEY = "registry-resync:state";
 const COMPLETED_KEY = "registry-resync:last-complete";
@@ -120,7 +126,7 @@ export interface RegistryResyncDeps {
 
 /** Every registry file at `ref`, both directories, sorted for a stable pass. */
 async function listRegistryPaths(
-  env: Record<string, unknown>,
+  env: RegistrySyncEnvVars | null | undefined,
   ref: string,
 ): Promise<string[] | null> {
   const paths: string[] = [];
@@ -151,7 +157,7 @@ async function listRegistryPaths(
  * family: a tick that cannot run is one missed report, not an outage.
  */
 export async function runRegistryResyncLane(
-  env: unknown,
+  env: RegistrySyncEnvVars | null | undefined,
   deps: RegistryResyncDeps = {},
 ): Promise<RegistryResyncResult> {
   const result = await runResyncTick(env, deps);
@@ -187,7 +193,7 @@ export function resyncDetail(result: RegistryResyncResult): string {
 }
 
 async function runResyncTick(
-  env: unknown,
+  env: RegistrySyncEnvVars | null | undefined,
   deps: RegistryResyncDeps,
 ): Promise<RegistryResyncResult> {
   const bag = (env ?? {}) as Record<string, unknown>;

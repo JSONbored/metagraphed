@@ -38,6 +38,7 @@
 // anything failing: each spelling was correct for the store its own file
 // targeted, and neither could run against the other.
 import { OK_LATENCY } from "./health-sql.ts";
+import { hyperdriveConnectionString } from "./read-store.ts";
 
 /** The runner shape createPgSql hands out. Declared here rather than imported
  * so this module depends on the SHAPE and not on another lane's file. */
@@ -433,12 +434,8 @@ export const OBSERVATION_TABLES = [
 /** True when Neon solely owns every observation table AND Hyperdrive is bound.
  * Skipping the D1 write with nowhere to put the rows would drop a probe sweep
  * silently, and a probe not stored is gone. */
-export function neonOwnsObservations(
-  env: Record<string, unknown> | null | undefined,
-): boolean {
+export function neonOwnsObservations(env: unknown): boolean {
   // The injected ownership predicate left with the flag (#10051): Neon is the
   // only store, so durability is the binding question alone.
-  const hyperdrive = env?.HYPERDRIVE as
-    { connectionString?: string } | undefined;
-  return Boolean(hyperdrive?.connectionString);
+  return hyperdriveConnectionString(env) !== null;
 }

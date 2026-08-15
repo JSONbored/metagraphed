@@ -67,6 +67,25 @@ import {
 } from "../schemas-src/foreign-wire.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { countOrZero } from "./read-store.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type LaneAlarmEnv = StoreEnv &
+  TelemetryEnv & {
+    GITHUB_TOKEN?: unknown;
+    LANE_ALARM_GITHUB_TOKEN?: unknown;
+    LANE_ALARM_MIN_STALE_MS?: unknown;
+    LANE_ALARM_REPO?: unknown;
+  };
 
 /**
  * How long a lane must stay stale before it earns an issue.
@@ -1140,7 +1159,7 @@ export interface LaneAlarmDeps {
  * reads: a tick that cannot run is one missed report, not an outage.
  */
 export async function runLaneAlarm(
-  env: Record<string, unknown> | null | undefined,
+  env: LaneAlarmEnv | null | undefined,
   deps: LaneAlarmDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;

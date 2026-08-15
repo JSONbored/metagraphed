@@ -34,6 +34,7 @@ import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { createPgSql } from "./pg-sql.ts";
 import { projectDeregistrationRanking } from "./subnet-deregistration-ranking.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 interface WaitUntilLike {
   waitUntil: (promise: Promise<unknown>) => void;
@@ -208,7 +209,7 @@ export function snapshotDateFor(nowMs: number): string {
  * than a gap in the series.
  */
 export async function runSubnetDeregistrationDailyLane(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   deps: DeregistrationDailyDeps,
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;

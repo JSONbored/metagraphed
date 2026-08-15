@@ -2170,9 +2170,7 @@ export async function handleSelfHealth(
     // this is /health's own lane floor. Reading it from the store would render an
     // empty result as "no alarms", which is the one answer a health endpoint
     // must never invent.
-    laneHealthStore(env as unknown as Record<string, unknown>) as Parameters<
-      typeof loadLatestLaneHealth
-    >[0],
+    laneHealthStore(env) as Parameters<typeof loadLatestLaneHealth>[0],
   );
   // The sample the silence bound needs (#10232), as the LONGEST observed gap
   // rather than the mean (#10333). One extra GROUP BY over the table the read
@@ -2180,9 +2178,7 @@ export async function handleSelfHealth(
   // withLaneHealth then leaves every verdict alone -- so a failed read costs
   // today's behaviour, never a false alarm.
   const cadences = await loadLaneMaxGap(
-    laneHealthStore(env as unknown as Record<string, unknown>) as Parameters<
-      typeof loadLaneMaxGap
-    >[0],
+    laneHealthStore(env) as Parameters<typeof loadLaneMaxGap>[0],
     Date.now() - LANE_ALARM_CADENCE_WINDOW_MS,
   );
   const withLanes = withLaneHealth(data, lanes, { cadences });

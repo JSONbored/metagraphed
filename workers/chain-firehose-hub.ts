@@ -1270,11 +1270,7 @@ export class ChainFirehoseHub implements DurableObject {
         // handle here -- a Durable Object has no ExecutionContext, and
         // createPgSql needs one to hand the pooled connection back to
         // Hyperdrive.
-        await mirrorBlocksHeadToNeon(
-          this.env as unknown as Record<string, unknown>,
-          this.state,
-          block,
-        );
+        await mirrorBlocksHeadToNeon(this.env, this.state, block);
         await this.state.storage.put("head:last_seen", block.block_number);
       }
     } catch (error) {

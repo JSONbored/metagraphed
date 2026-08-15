@@ -97,6 +97,24 @@ import {
   type ReadStoreDb,
 } from "./read-store.ts";
 import type { AccountBalances } from "../generated/db/types.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type AccountBalancesStalenessWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    ACCOUNT_BALANCES_COVERAGE_FLOOR_ROWS?: unknown;
+    ACCOUNT_BALANCES_PASS_WINDOW_MS?: unknown;
+    ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS?: unknown;
+  };
 
 /**
  * How old the ledger may get before this is a stall.
@@ -334,7 +352,7 @@ export interface AccountBalancesStalenessDeps {
  * and a cron that throws is a cron nobody can read the result of.
  */
 export async function runAccountBalancesStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: AccountBalancesStalenessWatchdogEnv | null | undefined,
   deps: AccountBalancesStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;

@@ -30,7 +30,9 @@ const { SAFE_MODE_EXTRINSIC_LIMIT, readSafeModeExtrinsics } =
 test("it asks the extrinsics cold tier for the SafeMode module, within the route's own ceiling", async () => {
   coldTier.calls.length = 0;
   coldTier.result = { extrinsics: [] };
-  const env = { MARKER: 1 };
+  // A real key rather than an invented one, so the fixture is a valid env;
+  // the assertion below is identity, so any value proves the threading.
+  const env = { SAFE_MODE_RPC_URL: "sentinel" };
   await readSafeModeExtrinsics(env);
   assert.equal(coldTier.calls.length, 1, "one tier read, no HTTP hop");
   const [passedEnv, query] = coldTier.calls[0] as [

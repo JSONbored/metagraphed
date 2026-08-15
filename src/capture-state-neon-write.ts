@@ -28,6 +28,7 @@ import {
 import { recordNeonWriteVerdict, type NeonWriteResult } from "./neon-write.ts";
 import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 export const BLOCKS_HEAD_NEON_LANE = "blocks-head";
 export const RAW_CAPTURE_STATE_NEON_LANE = "raw-capture-state";
@@ -44,7 +45,7 @@ export interface CaptureStateMirrorDeps {
 
 /** Resolve the runner and lane bookkeeping shared by both mirrors. */
 async function runner(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   lane: string,
   deps: CaptureStateMirrorDeps,
@@ -113,7 +114,7 @@ async function record(
 /** One head row. Never throws: while D1 still serves, a mirror failure costs a
  * lane verdict and nothing the poller can see. */
 export async function mirrorBlocksHeadToNeon(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   row: BlocksHead,
   deps: CaptureStateMirrorDeps = {},
@@ -158,7 +159,7 @@ export async function mirrorBlocksHeadToNeon(
 
 /** The contiguity watermark, one row per network. */
 export async function mirrorRawCaptureStateToNeon(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   network: string,
   lastContiguousBlock: number,

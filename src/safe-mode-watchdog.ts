@@ -64,6 +64,22 @@ import { chainRpc } from "./chain-rpc.ts";
 import { bytesToHex, storageMapPrefix } from "../src/twox-storage-key.ts";
 import { loadExtrinsicFeedColdTier } from "./extrinsics-cold-tier.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type SafeModeWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    SAFE_MODE_RPC_URL?: unknown;
+  };
 
 /** Public archive RPC. A var, not a secret: the endpoint is public. */
 export const SAFE_MODE_RPC_URL_DEFAULT = "https://archive.chain.opentensor.ai";
@@ -178,7 +194,7 @@ async function rpc(
 
 /** Reads the SafeMode extrinsic history, or null when the tier declined. */
 export type SafeModeExtrinsicReader = (
-  env: Record<string, unknown> | null | undefined,
+  env: SafeModeWatchdogEnv | null | undefined,
 ) => Promise<Extrinsic[] | null>;
 
 /**
@@ -215,7 +231,7 @@ export const readSafeModeExtrinsics: SafeModeExtrinsicReader = async (env) => {
  * measured and the failed path are testable without a chain.
  */
 export async function runSafeModeWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: SafeModeWatchdogEnv | null | undefined,
   deps: {
     fetchImpl?: Fetcher;
     readExtrinsics?: SafeModeExtrinsicReader;

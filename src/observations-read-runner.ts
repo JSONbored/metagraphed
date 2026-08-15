@@ -38,6 +38,7 @@ import {
   type HyperdriveLike,
   type WaitUntilLike,
 } from "./pg-sql.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 /** The minimal Postgres runner this needs, so a test can hand it a fake. */
 export interface ReadRunnerSql {
@@ -79,7 +80,7 @@ export interface ObservationsReadDeps {
  * the read helpers already treat as zero rows.
  */
 export function observationsReadDb(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   // Optional-`waitUntil` on purpose: the serving handlers pass an EdgeCacheCtx,
   // whose waitUntil is itself optional, and a ctx that cannot defer work is not
   // a ctx for this purpose -- see the guard below.
