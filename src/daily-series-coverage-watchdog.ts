@@ -39,7 +39,7 @@
 // late. Freshness already covers that end, which is the half this is not.
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore, type RowQuerier } from "./read-store.ts";
+import { readStore, type UntypedRowQuerier } from "./read-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 
 export const DAILY_COVERAGE_LANE = "daily-series-coverage";
@@ -242,7 +242,7 @@ export async function runDailySeriesCoverageWatchdog(
   const db = readStore(
     env,
     DAILY_SERIES.map((s) => s.table),
-  ) as unknown as RowQuerier | undefined;
+  );
   if (!db?.query) return { ok: false, reason: "no store bound" };
 
   const verdicts: DailySeriesVerdict[] = [];

@@ -130,6 +130,24 @@ export interface RowQuerier {
   query<T = Row>(text: string, values?: unknown[]): Promise<T[]>;
 }
 
+/**
+ * A store whose rows carry NO claimed shape.
+ *
+ * The minimum for a reader that only ever reads columns off an untyped row and
+ * never names a row type -- the watchdogs, which read `count(*)` and a verdict
+ * string out of a `GROUP BY`. `RowQuerier`'s generic `query<T>` is NOT this: a
+ * generic signature can only be satisfied by a generic implementation, so a
+ * hand-rolled double returning `Record<string, unknown>[]` does not fit it and
+ * has to be cast into place, which is the cast this exists to remove.
+ *
+ * The arrow points one way, as it does for `RowReader`: a `RowQuerier` (and so
+ * a `ReadStoreDb`) satisfies this by instantiating `T` at the default, so the
+ * real store can be handed to a reader that asks only for this.
+ */
+export interface UntypedRowQuerier {
+  query(text: string, values?: unknown[]): Promise<Row[]>;
+}
+
 /** A store that can read ONE row.
  *
  * NON-GENERIC, and returning `unknown` rather than `T | null`, because this is
