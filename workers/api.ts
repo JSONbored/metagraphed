@@ -605,6 +605,7 @@ import {
 import { runRegistrySyncLane } from "../src/registry-sync-lane.ts";
 import { runRegistryResyncLane } from "../src/registry-resync-lane.ts";
 import { runDailySeriesCoverageWatchdog } from "../src/daily-series-coverage-watchdog.ts";
+import { runDegenerateOutputWatchdog } from "../src/degenerate-output-watchdog.ts";
 import { runSubnetLifecycleLane } from "../src/subnet-lifecycle.ts";
 import { runSubnetDeregistrationDailyLane } from "../src/subnet-deregistration-daily.ts";
 import { resolveEmissionPipelineEconomics } from "../src/emission-pipeline-surface.ts";
@@ -3843,9 +3844,21 @@ async function dispatchScheduled(
     // asks how old the NEWEST row is -- a question structurally blind to a hole
     // in the middle. neuron_daily is the history source and only ~26 days deep,
     // so a missed day ages out of any recomputable window and becomes permanent.
-    return runDailySeriesCoverageWatchdog(
-      env as unknown as Record<string, unknown>,
-    );
+    //
+    // TWO WATCHDOGS, ONE MINUTE (#11226). The degenerate-output check shares
+    // this tick rather than taking a cron of its own: #10709 is open to halve
+    // the 43 crons this Worker already declares, and spending one while that
+    // is in flight works against it. The cadence argument is the same one
+    // written above -- a lane that classifies nothing does not heal on its own
+    // either, so the value is noticing at all, not noticing fast. They record
+    // separate lane verdicts, so sharing a minute does not merge their
+    // reporting.
+    const bag = env as unknown as Record<string, unknown>;
+    const [series] = await Promise.all([
+      runDailySeriesCoverageWatchdog(bag),
+      runDegenerateOutputWatchdog(bag),
+    ]);
+    return series;
   }
   if (cron === CHAIN_DETAIL_PRUNE_CRON) {
     // #9208 retention. Returns a summary rather than throwing so the #8998
