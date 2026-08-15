@@ -3,7 +3,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { economicsQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
 import { formatTao } from "@/lib/metagraphed/format";
-import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
+import { firstPartyLogoPath, logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import {
   entityNotFoundMeta,
   isMissingEntityError,
@@ -146,6 +146,10 @@ export const Route = createFileRoute("/subnets/$netuid")({
           title: loaderData?.name || `Subnet ${params.netuid}`,
           subtitle: description,
           eyebrow: "Subnet",
+          // The registry's curated logo first (a first-party cached asset the
+          // card reads from the ASSETS binding), then the subnet's own website
+          // as a favicon lookup, then the monogram.
+          logoPath: firstPartyLogoPath(loaderData?.iconUrl),
           logoHost: logoHostFrom(loaderData?.iconUrl, loaderData?.website),
           // The health state colours the card's footer dot instead of
           // spending a whole stat cell on a one-word string.

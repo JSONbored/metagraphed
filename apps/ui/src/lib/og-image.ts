@@ -38,6 +38,8 @@
 // it pulls in a yoga `.wasm` that Node's ESM loader can't resolve, which would
 // break `vite dev` SSR for every route. It only has to work on the Cloudflare
 // Worker, which reaches the dynamic import only on an actual /og request.
+import { clampCardText, OG_LIMITS } from "./metagraphed/og-card-limits";
+
 type WorkersOg = typeof import("workers-og");
 
 const OG_PATH = "/og";
@@ -152,21 +154,13 @@ function isHealthState(value: string): boolean {
 // edge cache for its full 7-day stale-while-revalidate window. Bumped to "3"
 // for the #8489 rebuild -- every previously cached card is the old plain-text
 // one and must be retired -- and to "4" for the light-theme pass, which
-// changes every pixel of every card.
-const CARD_VERSION = "4";
+// changes every pixel of every card. "5" retires every card cached with the
+// broken font subset (#11204): each one painted `.notdef` boxes for the em
+// dash, the ellipsis and the tau, and would otherwise keep serving them for
+// the full 7-day stale-while-revalidate window after the fix ships.
+const CARD_VERSION = "5";
 
-const MAX_SUBTITLE_LENGTH = 90;
 const DEFAULT_TITLE = "Metagraphed";
-const MAX_TITLE_LENGTH = 110;
-// #8489: bounds for the new entity params, same posture as title/subtitle --
-// this is an unauthenticated endpoint crawlers hit, so every interpolated
-// value is both length-bounded AND escaped.
-const MAX_EYEBROW_LENGTH = 32;
-const MAX_STAT_LABEL_LENGTH = 24;
-const MAX_STAT_VALUE_LENGTH = 28;
-/** A bare DNS name, e.g. "chutes.ai". Never a URL — see readCardParams. */
-const MAX_LOGO_HOST_LENGTH = 80;
-const MAX_QUERY_LENGTH = 512;
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 
 /**
@@ -252,8 +246,7 @@ export function sanitizeText(value: string): string {
 }
 
 export function normalizeTitle(value: string | null): string {
-  const trimmed = (value || DEFAULT_TITLE).trim() || DEFAULT_TITLE;
-  return trimmed.length > MAX_TITLE_LENGTH ? `${trimmed.slice(0, MAX_TITLE_LENGTH - 1)}…` : trimmed;
+  return clampCardText((value || "").trim() || DEFAULT_TITLE, OG_LIMITS.title);
 }
 
 /**
@@ -263,11 +256,7 @@ export function normalizeTitle(value: string | null): string {
  * bounded like the title so a long one can't overflow the card.
  */
 export function normalizeSubtitle(value: string | null): string {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return SUBTITLE;
-  return trimmed.length > MAX_SUBTITLE_LENGTH
-    ? `${trimmed.slice(0, MAX_SUBTITLE_LENGTH - 1)}…`
-    : trimmed;
+  return clampCardText((value || "").trim() || SUBTITLE, OG_LIMITS.subtitle);
 }
 
 /**
@@ -278,9 +267,7 @@ export function normalizeSubtitle(value: string | null): string {
  * `?:` rather than scattered emptiness checks.
  */
 export function normalizeParam(value: string | null, max: number): string | null {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return null;
-  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
+  return clampCardText(value, max) || null;
 }
 
 /** One "LABEL / value" cell in the card's stat rail. */
@@ -319,11 +306,13 @@ export function readCardParams(params: URLSearchParams): {
   eyebrow: string | null;
   stats: OgStat[];
   logoHost: string | null;
+  logoPath: string | null;
   entity: boolean;
   status: string | null;
 } {
-  const eyebrow = normalizeParam(params.get("eyebrow"), MAX_EYEBROW_LENGTH);
+  const eyebrow = normalizeParam(params.get("eyebrow"), OG_LIMITS.eyebrow);
   const logoHost = normalizeLogoHost(params.get("logo"));
+  const logoPath = normalizeLogoPath(params.get("logop"));
   const entity = params.get("entity") === "1";
   const rawStatus = (params.get("status") || "").trim().toLowerCase();
   const status = isHealthState(rawStatus) ? rawStatus : null;
@@ -333,13 +322,13 @@ export function readCardParams(params: URLSearchParams): {
     ["stat2", "stat2v"],
     ["stat3", "stat3v"],
   ] as const) {
-    const label = normalizeParam(params.get(labelKey), MAX_STAT_LABEL_LENGTH);
-    const value = normalizeParam(params.get(valueKey), MAX_STAT_VALUE_LENGTH);
+    const label = normalizeParam(params.get(labelKey), OG_LIMITS.statLabel);
+    const value = normalizeParam(params.get(valueKey), OG_LIMITS.statValue);
     // Both halves required: a value with no label is unreadable, and a label
     // with no value is an empty promise.
     if (label && value) stats.push({ label, value });
   }
-  return { eyebrow, stats, logoHost, entity, status };
+  return { eyebrow, stats, logoHost, logoPath, entity, status };
 }
 
 /**
@@ -370,9 +359,44 @@ export function iconProxyUrl(host: string): string {
  * userinfo, ports, IP literals, and the localhost/.local/.internal family,
  * mirroring the proxy's own validation rather than trusting it blindly.
  */
+/**
+ * The registry's own logo assets, the only paths `logop` may name.
+ *
+ * Two shapes, both committed under apps/ui/public/logos and both measured
+ * against the live registry: subnets carry a content-addressed cache entry
+ * (`cache/<sha256>.<ext>`, all 60 of them), providers a slug (`<slug>.<ext>`,
+ * 102 of 138). Pinning the whole path rather than sanitizing it is what makes
+ * this safe: the name charset excludes `.`, so `..` cannot be spelled, and
+ * there is no way to name anything but an image this repo ships.
+ */
+const LOGO_ASSET_PATH =
+  /^\/logos\/(?:cache\/[0-9a-f]{64}|[a-z0-9][a-z0-9-]{0,62})\.(?:png|svg|jpg|jpeg|webp)$/;
+
+/**
+ * Validate the `logop` param as one of OUR OWN cached logo assets.
+ *
+ * Why this exists alongside `logo` (a hostname resolved through the icon
+ * proxy): the registry stores a subnet's logo as a first-party cached copy,
+ * `https://metagraph.sh/logos/cache/<sha256>.png`. Reducing that to a HOST the
+ * way every other candidate is reduced yields `metagraph.sh` and then asks a
+ * favicon aggregator for OUR site's icon -- throwing away a working, curated
+ * image. All 60 subnets that have a logo hit that path, so all 60 cards showed
+ * a two-letter monogram.
+ *
+ * A path is safe here where a URL would not be because the ORIGIN is not the
+ * caller's to choose: the asset is read through the Worker's own ASSETS
+ * binding, never fetched. That also sidesteps the trap that makes the obvious
+ * implementation fail -- this Worker serves metagraph.sh, and a Worker cannot
+ * fetch its own custom domain (Cloudflare answers 522).
+ */
+export function normalizeLogoPath(value: string | null): string | null {
+  const raw = (value || "").trim();
+  return LOGO_ASSET_PATH.test(raw) ? raw : null;
+}
+
 export function normalizeLogoHost(value: string | null): string | null {
   const raw = (value || "").trim().toLowerCase();
-  if (!raw || raw.length > MAX_LOGO_HOST_LENGTH) return null;
+  if (!raw || raw.length > OG_LIMITS.logoHost) return null;
   // Plain DNS name only: labels of alphanumerics/hyphens, at least one dot,
   // and a non-numeric TLD (which also rules out bare IPv4 literals).
   if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(raw)) return null;
@@ -600,8 +624,218 @@ export function renderCardMarkup(opts: {
  * paint.
  */
 export function glyphsForMarkup(markup: string): string {
-  return markup.replace(/<[^>]*>/g, "");
+  const text = markup.replace(/<[^>]*>/g, "");
+  // Deduped: subsetting is per code point, so repeats never bought anything.
+  // Spread, not split(""): a split would cut astral characters in half and
+  // subset two broken halves of an emoji.
+  return [...new Set([...text])].join("");
 }
+
+/** U+0020..U+007E, built rather than typed so no escaping can go wrong. */
+const ASCII_PRINTABLE = Array.from({ length: 0x7e - 0x20 + 1 }, (_, index) =>
+  String.fromCharCode(0x20 + index),
+).join("");
+
+/**
+ * The non-ASCII characters this card is *designed* to paint.
+ *
+ * `…` is emitted by all three normalizers when they truncate; `·` and `—`
+ * separate the clauses of an entity subtitle; `τ` is in every TAO value. The
+ * rest are the typographic characters ordinary prose drags in (smart quotes
+ * from a subnet description, a `×`, a `°`). All are one glyph each.
+ */
+const TYPOGRAPHIC_GLYPHS = "·×–—‘’“”•…→τ€°";
+
+/**
+ * The repertoire EVERY card is subset to, whatever it happens to say.
+ *
+ * Requesting a fixed set rather than exactly this card's characters is what
+ * makes the font request cacheable: the URL is then identical for almost every
+ * card, so `caches.default` (and the per-isolate memo below) actually hit,
+ * instead of missing on every render because the query carried that card's
+ * prose. Measured: 108 glyphs of Space Grotesk is ~20KB per weight and 109 of
+ * Inter ~38KB, ~173KB for the six faces — paid once per isolate rather than
+ * six network round trips per uncached card.
+ *
+ * It also makes coverage DETERMINISTIC. A per-card subset means the answer to
+ * "is this glyph in the font" depends on what the card says, which is exactly
+ * the coupling that produced tofu; with a fixed base, anything in this string
+ * is always present and only genuinely exotic input takes the slow path.
+ */
+export const CARD_GLYPHS = ASCII_PRINTABLE + TYPOGRAPHIC_GLYPHS;
+
+/**
+ * The `text=` subset request for a card: the fixed repertoire, plus whatever
+ * this card paints that isn't already in it.
+ *
+ * Extras are sorted so two cards needing the same exotic characters produce the
+ * same URL and share a cache entry, and control characters are dropped — the
+ * markup is full of newlines between tags, and they are not glyphs.
+ */
+export function fontSubsetText(markup: string): string {
+  const base = new Set(CARD_GLYPHS);
+  const extra = [...glyphsForMarkup(markup)]
+    .filter((char) => {
+      if (base.has(char)) return false;
+      const code = char.codePointAt(0) ?? 0;
+      return code >= 0x20 && code !== 0x7f && !(code >= 0x80 && code <= 0x9f);
+    })
+    .sort()
+    .join("");
+  return CARD_GLYPHS + extra;
+}
+
+/**
+ * The Google Fonts CSS URL for one subset face.
+ *
+ * `text` is percent-encoded, and THAT is the whole point of this function
+ * existing (#11204). workers-og's own `loadGoogleFont` encodes `family` and
+ * interpolates `text` raw:
+ *
+ *     `https://fonts.googleapis.com/css2?${keys.map(k => `${k}=${n[k]}`).join("&")}`
+ *
+ * So one `%` anywhere in the card's copy — an emission share of `0.61%` is
+ * enough — leaves a bare `%` in the query value, Google stops decoding the
+ * whole parameter, and the `%E2%80%94` / `%E2%80%A6` / `%CF%84` escapes the URL
+ * serializer produced for `—`, `…` and `τ` are subset as the LITERAL hex
+ * letters instead. Measured against the live endpoint: the same request with
+ * the `%` encoded returns all three glyphs, without it returns none of them.
+ * That is why every subnet card painted three `.notdef` boxes while a card with
+ * no stats rendered the identical subtitle correctly.
+ *
+ * Encoding the text before handing it to workers-og would fix today's symptom
+ * and arm a worse one: a future version that encodes correctly would then
+ * double-encode ours, silently, with no test able to see it. Owning the two
+ * fetches is ~20 lines and removes the guess entirely.
+ */
+export function googleFontUrl(family: string, weight: number, text: string): string {
+  return (
+    "https://fonts.googleapis.com/css2" +
+    `?family=${encodeURIComponent(family)}:wght@${weight}` +
+    `&text=${encodeURIComponent(text)}`
+  );
+}
+
+/**
+ * An ancient Safari UA, deliberately.
+ *
+ * Google Fonts serves woff2 to anything modern, and satori cannot parse woff2 —
+ * it needs ttf/otf. This UA is what makes the css2 endpoint answer with a
+ * `format('truetype')` face. Inherited from workers-og, and load-bearing:
+ * change it and every card silently becomes the 1px fallback PNG.
+ */
+const FONT_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) " +
+  "AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1";
+
+/** Subset faces are immutable for a given (family, weight, text) — hold them. */
+const FONT_CACHE_CONTROL = "public, max-age=2592000";
+
+/**
+ * Per-isolate memo of in-flight and resolved faces.
+ *
+ * Keyed on the CSS URL, which is a total function of (family, weight, text) —
+ * so with the fixed repertoire above this is one entry per face for the life of
+ * the isolate, and concurrent renders share a single fetch rather than racing.
+ */
+const fontMemo = new Map<string, Promise<ArrayBuffer>>();
+
+async function fetchFontBinary(
+  family: string,
+  weight: number,
+  text: string,
+  fetchImpl: typeof fetch,
+): Promise<ArrayBuffer> {
+  const cssResponse = await fetchImpl(googleFontUrl(family, weight, text), {
+    headers: { "user-agent": FONT_USER_AGENT },
+  });
+  if (!cssResponse.ok) {
+    throw new Error(`Google Fonts CSS ${cssResponse.status} for ${family} ${weight}`);
+  }
+  // A gstatic font URL never contains ")", so this is bounded rather than the
+  // greedy `(.+)` workers-og used.
+  const source = (await cssResponse.text()).match(
+    /src:\s*url\(([^)]+)\)\s*format\('(?:opentype|truetype)'\)/,
+  )?.[1];
+  if (!source) throw new Error(`No TrueType face in Google Fonts CSS for ${family} ${weight}`);
+  const fontResponse = await fetchImpl(source);
+  if (!fontResponse.ok) {
+    throw new Error(`Google Fonts binary ${fontResponse.status} for ${family} ${weight}`);
+  }
+  return await fontResponse.arrayBuffer();
+}
+
+/**
+ * One subset face, through the isolate memo and the edge cache.
+ *
+ * workers-og cached the CSS response but never the font binary, and keyed that
+ * cache on a URL carrying the card's prose — so in practice it re-fetched both
+ * on every uncached card. Caching the binary subsumes the CSS lookup, so a warm
+ * isolate renders a card with zero external requests.
+ *
+ * Both cache layers are best-effort: a cache that is unavailable or refuses the
+ * key must degrade to a plain fetch, never fail the card.
+ */
+export async function loadCardFont(
+  family: string,
+  weight: number,
+  text: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ArrayBuffer> {
+  const cssUrl = googleFontUrl(family, weight, text);
+  const memoized = fontMemo.get(cssUrl);
+  if (memoized) return await memoized;
+
+  const pending = (async () => {
+    const cacheKey = new Request(`${cssUrl}&fmt=ttf`);
+    try {
+      const hit = await cacheStorage?.match(cacheKey);
+      if (hit) return await hit.arrayBuffer();
+    } catch {
+      // No usable edge cache — fetch it.
+    }
+    const bytes = await fetchFontBinary(family, weight, text, fetchImpl);
+    try {
+      await cacheStorage?.put(
+        cacheKey,
+        new Response(bytes, {
+          headers: { "cache-control": FONT_CACHE_CONTROL, "content-type": "font/ttf" },
+        }),
+      );
+    } catch {
+      // Caching is an optimisation; the face is already in hand.
+    }
+    return bytes;
+  })();
+
+  fontMemo.set(cssUrl, pending);
+  // Never memoize a rejection: one Google Fonts hiccup would otherwise blank
+  // every card this isolate goes on to render.
+  pending.catch(() => fontMemo.delete(cssUrl));
+  return await pending;
+}
+
+/**
+ * The card's font stack, in satori's resolution order.
+ *
+ * Space Grotesk is the display face; Inter is listed AFTER it so satori reaches
+ * for it per glyph rather than for whole runs. It has to be there at all
+ * because Space Grotesk has no Greek coverage and every TAO value contains τ —
+ * verified against a real satori render, since the local Chromium preview
+ * substitutes a system font and hides the gap completely.
+ *
+ * Inter carries weight 500 as well as 400/700: the stat labels and the eyebrow
+ * pill are painted at 500, so without it the fallback for a glyph in those runs
+ * had to be resolved from a weight satori was not asked for.
+ */
+const CARD_FONT_FACES = [
+  { name: "Space Grotesk", weight: 700 },
+  { name: "Space Grotesk", weight: 500 },
+  { name: "Space Grotesk", weight: 400 },
+  { name: "Inter", weight: 700 },
+  { name: "Inter", weight: 500 },
+  { name: "Inter", weight: 400 },
+] as const;
 
 function makeCacheKey(url: URL, title: string, subtitle: string): Request {
   const cacheUrl = new URL(url);
@@ -621,6 +855,7 @@ function makeCacheKey(url: URL, title: string, subtitle: string): Request {
     "stat3",
     "stat3v",
     "logo",
+    "logop",
     "entity",
     "status",
   ]) {
@@ -668,25 +903,97 @@ const MAX_ICON_BYTES = 256 * 1024;
  * Every failure mode returns null rather than throwing: an OG card must render
  * something even when the icon service is down.
  */
+async function inlineImage(response: Response): Promise<string | null> {
+  if (!response.ok) return null;
+  const type = response.headers.get("content-type") || "";
+  if (!type.startsWith("image/")) return null;
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_ICON_BYTES) return null;
+  // btoa needs a binary string; chunked so a large icon can't blow the
+  // argument limit with String.fromCharCode(...spread).
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 8192) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  }
+  return `data:${type.split(";")[0]};base64,${btoa(binary)}`;
+}
+
 export async function resolveIcon(
   host: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<string | null> {
   try {
-    const response = await fetchImpl(iconProxyUrl(host));
-    if (!response.ok) return null;
-    const type = response.headers.get("content-type") || "";
-    if (!type.startsWith("image/")) return null;
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength === 0 || bytes.byteLength > MAX_ICON_BYTES) return null;
-    // btoa needs a binary string; chunked so a large icon can't blow the
-    // argument limit with String.fromCharCode(...spread).
-    let binary = "";
-    for (let i = 0; i < bytes.length; i += 8192) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-    }
-    return `data:${type.split(";")[0]};base64,${btoa(binary)}`;
+    return await inlineImage(await fetchImpl(iconProxyUrl(host)));
   } catch {
+    return null;
+  }
+}
+
+/** The Worker's static-asset binding — what serves apps/ui/public. */
+export interface AssetsBinding {
+  fetch(input: Request): Promise<Response>;
+}
+
+/**
+ * Narrow the Worker `env` to its ASSETS binding, or null when absent.
+ *
+ * Falls back to `globalThis.__env__`, and that fallback is the one that
+ * actually fires: this module runs inside the Nitro app, which reaches our
+ * fetch handler through `nitroApp.fetch(request)` — a call that carries no env
+ * at all. Nitro's Cloudflare entry assigns the real env to `globalThis.__env__`
+ * as the first statement of its own fetch handler, before any dispatch, so it
+ * is populated by the time a request reaches us. Verified against a real
+ * `wrangler dev` build, where the passed env has no ASSETS and this does.
+ *
+ * The passed env is still preferred: it is the direct, documented route, and
+ * keeps this working if the preset ever hands us the real thing.
+ */
+export function assetsBindingFrom(env: unknown): AssetsBinding | null {
+  for (const candidate of [env, (globalThis as { __env__?: unknown }).__env__]) {
+    const assets = (candidate as { ASSETS?: unknown } | null | undefined)?.ASSETS;
+    if (typeof (assets as AssetsBinding | undefined)?.fetch === "function") {
+      return assets as AssetsBinding;
+    }
+  }
+  return null;
+}
+
+/**
+ * Inline one of our own cached logo assets, read through the ASSETS binding.
+ *
+ * The binding, not `fetch`: these assets are served by THIS Worker on
+ * metagraph.sh, and a Worker fetching its own custom domain gets a 522 rather
+ * than the file. Reading the binding is also strictly faster -- no edge round
+ * trip at all -- and is what keeps the origin out of the caller's hands.
+ *
+ * Returns null on anything unexpected so the card falls through to the
+ * monogram, exactly as an unresolvable third-party icon does.
+ */
+export async function resolveLocalLogo(
+  path: string,
+  assets: AssetsBinding | null,
+  origin: string,
+): Promise<string | null> {
+  if (!assets) {
+    console.error(`OG logo: no ASSETS binding, cannot read ${path}`);
+    return null;
+  }
+  try {
+    // A Request, not a bare string: the assets binding is a Fetcher, and
+    // handing it a constructed Request is the form its own docs use.
+    const response = await assets.fetch(new Request(new URL(path, origin).toString()));
+    const inlined = await inlineImage(response);
+    // The path already passed LOGO_ASSET_PATH, so we believe this asset exists.
+    // If it doesn't, a curated logo has gone missing and the card is silently
+    // degrading to a monogram -- say so rather than letting it be invisible.
+    if (!inlined) {
+      console.error(
+        `OG logo unresolved: ${path} (${response.status} ${response.headers.get("content-type")})`,
+      );
+    }
+    return inlined;
+  } catch (error) {
+    console.error(`OG logo read failed: ${path}`, error);
     return null;
   }
 }
@@ -702,19 +1009,23 @@ function fallbackImageResponse(status = 200): Response {
 }
 
 // Render the /og card, or return null when the path doesn't match.
-export async function handleOgImage(request: Request): Promise<Response | null> {
+//
+// `env` is threaded in for the ASSETS binding only -- it is what lets a card
+// carry the registry's own cached logo (see resolveLocalLogo). Optional, so a
+// caller without an env still renders every other card correctly.
+export async function handleOgImage(request: Request, env?: unknown): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== OG_PATH) return null;
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("Method Not Allowed", { status: 405, headers: { allow: "GET, HEAD" } });
   }
-  if (url.search.length > MAX_QUERY_LENGTH) {
+  if (url.search.length > OG_LIMITS.query) {
     return new Response("Query Too Large", { status: 414 });
   }
 
   const normalizedTitle = normalizeTitle(url.searchParams.get("title"));
   const normalizedSubtitle = normalizeSubtitle(url.searchParams.get("subtitle"));
-  const { eyebrow, stats, logoHost, entity, status } = readCardParams(url.searchParams);
+  const { eyebrow, stats, logoHost, logoPath, entity, status } = readCardParams(url.searchParams);
   const cacheKey = makeCacheKey(url, normalizedTitle, normalizedSubtitle);
   const cached = await cacheStorage?.match(cacheKey);
   if (cached) {
@@ -736,9 +1047,8 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
   // Failure here returns the fallback PNG rather than throwing, since this runs
   // outside server.ts's try/catch.
   let ImageResponse: WorkersOg["ImageResponse"];
-  let loadGoogleFont: WorkersOg["loadGoogleFont"];
   try {
-    ({ ImageResponse, loadGoogleFont } = await import("workers-og"));
+    ({ ImageResponse } = await import("workers-og"));
   } catch (error) {
     console.error("Failed to load workers-og", error);
     return fallbackImageResponse();
@@ -746,7 +1056,14 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
 
   // Resolve the entity icon before rendering so an unresolvable one degrades
   // to a monogram instead of an empty tile -- see resolveIcon.
-  const icon = logoHost ? await resolveIcon(logoHost) : null;
+  //
+  // Our own cached asset wins when there is one: it is the logo the registry
+  // curated for that entity, read straight from the ASSETS binding, where the
+  // proxy path is a favicon lookup that may well miss (it has no icon for
+  // apex.macrocosmos.ai, for instance).
+  const icon =
+    (logoPath ? await resolveLocalLogo(logoPath, assetsBindingFrom(env), url.origin) : null) ??
+    (logoHost ? await resolveIcon(logoHost) : null);
 
   // Build the markup FIRST so the font subset can be derived from it -- see
   // glyphsForMarkup for why a hand-maintained glyph list is a bug generator.
@@ -759,47 +1076,31 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
     entity,
     status,
   });
-  // Subset each weight to only the glyphs actually painted (smaller + faster
-  // fetch) plus the tau, which Space Grotesk lacks entirely and Inter supplies.
-  const glyphs = glyphsForMarkup(markup);
-  let bold: ArrayBuffer;
-  let regular: ArrayBuffer;
-  let medium: ArrayBuffer;
-  let fallbackBold: ArrayBuffer;
-  let fallbackRegular: ArrayBuffer;
-  try {
-    [bold, regular, medium, fallbackBold, fallbackRegular] = await Promise.all([
-      loadGoogleFont({ family: "Space Grotesk", weight: 700, text: glyphs }),
-      loadGoogleFont({ family: "Space Grotesk", weight: 400, text: glyphs }),
-      loadGoogleFont({ family: "Space Grotesk", weight: 500, text: glyphs }),
-      // #8489: Space Grotesk has NO Greek coverage, so the tau in every TAO
-      // value ("0.0832 τ") rasterizes as a tofu box. Caught by rendering the
-      // card through real satori -- the local Chromium preview substituted a
-      // system font and showed a perfect tau, hiding it completely. Inter is
-      // registered as a per-glyph fallback so the display face stays Space
-      // Grotesk and only the glyphs it lacks come from Inter.
-      loadGoogleFont({ family: "Inter", weight: 700, text: glyphs }),
-      loadGoogleFont({ family: "Inter", weight: 400, text: glyphs }),
-    ]);
-  } catch (error) {
-    console.error("Failed to load OG image fonts", error);
+  // One subset request per face, covering the fixed repertoire plus anything
+  // exotic this particular card paints -- see fontSubsetText and googleFontUrl.
+  const subsetText = fontSubsetText(markup);
+  const loaded = await Promise.allSettled(
+    CARD_FONT_FACES.map((face) => loadCardFont(face.name, face.weight, subsetText)),
+  );
+  // allSettled, not all: a card missing one weight still reads correctly, where
+  // one failed request rejecting the whole batch serves a 1px PNG for every
+  // unfurl until the cache turns over. Only a total failure is unrenderable --
+  // satori needs at least one face.
+  const fonts = CARD_FONT_FACES.flatMap((face, index) => {
+    const result = loaded[index];
+    if (result?.status !== "fulfilled") {
+      console.error(`OG font unavailable: ${face.name} ${face.weight}`, result?.reason);
+      return [];
+    }
+    return [{ name: face.name, data: result.value, weight: face.weight, style: "normal" as const }];
+  });
+  if (fonts.length === 0) {
+    console.error("Failed to load any OG image font");
     return fallbackImageResponse();
   }
 
   try {
-    const image = new ImageResponse(markup, {
-      width: 1200,
-      height: 630,
-      fonts: [
-        { name: "Space Grotesk", data: bold, weight: 700, style: "normal" },
-        { name: "Space Grotesk", data: medium, weight: 500, style: "normal" },
-        { name: "Space Grotesk", data: regular, weight: 400, style: "normal" },
-        // Fallback only -- listed after the display face, so satori reaches
-        // for it per-glyph rather than for whole runs.
-        { name: "Inter", data: fallbackBold, weight: 700, style: "normal" },
-        { name: "Inter", data: fallbackRegular, weight: 400, style: "normal" },
-      ],
-    });
+    const image = new ImageResponse(markup, { width: 1200, height: 630, fonts });
     const response = withOgHeaders(image);
     await cacheStorage?.put(cacheKey, response.clone());
     return response;

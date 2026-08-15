@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CARD_GLYPHS,
+  fontSubsetText,
   glyphsForMarkup,
+  googleFontUrl,
+  loadCardFont,
   iconProxyUrl,
   markDataUri,
   monogramFor,
   normalizeLogoHost,
+  normalizeLogoPath,
+  assetsBindingFrom,
+  resolveLocalLogo,
   normalizeSubtitle,
   normalizeTitle,
   readCardParams,
@@ -98,6 +105,7 @@ describe("readCardParams (#8489)", () => {
     expect(readCardParams(p)).toEqual({
       eyebrow: "Subnet",
       logoHost: null,
+      logoPath: null,
       entity: false,
       status: null,
       stats: [
@@ -130,6 +138,7 @@ describe("readCardParams (#8489)", () => {
       eyebrow: null,
       stats: [],
       logoHost: null,
+      logoPath: null,
       entity: false,
       status: null,
     });
@@ -595,5 +604,201 @@ describe("ink foot (#8622) — the card ends on the app's dark theme, not a whit
 
     const theirs = renderCardMarkup({ ...base, stats: [], icon: "data:image/png;base64,AAAA" });
     expect(theirs).toMatch(/margin-top:4px;background:#FFFFFF;border:1px solid #E9EAEA;/);
+  });
+});
+
+describe("font subset request (#11204) — the bug that painted three tofu boxes", () => {
+  // The live /subnets/1 card, verbatim: an em dash in the subtitle, an ellipsis
+  // from truncation, a tau in the price and a percent in the emission share.
+  const APEX = {
+    title: "Apex",
+    subtitle:
+      "Apex (SN1): Bittensor subnet 1 — interfaces, endpoints, schemas, machine-readable on Metagraphed…",
+    eyebrow: "Subnet",
+    entity: true,
+    stats: [
+      { label: "Netuid", value: "SN1" },
+      { label: "Price", value: "0.0080 τ" },
+      { label: "Emission", value: "0.61%" },
+    ],
+  };
+
+  it("percent-encodes the subset text, which is the entire fix", () => {
+    // workers-og's loadGoogleFont encodes `family` and interpolates `text` RAW.
+    // One `%` in the copy — an emission share of "0.61%" is enough — leaves a
+    // bare percent in the query value, Google stops decoding the parameter, and
+    // the %E2%80%94 / %E2%80%A6 / %CF%84 escapes for "—", "…" and "τ" are
+    // subset as their literal hex letters. Measured against the live endpoint:
+    // with the percent encoded all three glyphs come back, without it none do.
+    const text = "0.61% Rock & Roll #1 a+b —…τ";
+    const url = new URL(googleFontUrl("Space Grotesk", 700, text));
+    expect(url.searchParams.get("text")).toBe(text);
+    expect(url.searchParams.get("family")).toBe("Space Grotesk:wght@700");
+  });
+
+  it("would NOT survive the raw interpolation it replaces", () => {
+    // Proves the assertion above can fail: the same string built the way
+    // workers-og builds it loses everything from the first "&" onward, and the
+    // "#" turns the rest into a fragment.
+    const text = "0.61% Rock & Roll #1 a+b —…τ";
+    const raw = new URL(`https://fonts.googleapis.com/css2?family=X&text=${text}`);
+    expect(raw.searchParams.get("text")).not.toBe(text);
+  });
+
+  it("subsets every character the real subnet card paints", () => {
+    const markup = renderCardMarkup(APEX);
+    const subset = new Set(fontSubsetText(markup));
+    for (const char of glyphsForMarkup(markup)) {
+      if ((char.codePointAt(0) ?? 0) < 0x20) continue;
+      expect(subset.has(char)).toBe(true);
+    }
+    for (const char of "—…τ%") expect(subset.has(char)).toBe(true);
+  });
+
+  it("needs no card-specific extras for that card, so the request is cacheable", () => {
+    // The fixed repertoire is what lets caches.default hit: a per-card subset
+    // put the card's own prose in the URL, so every render missed.
+    expect(fontSubsetText(renderCardMarkup(APEX))).toBe(CARD_GLYPHS);
+  });
+
+  it("appends genuinely exotic characters, sorted so two cards can share an entry", () => {
+    const extra = fontSubsetText(renderCardMarkup({ ...APEX, title: "Ωmega ыдра" })).slice(
+      CARD_GLYPHS.length,
+    );
+    expect(extra).toContain("Ω");
+    expect(extra).toContain("ы");
+    expect([...extra]).toStrictEqual([...extra].sort());
+  });
+
+  it("never sends the newlines between tags — they are not glyphs", () => {
+    // glyphsForMarkup keeps them (it reports what the template contains);
+    // the subset request must not, or the URL varies for nothing.
+    const isControl = (text: string) => [...text].some((c) => (c.codePointAt(0) ?? 0) < 0x20);
+    expect(isControl(glyphsForMarkup(renderCardMarkup(APEX)))).toBe(true);
+    expect(isControl(fontSubsetText(renderCardMarkup(APEX)))).toBe(false);
+  });
+});
+
+describe("loadCardFont (#11204) — we own the two fetches, not workers-og", () => {
+  const truetypeCss = (url: string) =>
+    `@font-face {\n  font-family: 'X';\n  src: url(${url}) format('truetype');\n}`;
+
+  it("resolves the TrueType face and asks for it with the UA that returns one", async () => {
+    // Google serves woff2 to anything modern, and satori cannot parse woff2.
+    const seen: Array<{ url: string; ua: string | null }> = [];
+    const fetchImpl = (async (input: string, init?: RequestInit) => {
+      seen.push({ url: String(input), ua: new Headers(init?.headers).get("user-agent") });
+      return seen.length === 1
+        ? new Response(truetypeCss("https://fonts.gstatic.com/l/font?kit=abc"))
+        : new Response(new Uint8Array([1, 2, 3]));
+    }) as unknown as typeof fetch;
+
+    const bytes = await loadCardFont("Test Alpha", 700, "abc", fetchImpl);
+    expect(new Uint8Array(bytes)).toStrictEqual(new Uint8Array([1, 2, 3]));
+    expect(seen[0]?.url).toBe(googleFontUrl("Test Alpha", 700, "abc"));
+    expect(seen[0]?.ua).toMatch(/Safari\/533/);
+    expect(seen[1]?.url).toBe("https://fonts.gstatic.com/l/font?kit=abc");
+  });
+
+  it("rejects when the CSS carries no TrueType face rather than returning junk", async () => {
+    const fetchImpl = (async () =>
+      new Response("@font-face { src: url(x.woff2) format('woff2'); }")) as unknown as typeof fetch;
+    await expect(loadCardFont("Test Beta", 400, "abc", fetchImpl)).rejects.toThrow(/No TrueType/);
+  });
+
+  it("rejects on a non-ok response instead of subsetting an error page", async () => {
+    const fetchImpl = (async () =>
+      new Response("nope", { status: 503 })) as unknown as typeof fetch;
+    await expect(loadCardFont("Test Gamma", 400, "abc", fetchImpl)).rejects.toThrow(/503/);
+  });
+
+  it("fetches a face once per isolate — the fixed repertoire makes that one entry", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return calls === 1
+        ? new Response(truetypeCss("https://fonts.gstatic.com/l/font?kit=d"))
+        : new Response(new Uint8Array([9]));
+    }) as unknown as typeof fetch;
+
+    await loadCardFont("Test Delta", 500, "abc", fetchImpl);
+    await loadCardFont("Test Delta", 500, "abc", fetchImpl);
+    // The CSS and the binary, once each — not four fetches.
+    expect(calls).toBe(2);
+  });
+
+  it("does NOT memoize a failure, or one hiccup blanks every later card", async () => {
+    let attempt = 0;
+    const fetchImpl = (async () => {
+      attempt += 1;
+      if (attempt === 1) return new Response("nope", { status: 500 });
+      return attempt === 2
+        ? new Response(truetypeCss("https://fonts.gstatic.com/l/font?kit=e"))
+        : new Response(new Uint8Array([7]));
+    }) as unknown as typeof fetch;
+
+    await expect(loadCardFont("Test Epsilon", 400, "abc", fetchImpl)).rejects.toThrow(/500/);
+    expect(new Uint8Array(await loadCardFont("Test Epsilon", 400, "abc", fetchImpl))).toStrictEqual(
+      new Uint8Array([7]),
+    );
+  });
+});
+
+describe("first-party logo assets (#11204) — read, never fetched", () => {
+  it("accepts the two shapes the registry stores and nothing else", () => {
+    expect(normalizeLogoPath(`/logos/cache/${"a".repeat(64)}.png`)).toBe(
+      `/logos/cache/${"a".repeat(64)}.png`,
+    );
+    expect(normalizeLogoPath("/logos/404-gen.png")).toBe("/logos/404-gen.png");
+    expect(normalizeLogoPath("/logos/albedo.svg")).toBe("/logos/albedo.svg");
+  });
+
+  it("refuses traversal, nesting, absolute URLs and unknown extensions", () => {
+    // The endpoint is public, so the param is validated here too even though
+    // firstPartyLogoPath already validated it on the way out.
+    expect(normalizeLogoPath("/logos/../../etc/passwd.png")).toBeNull();
+    expect(normalizeLogoPath("/logos/a/b.png")).toBeNull();
+    expect(normalizeLogoPath("https://evil.example/logos/x.png")).toBeNull();
+    expect(normalizeLogoPath("/logos/x.js")).toBeNull();
+    expect(normalizeLogoPath("/logos/CAPS.png")).toBeNull();
+    expect(normalizeLogoPath(null)).toBeNull();
+  });
+
+  it("reads the asset through the ASSETS binding, not the network", async () => {
+    // This Worker SERVES metagraph.sh, and a Worker fetching its own custom
+    // domain gets 522 — so a plain fetch would never resolve the logo.
+    const seen: string[] = [];
+    const assets = {
+      fetch: async (input: Request) => {
+        seen.push(input.url);
+        return new Response(new Uint8Array([1, 2, 3]), {
+          headers: { "content-type": "image/png" },
+        });
+      },
+    };
+    const uri = await resolveLocalLogo("/logos/404-gen.png", assets, "https://metagraph.sh");
+    expect(uri).toBe("data:image/png;base64,AQID");
+    expect(seen).toStrictEqual(["https://metagraph.sh/logos/404-gen.png"]);
+  });
+
+  it("falls through to the monogram on a miss instead of an empty tile", async () => {
+    const missing = { fetch: async () => new Response("", { status: 404 }) };
+    expect(await resolveLocalLogo("/logos/x.png", missing, "https://metagraph.sh")).toBeNull();
+    const throwing = {
+      fetch: async () => {
+        throw new Error("binding exploded");
+      },
+    };
+    expect(await resolveLocalLogo("/logos/x.png", throwing, "https://metagraph.sh")).toBeNull();
+    expect(await resolveLocalLogo("/logos/x.png", null, "https://metagraph.sh")).toBeNull();
+  });
+
+  it("narrows env to a real binding, so a missing one degrades quietly", () => {
+    const assets = { fetch: async () => new Response("") };
+    expect(assetsBindingFrom({ ASSETS: assets })).toBe(assets);
+    expect(assetsBindingFrom({})).toBeNull();
+    expect(assetsBindingFrom(null)).toBeNull();
+    expect(assetsBindingFrom(undefined)).toBeNull();
+    expect(assetsBindingFrom({ ASSETS: { fetch: "not a function" } })).toBeNull();
   });
 });
