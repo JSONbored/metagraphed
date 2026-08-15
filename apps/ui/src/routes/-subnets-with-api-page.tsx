@@ -1,7 +1,12 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AsyncPanel, PageMasthead, Panel, TableSkeleton } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  PageMasthead,
+  Panel,
+  TableSkeleton,
+} from "@/components/metagraphed/primitives";
 import { SectionHeading, StatusBadge, type HealthStatus } from "@jsonbored/ui-kit";
 import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
 import { agentCatalogMapQuery } from "@/lib/metagraphed/queries";
@@ -69,8 +74,8 @@ function WithApiTable() {
       <Panel>
         <table className="w-full text-left mg-type-data-sm">
           <caption className="sr-only">
-            Bittensor subnets publishing a machine-readable API specification, ranked by
-            integration readiness
+            Bittensor subnets publishing a machine-readable API specification, ranked by integration
+            readiness
           </caption>
           <thead>
             <tr className="border-b border-border text-ink-muted">
