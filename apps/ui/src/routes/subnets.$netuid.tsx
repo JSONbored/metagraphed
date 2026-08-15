@@ -9,6 +9,7 @@ import {
   isMissingEntityError,
   isNotFoundMatch,
 } from "@/lib/metagraphed/entity-not-found-meta";
+import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { SubnetDetailPage } from "./-subnets-netuid-page";
 import { subnetFeedLinks } from "@/lib/metagraphed/feed-links";
 import { stringifyJsonLd, subnetDatasetJsonLd } from "@/lib/metagraphed/json-ld";
@@ -56,7 +57,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
       // price stat silently never rendered and every subnet card fell through
       // to its health string. The economics list is where the site itself gets
       // price, and it carries emission share and total stake alongside.
-      const [{ data }, econRes] = await Promise.all([
+      const [{ data, meta }, econRes] = await Promise.all([
         context.queryClient.ensureQueryData(subnetProfileQuery(params.netuid)),
         context.queryClient.ensureQueryData(economicsQuery()).catch(() => null),
       ]);
@@ -64,6 +65,9 @@ export const Route = createFileRoute("/subnets/$netuid")({
       const num = (value: unknown): number | null =>
         typeof value === "number" && Number.isFinite(value) ? value : null;
       return {
+        // #11314: the record's own publish timestamp, for dateModified and
+        // <lastmod>. NOT operational_observed_at -- see recordModifiedAt.
+        dateModified: recordModifiedAt(meta) ?? null,
         name: data.name ?? null,
         health: data.health ?? null,
         // #11204: the subnet's own words, for the Dataset description and the
@@ -201,6 +205,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
               apiUrl: `${API_BASE}/api/v1/subnets/${params.netuid}`,
               artifactUrl: `${API_BASE}/metagraph/subnets/${params.netuid}.json`,
               sameAs: loaderData?.website ?? null,
+              dateModified: loaderData?.dateModified ?? null,
             }),
           ),
         },

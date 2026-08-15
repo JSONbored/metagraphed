@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildOgImageUrl, routeOwnsOgImage } from "./lib/metagraphed/og-card";
+import { subnetDatasetJsonLd } from "./lib/metagraphed/json-ld";
 import {
   buildJsonLd,
   handleArtifactHostRedirect,
@@ -228,5 +229,60 @@ describe("site-wide crawler + attribution defaults (#8626)", () => {
     // block sitting alongside entityNotFoundMeta's `noindex` is safe. It would
     // NOT be safe the other way round.
     expect(SEO_DEFAULT_TAGS).not.toContain("noindex");
+  });
+});
+
+describe("registry records assert their own freshness (#11314)", () => {
+  const graphOf = (node: unknown) => node as Record<string, unknown>;
+
+  it("emits dateModified when the record carries a publish timestamp", () => {
+    // We probe every surface every 15 minutes and, before this, asserted that
+    // freshness in exactly one route family (/docs, #11259). Against competitor
+    // content dated months ago, live data is the whole advantage.
+    const node = graphOf(
+      subnetDatasetJsonLd({
+        netuid: 64,
+        name: "Chutes",
+        url: "https://metagraph.sh/subnets/64",
+        apiUrl: "https://api.metagraph.sh/api/v1/subnets/64",
+        artifactUrl: "https://api.metagraph.sh/metagraph/subnets/64.json",
+        dateModified: "2026-08-14T12:14:17.177Z",
+      }),
+    );
+    expect(node.dateModified).toBe("2026-08-14T12:14:17.177Z");
+  });
+
+  it("omits dateModified entirely rather than inventing one", () => {
+    // Absent beats wrong: an undated record is honest, a record dated "now" on
+    // every request is the abuse that gets lastmod discounted site-wide.
+    for (const bad of [undefined, null, "", "not-a-date"]) {
+      const node = graphOf(
+        subnetDatasetJsonLd({
+          netuid: 64,
+          url: "https://metagraph.sh/subnets/64",
+          apiUrl: "https://api.metagraph.sh/api/v1/subnets/64",
+          artifactUrl: "https://api.metagraph.sh/metagraph/subnets/64.json",
+          dateModified: bad as string | null | undefined,
+        }),
+      );
+      expect(node, String(bad)).not.toHaveProperty("dateModified");
+    }
+  });
+
+  it("applies the same rule the sitemap does", () => {
+    // One rule, two consumers. A page whose dateModified and whose sitemap
+    // lastmod disagree makes two different claims about one fact — which is
+    // how metaDescription, the breadcrumb list and the OG card each drifted.
+    const value = "2026-08-14T12:15:22Z";
+    const node = graphOf(
+      subnetDatasetJsonLd({
+        netuid: 1,
+        url: "https://metagraph.sh/subnets/1",
+        apiUrl: "https://api.metagraph.sh/api/v1/subnets/1",
+        artifactUrl: "https://api.metagraph.sh/metagraph/subnets/1.json",
+        dateModified: value,
+      }),
+    );
+    expect(node.dateModified).toBe(sitemapLastmod(value));
   });
 });
