@@ -226,25 +226,25 @@ describe("the summary names the subject on every live queue", () => {
       "probe-jobs-dlq",
       "netuid",
       { job_type: "attribution-sweep", netuid: 64 },
-      "netuid=64",
+      "attribution-sweep netuid=64",
     ],
     [
       "probe-jobs-dlq",
       "origin",
       { job_type: "origin-reachability", origin: "https://example.com" },
-      "https://example.com",
+      "origin-reachability https://example.com",
     ],
     [
       "probe-jobs-dlq",
       "surface_id",
       { job_type: "revenue-probe", surface_id: "sn-64-api" },
-      "sn-64-api",
+      "revenue-probe sn-64-api",
     ],
     [
       "probe-jobs-dlq",
       "netuid (compute)",
       { job_type: "compute-declaration", netuid: 3 },
-      "netuid=3",
+      "compute-declaration netuid=3",
     ],
   ];
 
@@ -273,6 +273,48 @@ describe("the summary names the subject on every live queue", () => {
       "a dead-letter queue with no case here is one nobody has checked can " +
         "name its own subject",
     );
+  });
+
+  // THE AMBIGUITY ONE QUEUE CREATED. Before #10894 the queue name WAS the lane,
+  // so a bare `netuid=29` needed no qualifier. Now `SweepMessage` and
+  // `ComputeDeclarationMessage` both carry a netuid and nothing else the
+  // subject reader recognises, so the same string can come from either lane.
+  //
+  // Measured 2026-08-15: `probe-jobs-dlq` reported
+  // `(netuid=108,netuid=29)`. Those were compute-declaration reads, and the
+  // only way to tell was noticing the pair matched the two subnets whose
+  // `compute_declarations` rows were missing.
+  test("the same netuid from two lanes is two distinguishable subjects", () => {
+    const line = summarizeDeadLetterBatch("probe-jobs-dlq", [
+      { body: { job_type: "attribution-sweep", netuid: 29 } },
+      { body: { job_type: "compute-declaration", netuid: 29 } },
+    ]);
+    assert.match(line, /attribution-sweep netuid=29/);
+    assert.match(line, /compute-declaration netuid=29/);
+    // Two subjects, not one deduplicated to a single `netuid=29`.
+    assert.match(line, /2 dead-lettered message\(s\)/);
+  });
+
+  test("an UNRECOGNISED job_type is dropped, not echoed", () => {
+    // The body is a queue message -- untrusted input that lands in a log line
+    // and a `lane_health.detail` column. Only a declared job type is echoed;
+    // `declineUnknownProbeJobs` already reports the unknown case as its own
+    // finding, so nothing is lost by refusing to print it here.
+    const line = summarizeDeadLetterBatch("probe-jobs-dlq", [
+      { body: { job_type: "'; DROP TABLE lane_health; --", netuid: 7 } },
+    ]);
+    assert.match(line, /netuid=7/);
+    assert.doesNotMatch(line, /DROP TABLE/);
+  });
+
+  test("a message with no job_type keeps its bare subject", () => {
+    // `sync-batches` and `webhook-deliveries` are not probe jobs and carry no
+    // discriminator. Qualifying only what is qualified keeps their verdicts
+    // exactly as they were.
+    const line = summarizeDeadLetterBatch("sync-batches-dlq", [
+      { body: { lane: "neurons" } },
+    ]);
+    assert.match(line, /\(neurons\)/);
   });
 
   test("netuid 0 is a subject, not a missing one", () => {
