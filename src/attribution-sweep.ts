@@ -35,7 +35,42 @@ import type { AttributionSweeps } from "../generated/db/types.ts";
 
 /** Verdicts, matching the CHECK constraint on attribution_sweeps. */
 export type SweepVerdict =
-  "none-published" | "candidates-found" | "unreachable" | "no-sources";
+  | "none-published"
+  | "candidates-found"
+  | "unreachable"
+  | "no-sources"
+  | "listings-only";
+
+/**
+ * How many DISTINCT addresses one page may yield before it is a LISTING.
+ *
+ * A team publishes its own address on a page about itself: an owner coldkey, a
+ * validator hotkey, maybe a treasury. A page carrying forty is a metagraph
+ * dump, and every address on it belongs to somebody else -- the exact false
+ * positive this module's header names, and the reason the evidence bar is a
+ * human judgement rather than a row count.
+ *
+ * MEASURED, and calibrated on a gap that is in the data rather than on a round
+ * number. Every source URL that had produced a candidate as of 2026-08-15,
+ * by distinct addresses found:
+ *
+ *     1 x22  2 x25  3 x2  4 x2  5 x3  7 x2  8 x2  9  10  11
+ *     <---------------- nothing between 12 and 16 ---------------->
+ *     17 x2  21  23 x2  25  30  48  79  95  108 x2  135  155  172
+ *     190  191  192  256 x3  340  386  388  1230
+ *
+ * Twelve sits in that empty band. Below it are 61 URLs and 161 candidates
+ * across 48 subnets -- a population a reviewer can actually work through.
+ * Above it are 17 URLs and 4,741 rows, every one of them `/allHolders`,
+ * `/api/miners`, `/snap/metagraph` and their kin.
+ *
+ * A JUDGEMENT, NOT A LAW. The gap is empty in one observation of one day; a
+ * team page listing thirteen addresses would be dropped by this and is not
+ * impossible. The cost of that direction is a missed candidate, against a
+ * reviewer queue of 4,902 rows that is 97% other people's keys -- and a
+ * candidate nobody reads is already a candidate nobody sees.
+ */
+export const LISTING_ADDRESS_CAP = 12;
 
 export interface SweepCandidate {
   ss58: string;
@@ -124,6 +159,13 @@ export function sweepableSources(
  *                      and this must never read as "looked, found nothing".
  *   - `unreachable`  — we tried every source and reached none. About us.
  *   - `candidates-found` — something to put in front of a reviewer.
+ *   - `listings-only` — we read sources and found addresses, and every one of
+ *                      them was on a bulk listing. A REAL and different
+ *                      finding: this subnet publishes a metagraph dump rather
+ *                      than a page about itself, so the addresses are other
+ *                      people's. Folding it into `none-published` would claim
+ *                      we found nothing, and into `candidates-found` would put
+ *                      hundreds of strangers' keys in a review queue.
  *   - `none-published`  — we read at least one source and found no address.
  *                      The expected majority answer, and a real finding.
  */
@@ -131,10 +173,15 @@ export function sweepVerdict(
   sourcesChecked: number,
   sourcesRead: number,
   candidates: number,
+  listings = 0,
 ): SweepVerdict {
   if (sourcesChecked === 0) return "no-sources";
   if (sourcesRead === 0) return "unreachable";
-  return candidates > 0 ? "candidates-found" : "none-published";
+  if (candidates > 0) return "candidates-found";
+  // AFTER the candidates check, so a subnet with one real page and one dump
+  // still reports what a reviewer can act on. Listings are only the headline
+  // when they are all there was.
+  return listings > 0 ? "listings-only" : "none-published";
 }
 
 export interface SweepDeps {
@@ -158,6 +205,8 @@ export async function sweepSubnet(
   const sources = sweepableSources(record);
   const candidates: SweepCandidate[] = [];
   let read = 0;
+  /** Sources that answered and turned out to be bulk listings. */
+  let listings = 0;
   for (const url of sources) {
     let text: string | null;
     try {
@@ -169,7 +218,16 @@ export async function sweepSubnet(
     }
     if (text == null) continue;
     read += 1;
-    for (const ss58 of ss58Candidates(text)) {
+    const found = ss58Candidates(text);
+    // A PAGE, NOT ITS ADDRESSES, is what gets judged. The cap is applied per
+    // source and drops all of them together, because "this page is a listing"
+    // is a fact about the page -- keeping the first twelve of a metagraph dump
+    // would be twelve strangers' keys chosen by document order.
+    if (found.length > LISTING_ADDRESS_CAP) {
+      listings += 1;
+      continue;
+    }
+    for (const ss58 of found) {
       candidates.push({ ss58, source_url: url });
     }
   }
@@ -179,7 +237,7 @@ export async function sweepSubnet(
     sources_checked: sources.length,
     sources_read: read,
     candidates,
-    verdict: sweepVerdict(sources.length, read, candidates.length),
+    verdict: sweepVerdict(sources.length, read, candidates.length, listings),
   };
 }
 

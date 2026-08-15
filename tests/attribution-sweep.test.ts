@@ -29,6 +29,7 @@ import {
   loadSweepRecord,
   persistSweep,
   ss58Candidates,
+  LISTING_ADDRESS_CAP,
   sweepSubnet,
   sweepVerdict,
   sweepableSources,
@@ -1173,3 +1174,126 @@ function queueEnvFor(payload: unknown, surfacesPayload?: unknown) {
     },
   };
 }
+
+// A page that lists everyone attributes nobody (#11227).
+//
+// #10818 fixed the sweep so it actually fetches, and it immediately produced
+// 4,902 candidate rows. Measured on production 2026-08-15, 17 source URLs
+// produced 4,741 of them -- `/allHolders`, `/api/miners`, `/snap/metagraph` --
+// every one a metagraph dump whose addresses belong to other people. A review
+// queue that is 97% strangers' keys is one nobody reads, which is the same
+// outcome as the silent failure #10818 fixed.
+
+/**
+ * Sixteen distinct, checksum-valid finney addresses.
+ *
+ * REAL ONES, generated rather than invented: `ss58Candidates` verifies the
+ * blake2b checksum, so a fixture of plausible-looking strings would be filtered
+ * out before the cap ever saw it and every test below would pass on an empty
+ * page. Derived deterministically from `sha256("metagraphed-listing-fixture-N")`
+ * so they are stable and belong to nobody.
+ */
+const LISTING_FIXTURE = [
+  "5FfEfocEEsS6cVURrfmoGrj667mDagRpV8TrFTiVHaf5Yd7C",
+  "5GEw5eHfTCT83xmq7iikrCwtCJ8dD19HvKpK5uTJYsuMuD8f",
+  "5CoAJ6KpdUKSexuDgyY86Y8QTVmy2Sqd3gVWpXem9Bt7dCpJ",
+  "5D1CQ6qBye56DyMrJG5VGunvb4J6JX2uyNFfwPrjCirtUR7k",
+  "5FHR1nkkJJ38mMgbvFMeeM4NQzjzsK8NKsSEP3TKMSZxRN6Y",
+  "5CvhHUf9wxPMHFeNwAxVmP7G8SuJcaXBFzhdUABogMjmzxyP",
+  "5HmcfXRVzT9BgZQrHgywE2qzRf4nTZQ1nAapoffdUBRbRhtu",
+  "5CSGDqtsuBLgo7vrBZTV6kPGiiWhy6eRZR33xvCjWB5GAvgK",
+  "5F1sgsLuxUeGuXvJecQMPL4iFNKFwNiEfZf59mUHNxgp639T",
+  "5FPqhAnvxYUBkFFoY5uUMAdWHoBfwVH9XjsNWrY5j8xACa4h",
+  "5CSXE1kzLS15qWrvuUARP1EZrpfaKnzaqU6Lh5eS3GVfCsbR",
+  "5Dqr4iVhb3koviiangqvXQbGs1XTXzXLvUFejtBGpnq7pSKi",
+  "5CnXWRCD3ULiczpHcTCfELiE5ZGVKgzF7qj8EPUqtcNZeTms",
+  "5HmQGr3J772AsJVFWZhXuMmnSbgz3wAEihSFadAjyfdgWTMb",
+  "5HBpTPztYyg3xkdmGKkLuX8t4XTp8ARqxW5rYTkGmi7Hy5SS",
+  "5C5TM6B9CLnReqTu5rcSVHgUqQ4KyvGL3FJJYHBboSQNHRe7",
+];
+
+describe("the listing cap", () => {
+  /** A registry record declaring one sweepable page. */
+  const oneSource = {
+    surfaces: [{ kind: "website", url: "https://x.test/p" }],
+  };
+  /** `n` distinct addresses, as one page's worth of text. */
+  const page = (n: number) => LISTING_FIXTURE.slice(0, n).join(" | ");
+
+  test("THE FIXTURE IS REAL, or every test below passes on an empty page", () => {
+    // The checksum is verified before the cap is applied, so invented strings
+    // would be dropped upstream and the cap would never be exercised.
+    assert.equal(ss58Candidates(page(16)).length, 16);
+  });
+
+  test("THE CAP SITS IN A GAP THAT IS IN THE DATA", () => {
+    // Every source URL that had produced a candidate, by distinct addresses:
+    // ...9, 10, 11, then NOTHING until 17, 21, 23, 25, 30, 48, 79, 95, 108...
+    // Twelve is that empty band. A round number would be arbitrary; this one
+    // separates the two populations the measurement actually found.
+    assert.equal(LISTING_ADDRESS_CAP, 12);
+  });
+
+  test("a page AT the cap is kept whole", async () => {
+    const out = await sweepSubnet(1, oneSource, {
+      fetchText: async () => page(LISTING_ADDRESS_CAP),
+      now: () => 1_785_000_000_000,
+    });
+    assert.equal(out.candidates.length, LISTING_ADDRESS_CAP);
+    assert.equal(out.verdict, "candidates-found");
+  });
+
+  test("ONE PAST THE CAP DROPS ALL OF THEM, not the excess", async () => {
+    // "This page is a listing" is a fact about the PAGE. Keeping the first
+    // twelve of a metagraph dump would be twelve strangers' keys chosen by
+    // document order -- a reviewer would have no way to tell them from a find.
+    const out = await sweepSubnet(1, oneSource, {
+      fetchText: async () => page(LISTING_ADDRESS_CAP + 1),
+      now: () => 1_785_000_000_000,
+    });
+    assert.deepEqual(out.candidates, []);
+    assert.equal(out.verdict, "listings-only");
+    // The page WAS reached, and the count must still say so -- a listing is not
+    // a reachability failure.
+    assert.equal(out.sources_read, 1);
+    assert.equal(out.sources_checked, 1);
+  });
+
+  test("A REAL FIND OUTRANKS A LISTING, so one dump cannot bury it", async () => {
+    // The common shape: a subnet publishes a team page AND an API dump.
+    // Reporting `listings-only` there would hide the candidate a human can act
+    // on.
+    const out = await sweepSubnet(
+      1,
+      {
+        surfaces: [
+          { kind: "website", url: "https://x.test/team" },
+          { kind: "subnet-api", url: "https://x.test/miners" },
+        ],
+      },
+      {
+        fetchText: async (url: string) =>
+          url.endsWith("/team") ? page(1) : page(16),
+        now: () => 1_785_000_000_000,
+      },
+    );
+    assert.equal(out.candidates.length, 1);
+    assert.equal(out.verdict, "candidates-found");
+  });
+
+  test("listings-only is not none-published, and not candidates-found", () => {
+    // Three different findings. `none-published` would claim we found no
+    // address when we found twelve hundred; `candidates-found` would put them
+    // in front of a human.
+    assert.equal(sweepVerdict(3, 3, 0, 2), "listings-only");
+    assert.equal(sweepVerdict(3, 3, 0, 0), "none-published");
+    assert.equal(sweepVerdict(3, 3, 1, 2), "candidates-found");
+  });
+
+  test("a listing does not make an unreachable subnet look read", () => {
+    // Reach is decided before content, so a subnet we could not fetch still
+    // reports about US rather than about its pages.
+    assert.equal(sweepVerdict(3, 0, 0, 0), "unreachable");
+    assert.equal(sweepVerdict(0, 0, 0, 0), "no-sources");
+  });
+});
