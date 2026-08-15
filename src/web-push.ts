@@ -198,11 +198,10 @@ export async function encryptPushPayload(
   );
   const sharedSecret = new Uint8Array(
     await crypto.subtle.deriveBits(
-      // Cast: Cloudflare's typings name this member `$public`, while the
-      // runtime (and the WebCrypto spec) use `public`.
-      { name: "ECDH", public: uaKey } as unknown as Parameters<
-        SubtleCrypto["deriveBits"]
-      >[0],
+      // `public`, not `$public`: the generated types misname this member, and
+      // workers/env-extra.d.ts corrects it by declaration merge rather than
+      // this call site asserting past the whole parameter (#11339).
+      { name: "ECDH", public: uaKey },
       serverKeys.privateKey,
       256,
     ),
