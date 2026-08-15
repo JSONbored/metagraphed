@@ -167,10 +167,16 @@ import {
   shouldRecordTraceSpan,
 } from "../src/tracing.ts";
 import {
+  loadLatestLaneHealth,
   recordLaneVerdict,
   type LaneHealthDb,
   type LaneVerdict,
 } from "../src/lane-health.ts";
+import {
+  lanesDue,
+  lastRunFromLaneHealth,
+  type ScheduledLane,
+} from "../src/lane-scheduler.ts";
 import {
   handleDeadLetterBatch,
   isDeadLetterQueue,
@@ -722,7 +728,7 @@ import {
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PROBER_CRON,
   HEALTH_PRUNE_CRON,
-  LANE_HEARTBEAT_CRON,
+  LANE_HEARTBEAT_CRONS,
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
@@ -2844,7 +2850,11 @@ export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 // is the shape #9001 removed elsewhere, and a name survives a schedule change
 // where "0 * * * *" does not.
 function cronLabel(cron: string): string {
-  if (cron === LANE_HEARTBEAT_CRON) return "lane-heartbeat";
+  // Membership, not equality: the heartbeat runs on more than one expression
+  // (see LANE_HEARTBEAT_CRONS), and every one of them is the same lane for
+  // reporting purposes -- a per-expression label would split one lane's cron
+  // outcomes across three series.
+  if (LANE_HEARTBEAT_CRONS.includes(cron)) return "lane-heartbeat";
   if (cron === HEALTH_PRUNE_CRON) return "health-prune";
   if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
   if (cron === GITHUB_SIGNALS_SYNC_CRON) return "github-signals-sync";
@@ -3283,12 +3293,29 @@ export function laneHeartbeatVerdict(result: {
   };
 }
 
-export const LANE_PRODUCERS: ReadonlyArray<{
-  name: string;
-  enqueue: (env: Env) => Promise<EnqueueResult>;
-}> = [
+/**
+ * Every queue-backed lane, with the cadence it wants (#10709).
+ *
+ * Typed as the scheduler's own `ScheduledLane` rather than restating `name` and
+ * `everyMinutes` here, so a lane cannot be registered in a shape `lanesDue`
+ * would not understand.
+ *
+ * `everyMinutes` is a FLOOR quantised up to the tick grid, never an exact
+ * period -- see src/lane-scheduler.ts. All four are hourly today, matching the
+ * dedicated crons they replaced, so the widened grid changes nothing about how
+ * often any of them runs; it only shortens the wait when a tick fails.
+ */
+export const LANE_PRODUCERS: ReadonlyArray<
+  ScheduledLane & {
+    enqueue: (env: Env) => Promise<EnqueueResult>;
+  }
+> = [
   {
     name: "attribution-sweep",
+    // Hourly with a SLICE of the eight least-recently-swept subnets: a full
+    // pass over 129 subnets x up to 8 sources is ~1000 outbound requests, so
+    // the cadence is what keeps a pass inside a day without ever bursting.
+    everyMinutes: 60,
     enqueue: async (env) =>
       enqueueSweeps(
         env.PROBE_JOBS,
@@ -3297,6 +3324,8 @@ export const LANE_PRODUCERS: ReadonlyArray<{
   },
   {
     name: "origin-reachability",
+    // Hourly, also a slice: 277 origins x up to 3 samples is ~800 requests.
+    everyMinutes: 60,
     enqueue: async (env) =>
       enqueueOriginChecks(env.PROBE_JOBS, [
         ...surfacesByOrigin(await registeredSurfaces(env)).keys(),
@@ -3307,6 +3336,7 @@ export const LANE_PRODUCERS: ReadonlyArray<{
     // The surface list is the registry's, read the same way the origin lane
     // reads it -- so a declaration surface added by a contributor PR joins the
     // lane on the next tick with nothing else to change.
+    everyMinutes: 60,
     enqueue: async (env) =>
       enqueueComputeDeclarations(
         env.PROBE_JOBS,
@@ -3315,6 +3345,11 @@ export const LANE_PRODUCERS: ReadonlyArray<{
   },
   {
     name: "revenue-probe",
+    // Hourly for CITIZENSHIP rather than freshness -- these are a small team's
+    // billing endpoints. SN64's `daily_revenue_summary` restates the current
+    // day all day, so an hourly pass settles each day's final value where a
+    // daily snapshot would freeze whatever it read mid-afternoon.
+    everyMinutes: 60,
     enqueue: async (env) => {
       const artifact = await readArtifact(
         env,
@@ -3411,7 +3446,7 @@ export const API_HANDLED_CRONS: readonly string[] = [
   WEBHOOK_DISPATCH_CRON,
   HEALTH_PRUNE_CRON,
   EMBEDDING_SYNC_CRON,
-  LANE_HEARTBEAT_CRON,
+  ...LANE_HEARTBEAT_CRONS,
   SUBNET_BURN_CAPTURE_CRON,
   RAW_CAPTURE_CRON,
   GITHUB_SIGNALS_SYNC_CRON,
@@ -3523,15 +3558,43 @@ async function dispatchScheduled(
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
   }
-  if (cron === LANE_HEARTBEAT_CRON) {
+  if (LANE_HEARTBEAT_CRONS.includes(cron)) {
     // ONE clock for every queue-backed lane (#10715). Each producer reads a
     // list and enqueues it -- no fetching, no store handle -- so running them
     // together costs one artifact read each and nothing else.
     //
     // A new lane is added to LANE_PRODUCERS, not to the cron grid. The three
     // this replaced took three of the two minutes that were still free.
+    //
+    // #10709: the grid ticks more often than any lane wants, so the lanes are
+    // filtered to those actually DUE. `lane_health.checked_at` is the last-run
+    // stamp, and for THESE lanes it genuinely is one -- the verdict write below
+    // stamps `Date.now()` at the moment the heartbeat ran. That is not true of
+    // lane_health generally: several lanes are stamped with their producer's
+    // pass time, which freezes while the producer is down, so this read must
+    // never be generalised into "ask lane_health when anything last ran".
+    //
+    // A FAILED READ RUNS EVERYTHING. loadLatestLaneHealth returns `{}` on any
+    // error, every lane then reads as never-run, and `lanesDue` returns them
+    // all -- so a broken store degrades to the pre-#10709 behaviour of running
+    // every lane every tick. The opposite polarity would let one failed query
+    // silently stop all four producers, which is the exact class of failure
+    // this issue exists to remove.
+    const due = lanesDue(
+      LANE_PRODUCERS,
+      lastRunFromLaneHealth(await loadLatestLaneHealth(laneHealthStore(env))),
+      Date.now(),
+    );
+    // NOTHING DUE NEEDS NO SPECIAL CASE, and deliberately does not get one. On a
+    // widened grid most ticks legitimately have no work, and every step below
+    // already does the right thing on an empty list: the verdict writes map over
+    // `results`, so a lane that did not run is not stamped -- which matters,
+    // because a fresh `checked_at` on a lane that never ran would push its next
+    // due time out by a tick and starve it. `[].every()` is `true`, so an idle
+    // tick reports ok. An early return here would only add a branch reachable
+    // solely with a live Postgres handle.
     const results = await Promise.all(
-      LANE_PRODUCERS.map(async (lane) => ({
+      due.map(async (lane) => ({
         lane: lane.name,
         ...(await lane.enqueue(env)),
       })),
@@ -3567,6 +3630,9 @@ async function dispatchScheduled(
     return {
       ok: results.every((r) => r.ok),
       lanes: results,
+      // How many were gated out, so a tick that ran two of four is readable as
+      // "two were not due" rather than as two lanes having gone missing.
+      skipped: LANE_PRODUCERS.length - results.length,
     };
   }
   if (cron === SUBNET_BURN_CAPTURE_CRON) {

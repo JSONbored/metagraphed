@@ -1210,6 +1210,18 @@
       // cron triggers; this one needs `wrangler triggers deploy` or nothing
       // fires.
       "26 * * * *",
+      // 17,56 = the rest of the heartbeat grid (#10709). The lanes are gated on
+      // a declared cadence (src/lane-scheduler.ts), so these ticks do NOT make
+      // any lane run more often -- every registered lane is hourly. They exist
+      // so a lane that missed :26 runs at :56 instead of waiting a full hour.
+      // 24 is deliberately left free as the last slot on the grid.
+      //
+      // A SEPARATE expression rather than widening "26 * * * *": dispatch
+      // compares the literal string, so editing that one would deploy code
+      // matching an expression the account has not registered yet, and every
+      // queue-backed lane would go silent until the triggers deploy landed.
+      // Appending is safe in either order.
+      "17,56 * * * *",
       "54 * * * *",
     ],
   },
