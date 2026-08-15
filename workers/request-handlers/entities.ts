@@ -145,10 +145,7 @@ import {
   answerAccountSummary,
   ACCOUNT_SUMMARY_GAP_CODE,
 } from "../../src/account-summary-card.ts";
-import {
-  buildAccountPositions,
-  unavailableAccountPositions,
-} from "../../src/account-nominator-positions.ts";
+import { unavailableAccountPositions } from "../../src/account-nominator-positions.ts";
 import { buildAccountPositionHistory } from "../../src/account-position-history.ts";
 import { buildAccountIdentity } from "../../src/account-identity.ts";
 import { buildAccountIdentityHistory } from "../../src/account-identity-history.ts";
@@ -5408,11 +5405,9 @@ export async function handleAccountPortfolio(
 
 // GET /api/v1/accounts/{ss58}/positions (#5233): this account's reconstructed
 // nominator-side positions -- what it holds delegated across every
-// hotkey/subnet, distinct from /portfolio above (hotkey-scoped). Reuses
-// METAGRAPH_NEURONS_SOURCE (not a dedicated flag) since this route's stake_tao
-// join reads the same neurons tier that flag already gates in production.
+// hotkey/subnet, distinct from /portfolio above (hotkey-scoped).
 //
-// Postgres → D1 hot tier → lakehouse cold tier → LABELLED empty card (#9273).
+// D1 hot tier → lakehouse cold tier → LABELLED empty card (#9273).
 // The D1 leg is the live one: `nominator_positions` had no live writer at all
 // between the box's decommission and #9273, so the lakehouse leg (#9266) is a
 // frozen export whose `captured_at` can never advance. The hot leg declines
@@ -5421,17 +5416,44 @@ export async function handleAccountPortfolio(
 // not a bare `buildAccountPositions([], ...)`: when every tier declines, this
 // route's zero is a read failure, and it now says so instead of publishing a
 // confident `total_stake_alpha: 0`.
+//
+// ## NO DATA_API LEG, BECAUSE DATA_API DOES NOT DISPATCH THIS PATH
+//
+// Not because that tier is gone -- it is LIVE. DATA_API holds the HYPERDRIVE
+// binding to Neon (wrangler.data.jsonc) and answers plenty of this family from
+// it: /accounts/:ss58/portfolio, /subnets, /identity, /identity-history, the
+// accounts list, and -- confusingly close to here -- /accounts/:ss58/subnets/
+// :netuid/history. What it has never had is a branch for THIS path.
+//
+// The forward was justified by the JOIN: this route's stake_tao leg reads the
+// same `neurons` tier METAGRAPH_NEURONS_SOURCE gates, so the flag was reused
+// rather than a new one added. But a shared join is not a dispatchable path.
+// Every request fell through all of DATA_API's branches to its terminal gate
+// and came back 503. Measured, not assumed: 55 of 55 captured neurons-tier
+// declines in the fourteen days to 2026-08-15 were this one path, and no other
+// route on any forwardable flag produced a single one.
+//
+// A decline that cannot be anything else is not a fallback, it is a toll. Each
+// request paid TWO subrequests (503 is >= the retry floor, so the attempt was
+// made twice) and one AWAITED PostHog $exception, on the response path, before
+// reaching the hot leg that was always going to answer. wrangler.jsonc's flag
+// notes already refuse exactly this trade for a tier that cannot serve -- "a
+// doomed Hyperdrive attempt plus a PostHog $exception before reaching the same
+// fallback" -- but the flag is not the lever here, because it must stay
+// "data-api" for the many routes DATA_API really does dispatch. The leg is
+// what is wrong for this one route, so the leg is what goes.
+//
+// The capture is deliberately NOT suppressed instead. #4686 added it so a tier
+// that is supposed to work cannot fail silently, and that signal is worth
+// keeping sharp -- an unforwarded route simply has nothing to report. MCP's
+// get_account_positions already resolved this chain hot → cold → empty-card
+// with no DATA_API leg; REST now agrees with it rather than contradicting it.
 export async function handleAccountPositions(
   request: Request,
   env: Env,
   ss58: string,
 ) {
   const data =
-    ((await tryDataApiTier(
-      env,
-      request,
-      "METAGRAPH_NEURONS_SOURCE",
-    )) as ReturnType<typeof buildAccountPositions> | null) ??
     (await loadAccountPositionsFromStore(env, ss58)) ??
     (await loadAccountPositionsColdTier(env, ss58)) ??
     unavailableAccountPositions(ss58);

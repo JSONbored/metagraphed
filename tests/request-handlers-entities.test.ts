@@ -5950,12 +5950,30 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountPositions: flag=postgres uses Postgres data, the store never queried (#5233)", async () => {
+  test("handleAccountPositions never forwards to DATA_API -- that Worker has no branch for this path", async () => {
+    // The regression pin for the dead forward. DATA_API is a LIVE
+    // Hyperdrive->Neon tier and answers the sibling routes (portfolio, subnets,
+    // identity, position HISTORY), which is exactly why re-adding a leg here
+    // looks reasonable -- but it has never had a branch for
+    // /accounts/:ss58/positions, so the forward could only ever fall through to
+    // that Worker's terminal 503. In production that cost two subrequests (503
+    // is at or above the retry floor, so the attempt was made twice) plus an
+    // AWAITED PostHog $exception on the response path, before the hot leg
+    // answered anyway: 55 of 55 captured neurons-tier declines in the fourteen
+    // days to 2026-08-15 were this single path.
+    //
+    // A `fetch` that THROWS is the assertion. Were the leg restored, this stub
+    // would be called and the throw would surface as a tier fallback rather
+    // than the clean hot-leg answer below -- and the capture it would have
+    // fired is the thing this test exists to keep out of production.
+    let dataApiCalls = 0;
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", positions: [] }),
+      fetch: async () => {
+        dataApiCalls += 1;
+        throw new Error("DATA_API must not be consulted for this route");
+      },
     };
     const body = await json(
       await handleAccountPositions(
@@ -5964,23 +5982,26 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         SS58,
       ),
     );
-    assert.equal(body.data.marker, "pg");
-    assert.deepEqual(captures.sql, []);
+    assert.equal(dataApiCalls, 0, "the DATA_API leg is gone, not merely quiet");
+    assert.equal(body.data.ss58, SS58);
+    assert.ok(
+      captures.sql.some((sql: string) => /FROM nominator_positions/.test(sql)),
+      "the hot leg is consulted first and directly, with no doomed hop before it",
+    );
   });
 
-  test("handleAccountPositions: flag=postgres falls through to the D1 hot leg and LABELS the empty card (#9273)", async () => {
-    // The chain is Postgres -> D1 -> lakehouse -> labelled empty. This stub's
-    // D1 had no nominator_positions ledger and there is no R2 SQL token, so
-    // every tier declines -- and the card that comes back now SAYS so rather
-    // than publishing a confident `total_stake_alpha: 0`, which is the
-    // #9260/#9263 defect class this route shared.
+  test("handleAccountPositions: every tier declines and the empty card is LABELLED (#9273)", async () => {
+    // The chain is D1 hot -> lakehouse cold -> labelled empty. This stub's D1
+    // had no nominator_positions ledger and there is no R2 SQL token, so every
+    // tier declines -- and the card that comes back now SAYS so rather than
+    // publishing a confident `total_stake_alpha: 0`, which is the #9260/#9263
+    // defect class this route shared.
+    //
+    // `tier_unavailable` still being the reason is the point worth keeping:
+    // dropping the DATA_API leg removed a hop that could never answer, not the
+    // route's ability to admit that it cannot answer.
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
-    env.DATA_API = {
-      fetch: async () => {
-        throw new Error("boom");
-      },
-    };
     const body = await json(
       await handleAccountPositions(
         req(`/api/v1/accounts/${SS58}/positions`),

@@ -2,8 +2,9 @@
 // a REAL SQLite database through the real Worker fetch handler -- same harness
 // and rationale as tests/data-api-validator-nominator-counts.test.ts.
 //
-// This route answered `503 hyperdrive binding unavailable` from the box wipe
-// (#9193) until migration 0017 gave it a Cloudflare-native store, and it came
+// This route answered the dispatcher's no-handler 503 from the box wipe
+// (#9193) -- worded `hyperdrive binding unavailable` back then -- until
+// migration 0017 gave it a Cloudflare-native store, and it came
 // out of that decommission worse off than either lane 0011/0012 revived: those
 // had a frozen lakehouse export to fall back on, while `account_balances` had
 // no D1 table at all. Its producer never went away -- metagraphed-infra's

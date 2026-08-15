@@ -2,8 +2,9 @@
 // against a REAL SQLite database through the real Worker fetch handler --
 // same harness and rationale as tests/data-api-hyperparams-identity.test.ts.
 //
-// This route answered `503 hyperdrive binding unavailable` for the whole
-// period the ledger was frozen. What matters here is the write CONTRACT, and
+// This route answered the dispatcher's no-handler 503 -- worded `hyperdrive
+// binding unavailable` at the time -- for the whole period the ledger was
+// frozen. What matters here is the write CONTRACT, and
 // specifically the two ways this lane differs from its siblings: a full Alpha
 // scan arrives across SEVERAL requests, so one request must never prune
 // another's rows; and share_fraction multiplies a whole hotkey's stake at

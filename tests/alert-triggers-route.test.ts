@@ -1617,9 +1617,12 @@ test("dereg-risk snapshot: 503 when ALERT_TRIGGERS_INTERNAL_TOKEN is not configu
 
 // #9193: the snapshot's four chain-table reads (blocks, subnet_hyperparams,
 // neurons, subnet_snapshots) all ran on the box's Postgres and went with it.
-// The route still answers past its auth gates, unchanged, so the evaluator
-// sees the same "this refresh is unavailable" it has seen since the wipe.
-test("dereg-risk snapshot: 503 -- the Postgres tier its chain-table reads used is gone", async () => {
+// No matcher has claimed the path since, so it lands on the dispatcher's
+// no-handler gate and the evaluator sees the same "this refresh is
+// unavailable" it has seen since the wipe. The 503 is about the missing
+// HANDLER, not about the database link -- Hyperdrive itself came back in
+// #10060 and serves the routes that do have branches.
+test("dereg-risk snapshot: 503 -- no matcher claims this path any more", async () => {
   const res = await fetch(
     req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
       headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
@@ -1627,7 +1630,7 @@ test("dereg-risk snapshot: 503 -- the Postgres tier its chain-table reads used i
   );
   assert.equal(res.status, 503);
   assert.deepEqual(await res.json(), {
-    error: "hyperdrive binding unavailable",
+    error: "no handler on the data tier for this route",
   });
 });
 
