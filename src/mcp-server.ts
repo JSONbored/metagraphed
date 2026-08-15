@@ -11855,7 +11855,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           to,
           minExtrinsics,
           minEvents,
-        } as never)) ??
+        })) ??
         buildBlockFeed([], {
           limit,
           offset,

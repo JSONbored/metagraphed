@@ -35,6 +35,7 @@ import {
   safeSs58Literal,
 } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { recordOrNull } from "./read-store.ts";
 
 /** Columns the formatters need — kept identical to the Postgres tier's SELECT
  * list so both tiers hand the formatter the same shape. */
@@ -292,5 +293,5 @@ export async function loadBlockFromR2Sql(
   // A confirmed absence is an ANSWER: buildBlock(undefined, ref) is the same
   // "no such block" payload the Postgres tier produces, and returning it here
   // (rather than null) stops the caller re-deriving it.
-  return buildBlock(rows[0] as never, ref);
+  return buildBlock(recordOrNull(rows[0]), ref);
 }

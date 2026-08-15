@@ -5695,7 +5695,7 @@ const rootValue = {
           to,
           minExtrinsics,
           minEvents,
-        } as never,
+        },
         chainNetworkFromChainName(network),
       )) as Row | null) ??
       buildBlockFeed([], {

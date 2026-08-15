@@ -69,6 +69,7 @@
     "validate:nullable-overpromises": "node scripts/validate-nullable-overpromises.ts",
     "validate:no-passthrough": "node scripts/validate-no-passthrough.ts",
     "validate:boundary-casts": "node scripts/validate-boundary-casts.ts",
+    "validate:double-assertions": "node scripts/validate-double-assertions.ts",
     "validate:schema-shape-duplicates": "node scripts/validate-schema-shape-duplicates.ts",
     "validate:mcp-input-parity": "node scripts/validate-mcp-input-parity.ts",
     "validate:tool-route-divergence": "node scripts/validate-tool-route-divergence.ts",

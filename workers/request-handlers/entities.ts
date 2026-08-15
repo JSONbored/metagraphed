@@ -6684,7 +6684,7 @@ export async function handleBlocks(
         to: routeInt(url, "to"),
         minExtrinsics: routeInt(url, "min_extrinsics"),
         minEvents: routeInt(url, "min_events"),
-      } as never,
+      },
       network,
     )) ?? buildBlockFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
