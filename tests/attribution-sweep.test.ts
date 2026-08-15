@@ -856,7 +856,7 @@ describe("the queue wiring", () => {
       path.join(repoRoot, "src/dead-letter.ts"),
       "utf8",
     );
-    assert.match(source, /"attribution-sweeps-dlq"/);
+    assert.match(source, /"probe-jobs-dlq"/);
   });
 
   test("both queues are declared in wrangler, with a dead letter", async () => {
@@ -864,10 +864,10 @@ describe("the queue wiring", () => {
       path.join(repoRoot, "wrangler.jsonc"),
       "utf8",
     );
-    assert.match(wrangler, /"binding": "ATTRIBUTION_SWEEPS"/);
-    assert.match(wrangler, /"queue": "attribution-sweeps"/);
-    assert.match(wrangler, /"dead_letter_queue": "attribution-sweeps-dlq"/);
-    assert.match(wrangler, /"queue": "attribution-sweeps-dlq"/);
+    assert.match(wrangler, /"binding": "PROBE_JOBS"/);
+    assert.match(wrangler, /"queue": "probe-jobs"/);
+    assert.match(wrangler, /"dead_letter_queue": "probe-jobs-dlq"/);
+    assert.match(wrangler, /"queue": "probe-jobs"/);
   });
 
   test("the consumer branches on the queue name before the webhook path", async () => {
@@ -877,7 +877,7 @@ describe("the queue wiring", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /batch\.queue === ATTRIBUTION_SWEEP_QUEUE/);
+    assert.match(api, /case "attribution-sweep":/);
   });
 });
 
@@ -936,8 +936,14 @@ describe("the queue consumer, through the Worker's own handler", () => {
       }) as typeof fetch;
       await worker.queue!(
         {
-          queue: "attribution-sweeps",
-          messages: [{ body: { netuid: 64 }, ack: () => {}, retry: () => {} }],
+          queue: "probe-jobs",
+          messages: [
+            {
+              body: { job_type: "attribution-sweep", netuid: 64 },
+              ack: () => {},
+              retry: () => {},
+            },
+          ],
         } as never,
         queueEnv(
           { subnets: [{ netuid: 64 }] },
@@ -960,10 +966,10 @@ describe("the queue consumer, through the Worker's own handler", () => {
     // would be handed to the webhook deliverer.
     let acked = 0;
     const batch = {
-      queue: "attribution-sweeps",
+      queue: "probe-jobs",
       messages: [
         {
-          body: { netuid: 64 },
+          body: { job_type: "attribution-sweep", netuid: 64 },
           ack: () => void (acked += 1),
           retry: () => {},
         },
@@ -987,10 +993,10 @@ describe("the queue consumer, through the Worker's own handler", () => {
     // not look -- rather than throw and burn the retry budget.
     let retried = 0;
     const batch = {
-      queue: "attribution-sweeps",
+      queue: "probe-jobs",
       messages: [
         {
-          body: { netuid: 999 },
+          body: { job_type: "attribution-sweep", netuid: 999 },
           ack: () => {},
           retry: () => void (retried += 1),
         },
@@ -1009,10 +1015,10 @@ describe("the queue consumer, through the Worker's own handler", () => {
   test("a malformed body is acked, not looped to the dead letter", async () => {
     let acked = 0;
     const batch = {
-      queue: "attribution-sweeps",
+      queue: "probe-jobs",
       messages: [
         {
-          body: { netuid: "sixty-four" },
+          body: { job_type: "attribution-sweep", netuid: "sixty-four" },
           ack: () => void (acked += 1),
           retry: () => {},
         },
@@ -1046,7 +1052,7 @@ describe("the last of the queue shapes", () => {
     const out = await handleSweepBatch(
       [
         {
-          body: { netuid: 64 },
+          body: { job_type: "attribution-sweep", netuid: 64 },
           ack: () => {},
           retry: () => void (calls.retried += 1),
         },
@@ -1071,7 +1077,7 @@ describe("the last of the queue shapes", () => {
     const sent: number[] = [];
     const env = {
       ...(queueEnvFor({ subnets: [{ netuid: 7 }] }) as object),
-      ATTRIBUTION_SWEEPS: {
+      PROBE_JOBS: {
         async sendBatch(messages: Array<{ body: { netuid: number } }>) {
           for (const m of messages) sent.push(m.body.netuid);
         },

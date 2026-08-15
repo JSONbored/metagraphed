@@ -25,6 +25,7 @@ import {
   type LaneMessage,
   type LaneQueue,
 } from "./lane-queue.ts";
+import { probeJob } from "./probe-jobs.ts";
 // The ROW shapes come from the live schema (generated/db/types.ts), not from a
 // hand-written guess at them. That is where `swept_at: number | string` comes
 // from: node-postgres returns BIGINT as a string unless the value is exactly
@@ -330,15 +331,13 @@ export interface SweepMessage {
   netuid: number;
 }
 
-export const ATTRIBUTION_SWEEP_QUEUE = "attribution-sweeps";
-
 export async function enqueueSweeps(
   queue: LaneQueue<SweepMessage> | null | undefined,
   netuids: number[],
 ) {
   return enqueueAll(
     queue,
-    netuids.map((netuid) => ({ netuid })),
+    netuids.map((netuid) => probeJob("attribution-sweep", { netuid })),
     "no_subnets_to_sweep",
   );
 }

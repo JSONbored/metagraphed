@@ -217,19 +217,35 @@ describe("the summary names the subject on every live queue", () => {
       { subscription_id: "sub_a" },
       "sub_a",
     ],
+    // ONE DLQ, FOUR PAYLOAD SHAPES (#10894). The probe lanes share a queue, so
+    // the same dead letter carries netuids, origins and surface_ids depending
+    // on which lane lost the message -- and `summarizeDeadLetterBatch` has to
+    // name all of them. Four cases against one queue is stricter than the three
+    // separate queues were: each of those only ever had to name its own shape.
     [
-      "revenue-probes-dlq",
+      "probe-jobs-dlq",
+      "netuid",
+      { job_type: "attribution-sweep", netuid: 64 },
+      "netuid=64",
+    ],
+    [
+      "probe-jobs-dlq",
+      "origin",
+      { job_type: "origin-reachability", origin: "https://example.com" },
+      "https://example.com",
+    ],
+    [
+      "probe-jobs-dlq",
       "surface_id",
-      { surface_id: "sn-64-api" },
+      { job_type: "revenue-probe", surface_id: "sn-64-api" },
       "sn-64-api",
     ],
     [
-      "origin-reachability-dlq",
-      "origin",
-      { origin: "https://example.com" },
-      "https://example.com",
+      "probe-jobs-dlq",
+      "netuid (compute)",
+      { job_type: "compute-declaration", netuid: 3 },
+      "netuid=3",
     ],
-    ["attribution-sweeps-dlq", "netuid", { netuid: 64 }, "netuid=64"],
   ];
 
   for (const [queue, key, body, expected] of CASES) {

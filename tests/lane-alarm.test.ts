@@ -1492,7 +1492,7 @@ describe("the summary a capture carries (#10809)", () => {
   });
 
   test("a dead-letter lane names WHAT was lost, not a cadence", () => {
-    // `lane revenue-probes-dlq is stale: 41.0h (producer cadence 1.0h)` reads
+    // `lane probe-jobs-dlq is stale: 41.0h (producer cadence 1.0h)` reads
     // as forty-one missed cycles and is not that: a DLQ writes `stale` when a
     // message is lost and never writes `ok`, so the duration is "how long ago
     // something was lost and nobody looked". Measured 2026-08-12, that reading
@@ -1501,8 +1501,8 @@ describe("the summary a capture carries (#10809)", () => {
     const summary = laneAlarmSummary(
       {
         ...staleFor(41, 3_600_000),
-        lane: "revenue-probes-dlq",
-        detail: "2 dead-lettered message(s) on revenue-probes-dlq (sn-64-x)",
+        lane: "probe-jobs-dlq",
+        detail: "2 dead-lettered message(s) on probe-jobs-dlq (sn-64-x)",
       },
       NOW,
     );
@@ -1520,10 +1520,10 @@ describe("the summary a capture carries (#10809)", () => {
 
   test("a dead-letter lane with no detail still says what it can", () => {
     const summary = laneAlarmSummary(
-      { ...staleFor(41, 3_600_000), lane: "revenue-probes-dlq", detail: null },
+      { ...staleFor(41, 3_600_000), lane: "probe-jobs-dlq", detail: null },
       NOW,
     );
-    assert.match(summary, /lane revenue-probes-dlq is stale: 41\.0h/);
+    assert.match(summary, /lane probe-jobs-dlq is stale: 41\.0h/);
     assert.doesNotMatch(summary, /cadence/);
   });
 

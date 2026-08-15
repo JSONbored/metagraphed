@@ -852,16 +852,14 @@
   "queues": {
     "producers": [
       { "binding": "WEBHOOK_DELIVERIES", "queue": "webhook-deliveries" },
-      // #10709: the attribution sweep's producer. The cron enqueues one message
-      // per subnet instead of sweeping a slice inline -- see
-      // src/attribution-sweep.ts for why the slice existed at all.
-      { "binding": "ATTRIBUTION_SWEEPS", "queue": "attribution-sweeps" },
-      { "binding": "ORIGIN_REACHABILITY", "queue": "origin-reachability" },
-      { "binding": "REVENUE_PROBES", "queue": "revenue-probes" },
-      // #10932: one registered min_compute surface per message. The card at
-      // /subnets/{netuid}/cost-to-participate shipped reading a table nothing
-      // wrote; this is the producer.
-      { "binding": "COMPUTE_DECLARATIONS", "queue": "compute-declarations" },
+      // ONE QUEUE FOR FOUR PROBE LANES (#10894). attribution-sweep (#10709),
+      // origin-reachability (#10715), revenue-probe and compute-declaration
+      // (#10932) are the same shape -- enqueue a target, probe it, record the
+      // result -- and each arrived with its own queue and DLQ, so four copies
+      // of one pattern were 8 of the account's 12 queues. The lane a message
+      // belongs to now rides on the body as `job_type`; see
+      // schemas-src/probe-jobs.ts for the vocabulary and why it is closed.
+      { "binding": "PROBE_JOBS", "queue": "probe-jobs" },
     ],
     "consumers": [
       {
@@ -884,77 +882,67 @@
       //
       // "max_retries": 0 -- see the sync-batches-dlq consumer in
       // wrangler.data.jsonc for the full argument; it is the same one.
-      // #10709: one subnet per message. `max_batch_size` is small because each
-      // message fetches up to 8 sources of somebody else's -- the budget that
-      // forced the cron to ration itself is now per-message, and keeping the
-      // batch small is what keeps it that way.
+      // THE FOUR PROBE LANES, ON ONE CONSUMER (#10894).
+      //
+      // A queue carries ONE consumer config, so collapsing four means choosing
+      // one batch size and one concurrency for all of them. Both are taken from
+      // the TIGHTEST lane rather than averaged, and the arithmetic below is why
+      // that is not merely cautious -- it is strictly safer than what each lane
+      // had alone.
+      //
+      // `max_concurrency: 2` is set by revenue-probe and compute-declaration,
+      // and both chose it to protect somebody else: revenue probes are billing
+      // endpoints on third-party infrastructure, and every compute-declaration
+      // request lands on ONE host (raw.githubusercontent plus the GitHub API).
+      // A mixed queue at 5 could put five concurrent invocations all on GitHub,
+      // which is the protection those lanes deliberately bought. So 2.
+      //
+      // `max_batch_size: 5` with that concurrency LOWERS every lane's worst-case
+      // outbound fan-out, which is the number the old comments actually cared
+      // about (concurrency x batch x fetches-per-message):
+      //
+      //   attribution   was 5 x 3 x 8 = 120 concurrent fetches, now 2 x 5 x 8 =  80
+      //   origin        was 5 x 5 x 3 =  75,                    now 2 x 5 x 3 =  30
+      //   revenue       was 2 x 5 x 1 =  10,                    now 2 x 5 x 1 =  10
+      //   compute       was 2 x 5 x 2 =  20,                    now 2 x 5 x 2 =  20
+      //
+      // So the sweep's "keep the batch small because each message fetches up to
+      // 8 sources" is honoured by the product, not by the batch size alone.
+      //
+      // THE COST IS THROUGHPUT AND IT IS REAL. attribution and origin drop from
+      // 5 concurrent invocations to 2, so a tick drains roughly a third slower.
+      // These are hourly lanes over bounded sets, so that is affordable -- but
+      // if drain time ever approaches the cadence, the correct move is to split
+      // by CONCURRENCY CLASS (a fast queue for attribution+origin, a slow one
+      // for revenue+compute: 8 queues -> 4 rather than -> 2), NOT to raise this
+      // number and undo the third-party protection above.
+      //
+      // `max_batch_timeout: 15` is the longer of the two former values: waiting
+      // longer to fill a batch means fewer, fuller invocations, which is what
+      // recovers some of the throughput lost to concurrency.
       {
-        "queue": "attribution-sweeps",
-        "max_batch_size": 3,
-        "max_batch_timeout": 10,
+        "queue": "probe-jobs",
+        "max_batch_size": 5,
+        "max_batch_timeout": 15,
         "max_retries": 3,
-        "max_concurrency": 5,
-        "dead_letter_queue": "attribution-sweeps-dlq",
+        "max_concurrency": 2,
+        "dead_letter_queue": "probe-jobs-dlq",
       },
-      // "max_retries": 0 -- same argument as the two DLQ consumers beside it: a
+      // "max_retries": 0 -- same argument as the DLQ consumers beside it: a
       // message here has already spent its budget, and a retry would be a fifth
       // attempt wearing a different hat.
-      // One origin per message; up to 3 samples each, so the batch stays small
-      // for the same reason the sweep's does.
+      // ONE DEAD LETTER for all four probe lanes (#10894), replacing
+      // attribution-sweeps-dlq, origin-reachability-dlq, revenue-probes-dlq and
+      // compute-declarations-dlq.
+      //
+      // The fourth of those was declared here and MISSING from
+      // `DEAD_LETTER_LANES` in src/dead-letter.ts, so `isDeadLetterQueue`
+      // returned false for it and its dead letters fell through every branch
+      // into the WEBHOOK handler. A per-queue list extended by hand each time a
+      // lane is added is a list that eventually is not -- which is an argument
+      // for one queue, not for a better list.
       {
-        "queue": "origin-reachability",
-        "max_batch_size": 5,
-        "max_batch_timeout": 10,
-        "max_retries": 3,
-        "max_concurrency": 5,
-        "dead_letter_queue": "origin-reachability-dlq",
-      },
-      // One surface per message. These are billing endpoints on somebody else's
-      // infrastructure, so concurrency stays low -- the cadence is for
-      // restatement, not freshness (see REVENUE_PROBE_CRON).
-      {
-        "queue": "revenue-probes",
-        "max_batch_size": 5,
-        "max_batch_timeout": 15,
-        "max_retries": 3,
-        "max_concurrency": 2,
-        "dead_letter_queue": "revenue-probes-dlq",
-      },
-      // One declaration per message: a raw.githubusercontent fetch plus one
-      // GitHub API call for the commit that last touched the path. 17 surfaces
-      // today, so the batch is small for the same reason its neighbours' are --
-      // and concurrency low because every request lands on one host.
-      {
-        "queue": "compute-declarations",
-        "max_batch_size": 5,
-        "max_batch_timeout": 15,
-        "max_retries": 3,
-        "max_concurrency": 2,
-        "dead_letter_queue": "compute-declarations-dlq",
-      },
-      {
-        "queue": "compute-declarations-dlq",
-        "max_batch_size": 100,
-        "max_batch_timeout": 30,
-        "max_retries": 0,
-        "max_concurrency": 1,
-      },
-      {
-        "queue": "revenue-probes-dlq",
-        "max_batch_size": 100,
-        "max_batch_timeout": 30,
-        "max_retries": 0,
-        "max_concurrency": 1,
-      },
-      {
-        "queue": "origin-reachability-dlq",
-        "max_batch_size": 100,
-        "max_batch_timeout": 30,
-        "max_retries": 0,
-        "max_concurrency": 1,
-      },
-      {
-        "queue": "attribution-sweeps-dlq",
+        "queue": "probe-jobs-dlq",
         "max_batch_size": 100,
         "max_batch_timeout": 30,
         "max_retries": 0,

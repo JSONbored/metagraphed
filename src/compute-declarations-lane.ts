@@ -49,12 +49,12 @@ import {
   type LaneMessage,
   type LaneQueue,
 } from "./lane-queue.ts";
+import { probeJob } from "./probe-jobs.ts";
 
 type Row = Record<string, unknown>;
 
 /** The lane's own name, in lane_health and in LANE_PRODUCERS. */
 export const COMPUTE_DECLARATIONS_LANE = "compute-declarations";
-export const COMPUTE_DECLARATIONS_QUEUE = "compute-declarations";
 
 /**
  * Which registered surfaces are min_compute declarations.
@@ -125,7 +125,11 @@ export async function enqueueComputeDeclarations(
   queue: LaneQueue<ComputeDeclarationMessage> | null | undefined,
   messages: ComputeDeclarationMessage[],
 ): Promise<EnqueueResult> {
-  return enqueueAll(queue, messages, "no_min_compute_surfaces");
+  return enqueueAll(
+    queue,
+    messages.map((message) => probeJob("compute-declaration", { ...message })),
+    "no_min_compute_surfaces",
+  );
 }
 
 /** A raw.githubusercontent.com URL, split into what the commits API needs. */

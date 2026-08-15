@@ -748,7 +748,7 @@ describe("the origin queue wiring", () => {
       path.join(repoRoot, "src/dead-letter.ts"),
       "utf8",
     );
-    assert.match(source, /"origin-reachability-dlq"/);
+    assert.match(source, /"probe-jobs-dlq"/);
   });
 
   test("both queues are declared, with a dead letter", async () => {
@@ -756,8 +756,9 @@ describe("the origin queue wiring", () => {
       path.join(repoRoot, "wrangler.jsonc"),
       "utf8",
     );
-    assert.match(wrangler, /"binding": "ORIGIN_REACHABILITY"/);
-    assert.match(wrangler, /"dead_letter_queue": "origin-reachability-dlq"/);
+    assert.match(wrangler, /"binding": "PROBE_JOBS"/);
+    assert.match(wrangler, /"queue": "probe-jobs"/);
+    assert.match(wrangler, /"dead_letter_queue": "probe-jobs-dlq"/);
   });
 
   test("the consumer branches on the queue name", async () => {
@@ -765,7 +766,7 @@ describe("the origin queue wiring", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /batch\.queue === ORIGIN_REACHABILITY_QUEUE/);
+    assert.match(api, /case "origin-reachability":/);
   });
 });
 
@@ -814,7 +815,7 @@ describe("the origin queue, through the Worker's own handler", () => {
       await handleScheduled(
         { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
         env(registry, {
-          ORIGIN_REACHABILITY: {
+          PROBE_JOBS: {
             async sendBatch(messages: Array<{ body: { origin: string } }>) {
               for (const m of messages) sent.push(m.body.origin);
             },
@@ -833,10 +834,13 @@ describe("the origin queue, through the Worker's own handler", () => {
 
   test("an origin batch is routed to the origin consumer, not the webhook path", async () => {
     const batch = {
-      queue: "origin-reachability",
+      queue: "probe-jobs",
       messages: [
         {
-          body: { origin: "https://x.example" },
+          body: {
+            job_type: "origin-reachability",
+            origin: "https://x.example",
+          },
           ack: () => {},
           retry: () => {},
         },
@@ -855,7 +859,7 @@ describe("the origin queue, through the Worker's own handler", () => {
     // A message for an origin the registry no longer advertises: the lookup
     // misses, and the check runs against nothing rather than throwing.
     const batch = {
-      queue: "origin-reachability",
+      queue: "probe-jobs",
       messages: [
         {
           body: { origin: "https://gone.example" },
@@ -876,7 +880,7 @@ describe("the origin queue, through the Worker's own handler", () => {
   test("a malformed origin message is acked at the Worker level too", async () => {
     let acked = 0;
     const batch = {
-      queue: "origin-reachability",
+      queue: "probe-jobs",
       messages: [
         { body: { origin: 42 }, ack: () => void (acked += 1), retry: () => {} },
       ],

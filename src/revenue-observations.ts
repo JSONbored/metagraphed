@@ -29,6 +29,7 @@ import {
   type LaneMessage,
   type LaneQueue,
 } from "./lane-queue.ts";
+import { probeJob } from "./probe-jobs.ts";
 
 export const REVENUE_OBSERVATIONS_TABLE = "revenue_observations";
 export const REVENUE_PROBE_FAILURES_TABLE = "revenue_probe_failures";
@@ -356,8 +357,6 @@ export interface RevenueProbeMessage {
   surface_id: string;
 }
 
-export const REVENUE_PROBE_QUEUE = "revenue-probes";
-
 export async function enqueueRevenueProbes(
   queue: LaneQueue<RevenueProbeMessage> | null | undefined,
   surfaceIds: string[],
@@ -366,7 +365,7 @@ export async function enqueueRevenueProbes(
   // caller and reported null for 129 subnets for two months (#10566).
   return enqueueAll(
     queue,
-    surfaceIds.map((surface_id) => ({ surface_id })),
+    surfaceIds.map((surface_id) => probeJob("revenue-probe", { surface_id })),
     "no_eligible_surfaces",
   );
 }
