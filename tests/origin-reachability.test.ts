@@ -862,7 +862,10 @@ describe("the origin queue, through the Worker's own handler", () => {
       queue: "probe-jobs",
       messages: [
         {
-          body: { origin: "https://gone.example" },
+          body: {
+            job_type: "origin-reachability",
+            origin: "https://gone.example",
+          },
           ack: () => {},
           retry: () => {},
         },
@@ -878,11 +881,20 @@ describe("the origin queue, through the Worker's own handler", () => {
   });
 
   test("a malformed origin message is acked at the Worker level too", async () => {
+    // ROUTED, THEN REFUSED. `job_type` is present and valid, so the partition
+    // hands this to the origin handler and the ACK comes from the handler's own
+    // parse -- which is the path this test was written for. Dropping the
+    // discriminator would have it declined by the router instead, passing for a
+    // different reason than the one it asserts (#10894).
     let acked = 0;
     const batch = {
       queue: "probe-jobs",
       messages: [
-        { body: { origin: 42 }, ack: () => void (acked += 1), retry: () => {} },
+        {
+          body: { job_type: "origin-reachability", origin: 42 },
+          ack: () => void (acked += 1),
+          retry: () => {},
+        },
       ],
     };
     await worker.queue!(
