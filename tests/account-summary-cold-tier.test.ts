@@ -840,7 +840,16 @@ describe("the projection short-circuits the FEED leg too (#11222)", () => {
             return {
               json: async () => ({
                 schema_version: 1,
-                accounts: { [SS58]: groupsSummingTo(6) },
+                // The groups sum to the LIST'S LENGTH, so the fixture is a
+                // complete list by construction. The reader serves a list only
+                // when it holds `min(recent_limit, lifetime)` entries, and a
+                // fixture claiming six lifetime events beside one published
+                // one would fall back for a reason none of these tests is
+                // about -- see the completeness suite in
+                // account-summary-projection.test.ts.
+                accounts: {
+                  [SS58]: groupsSummingTo((recent ?? []).length || 1),
+                },
                 ...(recent ? { recent: { [SS58]: recent } } : {}),
               }),
             };

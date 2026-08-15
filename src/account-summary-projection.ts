@@ -288,7 +288,13 @@ export async function loadAccountSummaryProjection(
   const scanned = groups.reduce((n, g) => n + Number(g.count), 0);
   if (scanned > ACCOUNT_EVENT_SUMMARY_SCAN_CAP) return null;
 
-  return { groups, ...readRecent(payload, account, pointer, recentLimit) };
+  return {
+    groups,
+    // `scanned` is the account's lifetime event count, already summed above to
+    // apply the cap -- reused rather than recomputed so the two decisions
+    // cannot disagree about how many events this account has.
+    ...readRecent(payload, account, pointer, recentLimit, scanned),
+  };
 }
 
 /**
@@ -310,6 +316,7 @@ function readRecent(
   account: string,
   pointer: { through?: string; recent_limit?: number },
   need: number,
+  lifetimeEvents: number,
 ): Pick<AccountSummaryProjectionRead, "recent"> {
   const none = { recent: null };
   // Zero asks for the aggregate leg only, and `undefined` is a producer that
@@ -335,5 +342,29 @@ function readRecent(
   // Declining sends this leg to the lakehouse; it does not zero the feed.
   const parsed = AccountSummaryRecentSchema.safeParse(map.data[account]);
   if (!parsed.success || !parsed.data.length) return none;
+
+  // IS THIS LIST THE NEWEST N, OR MERELY THE NEWEST N THE PRODUCER HAS REACHED?
+  //
+  // The producer seeds these lists by walking history BACKWARD from the day it
+  // folded to, so at any moment they describe a SUFFIX of time. A list built
+  // from that suffix is the newest N overall exactly when the suffix already
+  // held N of the account's events -- and short of that it is a prefix of the
+  // answer, indistinguishable in the payload from an account whose whole
+  // history is three events.
+  //
+  // The shard settles it without another read. `count` on the groups is the
+  // account's LIFETIME total (the projection declines above the cap, so these
+  // are never a windowed subtotal), so the complete list has exactly
+  // `min(published, lifetime)` entries: `published` for an account with more
+  // events than that, and every event it has for an account with fewer.
+  //
+  // DECIDED PER ACCOUNT rather than by a global coverage watermark, which is
+  // what the first cut of this did. That version withheld the whole feature
+  // until the producer's walk reached SOURCE_FLOOR -- 2,418 days at
+  // `batch_days()` of 7, which is 345 passes of a lane throttled to one a day,
+  // and it could never have switched itself on. Here every account whose events
+  // the walk has already passed is served from the moment they are published,
+  // and the rest fall back exactly as they do today.
+  if (parsed.data.length < Math.min(published, lifetimeEvents)) return none;
   return { recent: { rows: parsed.data, floorMs } };
 }
