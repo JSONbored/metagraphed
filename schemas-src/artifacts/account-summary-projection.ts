@@ -28,6 +28,13 @@
 //     reads as "this account has no events".
 import { z } from "zod";
 
+// THE TABLE'S OWN DECLARATION, extended rather than restated. A second copy of
+// this vocabulary drifts by one side gaining a column, and the narrower one
+// then accepts what it does not describe -- which `validate:schema-shape-
+// duplicates` refuses, and rightly: the reader merges these rows with rows
+// selected straight out of the same table.
+import { AccountEventsRowSchema } from "../lakehouse.ts";
+
 /**
  * `current.json` -- names the generation that is currently readable.
  *
@@ -46,6 +53,24 @@ export const AccountSummaryPointerSchema = z
     generated_at: z.string().min(1),
     account_count: z.number().int().nonnegative(),
     through: z.string().min(1).optional(),
+    /**
+     * How many events per account the shards carry in their `recent` map
+     * (metagraphed-infra#575), when they carry one at all.
+     *
+     * THE LIMIT TRAVELS WITH THE DATA. `ACCOUNT_SUMMARY_RECENT_LIMIT` lives in
+     * this repository and the producer lives in another, so a reader that
+     * assumed the published N matched its own would serve a short feed the
+     * moment the two diverged -- and no CI here could see it. Declaring the N
+     * actually written lets the reader DECLINE when the artifact carries fewer
+     * than it needs, exactly as `shard_count` already travels rather than being
+     * agreed by convention.
+     *
+     * OPTIONAL, because every generation published before #575 lacks it, and
+     * those pointers are still valid to read for their aggregate leg. Absent
+     * means "no recent map" -- not "some unknown number" -- so the reader falls
+     * back to the lakehouse for that leg alone.
+     */
+    recent_limit: z.number().int().positive().optional(),
   })
   .strict();
 
@@ -88,3 +113,61 @@ export const AccountSummaryGroupSchema = z
  * does not exist -- the first is a decline and the second is an answer.
  */
 export const AccountSummaryGroupsSchema = z.array(AccountSummaryGroupSchema);
+
+/**
+ * One published event inside a shard's `recent` map (metagraphed-infra#575).
+ *
+ * THE COLUMNS ARE THE LAKEHOUSE TABLE'S, not a shape invented here. The reader
+ * merges these rows with rows the head probe selects straight out of
+ * `chain.account_events`, and the two go into the same feed -- so a field named
+ * differently on one side would surface as a missing value on half a card
+ * rather than as an error. `tests/account-summary-projection.test.ts` pins the
+ * key set against the generated `ACCOUNT_EVENTS_COLUMNS`, so a column added to
+ * the table fails here rather than being silently dropped from the projection.
+ *
+ * EVERY VALUE IS NULLABLE except the two that identify the event. `hotkey` is
+ * null on WeightsSet, `netuid` on Transfer and Deposit, and the amount columns
+ * on anything that is not a balance movement -- nullability here is the table's,
+ * not a concession.
+ */
+export const AccountSummaryRecentEventSchema = AccountEventsRowSchema
+  // REQUIRED and CLOSED, which is the whole difference from the table's own
+  // declaration. `AccountEventsRowSchema` is partial and open because a READ
+  // selects a projection and often an aggregate alias that is not a column at
+  // all. This is a PUBLISHED artifact: the producer writes every column of
+  // every row, so a missing one is a producer bug and an extra one is a
+  // vocabulary the reader would silently drop from half a merged feed.
+  .required()
+  .extend({
+    // The event's identity, and the reason these three cannot be null here
+    // while the table permits it: the reader de-duplicates the projection's
+    // rows against the head probe's on (block_number, event_index), and sorts
+    // the merged page on all three. A null would collapse distinct events onto
+    // one key, or sort as zero and bury a real event at the bottom of the card.
+    block_number: z.int().nonnegative(),
+    event_index: z.int().nonnegative(),
+    observed_at: z.int().nonnegative(),
+  })
+  .strict();
+
+/** One published event, as the reader gets it back from `safeParse`. */
+export type AccountSummaryRecentEvent = z.infer<
+  typeof AccountSummaryRecentEventSchema
+>;
+
+/** One account's published newest events, newest first. */
+export const AccountSummaryRecentSchema = z.array(
+  AccountSummaryRecentEventSchema,
+);
+
+/**
+ * A shard's `recent` map, keyed by ss58.
+ *
+ * LAZY IN ITS VALUES on purpose, exactly as `accounts` is handled: a shard
+ * carries ~1,000 accounts and a request reads ONE. Declaring the values as
+ * `unknown` checks the ENVELOPE -- that this is a keyed object rather than a
+ * string, a number or an array -- and leaves the one account's array to be
+ * parsed properly by `AccountSummaryRecentSchema`. Parsing all thousand would
+ * spend the saving this whole tier exists to make.
+ */
+export const AccountSummaryRecentMapSchema = z.record(z.string(), z.unknown());
