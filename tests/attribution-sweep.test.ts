@@ -10,6 +10,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { SEND_BATCH_MAX } from "../src/lane-queue.ts";
+import { SWEEP_VERDICTS } from "../src/attribution-verdicts.ts";
+import { SubnetWalletsArtifactSchema } from "../schemas-src/routes/subnet-wallets.ts";
 import worker, {
   fetchSweepText,
   handleScheduled,
@@ -1295,5 +1297,82 @@ describe("the listing cap", () => {
     // reports about US rather than about its pages.
     assert.equal(sweepVerdict(3, 0, 0, 0), "unreachable");
     assert.equal(sweepVerdict(0, 0, 0, 0), "no-sources");
+  });
+});
+
+// #11227: the verdict list had THREE mirrors and they drifted. `listings-only`
+// was added to the lane's union and to migrations/neon/0031's CHECK constraint,
+// and NOT to the published Zod enum -- so six subnets in production served a
+// value their own contract rejects, and the only thing that noticed was the MCP
+// mirror validating its own response:
+//
+//   McpResponseSchemaDriftError: get_subnet_wallets result drifted from its
+//   published outputSchema
+//
+// Two of the three now share one declaration. The third is SQL and cannot
+// import, so it is read off disk and compared here -- which is the gap that let
+// this through.
+describe("every mirror of the verdict list agrees", () => {
+  test("the published contract accepts exactly the declared verdicts", () => {
+    const parseVerdict = (verdict: unknown) =>
+      SubnetWalletsArtifactSchema.shape.attribution_search.safeParse({
+        swept_at: "2026-08-15T14:29:03.921Z",
+        sources_checked: 8,
+        sources_read: 5,
+        candidates: 6,
+        verdict,
+      }).success;
+
+    for (const verdict of SWEEP_VERDICTS) {
+      assert.equal(
+        parseVerdict(verdict),
+        true,
+        `${verdict} must be publishable`,
+      );
+    }
+    // The positive control: an undeclared verdict is still refused, so the
+    // assertions above are not passing on an enum that accepts anything.
+    assert.equal(parseVerdict("made-up"), false);
+    // Null is the "never swept" state and stays valid.
+    assert.equal(parseVerdict(null), true);
+  });
+
+  test("the database CHECK constraint accepts exactly the same set", async () => {
+    const dir = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "migrations",
+      "neon",
+    );
+    const files = await fs.readdir(dir);
+    // The NEWEST migration touching the constraint is the live one; an older
+    // widening is history, and comparing against it would pin the wrong set.
+    const constraintFiles = (
+      await Promise.all(
+        files
+          .filter((f) => f.endsWith(".sql"))
+          .sort()
+          .map(async (f) => ({
+            file: f,
+            sql: await fs.readFile(path.join(dir, f), "utf8"),
+          })),
+      )
+    ).filter(({ sql }) => sql.includes("attribution_sweeps_verdict_is_known"));
+    assert.ok(
+      constraintFiles.length > 0,
+      "no migration declares attribution_sweeps_verdict_is_known",
+    );
+    const newest = constraintFiles[constraintFiles.length - 1]!;
+    const clause = /CHECK\s*\(\s*verdict\s+IN\s*\(([^)]*)\)/i.exec(newest.sql);
+    assert.ok(clause, `${newest.file} has no readable verdict IN (...) clause`);
+    const declared = [...clause![1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+    assert.deepEqual(
+      [...declared].sort(),
+      [...SWEEP_VERDICTS].sort(),
+      `${newest.file}'s CHECK constraint and SWEEP_VERDICTS disagree -- a ` +
+        `verdict the lane can write and the database rejects stops the whole ` +
+        `pass, and one the database accepts and the contract does not is ` +
+        `served as a schema violation`,
+    );
   });
 });

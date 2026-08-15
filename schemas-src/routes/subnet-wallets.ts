@@ -16,6 +16,7 @@
 //      majority state at launch, and a null-vs-zero conflation here says "this
 //      owner kept nothing" about a subnet we simply could not measure.
 import { z } from "zod";
+import { SWEEP_VERDICTS } from "../../src/attribution-verdicts.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
@@ -99,13 +100,14 @@ const AttributionSearchSchema = z
       description:
         "Checksum-valid addresses found in the fetched bytes. A CANDIDATE, never an attribution: an address appearing on a team's page is not thereby theirs — a `validator_hotkey` field inside their own API response is the common false positive — and clearing the evidence bar is a human judgement.",
     }),
-    verdict: z
-      .enum(["none-published", "candidates-found", "unreachable", "no-sources"])
-      .nullable()
-      .meta({
-        description:
-          "`none-published` is the expected majority answer and IS a finding: we read at least one source and found no address. `unreachable` and `no-sources` are statements about US — we could not look, or there was nothing to look at — and must never be read as a finding about the subnet.",
-      }),
+    // THE LIST, not a copy of it (#11227). This enum and the lane's union drifted
+    // once already -- `listings-only` was added to the lane and the CHECK
+    // constraint and not to this -- and the only thing that noticed was the MCP
+    // mirror validating its own response in production.
+    verdict: z.enum(SWEEP_VERDICTS).nullable().meta({
+      description:
+        "`none-published` is the expected majority answer and IS a finding: we read at least one source and found no address. `listings-only` is also a finding, and a different one: every source that answered was a metagraph or holder dump whose addresses belong to other people, so there is nothing here to attribute. `unreachable` and `no-sources` are statements about US — we could not look, or there was nothing to look at — and must never be read as a finding about the subnet.",
+    }),
   })
   .strict();
 

@@ -59483,7 +59483,8 @@
                           "none-published",
                           "candidates-found",
                           "unreachable",
-                          "no-sources"
+                          "no-sources",
+                          "listings-only"
                         ],
                         "type": "string"
                       },
@@ -59491,7 +59492,7 @@
                         "type": "null"
                       }
                     ],
-                    "description": "`none-published` is the expected majority answer and IS a finding: we read at least one source and found no address. `unreachable` and `no-sources` are statements about US — we could not look, or there was nothing to look at — and must never be read as a finding about the subnet."
+                    "description": "`none-published` is the expected majority answer and IS a finding: we read at least one source and found no address. `listings-only` is also a finding, and a different one: every source that answered was a metagraph or holder dump whose addresses belong to other people, so there is nothing here to attribute. `unreachable` and `no-sources` are statements about US — we could not look, or there was nothing to look at — and must never be read as a finding about the subnet."
                   }
                 },
                 "required": [

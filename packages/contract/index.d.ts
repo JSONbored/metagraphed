@@ -13124,8 +13124,8 @@ export interface components {
                 sources_read: number;
                 /** @description When this subnet's published surfaces were last searched for an address. NULL means never, or that the sweep store could not be read — either way nobody has looked, which is a different fact from having looked and found nothing. */
                 swept_at: string | null;
-                /** @description `none-published` is the expected majority answer and IS a finding: we read at least one source and found no address. `unreachable` and `no-sources` are statements about US — we could not look, or there was nothing to look at — and must never be read as a finding about the subnet. */
-                verdict: ("none-published" | "candidates-found" | "unreachable" | "no-sources") | null;
+                /** @description `none-published` is the expected majority answer and IS a finding: we read at least one source and found no address. `listings-only` is also a finding, and a different one: every source that answered was a metagraph or holder dump whose addresses belong to other people, so there is nothing here to attribute. `unreachable` and `no-sources` are statements about US — we could not look, or there was nothing to look at — and must never be read as a finding about the subnet. */
+                verdict: ("none-published" | "candidates-found" | "unreachable" | "no-sources" | "listings-only") | null;
             } | null;
             contract_version?: string;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
