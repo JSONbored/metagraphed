@@ -36,6 +36,7 @@ import {
   isUsageTelemetryConfigured,
   resolvePostHogHost,
 } from "./usage-telemetry.js";
+import { PostHogFlagsResponseSchema } from "../schemas-src/foreign-wire.ts";
 
 /** PostHog's flag-evaluation endpoint, appended to the resolved host. */
 export const POSTHOG_FLAGS_PATH = "/flags/?v=2";
@@ -152,10 +153,14 @@ export async function evaluateFeatureFlag(
       throw new Error(`flags endpoint returned ${response.status}`);
     }
 
-    const payload = (await response.json()) as {
-      flags?: Record<string, { enabled?: boolean } | undefined>;
-    };
-    const value = payload?.flags?.[flagKey]?.enabled === true;
+    // PARSED, NOT CAST (#11194). PostHog owns this shape and has changed it
+    // before; a parse failure lands in the catch below, which is the same
+    // "fall back to the cached or default value" path a network failure takes
+    // -- so a flags payload we cannot read degrades exactly like a flags
+    // endpoint we cannot reach, instead of silently evaluating every flag as
+    // false.
+    const payload = PostHogFlagsResponseSchema.parse(await response.json());
+    const value = payload.flags?.[flagKey]?.enabled === true;
 
     await writeCache(env, flagKey, { value, fetchedAt: now() });
     return value;

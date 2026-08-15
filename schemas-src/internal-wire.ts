@@ -185,6 +185,147 @@ export const AlerterDeregRiskSnapshotResponseSchema = z.object({
 });
 
 /**
+ * A cold-tier chain-events answer, as it comes BACK OUT of the edge cache.
+ *
+ * The tier travels with the payload so `meta.source` reports which store
+ * answered rather than guessing. That makes `source` the one field a cache hit
+ * must carry: a hit missing it would report a tier it never came from, which is
+ * precisely the mislabelling ColdTierAnswer was introduced to stop.
+ *
+ * A cached entry was written by a PREVIOUS deploy, so this is the boundary it
+ * looks least like: same Worker, same code, different version of it.
+ */
+export const ColdTierAnswerSchema = z.object({
+  data: z.record(z.string(), z.unknown()),
+  source: z.string(),
+});
+
+/**
+ * `GET /api/v1/rpc/pools` as the wss load balancer reads it.
+ *
+ * DELIBERATELY LOOSE ALL THE WAY DOWN, and this is not laziness: every field
+ * the selector touches (`url`, `score`, `pool_eligible`, `latest_block`) is
+ * re-read through its own coercion there -- `Number(e.score)`, an explicit
+ * null check on `latest_block` because `Number(null)` is 0 and would mis-read a
+ * block-less endpoint as height 0. Typing them here would state a second,
+ * stricter contract that the selector then ignores.
+ *
+ * What IS pinned is the structure the selector navigates: pools is a list, each
+ * pool has an endpoint list. Those are the only two claims the cast made that
+ * were worth checking, and a `{ error: ... }` body now fails them instead of
+ * arriving as a pool-less artifact indistinguishable from "no pools today".
+ */
+export const WssPoolEndpointSchema = z.object({
+  id: z.string().optional(),
+  url: z.unknown().optional(),
+  kind: z.string().optional(),
+  pool_eligible: z.unknown().optional(),
+  score: z.unknown().optional(),
+  status: z.string().optional(),
+  latest_block: z.unknown().optional(),
+});
+export type WssPoolEndpoint = z.infer<typeof WssPoolEndpointSchema>;
+
+export const WssPoolSchema = z.object({
+  id: z.string().optional(),
+  kind: z.string().optional(),
+  endpoints: z.array(WssPoolEndpointSchema).optional(),
+});
+export type WssPool = z.infer<typeof WssPoolSchema>;
+
+export const WssPoolsArtifactSchema = z.object({
+  pools: z.array(WssPoolSchema).optional(),
+});
+export type WssPoolsArtifact = z.infer<typeof WssPoolsArtifactSchema>;
+
+/**
+ * The same artifact as `/api/v1` serves it: wrapped in an envelope.
+ *
+ * Both spellings are accepted because the artifact is served enveloped on
+ * `/api/v1` and bare as a file, and this reader must keep working if the route
+ * moves -- the tolerance the cast expressed as an intersection type, which is
+ * not a thing a runtime value can be.
+ */
+export const WssPoolsResponseSchema = z.union([
+  z.object({ data: WssPoolsArtifactSchema }),
+  WssPoolsArtifactSchema,
+]);
+
+/**
+ * One active alert trigger, as AlerterHub caches it.
+ *
+ * `id` and `channel` are the two fields the hub itself uses -- `id` keys the
+ * rate-limit map and the write-back, `channel` picks the delivery builder --
+ * and everything else rides through to `triggerMatchesEvent` and the builders,
+ * which narrow what they read. So this pins exactly the hub's own dependency
+ * and passes the rest along: `catchall(unknown)` because a trigger genuinely
+ * carries per-channel fields this file must not enumerate (a second copy of a
+ * vocabulary src/alert-triggers.ts owns), and stripping them would DELETE the
+ * destination every delivery needs.
+ */
+export const AlertTriggerRowSchema = z
+  .object({
+    id: z.string(),
+    channel: z.string(),
+    condition: z.unknown().optional(),
+  })
+  .catchall(z.unknown());
+
+/**
+ * `GET /api/v1/internal/alert-triggers-active`.
+ *
+ * Per-ROW parsing happens at the call site for the reason the rest of this
+ * family follows: one malformed trigger among fifty must not silence the other
+ * forty-nine, and refusing the page would leave the hub evaluating a stale
+ * cache while reporting nothing.
+ */
+export const AlertTriggersActiveResponseSchema = z.object({
+  triggers: z.array(z.unknown()),
+});
+
+/**
+ * `GET /api/v1/internal/keys/anomalies` as the abuse-scan cron reads it.
+ *
+ * Only `flagged_count` decides anything (it is compared against a threshold);
+ * `accounts_seen` rides along in the alert text. Both nullish, because a
+ * deployment with no anomaly detector configured answers without them and that
+ * is a legitimate zero rather than a fault.
+ */
+export const AbuseScanAnomaliesResponseSchema = z.object({
+  flagged_count: z.number().nullish(),
+  accounts_seen: z.number().nullish(),
+});
+
+/**
+ * The embedding manifest in KV: document id → content hash.
+ *
+ * WRITTEN BY A PREVIOUS DEPLOY, which is the whole reason this is parsed. The
+ * manifest decides which documents are re-embedded and which stale vectors are
+ * pruned; a value of the wrong type here is compared against a fresh hash,
+ * never matches, and silently re-embeds the entire corpus on every run -- a
+ * cost, not a crash, and therefore one nothing would have reported.
+ */
+export const EmbedManifestSchema = z.record(z.string(), z.string());
+
+/**
+ * The resync lane's KV pass state.
+ *
+ * The reader's own four-clause guard (`head` a non-empty string, `paths` a
+ * non-empty array, `offset` a non-negative integer) is what this declares.
+ * Stating it here rather than there means the state's shape and the state's
+ * validity are one thing: a malformed state is discarded and the next tick
+ * starts a clean pass, which was already the recovery.
+ */
+export const RegistryResyncPassStateSchema = z.object({
+  head: z.string().min(1),
+  paths: z.array(z.string()).min(1),
+  offset: z.int().min(0),
+});
+export type RegistryResyncPassState = z.infer<
+  typeof RegistryResyncPassStateSchema
+>;
+
+/**
  * What McpSessionHub's `persist()` writes and `hydrate()` reads back.
  *
  * EVERY FIELD OPTIONAL, and that is not laxness: a durable object hydrating for

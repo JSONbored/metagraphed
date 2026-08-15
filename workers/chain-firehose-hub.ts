@@ -92,7 +92,7 @@ function chainEventsGraphqlSchema(): Promise<GraphQLSchema> {
 }
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
 import { badRequest, parseRequestBody } from "../src/hub-request.ts";
-import { HubRequiredSessionIdBodySchema } from "../schemas-src/hub-wire.ts";
+import { HubRequiredSessionIdBodySchema } from "../schemas-src/internal-wire.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
 

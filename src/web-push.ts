@@ -28,7 +28,7 @@
  * to it without checking a single field. Re-exported from here so the existing
  * import sites keep working unchanged.
  */
-import type { PushSubscriptionKeys } from "../schemas-src/hub-wire.ts";
+import type { PushSubscriptionKeys } from "../schemas-src/internal-wire.ts";
 export type { PushSubscriptionKeys };
 
 /** VAPID identity. Values come from Worker secrets — never the repo. */

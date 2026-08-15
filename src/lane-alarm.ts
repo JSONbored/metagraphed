@@ -59,6 +59,11 @@ import {
 } from "./lane-health.ts";
 import { recordLaneVerdict } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import {
+  GithubCreatedIssueSchema,
+  GithubIssueListSchema,
+  GithubIssueSchema,
+} from "../schemas-src/foreign-wire.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 
 /**
@@ -745,13 +750,21 @@ export function laneAlarmGitHub(
         { headers },
       );
       if (!response.ok) return {};
-      const issues = (await response.json()) as {
-        number?: number;
-        title?: string;
-        pull_request?: unknown;
-      }[];
+      // PARSED, NOT CAST (#11194). The `Array.isArray` below was doing the
+      // schema's job for one field and nothing for the rest; the parse does
+      // both, and a body that is not a list at all now yields no alarms rather
+      // than an empty loop that reads identically to "GitHub has no open
+      // issues" -- the difference between "nothing to close" and "we could not
+      // ask", on the lane that closes alarms.
+      const page = GithubIssueListSchema.safeParse(await response.json());
+      if (!page.success) return {};
       const out: Record<string, number> = {};
-      for (const issue of Array.isArray(issues) ? issues : []) {
+      for (const row of page.data) {
+        // Per ROW, so one issue GitHub shapes unexpectedly costs that issue
+        // and not the whole page -- see GithubIssueListSchema.
+        const parsed = GithubIssueSchema.safeParse(row);
+        if (!parsed.success) continue;
+        const issue = parsed.data;
         // The issues endpoint returns pull requests too, and a PR whose title
         // happens to match would be closed as though it were an alarm.
         if (issue.pull_request) continue;
@@ -769,8 +782,10 @@ export function laneAlarmGitHub(
         body: JSON.stringify({ title, body }),
       });
       if (!response.ok) return null;
-      const created = (await response.json()) as { number?: number };
-      return typeof created.number === "number" ? created.number : null;
+      const created = GithubCreatedIssueSchema.safeParse(await response.json());
+      return typeof created.data?.number === "number"
+        ? created.data.number
+        : null;
     },
     async close(issue, comment) {
       // Comment first: a close that lands without its reason is an issue whose

@@ -31,7 +31,7 @@ import {
   HubNotifyChangedBodySchema,
   HubRequiredSessionIdBodySchema,
   HubSubnetSessionBodySchema,
-} from "../schemas-src/hub-wire.ts";
+} from "../schemas-src/internal-wire.ts";
 
 type NetuidIndex = Map<number, Set<string>>;
 type SessionIndex = Map<string, Set<number>>;
@@ -250,7 +250,7 @@ export class SubnetStatusHub implements DurableObject {
     // in each of the four handlers below, which is where this hub and
     // ChainFirehoseHub drifted: the same `/mcp-subscribe` path refused an
     // absent id here and accepted it there. One declared vocabulary now, in
-    // schemas-src/hub-wire.ts.
+    // schemas-src/internal-wire.ts.
     const body = await parseRequestBody(request, HubSubnetSessionBodySchema);
     if (!body) return badRequest("sessionId and netuid are required");
     // The URI spelling stays accepted: `handleSubscribe` has always resolved

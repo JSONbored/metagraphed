@@ -43,6 +43,7 @@
 // state_call and storage reads. See that constant for the full reasoning.
 import { selectWssUpstreams, type PoolsArtifact } from "./wss-lb-select.ts";
 import { MAX_RPC_BODY_BYTES, WSS_DENIED_RPC_PREFIXES } from "./config.ts";
+import { WssPoolsResponseSchema } from "../schemas-src/internal-wire.ts";
 import {
   recordExceptionEvent,
   recordUsageEvent,
@@ -214,10 +215,14 @@ export async function loadPools(
       cf: { cacheTtl: POOLS_TTL_SECONDS, cacheEverything: true },
     } as RequestInit);
     if (!res.ok) return null;
-    const body = (await res.json()) as { data?: PoolsArtifact } & PoolsArtifact;
-    // The artifact is served enveloped on /api/v1 and bare as a file; accept
-    // both so this keeps working if the route moves.
-    return (body.data as PoolsArtifact) ?? (body as PoolsArtifact);
+    // PARSED, NOT CAST (#11194). The cast was an INTERSECTION of the enveloped
+    // and bare shapes -- a type no single runtime value has -- so any body at
+    // all satisfied it, and an error page arrived here as a pool-less artifact
+    // the caller could not tell from "no pools are eligible right now". One of
+    // those is a 503 the operator should see; the other is normal.
+    const parsed = WssPoolsResponseSchema.safeParse(await res.json());
+    if (!parsed.success) return null;
+    return "data" in parsed.data ? parsed.data.data : parsed.data;
   } catch {
     return null;
   }

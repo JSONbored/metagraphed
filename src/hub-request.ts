@@ -9,7 +9,7 @@
 // same-named route refused.
 //
 // The schemas those bodies are parsed against live in
-// schemas-src/hub-wire.ts, next to every other declared vocabulary.
+// schemas-src/internal-wire.ts, next to every other declared vocabulary.
 import type { z } from "zod";
 
 /**

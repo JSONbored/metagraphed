@@ -5,25 +5,20 @@
 // Network is the POOL id (`<network>-wss`), NOT a per-endpoint field, and the
 // pool already kind-filters + score-sorts. No I/O — unit-tested.
 
-export interface PoolEndpoint {
-  id?: string;
-  url?: unknown;
-  kind?: string;
-  pool_eligible?: unknown;
-  score?: unknown;
-  status?: string;
-  latest_block?: unknown;
-}
+// INFERRED from the schema `loadPools` parses against (#11194), not written
+// beside it. These were three hand-written interfaces describing a payload
+// nothing validated -- the shape someone believed, kept in step with the
+// validator by hand, which is the arrangement this repo keeps finding drifted.
+// Re-exported under their original names so every import site is unchanged.
+import type {
+  WssPool,
+  WssPoolEndpoint,
+  WssPoolsArtifact,
+} from "../schemas-src/internal-wire.ts";
 
-export interface Pool {
-  id?: string;
-  kind?: string;
-  endpoints?: PoolEndpoint[];
-}
-
-export interface PoolsArtifact {
-  pools?: Pool[];
-}
+export type PoolEndpoint = WssPoolEndpoint;
+export type Pool = WssPool;
+export type PoolsArtifact = WssPoolsArtifact;
 
 function scoreOf(e: PoolEndpoint): number {
   const n = Number(e.score);

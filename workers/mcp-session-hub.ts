@@ -66,7 +66,7 @@ import {
   HubSessionIdBodySchema,
   McpSessionStateSchema,
   HubSessionUriBodySchema,
-} from "../schemas-src/hub-wire.ts";
+} from "../schemas-src/internal-wire.ts";
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 

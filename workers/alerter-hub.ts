@@ -42,9 +42,11 @@ import {
 } from "../src/web-push.ts";
 import { buildPushNotificationPayload } from "../src/web-push-payload.ts";
 import {
+  AlertTriggerRowSchema,
+  AlertTriggersActiveResponseSchema,
   AlerterDeregRiskSnapshotResponseSchema,
   AlerterPushSubscriptionResponseSchema,
-} from "../schemas-src/hub-wire.ts";
+} from "../schemas-src/internal-wire.ts";
 import {
   buildDiscordDeliveryRequest,
   buildEmailDeliveryRequest,
@@ -524,9 +526,20 @@ export class AlerterHub implements DurableObject {
         });
         return;
       }
-      const body = (await upstream.json()) as { triggers?: Trigger[] };
-      if (Array.isArray(body?.triggers)) {
-        this.triggers = body.triggers;
+      // PARSED, NOT CAST (#11194). `Array.isArray` checked the envelope and
+      // nothing checked the ROWS -- so a trigger without an `id` reached the
+      // rate-limit map keyed on `undefined`, where it shares one bucket with
+      // every other id-less trigger and rate-limits them against each other.
+      // Per row, so one malformed trigger costs that trigger rather than the
+      // whole refresh.
+      const body = AlertTriggersActiveResponseSchema.safeParse(
+        await upstream.json(),
+      );
+      if (body.success) {
+        this.triggers = body.data.triggers.flatMap((row) => {
+          const parsed = AlertTriggerRowSchema.safeParse(row);
+          return parsed.success ? [parsed.data as Trigger] : [];
+        });
         this.triggersLoadedAt = Date.now();
         // #5024: prune any lastDeliveredAt entry for a trigger id that is
         // no longer present in the fresh active-trigger list (deleted or

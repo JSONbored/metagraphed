@@ -25,6 +25,7 @@ import {
   recordAiEmbeddingEvent,
   recordAiGenerationEvent,
 } from "./usage-telemetry.ts";
+import { EmbedManifestSchema } from "../schemas-src/internal-wire.ts";
 
 // Best free Workers AI models (verified available on the account):
 // - Embedding: Qwen3-Embedding-0.6B (1024-dim) — tops MTEB English; the
@@ -314,11 +315,16 @@ function chunk<T>(items: T[], size: number): T[][] {
 async function readManifest(env: Env): Promise<Record<string, string>> {
   if (!env?.METAGRAPH_CONTROL?.get) return {};
   try {
-    return (
-      ((await env.METAGRAPH_CONTROL.get(EMBED_MANIFEST_KEY, {
-        type: "json",
-      })) as Record<string, string> | null) || {}
+    // PARSED, NOT CAST (#11194). This value was written by a PREVIOUS deploy,
+    // so its shape is whatever the manifest was then. A wrong-typed entry
+    // never matches a fresh hash and silently re-embeds the whole corpus every
+    // run -- a bill rather than an error, and therefore one nothing reports.
+    // An unreadable manifest is treated as absent, which is the same recovery
+    // the catch below already performs.
+    const parsed = EmbedManifestSchema.safeParse(
+      await env.METAGRAPH_CONTROL.get(EMBED_MANIFEST_KEY, { type: "json" }),
     );
+    return parsed.success ? parsed.data : {};
   } catch {
     return {};
   }

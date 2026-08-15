@@ -51,6 +51,10 @@ import {
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { REPO, fileAt, ghJson } from "./registry-sync-lane.ts";
+import {
+  RegistryResyncPassStateSchema,
+  type RegistryResyncPassState,
+} from "../schemas-src/internal-wire.ts";
 
 export const REGISTRY_RESYNC_LANE = "registry-resync";
 const STATE_KEY = "registry-resync:state";
@@ -99,11 +103,13 @@ interface ServiceLike {
   fetch(request: Request): Promise<Response>;
 }
 
-interface PassState {
-  head: string;
-  paths: string[];
-  offset: number;
-}
+/**
+ * The lane's KV pass state, INFERRED from the schema that validates it
+ * (#11194). Was a hand-written interface beside a four-clause guard that
+ * checked the same three fields -- two statements of one rule, and
+ * validate:type-duplicates is the gate that says so.
+ */
+type PassState = RegistryResyncPassState;
 
 export interface RegistryResyncDeps {
   kv?: KvLike | null;
@@ -308,17 +314,12 @@ async function readState(kv: KvLike): Promise<PassState | null> {
   const raw = await kv.get(STATE_KEY);
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as Partial<PassState>;
-    if (
-      typeof parsed?.head === "string" &&
-      parsed.head !== "" &&
-      Array.isArray(parsed.paths) &&
-      parsed.paths.length > 0 &&
-      Number.isInteger(parsed.offset) &&
-      (parsed.offset as number) >= 0
-    ) {
-      return parsed as PassState;
-    }
+    // PARSED, NOT CAST (#11194). The four-clause guard this replaces WAS the
+    // schema, written as control flow; RegistryResyncPassStateSchema states
+    // the same rule where the shape is declared, so a field added to
+    // PassState cannot be persisted without also being validated.
+    const parsed = RegistryResyncPassStateSchema.safeParse(JSON.parse(raw));
+    if (parsed.success) return parsed.data;
   } catch {
     // A malformed state is discarded rather than throwing: the next tick
     // starts a clean pass, which is the recovery either way.
