@@ -5,7 +5,10 @@ import {
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
-import { TOP_HOLDERS_SORT_VALUES } from "../schemas-src/routes/top-holders.ts";
+import {
+  TOP_HOLDERS_HOLDINGS_SORT_VALUES,
+  TOP_HOLDERS_SORT_VALUES,
+} from "../schemas-src/routes/top-holders.ts";
 export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 // Balance-based top-holder leaderboard (#6741/#6743) -- the coldkey/balance-
 // centric counterpart to src/accounts-list.ts (hotkey/neuron-centric,
@@ -29,8 +32,10 @@ export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 //                        outflow is negative -- so it gets its own signed
 //                        guard below.
 //   free_tao             COMPOSED LIVE by src/top-holders-holdings.ts (#9502),
-//   delegated_tao        in the same daily lane and from D1: free_tao out of
-//   total_tao            `account_balances`, delegated_tao by pricing
+//   delegated_tao        and republished every three hours on its OWN cron
+//   total_tao            since #9632 (src/top-holders-holdings-refresh.ts):
+//                        free_tao out of
+//                        `account_balances`, delegated_tao by pricing
 //                        `nominator_positions` against the `hotkey_alpha` pool
 //                        totals, total_tao as their sum ranked across the full
 //                        tables. That module's header carries the pricing rule
@@ -48,6 +53,11 @@ export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 //                        cell here is a statement about an input, not about
 //                        this route: see src/account-balances-completeness.ts
 //                        and src/hotkey-alpha-completeness.ts.
+//
+// SO ONE ROW CARRIES TWO VINTAGES, and `captured_at`/`last_updated` report the
+// one belonging to the sort that was requested -- see topHoldersStampKey. A
+// single number for both would have to be wrong about one of them, and the
+// number a caller of a RANKING wants is the age of the column it was ranked by.
 //
 // A tier answers only the sorts it can genuinely rank and declines the rest,
 // so neither tier's gaps drive an ordering. The holdings cells are therefore
@@ -107,7 +117,36 @@ interface TopHoldersEntry {
   [key: string]: unknown;
 }
 
-function buildTopHoldersEntry(row: Row): TopHoldersEntry {
+/**
+ * Which stamp on a row answers "how old is this ranking" for a given sort
+ * (#9632).
+ *
+ * ONE ROW, TWO VINTAGES, since the holdings leg got its own cadence: the
+ * `net_flow_*` cells are as old as the daily lakehouse scan and the holdings
+ * cells as old as their last three-hourly store refresh. Reporting one number
+ * for both would have to be wrong about one of them, and the number a caller
+ * wants is the age of the column they ranked by.
+ *
+ * Exported for the tests that pin the mapping, and because "which leg backs
+ * this sort" is the same question src/top-holders-flow-tier.ts's per-body
+ * `sorts` answers -- worth stating once rather than re-deriving from a prefix.
+ */
+export function topHoldersStampKey(sort: string): string {
+  return (TOP_HOLDERS_HOLDINGS_SORT_VALUES as readonly string[]).includes(sort)
+    ? "holdings_captured_at"
+    : "captured_at";
+}
+
+/** The stamp for one row under one sort, falling back to the row's own
+ * `captured_at`. The fallback is what a body written before #9632 needs -- it
+ * carries no `holdings_captured_at` at all -- and it is also the right answer
+ * for a flow-only row on a holdings-sorted page: that row has no holdings
+ * cells, ranks last on nulls, and its vintage is the only one it has. */
+function rowStamp(row: Row, stampKey: string): unknown {
+  return row?.[stampKey] ?? row?.captured_at;
+}
+
+function buildTopHoldersEntry(row: Row, stampKey: string): TopHoldersEntry {
   const freeTao = nonNegativeOrNull(row?.free_tao);
   const delegatedTao = nonNegativeOrNull(row?.delegated_tao);
   return {
@@ -122,9 +161,7 @@ function buildTopHoldersEntry(row: Row): TopHoldersEntry {
     net_flow_7d: numberOrNullSigned(row?.net_flow_7d),
     net_flow_30d: numberOrNullSigned(row?.net_flow_30d),
     net_flow_90d: numberOrNullSigned(row?.net_flow_90d),
-    last_updated: toIso(
-      row?.captured_at == null ? null : Number(row.captured_at),
-    ),
+    last_updated: toIso(rowStamp(row, stampKey)),
   };
 }
 
@@ -174,18 +211,21 @@ export function buildTopHoldersList(
     TOP_HOLDERS_LIMIT_MAX,
   );
 
+  // The stamp that answers for THIS page's sort -- see topHoldersStampKey.
+  const stampKey = topHoldersStampKey(normalizedSort);
+
   let latestCapturedAt: number | null = null;
   const accounts = (Array.isArray(rows) ? rows : [])
     .filter((row) => typeof row?.ss58 === "string" && row.ss58.length > 0)
     .map((row) => {
-      const capturedAt =
-        row?.captured_at == null ? null : Number(row.captured_at);
+      const stamp = rowStamp(row, stampKey);
+      const capturedAt = stamp == null ? null : Number(stamp);
       if (capturedAt != null && Number.isFinite(capturedAt) && capturedAt > 0) {
         if (latestCapturedAt == null || capturedAt > latestCapturedAt) {
           latestCapturedAt = capturedAt;
         }
       }
-      return buildTopHoldersEntry(row);
+      return buildTopHoldersEntry(row, stampKey);
     })
     .sort((a, b) => compareTopHoldersSort(a, b, normalizedSort));
 

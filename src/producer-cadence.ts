@@ -70,6 +70,17 @@ export const PRODUCER_CADENCE_SECS = {
   /** The top-holders flow materialization, rebuilt daily. */
   top_holders_flow: 86_400,
   /**
+   * The STORE-backed half of that same artifact, republished three-hourly by
+   * TOP_HOLDERS_HOLDINGS_REFRESH_CRON (#9632).
+   *
+   * Two entries for one object, because it has two writers on two cadences and
+   * a single number could only bound one of them. Faster than its own slowest
+   * input on purpose -- `account_balances` is declared at 21,600 s above and
+   * lands irregularly inside it, so a consumer on the producer's period is at
+   * the mercy of the phase between them.
+   */
+  top_holders_holdings: 10_800,
+  /**
    * ACCOUNT_IDENTITY_POLL_SECS. Twenty-four hours, and its absence from this
    * table is what let `TABLE_FRESHNESS` bound the table it writes at TWELVE --
    * half a tick, so a healthy lane read `stale` for the back half of every

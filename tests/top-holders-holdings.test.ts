@@ -321,6 +321,23 @@ describe("topHoldersHoldings ranks total_tao across the full tables", () => {
 });
 
 describe("topHoldersHoldings declines rather than ranking on unproven inputs", () => {
+  // #9632: the leg's vintage is the OLDEST input it rests on, not the newest
+  // and not the clock. `total_tao` -- the default sort -- is a sum of both
+  // legs, and a total is exactly as current as its stalest addend.
+  test("with both legs proven the vintage is the older pass", async () => {
+    pass("account_balances_passes", BAL_AT, true);
+    pass("hotkey_alpha_passes", ALPHA_AT, true);
+    balance("5Whale", 900_000);
+    position("5Whale", "5Hot", 7, 1);
+    pool("5Hot", 7, 100);
+    price(7, 1);
+
+    const leg = await holdings(runner());
+    assert.deepEqual(leg?.sorts, ["free_tao", "delegated_tao", "total_tao"]);
+    assert.ok(BAL_AT < ALPHA_AT, "the fixture must actually differ");
+    assert.equal(leg?.capturedAt, BAL_AT);
+  });
+
   test("declines when neither pass has completed", async () => {
     balance("5Whale", 900_000);
     position("5Holder", "5Hot", 7, 1);
@@ -343,6 +360,11 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     assert.deepEqual(leg?.sorts, ["delegated_tao"]);
     assert.equal(leg?.cells.has("5Whale"), false);
     assert.equal(leg?.cells.get("5Holder")?.delegated_tao, 100);
+    // #9632: only a pass that BACKED a column contributes a stamp. The
+    // balances pass did not complete, so its captured_at must not be the
+    // vintage -- Math.min over a null would report 1970 and read as an
+    // eternally stale leg.
+    assert.equal(leg?.capturedAt, ALPHA_AT);
   });
 
   test("an in-flight pool pass leaves delegated_tao and total_tao out", async () => {
@@ -356,6 +378,7 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     const leg = await holdings(runner());
     assert.deepEqual(leg?.sorts, ["free_tao"]);
     assert.equal(leg?.cells.get("5Whale")?.free_tao, 900_000);
+    assert.equal(leg?.capturedAt, BAL_AT);
   });
 
   test("declines on an unbound DB and on an unreadable table", async () => {

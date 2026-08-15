@@ -61183,7 +61183,8 @@
                     {
                       "type": "null"
                     }
-                  ]
+                  ],
+                  "description": "When THIS ROW's figures for the requested sort were measured. Which measurement that is depends on the sort, because the two halves of the leaderboard have different producers (#9632): free_tao/delegated_tao/total_tao are refreshed from the store every three hours and report the newest COMPLETE input pass behind them, while net_flow_7d/30d/90d are recomputed daily from the lakehouse and report that scan. Null when the answering tier carries no stamp for the row."
                 },
                 "net_flow_30d": {
                   "anyOf": [
@@ -61256,7 +61257,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "How old THIS RANKING is: the newest last_updated across the accounts served, for the leg that backs the requested sort. A holdings-sorted page therefore reports its store refresh and a net_flow_*-sorted page its daily lakehouse scan -- one number for both would have to be wrong about one of them (#9632). Null when no row carries a usable stamp, which includes the cold/empty leaderboard."
           },
           "limit": {
             "maximum": 100,

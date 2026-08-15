@@ -13450,6 +13450,7 @@ export interface components {
                 delegated_tao: number | null;
                 /** @description Genuine free TAO from the System::Account chain-state scan. NULL when the tier that answered has no balance source for this row -- a page ranked by net_flow_* is served from the live flow lane, which carries no holdings columns at all (#9469). Null is never a zero balance: 0 is a measured zero. */
                 free_tao: number | null;
+                /** @description When THIS ROW's figures for the requested sort were measured. Which measurement that is depends on the sort, because the two halves of the leaderboard have different producers (#9632): free_tao/delegated_tao/total_tao are refreshed from the store every three hours and report the newest COMPLETE input pass behind them, while net_flow_7d/30d/90d are recomputed daily from the lakehouse and report that scan. Null when the answering tier carries no stamp for the row. */
                 last_updated: string | null;
                 /** @description As net_flow_7d, over the trailing 30 days. */
                 net_flow_30d: number | null;
@@ -13461,6 +13462,7 @@ export interface components {
                 /** @description free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort. NULL whenever either addend is null, rather than summing the half that is known -- a partial total would understate the account silently (#9469). */
                 total_tao: number | null;
             }[];
+            /** @description How old THIS RANKING is: the newest last_updated across the accounts served, for the leg that backs the requested sort. A holdings-sorted page therefore reports its store refresh and a net_flow_*-sorted page its daily lakehouse scan -- one number for both would have to be wrong about one of them (#9632). Null when no row carries a usable stamp, which includes the cold/empty leaderboard. */
             captured_at?: string | null;
             limit: number;
             schema_version: number;

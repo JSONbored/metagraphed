@@ -36,6 +36,11 @@ import {
 } from "../src/top-holders-flow-tier.ts";
 
 const GENERATED_AT = Date.parse("2026-08-05T01:34:00.000Z");
+/** The holdings leg's vintage, deliberately a DIFFERENT instant from the flow
+ * lane's stamp -- that difference is the whole subject of #9632, and equal
+ * fixtures would let a row carrying one stamp pass an assertion about the
+ * other. */
+const HOLDINGS_CAPTURED_AT = Date.parse("2026-08-05T00:50:48.000Z");
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** An aggregate row as the lakehouse hands it back. */
@@ -76,9 +81,14 @@ function bucketWith(
 function holdings(
   cells: Record<string, Record<string, number>>,
   sorts?: string[],
+  /** The leg's own vintage -- the OLDEST input pass it rests on (#9632).
+   * Distinct from GENERATED_AT by default so a test asserting one stamp cannot
+   * pass by reading the other. */
+  capturedAt: number = HOLDINGS_CAPTURED_AT,
 ) {
   const entries = Object.entries(cells);
   return {
+    capturedAt,
     cells: new Map(entries),
     sorts:
       sorts ??

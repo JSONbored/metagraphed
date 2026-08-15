@@ -11,6 +11,15 @@
 // -- lexicographic address order -- while the envelope echoed
 // `"sort": "net_flow_30d"`. A ranking that is not a ranking, announced as one.
 //
+// THIS LANE NO LONGER OWNS THE HOLDINGS CADENCE (#9632). It still WRITES both
+// halves -- a daily run refreshes everything at once -- but
+// src/top-holders-holdings-refresh.ts rewrites the store-backed columns over
+// this lane's row set every three hours in between, on the same artifact key.
+// Two writers, one object, and the two vintages are carried separately:
+// `generated_at` / a row's `captured_at` are the SCAN's, `holdings_generated_at`
+// / a row's `holdings_captured_at` are the store's. Nothing here may stamp the
+// latter from this lane's clock on a row it did not recompute.
+//
 // THE HOLDINGS COLUMNS ARE COMPOSED HERE TOO (#9502), beside the flow ones:
 // free_tao, delegated_tao and total_tao come from src/top-holders-holdings.ts,
 // which prices `nominator_positions` against the `hotkey_alpha` pool totals
@@ -214,7 +223,18 @@ export function buildTopHoldersFlowRows(
     // HoldingsCells names its three optional keys rather than carrying an index
     // signature, which is the stricter and more useful shape everywhere else;
     // `add` takes the open record every other caller hands it.
-    add(ss58, cells as Record<string, unknown>);
+    //
+    // STAMPED SEPARATELY FROM `captured_at`, because after #9632 the two halves
+    // of a row have genuinely different vintages: the flow cells are as old as
+    // the daily lakehouse scan and the holdings cells as old as their last
+    // store refresh, which is hours fresher. One stamp could only be a lie
+    // about one of them. A row the holdings leg never named carries no
+    // `holdings_captured_at` at all -- absent, not zero, the same rule its
+    // cells follow.
+    add(ss58, {
+      ...(cells as Record<string, unknown>),
+      holdings_captured_at: holdings?.capturedAt,
+    });
   }
 
   const candidates = [...byColdkey.values()];
@@ -270,6 +290,21 @@ export async function computeTopHoldersFlow(
     // reader below is the frozen reader's twin rather than a second dialect.
     schema_version: 1,
     generated_at: new Date(generatedAt).toISOString(),
+    // WHEN THE HOLDINGS HALF LAST RAN, which after #9632 is not the same tick:
+    // src/top-holders-holdings-refresh.ts rewrites these columns every three
+    // hours over the row set this scan produced. Written here too -- by the
+    // daily lane, which refreshes both halves at once -- so the field is
+    // present on every body a live lane wrote and its ABSENCE means the lane
+    // that wrote this predates the split.
+    //
+    // The LANE CLOCK, deliberately, unlike the per-row `holdings_captured_at`
+    // beside it: this one answers "is the refresh lane alive" for
+    // src/top-holders-staleness-watchdog.ts, and that question must not be
+    // answerable by a producer that stopped. The data's own age is the row
+    // stamp.
+    ...(holdings
+      ? { holdings_generated_at: new Date(generatedAt).toISOString() }
+      : {}),
     row_count: shaped.length,
     // WHICH SORTS THIS BODY CAN RANK, declared by the writer rather than
     // assumed by the reader. The legs fail independently and each holdings

@@ -9,6 +9,7 @@ import { describe, test } from "vitest";
 import {
   evaluateTopHoldersStaleness,
   TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS,
+  TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS,
   readTopHoldersArtifactState,
   runTopHoldersStalenessWatchdog,
   type TopHoldersArtifactState,
@@ -28,12 +29,18 @@ const NOW = Date.parse("2026-08-05T02:00:00.000Z");
  * alarm quiet on the live defect. Here it is only a fixture. */
 const FROZEN_GENERATED_AT = "2026-08-02T22:38:17.501738+00:00";
 
-/** A present artifact carrying `rows` rows, generated at `generatedAt`. */
+/** A present artifact carrying `rows` rows, generated at `generatedAt`.
+ *
+ * `holdingsGeneratedAt` defaults to the flow stamp, which is what
+ * readTopHoldersArtifactState produces for a body written before #9632 and for
+ * one the daily lane wrote whole -- so every assertion below that predates the
+ * split keeps asking exactly the question it was asking. */
 function present(
   generatedAt: string | null,
   rowCount = 2_965,
+  holdingsGeneratedAt: string | null = generatedAt,
 ): TopHoldersArtifactState {
-  return { present: true, generatedAt, rowCount };
+  return { present: true, generatedAt, holdingsGeneratedAt, rowCount };
 }
 
 function verdictFor(
@@ -191,6 +198,10 @@ describe("readTopHoldersArtifactState", () => {
     assert.deepEqual(await readTopHoldersArtifactState(bucket(frozenBody)), {
       present: true,
       generatedAt: FROZEN_GENERATED_AT,
+      // A body with no `holdings_generated_at` is one written before #9632
+      // split the lane, and for such a body the holdings columns really were
+      // written at `generated_at` -- so it reads as that, not as null.
+      holdingsGeneratedAt: FROZEN_GENERATED_AT,
       rowCount: 1,
     });
   });
@@ -232,7 +243,12 @@ describe("readTopHoldersArtifactState", () => {
       await readTopHoldersArtifactState(
         bucket({ schema_version: 1, generated_at: 17, rows: [] }),
       ),
-      { present: true, generatedAt: null, rowCount: 0 },
+      {
+        present: true,
+        generatedAt: null,
+        holdingsGeneratedAt: null,
+        rowCount: 0,
+      },
     );
   });
 });
@@ -264,14 +280,33 @@ describe("runTopHoldersStalenessWatchdog", () => {
     };
   }
 
+  /** One leg's alerts / lane rows. Every assertion below is scoped to a leg
+   * rather than to a total, because #9632 gave this ONE object a second writer
+   * on a second cadence and therefore a second verdict: a bare `length === 1`
+   * would now pass or fail on which legs happened to be stale together, which
+   * is not what any of these tests are about. */
+  const forRoute = <T extends { route?: string }>(events: T[], route: string) =>
+    events.filter((e) => e.route === route);
+  const forLane = (rows: Record<string, unknown>[], lane: string) =>
+    rows.filter((r) => r.lane === lane);
+
+  const FLOW_ROUTE = "watchdog:top-holders-flow-staleness";
+  const HOLDINGS_ROUTE = "watchdog:top-holders-holdings-staleness";
+  const FLOW_LANE = "top-holders-flow-staleness";
+  const HOLDINGS_LANE = "top-holders-holdings-staleness";
+
   /** The object the route actually serves: the daily flow projection, which
    * has carried all six sortable keys since its holdings leg started proving.
    * There is no second artifact under it any more. */
   function flowBody(
     generatedAt: string,
     rows: unknown[] = [{ ss58: "5A", net_flow_7d: 1 }],
+    /** #9632: the holdings half's own stamp. Omitted by default, which is what
+     * a body written before the split looks like -- and what the daily lane
+     * writes when its holdings leg declines. */
+    extra: Record<string, unknown> = {},
   ) {
-    return { schema_version: 1, generated_at: generatedAt, rows };
+    return { schema_version: 1, generated_at: generatedAt, rows, ...extra };
   }
 
   function envWith(body: unknown, extra: Record<string, unknown> = {}) {
@@ -303,7 +338,16 @@ describe("runTopHoldersStalenessWatchdog", () => {
         return true;
       }) as never,
     }).then((result) => ({
-      result: result as Record<string, unknown>,
+      result: result as Record<string, unknown> & {
+        // #9632 added a second verdict beside the flow one. Named here so the
+        // assertions below read it without a cast apiece.
+        holdings: {
+          stale: boolean;
+          reason: string | null;
+          age_ms: number | null;
+          threshold_ms: number;
+        };
+      },
       events,
       rows: spy.rows,
     }));
@@ -329,17 +373,24 @@ describe("runTopHoldersStalenessWatchdog", () => {
   // not age -- it was a fixed answer to a query whose inputs were gone. That
   // artifact has a live producer now and was deleted, so a tick that recorded
   // two rows recording one `ok` and one permanent `stale` records one.
-  test("writes exactly one lane row, for the object that is served", async () => {
+  test("writes one lane row per leg of the object that is served", async () => {
     const { result, rows, events } = await run(
       flowBody(new Date(NOW - HOUR).toISOString()),
     );
     assert.equal(result.ok, true);
     assert.equal(result.stale, false);
     assert.equal(result.alerted, false);
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0]!.lane, "top-holders-flow-staleness");
-    assert.equal(rows[0]!.verdict, "ok");
-    assert.equal(rows[0]!.checked_at, NOW);
+    // TWO rows for ONE object, which is the #9632 shape: the flow half and the
+    // holdings half are written by different crons and fail independently, so
+    // one row could only ever record one of them.
+    assert.deepEqual(
+      rows.map((r) => r.lane),
+      [FLOW_LANE, HOLDINGS_LANE],
+    );
+    assert.deepEqual([...new Set(rows.map((r) => r.verdict))], ["ok"]);
+    // ONE read, so both verdicts are stamped from the same clock -- two gets
+    // would leave a window in which the legs judged different bodies.
+    assert.deepEqual([...new Set(rows.map((r) => r.checked_at))], [NOW]);
     assert.deepEqual(events, [], "a healthy lane pages nobody");
   });
 
@@ -353,12 +404,13 @@ describe("runTopHoldersStalenessWatchdog", () => {
     assert.equal(result.stale, true);
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "stale");
-    assert.equal(events.length, 1, "a stalled lane must page");
-    assert.equal(events[0]!.route, "watchdog:top-holders-flow-staleness");
-    assert.equal(events[0]!.errorCode, "stale_lane");
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0]!.verdict, "stale");
-    assert.equal(rows[0]!.detail, "stale");
+    const flow = forRoute(events, FLOW_ROUTE);
+    assert.equal(flow.length, 1, "a stalled lane must page");
+    assert.equal(flow[0]!.errorCode, "stale_lane");
+    const flowRows = forLane(rows, FLOW_LANE);
+    assert.equal(flowRows.length, 1);
+    assert.equal(flowRows[0]!.verdict, "stale");
+    assert.equal(flowRows[0]!.detail, "stale");
   });
 
   // The message must not promise a fallback that no longer exists. It used to
@@ -368,7 +420,9 @@ describe("runTopHoldersStalenessWatchdog", () => {
     const { events } = await run(
       flowBody(new Date(NOW - 72 * HOUR).toISOString()),
     );
-    const message = String(events[0]!.error?.message ?? "");
+    const message = String(
+      forRoute(events, FLOW_ROUTE)[0]!.error?.message ?? "",
+    );
     assert.match(message, /serve an EMPTY leaderboard/);
     assert.match(message, /no second tier under it/);
     assert.doesNotMatch(message, /frozen artifact/);
@@ -380,8 +434,8 @@ describe("runTopHoldersStalenessWatchdog", () => {
     const stale = flowBody(new Date(NOW - 72 * HOUR).toISOString());
     const first = await run(stale);
     const second = await run(stale);
-    assert.equal(first.events.length, 1);
-    assert.equal(second.events.length, 1);
+    assert.equal(forRoute(first.events, FLOW_ROUTE).length, 1);
+    assert.equal(forRoute(second.events, FLOW_ROUTE).length, 1);
   });
 
   test("an absent artifact pages, because the route then serves an empty list", async () => {
@@ -389,13 +443,16 @@ describe("runTopHoldersStalenessWatchdog", () => {
     assert.equal(result.stale, true);
     assert.equal(result.reason, "absent");
     assert.equal(result.age_ms, null);
-    assert.equal(events.length, 1);
-    assert.equal(rows[0]!.detail, "absent");
-    assert.equal(
-      rows[0]!.age_ms,
-      null,
-      "an absent object has no measurable age",
-    );
+    // BOTH legs page here, and that is the one duplicate worth having: an
+    // absent object is genuinely both lanes' problem, and neither operator
+    // should have to infer it from the other's alert.
+    assert.equal(forRoute(events, FLOW_ROUTE).length, 1);
+    assert.equal(forRoute(events, HOLDINGS_ROUTE).length, 1);
+    for (const lane of [FLOW_LANE, HOLDINGS_LANE]) {
+      const [row] = forLane(rows, lane);
+      assert.equal(row!.detail, "absent", lane);
+      assert.equal(row!.age_ms, null, "an absent object has no measurable age");
+    }
   });
 
   test("an empty artifact is reported as empty, not stale", async () => {
@@ -424,6 +481,106 @@ describe("runTopHoldersStalenessWatchdog", () => {
     );
     assert.equal(result.stale, true);
     assert.equal(result.threshold_ms, HOUR);
+  });
+
+  // #9632. THE CASE THE WHOLE SPLIT EXISTS TO MAKE VISIBLE: the daily lane is
+  // writing on schedule, so the flow leg is healthy and the old single-verdict
+  // watchdog would have reported `ok` -- while the store-backed columns the
+  // leaderboard ranks by have quietly drifted back to a day stale, which is
+  // exactly the state #9632 was filed about.
+  test("a healthy flow leg does not vouch for a stalled holdings leg", async () => {
+    const { result, events, rows } = await run(
+      flowBody(new Date(NOW - HOUR).toISOString(), undefined, {
+        holdings_generated_at: new Date(NOW - 24 * HOUR).toISOString(),
+      }),
+    );
+    assert.equal(result.stale, false, "the flow half really is fresh");
+    assert.equal(result.alerted, true, "and the tick still pages");
+    assert.equal(result.holdings.stale, true);
+    assert.equal(result.holdings.reason, "stale");
+    assert.equal(result.holdings.age_ms, 24 * HOUR);
+    assert.deepEqual(forRoute(events, FLOW_ROUTE), []);
+    assert.equal(forRoute(events, HOLDINGS_ROUTE).length, 1);
+    assert.equal(forLane(rows, FLOW_LANE)[0]!.verdict, "ok");
+    assert.equal(forLane(rows, HOLDINGS_LANE)[0]!.verdict, "stale");
+  });
+
+  // And the converse, so the two bounds cannot be silently collapsed into one:
+  // the refresh keeps ticking while the daily lakehouse scan dies.
+  test("a healthy holdings leg does not vouch for a stalled flow leg", async () => {
+    const { result, events } = await run(
+      flowBody(new Date(NOW - 72 * HOUR).toISOString(), undefined, {
+        holdings_generated_at: new Date(NOW - HOUR).toISOString(),
+      }),
+    );
+    assert.equal(result.stale, true);
+    assert.equal(result.holdings.stale, false);
+    assert.equal(forRoute(events, FLOW_ROUTE).length, 1);
+    assert.deepEqual(forRoute(events, HOLDINGS_ROUTE), []);
+  });
+
+  // The bound is two missed ticks of a three-hourly cron. A twelve-hour-old
+  // holdings half is well past it, and a two-hour-old one is not -- the
+  // asymmetry with the flow leg's 48 h is the point, and a single shared
+  // threshold would lose it.
+  test("the holdings bound is six hours, not the flow leg's forty-eight", async () => {
+    const at = async (hours: number) =>
+      (
+        await run(
+          flowBody(new Date(NOW - HOUR).toISOString(), undefined, {
+            holdings_generated_at: new Date(NOW - hours * HOUR).toISOString(),
+          }),
+        )
+      ).result.holdings.stale;
+    assert.equal(TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS, 6 * HOUR);
+    assert.equal(await at(2), false);
+    assert.equal(await at(5.9), false);
+    assert.equal(await at(12), true);
+    // The same age the flow leg calls perfectly healthy.
+    assert.equal(await at(24), true);
+  });
+
+  test("the holdings threshold is overridable per-deployment", async () => {
+    const { result } = await run(
+      flowBody(new Date(NOW - HOUR).toISOString(), undefined, {
+        holdings_generated_at: new Date(NOW - 2 * HOUR).toISOString(),
+      }),
+      { TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS: String(HOUR) },
+    );
+    assert.equal(result.holdings.stale, true);
+    assert.equal(result.holdings.threshold_ms, HOUR);
+  });
+
+  // A body written before the split carries no `holdings_generated_at`, and
+  // reading it as `generated_at` is the CORRECT reading rather than a hole: the
+  // daily lane wrote both halves at that instant. The consequence is deliberate
+  // -- on the first tick after this deploys, the holdings half really is a day
+  // old and this really should fire until the first refresh lands.
+  test("a pre-split body is judged on its flow stamp, and that is not a suppression", async () => {
+    const { result } = await run(
+      flowBody(new Date(NOW - 24 * HOUR).toISOString()),
+    );
+    assert.equal(result.stale, false, "24 h is inside the flow bound");
+    assert.equal(result.holdings.stale, true, "and outside the holdings one");
+    assert.equal(result.holdings.age_ms, 24 * HOUR);
+  });
+
+  // The message has to name the lane an operator would go and look at. A
+  // holdings alert that read like the flow one would send them to the daily
+  // lakehouse scan, which is working.
+  test("the holdings page names the columns and says the ranking is wrong, not missing", async () => {
+    const { events } = await run(
+      flowBody(new Date(NOW - HOUR).toISOString(), undefined, {
+        holdings_generated_at: new Date(NOW - 24 * HOUR).toISOString(),
+      }),
+    );
+    const message = String(
+      forRoute(events, HOLDINGS_ROUTE)[0]!.error?.message ?? "",
+    );
+    assert.match(message, /free_tao/);
+    assert.match(message, /delegated_tao/);
+    assert.match(message, /still RANKS on them/);
+    assert.match(message, /24\.0 h old/);
   });
 
   test("`flow` is still on the summary, for a reader written against the old shape", async () => {

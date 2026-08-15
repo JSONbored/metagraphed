@@ -1,14 +1,16 @@
 // GET /api/v1/accounts/top-holders (types-epic B batch 4, #8058). Modeled on
 // account_balances + nominator_positions/neurons tier data -- no static file.
-// TWO TIERS SINCE #9469: `net_flow_7d/30d/90d` are recomputed daily from
-// chain.account_events and are live; `free_tao`/`delegated_tao`/`total_tao`
-// still come from the fixed 2026-08-02 materialization, because neither has a
-// live source (src/top-holders-flow-tier.ts's header measures both gaps). Each
-// tier answers only the sorts it can rank, so the three holdings columns are
-// now NULLABLE -- a net_flow_*-ranked page carries rows the frozen snapshot
-// has never seen, and zeroing them there would assert a balance nothing
-// measured. Modeled from src/top-holders.ts's buildTopHoldersList(), cross-
-// checked against the hand-edited TopHoldersArtifact component it replaces.
+// TWO LEGS SINCE #9469, ON TWO CADENCES SINCE #9632: `net_flow_7d/30d/90d` are
+// recomputed daily from chain.account_events; `free_tao`/`delegated_tao`/
+// `total_tao` are composed from the store and republished every three hours.
+// (Both were frozen 2026-08-02 materializations when this file was written --
+// #9502 gave the holdings columns a live source and #9632 gave them their own
+// producer, so the sentence that used to be here is gone rather than edited.)
+// Each leg answers only the sorts it can rank, so the three holdings columns
+// are NULLABLE -- a net_flow_*-ranked page carries rows the holdings leg has
+// never seen, and zeroing them there would assert a balance nothing measured.
+// Modeled from src/top-holders.ts's buildTopHoldersList(), cross-checked
+// against the hand-edited TopHoldersArtifact component it replaces.
 //
 // Real finding (bucket b): the hand-edited `sort` enum only listed
 // ["total_tao","free_tao","delegated_tao"] -- TOP_HOLDERS_SORTS also allows
@@ -32,6 +34,26 @@ export const TOP_HOLDERS_SORT_VALUES = [
   "net_flow_7d",
   "net_flow_30d",
   "net_flow_90d",
+] as const;
+
+/**
+ * Which of those sorts the STORE-backed holdings leg answers (#9632).
+ *
+ * The two legs are published on different cadences now -- the flow ranking
+ * daily from the lakehouse, these three every three hours from the store -- so
+ * a page's `captured_at` depends on which leg backs the sort it was ranked by,
+ * and src/top-holders.ts needs to know the split to answer that.
+ *
+ * Declared HERE, beside the enum it partitions, rather than imported from
+ * src/top-holders-holdings.ts: that module reaches the Postgres read path, and
+ * pulling it into the formatter would drag the driver into every build that
+ * only wanted to shape a row. tests/top-holders-holdings-refresh.test.ts pins
+ * this against the lane's own three constants, so the copy cannot drift.
+ */
+export const TOP_HOLDERS_HOLDINGS_SORT_VALUES = [
+  "free_tao",
+  "delegated_tao",
+  "total_tao",
 ] as const;
 
 const TopHoldersEntrySchema = z
@@ -72,7 +94,12 @@ const TopHoldersEntrySchema = z
       .number()
       .nullable()
       .describe("As net_flow_7d, over the trailing 90 days."),
-    last_updated: z.string().nullable(),
+    last_updated: z
+      .string()
+      .nullable()
+      .describe(
+        "When THIS ROW's figures for the requested sort were measured. Which measurement that is depends on the sort, because the two halves of the leaderboard have different producers (#9632): free_tao/delegated_tao/total_tao are refreshed from the store every three hours and report the newest COMPLETE input pass behind them, while net_flow_7d/30d/90d are recomputed daily from the lakehouse and report that scan. Null when the answering tier carries no stamp for the row.",
+      ),
   })
   .strict();
 
@@ -81,7 +108,13 @@ export const TopHoldersArtifactSchema = z
     schema_version: z.int(),
     sort: z.enum(TOP_HOLDERS_SORT_VALUES),
     limit: z.int().min(1).max(100),
-    captured_at: z.string().nullable().optional(),
+    captured_at: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "How old THIS RANKING is: the newest last_updated across the accounts served, for the leg that backs the requested sort. A holdings-sorted page therefore reports its store refresh and a net_flow_*-sorted page its daily lakehouse scan -- one number for both would have to be wrong about one of them (#9632). Null when no row carries a usable stamp, which includes the cold/empty leaderboard.",
+      ),
     account_count: z.int().min(0),
     accounts: z.array(TopHoldersEntrySchema),
   })

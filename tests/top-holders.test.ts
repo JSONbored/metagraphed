@@ -3,6 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildTopHoldersList,
   compareTopHoldersSort,
+  topHoldersStampKey,
   TOP_HOLDERS_SORTS,
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
@@ -142,6 +143,93 @@ describe("buildTopHoldersList", () => {
       { ss58: "5B", free_tao: 1, delegated_tao: 0, captured_at: 200 },
     ]) as Row;
     assert.equal(data.captured_at, new Date(200).toISOString());
+  });
+
+  // #9632. ONE ROW, TWO VINTAGES, since the holdings columns got their own
+  // three-hourly producer: `net_flow_*` is as old as the daily lakehouse scan
+  // and the holdings cells as old as their last store refresh. Reporting one
+  // number for both would have to be wrong about one of them, and the number a
+  // caller wants is the age of the column they ranked by.
+  describe("two vintages, one artifact", () => {
+    const FLOW_AT = 1_786_800_000_000;
+    const HOLDINGS_AT = 1_786_818_000_000;
+    const rows = [
+      {
+        ss58: "5A",
+        free_tao: 10,
+        delegated_tao: 1,
+        net_flow_30d: 5,
+        captured_at: FLOW_AT,
+        holdings_captured_at: HOLDINGS_AT,
+      },
+    ];
+
+    test("a holdings-sorted page reports the holdings vintage", () => {
+      for (const sort of ["total_tao", "free_tao", "delegated_tao"]) {
+        const data = buildTopHoldersList(rows, { sort }) as Row;
+        assert.equal(
+          data.captured_at,
+          new Date(HOLDINGS_AT).toISOString(),
+          sort,
+        );
+        assert.equal(
+          (data.accounts as Row[])[0]!.last_updated,
+          new Date(HOLDINGS_AT).toISOString(),
+          sort,
+        );
+      }
+    });
+
+    test("a flow-sorted page reports the flow vintage", () => {
+      for (const sort of ["net_flow_7d", "net_flow_30d", "net_flow_90d"]) {
+        const data = buildTopHoldersList(rows, { sort }) as Row;
+        assert.equal(data.captured_at, new Date(FLOW_AT).toISOString(), sort);
+      }
+    });
+
+    // A body written before the split carries no `holdings_captured_at` at
+    // all. Falling back to `captured_at` is what keeps such an artifact
+    // answering exactly as it did, rather than reporting a null vintage for
+    // three of six sorts the moment this deploys.
+    test("a pre-split row falls back to its one stamp", () => {
+      const data = buildTopHoldersList(
+        [{ ss58: "5A", free_tao: 10, delegated_tao: 1, captured_at: FLOW_AT }],
+        { sort: "total_tao" },
+      ) as Row;
+      assert.equal(data.captured_at, new Date(FLOW_AT).toISOString());
+    });
+
+    // The mapping itself, stated once so it cannot be re-derived from a
+    // string prefix somewhere else.
+    test("every sort maps to exactly one stamp", () => {
+      assert.deepEqual(
+        Object.fromEntries(
+          TOP_HOLDERS_SORTS.map((s) => [s, topHoldersStampKey(s)]),
+        ),
+        {
+          total_tao: "holdings_captured_at",
+          free_tao: "holdings_captured_at",
+          delegated_tao: "holdings_captured_at",
+          net_flow_7d: "captured_at",
+          net_flow_30d: "captured_at",
+          net_flow_90d: "captured_at",
+        },
+      );
+    });
+
+    // The envelope's stamp is a MAX over the rows it actually served, so a
+    // page mixing a refreshed row with a flow-only one reports the freshest
+    // holdings figure rather than being dragged back by a row that has none.
+    test("a flow-only row does not drag a holdings page's vintage back", () => {
+      const data = buildTopHoldersList(
+        [...rows, { ss58: "5B", net_flow_30d: 9, captured_at: FLOW_AT }],
+        { sort: "free_tao" },
+      ) as Row;
+      assert.equal(data.captured_at, new Date(HOLDINGS_AT).toISOString());
+      // ...and that row still reports its own age, which is all it has.
+      const b = (data.accounts as Row[]).find((a) => a.ss58 === "5B");
+      assert.equal(b!.last_updated, new Date(FLOW_AT).toISOString());
+    });
   });
 
   test("skips a row with no ss58", () => {

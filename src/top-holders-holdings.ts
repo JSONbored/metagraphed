@@ -1,6 +1,13 @@
 // The HOLDINGS leg of GET /api/v1/accounts/top-holders: free_tao,
 // delegated_tao and total_tao, composed live beside the flow columns (#9502).
 //
+// TWO CALLERS SINCE #9632, on two cadences: the daily flow lane, which rebuilds
+// the whole artifact, and src/top-holders-holdings-refresh.ts, which runs this
+// alone every three hours and merges the result onto the flow ranking already
+// published. Nothing here changes between them -- this leg selects its own
+// top-N over the FULL tables either way, which is exactly why the refresh is
+// not a subset of a stale row set.
+//
 // WHAT THIS REPLACES. All three came from src/top-holders-artifact.ts's
 // one-shot 2026-08-02 materialization, whose `captured_at` is a fixed date
 // rather than a refresh clock: an account that moved TAO since was misreported
@@ -89,6 +96,22 @@ export interface HoldingsLeg {
   cells: Map<string, HoldingsCells>;
   /** The holdings sorts this leg proved it can rank. */
   sorts: string[];
+  /**
+   * How old these numbers are: the OLDEST input pass they rest on.
+   *
+   * Not the clock at compute time, which is what a lane stamp would be and
+   * would overstate freshness by however long the producer has been quiet --
+   * measured 2026-08-15, `account_balances`' newest complete pass was 5 h old
+   * when read, so a lane-clock stamp would have announced 0 minutes. The
+   * refresh lane exists precisely to make this number small, so it has to be
+   * the number that can fail to get smaller.
+   *
+   * OLDEST rather than newest because the columns are consumed together and
+   * `total_tao` -- the default sort -- is a sum of both legs: a total is
+   * exactly as current as its stalest addend. When only one leg is proven
+   * there is only one stamp to take.
+   */
+  capturedAt: number;
 }
 
 /**
@@ -313,5 +336,18 @@ export async function topHoldersHoldings(
       (entry) => typeof entry[key as keyof HoldingsCells] === "number",
     ),
   );
-  return sorts.length ? { cells, sorts } : null;
+  // No `sorts.length` guard here, and that is not an omission: an entry reaches
+  // `cells` only when at least one of its three keys is a number, so a non-empty
+  // map always declares at least one sort and the `cells.size === 0` return
+  // above IS that check. A second one would be a branch nothing can reach.
+  //
+  // Only the passes that actually backed a column count. `mayRankAccountBalances`
+  // / `mayPriceHotkeyAlpha` are the same predicates that decided whether the leg
+  // ran at all, so an unproven leg contributes no stamp rather than a null one
+  // that Math.min would read as 0 and report as 1970.
+  const stamps = [
+    ...(free ? [balances.capturedAt as number] : []),
+    ...(delegated ? [alpha.capturedAt as number] : []),
+  ];
+  return { cells, sorts, capturedAt: Math.min(...stamps) };
 }
