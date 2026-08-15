@@ -60,6 +60,41 @@ test("deliverAlertMatch: webhook channel POSTs the built request and resolves tr
   assert.equal(result, true);
 });
 
+test('deliverAlertMatch: a trigger with NO destination declines instead of posting to "undefined"', async () => {
+  // Regression coverage for a path that was previously unpinned. The builders
+  // have always guarded their own destination, so this outcome predates the
+  // typing change -- what it did not have was a test, which is how a later
+  // "simplification" of those guards would have gone unnoticed (#11339).
+  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  const outcomes: unknown[] = [];
+  const result = await deliverAlertMatch(
+    triggerRow({ channel: "webhook", destination: undefined }),
+    { table: "account_events" },
+    mockEnv(),
+    fetchFn,
+    { onOutcome: (outcome) => outcomes.push(outcome) },
+  );
+  assert.equal(result, false);
+  assert.equal(fetchFn.mock.calls.length, 0, "no request left the Worker");
+  assert.deepEqual(outcomes, [
+    { success: false, statusCode: null, responseSnippet: null },
+  ]);
+});
+
+test("deliverAlertMatch: an EMPTY destination declines too", async () => {
+  // "" is falsy but IS a string, so a `typeof` check alone lets it through --
+  // which is why the guard tests both.
+  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  const result = await deliverAlertMatch(
+    triggerRow({ channel: "webhook", destination: "" }),
+    { table: "account_events" },
+    mockEnv(),
+    fetchFn,
+  );
+  assert.equal(result, false);
+  assert.equal(fetchFn.mock.calls.length, 0);
+});
+
 test("deliverAlertMatch: falls back to the real DoH resolver when no resolveHostnames is injected", async () => {
   const fetchFn = vi.fn(async (url) => {
     const target = new URL(String(url));

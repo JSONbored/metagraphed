@@ -787,7 +787,8 @@ export function createAsyncRepeater<T>({
   onOverflow?: (() => void) | null;
 } = {}): AsyncRepeater<T> {
   const pending: T[] = [];
-  let waitingResolve: ((result: IteratorResult<T>) => void) | null = null;
+  let waitingResolve: ((result: IteratorResult<T, undefined>) => void) | null =
+    null;
   let finished = false;
   const finish = () => {
     if (finished) return;
@@ -796,7 +797,7 @@ export function createAsyncRepeater<T>({
     if (waitingResolve) {
       const resolve = waitingResolve;
       waitingResolve = null;
-      resolve({ value: undefined as unknown as T, done: true });
+      resolve({ value: undefined, done: true });
     }
   };
   return {
@@ -820,16 +821,14 @@ export function createAsyncRepeater<T>({
     },
     [Symbol.asyncIterator]() {
       return {
-        next(): Promise<IteratorResult<T>> {
-          if (pending.length > 0) {
-            return Promise.resolve({
-              value: pending.shift() as T,
-              done: false,
-            });
+        next(): Promise<IteratorResult<T, undefined>> {
+          const next = pending.shift();
+          if (next !== undefined) {
+            return Promise.resolve({ value: next, done: false });
           }
           if (finished) {
             return Promise.resolve({
-              value: undefined as unknown as T,
+              value: undefined,
               done: true,
             });
           }
@@ -837,10 +836,10 @@ export function createAsyncRepeater<T>({
             waitingResolve = resolve;
           });
         },
-        return(): Promise<IteratorResult<T>> {
+        return(): Promise<IteratorResult<T, undefined>> {
           finish();
           return Promise.resolve({
-            value: undefined as unknown as T,
+            value: undefined,
             done: true,
           });
         },

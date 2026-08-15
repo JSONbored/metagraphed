@@ -571,7 +571,7 @@ export class NeonWriteBufferHub implements DurableObject {
       return Response.json({ error: "malformed statement" }, { status: 400 });
     }
     const result = await enqueueStatement(
-      this.state.storage as unknown as BufferStorage,
+      this.state.storage,
       statement,
       Date.now(),
     );
@@ -596,7 +596,7 @@ export class NeonWriteBufferHub implements DurableObject {
   }
 
   async alarm(): Promise<void> {
-    const storage = this.state.storage as unknown as BufferStorage;
+    const storage = this.state.storage;
     let outcome: FlushOutcome;
     try {
       // `this.state` IS the WaitUntilLike the flush needs -- DurableObjectState

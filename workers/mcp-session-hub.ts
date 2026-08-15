@@ -572,13 +572,17 @@ export class McpSessionHub implements DurableObject {
    */
   private clearStreamState(): void {
     this.streamController = null;
-    // Casts: @types/node's global clear* overloads (auto-included repo-wide
-    // since scripts/tests run under real Node) do not cleanly accept a
-    // `Timeout | null` union even though each half is individually valid --
-    // see the workers/-specifics note in docs/typescript-migration-checklist.md.
-    clearTimeout(this.streamCloseTimer as unknown as number);
+    // The union was the problem, not the handle. @types/node's global `clear*`
+    // overloads (auto-included repo-wide, since scripts and tests run under
+    // real Node) accept `Timeout` and accept `number`, but not
+    // `Timeout | null` -- so both sites asserted the whole argument rather
+    // than ruling out the `null` half. A guard does it without a cast, and
+    // keeps the handle's real type checked (#11339).
+    if (this.streamCloseTimer !== null) clearTimeout(this.streamCloseTimer);
     this.streamCloseTimer = null;
-    clearInterval(this.streamKeepaliveTimer as unknown as number);
+    if (this.streamKeepaliveTimer !== null) {
+      clearInterval(this.streamKeepaliveTimer);
+    }
     this.streamKeepaliveTimer = null;
   }
 

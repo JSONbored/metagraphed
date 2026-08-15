@@ -250,10 +250,26 @@ export async function deliverAlertMatch(
   } = {},
 ): Promise<boolean> {
   let request: { url: string; init?: RequestInit } | null | undefined;
-  // Trigger's `destination` lives behind its index signature (the shape
-  // varies by channel), but every delivered trigger carries one — the
-  // alert-delivery builders below require it as a concrete string field.
-  const alertTrigger = trigger as unknown as AlertTrigger;
+  // Trigger's `destination` lives behind its index signature (the shape varies
+  // by channel) while every delivery builder below takes it as a concrete
+  // string, so this used to be asserted: `trigger as unknown as AlertTrigger`.
+  //
+  // Checking it changes no OUTCOME -- each builder already guards its own
+  // destination (`isPublicWebhookUrl` and its siblings) and returns null, so a
+  // trigger without one already declined. What changes is that the type is now
+  // true: the cast claimed a string was present, and nothing had established
+  // that (#11339). The early return keeps the one decline shape the channels
+  // below already use.
+  const destination = trigger.destination;
+  if (typeof destination !== "string" || destination === "") {
+    onOutcome?.({ success: false, statusCode: null, responseSnippet: null });
+    return false;
+  }
+  const alertTrigger: AlertTrigger = {
+    id: trigger.id,
+    name: trigger.name,
+    destination,
+  };
   const alertPayload = payload as Record<string, unknown> | null | undefined;
   switch (trigger.channel) {
     case "webhook":
