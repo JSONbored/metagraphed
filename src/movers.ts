@@ -1,6 +1,9 @@
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
 import { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX } from "./route-limits.ts";
+// Shared with the turnover family rather than reimplemented: same rule, one
+// definition, so the truncation contract cannot drift between routes.
+import { windowCoverage } from "./turnover.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
   round9OrZero,
@@ -312,6 +315,29 @@ export function buildMovers(
     window: normalizedWindow,
     start_date: startDate ?? null,
     end_date: endDate ?? null,
+    // #10798/#11360/#11365. `neuron_daily` is ~36 days deep, so `?window=90d`
+    // was answered with 36 days and labelled "90d" -- measured on production
+    // 2026-08-15, start_date came back as the store floor 2026-07-10 rather
+    // than 90 days before the end, while `?window=30d` was genuinely covered.
+    //
+    // It matters in ONE direction, which is why silence was the wrong default:
+    // movers reports DELTAS between the window's endpoints, so a shortened span
+    // compares closer dates and understates every change it ranks by. A subnet
+    // that doubled its stake over a quarter reads as a quiet month, and the
+    // leaderboard is ORDERED by that understated delta.
+    //
+    // Uses the window resolved above rather than the caller's raw string, so an
+    // unsupported label reports the default's length instead of guessing.
+    // Narrowed here rather than loosening windowCoverage: this builder takes its
+    // dates as `unknown` on purpose, and a non-string bound is unusable rather
+    // than merely unparsed -- which windowCoverage already reports as null.
+    ...windowCoverage(
+      typeof startDate === "string" ? startDate : null,
+      typeof endDate === "string" ? endDate : null,
+      normalizedWindow == null
+        ? null
+        : (MOVERS_WINDOWS[normalizedWindow] ?? null),
+    ),
     sort: normalizedSort,
     subnet_count: ranked.length,
     network: buildNetworkSummary(

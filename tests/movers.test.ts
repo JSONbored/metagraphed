@@ -702,3 +702,68 @@ describe("loadSubnetMovers", () => {
     assert.equal(data.subnet_count, 0);
   });
 });
+
+describe("window coverage — a truncated span reorders the leaderboard", () => {
+  // #10798/#11360/#11365. Measured on production 2026-08-15:
+  // /api/v1/subnets/movers?window=90d returned start_date 2026-07-10 -- the
+  // store floor, not 90 days back -- while ?window=30d was genuinely covered.
+  //
+  // This route is the sharper case of the family. Every figure it publishes is
+  // a DELTA between the window's endpoints, and the leaderboard is ORDERED by
+  // that delta, so a shortened span does not merely shrink the numbers: it can
+  // change which subnets rank at all.
+
+  test("a 90d window answered with 36 days is flagged", () => {
+    const data = buildMovers([], [], {
+      window: "90d",
+      startDate: "2026-07-10",
+      endDate: "2026-08-15",
+    });
+    assert.equal(data.covered_days, 36);
+    assert.equal(data.requested_days, 90);
+    assert.equal(data.window_truncated, true);
+  });
+
+  test("a fully covered window is not flagged", () => {
+    // Positive control: a check that flagged everything would pass the case
+    // above while saying nothing.
+    const data = buildMovers([], [], {
+      window: "30d",
+      startDate: "2026-07-16",
+      endDate: "2026-08-15",
+    });
+    assert.equal(data.covered_days, 30);
+    assert.equal(data.window_truncated, false);
+  });
+
+  test("unresolvable bounds are null, never false", () => {
+    const data = buildMovers([], [], { window: "90d" });
+    assert.equal(data.covered_days, null);
+    assert.equal(data.requested_days, 90);
+    assert.equal(data.window_truncated, null);
+  });
+
+  test("a non-string bound is unusable, not silently parsed", () => {
+    // This builder takes its dates as `unknown` by contract.
+    const data = buildMovers([], [], {
+      window: "30d",
+      startDate: 20260716,
+      endDate: "2026-08-15",
+    });
+    assert.equal(data.covered_days, null);
+    assert.equal(data.window_truncated, null);
+  });
+
+  test("an unsupported label resolves to the default's length, not a guess", () => {
+    // buildMovers normalizes an unknown window to 30d, so the reported
+    // requested_days must describe what was actually measured.
+    const data = buildMovers([], [], {
+      window: "bogus",
+      startDate: "2026-07-16",
+      endDate: "2026-08-15",
+    });
+    assert.equal(data.window, "30d");
+    assert.equal(data.requested_days, 30);
+    assert.equal(data.window_truncated, false);
+  });
+});

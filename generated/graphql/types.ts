@@ -6996,15 +6996,21 @@ export type SubnetMover = {
 
 export type SubnetMovers = {
   __typename?: 'SubnetMovers';
+  /** Days actually spanned between start_date and end_date. Null when either bound is unresolvable. */
+  covered_days?: Maybe<Scalars['Int']['output']>;
   end_date?: Maybe<Scalars['String']['output']>;
   movers: Array<SubnetMover>;
   /** Network-wide boundary totals for the movers window, summed across every ranked subnet (not just the returned page). */
   network: SubnetMoversNetwork;
+  /** Days the requested window asked for (7, 30 or 90). Null when no window was resolved. */
+  requested_days?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   sort: Scalars['String']['output'];
   start_date?: Maybe<Scalars['String']['output']>;
   subnet_count: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
+  /** True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: every figure here is a DELTA between the window's endpoints, so a shortened span understates each change -- and the leaderboard is ORDERED by that understated delta, so truncation reorders it, not just shrinks it. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete. */
+  window_truncated?: Maybe<Scalars['Boolean']['output']>;
 };
 
 /** Network-wide boundary totals for the movers window, summed across every ranked subnet (not just the returned page). */
@@ -13545,14 +13551,17 @@ export type SubnetMoverResolvers<ContextType = GqlContext, ParentType extends Re
 }>;
 
 export type SubnetMoversResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMovers'] = ResolversParentTypes['SubnetMovers']> = ResolversObject<{
+  covered_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   end_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   movers?: Resolver<Array<ResolversTypes['SubnetMover']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['SubnetMoversNetwork'], ParentType, ContextType>;
+  requested_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   start_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  window_truncated?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
 export type SubnetMoversNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMoversNetwork'] = ResolversParentTypes['SubnetMoversNetwork']> = ResolversObject<{

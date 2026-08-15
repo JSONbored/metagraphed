@@ -12074,6 +12074,8 @@ export interface components {
             window?: string | null;
         };
         SubnetMoversArtifact: {
+            /** @description Days actually spanned between start_date and end_date. Null when either bound is unresolvable. */
+            covered_days: number | null;
             end_date: string | null;
             movers: {
                 emission_delta_alpha: number;
@@ -12112,12 +12114,16 @@ export interface components {
                 total_validators_start: number;
                 unchanged: number;
             };
+            /** @description Days the requested window asked for (7, 30 or 90). Null when no window was resolved. */
+            requested_days: number | null;
             schema_version: number;
             /** @enum {string} */
             sort: "stake" | "emission" | "validators" | "neurons";
             start_date: string | null;
             subnet_count: number;
             window: ("7d" | "30d" | "90d") | null;
+            /** @description True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: every figure here is a DELTA between the window's endpoints, so a shortened span understates each change -- and the leaderboard is ORDERED by that understated delta, so truncation reorders it, not just shrinks it. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete. */
+            window_truncated: boolean | null;
         };
         /** @description One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope. */
         SubnetOhlcArtifact: {
@@ -50359,6 +50365,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "covered_days": 1,
                      *         "end_date": "2026-06-01",
                      *         "movers": [
                      *           {
@@ -50395,11 +50402,13 @@ export interface operations {
                      *           "total_validators_start": 1,
                      *           "unchanged": 1
                      *         },
+                     *         "requested_days": 1,
                      *         "schema_version": 1,
                      *         "sort": "stake",
                      *         "start_date": "2026-06-01",
                      *         "subnet_count": 1,
-                     *         "window": "7d"
+                     *         "window": "7d",
+                     *         "window_truncated": false
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
