@@ -871,6 +871,15 @@ export const MCP_ERROR_TYPE_BY_CODE: Record<string, McpErrorType> = {
   // `_rate_limited$` suffixes do not match, and the rest are unlike anything
   // this codebase's handlers mint.
   bad_request: "validation",
+  // The four faults `bad_request` used to be. All `validation` -- they are OUR
+  // refusal of a caller's request, the same reading bad_request already
+  // carried -- but each names what to change: 27 of these arrived from real
+  // Claude clients in a week under one label that said only "something was
+  // wrong with your POST".
+  invalid_json: "validation",
+  unsupported_protocol_version: "validation",
+  empty_batch: "validation",
+  batch_too_large: "validation",
   blocked: "permission",
   body_too_large: "validation",
   daily_quota: "rate_limited",

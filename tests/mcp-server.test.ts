@@ -33,6 +33,8 @@ import {
   toolResultContent,
   MCP_SERVER_INFO,
   MAX_MCP_BATCH_LENGTH,
+  MCP_REFUSAL_HEADER,
+  mcpRefusalReason,
   MAX_MCP_BODY_BYTES,
   listToolDefinitions,
   UNTRUSTED_DATA_NOTE,
@@ -1338,6 +1340,64 @@ describe("MCP transport handling", () => {
     assert.equal(res.body.error.code, -32600);
     assert.match(res.body.error.message, /batch length exceeds/);
     assert.deepEqual(calls, []);
+  });
+
+  // Four faults wore one label. `bad_request` told a reader that something was
+  // wrong with a POST and nothing about WHICH -- and 27 of them arrived from
+  // real Claude clients in a week, undiagnosable. Each gate names itself now,
+  // through the same header mechanism 429 already splits on.
+  //
+  // Driven through the real entry point rather than by handing mcpRefusalReason
+  // a synthetic Response: what has to hold is that the GATES set the header, and
+  // a unit test of the mapping cannot see whether they do.
+  test("each 400 gate names its own refusal, so telemetry can tell them apart", async () => {
+    const seen: Array<[string, string | null]> = [];
+
+    const notJson = await handleMcpRequest(
+      new Request(MCP_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{not json",
+      }),
+      {} as unknown as Env,
+      makeDeps(),
+    );
+    seen.push(["invalid_json", notJson.headers.get(MCP_REFUSAL_HEADER)]);
+
+    const badVersion = await rpc(
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      { headers: { "mcp-protocol-version": "1999-01-01" } },
+    );
+    seen.push([
+      "unsupported_protocol_version",
+      badVersion.headers.get(MCP_REFUSAL_HEADER),
+    ]);
+
+    const empty = await rpc([]);
+    seen.push(["empty_batch", empty.headers.get(MCP_REFUSAL_HEADER)]);
+
+    const tooLong = await rpc(
+      Array.from({ length: MAX_MCP_BATCH_LENGTH + 1 }, (_, index) => ({
+        jsonrpc: "2.0",
+        id: index + 1,
+        method: "tools/list",
+      })),
+    );
+    seen.push(["batch_too_large", tooLong.headers.get(MCP_REFUSAL_HEADER)]);
+
+    for (const [expected, actual] of seen) {
+      assert.equal(actual, expected);
+      // And the label the recorder derives from it, which is the whole point.
+      assert.equal(
+        mcpRefusalReason(
+          new Response(null, {
+            status: 400,
+            headers: { [MCP_REFUSAL_HEADER]: actual as string },
+          }),
+        ),
+        expected,
+      );
+    }
   });
 
   test("an oversized decoded body is rejected before JSON parsing", async () => {
