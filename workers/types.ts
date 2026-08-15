@@ -18,5 +18,7 @@ export type DataApiWorkerEnv = DataApiEnv;
 /** The registry sync Worker (wrangler.registry.jsonc). */
 export type RegistrySyncWorkerEnv = RegistrySyncApiEnv;
 
-/** The websocket load balancer (wrangler.wss-lb.jsonc). */
-export type WssLbGeneratedEnv = WssLbWorkerEnv;
+// NO alias for wrangler.wss-lb.jsonc's `WssLbWorkerEnv`. That Worker declares
+// its own `WssLbEnv` by hand -- see workers/wss-lb.ts's header, which is where
+// the merged-Env trap was first written down -- and never reaches for the
+// generated one. An unused alias here would be a name nothing imports.
