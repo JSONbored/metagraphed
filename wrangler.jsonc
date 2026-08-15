@@ -674,6 +674,41 @@
   //
   // nodejs_compat is already set above, which is what makes the native pg
   // driver usable here at all.
+  //
+  // QUERY CACHING IS DISABLED on this config, deliberately, and the setting
+  // lives on the Hyperdrive RESOURCE rather than here -- there is no caching
+  // key in a wrangler binding, so this comment is the only place the bound can
+  // be stated in the repo. That is why it is stated at all
+  // (metagraphed-infra#493): an effective staleness window nobody can read
+  // from the codebase is the same defect as an undocumented one.
+  //
+  //   caching: { disabled: true }        (was { disabled: false })
+  //   verified live 2026-08-15 via `wrangler hyperdrive get`
+  //
+  // WHAT THE DEFAULT COST. Hyperdrive's defaults are max_age 60s plus
+  // stale_while_revalidate 15s, and it does NOT invalidate a cached read when
+  // the application writes. The metagraph lane bulk-rewrites its tables every
+  // 15 minutes, so a caller could be served the previous pass for up to 75
+  // seconds after each rewrite with nothing marking it stale -- and a
+  // freshness stamp served from cache is self-defeating.
+  //
+  // WHOLESALE, NOT PER-QUERY, AND THE PLATFORM DECIDED THAT. Cloudflare
+  // documents no per-query cache control: SQL comments are explicitly not a
+  // cache-control API, and the only supported split is a SECOND cache-disabled
+  // config bound alongside this one, with fresh reads routed through it.
+  //
+  // THE MEASUREMENT IS WHY WE DID NOT SPLIT. The compute-protection argument
+  // for caching is real and was not discarded silently -- it was priced. Over
+  // the 24h to 2026-08-15, of 325,521 Hyperdrive queries only 85,262 were
+  // cacheable at all (the rest being `notaquery` protocol traffic and
+  // in-transaction reads), and of those just 7,946 were hits: a 9.3% hit rate.
+  // A second config, a second connection budget against the same origin, and a
+  // per-read routing decision at every call site is a large standing cost to
+  // preserve that. Neon's compute is pinned by continuous capture writes in any
+  // case, so the cache was never saving a cold start -- only marginal CPU.
+  //
+  // Reverse with `wrangler hyperdrive update <id>` (no flag re-enables), and
+  // re-measure by `cacheStatus` before concluding anything from it.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

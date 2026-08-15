@@ -155,6 +155,20 @@
   // that is safe: nothing outside this Worker reads these four tables (the
   // public registry serves from R2 artifacts), and all four are rebuildable by
   // re-running the sync from registry/subnets/*.json. Rollback is removing this
+  //
+  // QUERY CACHING IS DISABLED on this config (metagraphed-infra#493). The
+  // setting lives on the Hyperdrive RESOURCE, not on the binding -- there is no
+  // caching key in wrangler -- so this comment is the only place the effective
+  // staleness bound can be read from the repo:
+  //
+  //   caching: { disabled: true }   verified live 2026-08-15
+  //
+  // The defaults it replaces were max_age 60s + stale_while_revalidate 15s,
+  // against a poller that bulk-rewrites its tables every 15 minutes and a
+  // Hyperdrive that does not invalidate on write. Disabled wholesale because
+  // Cloudflare documents no per-query control, and the measured hit rate on
+  // cacheable reads was 9.3% -- too little to justify a second config and a
+  // per-read routing decision. Full reasoning in wrangler.jsonc.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
