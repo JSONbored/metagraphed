@@ -419,3 +419,79 @@ describe("withLaneHealth", () => {
     assert.equal(card.observed_at, base.observed_at);
   });
 });
+
+// A dead-letter verdict is an EVENT, and the serving read treated it as a
+// state (#11297).
+//
+// `handleDeadLetterBatch` is a `*-dlq` lane's only writer and it writes only on
+// a loss, because nothing un-loses a message. So the last loss was served as
+// the current state forever: measured 2026-08-15, `/api/v1/self-health`
+// reported `stale_lane_count: 1` for `probe-jobs-dlq` while every cause behind
+// those losses had been fixed and verified hours earlier.
+describe("a dead-letter verdict ages out of the serving read", () => {
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
+  const dlq = (checked_at: number): LaneHealthRecord => ({
+    lane: "probe-jobs-dlq",
+    verdict: "stale",
+    age_ms: null,
+    detail:
+      "2 dead-lettered message(s) on probe-jobs-dlq (netuid=108,netuid=29)",
+    checked_at,
+  });
+  const card = (rows: LaneHealthRecord[], nowMs: number) =>
+    withLaneHealth(
+      buildSelfHealth([], []),
+      Object.fromEntries(rows.map((r) => [r.lane, r])),
+      { nowMs },
+    );
+
+  test("A RECENT LOSS STILL COUNTS -- this is not suppression", () => {
+    const now = 1_785_000_000_000;
+    const out = card([dlq(now - 60_000)], now);
+    assert.equal(out.stale_lane_count, 1);
+    assert.equal(out.lanes[0]?.lane, "probe-jobs-dlq");
+  });
+
+  test("past the residue window it stops being NOW", () => {
+    // The row stays in `lane_health` for triage. What changes is whether it is
+    // served as the current fleet state.
+    const now = 1_785_000_000_000;
+    const out = card([dlq(now - WEEK - 1)], now);
+    assert.equal(out.stale_lane_count, 0);
+    assert.deepEqual(out.lanes, []);
+  });
+
+  test("the boundary is the alarm's own constant, not a second number", () => {
+    const now = 1_785_000_000_000;
+    assert.equal(card([dlq(now - WEEK)], now).stale_lane_count, 1);
+    assert.equal(card([dlq(now - WEEK - 1)], now).stale_lane_count, 0);
+  });
+
+  test("A FRESH LOSS BRINGS IT BACK on the same tick", () => {
+    // The property that makes ageing-out different from muting: the lane is
+    // still watched, and the next real loss is reported immediately.
+    const now = 1_785_000_000_000;
+    assert.equal(card([dlq(now - WEEK - 1)], now).stale_lane_count, 0);
+    assert.equal(card([dlq(now - 1_000)], now).stale_lane_count, 1);
+  });
+
+  test("an ORDINARY lane's old stale verdict is left alone", () => {
+    // The scope of this rule is exactly the family that cannot say `ok`.
+    // Ageing out every stale verdict would hide genuinely broken lanes, which
+    // is the opposite failure and a much worse one.
+    const now = 1_785_000_000_000;
+    const out = card(
+      [
+        {
+          lane: "chain-detail",
+          verdict: "stale",
+          age_ms: 1,
+          detail: "frozen",
+          checked_at: now - WEEK - 1,
+        },
+      ],
+      now,
+    );
+    assert.equal(out.stale_lane_count, 1);
+  });
+});
