@@ -30,7 +30,7 @@ export interface paths {
         };
         /**
          * Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/accounts/{ss58}/balance — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["accountBalanceByNetwork"];
         put?: never;
@@ -50,7 +50,7 @@ export interface paths {
         };
         /**
          * Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/accounts/{ss58}/children — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["accountChildrenByNetwork"];
         put?: never;
@@ -70,7 +70,7 @@ export interface paths {
         };
         /**
          * Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/accounts/{ss58}/parents — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["accountParentsByNetwork"];
         put?: never;
@@ -90,7 +90,7 @@ export interface paths {
         };
         /**
          * Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache. Returns 400 on invalid ss58; claim_type/hotkeys are null on RPC failure. Read-only display only; never submits claim_root or any other extrinsic.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/accounts/{ss58}/root-claim — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["accountRootClaimByNetwork"];
         put?: never;
@@ -110,7 +110,7 @@ export interface paths {
         };
         /**
          * Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks tier (#1345).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/blocks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blocksFeedByNetwork"];
         put?: never;
@@ -130,7 +130,7 @@ export interface paths {
         };
         /**
          * Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks tier (#1345); 200 with block:null when cold/unknown.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/blocks/{ref} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blockDetailByNetwork"];
         put?: never;
@@ -150,7 +150,7 @@ export interface paths {
         };
         /**
          * Fetch EVERY raw pallet-level event in one block (by numeric block_number; event_index ascending), served live from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file). This is the complete stream, so its count matches the block header's own event_count; /api/v1/blocks/{ref}/events is deliberately a SUBSET of it -- the curated account-attributed projection, which is smaller by design and not a loss. A block neither tier can read declines with a typed 503 (block_detail_unavailable) rather than an empty list, because count:0 is indistinguishable from a block that emitted nothing.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/blocks/{ref}/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blockChainEventsByNetwork"];
         put?: never;
@@ -170,7 +170,7 @@ export interface paths {
         };
         /**
          * Fetch the ACCOUNT-ATTRIBUTED events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. This is the curated account_events projection -- a deliberate SUBSET of /api/v1/blocks/{ref}/chain-events (the complete pallet-level stream the block header's event_count counts), narrower by design rather than by loss. 200 with events:[] when cold/unknown.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/blocks/{ref}/events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blockEventsByNetwork"];
         put?: never;
@@ -190,7 +190,7 @@ export interface paths {
         };
         /**
          * Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics tier (#1845); 200 with extrinsics:[] when cold/unknown.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/blocks/{ref}/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blockExtrinsicsByNetwork"];
         put?: never;
@@ -210,7 +210,7 @@ export interface paths {
         };
         /**
          * Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Precomputed by a cron from that network's decoded blocks; schema-stable zeroed card when the projection is cold.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/blocks/summary — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["blocksSummaryByNetwork"];
         put?: never;
@@ -230,7 +230,7 @@ export interface paths {
         };
         /**
          * Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainEventsFeedByNetwork"];
         put?: never;
@@ -250,7 +250,7 @@ export interface paths {
         };
         /**
          * Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live, no static file.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain-events/stats — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainEventsStatsByNetwork"];
         put?: never;
@@ -270,7 +270,7 @@ export interface paths {
         };
         /**
          * Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/activity — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainActivityByNetwork"];
         put?: never;
@@ -290,7 +290,7 @@ export interface paths {
         };
         /**
          * Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit <=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume. Computed live from the account_events stream; schema-stable zeros + empty leaderboard when cold. Fixed 24h window (no ?window= param), matching the per-subnet route's own framing.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/alpha-volume — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainAlphaVolumeByNetwork"];
         put?: never;
@@ -310,7 +310,7 @@ export interface paths {
         };
         /**
          * Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399). Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). REGISTRATION ECONOMICS, NOT A TEAM BURN (#10482): this is what it costs to register a UID, and nothing here measures a team destroying tokens it said it would destroy. That separate concept is named `token_burn` and is carried by the entity `burn` role (schemas/entity.schema.json), which requires an `unspendable_proof`. The two share a word and nothing else. A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/burn — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainBurnByNetwork"];
         put?: never;
@@ -330,7 +330,7 @@ export interface paths {
         };
         /**
          * Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics tier (#1989); schema-stable call_count:0/calls:[] when cold.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/calls — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainCallsByNetwork"];
         put?: never;
@@ -350,7 +350,7 @@ export interface paths {
         };
         /**
          * Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection (NeuronDeregistered has never been emitted by the runtime); the payload's `derivation` block states how many window registrations had no observable previous holder, and `degraded` marks an answer nothing derived. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/deregistrations — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainDeregistrationsByNetwork"];
         put?: never;
@@ -370,7 +370,7 @@ export interface paths {
         };
         /**
          * Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics tier (#1988); schema-stable day_count:0 + empty lists when cold.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/fees — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainFeesByNetwork"];
         put?: never;
@@ -390,7 +390,7 @@ export interface paths {
         };
         /**
          * Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/registrations — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainRegistrationsByNetwork"];
         put?: never;
@@ -410,7 +410,7 @@ export interface paths {
         };
         /**
          * Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics tier (#1990); schema-stable signer_count:0/signers:[] when cold.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/signers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainSignersByNetwork"];
         put?: never;
@@ -430,7 +430,7 @@ export interface paths {
         };
         /**
          * Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/stake-flow — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainStakeFlowByNetwork"];
         put?: never;
@@ -450,7 +450,7 @@ export interface paths {
         };
         /**
          * Fetch network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): a per-subnet leaderboard (StakeMoved event count, distinct movers, and average movements per mover) ranked by total movements, a network rollup with the true distinct mover count (an account moving stake out of several subnets counts once) and total movements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-move intensity. `limit` caps the leaderboard (default 20, max 100). The re-delegation-churn companion to the net-capital-flow GET /api/v1/chain/stake-flow — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Computed live from the account_events StakeMoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/stake-moves — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainStakeMovesByNetwork"];
         put?: never;
@@ -470,7 +470,7 @@ export interface paths {
         };
         /**
          * Fetch network-wide stake-transfer activity over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (StakeTransferred event count, distinct senders, and average transfers per sender) ranked by total transfers, a network rollup with the true distinct sender count (an account transferring stake out of several subnets counts once) and total transfers, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet transfer intensity. `limit` caps the leaderboard (default 20, max 100). The between-coldkeys companion to the within-account re-delegation churn of GET /api/v1/chain/stake-moves — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Computed live from the account_events StakeTransferred stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/stake-transfers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainStakeTransfersByNetwork"];
         put?: never;
@@ -490,7 +490,7 @@ export interface paths {
         };
         /**
          * Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. Pass ?format=csv to download the ranked pairs as CSV (the totals + top_pair_share stay JSON-only).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/transfer-pairs — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainTransferPairsByNetwork"];
         put?: never;
@@ -510,7 +510,7 @@ export interface paths {
         };
         /**
          * Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. Pass ?format=csv to download the top senders and receivers as one CSV tagged by a `direction` column (the totals + top_sender_share stay JSON-only).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/chain/transfers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["chainTransfersByNetwork"];
         put?: never;
@@ -530,7 +530,7 @@ export interface paths {
         };
         /**
          * Fetch registry coverage summary.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/coverage — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["coverageByNetwork"];
         put?: never;
@@ -550,7 +550,7 @@ export interface paths {
         };
         /**
          * List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id; a failed chain read yields crowdloan_count null plus a `degraded` block rather than 0 (#9898). Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/crowdloans — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["crowdloansByNetwork"];
         put?: never;
@@ -570,7 +570,7 @@ export interface paths {
         };
         /**
          * Fetch one crowdloan's live state (#8696) from the Crowdloan pallet's Crowdloans storage map at request time with 120s KV cache. exists is null (not false) on RPC failure, distinct from a confirmed-absent id (exists:false) — an id can be legitimately absent because dissolve removes the record while NextCrowdloanId keeps counting.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/crowdloans/{crowdloan_id} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["crowdloanDetailByNetwork"];
         put?: never;
@@ -590,7 +590,7 @@ export interface paths {
         };
         /**
          * List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/economics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["economicsByNetwork"];
         put?: never;
@@ -610,7 +610,7 @@ export interface paths {
         };
         /**
          * Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/evm/address/{h160} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["evmAddressMappingByNetwork"];
         put?: never;
@@ -630,7 +630,7 @@ export interface paths {
         };
         /**
          * Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics tier (#1345).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["extrinsicsFeedByNetwork"];
         put?: never;
@@ -650,7 +650,7 @@ export interface paths {
         };
         /**
          * Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/extrinsics/{hash} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["extrinsicDetailByNetwork"];
         put?: never;
@@ -670,7 +670,7 @@ export interface paths {
         };
         /**
          * Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. READ `field_sources` BEFORE CITING ANY VALUE HERE: it labels every field measured (with the storage item behind it) or reconstructed (our arithmetic), and three are reconstructed. `block_emission_tao` and `block_emission_halvings` are derived from TotalIssuance, never read from the `BlockEmission` storage item, which is stale at 1.0 TAO (#8747). `emission_gate_exponent_effective` is the runtime default (3) whenever the storage item is unset, which is its current state on finney — that 3 comes from our source tree, not from chain.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/network/parameters — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["networkParametersByNetwork"];
         put?: never;
@@ -690,7 +690,7 @@ export interface paths {
         };
         /**
          * Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure. `field_sources` marks the two rounds measured (Drand.LastStoredRound / Drand.OldestStoredRound) and `stored_round_span` reconstructed — it is our subtraction of them, not a retention window the beacon publishes.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/network/randomness — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["randomnessByNetwork"];
         put?: never;
@@ -710,7 +710,7 @@ export interface paths {
         };
         /**
          * List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers "can I get chain data on testnet?" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/networks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["networkCapabilitiesByNetwork"];
         put?: never;
@@ -730,7 +730,7 @@ export interface paths {
         };
         /**
          * Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/search/resolve — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["searchResolveByNetwork"];
         put?: never;
@@ -750,7 +750,7 @@ export interface paths {
         };
         /**
          * List active Finney subnets. The screening fields ride the `fields=` projection: `gpu_required`/`min_vram_gb` are the MINER hardware floor from the subnet's own min_compute.yml (four-valued -- `required`, `not-required`, `declared-inconsistently`, and null for the subnets whose repo publishes no readable file -- a null is NOT a no), and `also_on` names the testnet twin. The whole declaration, both roles and the commit it was read at, is the `compute_requirements` section on /subnets/{netuid}/overview.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/subnets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetsByNetwork"];
         put?: never;
@@ -770,7 +770,7 @@ export interface paths {
         };
         /**
          * Fetch per-subnet detail.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/subnets/{netuid} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetDetailByNetwork"];
         put?: never;
@@ -790,7 +790,7 @@ export interface paths {
         };
         /**
          * Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache. burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/subnets/{netuid}/burn — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetBurnByNetwork"];
         put?: never;
@@ -810,7 +810,7 @@ export interface paths {
         };
         /**
          * Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/subnets/{netuid}/lease — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetLeaseByNetwork"];
         put?: never;
@@ -830,7 +830,7 @@ export interface paths {
         };
         /**
          * Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/subnets/{netuid}/recycled — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetRecycledByNetwork"];
         put?: never;
@@ -850,7 +850,7 @@ export interface paths {
         };
         /**
          * Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key. `field_sources` marks hotkey measured and names the storage item behind it (Sudo.Key).
-         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         * @description Network-scoped form of /api/v1/sudo/key — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["sudoKeyByNetwork"];
         put?: never;

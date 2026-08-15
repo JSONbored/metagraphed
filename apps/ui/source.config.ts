@@ -1,5 +1,6 @@
 import { remarkLLMs } from "fumadocs-core/mdx-plugins/remark-llms";
-import { defineConfig, defineDocs } from "fumadocs-mdx/config";
+import { defineConfig, defineDocs, frontmatterSchema } from "fumadocs-mdx/config";
+import { z } from "zod";
 
 // #8705: the weekly digests, generated into content/news/** from
 // registry/generated/digests.json by scripts/generate-digest-pages.ts. Its own
@@ -18,6 +19,19 @@ export const news = defineDocs({
 export const docs = defineDocs({
   dir: "content/docs",
   docs: {
+    // #11251: `metaDescription` has to be DECLARED, not merely written into the
+    // frontmatter. Fumadocs validates frontmatter with a zod object that strips
+    // unknown keys, so the generator's key reached the file and then vanished
+    // before `page.data` — the generated pages kept shipping an empty
+    // `<meta name="description">` and nothing failed to say so.
+    //
+    // Separate from `description` on purpose: `description` is what
+    // <DocsDescription> paints as a one-line subtitle, and the API-reference
+    // pages already render their prose in full inside <APIPage/>. This carries
+    // the same sentence to the <head> without painting it twice.
+    schema: frontmatterSchema.extend({
+      metaDescription: z.string().optional(),
+    }),
     // Computed from local `git log` at build/dev-compile time -- NOT a live
     // GitHub API call. That distinction matters here: this app deploys to a
     // Cloudflare Worker with no .git directory at runtime, and an

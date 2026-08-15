@@ -46,6 +46,7 @@ import { readFile, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { generateFiles } from "fumadocs-openapi";
 import { createOpenAPI } from "fumadocs-openapi/server";
+import { clampText } from "../src/lib/metagraphed/truncate.ts";
 
 const OUTPUT_DIR = process.env.OPENAPI_DOCS_OUTPUT ?? "./content/docs/api-reference";
 // Read locally (fast, no network dependency for a rarely-changing generator
@@ -160,6 +161,65 @@ function firstSentence(text) {
 }
 
 /**
+ * Google truncates a description around 155-160 characters, and the spec's
+ * first sentences run to 604 (median 169, 157 of 290 over budget).
+ */
+const META_DESCRIPTION_MAX = 155;
+
+/** Below this, the route is dropped rather than crushing the prose. */
+const MIN_PROSE_BUDGET = 60;
+
+/**
+ * The `<meta name="description">` for one operation page.
+ *
+ * A SEPARATE frontmatter key from `description`, deliberately. `description` is
+ * rendered by Fumadocs' <DocsDescription> as a one-line `text-lg` subtitle, and
+ * the operation's prose is already rendered in full inside <APIPage/> (see
+ * `includeDescription` below) -- putting it in both paints the first sentence
+ * twice, once as a subtitle and again as the first line of the body.
+ *
+ * Leaving it out entirely was the status quo, and it meant all 290 generated
+ * pages shipped `<meta name="description" content="">`: an EMPTY description,
+ * which is worse than none, on 83% of the docs and on exactly the pages that
+ * answer "how do I call this". Measured on the live site 2026-08-15.
+ *
+ * The method and route go in because a pasted-route query is one of the things
+ * Search Console shows actually finding this site, and because the route is the
+ * one part of an API-reference description guaranteed to be unique.
+ */
+function metaDescription(op, method, route) {
+  const suffix = `${method.toUpperCase()} ${route}`;
+  // Backticks are markdown for the BODY prose; a meta description is plain
+  // text, so `application/feed+json` renders with the backticks visible in the
+  // search result. 33 of the 290 carried them. Angle brackets stay -- they are
+  // placeholder syntax (`?counterparty=<ss58>`), not formatting.
+  const prose = firstSentence(op.description ?? "").replace(/`/g, "");
+  if (!prose) return clampText(suffix, META_DESCRIPTION_MAX);
+  // Room is RESERVED for the route rather than the route being appended if it
+  // happens to fit: appending left 54% of pages with it and 46% without, a
+  // split driven by nothing but how long that operation's first sentence ran.
+  const proseBudget = META_DESCRIPTION_MAX - suffix.length - 1;
+  // Unless the route is so long that keeping it would crush the prose, which is
+  // the half that actually describes the endpoint.
+  if (proseBudget < MIN_PROSE_BUDGET) return clampText(prose, META_DESCRIPTION_MAX);
+  return `${clampText(prose, proseBudget)} ${suffix}`;
+}
+
+/**
+ * Add `metaDescription` to a generated page's frontmatter.
+ *
+ * Inserted after the opening `---` so it cannot land inside the nested
+ * `_openapi:` block, where it would be read as part of that object rather than
+ * as a top-level key. Quoted and escaped as a YAML double-quoted scalar --
+ * these sentences contain `:` and `"` routinely.
+ */
+function withMetaDescription(content, description) {
+  if (!description || !content.startsWith("---\n")) return content;
+  const escaped = description.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `---\nmetaDescription: "${escaped}"\n${content.slice("---\n".length)}`;
+}
+
+/**
  * Escape the two characters MDX treats as syntax, for prose taken from the spec.
  *
  * Operation descriptions are written for an API reference, not for MDX, and they
@@ -228,11 +288,13 @@ async function main() {
   // `description` is the original prose — the same pair the operation page
   // itself renders.
   const operationsByTag = new Map();
+  const metaByOperationId = new Map();
   for (const [route, methods] of Object.entries(spec.paths ?? {})) {
     for (const [method, op] of Object.entries(methods ?? {})) {
       if (!op || typeof op !== "object" || !op.operationId) continue;
       const tag = primaryTag(op.tags);
       if (!operationsByTag.has(tag)) operationsByTag.set(tag, []);
+      metaByOperationId.set(op.operationId, metaDescription(op, method, route));
       operationsByTag.get(tag).push({
         slug: kebabCase(op.operationId),
         title: op.summary ?? humanizeOperationId(op.operationId),
@@ -296,7 +358,10 @@ async function main() {
     const from = path.join(OUTPUT_DIR, entry);
     const to = path.join(tagDir, fileName);
     await rm(to, { force: true });
-    await writeFile(to, await readFile(from, "utf8"));
+    await writeFile(
+      to,
+      withMetaDescription(await readFile(from, "utf8"), metaByOperationId.get(operationId)),
+    );
     await rm(from);
 
     if (!pagesByTag.has(tag)) pagesByTag.set(tag, []);

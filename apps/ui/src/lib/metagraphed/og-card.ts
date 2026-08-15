@@ -1,5 +1,6 @@
 import { SITE_ORIGIN } from "./identity";
-import { clampCardText, OG_LIMITS } from "./og-card-limits";
+import { OG_LIMITS } from "./og-card-limits";
+import { clampText } from "./truncate";
 
 // Builds the /og card URL a route puts in its own og:image (#8489).
 //
@@ -76,10 +77,10 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   // URL -- and once the first-party logo path joined the query (#11204) that
   // slack was enough to push a legitimate card past the endpoint's own
   // MAX_QUERY_LENGTH, which answers 414 and unfurls with no image at all.
-  const params = new URLSearchParams({ title: clampCardText(options.title, OG_LIMITS.title) });
-  const subtitle = clampCardText(options.subtitle, OG_LIMITS.subtitle);
+  const params = new URLSearchParams({ title: clampText(options.title, OG_LIMITS.title) });
+  const subtitle = clampText(options.subtitle, OG_LIMITS.subtitle);
   if (subtitle) params.set("subtitle", subtitle);
-  const eyebrow = clampCardText(options.eyebrow, OG_LIMITS.eyebrow);
+  const eyebrow = clampText(options.eyebrow, OG_LIMITS.eyebrow);
   if (eyebrow) params.set("eyebrow", eyebrow);
   if (options.logoPath) params.set("logop", options.logoPath);
   if (options.logoHost) params.set("logo", options.logoHost.slice(0, OG_LIMITS.logoHost));
@@ -92,8 +93,8 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   // Only the first three stats are rendered; sending more would just push the
   // URL toward the length cap for content the card ignores.
   (options.stats ?? []).slice(0, 3).forEach((stat, index) => {
-    const label = clampCardText(stat.label, OG_LIMITS.statLabel);
-    const value = clampCardText(stat.value, OG_LIMITS.statValue);
+    const label = clampText(stat.label, OG_LIMITS.statLabel);
+    const value = clampText(stat.value, OG_LIMITS.statValue);
     // Both halves required, matching readCardParams: a value with no label is
     // unreadable, and a label with no value is an empty promise.
     if (!label || !value) return;

@@ -14,6 +14,6 @@ description: Every Search endpoint in the metagraphed API, with its method and p
 - [Search Resolve](/docs/api-reference/search/search-resolve) — `GET /api/v1/search/resolve`  
   Resolve a pasted query to the chain entities it could name (metagraphed-infra#362).
 - [Search Resolve By Network](/docs/api-reference/search/search-resolve-by-network) — `GET /api/v1/{network}/search/resolve`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/search/resolve — prefix the route with a network to choose which chain answers it.
 - [Search Semantic](/docs/api-reference/search/search-semantic) — `GET /api/v1/search/semantic`  
   Search the registry by MEANING rather than by keyword: ?q= is embedded and ranked by cosine similarity, so it finds surfaces whose text never contains your terms.

@@ -6181,8 +6181,15 @@ export function buildOpenApiArtifact(
           ...base,
           operationId: `${base.operationId}ByNetwork`,
           summary: `${entry.description}`,
-          description:
-            "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+          // Names the route it varies rather than saying "the route above".
+          // "Above" is only true in a rendered spec read top to bottom: this
+          // text is also the description of a generated docs page, a search
+          // result, and an MCP tool, and in all three it referred to nothing.
+          // 42 operations shared the one sentence, so it was also the only
+          // description 14% of the API reference had. The first sentence is
+          // kept free of backticks because it is what becomes the page's
+          // <meta name="description">, where markdown renders as literal.
+          description: `Network-scoped form of ${entry.path} — prefix the route with a network to choose which chain answers it. \`mainnet\`/\`finney\` return the same data as the unprefixed path; \`testnet\`/\`test\` return testnet data.`,
           parameters: [
             {
               name: "network",

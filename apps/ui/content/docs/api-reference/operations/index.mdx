@@ -14,7 +14,7 @@ description: Every Operations endpoint in the metagraphed API, with its method a
 - [Network Capabilities](/docs/api-reference/operations/network-capabilities) — `GET /api/v1/networks`  
   List every addressable network and what it actually serves.
 - [Network Capabilities By Network](/docs/api-reference/operations/network-capabilities-by-network) — `GET /api/v1/{network}/networks`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/networks — prefix the route with a network to choose which chain answers it.
 - [Source Health](/docs/api-reference/operations/source-health) — `GET /api/v1/source-health`  
   Fetch upstream source health.
 - [Source Snapshots](/docs/api-reference/operations/source-snapshots) — `GET /api/v1/source-snapshots`  

@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { docsSource } from "@/lib/docs-source";
-import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { stringifyJsonLd, techArticleJsonLd } from "@/lib/metagraphed/json-ld";
 import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
 import { openapi } from "@/lib/openapi-source";
@@ -79,6 +79,17 @@ export const Route = createFileRoute("/docs/$")({
                 headline: loaderData.title,
                 description: loaderData.description,
                 url: `${SITE_ORIGIN}/docs/${params._splat ?? ""}`.replace(/\/+$/, ""),
+                dateModified: loaderData.lastModified,
+                // The page's own OG card. Article types want an image, and
+                // this is the one that already represents the page everywhere
+                // else it is shared.
+                image: buildOgImageUrl({
+                  title: loaderData.title ?? "Documentation",
+                  subtitle:
+                    loaderData.description || "API reference and guides for the Bittensor registry",
+                  eyebrow: "Docs",
+                  entity: false,
+                }),
               }),
             ),
           },
@@ -116,11 +127,31 @@ const serverLoader = createServerFn({ method: "GET" })
       ? ((await openapi.preloadOpenAPIPage(page)).preloaded as OpenAPIPreloaded)
       : undefined;
 
+    const data = page.data as {
+      description?: string;
+      metaDescription?: string;
+      lastModified?: Date | string;
+    };
     return {
       path: page.path,
       pageTree: await docsSource.serializePageTree(docsSource.getPageTree()),
       title: page.data.title,
-      description: page.data.description ?? "",
+      // #11251: `metaDescription` is a SEPARATE frontmatter key from
+      // `description`, and the fallback order matters. `description` is what
+      // <DocsDescription> paints as a one-line subtitle, so the 290 generated
+      // API-reference pages deliberately leave it empty (their prose is already
+      // rendered in full inside <APIPage/>) -- and that left every one of them
+      // shipping `<meta name="description" content="">`, an EMPTY description
+      // on 83% of the docs. This reads the meta-only key when there is one, so
+      // the head is correct without changing what the page looks like.
+      description: page.data.description || data.metaDescription || "",
+      // Git-derived at build time (source.config.ts docs.lastModified), and
+      // already rendered on the page as "Last updated" -- so the structured
+      // data below states a date the reader can see, which is the rule.
+      lastModified:
+        data.lastModified instanceof Date
+          ? data.lastModified.toISOString()
+          : (data.lastModified ?? null),
       preloaded,
     };
   });

@@ -1,4 +1,5 @@
 ---
+metaDescription: "Network-scoped form of /api/v1/subnets/{netuid} — prefix the route with a network to choose which chain answers it. GET /api/v1/{network}/subnets/{netuid}"
 title: Subnet Detail By Network
 full: true
 _openapi:
@@ -10,7 +11,8 @@ _openapi:
   structuredData:
     headings: []
     contents:
-      - content: Network-addressed form of the route above. `mainnet`/`finney` return
+      - content: Network-scoped form of /api/v1/subnets/{netuid} — prefix the route with
+          a network to choose which chain answers it. `mainnet`/`finney` return
           the same data as the unprefixed path; `testnet`/`test` return testnet
           data.
 ---
