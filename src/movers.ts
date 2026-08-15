@@ -334,9 +334,12 @@ export function buildMovers(
     ...windowCoverage(
       typeof startDate === "string" ? startDate : null,
       typeof endDate === "string" ? endDate : null,
-      normalizedWindow == null
-        ? null
-        : (MOVERS_WINDOWS[normalizedWindow] ?? null),
+      // No `?? null` on the lookup: `normalizedWindow` is either null or a key
+      // this table defines -- an unrecognised label was already resolved to
+      // DEFAULT_MOVERS_WINDOW above -- so a fallback here would be unreachable,
+      // and a test written to reach it could only assert the code's own
+      // assumption back at it.
+      normalizedWindow == null ? null : MOVERS_WINDOWS[normalizedWindow],
     ),
     sort: normalizedSort,
     subnet_count: ranked.length,
