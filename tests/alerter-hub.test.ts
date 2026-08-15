@@ -2460,3 +2460,47 @@ test("#11194: a healthy snapshot refresh emits nothing", async () => {
     cap.restore();
   }
 });
+
+test("refreshTriggers: the schema establishes the evaluator's fields (#11339)", async () => {
+  // The evaluator's fields used to arrive at `triggerMatchesEvent` through
+  // `trigger as unknown as EvaluatorAlertTrigger`, because
+  // AlertTriggerRowSchema stopped at `id`/`channel`. It names them now, so a
+  // trigger stored WITHOUT an optional filter parses with that field absent --
+  // and the evaluator call site turns each absent one into `null`, which is
+  // "no filter" rather than "filter on nothing".
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(
+        async () =>
+          new Response(
+            JSON.stringify({
+              triggers: [
+                // Every optional filter absent: the sparse shape a hand-created
+                // trigger actually has.
+                { id: "1", channel: "webhook", destination: "https://x.test" },
+                // And one carrying them, to prove the parse keeps what IS there.
+                {
+                  id: "2",
+                  channel: "webhook",
+                  destination: "https://y.test",
+                  netuid: 64,
+                  tableFilter: ["chain_events"],
+                  eventKind: "transfer",
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      ),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+  );
+  await hub.refreshTriggers();
+  const [sparse, full] = hub.triggers;
+  assert.equal(sparse?.id, "1", "the sparse trigger survived the parse");
+  assert.equal(sparse?.netuid, undefined, "absent stays absent, not 0");
+  assert.equal(full?.netuid, 64, "and a present filter is kept, typed");
+  assert.deepEqual(full?.tableFilter, ["chain_events"]);
+  assert.equal(full?.eventKind, "transfer");
+});

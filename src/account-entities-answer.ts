@@ -100,17 +100,21 @@ export async function answerAccountEntities(
   // had access to.
   if (answered) return withOwnedTies(answered, coldkey, ownerSnapshot);
 
-  return (
-    entities(
-      buildAccountEntities(coldkey, { entities: [], owners: ownerSnapshot }),
-    ) ?? {
+  // The empty payload, spelled out rather than parsed back out of the builder.
+  // Routing it through `entities()` added a `??` arm that cannot fire -- the
+  // builder's own output always parses -- and an unreachable fallback is a
+  // branch no test can honestly cover (#11339).
+  return withOwnedTies(
+    {
       schema_version: 1,
       ss58: coldkey,
       labels: [],
       ownership_tie_count: 0,
       ownership_ties: [],
       owners_observed_at: null,
-    }
+    },
+    coldkey,
+    ownerSnapshot,
   );
 }
 

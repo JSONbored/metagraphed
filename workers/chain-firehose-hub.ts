@@ -1264,23 +1264,17 @@ export class ChainFirehoseHub implements DurableObject {
           // either one's volume.
           this.env.CHAIN_HEAD_AUTHOR_ENABLED !== "false",
         );
-        // VALIDATED, not asserted (#11339). This module already owns the
-        // check -- `validateSingleChainFirehoseIngestPayload` is what every
-        // OTHER ingest path goes through -- and the poller was the one caller
-        // that asserted instead, so a block the RPC answered with a missing
-        // `block_number` would have been fanned out to every SSE, WS, GraphQL
-        // and MCP subscriber as a well-formed event.
+        // Neither a cast nor a runtime check. `fetchBlockAt` returns a
+        // `HeadBlock`, whose schema is declared "scalar fields only, per the
+        // ingest validator's rules ... so it must not be constructible here" --
+        // which is the guarantee the old
+        // `block as unknown as ChainFirehoseIngestPayload` asserted past.
         //
-        // A failure is the tick's failure: the same `catch` below reports it,
-        // and the poller retries on its own ~6s cadence rather than writing a
-        // watermark for a block it could not describe.
-        const ingest = validateSingleChainFirehoseIngestPayload(block);
-        if (!ingest.ok) {
-          throw new Error(
-            `head poll produced an invalid payload: ${ingest.error}`,
-          );
-        }
-        await this.broadcast(ingest.payload);
+        // A `validateSingleChainFirehoseIngestPayload` call here was the first
+        // fix, and mutation-testing showed the branch could never fire:
+        // `fetchBlockAt` THROWS on a malformed response rather than assembling
+        // a partial payload. The compiler proves the rest, once (#11339).
+        await this.broadcast(block);
         // THE ONLY WRITE (#10107, #10179). `this.state` is the waitUntil
         // handle here -- a Durable Object has no ExecutionContext, and
         // createPgSql needs one to hand the pooled connection back to
