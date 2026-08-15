@@ -1,20 +1,29 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { newsSource } from "@/lib/news-source";
-import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
+import { stringifyJsonLd, techArticleJsonLd } from "@/lib/metagraphed/json-ld";
+import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
+import { clampText } from "@/lib/metagraphed/truncate";
 import { NewsSplatPage } from "./-news-splat-page";
 
 // #8705: the weekly digests, at /news/sn8/2026-w31 and /news/network/2026-w31,
 // plus /news itself for the archive index. Mirrors the /docs splat route --
 // same fumadocs loader shape, same reason RootProvider is scoped to the route
 // rather than __root.tsx (see -docs-splat-page.tsx).
+/**
+ * Same budget the docs route applies (#11264). The index page's frontmatter
+ * description runs to 175 characters, because it is also the visible subtitle.
+ */
+const NEWS_META_DESCRIPTION_MAX = 160;
+
 export const Route = createFileRoute("/news/$")({
   component: NewsSplatPage,
   loader: async ({ params }) => {
     const slugs = params._splat?.split("/").filter(Boolean) ?? [];
     return serverLoader({ data: slugs });
   },
-  head: ({ loaderData }) => ({
+  head: ({ loaderData, params }) => ({
     meta: [
       { title: loaderData ? `${loaderData.title} — Metagraphed` : "Metagraphed" },
       { name: "description", content: loaderData?.description ?? "" },
@@ -36,6 +45,37 @@ export const Route = createFileRoute("/news/$")({
         entity: false,
       }),
     ],
+    // #11279: a digest is editorial prose about a subnet's week, so Article --
+    // not the TechArticle the reference docs use, which would claim these
+    // document an interface. `about` points at the catalog, so a quoted
+    // sentence leads back to the records the digest was written from.
+    scripts: loaderData
+      ? [
+          {
+            type: "application/ld+json",
+            children: stringifyJsonLd(
+              techArticleJsonLd({
+                type: "Article",
+                headline: loaderData.title,
+                description: loaderData.description,
+                url: `${SITE_ORIGIN}/news/${params._splat ?? ""}`.replace(/\/+$/, ""),
+                // The week the digest COVERS. There is no honest publication
+                // timestamp -- the store records the week, not the run -- so
+                // none is claimed. See generate-digest-pages.ts's weekInterval.
+                temporalCoverage: loaderData.temporalCoverage,
+                image: buildOgImageUrl({
+                  title: loaderData.title ?? "Weekly digests",
+                  subtitle:
+                    loaderData.description ||
+                    "What changed, week by week, for each Bittensor subnet",
+                  eyebrow: "Digest",
+                  entity: false,
+                }),
+              }),
+            ),
+          },
+        ]
+      : [],
   }),
 });
 
@@ -44,10 +84,12 @@ const serverLoader = createServerFn({ method: "GET" })
   .handler(async ({ data: slugs }) => {
     const page = newsSource.getPage(slugs);
     if (!page) throw notFound();
+    const data = page.data as { description?: string; temporalCoverage?: string };
     return {
       path: page.path,
       title: page.data.title,
-      description: page.data.description ?? "",
+      description: clampText(page.data.description ?? "", NEWS_META_DESCRIPTION_MAX),
+      temporalCoverage: data.temporalCoverage ?? null,
       // serializePageTree, not the raw tree: a page tree's `name` is a
       // ReactNode, which createServerFn's serializability check rejects.
       // Same call docs.$.tsx makes for the same reason.

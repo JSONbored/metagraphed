@@ -247,6 +247,22 @@ export interface TechArticleInput {
   dateModified?: string | null;
   /** Absolute URL of the page's representative image (its OG card). */
   image?: string | null;
+  /**
+   * ISO 8601 interval the page's content covers, e.g. `2026-07-20/2026-07-26`.
+   *
+   * A statement about the PERIOD, never about publication time. The weekly
+   * digests know their week exactly (it is what selects their items) and know
+   * no honest publication timestamp, so this is the field that fits.
+   */
+  temporalCoverage?: string | null;
+  /**
+   * `TechArticle` for reference documentation, `Article` for editorial prose.
+   *
+   * A weekly digest is a report about a subnet, not documentation of an
+   * interface, and typing it as the latter would be the same over-claim the
+   * rest of this module avoids.
+   */
+  type?: "TechArticle" | "Article";
 }
 
 /**
@@ -275,13 +291,14 @@ export interface TechArticleInput {
 export function techArticleJsonLd(input: TechArticleInput) {
   const description = input.description?.trim();
   return {
-    "@type": "TechArticle",
+    "@type": input.type ?? "TechArticle",
     headline: input.headline,
     ...(description ? { description } : {}),
     url: input.url,
     mainEntityOfPage: input.url,
     ...(input.dateModified ? { dateModified: input.dateModified } : {}),
     ...(input.image ? { image: input.image } : {}),
+    ...(input.temporalCoverage ? { temporalCoverage: input.temporalCoverage } : {}),
     inLanguage: "en",
     author: ref(JSONLD_IDS.org),
     publisher: ref(JSONLD_IDS.org),
