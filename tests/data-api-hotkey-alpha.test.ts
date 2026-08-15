@@ -26,6 +26,8 @@ import path from "node:path";
 import { beforeAll, beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/neon-write.ts -- which nothing here can inject into, because the route is
@@ -85,15 +87,15 @@ const HOTKEY_B = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
 let db: PGlite;
 
-function env(overrides: Record<string, unknown> = {}): Env {
-  return {
+function env(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     ...pgMockEnv(),
     // The inline write runs through mirrorLedgerToNeon, which is a no-op unless
     // the lane is named here -- so a suite that left this out would assert an
     // empty table and call it a passing write.
     HOTKEY_ALPHA_SYNC_SECRET: SECRET,
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 /** A ctx with a real `waitUntil`. createPgSql hands the client back through it
@@ -101,7 +103,11 @@ function env(overrides: Record<string, unknown> = {}): Env {
  * a TypeError -- silently, because the rejection replaces the result. */
 const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
 
-function post(body: unknown, token: string | null = SECRET, envOverride?: Env) {
+function post(
+  body: unknown,
+  token: string | null = SECRET,
+  envOverride?: DataApiWorkerEnv,
+) {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };

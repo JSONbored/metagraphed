@@ -181,3 +181,42 @@ describe("reading the economics artifact (#9313)", () => {
     assert.equal(data.owners_observed_at, CAPTURED);
   });
 });
+
+// A tier that answers something malformed has not answered (#11339).
+//
+// This composer used to declare `Promise<Row>` and reach it with
+// `buildAccountEntities(...) as unknown as Row`, so whatever a tier returned
+// was served. It parses each tier's answer now, read-tolerantly: a MISSING
+// field is still an answer (the frozen export carries what it carries), and
+// only a wrong-TYPED one is a refusal.
+describe("a tier answering something malformed (#11339)", () => {
+  test("a wrong-typed tier answer falls through to the empty payload", async () => {
+    storage.behaviour = { kind: "miss", data: undefined };
+    // `ownership_tie_count` is declared `int`, so a string is the one thing
+    // the read-tolerant schema still refuses.
+    const data = await answerAccountEntities(
+      null,
+      OWNER,
+      { schema_version: 1, ss58: OWNER, ownership_tie_count: "many" },
+      { coldTier: declines },
+    );
+    assert.equal(data.ownership_tie_count, 0);
+    assert.deepEqual(data.ownership_ties, []);
+    assert.equal(data.ss58, OWNER, "still this coldkey's payload");
+  });
+
+  test("a tier MISSING fields is still an answer -- tolerance goes one way", async () => {
+    // The distinction the read schema exists for: absence is legitimate,
+    // nonsense is not. Rejecting this one would publish "no labels" for an
+    // address the frozen export has labels for.
+    storage.behaviour = { kind: "miss", data: undefined };
+    const data = await answerAccountEntities(
+      null,
+      OWNER,
+      { ss58: OWNER, labels: [{ label: "exchange" }] },
+      { coldTier: declines },
+    );
+    const labels = data.labels as Record<string, unknown>[];
+    assert.equal(labels[0]?.label, "exchange", "the sparse tier was served");
+  });
+});

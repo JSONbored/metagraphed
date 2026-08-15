@@ -1772,6 +1772,44 @@ describe("ai-search defensive branches", () => {
     assert.match(userMessage, /api\.one\.io/);
   });
 
+  test("an overlay that returns NO subnets leaves the baked catalog alone", async () => {
+    // The other arm of `if (overlaidRows.length > 0)`. An overlay that answers
+    // with an empty list is not a reason to drop the catalog rows -- doing so
+    // would send /ask a context with no subnets at all, which reads as "this
+    // registry is empty" rather than "the live probe had nothing to add"
+    // (#11339).
+    const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+    const readArtifact = (() =>
+      Promise.resolve({
+        ok: true,
+        data: {
+          subnets: [
+            {
+              netuid: 1,
+              callable_count: 3,
+              base_url: "https://api.one.io",
+              health: "unknown",
+            },
+          ],
+        },
+      })) as unknown as ReadArtifact;
+    const out = await askQuestion(
+      mockEnv(env),
+      "Which subnet does images?",
+      {},
+      {
+        readArtifact,
+        liveHealth: { last_run_at: "2026-06-22T18:00:00.000Z", subnets: [] },
+        // Answers, but with nothing in it.
+        overlayCatalogIndex: (() => ({ subnets: [] })) as unknown as AnyFn,
+      },
+    );
+    assert.ok(out.answer.length > 0);
+    const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL)!;
+    const userMessage = askCall.input.messages.at(-1).content;
+    assert.match(userMessage, /api\.one\.io/, "the baked row survived");
+  });
+
   test("askQuestion overlays LIVE probe health onto the catalog enrichment", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
     const readArtifact = (() =>

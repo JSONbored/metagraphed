@@ -78,6 +78,15 @@ export const AccountEntitiesArtifactSchema = z
   .describe(
     "One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities.",
   );
+/** The read-tolerant twin -- see SubnetEventsReadSchema for the reasoning. */
+export const AccountEntitiesReadSchema = AccountEntitiesArtifactSchema.extend({
+  labels: z.array(EntityLabelSchema.partial().catchall(z.unknown())),
+  ownership_ties: z.array(z.looseObject({})),
+})
+  .partial()
+  .catchall(z.unknown());
+export type AccountEntitiesRead = z.infer<typeof AccountEntitiesReadSchema>;
+
 export type AccountEntitiesArtifact = z.infer<
   typeof AccountEntitiesArtifactSchema
 >;

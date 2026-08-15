@@ -38,7 +38,7 @@ import {
 } from "./pg-sql.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore, type RowQuerier } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 import {
   NEURONS_COVERAGE_FLOOR_NETUIDS,
   NEURONS_PASS_WINDOW_MS,
@@ -150,8 +150,7 @@ export async function runSubnetLifecycleLane(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const floor = deps.coverageFloor ?? NEURONS_COVERAGE_FLOOR_NETUIDS;
-  const db = readStore(env, ["neurons", "subnet_lifecycle"]) as unknown as
-    RowQuerier | undefined;
+  const db = readStore(env, ["neurons", "subnet_lifecycle"]);
   if (!db?.query) return { ok: false, reason: "no store bound" };
 
   const record = async (

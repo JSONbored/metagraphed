@@ -12,6 +12,8 @@
 // the two agree on the reject-spends-nothing rule, and the tests pin both.
 
 /** UTC day key. Quotas reset at 00:00 UTC, stated in the 429 headers. */
+import type { QuotaSpendResponse } from "../schemas-src/internal-wire.ts";
+
 export function utcDayKey(nowMs: number): string {
   return new Date(nowMs).toISOString().slice(0, 10);
 }
@@ -32,16 +34,18 @@ export function quotaResetAt(nowMs: number): string {
   return new Date(nowMs + msUntilUtcMidnight(nowMs)).toISOString();
 }
 
-export interface QuotaSpendResult {
-  allowed: boolean;
-  /** Units spent today INCLUDING this request when allowed, excluding when not. */
-  used: number;
-  limit: number;
-  /** Units left after this request; never negative. */
-  remaining: number;
-  /** ISO instant the counter resets (next UTC midnight). */
-  resetAt: string;
-}
+/**
+ * What a spend decides, ALIASED from the schema that carries it over the wire.
+ *
+ * This was a hand-written interface restating `QuotaSpendResponseSchema` field
+ * for field, which `validate:type-duplicates` correctly refused -- and it is
+ * the same defect the rest of this change is about. The producer and the
+ * consumer's parser must not be able to disagree about a shape whose four
+ * numbers land in `x-ratelimit-*` headers.
+ *
+ * Field docs live on the schema now, where the OpenAPI surface reads them.
+ */
+export type QuotaSpendResult = QuotaSpendResponse;
 
 /**
  * Decide a spend of `cost` against `limit` given `used` units already spent.

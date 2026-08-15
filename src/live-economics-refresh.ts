@@ -61,7 +61,7 @@ import {
 import { encodeAccountId32 } from "./ss58.ts";
 import { createSubtensorPinnedStorage } from "./subtensor-pinned-storage.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
-import { readStore, type RowQuerier } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -467,14 +467,13 @@ export async function refreshLiveEconomics(
   if (typeof deps.readArtifact !== "function") {
     return { ok: false, reason: "reader_unavailable" };
   }
-  const kv = env.METAGRAPH_CONTROL as unknown as KvLike | undefined;
+  const kv: KvLike | undefined = env.METAGRAPH_CONTROL;
   if (!kv?.put) return { ok: false, reason: "kv_binding_missing" };
   // Whichever store holds the metagraph (#10158). This publishes the
   // live-economics KV blob from a full neuron aggregate plus the alpha price
   // history -- off a frozen table it would republish yesterday's economics
   // every three hours, with a fresh timestamp on it.
-  const db = readStore(env, ["neurons", "subnet_snapshots"]) as unknown as
-    RowQuerier | undefined;
+  const db = readStore(env, ["neurons", "subnet_snapshots"]);
   if (!db?.query) return { ok: false, reason: "store_unavailable" };
 
   const now = deps.now ?? Date.now;

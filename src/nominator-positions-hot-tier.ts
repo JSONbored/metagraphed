@@ -35,7 +35,7 @@ import {
   neuronStakeByHotkeys,
   POSITION_SCAN_CAP,
 } from "./nominator-positions-cold-tier.ts";
-import { readStore, type OptionalRowStore } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 import type { NominatorPositions } from "../generated/db/types.ts";
 
 /** Kept identical to the cold tier's SELECT list (minus `coldkey`, which the
@@ -63,8 +63,7 @@ export async function loadAccountPositionsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
-  const db = readStore(env, ["nominator_positions"]) as unknown as
-    OptionalRowStore | undefined;
+  const db = readStore(env, ["nominator_positions"]);
   if (!db?.query || !db?.first) return null;
 
   let rows: Record<string, unknown>[];

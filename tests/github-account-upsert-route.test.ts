@@ -11,6 +11,7 @@ import { beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { wireQueuedPg } from "./user-state-store-queue.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
 
 // The store is Postgres, reached through `new Client(...)` inside
 // src/pg-sql.ts, and this suite calls `worker.fetch(request, env, ctx)` -- so
@@ -60,17 +61,13 @@ function req(body: Row, token: string | null = INTERNAL_TOKEN) {
 }
 
 async function fetchRoute(request: Request, env: Row) {
-  return worker.fetch(
-    request,
-    env as unknown as Env,
-    {
-      // A REAL waitUntil: createPgSql parks `client.end()` on it in a `finally`,
-      // so an ExecutionContext without one turns every query into a TypeError
-      // after the rows have already been read.
-      waitUntil() {},
-      passThroughOnException() {},
-    } as unknown as ExecutionContext,
-  );
+  return worker.fetch(request, dataApiEnv(env), {
+    // A REAL waitUntil: createPgSql parks `client.end()` on it in a `finally`,
+    // so an ExecutionContext without one turns every query into a TypeError
+    // after the rows have already been read.
+    waitUntil() {},
+    passThroughOnException() {},
+  } as unknown as ExecutionContext);
 }
 
 test("rejects a malformed JSON body", async () => {

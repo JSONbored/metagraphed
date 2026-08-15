@@ -107,7 +107,14 @@ export interface RegistrySyncPayload {
 
 /** The slice of `pg`'s Client this uses, so a test can hand in a fake. */
 export interface RegistryPgClient {
-  connect(): Promise<void>;
+  /**
+   * `unknown`, not `void`: `pg`'s own `connect()` resolves to the client, and
+   * every caller here awaits it for the side effect and ignores the value. A
+   * `void` return is not a superset of `Promise<Client>` inside a generic, so
+   * declaring one made the real driver incompatible and forced
+   * `new Client(...) as unknown as <Contract>` at the factory (#11339).
+   */
+  connect(): Promise<unknown>;
   query(text: string, values?: unknown[]): Promise<{ rows: unknown[] }>;
   end(): Promise<void>;
 }
@@ -150,8 +157,7 @@ export async function applyRegistrySyncToNeon(
     subnets_deleted: 0,
   };
   const client =
-    deps.clientFactory?.(connectionString) ??
-    (new Client({ connectionString }) as unknown as RegistryPgClient);
+    deps.clientFactory?.(connectionString) ?? new Client({ connectionString });
   const newId = deps.newId ?? (() => crypto.randomUUID());
 
   await client.connect();

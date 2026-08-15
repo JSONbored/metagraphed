@@ -787,6 +787,11 @@ describe("daily quotas (#8608)", () => {
       { accountId: "42", dailyUnits: 1000 },
       50,
     );
+    // The store answered, so the verdict is not the fail-open null. Asserting
+    // it makes that an expectation rather than an assumption -- the signature
+    // is nullable now, because four paths in spendDailyQuota return null and
+    // `as never` used to hide every one of them (#11339).
+    assert.ok(verdict, "the store answered, so this is a real verdict");
     assert.equal(verdict.allowed, true);
     assert.equal(verdict.remaining, 950);
     // The cost travelled through verbatim: a 10-message batch of 5-unit tools.
@@ -810,6 +815,7 @@ describe("daily quotas (#8608)", () => {
       { accountId: "42", dailyUnits: 1000 },
       25,
     );
+    assert.ok(verdict, "a REFUSAL is still an answer, not a fail-open null");
     assert.equal(verdict.allowed, false);
     assert.equal(verdict.remaining, 0);
   });
@@ -1152,7 +1158,13 @@ describe("per-minute limiter runs before the daily quota is spent (#8812)", () =
   test("allowed by both spends the quota exactly once, with cost = the route weight", async () => {
     const { env, spends } = envWith(
       true,
-      ok({ allowed: true, used: 1, limit: 1000, remaining: 999 }),
+      ok({
+        allowed: true,
+        used: 1,
+        limit: 1000,
+        remaining: 999,
+        resetAt: "2026-07-30T00:00:00.000Z",
+      }),
     );
     const result = await applyTieredRateLimit(req(), env, CONFIG);
     assert.equal(result.allowed, true);

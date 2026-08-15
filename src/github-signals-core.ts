@@ -349,17 +349,64 @@ async function mapLimit<T, R extends { owner: string; repo: string }>(
  * so the two read the last-good state identically.
  */
 export function signalsByKey(doc: unknown): Map<string, RepoSignal> {
-  const entries: Row[] = Array.isArray((doc as Row | null)?.signals)
-    ? ((doc as Row).signals as Row[])
-    : [];
-  return new Map(
-    entries
-      .filter((e) => e?.owner && e?.repo)
-      .map((e) => [
-        githubRepoMapKey(e.owner as string, e.repo as string),
-        e as unknown as RepoSignal,
-      ]),
-  );
+  const out = new Map<string, RepoSignal>();
+  for (const entry of rowsOf(rowOf(doc)?.signals)) {
+    // CHECKED, not asserted (#11339). `owner`/`repo` were filtered for
+    // TRUTHINESS and then read as `string` -- which a number or an object also
+    // passes, and `githubRepoMapKey` would have built a key out of one. The
+    // whole entry was then asserted to BE a `RepoSignal`, so a captured
+    // document carrying nothing but those two fields looked like a complete
+    // signal to every consumer of this map.
+    const owner = entry.owner;
+    const repo = entry.repo;
+    if (typeof owner !== "string" || !owner) continue;
+    if (typeof repo !== "string" || !repo) continue;
+    out.set(githubRepoMapKey(owner, repo), {
+      ...entry,
+      owner,
+      repo,
+      last_push_at:
+        typeof entry.last_push_at === "string" ? entry.last_push_at : null,
+      languages: rowOf(entry.languages),
+      stars: typeof entry.stars === "number" ? entry.stars : null,
+      commits_weekly: Array.isArray(entry.commits_weekly)
+        ? (entry.commits_weekly as RepoSignal["commits_weekly"])
+        : null,
+      releases: Array.isArray(entry.releases)
+        ? (entry.releases as RepoSignal["releases"])
+        : null,
+      // `unreachable` decides whether a consumer treats the signal as usable,
+      // so a captured document that omits it must not read as reachable.
+      unreachable: entry.unreachable === true,
+      captured_at:
+        typeof entry.captured_at === "string" ? entry.captured_at : null,
+    });
+  }
+  return out;
+}
+
+// Narrowing kept LOCAL on purpose. This module imports nothing -- see the
+// header: IO is injected and it never reaches the filesystem, R2 or
+// process.env -- and read-store.ts pulls in a Postgres driver, so borrowing
+// `recordOrNull` from there would cost this module the one property it is
+// built around.
+
+/** A JSON object, or null. Excludes arrays and the `typeof null` hole. */
+function rowOf(value: unknown): Row | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Row)
+    : null;
+}
+
+/** The JSON objects in an array, dropping anything that is not one. */
+function rowsOf(value: unknown): Row[] {
+  if (!Array.isArray(value)) return [];
+  const rows: Row[] = [];
+  for (const item of value) {
+    const row = rowOf(item);
+    if (row) rows.push(row);
+  }
+  return rows;
 }
 
 export interface CaptureArtifactOptions extends CaptureEntryOptions {

@@ -106,7 +106,7 @@ import type { R2SqlReader } from "./r2-sql.ts";
 import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
-import { readStore, type OptionalRowQuerier } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
@@ -418,7 +418,7 @@ async function alphaPriceByNetuidDate(
   try {
     const since = new Date(cutoff).toISOString().slice(0, 10);
     const snapshots = await storeAll(
-      readStore(env, ACCOUNT_STAKE_MOVES_PRICE_TABLES) as never,
+      readStore(env, ACCOUNT_STAKE_MOVES_PRICE_TABLES),
       `SELECT netuid, snapshot_date, alpha_price_tao FROM subnet_snapshots
        WHERE snapshot_date >= ? AND netuid IN (${netuids.join(", ")})
          AND alpha_price_tao IS NOT NULL`,
@@ -561,8 +561,7 @@ async function neuronSlots(
   env: R2SqlEnv | null | undefined,
   addr: string,
 ): Promise<{ netuid: number; uid: number }[] | null> {
-  const db = readStore(env, ["neurons"]) as unknown as
-    OptionalRowQuerier | undefined;
+  const db = readStore(env, ["neurons"]);
   if (!db?.query) return null;
   let results: unknown[];
   try {

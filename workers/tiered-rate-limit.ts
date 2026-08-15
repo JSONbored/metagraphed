@@ -23,6 +23,7 @@ import {
 import { routeCost } from "../src/route-cost-weights.ts";
 import { evaluateBlock, type BlockVerdict } from "../src/api-key-abuse.ts";
 import { recordOrNull } from "../src/read-store.ts";
+import { QuotaSpendResponseSchema } from "../schemas-src/internal-wire.ts";
 
 /**
  * The rate-limiter binding a policy NAMES, or undefined.
@@ -195,10 +196,15 @@ async function spendDailyQuota(
   dailyUnits: number,
   /** Explicit cost, when the pathname cannot price the work. See below. */
   costUnitsOverride?: number,
-): Promise<TieredRateLimitResult["quota"] & { allowed: boolean }> {
+  // NULLABLE, which it always was. This said non-null and then returned `null`
+  // on four paths -- no binding, a non-ok response, an unparseable body, and a
+  // throw -- with `as never` making each one assignable. So every caller was
+  // typed as holding a quota it might not have, and the compiler could not
+  // point at the reads that assume otherwise (#11339).
+): Promise<(TieredRateLimitResult["quota"] & { allowed: boolean }) | null> {
   const dataApi = env.DATA_API;
   const token = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
-  if (!dataApi?.fetch || !token) return null as never;
+  if (!dataApi?.fetch || !token) return null;
   // The pathname prices the work for REST, where one path IS one operation.
   // It cannot for a multiplexed transport: every MCP call is POST /mcp, which
   // falls to the `edge` catch-all, so an LLM generation and an artifact read
@@ -223,20 +229,23 @@ async function spendDailyQuota(
         }),
       }),
     );
-    if (!response.ok) return null as never;
-    const payload = (await response.json()) as { allowed?: unknown };
-    // Only a payload that actually carries a boolean verdict is a verdict.
-    // Without this check ANY 200 whose body lacks `allowed` -- a shape change
-    // on the data-api side, a proxy interposing its own JSON, a route that
-    // silently stops existing -- reads as `!undefined`, i.e. REJECTED, and
-    // every quota'd caller starts getting 429s from a store that never said
-    // no. Fail open on an unrecognised shape, like every other branch here.
-    if (typeof payload?.allowed !== "boolean") return null as never;
-    return payload as never;
+    if (!response.ok) return null;
+    // PARSED, not spot-checked. The old check read ONE field by hand and then
+    // returned the whole body as a fully-shaped quota, so `used`/`limit`/
+    // `remaining`/`resetAt` reached the response header unverified.
+    //
+    // The reasoning for failing open is unchanged and still load-bearing: ANY
+    // 200 whose body lacks `allowed` -- a shape change on the data-api side, a
+    // proxy interposing its own JSON, a route that silently stops existing --
+    // would read as `!undefined`, i.e. REJECTED, and every quota'd caller would
+    // start getting 429s from a store that never said no.
+    const parsed = QuotaSpendResponseSchema.safeParse(await response.json());
+    if (!parsed.success) return null;
+    return parsed.data;
   } catch {
     // Same posture as a missing binding: never turn a quota-store hiccup into
     // an outage for a caller who is paying us.
-    return null as never;
+    return null;
   }
 }
 
@@ -506,7 +515,8 @@ export async function spendDeferredDailyQuota(
   env: Env,
   pending: { accountId: string; dailyUnits: number },
   costUnits: number,
-): Promise<TieredRateLimitResult["quota"] & { allowed: boolean }> {
+  // Nullable, because it forwards a nullable result -- see spendDailyQuota.
+): Promise<(TieredRateLimitResult["quota"] & { allowed: boolean }) | null> {
   return spendDailyQuota(
     request,
     env,

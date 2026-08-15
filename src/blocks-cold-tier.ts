@@ -48,7 +48,7 @@ import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
 import type { BlocksHead, ChainDetailBlocks } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { readStore, type OptionalRowQuerier } from "./read-store.ts";
+import { readStore, recordOrNull } from "./read-store.ts";
 import {
   resolveDecodeWatermark,
   type DecodeWatermarkDeps,
@@ -260,8 +260,7 @@ async function storeHeadRows(
   seam: number,
   want: number,
 ): Promise<Record<string, unknown>[] | null> {
-  const db = readStore(env, BLOCKS_SEAM_TABLES) as unknown as
-    OptionalRowQuerier | undefined;
+  const db = readStore(env, BLOCKS_SEAM_TABLES);
   if (!db?.query || want <= 0) return null;
 
   // Every predicate is qualified to `b`: block_number, observed_at and
@@ -421,8 +420,7 @@ export async function loadBlockColdTier(
   // Mainnet-only, for the same reason the feed's head leg is.
   const db =
     network === DEFAULT_CHAIN_NETWORK
-      ? (readStore(env, BLOCKS_SEAM_TABLES) as unknown as
-          OptionalRowQuerier | undefined)
+      ? readStore(env, BLOCKS_SEAM_TABLES)
       : undefined;
   // "Above the seam" means "too new for the lakehouse, so D1 is the only
   // source" — a statement that is only true on mainnet, because only mainnet
@@ -447,7 +445,7 @@ export async function loadBlockColdTier(
         [value],
       );
       const row = rows[0];
-      if (row) return buildBlock(row as never, ref);
+      if (row) return buildBlock(recordOrNull(row), ref);
     } catch {
       // Fall through to the lakehouse rather than failing the request.
     }
@@ -455,6 +453,6 @@ export async function loadBlockColdTier(
 
   // A height above the seam that D1 did not have is a genuine miss, not a
   // reason to scan the lakehouse for a block it cannot contain.
-  if (aboveSeam) return buildBlock(undefined as never, ref);
+  if (aboveSeam) return buildBlock(undefined, ref);
   return loadBlockFromR2Sql(env, ref, network);
 }

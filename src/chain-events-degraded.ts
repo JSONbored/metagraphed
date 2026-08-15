@@ -197,8 +197,18 @@ export function degradedChainEventsPayload(url: URL): Row | null {
  * exactly what happened when conviction (a live CHAIN read, #9319) was reported
  * as `lakehouse-cold-tier` because that was the only label the caller had.
  */
-export interface ColdTierAnswer {
-  data: Row;
+/**
+ * GENERIC over its payload, defaulting to `Row`.
+ *
+ * Pinned to `Row`, the hot tier's own typed payload could not be assigned to
+ * it -- `BlockChainEventsPayload` is an interface, and TypeScript never gives
+ * one an implicit index signature -- so the assembly site wrote
+ * `hot.data as unknown as ColdTierAnswer["data"]` and the consumer then wrote
+ * `answer.data as { events?: unknown }` to get the field back (#11339). The
+ * default keeps every existing `ColdTierAnswer` spelling working unchanged.
+ */
+export interface ColdTierAnswer<T = Row> {
+  data: T;
   source: string;
 }
 

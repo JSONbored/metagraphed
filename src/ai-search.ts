@@ -26,6 +26,8 @@ import {
   recordAiGenerationEvent,
 } from "./usage-telemetry.ts";
 import { EmbedManifestSchema } from "../schemas-src/internal-wire.ts";
+import { recordOrNull, recordsOrEmpty } from "./read-store.ts";
+import type { overlayCatalogIndex } from "./health-serving.ts";
 
 // Best free Workers AI models (verified available on the account):
 // - Embedding: Qwen3-Embedding-0.6B (1024-dim) — tops MTEB English; the
@@ -725,10 +727,14 @@ export function formatAskContextBlock(
 interface AskDeps {
   readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
   liveHealth?: unknown;
-  overlayCatalogIndex?: (
-    input: { subnets: unknown[] },
-    liveHealth: unknown,
-  ) => { subnets?: unknown[] } | null | undefined;
+  /**
+   * Tied to the real overlay rather than restated (#11339). The hand-written
+   * shape here took `{ subnets: unknown[] }` while `overlayCatalogIndex` takes
+   * `Row | null | undefined`, so the one production caller passed the function
+   * through `as unknown as (...)` -- and neither side could notice the other
+   * changing.
+   */
+  overlayCatalogIndex?: typeof overlayCatalogIndex;
   // metagraphed#7153: threaded from the MCP ask tool's McpCtx.distinctId
   // (resolved from a validated GitHub OAuth identity when present) so an
   // authenticated caller's $ai_generation events attribute to them instead
@@ -751,22 +757,30 @@ async function loadAskEnrichment(
       env,
       "/metagraph/agent-catalog.json",
     );
-    const catalogAsRecord = catalog as unknown as
-      | { ok?: boolean; data?: { subnets?: unknown }; subnets?: unknown }
-      | undefined;
-    let subnets = catalogAsRecord?.ok
-      ? catalogAsRecord.data?.subnets
-      : catalogAsRecord?.subnets;
-    if (!Array.isArray(subnets)) return new Map();
+    // `.ok` narrows `.data` on its own -- `StorageReadResult` is a
+    // discriminated union, and the hand-rolled `{ ok?; data?; subnets? }` this
+    // replaces was restating it loosely enough to need a cast to reach (#11339).
+    // The non-ok arm reads `subnets` off the result itself because an injected
+    // test reader may answer with the payload unwrapped.
+    const subnets = catalog.ok
+      ? recordOrNull(catalog.data)?.subnets
+      : recordOrNull(catalog)?.subnets;
+    // Named as rows once, rather than re-asserted at each use below.
+    let rows = recordsOrEmpty(subnets);
+    if (rows.length === 0) return new Map();
     // Overlay live probe health (injected, so this module stays binding-free and
     // stub-testable) so /ask context reflects the current cron-probed status —
     // not the build-time "unknown" stub baked into the catalog artifact.
     if (deps.liveHealth && typeof deps.overlayCatalogIndex === "function") {
-      const overlaid = deps.overlayCatalogIndex({ subnets }, deps.liveHealth);
-      if (Array.isArray(overlaid?.subnets)) subnets = overlaid.subnets;
+      const overlaid = deps.overlayCatalogIndex(
+        { subnets: rows },
+        recordOrNull(deps.liveHealth),
+      );
+      const overlaidRows = recordsOrEmpty(overlaid?.subnets);
+      if (overlaidRows.length > 0) rows = overlaidRows;
     }
     return new Map(
-      (subnets as Array<Record<string, unknown>>)
+      rows
         .filter((entry) => Number.isInteger(entry?.netuid))
         .map((entry) => [
           entry.netuid,

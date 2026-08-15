@@ -16,6 +16,8 @@ import {
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { verifyTriggerToken } from "../src/wallet-auth.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -37,8 +39,8 @@ function createFakeKv() {
 
 const TOKEN_SECRET = "test-watch-trigger-token-secret";
 
-function baseEnv(overrides: Record<string, unknown> = {}): Env {
-  return {
+function baseEnv(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     METAGRAPH_CONTROL: createFakeKv(),
     WATCH_TRIGGER_TOKEN_SECRET: TOKEN_SECRET,
     // #8640: /auth/wallet/challenge now refuses to mint a challenge on a
@@ -48,7 +50,7 @@ function baseEnv(overrides: Record<string, unknown> = {}): Env {
     // its own test.
     WALLET_SESSION_SECRET: "test-wallet-session-secret",
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 function makeTestWallet(seedByte: number) {
@@ -77,7 +79,7 @@ function req(
   });
 }
 
-async function fetchRoute(request: Request, env: Env) {
+async function fetchRoute(request: Request, env: DataApiWorkerEnv) {
   return worker.fetch(request, env, {} as unknown as ExecutionContext);
 }
 

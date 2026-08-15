@@ -156,14 +156,19 @@ describe("mirrorLedgerToNeon", () => {
     const out = await mirrorLedgerToNeon(
       {
         HYPERDRIVE: { connectionString: "postgresql://u:p@127.0.0.1:1/none" },
-        METAGRAPH_HEALTH_DB: spy.db,
       },
       ctx,
       "account-balances",
       rows,
+      { laneHealthDb: spy.db, now: () => NOW },
     );
     assert.equal(out.attempted, true);
     assert.equal(out.result?.ok, false);
+    // The "reports" half of this test's name, which it never checked: the spy
+    // used to arrive as `METAGRAPH_HEALTH_DB`, a binding nothing reads, so it
+    // collected nothing and no assertion noticed (#11339).
+    assert.equal(spy.rows[0]?.lane, "neon:account-balances");
+    assert.equal(spy.rows[0]?.verdict, "stale");
   });
 
   test("a bound Hyperdrive with no ctx declines rather than leaking", async () => {

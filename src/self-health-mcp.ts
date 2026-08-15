@@ -65,7 +65,7 @@
 import type { StorageReadResult } from "../workers/storage.ts";
 import { loadSelfHealthColdTier } from "./self-health-cold-tier.ts";
 import { loadSelfHealthNeon } from "./self-health-neon.ts";
-import { createPgSql } from "./pg-sql.ts";
+import { canWaitUntil, createPgSql } from "./pg-sql.ts";
 import { loadLatestLaneHealth } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { withLaneHealth, type SelfHealth } from "./self-health.ts";
@@ -114,13 +114,15 @@ type SelfHealthExecutionCtx = {
 function selfHealthNeonSql(
   ctx: { env: Env } & SelfHealthExecutionCtx,
 ): ReturnType<typeof createPgSql> | null {
-  const waiter = ctx.executionCtx?.waitUntil
+  // The FIRST context that can actually defer, checked by predicate so the
+  // narrowing survives into the call below (#11339).
+  const waiter = canWaitUntil(ctx.executionCtx)
     ? ctx.executionCtx
-    : ctx.ctx?.waitUntil
+    : canWaitUntil(ctx.ctx)
       ? ctx.ctx
       : null;
   if (!ctx.env?.HYPERDRIVE || !waiter) return null;
-  return createPgSql(ctx.env.HYPERDRIVE, waiter as never);
+  return createPgSql(ctx.env.HYPERDRIVE, waiter);
 }
 
 /**

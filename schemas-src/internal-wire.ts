@@ -262,6 +262,23 @@ export const AlertTriggerRowSchema = z
     id: z.string(),
     channel: z.string(),
     condition: z.unknown().optional(),
+    // The evaluator's own fields (#11339). The producer already emits these --
+    // `evaluatorAlertTriggerView` builds every row of this response, in exactly
+    // this camelCase -- but the schema stopped at `id`/`channel`, so the hub
+    // parsed a row and then wrote `trigger as unknown as EvaluatorAlertTrigger`
+    // to use it. The comment there said the shape "is already right at runtime",
+    // which is true and is precisely what a schema is for stating.
+    //
+    // Nullish rather than required: `.flatMap` below drops a row that fails to
+    // parse, and a trigger missing an optional filter is a valid trigger, not a
+    // malformed one. Dropping it would silence a live alert.
+    name: z.unknown().optional(),
+    tableFilter: z.array(z.string()).nullish(),
+    netuid: z.number().nullish(),
+    eventKind: z.string().nullish(),
+    account: z.string().nullish(),
+    minAmountTao: z.number().nullish(),
+    destination: z.unknown().optional(),
   })
   .catchall(z.unknown());
 
@@ -352,3 +369,28 @@ export type McpSessionState = z.infer<typeof McpSessionStateSchema>;
 export const MCP_SESSION_STATE_KEYS = Object.keys(
   McpSessionStateSchema.shape,
 ) as Array<keyof McpSessionState>;
+
+/**
+ * `POST /api/v1/internal/quota/spend` as the rate limiter reads it.
+ *
+ * The limiter used to check ONE field by hand -- `typeof payload?.allowed !==
+ * "boolean"` -- and then return the whole body as a fully-shaped quota via
+ * `as never`, so `used`/`limit`/`remaining`/`resetAt` were never established
+ * and every consumer read them off a shape nothing had checked (#11339).
+ *
+ * STRICT on the four numbers and the stamp, because the caller publishes them
+ * in a response header and a partial quota reads as a real one. A body that
+ * does not parse is treated exactly as the hand-rolled check treated a missing
+ * `allowed`: fail OPEN, because a quota-store hiccup must not become a 429
+ * from a store that never said no.
+ */
+export const QuotaSpendResponseSchema = z
+  .object({
+    allowed: z.boolean(),
+    used: z.number(),
+    limit: z.number(),
+    remaining: z.number(),
+    resetAt: z.string(),
+  })
+  .catchall(z.unknown());
+export type QuotaSpendResponse = z.infer<typeof QuotaSpendResponseSchema>;

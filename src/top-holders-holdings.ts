@@ -59,7 +59,7 @@
 // src/hotkey-alpha-completeness.ts for why a row count cannot answer this and
 // the producers declare their pass sizes instead.
 
-import { readStore, type OptionalRowStore } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 import { TOP_HOLDERS_HOLDINGS_TABLES } from "./read-store-tables.ts";
 import {
   latestCompleteAccountBalancesPass,
@@ -268,8 +268,7 @@ export async function topHoldersHoldings(
   // null leg drops free_tao / delegated_tao / total_tao from the published
   // artifact entirely, which reads as "these sorts are unavailable" rather than
   // as a broken read.
-  const db = readStore(env, TOP_HOLDERS_HOLDINGS_TABLES) as unknown as
-    OptionalRowStore | undefined;
+  const db = readStore(env, TOP_HOLDERS_HOLDINGS_TABLES);
   if (!db?.query) return null;
 
   // The two readers describe the same binding with different minimal shapes --

@@ -104,7 +104,7 @@ export interface NominatorPositionsMirrorDeps {
  * raised, and both callers turn it into the request's failure.
  */
 export async function mirrorNominatorPositionsToNeon(
-  env: (NeonWriteEnv & { METAGRAPH_HEALTH_DB?: unknown }) | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   input: {
     rows: Row[];

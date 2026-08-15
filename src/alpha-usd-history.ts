@@ -68,6 +68,7 @@ import {
   type TaoUsdReading,
 } from "./alpha-usd.ts";
 import { TAO_USD_TABLE } from "./tao-usd-series.ts";
+import { recordOrNull, recordsOrEmpty } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -349,11 +350,34 @@ const DAY_MS_LOCAL = 24 * 60 * 60 * 1000;
  * capture time for the day to price against. The day is the finest grain the
  * aggregate actually has.
  */
-export function withAlphaUsdTrendDays(
-  data: Row,
+/** The five fields this overlay stamps onto whatever it is given. */
+export interface AlphaUsdTrendOverlay {
+  days: Row[];
+  usd_available_from: string | null;
+  priced_day_count: number;
+  usd_unavailable: string | null;
+  field_sources_usd: typeof ALPHA_USD_FIELD_SOURCE;
+}
+
+/**
+ * GENERIC over its input, EXPLICIT about its output.
+ *
+ * The caller used to cast in and back out --
+ * `withAlphaUsdTrendDays(data as unknown as Record<…>, …) as typeof data` --
+ * and that second cast was a lie in a way the first was not: this function
+ * ADDS five fields, so the result is genuinely not `typeof data` (#11339).
+ * `T & AlphaUsdTrendOverlay` says both halves, so callers keep their payload
+ * type AND can read what was stamped on.
+ */
+export function withAlphaUsdTrendDays<T extends object>(
+  data: T,
   byBucket: Map<number, TaoUsdReading> | null,
-): Row {
-  const days = Array.isArray(data?.days) ? (data.days as Row[]) : [];
+): T & AlphaUsdTrendOverlay {
+  // Optional-chained rather than defaulted: `T extends object` already
+  // guarantees an object, so a `?? {}` fallback here could only ever fire for
+  // an array -- a branch no caller reaches and no test can honestly cover
+  // (#11339).
+  const days = recordsOrEmpty(recordOrNull(data)?.days);
   // Same uniform-shape rule as the candles: a failed read still emits every USD
   // field as null, and only the top-level reason says why.
   const readFailed = byBucket === null;

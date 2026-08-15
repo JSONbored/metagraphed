@@ -577,8 +577,8 @@ export async function handleRpcProxyRequest(
   // testnet pool, which is intentionally not probe-derived).
   const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
   const pool = overlayRpcPoolEligibility(
-    staticPool as unknown as Record<string, unknown> | undefined,
-    liveRpcPool as Record<string, unknown> | null,
+    recordOrNull(staticPool),
+    recordOrNull(liveRpcPool),
   ) as RpcPool | null | undefined;
   // startedAt anchors end-to-end proxy latency for the B3 usage telemetry; the
   // recorder is best-effort + async (never adds latency to / fails the call).

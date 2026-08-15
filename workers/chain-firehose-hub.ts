@@ -787,7 +787,8 @@ export function createAsyncRepeater<T>({
   onOverflow?: (() => void) | null;
 } = {}): AsyncRepeater<T> {
   const pending: T[] = [];
-  let waitingResolve: ((result: IteratorResult<T>) => void) | null = null;
+  let waitingResolve: ((result: IteratorResult<T, undefined>) => void) | null =
+    null;
   let finished = false;
   const finish = () => {
     if (finished) return;
@@ -796,7 +797,7 @@ export function createAsyncRepeater<T>({
     if (waitingResolve) {
       const resolve = waitingResolve;
       waitingResolve = null;
-      resolve({ value: undefined as unknown as T, done: true });
+      resolve({ value: undefined, done: true });
     }
   };
   return {
@@ -820,16 +821,14 @@ export function createAsyncRepeater<T>({
     },
     [Symbol.asyncIterator]() {
       return {
-        next(): Promise<IteratorResult<T>> {
-          if (pending.length > 0) {
-            return Promise.resolve({
-              value: pending.shift() as T,
-              done: false,
-            });
+        next(): Promise<IteratorResult<T, undefined>> {
+          const next = pending.shift();
+          if (next !== undefined) {
+            return Promise.resolve({ value: next, done: false });
           }
           if (finished) {
             return Promise.resolve({
-              value: undefined as unknown as T,
+              value: undefined,
               done: true,
             });
           }
@@ -837,10 +836,10 @@ export function createAsyncRepeater<T>({
             waitingResolve = resolve;
           });
         },
-        return(): Promise<IteratorResult<T>> {
+        return(): Promise<IteratorResult<T, undefined>> {
           finish();
           return Promise.resolve({
-            value: undefined as unknown as T,
+            value: undefined,
             done: true,
           });
         },
@@ -1265,7 +1264,17 @@ export class ChainFirehoseHub implements DurableObject {
           // either one's volume.
           this.env.CHAIN_HEAD_AUTHOR_ENABLED !== "false",
         );
-        await this.broadcast(block as unknown as ChainFirehoseIngestPayload);
+        // Neither a cast nor a runtime check. `fetchBlockAt` returns a
+        // `HeadBlock`, whose schema is declared "scalar fields only, per the
+        // ingest validator's rules ... so it must not be constructible here" --
+        // which is the guarantee the old
+        // `block as unknown as ChainFirehoseIngestPayload` asserted past.
+        //
+        // A `validateSingleChainFirehoseIngestPayload` call here was the first
+        // fix, and mutation-testing showed the branch could never fire:
+        // `fetchBlockAt` THROWS on a malformed response rather than assembling
+        // a partial payload. The compiler proves the rest, once (#11339).
+        await this.broadcast(block);
         // THE ONLY WRITE (#10107, #10179). `this.state` is the waitUntil
         // handle here -- a Durable Object has no ExecutionContext, and
         // createPgSql needs one to hand the pooled connection back to

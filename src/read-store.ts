@@ -126,7 +126,7 @@ export function numberOrNull(value: unknown): number | null {
  */
 
 /** A store that can read MANY rows. */
-export interface RowQuerier {
+interface RowQuerier {
   query<T = Row>(text: string, values?: unknown[]): Promise<T[]>;
 }
 
@@ -163,8 +163,12 @@ export interface RowReader {
 /** ...where the binding may be absent, so the reader degrades rather than throws. */
 export type OptionalRowQuerier = Partial<RowQuerier>;
 export type OptionalRowReader = Partial<RowReader>;
-/** Both capabilities, either of which may be absent. */
-export type OptionalRowStore = Partial<RowQuerier & RowReader>;
+// NO `OptionalRowStore` any more. #11207 named it beside its two siblings for
+// the sites that took both capabilities, and its only two consumers were
+// `readStore(...) as unknown as OptionalRowStore | undefined` -- casts of a
+// value to a contract the value already satisfied. `readStore` returns
+// `ReadStoreDb`, which HAS both, so those sites now take it directly and the
+// name has nothing left to describe (#11339).
 
 /** Both capabilities, required -- what `pgReadStore` actually returns.
  *
@@ -309,7 +313,7 @@ export function pgReadStore(
   const run = async (text: string, values: unknown[]) => {
     const client =
       deps.clientFactory?.(connectionString) ??
-      (new Client({ connectionString }) as unknown as ReadStoreClient);
+      new Client({ connectionString });
     await client.connect();
     try {
       const result = await client.query(toPositionalPlaceholders(text), values);

@@ -45,12 +45,7 @@
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { passWindowMs } from "./producer-cadence.ts";
-import {
-  countOrZero,
-  numberOrNull,
-  readStore,
-  type ReadStoreDb,
-} from "./read-store.ts";
+import { countOrZero, numberOrNull, readStore } from "./read-store.ts";
 import type { ValidatorNominatorCounts } from "../generated/db/types.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -319,8 +314,7 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
   // `all()`, so the `.first()` below threw `not a function` even when a ctx was
   // threaded in by hand. Each of those alone is silent -- the lane simply stops
   // reporting, and an absent verdict reads as health.
-  const db = readStore(env, ["validator_nominator_counts"]) as unknown as
-    ReadStoreDb | undefined;
+  const db = readStore(env, ["validator_nominator_counts"]);
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

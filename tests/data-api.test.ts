@@ -21,6 +21,7 @@ vi.mock("pg", () => pg.module);
 
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
 const NEURONS_SYNC_SECRET = "test-neurons-sync-secret";
@@ -81,7 +82,7 @@ const ctx = { waitUntil() {} } as unknown as ExecutionContext;
 const req = (path: string, init?: RequestInit) =>
   worker.fetch(
     new Request(`https://d${path}`, init),
-    env as unknown as Env,
+    dataApiEnv(env),
     ctx as unknown as ExecutionContext,
   );
 beforeEach(() => {
@@ -171,7 +172,7 @@ test("neurons-sync is disabled (503) when NEURONS_SYNC_SECRET is not configured"
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    {} as unknown as Env,
+    dataApiEnv(),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -187,7 +188,7 @@ test("neurons-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)"
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    { NEURONS_SYNC_SECRET } as unknown as Env,
+    dataApiEnv({ NEURONS_SYNC_SECRET }),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -350,7 +351,7 @@ test("neurons-sync lands the snapshot in the store -- the wipe case (#9146)", as
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    env as unknown as Env,
+    dataApiEnv(env),
     ctx as unknown as ExecutionContext,
   );
   expect(res.status).toEqual(200);
@@ -429,11 +430,11 @@ test("a body stream that errors mid-read still records ok:false on the trace spa
     await expect(
       worker.fetch(
         request,
-        {
+        dataApiEnv({
           ...env,
           [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
           POSTHOG_TRACES_SAMPLE_RATE: "1",
-        } as unknown as Env,
+        }),
         ctx,
       ),
     ).rejects.toThrow();
@@ -494,7 +495,7 @@ test("backfill-neuron-daily is disabled (503) when NEURON_DAILY_BACKFILL_SECRET 
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    {} as unknown as Env,
+    dataApiEnv(),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -510,7 +511,7 @@ test("backfill-neuron-daily answers 503 -- the Postgres tier it wrote to is gone
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    { NEURON_DAILY_BACKFILL_SECRET } as unknown as Env,
+    dataApiEnv({ NEURON_DAILY_BACKFILL_SECRET }),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -613,7 +614,7 @@ test("POST to a different path is rejected with 405 (neurons-sync route only acc
 test("a read route with no D1 lane answers the gone-tier 503", async () => {
   const res = await worker.fetch(
     new Request("https://d/api/v1/chain-events"),
-    {} as unknown as Env,
+    dataApiEnv(),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -705,7 +706,7 @@ test("subnet-hyperparams-sync is disabled (503) when SUBNET_HYPERPARAMS_SYNC_SEC
       },
       body: JSON.stringify([hyperparamsSyncRow()]),
     }),
-    {} as unknown as Env,
+    dataApiEnv(),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -721,7 +722,7 @@ test("subnet-hyperparams-sync answers 503 -- the Postgres tier it wrote to is go
       },
       body: JSON.stringify([hyperparamsSyncRow()]),
     }),
-    { SUBNET_HYPERPARAMS_SYNC_SECRET } as unknown as Env,
+    dataApiEnv({ SUBNET_HYPERPARAMS_SYNC_SECRET }),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -883,7 +884,7 @@ test("account-identity-sync is disabled (503) when ACCOUNT_IDENTITY_SYNC_SECRET 
       },
       body: JSON.stringify([accountIdentitySyncRow()]),
     }),
-    {} as unknown as Env,
+    dataApiEnv(),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -899,7 +900,7 @@ test("account-identity-sync answers 503 -- the Postgres tier it wrote to is gone
       },
       body: JSON.stringify([accountIdentitySyncRow()]),
     }),
-    { ACCOUNT_IDENTITY_SYNC_SECRET } as unknown as Env,
+    dataApiEnv({ ACCOUNT_IDENTITY_SYNC_SECRET }),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -1062,7 +1063,7 @@ test("validator-nominator-counts-sync is disabled (503) when VALIDATOR_NOMINATOR
       },
       body: JSON.stringify([validatorNominatorCountRow()]),
     }),
-    {} as unknown as Env,
+    dataApiEnv(),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -1089,7 +1090,7 @@ test("validator-nominator-counts-sync fails loudly when nothing can hold the row
       },
       body: JSON.stringify([validatorNominatorCountRow()]),
     }),
-    { VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET } as unknown as Env,
+    dataApiEnv({ VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET }),
     ctx,
   );
   expect(res.status).toBe(502);
@@ -1146,7 +1147,7 @@ test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_S
       },
       body: JSON.stringify([nominatorPositionRow()]),
     }),
-    { ...env, NOMINATOR_POSITIONS_SYNC_SECRET: undefined } as unknown as Env,
+    dataApiEnv({ ...env, NOMINATOR_POSITIONS_SYNC_SECRET: undefined }),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -1211,7 +1212,7 @@ test("account-balances-sync is disabled (503) when ACCOUNT_BALANCES_SYNC_SECRET 
       },
       body: JSON.stringify([accountBalanceRow()]),
     }),
-    { ...env, ACCOUNT_BALANCES_SYNC_SECRET: undefined } as unknown as Env,
+    dataApiEnv({ ...env, ACCOUNT_BALANCES_SYNC_SECRET: undefined }),
     ctx,
   );
   expect(res.status).toBe(503);
@@ -1237,14 +1238,14 @@ test("account-balances-sync accepts the lane onto the queue (#9478)", async () =
       },
       body: JSON.stringify([accountBalanceRow()]),
     }),
-    {
+    dataApiEnv({
       ...env,
       SYNC_BATCHES: {
         send: async (m: unknown) => {
           enqueued.push(m);
         },
       },
-    } as unknown as Env,
+    }),
     ctx,
   );
   expect(res.status).toBe(200);

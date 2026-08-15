@@ -43,7 +43,6 @@ import type { StorageReadResult } from "../workers/storage.ts";
 import {
   currentStoreReadFailureGeneration,
   loadSubnetUptime,
-  type ObservationsReadDb,
 } from "./analytics-live.ts";
 import { KV_HEALTH_META } from "./kv-keys.ts";
 import {
@@ -166,10 +165,7 @@ export async function runSurfaceVerificationSync(
   // surface_checks are Neon's, and this lane republishes their verdict as the
   // registry's machine-verified tiers. Against a frozen copy it would keep
   // publishing a verification nobody re-measured.
-  const db = readStore(env, [
-    "surface_uptime_daily",
-    "surface_checks",
-  ]) as unknown as ObservationsReadDb | undefined;
+  const db = readStore(env, ["surface_uptime_daily", "surface_checks"]);
   const loud = (message: string, errorCode: string, reason: string) => {
     console.error(`[surface-verification-sync] ${message}`);
     const pending = Promise.resolve(

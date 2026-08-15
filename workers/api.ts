@@ -563,6 +563,7 @@ import {
 } from "../src/subnet-identity-history.ts";
 import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import {
+  type BlockChainEventsPayload,
   type ColdTierAnswer,
   parseCachedColdTierAnswer,
   chainEventsQueryFromUrl,
@@ -906,6 +907,7 @@ import {
 import type { WalletFlowRow } from "../src/wallet-activity.ts";
 import { ENTITY_LABELS_ARTIFACT } from "../src/entity-labels.ts";
 import { LIVE_CRON_PROBER } from "../src/field-provenance.ts";
+import { recordOrNull } from "../src/read-store.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -1162,11 +1164,10 @@ export async function runFreshnessWatchdog(
   deps: { readArtifact?: ArtifactReader; laneHealthDb?: LaneHealthDb } = {},
 ) {
   const startedAt = Date.now();
-  const readArtifactFn = (deps.readArtifact ??
-    (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
+  const readArtifactFn: ArtifactReader = deps.readArtifact ?? readArtifact;
   // laneHealthStore, not the binding (#10158) -- one of the last three callers
   // still reaching past it.
-  const laneHealthDb = laneHealthStore(env, deps.laneHealthDb) as never;
+  const laneHealthDb = laneHealthStore(env, deps.laneHealthDb);
   try {
     const artifact = (await readArtifactFn(
       env,
@@ -1326,7 +1327,16 @@ async function fetchDataApiJson(env: Env, path: string): Promise<Row | null> {
 // The subnet record carries github_releases (scripts/github-signals.ts). Read
 // from the served artifact rather than DATA_API: it is the same file the
 // subnet page already reads, so this adds no query to the indexer box.
-type ArtifactReader = (env: Env, path: string) => Promise<Row>;
+/**
+ * The artifact reader, tied to the real one rather than restated.
+ *
+ * This used to say `=> Promise<Row>` while `readArtifact` returns
+ * `Promise<StorageReadResult>` -- so every default reached the alias through
+ * `readArtifact as unknown as ArtifactReader`, and the alias's own return type
+ * was never checked against the function it exists to describe (#11339).
+ * `typeof` cannot drift from it.
+ */
+type ArtifactReader = typeof readArtifact;
 
 async function readSubnetProfileForNews(
   env: Env,
@@ -1349,8 +1359,7 @@ export async function resolveSubnetNewsForFeed(
   // initialization order, and a seam is cheaper than a mock anyway.
   deps: { readArtifact?: ArtifactReader } = {},
 ): Promise<NewsItem[]> {
-  const readArtifactFn = (deps.readArtifact ??
-    (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
+  const readArtifactFn: ArtifactReader = deps.readArtifact ?? readArtifact;
   if (!Number.isInteger(netuid) || netuid < 0) return [];
   const limit = SUBNET_NEWS_SOURCE_LIMIT;
   const [hyperparams, ownership, lease, profile] = await Promise.all([
@@ -2331,16 +2340,14 @@ export default {
       // The dead-letter record is a lane verdict, so it goes where the other
       // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
       // written to a store nobody reads is a message lost twice over.
-      await handleDeadLetterBatch(batch, laneHealthStore(env) as never);
+      await handleDeadLetterBatch(batch, laneHealthStore(env));
       return;
     }
     if (batch.queue === PROBE_JOBS_QUEUE) {
       // ONE QUEUE, FOUR OWNERS (#10894). A batch may mix them freely, so it is
       // partitioned before anything runs -- the handlers are not
       // interchangeable, each opening a store scoped to its own tables.
-      const { byType, unrecognised } = partitionProbeJobs(
-        batch.messages as unknown as LaneMessage[],
-      );
+      const { byType, unrecognised } = partitionProbeJobs(batch.messages);
       // DECLINED FIRST, and never by falling through to a default branch. An
       // unmatched discriminator must produce a verdict (#10827); a silent ack
       // would make a half-deployed rename look like a healthy queue draining.
@@ -2480,7 +2487,7 @@ async function defaultChangeEvent(env: Env): Promise<Record<string, unknown>> {
   // notification at every subscriber, and the next tick recovers on its own.
   return buildChangeEvent({
     changelog: (changelogArtifact.ok ? changelogArtifact.data : null) as Row,
-    pointer: pointer as unknown as Row,
+    pointer,
   }) as Record<string, unknown>;
 }
 
@@ -3525,10 +3532,7 @@ async function dispatchScheduled(
     const uptimeRollup = await rollupDailyUptime(env, { ctx });
     const snapshotPromise = writeSubnetSnapshot(env, {
       ctx,
-      readArtifact: readArtifact as unknown as (
-        env: Env,
-        path: string,
-      ) => Promise<Row>,
+      readArtifact,
     });
     if (!uptimeRollup.rolled) {
       const snapshot = await snapshotPromise;
@@ -4526,7 +4530,10 @@ export async function handleChainEventsFamily(
   // same `meta.source` the miss did rather than guessing one back. PARSED, not
   // cast (#11194) -- see parseCachedColdTierAnswer for why a cache read is a
   // boundary even though this Worker wrote the bytes.
-  let answer: ColdTierAnswer | null = cacheHit
+  // Either tier's payload: the cold one answers with a `Row`, the hot one with
+  // its own typed `BlockChainEventsPayload`. Naming both is what lets the hot
+  // branch below assign without a cast (#11339).
+  let answer: ColdTierAnswer<Row | BlockChainEventsPayload> | null = cacheHit
     ? parseCachedColdTierAnswer(await cacheHit.json())
     : null;
 
@@ -4542,7 +4549,7 @@ export async function handleChainEventsFamily(
     answer =
       hot?.kind === "answer"
         ? {
-            data: hot.data as unknown as ColdTierAnswer["data"],
+            data: hot.data,
             // Name the tier that ACTUALLY served. Labelling a lakehouse row as
             // the hot tier's would make the one thing this meta exists to
             // report -- which store answered -- a guess.
@@ -4604,7 +4611,7 @@ export async function handleChainEventsFamily(
   // handler also serves have no top-level row array, so their CSV request falls
   // through to the JSON envelope (a header-only export would be meaningless).
   if (url.pathname === "/api/v1/chain-events" && csvRequested(url, request)) {
-    const events = (answer.data as { events?: unknown }).events;
+    const events = recordOrNull(answer.data)?.events;
     return csvResponse(
       Array.isArray(events) ? events : [],
       "chain-events",
@@ -6243,10 +6250,10 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       // key. Two paths reading one blob on two schedules is how an agent ends up
       // holding two different snapshots of one resource with no way to tell which is
       // current — and MCP is the surface with no second path to check against.
-      readHealthKv: ((e: Env, key: string) =>
+      readHealthKv: (e: Env, key: string) =>
         key === KV_ECONOMICS_CURRENT
           ? readEconomicsCurrentKv(e)
-          : readHealthKv(e, key)) as unknown as typeof readHealthKv,
+          : readHealthKv(e, key),
       executionCtx: ctx,
     });
   }
@@ -10654,7 +10661,7 @@ async function handleEventsRequest(request: Request, env: Env) {
   const changelog = changelogArtifact.ok ? changelogArtifact.data : null;
   const event = buildChangeEvent({
     changelog: changelog as Row,
-    pointer: pointer as unknown as Row,
+    pointer,
   });
   const eventId = event.published_at || event.generated_at || "0";
   // Reconnect replays the last id; if the snapshot hasn't moved, answer with a
@@ -10851,10 +10858,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
       {
         readArtifact,
         liveHealth,
-        overlayCatalogIndex: overlayCatalogIndex as unknown as (
-          input: { subnets: unknown[] },
-          liveHealthArg: unknown,
-        ) => { subnets?: unknown[] } | null | undefined,
+        overlayCatalogIndex,
       },
     );
     return dataResponse(env, data, 200, { source: "ai-live" });

@@ -124,7 +124,7 @@ export async function rollupChainConcentration(
         failed.push(day);
         continue;
       }
-      const card = buildChainConcentration(rows) as unknown as Row;
+      const card = buildChainConcentration(rows);
       await db.run(
         `INSERT INTO ${CHAIN_CONCENTRATION_DAILY_TABLE}` +
           " (day, neuron_count, card, source_captured_at, computed_at," +

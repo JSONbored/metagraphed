@@ -7144,19 +7144,23 @@ export function querySchemaForRoute(entry: {
  * this is on the request path for every GET, and `API_ROUTES` is ~250 entries.
  */
 const GET_ROUTES_BY_PATH: ReadonlyMap<string, ApiRouteEntry> = new Map(
-  (API_ROUTES as unknown as ApiRouteEntry[])
-    .filter((entry) => entry.method === "GET")
-    .map((entry) => [entry.path, entry]),
+  API_ROUTES.filter((entry) => entry.method === "GET").map((entry) => [
+    entry.path,
+    entry,
+  ]),
 );
 
-interface ApiRouteEntry {
-  path: string;
-  method: string;
-  query_collection?: string | null;
-  query_filter_names?: string[];
-  csv_response?: boolean;
-  query_parameters?: { name: string }[];
-}
+/**
+ * One entry of `API_ROUTES`, derived from it rather than restated.
+ *
+ * This used to be a hand-written interface listing six of the fields `route()`
+ * builds, so `API_ROUTES` -- whose element type is inferred from that builder
+ * -- was not assignable to it and the one consumer wrote
+ * `API_ROUTES as unknown as ApiRouteEntry[]` (#11339). A restated shape also
+ * cannot notice a field being renamed in the builder; an indexed access
+ * cannot miss it.
+ */
+type ApiRouteEntry = (typeof API_ROUTES)[number];
 
 export function getRouteForPathname(pathname: string): ApiRouteEntry | null {
   // The contract path itself first, so a caller that already HAS one -- a

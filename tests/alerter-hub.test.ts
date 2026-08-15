@@ -60,6 +60,41 @@ test("deliverAlertMatch: webhook channel POSTs the built request and resolves tr
   assert.equal(result, true);
 });
 
+test('deliverAlertMatch: a trigger with NO destination declines instead of posting to "undefined"', async () => {
+  // Regression coverage for a path that was previously unpinned. The builders
+  // have always guarded their own destination, so this outcome predates the
+  // typing change -- what it did not have was a test, which is how a later
+  // "simplification" of those guards would have gone unnoticed (#11339).
+  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  const outcomes: unknown[] = [];
+  const result = await deliverAlertMatch(
+    triggerRow({ channel: "webhook", destination: undefined }),
+    { table: "account_events" },
+    mockEnv(),
+    fetchFn,
+    { onOutcome: (outcome) => outcomes.push(outcome) },
+  );
+  assert.equal(result, false);
+  assert.equal(fetchFn.mock.calls.length, 0, "no request left the Worker");
+  assert.deepEqual(outcomes, [
+    { success: false, statusCode: null, responseSnippet: null },
+  ]);
+});
+
+test("deliverAlertMatch: an EMPTY destination declines too", async () => {
+  // "" is falsy but IS a string, so a `typeof` check alone lets it through --
+  // which is why the guard tests both.
+  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  const result = await deliverAlertMatch(
+    triggerRow({ channel: "webhook", destination: "" }),
+    { table: "account_events" },
+    mockEnv(),
+    fetchFn,
+  );
+  assert.equal(result, false);
+  assert.equal(fetchFn.mock.calls.length, 0);
+});
+
 test("deliverAlertMatch: falls back to the real DoH resolver when no resolveHostnames is injected", async () => {
   const fetchFn = vi.fn(async (url) => {
     const target = new URL(String(url));
@@ -881,6 +916,33 @@ test("matchingTriggers: filters the cache via triggerMatchesEvent", () => {
   assert.deepEqual(
     matches.map((t) => t.id),
     ["1"],
+  );
+});
+
+test("matchingTriggers: a trigger with NO filters matches every event (#11339)", () => {
+  // The evaluator's fields used to reach `triggerMatchesEvent` through
+  // `trigger as unknown as EvaluatorAlertTrigger`; the schema names them now
+  // and the call site turns each ABSENT one into `null`. That distinction is
+  // the whole behaviour here: `null` means "no filter", so an unfiltered
+  // trigger fires on anything -- while `undefined` reaching a strict
+  // comparison would have made it fire on nothing.
+  const hub = new AlerterHub(STATE, mockEnv());
+  hub.triggers = [
+    // Built literally, NOT through `triggerRow`: that helper defaults
+    // `netuid: 7`, so it can never produce the absent-filter shape this test
+    // is about -- and the `?? null` arm it exercises stayed uncovered while a
+    // test that looked like this one passed.
+    { id: "bare", channel: "email", destination: "a@b.com" },
+    triggerRow({ id: "scoped", netuid: 8 }),
+  ];
+  const matches = hub.matchingTriggers({
+    table: "account_events",
+    netuid: 7,
+  });
+  assert.deepEqual(
+    matches.map((t) => t.id),
+    ["bare"],
+    "the unfiltered trigger fired; the netuid-scoped one did not",
   );
 });
 
@@ -2424,4 +2486,48 @@ test("#11194: a healthy snapshot refresh emits nothing", async () => {
   } finally {
     cap.restore();
   }
+});
+
+test("refreshTriggers: the schema establishes the evaluator's fields (#11339)", async () => {
+  // The evaluator's fields used to arrive at `triggerMatchesEvent` through
+  // `trigger as unknown as EvaluatorAlertTrigger`, because
+  // AlertTriggerRowSchema stopped at `id`/`channel`. It names them now, so a
+  // trigger stored WITHOUT an optional filter parses with that field absent --
+  // and the evaluator call site turns each absent one into `null`, which is
+  // "no filter" rather than "filter on nothing".
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(
+        async () =>
+          new Response(
+            JSON.stringify({
+              triggers: [
+                // Every optional filter absent: the sparse shape a hand-created
+                // trigger actually has.
+                { id: "1", channel: "webhook", destination: "https://x.test" },
+                // And one carrying them, to prove the parse keeps what IS there.
+                {
+                  id: "2",
+                  channel: "webhook",
+                  destination: "https://y.test",
+                  netuid: 64,
+                  tableFilter: ["chain_events"],
+                  eventKind: "transfer",
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      ),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+  );
+  await hub.refreshTriggers();
+  const [sparse, full] = hub.triggers;
+  assert.equal(sparse?.id, "1", "the sparse trigger survived the parse");
+  assert.equal(sparse?.netuid, undefined, "absent stays absent, not 0");
+  assert.equal(full?.netuid, 64, "and a present filter is kept, typed");
+  assert.deepEqual(full?.tableFilter, ["chain_events"]);
+  assert.equal(full?.eventKind, "transfer");
 });

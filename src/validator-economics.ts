@@ -919,7 +919,7 @@ export type ValidatorEconomicsHistoryPoint = {
   permit_set_full: boolean | null;
 };
 
-type HistoryRow = {
+export type HistoryRow = {
   snapshot_date: unknown;
   stake_tao: unknown;
   validator_permit: unknown;
@@ -928,13 +928,13 @@ type HistoryRow = {
   hotkey?: unknown;
 };
 
-type HistoryEmissionRow = {
+export type HistoryEmissionRow = {
   snapshot_date: unknown;
   tao_in_emission_tao: unknown;
 };
 
 /** One `subnet_hyperparams_history` entry: a CHANGE, not a daily value. */
-type HistoryCapRow = {
+export type HistoryCapRow = {
   observed_at: unknown;
   max_validators: unknown;
 };

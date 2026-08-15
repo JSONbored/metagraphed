@@ -40,6 +40,19 @@ export const SubnetIdentityHistoryArtifactSchema = subnetEntryListSchema(
 ).describe(
   "Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history.",
 );
+/** The read-tolerant twin, for the same reason as the chain feed's. */
+export const SubnetIdentityHistoryReadSchema =
+  SubnetIdentityHistoryArtifactSchema.extend({
+    entries: z.array(
+      SubnetIdentityHistoryEntrySchema.partial().catchall(z.unknown()),
+    ),
+  })
+    .partial()
+    .catchall(z.unknown());
+export type SubnetIdentityHistoryRead = z.infer<
+  typeof SubnetIdentityHistoryReadSchema
+>;
+
 export type SubnetIdentityHistoryArtifact = z.infer<
   typeof SubnetIdentityHistoryArtifactSchema
 >;

@@ -8,6 +8,7 @@
 // is unit-testable. Runs unchanged on the Workers runtime and Node 22 (both
 // expose Web Crypto + TextEncoder + URL).
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
+import { recordOrNull } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -371,8 +372,13 @@ function artifactPaths(entries: unknown): string[] {
 export function buildChangeEvent({
   changelog,
   pointer,
-}: { changelog?: Row; pointer?: Row } = {}): Row {
-  const cl = changelog && typeof changelog === "object" ? changelog : {};
+  // `object`, not `Row`: both arguments arrive as typed artifacts, and
+  // TypeScript never gives an interface an implicit index signature -- so
+  // requiring one made every caller assert (#11339). The named reads below go
+  // through `recordOrNull`.
+}: { changelog?: object | null; pointer?: object | null } = {}): Row {
+  const cl = recordOrNull(changelog) ?? {};
+  const ptr = recordOrNull(pointer) ?? {};
   const artifacts =
     cl.artifacts && typeof cl.artifacts === "object"
       ? (cl.artifacts as Row)
@@ -409,9 +415,9 @@ export function buildChangeEvent({
 
   return {
     type: WEBHOOK_EVENT_TYPE,
-    published_at: pointer?.published_at ?? null,
+    published_at: ptr.published_at ?? null,
     generated_at: cl.generated_at ?? null,
-    contract_version: cl.contract_version ?? pointer?.contract_version ?? null,
+    contract_version: cl.contract_version ?? ptr.contract_version ?? null,
     change_kinds: [
       hasSubnetChanges ? "subnets" : null,
       hasArtifactChanges ? "artifacts" : null,

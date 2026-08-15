@@ -24,7 +24,11 @@
 
 import { recordOrNull } from "./read-store.ts";
 
-export type Row = Record<string, unknown>;
+// NO `Row` here any more. Both helpers below became generic or
+// `readonly object[]` -- they only enumerate keys or preserve their argument's
+// type -- so nothing in this module names it, and its one external consumer
+// imported it as `FieldProjectionRow` purely to cast into those parameters
+// (#11339).
 
 /**
  * A field name a caller may ask for. Deliberately conservative -- an

@@ -194,7 +194,7 @@ export interface LedgerMirrorDeps {
  * what the name "mirror" no longer implies.
  */
 export async function mirrorLedgerToNeon(
-  env: (NeonWriteEnv & { METAGRAPH_HEALTH_DB?: unknown }) | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   lane: string,
   rows: Record<string, unknown>[],

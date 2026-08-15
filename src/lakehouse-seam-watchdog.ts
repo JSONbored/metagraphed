@@ -237,8 +237,7 @@ async function capturedThrough(env: unknown): Promise<number | null> {
   // raw_capture_state is Neon's outright, so this follows it (#10154). The
   // seam this watchdog measures is capture-vs-lakehouse; against a frozen
   // watermark it reports a gap that only ever widens.
-  const db = readStore(env, ["raw_capture_state"]) as unknown as
-    Parameters<typeof watermarkRead>[0] | undefined;
+  const db = readStore(env, ["raw_capture_state"]);
   if (!db?.first) return null;
   try {
     return await watermarkRead(db)();

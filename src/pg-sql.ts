@@ -112,6 +112,25 @@ export interface WaitUntilLike {
 }
 
 /**
+ * Can this context defer work?
+ *
+ * A TYPE PREDICATE, because `typeof ctx?.waitUntil === "function"` narrows the
+ * METHOD and not the object holding it -- so both callers guarded correctly and
+ * then wrote `ctx as never` to get the guarded value into `createPgSql`
+ * (#11339). `as never` makes any value assignable, so it also stopped the
+ * compiler checking the Hyperdrive argument beside it at the same call.
+ *
+ * The distinction is load-bearing here: `createPgSql` parks `client.end()` on
+ * `waitUntil`, so a ctx that cannot defer leaks a pooled connection rather than
+ * failing loudly.
+ */
+export function canWaitUntil(
+  ctx: Partial<WaitUntilLike> | null | undefined,
+): ctx is WaitUntilLike {
+  return typeof ctx?.waitUntil === "function";
+}
+
+/**
  * `$1, $2, ...` interleaved between the literal chunks.
  *
  * Exported because the numbering IS the contract: SQLite's placeholders

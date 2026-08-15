@@ -25,10 +25,13 @@
 // because it scans the largest table in the lakehouse.
 
 import { loadSubnetEventsColdTier } from "./events-cold-tier.ts";
-import { buildSubnetEvents } from "./account-events.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { ArtifactEnv } from "../workers/storage.ts";
+import {
+  SubnetEventsReadSchema,
+  type SubnetEventsRead,
+} from "../schemas-src/routes/subnet-events.ts";
 
 /** One env, forwarded to both legs: the Neon store and the lakehouse. */
 type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
@@ -64,21 +67,41 @@ export async function answerSubnetEvents(
   tierResult: Row | null | undefined,
   query: AnswerSubnetEventsQuery,
   { coldTier = loadSubnetEventsColdTier }: AnswerSubnetEventsOptions = {},
-): Promise<Row> {
+): Promise<SubnetEventsRead> {
   return (
-    tierResult ??
-    ((await coldTier(env, netuid, {
-      limit: query.limit,
-      offset: query.offset,
-      cursor: query.cursor ?? null,
-      kind: query.kind ?? null,
-      blockStart: query.blockStart ?? null,
-      blockEnd: query.blockEnd ?? null,
-    } as never)) as Row | null) ??
-    (buildSubnetEvents([], netuid, {
-      limit: query.limit,
-      offset: query.offset,
-      nextCursor: null,
-    }) as unknown as Row)
+    // PARSED, not asserted. A tier whose body does not parse has not answered
+    // this question, which is exactly what the `??` cascade already means --
+    // and read-tolerantly, so one absent key cannot make a tier's whole answer
+    // vanish and publish "this subnet has no events" (#11339).
+    feed(tierResult) ??
+    feed(
+      await coldTier(env, netuid, {
+        limit: query.limit,
+        offset: query.offset,
+        cursor: query.cursor ?? null,
+        kind: query.kind ?? null,
+        blockStart: query.blockStart ?? null,
+        blockEnd: query.blockEnd ?? null,
+      }),
+    ) ??
+      // The empty feed, spelled out. `buildSubnetEvents` types its rows as
+      // `Record<string, unknown>` -- honestly, since it formats whatever it is
+      // given -- so its return is not provably this shape, and casting it back
+      // was the other half of the round trip this removes.
+      {
+        schema_version: 1,
+        netuid,
+        event_count: 0,
+        limit: query.limit,
+        offset: query.offset,
+        next_cursor: null,
+        events: [],
+      }
   );
+}
+
+/** A tier's answer, parsed into the feed it claims to be -- or null. */
+function feed(value: unknown): SubnetEventsRead | null {
+  const parsed = SubnetEventsReadSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }

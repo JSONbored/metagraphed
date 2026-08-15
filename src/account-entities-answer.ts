@@ -39,6 +39,10 @@ import { readArtifact } from "../workers/storage.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { ArtifactEnv } from "../workers/storage.ts";
+import {
+  AccountEntitiesReadSchema,
+  type AccountEntitiesRead,
+} from "../schemas-src/routes/account-entities.ts";
 
 /** One env, forwarded to both legs: the Neon store and the lakehouse. */
 type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
@@ -73,7 +77,7 @@ export async function answerAccountEntities(
     coldTier = loadAccountEntitiesColdTier,
     owners = () => readSubnetOwners(env),
   }: AnswerAccountEntitiesOptions = {},
-): Promise<Row> {
+): Promise<AccountEntitiesRead> {
   // CURRENT OWNERSHIP IS RESOLVED HERE, not per tier (#9313).
   //
   // The transfer stream can only answer who has TRADED a subnet, and exactly
@@ -84,7 +88,11 @@ export async function answerAccountEntities(
   // half must not disappear just because the transfer half declined.
   const ownerSnapshot = await owners();
 
-  const answered = tierResult ?? ((await coldTier(env, coldkey)) as Row | null);
+  // PARSED at the tier, not just at the fallback (#11339). Read-tolerantly, so
+  // a sparse answer -- the frozen export carries what it carries -- is still an
+  // answer, and only a wrong-TYPED field is a refusal that falls through.
+  const answered =
+    entities(tierResult) ?? entities(await coldTier(env, coldkey));
 
   // A tier that answered already shaped its payload from the transfer stream.
   // Its ties are merged with the owned ones rather than rebuilt, so the tier
@@ -92,10 +100,28 @@ export async function answerAccountEntities(
   // had access to.
   if (answered) return withOwnedTies(answered, coldkey, ownerSnapshot);
 
-  return buildAccountEntities(coldkey, {
-    entities: [],
-    owners: ownerSnapshot,
-  }) as unknown as Row;
+  // The empty payload, spelled out rather than parsed back out of the builder.
+  // Routing it through `entities()` added a `??` arm that cannot fire -- the
+  // builder's own output always parses -- and an unreachable fallback is a
+  // branch no test can honestly cover (#11339).
+  return withOwnedTies(
+    {
+      schema_version: 1,
+      ss58: coldkey,
+      labels: [],
+      ownership_tie_count: 0,
+      ownership_ties: [],
+      owners_observed_at: null,
+    },
+    coldkey,
+    ownerSnapshot,
+  );
+}
+
+/** A tier's answer, parsed into the payload it claims to be -- or null. */
+function entities(value: unknown): AccountEntitiesRead | null {
+  const parsed = AccountEntitiesReadSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 /**

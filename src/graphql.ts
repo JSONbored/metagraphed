@@ -1553,7 +1553,7 @@ async function revenueForNetuid(
   const rows = (await loadEconomicsRows(context)) as Row[];
   const economics = rows.find((row) => Number(row?.netuid) === netuid) ?? null;
   const observations = await loadRevenueObservations(
-    readStore(context.env, REVENUE_OBSERVATION_TABLES) as never,
+    readStore(context.env, REVENUE_OBSERVATION_TABLES),
     netuid,
   );
   return loadSubnetRevenue({
@@ -5695,7 +5695,7 @@ const rootValue = {
           to,
           minExtrinsics,
           minEvents,
-        } as never,
+        },
         chainNetworkFromChainName(network),
       )) as Row | null) ??
       buildBlockFeed([], {
@@ -7519,7 +7519,7 @@ const rootValue = {
     // ONE observation read for the whole network rather than one per subnet:
     // 129 round trips would price this field out of existence.
     const observations = await loadRevenueObservations(
-      readStore(context.env, REVENUE_OBSERVATION_TABLES) as never,
+      readStore(context.env, REVENUE_OBSERVATION_TABLES),
       null,
     );
     const subnets = [];

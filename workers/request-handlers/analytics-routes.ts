@@ -44,7 +44,6 @@ import {
   DEREGISTRATION_UNAVAILABLE_MESSAGE,
   projectDeregistrationRanking,
 } from "../../src/subnet-deregistration-ranking.ts";
-import type { Row as FieldProjectionRow } from "../../src/field-projection.ts";
 import { economicsCurrentKvReader, type EdgeCacheCtx } from "./analytics.ts";
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import {
@@ -365,9 +364,9 @@ export async function handleEconomicsTrends(
       bucketMs: DAY_MS,
     });
     data = withAlphaUsdTrendDays(
-      data as unknown as Record<string, unknown>,
+      data,
       usdRows === null ? null : taoUsdBucketMap(usdRows),
-    ) as typeof data;
+    );
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -634,7 +633,7 @@ export async function composeLeaderboardsData(
     // The only read in this file that was not already asking observationsReadDb
     // (#10158). It issues four statements across surface_status,
     // subnet_snapshots and surface_uptime_daily -- all three Neon's.
-    await loadLeaderboardStoreRows(readStore(env, LEADERBOARD_TABLES) as never);
+    await loadLeaderboardStoreRows(readStore(env, LEADERBOARD_TABLES));
   const data = formatLeaderboards({
     board,
     limit,
@@ -892,7 +891,7 @@ export async function handleCompare(
           requestedNetuids.map((netuid) => Number(netuid)),
         );
         const grouped = await storeAll(
-          readStore(env, COMPARE_SUBNETS_TABLES) as never,
+          readStore(env, COMPARE_SUBNETS_TABLES),
           `SELECT netuid,
                   COUNT(*) AS surface_count,
                   SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
@@ -1192,7 +1191,7 @@ export async function handleEmissionPipeline(
   // rather than before it.
   const narrowing = parseEmissionPipelineNarrowing(
     url.searchParams,
-    surface.subnets as unknown as FieldProjectionRow[],
+    surface.subnets,
     { limitMax: EMISSION_PIPELINE_LIMIT_MAX },
   );
   if ("error" in narrowing) return analyticsQueryError(narrowing.error);

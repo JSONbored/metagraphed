@@ -18,6 +18,8 @@ import { createTriggerToken } from "../src/wallet-auth.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { wireQueuedPg } from "./user-state-store-queue.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 // The store is Postgres, reached through `new Client(...)` inside
 // src/pg-sql.ts, and this suite calls `worker.fetch(request, env, ctx)` -- so
@@ -41,12 +43,12 @@ const { default: worker } = await import("../workers/data-api.ts");
 const CREATE_TOKEN = "test-alert-trigger-create-token";
 const INTERNAL_TOKEN = "test-alert-triggers-internal-token";
 const WATCH_SECRET = "test-watch-trigger-token-secret";
-const env: Env = {
+const env: DataApiWorkerEnv = dataApiEnv({
   ...pgMockEnv(),
   ALERT_TRIGGER_CREATE_TOKEN: CREATE_TOKEN,
   ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
   WATCH_TRIGGER_TOKEN_SECRET: WATCH_SECRET,
-} as unknown as Env;
+});
 
 beforeEach(() => {
   mockQueue.current = [];
@@ -69,7 +71,7 @@ function req(
   });
 }
 
-async function fetch(request: Request, envOverride: Env = env) {
+async function fetch(request: Request, envOverride: DataApiWorkerEnv = env) {
   return worker.fetch(request, envOverride, {
     // A REAL waitUntil: createPgSql parks `client.end()` on it in a `finally`,
     // so an ExecutionContext without one turns every query into a TypeError
@@ -112,7 +114,7 @@ function row(overrides: Row = {}) {
 test("create: 503 when ALERT_TRIGGER_CREATE_TOKEN is not configured", async () => {
   const res = await fetch(
     req("/api/v1/alerts/triggers", { method: "POST", body: {} }),
-    { ...env, ALERT_TRIGGER_CREATE_TOKEN: undefined } as unknown as Env,
+    dataApiEnv({ ...env, ALERT_TRIGGER_CREATE_TOKEN: undefined }),
   );
   assert.equal(res.status, 503);
 });
@@ -209,7 +211,7 @@ test("create: 503 when no user-state store is bound", async () => {
       headers: { "x-alert-trigger-create-token": CREATE_TOKEN },
       body: { channel: "email", destination: "a@b.com", netuid: 7 },
     }),
-    { ...env, HYPERDRIVE: undefined } as unknown as Env,
+    dataApiEnv({ ...env, HYPERDRIVE: undefined }),
   );
   assert.equal(res.status, 503);
   // The message names the STORE GROUP, not the binding (#10144):
@@ -422,7 +424,7 @@ test("create: 503 when a watch token is presented but WATCH_TRIGGER_TOKEN_SECRET
       headers: { "x-watch-trigger-token": "irrelevant" },
       body: { channel: "email", destination: "a@b.com", netuid: 7 },
     }),
-    { ...env, WATCH_TRIGGER_TOKEN_SECRET: undefined } as unknown as Env,
+    dataApiEnv({ ...env, WATCH_TRIGGER_TOKEN_SECRET: undefined }),
   );
   assert.equal(res.status, 503);
 });

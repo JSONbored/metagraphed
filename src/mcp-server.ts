@@ -1143,7 +1143,6 @@ import {
   storeSurfaceCredential,
   type ConfiguredSurfaceCredentialEnv,
   type StoredSurfaceCredential,
-  type SurfaceCredentialEnv,
 } from "./mcp-surface-credentials.ts";
 import {
   buildChainConcentration,
@@ -1638,7 +1637,6 @@ import {
   declineAttributionCandidatesReview,
   loadAttributionCandidateTotals,
   loadAttributionCandidates,
-  type AttributionCandidatesDb,
 } from "./attribution-candidates-review.ts";
 import {
   ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT,
@@ -1654,7 +1652,6 @@ import {
   EMISSION_PIPELINE_LIMIT_MAX,
   EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,
 } from "./route-limits.ts";
-import type { Row as FieldProjectionRow } from "./field-projection.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
@@ -1965,8 +1962,7 @@ const asMcpLoaderCtx = (ctx: McpCtx) =>
 // (METAGRAPH_CONTROL, MCP_SURFACE_CREDENTIAL_SECRET) and declares them
 // against its own minimal KV shape, so it stays unit-testable with a
 // Map-backed fake. Same narrowing convention as asMcpLoaderCtx above.
-const asCredentialStoreEnv = (env: Env) =>
-  env as unknown as SurfaceCredentialEnv;
+const asCredentialStoreEnv = (env: Env) => env;
 
 // The per-request context buildMcpContext assembles for every tool handler:
 // env + domain + optional session/telemetry plumbing, plus the artifact/KV
@@ -6145,7 +6141,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // resolved to null before it could touch DATA_API.
         await loadSubnetHealthTrends(netuid, {
           observedAt: await mcpObservedAt(ctx),
-          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES),
         })
       );
     },
@@ -6192,7 +6188,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // takes the same three parameters directly, so nothing is dropped.
       const { data } = await loadBulkHealthTrends({
         observedAt: await mcpObservedAt(ctx),
-        db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
+        db: readStore(ctx.env, UPTIME_DAILY_TABLES),
         window,
         limit,
         offset,
@@ -6225,7 +6221,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
-          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES),
         })
       );
     },
@@ -6257,7 +6253,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
-          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES),
         })
       );
     },
@@ -6599,7 +6595,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // absent from FORWARDABLE_TIER_FLAGS, so that arm resolved to null on
       // every call.
       const data = await loadSubnetTrajectory(netuid, {
-        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
+        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES),
       });
       // `netuid` is the SUBJECT here, not a filter -- the artifact already
       // holds one subnet, so it is excluded from the query the same way
@@ -6668,7 +6664,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { data } = await loadEconomicsTrends({
         windowLabel: label,
         windowDays: days,
-        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
+        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES),
       });
       return data;
     },
@@ -6803,7 +6799,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       const narrowing = parseEmissionPipelineNarrowing(
         params,
-        surface.subnets as unknown as FieldProjectionRow[],
+        surface.subnets,
         { limitMax: EMISSION_PIPELINE_LIMIT_MAX },
       );
       if ("error" in narrowing) {
@@ -8467,7 +8463,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           window: window ?? undefined,
           observedAt: await mcpObservedAt(ctx),
           minSamples: minSamples ?? null,
-          db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
+          db: readStore(ctx.env, UPTIME_DAILY_TABLES),
         })) as Row
       );
     },
@@ -8498,7 +8494,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         board,
         limit,
         observedAt: await mcpObservedAt(ctx),
-        db: readStore(ctx.env, LEADERBOARD_TABLES) as never,
+        db: readStore(ctx.env, LEADERBOARD_TABLES),
       });
     },
   },
@@ -8617,7 +8613,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         netuids,
         dimensions,
         observedAt,
-        db: readStore(ctx.env, COMPARE_SUBNETS_TABLES) as never,
+        db: readStore(ctx.env, COMPARE_SUBNETS_TABLES),
       });
     },
   },
@@ -8644,7 +8640,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           windowLabel: label,
           windowDays: days,
           observedAt: await mcpObservedAt(ctx),
-          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES),
         });
       return applyGlobalIncidentsListQuery(
         data as Record<string, unknown>,
@@ -10399,10 +10395,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           : ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT;
       const offset = typeof args?.offset === "number" ? args.offset : 0;
       const opts = { netuid, limit, offset };
-      const db = readStore(
-        ctx.env,
-        ATTRIBUTION_SWEEP_TABLES,
-      ) as never as unknown as AttributionCandidatesDb;
+      const db = readStore(ctx.env, ATTRIBUTION_SWEEP_TABLES);
       const [rows, totals] = await Promise.all([
         loadAttributionCandidates(db, opts),
         loadAttributionCandidateTotals(db, { netuid }),
@@ -11862,7 +11855,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           to,
           minExtrinsics,
           minEvents,
-        } as never)) ??
+        })) ??
         buildBlockFeed([], {
           limit,
           offset,
@@ -13576,7 +13569,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: "30d",
             windowDays: 30,
             observedAt: await mcpObservedAt(ctx),
-            db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+            db: readStore(ctx.env, HEALTH_CHECK_TABLES),
           });
         },
       });
@@ -17086,10 +17079,7 @@ async function dispatchTool(
     //
     // Not under `waitUntil`: it throws, and the throw has to reach the caller
     // below as a tool error rather than an unhandled rejection.
-    if (
-      (ctx?.env as unknown as Row | undefined)?.METAGRAPH_VALIDATE_RESPONSES ===
-      "true"
-    ) {
+    if (ctx?.env?.METAGRAPH_VALIDATE_RESPONSES === "true") {
       // `argsProject` is the MCP half of the signal workers/api.ts derives
       // from the URL -- one rule, one module, so a projection lever added to
       // one surface cannot go missing on the other (#11142).

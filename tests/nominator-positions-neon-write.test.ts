@@ -405,15 +405,18 @@ describe("mirrorNominatorPositionsToNeon", () => {
       {
         ...on,
         HYPERDRIVE: { connectionString: "postgresql://u:p@127.0.0.1:1/none" },
-        METAGRAPH_HEALTH_DB: spy.db,
       },
       ctx,
       { rows, coldkeyMaxCapturedAt: cutoffs },
+      { laneHealthDb: spy.db, now: () => NOW },
     );
     assert.equal(out.attempted, true);
     assert.equal(out.write?.ok, false);
     // And no prune followed the failed write.
     assert.equal(out.prune, undefined);
+    // The "reports" half, same as the ledger twin: the spy used to arrive as
+    // `METAGRAPH_HEALTH_DB` and collected nothing (#11339).
+    assert.equal(spy.rows[0]?.lane, "neon:nominator-positions");
   });
 });
 

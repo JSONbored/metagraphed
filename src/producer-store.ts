@@ -44,7 +44,14 @@ import { toPositionalPlaceholders } from "./pg-sql.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
 export interface ProducerStoreClient {
-  connect(): Promise<void>;
+  /**
+   * `unknown`, not `void`: `pg`'s own `connect()` resolves to the client, and
+   * every caller here awaits it for the side effect and ignores the value. A
+   * `void` return is not a superset of `Promise<Client>` inside a generic, so
+   * declaring one made the real driver incompatible and forced
+   * `new Client(...) as unknown as <Contract>` at the factory (#11339).
+   */
+  connect(): Promise<unknown>;
   end(): Promise<void>;
   query(
     text: string,
@@ -93,7 +100,7 @@ export function createProducerStore(
     if (client) return client;
     client =
       deps.clientFactory?.(connectionString) ??
-      (new Client({ connectionString }) as unknown as ProducerStoreClient);
+      new Client({ connectionString });
     await client.connect();
     return client;
   };

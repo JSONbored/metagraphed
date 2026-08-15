@@ -17,6 +17,8 @@ import path from "node:path";
 import { beforeEach, describe, test } from "vitest";
 import { validSyncBatchMessage } from "../src/sync-batch-queue.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -45,48 +47,18 @@ const HOTKEY_B = "5CXRfP2ekFhYQ6BCwEy5V8YyxgLmUmTNzHZTKAfTHKhKPBqE";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function runner() {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            text,
-            values,
-            async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
-            },
-          };
-        },
-      };
-    },
-    async batch(statements: { text: string; values: unknown[] }[]) {
-      db.exec("BEGIN");
-      try {
-        const results = statements.map((statement) => ({
-          results: db
-            .prepare(statement.text)
-            .all(...(statement.values as never[])),
-        }));
-        db.exec("COMMIT");
-        return results;
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
-    },
-  };
-}
-
-function env(overrides: Record<string, unknown> = {}): Env {
-  return {
-    METAGRAPH_HEALTH_DB: runner(),
+function env(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     NOMINATOR_POSITIONS_SYNC_SECRET: SECRET,
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
-function post(body: unknown, token: string | null = SECRET, envOverride?: Env) {
+function post(
+  body: unknown,
+  token: string | null = SECRET,
+  envOverride?: DataApiWorkerEnv,
+) {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };
@@ -195,9 +167,11 @@ describe("POST /api/v1/internal/nominator-positions-sync", () => {
   });
 
   test("an unprovisioned deployment and a bad token never reach the store", async () => {
-    const unprovisioned = await post({ rows: [positionRow()] }, SECRET, {
-      METAGRAPH_HEALTH_DB: runner(),
-    } as unknown as Env);
+    const unprovisioned = await post(
+      { rows: [positionRow()] },
+      SECRET,
+      dataApiEnv({}),
+    );
     assert.equal(unprovisioned.status, 503);
     assert.match(
       (await unprovisioned.json<{ error: string }>()).error,

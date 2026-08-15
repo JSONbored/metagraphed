@@ -142,7 +142,6 @@ import {
   buildAccountHistory,
   buildAccountSummary,
   buildAccountEvents,
-  buildSubnetEvents,
   buildSubnetEventSummary,
   buildAccountTransfers,
   buildAccountSubnets,
@@ -342,7 +341,6 @@ import {
   buildChainIdleStake,
   buildSubnetIdleStake,
 } from "../../src/subnet-idle-stake.ts";
-import { buildChainIdentityHistory } from "../../src/chain-identity-history.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -510,7 +508,6 @@ import {
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "../../src/chain-turnover.ts";
-import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.ts";
 import {
   readStore,
   recordsOrEmpty,
@@ -534,7 +531,12 @@ import {
   VALIDATOR_ECONOMICS_TABLES,
 } from "../../src/read-store-tables.ts";
 import { loadSelfHealthNeon } from "../../src/self-health-neon.ts";
-import { createPgSql } from "../../src/pg-sql.ts";
+import { canWaitUntil, createPgSql } from "../../src/pg-sql.ts";
+import type {
+  HistoryCapRow,
+  HistoryEmissionRow,
+  HistoryRow,
+} from "../../src/validator-economics.ts";
 
 const RESPONSE_FORMATS = ["json", "csv"];
 const NEURON_CSV_COLUMNS = [
@@ -1825,11 +1827,11 @@ export async function handleSubnetIdentityHistory(
   // Through the composer (src/identity-history-answer.ts): same formatter and
   // data-api's exact cursor token, so a page started on one tier finishes
   // correctly on the other -- and MCP/GraphQL now reach it by the same route.
-  const data = (await answerSubnetIdentityHistory(env, netuid, null, {
+  const data = await answerSubnetIdentityHistory(env, netuid, null, {
     limit,
     offset,
     cursor: routeText(url, "cursor"),
-  })) as unknown as ReturnType<typeof buildSubnetIdentityHistory>;
+  });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
   // JSON path would. Cold store -> empty entries -> header-only CSV.
@@ -2103,9 +2105,9 @@ export async function handleChainIdentityHistory(
   // Through the composer (src/identity-history-answer.ts): the frozen verified
   // history through the SAME formatter as the Postgres tier, for all three
   // surfaces rather than this one.
-  const data = (await answerChainIdentityHistory(env, null, {
+  const data = await answerChainIdentityHistory(env, null, {
     limit,
-  })) as unknown as ReturnType<typeof buildChainIdentityHistory>;
+  });
   return envelopeResponse(
     request,
     {
@@ -2150,8 +2152,8 @@ export async function handleSelfHealth(
     // the cold tier can only ever answer current_ok:null, and once the probe
     // lane is running there is a current reading to give.
     (await loadSelfHealthNeon(
-      env.HYPERDRIVE && typeof ctx?.waitUntil === "function"
-        ? createPgSql(env.HYPERDRIVE, ctx as never)
+      env.HYPERDRIVE && canWaitUntil(ctx)
+        ? createPgSql(env.HYPERDRIVE, ctx)
         : null,
     )) ??
     // Lakehouse cold tier (src/self-health-cold-tier.ts): the preserved daily
@@ -4002,7 +4004,7 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
     ReadStoreDb | undefined;
 
   const neuronRows = db
-    ? await db.query(
+    ? await db.query<HistoryRow>(
         // `hotkey` is selected only so the owner's unconditional permit can be kept
         // out of the observed floor.
         "SELECT snapshot_date, hotkey, stake_tao, validator_permit, dividends, active " +
@@ -4013,7 +4015,7 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
     : [];
 
   const emissionRows = db
-    ? await db.query(
+    ? await db.query<HistoryEmissionRow>(
         "SELECT snapshot_date, tao_in_emission_tao FROM subnet_snapshots " +
           "WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC",
         [netuid, cutoff],
@@ -4028,7 +4030,7 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   // never happened. Rows before the window still matter — the cap in force on day one is
   // whatever the last change before it set — so this is not bounded by the cutoff.
   const capHistory = db
-    ? await db.query(
+    ? await db.query<HistoryCapRow>(
         "SELECT observed_at, max_validators FROM subnet_hyperparams_history " +
           "WHERE netuid = ? AND max_validators IS NOT NULL ORDER BY observed_at ASC",
         [netuid],
@@ -4042,21 +4044,17 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
       schema_version: 1,
       netuid: Number(netuid),
       window: windowLabel,
-      points: buildValidatorEconomicsHistory(
-        neuronRows as never,
-        emissionRows as never,
-        {
-          maxValidators:
-            economics?.max_validators != null
-              ? Number(economics.max_validators)
-              : null,
-          capHistory: capHistory as never,
-          ownerHotkey:
-            economics?.owner_hotkey != null
-              ? String(economics.owner_hotkey)
-              : null,
-        },
-      ),
+      points: buildValidatorEconomicsHistory(neuronRows, emissionRows, {
+        maxValidators:
+          economics?.max_validators != null
+            ? Number(economics.max_validators)
+            : null,
+        capHistory,
+        ownerHotkey:
+          economics?.owner_hotkey != null
+            ? String(economics.owner_hotkey)
+            : null,
+      }),
       field_sources: VALIDATOR_ECONOMICS_HISTORY_FIELD_SOURCES,
     },
   };
@@ -4363,7 +4361,7 @@ export async function handleSubnetAlphaVolume(
       // the window is fixed at 24h and the totals arrive already summed, so no
       // per-trade instant survives to here. See src/alpha-usd-overlay.ts.
       data: withAlphaVolumeUsd(
-        data as unknown as Record<string, unknown>,
+        data,
         await readTaoUsdCurrentKv(env),
         Date.now(),
       ),
@@ -4930,9 +4928,7 @@ export async function handleAccountEvents(
   // production for a 200-event page: 1.9ms, 200 probes on an index that
   // already exists. Events predating the index carry nulls rather than the
   // oldest rate carried backwards.
-  const eventRows = Array.isArray(data?.events)
-    ? (data.events as unknown as Record<string, unknown>[])
-    : [];
+  const eventRows = recordsOrEmpty(data?.events);
   const usdByInstant = eventRows.length
     ? await loadTaoUsdAtInstants(
         readStore(env, TAO_USD_TABLES),
@@ -5649,14 +5645,14 @@ export async function handleSubnetEvents(
   // Through the composer (src/subnet-events-answer.ts). This cascade used to
   // live here only, which is precisely why MCP and GraphQL published
   // event_count 0 for subnets this route served real rows for.
-  const data = (await answerSubnetEvents(env, Number(netuid), tierResult, {
+  const data = await answerSubnetEvents(env, Number(netuid), tierResult, {
     limit: parsedLimit,
     offset: parsedOffset,
     cursor: routeText(url, "cursor"),
     kind,
     blockStart,
     blockEnd,
-  })) as unknown as ReturnType<typeof buildSubnetEvents>;
+  });
   if (csvRequested(url, request)) {
     return csvResponse(
       data.events as unknown[],
@@ -6271,10 +6267,7 @@ export async function handleAttributionCandidatesReview(
   const offset = routeValue<number>(url, "offset");
   const opts = { netuid, limit, offset };
 
-  const db = readStore(
-    env,
-    ATTRIBUTION_SWEEP_TABLES,
-  ) as never as unknown as Parameters<typeof loadAttributionCandidates>[0];
+  const db = readStore(env, ATTRIBUTION_SWEEP_TABLES);
   const [rows, totals] = await Promise.all([
     loadAttributionCandidates(db, opts),
     loadAttributionCandidateTotals(db, { netuid }),
@@ -6691,7 +6684,7 @@ export async function handleBlocks(
         to: routeInt(url, "to"),
         minExtrinsics: routeInt(url, "min_extrinsics"),
         minEvents: routeInt(url, "min_events"),
-      } as never,
+      },
       network,
     )) ?? buildBlockFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {

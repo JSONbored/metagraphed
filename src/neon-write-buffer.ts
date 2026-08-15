@@ -79,12 +79,16 @@ import type { TelemetryEnv } from "./usage-telemetry.ts";
  *
  * `unknown` per var rather than `string`: every read here goes through a
  * coercion that takes unknown, and nothing in this module assumes otherwise.
+ *
+ * NEON_DUAL_WRITE_LANES is deliberately NOT here. It is retired -- see the note
+ * further down this file and src/lane-health.ts -- and it only looked live
+ * because test fixtures still set it, which nothing checked while they were
+ * built with `as unknown as Env` (#11339).
  */
 export type NeonWriteEnv = StoreEnv &
   TelemetryEnv & {
     NEON_WRITE_BUFFER?: unknown;
     NEON_WRITE_BUFFER_LANES?: unknown;
-    NEON_DUAL_WRITE_LANES?: unknown;
   };
 
 type NeonWriteBufferEnv = NeonWriteEnv;

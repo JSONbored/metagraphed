@@ -37,25 +37,29 @@ export async function loadSelfHealthNeon(
   if (!sql?.unsafe) return null;
   const cutoff = utcWindowCutoffDay(now(), SELF_HEALTH_WINDOW_DAYS);
   try {
-    const daily = (await sql.unsafe(
+    // The type parameter at the READ, not a cast after it (#10261's shape).
+    // `validate:untyped-db-reads` counts reads that say
+    // `Record<string, unknown>`; a post-hoc `as unknown as` was invisible to
+    // that ratchet while making exactly the claim it exists to measure.
+    const daily = await sql.unsafe<SelfHealthDailyRow>(
       `SELECT day::text AS day, component, checks, ok_count
          FROM self_health_daily
         WHERE day >= $1::date
         ORDER BY day ASC`,
       [cutoff],
-    )) as unknown as SelfHealthDailyRow[];
+    );
     if (!Array.isArray(daily) || daily.length === 0) return null;
 
     // DISTINCT ON is the newest tick per component -- the reading the route
     // publishes as `current`. A plain MAX(checked_at_ms) would give the
     // timestamp without the ok/status/latency that go with it.
-    const latest = (await sql.unsafe(
+    const latest = await sql.unsafe<SelfHealthLatestRow>(
       `SELECT DISTINCT ON (component)
               component, ok, http_status, latency_ms, checked_at_ms
          FROM self_health_checks
         ORDER BY component, checked_at_ms DESC`,
       [],
-    )) as unknown as SelfHealthLatestRow[];
+    );
 
     return buildSelfHealth(daily, Array.isArray(latest) ? latest : []);
   } catch (err) {

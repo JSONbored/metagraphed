@@ -30,6 +30,7 @@ import {
   type AlphaUsdUnavailable,
   type TaoUsdReading,
 } from "./alpha-usd.ts";
+import { recordOrNull, recordsOrEmpty } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -263,49 +264,66 @@ const withVolumeFieldSources = (blob: Row): Row => ({
 });
 
 /** Decorate one subnet's 24h volume scorecard. */
-export function withAlphaVolumeUsd(
-  blob: Row | null | undefined,
+/** Shape-preserving, so generic -- see {@link withChainAlphaVolumeUsd}. */
+export function withAlphaVolumeUsd<T extends object | null | undefined>(
+  blob: T,
   reading: TaoUsdReading | null | undefined,
   nowMs: number,
-): Row | null | undefined {
-  if (!blob || typeof blob !== "object") return blob;
+): T {
+  const bag = recordOrNull(blob);
+  if (!bag) return blob;
   const { usable, overlay } = volumeUsdOverlay(reading, nowMs);
   return {
     ...(usable
-      ? priceTaoFields(blob, VOLUME_USD_FIELDS, reading as TaoUsdReading, nowMs)
-      : blob),
+      ? priceTaoFields(bag, VOLUME_USD_FIELDS, reading as TaoUsdReading, nowMs)
+      : bag),
     ...overlay,
-    field_sources: withVolumeFieldSources(blob),
-  };
+    field_sources: withVolumeFieldSources(bag),
+  } as T;
 }
 
 /** Decorate the network-wide 24h volume blob: totals, spread, and per subnet. */
-export function withChainAlphaVolumeUsd(
-  blob: Row | null | undefined,
+/**
+ * GENERIC, because this overlay is SHAPE-PRESERVING: it spreads its argument
+ * and returns the same object with USD twins added. Pinning it to `Row` meant
+ * every caller holding a typed payload cast in and back out --
+ * `withChainAlphaVolumeUsd(data as unknown as Record<…>, …) as unknown as typeof data`
+ * -- two casts to cross a function that changes nothing about the type
+ * (#11339). Same fix `withSpotPrice` and `projectRows` already took.
+ */
+export function withChainAlphaVolumeUsd<T extends object | null | undefined>(
+  blob: T,
   reading: TaoUsdReading | null | undefined,
   nowMs: number,
-): Row | null | undefined {
-  if (!blob || typeof blob !== "object") return blob;
+): T {
+  // The named reads go through `recordOrNull`, so the parameter can stay
+  // generic and the caller keeps its type across the overlay (#11339).
+  const bag = recordOrNull(blob);
+  if (!bag) return blob;
   const { usable, overlay } = volumeUsdOverlay(reading, nowMs);
   if (!usable) {
-    return { ...blob, ...overlay, field_sources: withVolumeFieldSources(blob) };
+    return {
+      ...bag,
+      ...overlay,
+      field_sources: withVolumeFieldSources(bag),
+    } as T;
   }
   const r = reading as TaoUsdReading;
 
-  const network =
-    blob.network && typeof blob.network === "object"
-      ? priceTaoFields(blob.network as Row, VOLUME_USD_FIELDS, r, nowMs)
-      : blob.network;
+  const networkRow = recordOrNull(bag.network);
+  const network = networkRow
+    ? priceTaoFields(networkRow, VOLUME_USD_FIELDS, r, nowMs)
+    : bag.network;
 
   return {
-    ...blob,
+    ...bag,
     network,
-    subnets: Array.isArray(blob.subnets)
-      ? (blob.subnets as Row[]).map((s) =>
+    subnets: Array.isArray(bag.subnets)
+      ? recordsOrEmpty(bag.subnets).map((s) =>
           priceTaoFields(s, VOLUME_USD_FIELDS, r, nowMs),
         )
-      : blob.subnets,
+      : bag.subnets,
     ...overlay,
-    field_sources: withVolumeFieldSources(blob),
-  };
+    field_sources: withVolumeFieldSources(bag),
+  } as T;
 }

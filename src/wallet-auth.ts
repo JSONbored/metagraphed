@@ -23,6 +23,40 @@ const CHALLENGE_KV_PREFIX = "wallet-challenge:";
 // pattern already used elsewhere (e.g. SUDO_KEY_NEGATIVE_KV_TTL): long enough
 // for a wallet extension popup, short enough that an intercepted-but-unsigned
 // challenge is worthless soon after.
+/**
+ * The one binding the wallet challenge store needs.
+ *
+ * `Partial`, because every read below is guarded -- a deployment with no KV
+ * bound declines rather than throwing, and the suite drives that path.
+ */
+export interface WalletAuthEnv {
+  METAGRAPH_CONTROL?: Partial<KVNamespace>;
+}
+
+/** The challenge store, if this binding can actually write one. */
+function canIssue(
+  kv: Partial<KVNamespace> | undefined,
+): kv is Pick<KVNamespace, "put"> {
+  return typeof kv?.put === "function";
+}
+
+/**
+ * The challenge store, if this binding can read AND retire a challenge.
+ *
+ * BOTH METHODS, which the old `if (!kv?.get)` did not check. A binding with
+ * `get` and no `delete` passed that guard and then threw on the `kv.delete`
+ * three lines later -- after the nonce had already been accepted, so the
+ * challenge was consumed by a request that then 500'd. Unreachable with a real
+ * KV namespace bound, which is exactly why the ambient `Env` typing hid it:
+ * `METAGRAPH_CONTROL: KVNamespace` claimed both methods were always there
+ * (#11339).
+ */
+function canConsume(
+  kv: Partial<KVNamespace> | undefined,
+): kv is Pick<KVNamespace, "get" | "delete"> {
+  return typeof kv?.get === "function" && typeof kv?.delete === "function";
+}
+
 export const WALLET_CHALLENGE_TTL_SECONDS = 300;
 // Key-management session lifetime (ADR 0021 section 3's "signed token,
 // simplest correct thing" decision -- see createSessionToken below).
@@ -90,7 +124,7 @@ function challengeKvKey(ss58: string, purpose: WalletChallengePurpose): string {
  * distinguish a client error (bad ss58 -> 400) from an infra gap (KV
  * unbound -> 503) instead of collapsing both into one generic failure. */
 export async function issueWalletChallenge(
-  env: Env,
+  env: WalletAuthEnv,
   ss58: string,
   purpose: WalletChallengePurpose = "login",
 ): Promise<
@@ -101,7 +135,7 @@ export async function issueWalletChallenge(
     return { ok: false, code: "invalid_ss58" };
   }
   const kv = env?.METAGRAPH_CONTROL;
-  if (!kv?.put) {
+  if (!canIssue(kv)) {
     return { ok: false, code: "challenge_store_unavailable" };
   }
   const nonce = randomHex(16);
@@ -165,7 +199,7 @@ export function challengeSignatureForms(message: Uint8Array): Uint8Array[] {
 }
 
 export async function verifyWalletChallenge(
-  env: Env,
+  env: WalletAuthEnv,
   ss58: string,
   signatureHex: unknown,
   purpose: WalletChallengePurpose = "login",
@@ -175,7 +209,7 @@ export async function verifyWalletChallenge(
     return { ok: false, code: "invalid_ss58" };
   }
   const kv = env?.METAGRAPH_CONTROL;
-  if (!kv?.get) {
+  if (!canConsume(kv)) {
     return { ok: false, code: "challenge_store_unavailable" };
   }
   const key = challengeKvKey(ss58, purpose);

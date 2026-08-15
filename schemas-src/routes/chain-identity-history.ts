@@ -46,6 +46,34 @@ export const ChainIdentityHistoryArtifactSchema = z
     changes: z.array(ChainIdentityHistoryChangeSchema),
   })
   .strict();
+/**
+ * The same feed as a READ path must take it.
+ *
+ * Partial + catchall at BOTH levels -- envelope and change -- which is the
+ * contract every lakehouse row schema already carries, and for the same two
+ * reasons: a tier may answer with a subset of the columns, and a producer may
+ * ship a field before this file learns about it. What stays pinned is the TYPE
+ * of any declared key that IS present, which is the half that catches a defect.
+ *
+ * The strict schema above stays the RESPONSE contract, where an undeclared key
+ * is real drift worth failing on. The composer cannot read through it: this
+ * feed is assembled from three tiers, and rejecting a tier's whole answer over
+ * one absent key would fall through to the empty artifact and publish "no
+ * identity has ever changed" for most of the network -- turning a schema into
+ * an availability risk (#11339).
+ */
+export const ChainIdentityHistoryReadSchema =
+  ChainIdentityHistoryArtifactSchema.extend({
+    changes: z.array(
+      ChainIdentityHistoryChangeSchema.partial().catchall(z.unknown()),
+    ),
+  })
+    .partial()
+    .catchall(z.unknown());
+export type ChainIdentityHistoryRead = z.infer<
+  typeof ChainIdentityHistoryReadSchema
+>;
+
 export type ChainIdentityHistoryArtifact = z.infer<
   typeof ChainIdentityHistoryArtifactSchema
 >;

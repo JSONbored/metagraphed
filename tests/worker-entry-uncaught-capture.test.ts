@@ -17,6 +17,7 @@ import { afterEach, describe, test } from "vitest";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import { POSTHOG_TRACES_SAMPLE_RATE_ENV } from "../src/tracing.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv, registrySyncEnv } from "./helpers/worker-env.ts";
 
 const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" };
 
@@ -59,13 +60,13 @@ describe("data-api", () => {
     });
 
   const explodingEnv = (over: Record<string, unknown> = {}) =>
-    ({
+    dataApiEnv({
       ...CONFIGURED,
       ...over,
       get NEURONS_SYNC_SECRET(): string {
         throw new Error("binding exploded");
       },
-    }) as unknown as Env;
+    });
 
   test("captures an uncaught fault on the UNSAMPLED path", async () => {
     active = captureTelemetry();
@@ -101,11 +102,11 @@ describe("data-api", () => {
   test("captures nothing when the deployment is unconfigured", async () => {
     active = captureTelemetry();
     const { default: worker } = await import("../workers/data-api.ts");
-    const env = {
+    const env = dataApiEnv({
       get NEURONS_SYNC_SECRET(): string {
         throw new Error("binding exploded");
       },
-    } as unknown as Env;
+    });
 
     await assert.rejects(
       worker.fetch(request(), env, undefined as never),
@@ -133,7 +134,7 @@ describe("data-api", () => {
     await assert.rejects(
       worker.fetch(
         unreadable,
-        { ...CONFIGURED } as unknown as Env,
+        dataApiEnv({ ...CONFIGURED }),
         undefined as never,
       ),
       /url exploded/,
@@ -184,12 +185,12 @@ describe("registry-sync-api", () => {
     const { default: worker } = await import("../workers/registry-sync-api.ts");
     // A env whose URL parse succeeds but whose dispatch throws: the token
     // check reads a getter that blows up.
-    const env = {
+    const env = registrySyncEnv({
       ...CONFIGURED,
       get REGISTRY_SYNC_SECRET(): string {
         throw new Error("binding exploded");
       },
-    } as unknown as Env;
+    });
 
     await assert.rejects(worker.fetch(request(), env), /binding exploded/);
 
@@ -206,13 +207,13 @@ describe("registry-sync-api", () => {
     // accepted here for error capture.
     active = captureTelemetry();
     const { default: worker } = await import("../workers/registry-sync-api.ts");
-    const env = {
+    const env = registrySyncEnv({
       ...CONFIGURED,
       [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "1",
       get REGISTRY_SYNC_SECRET(): string {
         throw new Error("binding exploded");
       },
-    } as unknown as Env;
+    });
 
     await assert.rejects(worker.fetch(request(), env), /binding exploded/);
     assert.equal(active.exceptions().length, 1);
@@ -221,11 +222,11 @@ describe("registry-sync-api", () => {
   test("captures nothing when the deployment is unconfigured", async () => {
     active = captureTelemetry();
     const { default: worker } = await import("../workers/registry-sync-api.ts");
-    const env = {
+    const env = registrySyncEnv({
       get REGISTRY_SYNC_SECRET(): string {
         throw new Error("binding exploded");
       },
-    } as unknown as Env;
+    });
 
     await assert.rejects(worker.fetch(request(), env), /binding exploded/);
     assert.deepEqual(active.exceptions(), []);

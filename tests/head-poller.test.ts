@@ -714,3 +714,55 @@ test("fetchBlockAt tolerates a header with no digest", async () => {
   assert.equal(block.author, null);
   assert.equal(block.block_hash, "0xabc");
 });
+
+test("alarm: a block the RPC cannot describe is NOT broadcast", async () => {
+  // `fetchBlockAt` THROWS on a malformed `chain_getBlock` rather than
+  // assembling a partial payload, and the tick's own catch reports it. What
+  // this pins is what must NOT happen on that path: no broadcast, no head
+  // write, and no watermark advance -- so the next tick retries the height
+  // instead of skipping it.
+  //
+  // Coverage for the surrounding branch, which had none. The poller's cast
+  // (`block as unknown as ChainFirehoseIngestPayload`) turned out to be
+  // unnecessary rather than unsafe -- `HeadBlock`'s schema is declared "scalar
+  // fields only, per the ingest validator's rules" -- so it is simply gone, and
+  // this test guards the failure path that remains (#11339).
+  const storage = new Map<string, unknown>();
+  storage.set("head:last_seen", 14);
+  const headWrites: unknown[][] = [];
+  pg.control.queries.length = 0;
+  pg.control.rows = [];
+  pg.control.onQuery = (q) => {
+    if (/INSERT INTO blocks_head/i.test(q.text)) headWrites.push(q.values);
+  };
+  const { hub } = hubWith(
+    {
+      CHAIN_HEAD_POLL_ENABLED: "true",
+      CHAIN_HEAD_RPC_URL: "https://rpc.example",
+      ...pgMockEnv(),
+    },
+    storage,
+  );
+  const seen: unknown[] = [];
+  (hub as unknown as { broadcast: (p: unknown) => Promise<void> }).broadcast =
+    async (p) => void seen.push(p);
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = rpcFetch({
+    chain_getHeader: () => ({ number: "0x10" }),
+    chain_getBlockHash: (params) => `0xhash${(params as number[])[0]}`,
+    // No `block` key: the assembled payload carries no usable block_number.
+    chain_getBlock: () => ({}),
+  });
+  try {
+    await hub.alarm();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.equal(seen.length, 0, "nothing reached the subscribers");
+  assert.equal(headWrites.length, 0, "and nothing was written");
+  assert.equal(
+    storage.get("head:last_seen"),
+    14,
+    "the watermark did not advance past a block we could not describe",
+  );
+});

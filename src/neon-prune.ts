@@ -205,7 +205,7 @@ export interface PruneOutcome {
 }
 
 export async function runNeonPrune(
-  env: (NeonWriteEnv & { NEON_BACKFILL_LANES?: unknown }) | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike,
   deps: PruneDeps = {},
 ): Promise<PruneOutcome> {
