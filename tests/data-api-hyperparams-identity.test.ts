@@ -18,6 +18,8 @@ import path from "node:path";
 import { beforeAll, beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/pg-sql.ts and src/neon-write.ts -- neither of which a route caller can
@@ -69,8 +71,8 @@ let db: PGlite;
 const HYPERPARAMS_SECRET = "test-subnet-hyperparams-sync-secret";
 const IDENTITY_SECRET = "test-account-identity-sync-secret";
 
-function env(overrides: Record<string, unknown> = {}): Env {
-  return {
+function env(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     ...pgMockEnv(),
     // Both writes run through mirrorFamilyToNeon, which is a no-op unless the
     // lane is named here -- so a suite that left this out would assert an empty
@@ -78,7 +80,7 @@ function env(overrides: Record<string, unknown> = {}): Env {
     SUBNET_HYPERPARAMS_SYNC_SECRET: HYPERPARAMS_SECRET,
     ACCOUNT_IDENTITY_SYNC_SECRET: IDENTITY_SECRET,
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 function req(
@@ -101,7 +103,7 @@ function req(
  * a TypeError -- silently, because the rejection replaces the result. */
 const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
 
-async function call(request: Request, envOverride: Env = env()) {
+async function call(request: Request, envOverride: DataApiWorkerEnv = env()) {
   return worker.fetch(request, envOverride, ctx);
 }
 
@@ -194,7 +196,10 @@ function identitySyncRow(overrides: Row = {}): Row {
   };
 }
 
-async function postHyperparams(rows: Row[], envOverride: Env = env()) {
+async function postHyperparams(
+  rows: Row[],
+  envOverride: DataApiWorkerEnv = env(),
+) {
   return call(
     req("/api/v1/internal/subnet-hyperparams-sync", {
       method: "POST",
@@ -205,7 +210,10 @@ async function postHyperparams(rows: Row[], envOverride: Env = env()) {
   );
 }
 
-async function postIdentity(rows: Row[], envOverride: Env = env()) {
+async function postIdentity(
+  rows: Row[],
+  envOverride: DataApiWorkerEnv = env(),
+) {
   return call(
     req("/api/v1/internal/account-identity-sync", {
       method: "POST",

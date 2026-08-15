@@ -13,6 +13,8 @@ import { createTriggerToken } from "../src/wallet-auth.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { wireQueuedPg } from "./user-state-store-queue.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 // The store is Postgres, reached through `new Client(...)` inside
 // src/pg-sql.ts, and this suite calls `worker.fetch(request, env, ctx)` -- so
@@ -47,13 +49,13 @@ const AUTH = Buffer.from(Array.from({ length: 16 }, (_, i) => i))
   .replace(/\//g, "_")
   .replace(/=+$/, "");
 
-function baseEnv(overrides: Record<string, unknown> = {}): Env {
-  return {
+function baseEnv(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     ...pgMockEnv(),
     WATCH_TRIGGER_TOKEN_SECRET: WATCH_SECRET,
     ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 async function watchHeaders(): Promise<Record<string, string>> {
@@ -61,7 +63,11 @@ async function watchHeaders(): Promise<Record<string, string>> {
   return { "x-watch-trigger-token": token, "content-type": "application/json" };
 }
 
-function call(path: string, init?: RequestInit, env: Env = baseEnv()) {
+function call(
+  path: string,
+  init?: RequestInit,
+  env: DataApiWorkerEnv = baseEnv(),
+) {
   return worker.fetch(
     new Request(`https://data-api.internal${path}`, init),
     env,

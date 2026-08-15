@@ -20,6 +20,8 @@ import { createSessionToken } from "../src/wallet-auth.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { wireQueuedPg } from "./user-state-store-queue.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 // The store is Postgres, reached through `new Client(...)` inside
 // src/pg-sql.ts, and this suite calls `worker.fetch(request, env, ctx)` -- so
@@ -57,15 +59,15 @@ const SESSION_SECRET = "test-wallet-session-secret";
 const UNKEY_ROOT_KEY = "test-root-key-placeholder";
 const UNKEY_API_ID = "api_test123";
 
-function baseEnv(overrides: Record<string, unknown> = {}): Env {
-  return {
+function baseEnv(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     ...pgMockEnv(),
     METAGRAPH_CONTROL: createFakeKv(),
     WALLET_SESSION_SECRET: SESSION_SECRET,
     UNKEY_ROOT_KEY,
     UNKEY_API_ID,
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 function makeTestWallet(seedByte: number) {
@@ -132,7 +134,7 @@ const testCtx = () =>
     passThroughOnException() {},
   }) as unknown as ExecutionContext;
 
-async function fetchRoute(request: Request, env: Env) {
+async function fetchRoute(request: Request, env: DataApiWorkerEnv) {
   return worker.fetch(request, env, testCtx());
 }
 

@@ -58,6 +58,8 @@ class FakePg {
 }
 
 import type { RegistryPgClient } from "../src/registry-sync-neon.ts";
+import { registrySyncEnv } from "./helpers/worker-env.ts";
+import type { RegistrySyncWorkerEnv } from "../workers/types.ts";
 
 const { default: worker, registrySyncDeps } =
   await import("../workers/registry-sync-api.ts");
@@ -83,12 +85,14 @@ function post(
   return new Request("https://registry-sync.internal/", init);
 }
 
-function baseEnv(overrides: Record<string, unknown> = {}): Env {
-  return {
+function baseEnv(
+  overrides: Record<string, unknown> = {},
+): RegistrySyncWorkerEnv {
+  return registrySyncEnv({
     REGISTRY_SYNC_SECRET: SECRET,
     HYPERDRIVE: { connectionString: "postgresql://example/db" },
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 const provider = () => ({
@@ -137,9 +141,9 @@ test("rejects non-POST (405)", async () => {
 test("is disabled (503) when REGISTRY_SYNC_SECRET is not configured", async () => {
   const res = await worker.fetch(
     post({ providers: [provider()] }, { secret: SECRET }),
-    {
+    registrySyncEnv({
       HYPERDRIVE: { connectionString: "postgresql://example/db" },
-    } as unknown as Env,
+    }),
   );
   expect(res.status).toBe(503);
 });
@@ -206,7 +210,7 @@ test("rate limiting: rejects an invalid token before consulting the limiter", as
 test("returns 503 when the HYPERDRIVE binding is unavailable", async () => {
   const res = await worker.fetch(
     post({ providers: [provider()] }, { secret: SECRET }),
-    { REGISTRY_SYNC_SECRET: SECRET } as unknown as Env,
+    registrySyncEnv({ REGISTRY_SYNC_SECRET: SECRET }),
   );
   expect(res.status).toBe(503);
 });

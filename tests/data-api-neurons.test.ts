@@ -20,6 +20,8 @@ import { beforeAll, beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import type { Row } from "./row-type.ts";
 import { persistComputeDeclaration } from "../src/compute-declarations-lane.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/pg-sql.ts and src/neon-write.ts -- neither of which a route caller can
@@ -134,17 +136,16 @@ const seed = async (sql: string, params: unknown[] = []) => {
 const SYNC_SECRET = "test-neurons-sync-secret";
 const BACKFILL_SECRET = "test-neuron-daily-backfill-secret";
 
-function env(overrides: Record<string, unknown> = {}): Env {
-  return {
+function env(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     ...pgMockEnv(),
     // Both write paths run through mirrorNeuronSnapshotToNeon, which is a no-op
     // unless the lane is named here -- so a suite that left this out would
     // assert an empty table and call it a passing write.
-    NEON_DUAL_WRITE_LANES: "neurons",
     NEURONS_SYNC_SECRET: SYNC_SECRET,
     NEURON_DAILY_BACKFILL_SECRET: BACKFILL_SECRET,
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 /** A ctx with a real `waitUntil`. createPgSql hands the client back through it
@@ -167,7 +168,7 @@ function req(
   });
 }
 
-async function call(request: Request, envOverride: Env = env()) {
+async function call(request: Request, envOverride: DataApiWorkerEnv = env()) {
   return worker.fetch(request, envOverride, ctx);
 }
 
@@ -348,7 +349,7 @@ async function insertTempo(netuid: number, tempo: number | null) {
 
 // --- POST /api/v1/internal/neurons-sync: the D1 write lane -------------------
 
-async function postSync(rows: Row[], envOverride: Env = env()) {
+async function postSync(rows: Row[], envOverride: DataApiWorkerEnv = env()) {
   return call(
     req("/api/v1/internal/neurons-sync", {
       method: "POST",
@@ -499,7 +500,10 @@ test("a failed table is a 502, and the tables written before it are NOT rolled b
 
 // --- POST /api/v1/internal/backfill-neuron-daily: the D1 write lane ----------
 
-async function postBackfill(rows: Row[], envOverride: Env = env()) {
+async function postBackfill(
+  rows: Row[],
+  envOverride: DataApiWorkerEnv = env(),
+) {
   return call(
     req("/api/v1/internal/backfill-neuron-daily", {
       method: "POST",

@@ -138,7 +138,10 @@ function isValidRow(row: unknown): row is Record<string, unknown> {
  */
 export const registrySyncDeps: RegistrySyncNeonDeps = {};
 
-async function captureRegistrySyncError(error: unknown, env: Env) {
+async function captureRegistrySyncError(
+  error: unknown,
+  env: RegistrySyncApiEnv,
+) {
   await recordExceptionEvent(env, {
     error,
     route: "registry-sync",
@@ -152,7 +155,7 @@ async function captureRegistrySyncError(error: unknown, env: Env) {
 // this raw handler directly (unaffected by the wrapper).
 async function dispatchRegistrySyncRequest(
   request: Request,
-  env: Env,
+  env: RegistrySyncApiEnv,
 ): Promise<Response> {
   {
     if (request.method !== "POST") {
@@ -315,7 +318,7 @@ export default {
    */
   async scheduled(
     controller: ScheduledController,
-    env: Env,
+    env: RegistrySyncApiEnv,
     ctx: ExecutionContext,
   ) {
     if (controller?.cron !== SELF_HEALTH_PROBE_CRON) {
@@ -323,7 +326,7 @@ export default {
     }
     return runSelfHealthProbe(env, ctx);
   },
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: RegistrySyncApiEnv): Promise<Response> {
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
     // per request -- replaces @sentry/cloudflare's automatic withSentry() HTTP
     // instrumentation. This Worker's fetch has no ExecutionContext (CI-only,

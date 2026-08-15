@@ -20,6 +20,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, test } from "vitest";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
 const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
@@ -54,48 +56,18 @@ const HOTKEY_B = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function runner() {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            text,
-            values,
-            async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
-            },
-          };
-        },
-      };
-    },
-    async batch(statements: { text: string; values: unknown[] }[]) {
-      db.exec("BEGIN");
-      try {
-        const results = statements.map((statement) => ({
-          results: db
-            .prepare(statement.text)
-            .all(...(statement.values as never[])),
-        }));
-        db.exec("COMMIT");
-        return results;
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
-    },
-  };
-}
-
-function env(overrides: Record<string, unknown> = {}): Env {
-  return {
-    METAGRAPH_HEALTH_DB: runner(),
+function env(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
-function post(body: unknown, token: string | null = SECRET, envOverride?: Env) {
+function post(
+  body: unknown,
+  token: string | null = SECRET,
+  envOverride?: DataApiWorkerEnv,
+) {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };
@@ -156,11 +128,14 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
     // A row-count assertion would prove nothing here: the Neon write fails
     // against a fake connection string, so D1 goes unwritten either way. What
     // only the inverted path can do is stop demanding a store binding.
-    const res = await post({ rows: [countRow()] }, SECRET, {
-      METAGRAPH_HEALTH_DB: undefined,
-      VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
-      HYPERDRIVE: { connectionString: "postgresql://example/db" },
-    } as unknown as Env);
+    const res = await post(
+      { rows: [countRow()] },
+      SECRET,
+      dataApiEnv({
+        VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+      }),
+    );
     assert.notEqual(res.status, 503, "still demanding a store binding");
   });
 

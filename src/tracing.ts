@@ -34,7 +34,27 @@ import {
   admitExceptionCaptureShared,
   isUsageTelemetryConfigured,
   resolvePostHogHost,
+  type TelemetryEnv,
 } from "./usage-telemetry.ts";
+
+/**
+ * What the tracing path needs from its environment, and nothing else.
+ *
+ * Extends `TelemetryEnv` because it sends through the same PostHog capture --
+ * host, token and deployment stamping all come from there -- and adds the two
+ * trace-sampling vars this module owns. Named rather than taking the ambient
+ * `Env` so the Workers that are NOT the main API Worker can call it without
+ * asserting bindings they do not have (#11339, #10186).
+ *
+ * `unknown` per var: both are read through `readRate`, which parses whatever it
+ * finds, and `POSTHOG_TRACES_SAMPLE_RATE` is a different literal in each
+ * wrangler config -- so a `string` here would be a claim about a value the
+ * merged `Env` had already widened away.
+ */
+export interface TracingEnv extends TelemetryEnv {
+  POSTHOG_TRACES_SAMPLE_RATE?: unknown;
+  POSTHOG_TRACES_SAMPLE_RATE_MCP?: unknown;
+}
 
 export const POSTHOG_TRACES_PATH = "/i/v1/traces";
 
@@ -84,8 +104,11 @@ export const POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV =
 
 const DEFAULT_TRACES_SAMPLE_RATE = 0;
 
-function readRate(env: Env | null | undefined, key: string): number | null {
-  const value = env?.[key as keyof Env];
+function readRate(
+  env: TracingEnv | null | undefined,
+  key: string,
+): number | null {
+  const value = env?.[key as keyof TracingEnv];
   // Absent is different from invalid: absent falls through to the general
   // rate, invalid falls back to the default. Coercing an unset key with
   // Number() gives NaN, which is indistinguishable from a typo'd value.
@@ -100,7 +123,7 @@ function readRate(env: Env | null | undefined, key: string): number | null {
  * the general rate keeps its previous behaviour exactly.
  */
 export function tracesSampleRate(
-  env: Env | null | undefined,
+  env: TracingEnv | null | undefined,
   surface?: "mcp",
 ): number {
   if (surface === "mcp") {
@@ -115,7 +138,7 @@ export function tracesSampleRate(
 /** Sampling decision only -- callers still gate on isUsageTelemetryConfigured
  * separately (no point rolling dice on a deployment with no PostHog token). */
 export function shouldSampleTrace(
-  env: Env | null | undefined,
+  env: TracingEnv | null | undefined,
   surface?: "mcp",
 ): boolean {
   return Math.random() < tracesSampleRate(env, surface);
@@ -177,7 +200,7 @@ export const TRACE_STORM_FINGERPRINT_PREFIX = "trace:";
  * to try, not a promise to emit.
  */
 export function shouldRecordTraceSpan(
-  env: Env | null | undefined,
+  env: TracingEnv | null | undefined,
   span: { name: string; ok: boolean; surface?: "mcp" },
 ): boolean {
   if (!span.ok) return true;
@@ -298,7 +321,7 @@ export interface RecordTraceSpanDeps {
  * ctx.waitUntil(...), never await it on the response path.
  */
 export async function recordTraceSpan(
-  env: Env | null | undefined,
+  env: TracingEnv | null | undefined,
   span: TraceSpanInput,
   deps: RecordTraceSpanDeps = {},
 ): Promise<boolean> {

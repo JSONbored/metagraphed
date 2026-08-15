@@ -264,7 +264,7 @@ export function shouldSkipDriftCapture(err: unknown, route: string): boolean {
 async function captureDataApiError(
   err: unknown,
   route: string,
-  env: Env,
+  env: DataApiEnv,
 ): Promise<boolean> {
   if (shouldSkipDriftCapture(err, route)) return false;
   await recordExceptionEvent(env, {
@@ -309,7 +309,7 @@ function maskedDataApiRoute(request: Request): string {
 async function captureUncaughtDataApiError(
   error: unknown,
   route: string,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext | undefined,
 ): Promise<void> {
   const pending = recordExceptionEvent(env, {
@@ -709,7 +709,7 @@ function stripClientSnapshotDate(row: Row) {
 //
 async function handleNeuronsSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx?: ExecutionContext,
 ) {
   if (!env.NEURONS_SYNC_SECRET) {
@@ -941,7 +941,10 @@ const CHAIN_DETAIL_SYNC_TOKEN_HEADER = "x-chain-detail-sync-token";
  * both are the same producer on the same trust boundary, and a second secret
  * for a read of one integer would be ceremony. Returns the failing response, or
  * null when the caller is authorised. */
-function chainDetailSyncAuth(request: Request, env: Env): Response | null {
+function chainDetailSyncAuth(
+  request: Request,
+  env: DataApiEnv,
+): Response | null {
   if (!env.CHAIN_DETAIL_SYNC_SECRET) {
     return writeJson(
       { error: "chain-detail sync is not provisioned on this deployment" },
@@ -960,7 +963,7 @@ function chainDetailSyncAuth(request: Request, env: Env): Response | null {
 
 async function handleChainDetailSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const denied = chainDetailSyncAuth(request, env);
@@ -1094,7 +1097,7 @@ async function handleChainDetailSync(
 // `head: null` is a real answer, not an error -- an empty tier is exactly the
 // state a first deploy is in, and the producer's correct response to it is to
 // start from the current finalized head, not to retry.
-async function handleChainDetailSyncHead(request: Request, env: Env) {
+async function handleChainDetailSyncHead(request: Request, env: DataApiEnv) {
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
   // DELIBERATELY still a hard refusal, unlike a route that can degrade.
@@ -1138,7 +1141,7 @@ const NEURON_DAILY_BACKFILL_TOKEN_HEADER = "x-neuron-daily-backfill-token";
 
 async function handleNeuronDailyBackfill(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx?: ExecutionContext,
 ) {
   if (!env.NEURON_DAILY_BACKFILL_SECRET) {
@@ -1435,7 +1438,7 @@ function diffHyperparamsHistory(
 
 async function handleSubnetHyperparamsSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   if (!env.SUBNET_HYPERPARAMS_SYNC_SECRET) {
@@ -1616,7 +1619,7 @@ const SUBNET_HYPERPARAMS_BACKFILL_MAX_ROWS = 500;
 
 async function handleSubnetHyperparamsBackfill(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ): Promise<Response> {
   const provided =
@@ -1777,7 +1780,7 @@ function diffIdentityHistory(
 
 async function handleAccountIdentitySync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   if (!env.ACCOUNT_IDENTITY_SYNC_SECRET) {
@@ -1967,7 +1970,7 @@ const SUBNET_IDENTITY_SYNC_ROW_SCHEMA = subnetIdentitySyncRowSchema({
 
 async function handleSubnetIdentitySync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   if (!env.SUBNET_IDENTITY_SYNC_SECRET) {
@@ -2128,7 +2131,7 @@ const SUBNET_OWNERSHIP_SYNC_ROW_SCHEMA = subnetOwnershipSyncRowSchema({
 
 async function handleSubnetOwnershipSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   if (!env.SUBNET_OWNERSHIP_SYNC_SECRET) {
@@ -2304,7 +2307,7 @@ function coerceNominatorCountSyncRow(row: Row) {
 
 async function handleValidatorNominatorCountsSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx?: ExecutionContext,
 ) {
   if (!env.VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET) {
@@ -2521,7 +2524,7 @@ function coerceNominatorPositionSyncRow(row: Row) {
 
 async function handleNominatorPositionsSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx?: ExecutionContext,
 ) {
   if (!env.NOMINATOR_POSITIONS_SYNC_SECRET) {
@@ -2747,7 +2750,7 @@ const SELF_STAKE_SYNC_MAX_ROWS = 25_000;
 
 async function handleSelfStakeSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   if (!env.SELF_STAKE_SYNC_SECRET) {
@@ -2981,7 +2984,7 @@ function passTallyFromRows(
 
 async function handleAccountBalancesSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   // Kept in the signature, unused: the router passes it positionally to every
   // handler, and the Neon mirror this route used to run moved to the queue
   // consumer with the write (metagraphed-infra#353).
@@ -3216,7 +3219,7 @@ function coerceHotkeyAlphaSyncRow(row: Row) {
 
 async function handleHotkeyAlphaSync(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx?: ExecutionContext,
 ) {
   if (!env.HOTKEY_ALPHA_SYNC_SECRET) {
@@ -3420,7 +3423,7 @@ const POLLER_LANE_HEALTH_TOKEN_HEADER = "x-poller-lane-health-sync-token";
 const POLLER_LANE_HEALTH_MAX_BODY_BYTES = 64_000;
 const POLLER_LANE_HEALTH_MAX_ROWS = 50;
 
-async function handlePollerLaneHealthSync(request: Request, env: Env) {
+async function handlePollerLaneHealthSync(request: Request, env: DataApiEnv) {
   if (!env.POLLER_LANE_HEALTH_SYNC_SECRET) {
     return writeJson(
       {
@@ -3697,7 +3700,7 @@ export const NEURONS_SNAPSHOT_TABLES = [
  * still served reads, a Neon failure had to cost a mirror and not the pass;
  * once Neon is the store, a pass that did not reach it did not happen.
  */
-export function neonOwnsNeuronsSnapshot(env: Env): boolean {
+export function neonOwnsNeuronsSnapshot(env: DataApiEnv): boolean {
   // the ownership term collapsed with the flag (#10051): Neon is the only
   // store, so durability is the binding question alone.
   return Boolean(env.HYPERDRIVE?.connectionString);
@@ -3730,7 +3733,7 @@ export function neonOwnsNeuronsSnapshot(env: Env): boolean {
  * dangerous -- D1 kept its rows and the mirror kept Neon's -- but a flag that
  * lies about which store owns a table is how the next change gets it wrong.
  */
-export function neonOwnsLedger(env: Env, lane: string): boolean {
+export function neonOwnsLedger(env: DataApiEnv, lane: string): boolean {
   const tables = [LEDGER_MIRROR_PLANS[lane]?.table, PASS_TABLES[lane]].filter(
     (t): t is string => Boolean(t),
   );
@@ -3740,7 +3743,7 @@ export function neonOwnsLedger(env: Env, lane: string): boolean {
   return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
-export function neonOwnsNominatorPositions(env: Env): boolean {
+export function neonOwnsNominatorPositions(env: DataApiEnv): boolean {
   // the ownership term collapsed with the flag (#10051): Neon is the only
   // store, so durability is the binding question alone.
   return Boolean(env.HYPERDRIVE?.connectionString);
@@ -3749,13 +3752,13 @@ export function neonOwnsNominatorPositions(env: Env): boolean {
 /** Whether Neon solely owns every chain_detail table. Shared by BOTH of this
  * lane's writers -- #9728 is the precedent for why covering one of two is worse
  * than covering neither: the row count looks nearly right. */
-export function neonOwnsChainDetail(env: Env): boolean {
+export function neonOwnsChainDetail(env: DataApiEnv): boolean {
   // the ownership term collapsed with the flag (#10051): Neon is the only
   // store, so durability is the binding question alone.
   return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
-export function neonOwnsFamily(env: Env, lane: string): boolean {
+export function neonOwnsFamily(env: DataApiEnv, lane: string): boolean {
   const plan = FAMILY_MIRROR_PLANS[lane];
   if (!plan) return false;
   // the ownership term collapsed with the flag (#10051): Neon is the only
@@ -3800,7 +3803,7 @@ export const ACCOUNT_STATE_TABLES = [
  * the 503 they already returned for a missing store binding.
  */
 export function userStateRunner(
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   // Kept for call-site clarity about which tables ride the runner; the
   // per-table ownership question collapsed with the flag (#10051).
@@ -3814,7 +3817,7 @@ export function userStateRunner(
 }
 
 async function withAlertTriggersSql(
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   fn: (sql: PgSql) => Promise<Response>,
 ) {
@@ -3879,7 +3882,7 @@ const ALERT_TRIGGER_CREATE_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 // intent, so it's rejected rather than silently preferring one.
 async function resolveAlertTriggerCreateAuth(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
 ): Promise<
   { ok: true; ownerSs58: string | null } | { ok: false; response: Response }
 > {
@@ -3954,7 +3957,7 @@ async function resolveAlertTriggerCreateAuth(
 
 async function handleAlertTriggerCreate(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const auth = await resolveAlertTriggerCreateAuth(request, env);
@@ -4041,7 +4044,7 @@ async function handleAlertTriggerCreate(
 
 async function handleAlertTriggerGet(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   id: string,
 ) {
@@ -4140,7 +4143,7 @@ async function runAlertTriggerUpdate(sql: PgSql, id: string, merged: Row) {
 
 async function handleAlertTriggerUpdate(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   id: string,
 ) {
@@ -4168,7 +4171,7 @@ async function handleAlertTriggerUpdate(
 
 async function handleAlertTriggerDelete(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   id: string,
 ) {
@@ -4192,7 +4195,7 @@ async function handleAlertTriggerDelete(
 // different capability (read every trigger regardless of owner).
 async function handleAlertTriggersActiveList(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
@@ -4238,7 +4241,7 @@ async function handleAlertTriggersActiveList(
 // ALERT_TRIGGERS_INTERNAL_TOKEN secret rather than minting a third one.
 async function handleAlertTriggersMatchedWriteback(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
@@ -4320,7 +4323,7 @@ const ALERT_TRIGGER_DELIVERY_LOG_RETAIN = 20;
 // ALERT_TRIGGERS_INTERNAL_TOKEN secret).
 async function handleAlertTriggersDeliveryLogWrite(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
@@ -4401,7 +4404,7 @@ async function handleAlertTriggersDeliveryLogWrite(
 
 async function handleAlertTriggersRoute(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   url: URL,
 ) {
@@ -4449,7 +4452,7 @@ async function handleAlertTriggersRoute(
 // own anti-oracle posture, applied here too).
 async function requireVerifiedWatchSs58(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
 ): Promise<{ ok: true; ss58: string } | { ok: false; response: Response }> {
   const tokenSecret = env.WATCH_TRIGGER_TOKEN_SECRET;
   if (!tokenSecret) {
@@ -4480,7 +4483,7 @@ async function requireVerifiedWatchSs58(
 
 async function handleWatchTriggersList(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
@@ -4500,7 +4503,7 @@ async function handleWatchTriggersList(
 
 async function handleWatchTriggerUpdate(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   id: string,
 ) {
@@ -4530,7 +4533,7 @@ async function handleWatchTriggerUpdate(
 
 async function handleWatchTriggerDelete(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   id: string,
 ) {
@@ -4553,7 +4556,7 @@ async function handleWatchTriggerDelete(
 
 async function handleWatchTriggerDeliveries(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   id: string,
 ) {
@@ -4584,7 +4587,7 @@ async function handleWatchTriggerDeliveries(
 
 async function handleWatchTriggersRoute(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   url: URL,
 ) {
@@ -4643,7 +4646,7 @@ function pushSubscriptionView(row: Record<string, unknown>) {
 
 async function handleWatchPushSubscriptionsList(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
@@ -4669,7 +4672,7 @@ async function handleWatchPushSubscriptionsList(
 
 async function handleWatchPushSubscriptionCreate(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
@@ -4784,7 +4787,7 @@ async function handleWatchPushSubscriptionCreate(
 
 async function handleWatchPushSubscriptionDelete(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   id: string,
 ) {
@@ -4815,7 +4818,7 @@ async function handleWatchPushSubscriptionDelete(
 // over the internal binding -- the owner-facing GET deliberately omits them.
 async function handleInternalPushSubscription(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   url: URL,
 ) {
@@ -4888,7 +4891,7 @@ async function handleInternalPushSubscription(
 
 async function handleWatchPushSubscriptionsRoute(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   url: URL,
 ) {
@@ -4951,7 +4954,7 @@ const WALLET_AUTH_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
 async function withAccountsSql<T>(
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   fn: (sql: PgSql) => Promise<T>,
 ): Promise<T | Response> {
@@ -5012,7 +5015,7 @@ function walletAuthErrorStatus(code: string) {
   return code === "challenge_store_unavailable" ? 503 : 400;
 }
 
-async function walletAuthRateLimited(request: Request, env: Env) {
+async function walletAuthRateLimited(request: Request, env: DataApiEnv) {
   if (!env.WALLET_AUTH_RATE_LIMITER?.limit) return null;
   const { success } = await env.WALLET_AUTH_RATE_LIMITER.limit({
     key: resolveClientIp(request),
@@ -5026,7 +5029,7 @@ async function walletAuthRateLimited(request: Request, env: Env) {
   });
 }
 
-async function handleWalletChallenge(request: Request, env: Env) {
+async function handleWalletChallenge(request: Request, env: DataApiEnv) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
   // #8640: fail fast on the SAME precondition /verify enforces. Without this
@@ -5061,7 +5064,7 @@ async function handleWalletChallenge(request: Request, env: Env) {
 
 async function handleWalletVerify(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const rateLimited = await walletAuthRateLimited(request, env);
@@ -5128,7 +5131,7 @@ async function handleWalletVerify(
 //   POST /api/v1/watch/challenges  { ss58 } -> a signable message
 //   POST /api/v1/watch/tokens      { ss58, signature } -> a trigger token
 
-async function handleWatchChallenge(request: Request, env: Env) {
+async function handleWatchChallenge(request: Request, env: DataApiEnv) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
   const { body, error } = await readAccountRouteBody(request);
@@ -5147,7 +5150,7 @@ async function handleWatchChallenge(request: Request, env: Env) {
   });
 }
 
-async function handleWatchTokenMint(request: Request, env: Env) {
+async function handleWatchTokenMint(request: Request, env: DataApiEnv) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
   const tokenSecret = env.WATCH_TRIGGER_TOKEN_SECRET;
@@ -5202,7 +5205,7 @@ async function handleWatchTokenMint(request: Request, env: Env) {
 // the existing internal-token pair (not a new secret) is the right gate.
 async function handleGithubAccountUpsert(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
@@ -5260,7 +5263,7 @@ async function handleGithubAccountUpsert(
 // { accountId, ss58 }, or a ready-to-return error response. A missing
 // WALLET_SESSION_SECRET is a deployment-config gap (503), distinct from a
 // missing/invalid/expired token (401).
-async function requireAccountSession(request: Request, env: Env) {
+async function requireAccountSession(request: Request, env: DataApiEnv) {
   if (!env.WALLET_SESSION_SECRET) {
     return {
       error: writeJson(
@@ -5289,7 +5292,7 @@ async function requireAccountSession(request: Request, env: Env) {
 
 async function handleAccountKeyCreate(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -5370,7 +5373,7 @@ async function handleAccountKeyCreate(
 
 async function handleAccountKeysList(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -5398,7 +5401,7 @@ const UNKEY_KEY_ID_PATTERN = /^key_[a-zA-Z0-9_]+$/;
 
 async function handleAccountKeyRevoke(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   keyId: string,
 ) {
@@ -5454,7 +5457,7 @@ async function handleAccountKeyRevoke(
 // once per RPC request.
 async function handleApiKeyVerify(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
@@ -5512,7 +5515,7 @@ async function handleApiKeyVerify(
 // react to either way.
 async function handleApiKeyUsageIncrement(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
@@ -5580,7 +5583,7 @@ async function handleApiKeyUsageIncrement(
 // a swallowed one.
 async function handleApiQuotaSpend(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
@@ -5678,7 +5681,7 @@ async function handleApiQuotaSpend(
 // way.
 async function handleUsageRollupIncrement(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
@@ -5747,7 +5750,7 @@ async function handleUsageRollupIncrement(
 // or an SSH session.
 async function handleUsageRollupRead(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
@@ -5851,7 +5854,7 @@ const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
 // trigger routes' "different capability, different secret" convention.
 async function handleAccountTierPromote(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const configured = env.ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN;
@@ -5915,7 +5918,7 @@ const API_KEY_BLOCK_TOKEN_HEADER = "x-api-key-block-token";
  * Best-effort: a KV hiccup must not fail the block itself. The row is the
  * source of truth and the next refresh will pick it up.
  */
-async function refreshBlocklistSnapshot(env: Env, sql: PgSql) {
+async function refreshBlocklistSnapshot(env: DataApiEnv, sql: PgSql) {
   const rows = await sql<{
     account_id: ApiKeyBlocks["account_id"];
     reason_code: ApiKeyBlocks["reason_code"];
@@ -5949,7 +5952,7 @@ async function refreshBlocklistSnapshot(env: Env, sql: PgSql) {
   return snapshot.blocks.length;
 }
 
-function requireBlockToken(request: Request, env: Env) {
+function requireBlockToken(request: Request, env: DataApiEnv) {
   const configured = env.API_KEY_BLOCK_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -5979,7 +5982,7 @@ function requireBlockToken(request: Request, env: Env) {
 // kept -- see the api_key_blocks comment in schema.sql.
 async function handleApiKeyBlock(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
@@ -6030,7 +6033,7 @@ async function handleApiKeyBlock(
 // lifted on the 4th, here is why" stays answerable months later.
 async function handleApiKeyUnblock(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
@@ -6073,7 +6076,7 @@ async function handleApiKeyUnblock(
 // legitimate integration doing exactly what the API is for.
 async function handleApiKeyAnomalies(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
@@ -6165,7 +6168,7 @@ const USAGE_DASHBOARD_WINDOW_DAYS = 7;
 // action here beyond knowing.
 async function handleAccountKeyStatus(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -6198,7 +6201,7 @@ async function handleAccountKeyStatus(
 
 async function handleAccountKeyUsage(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   url: URL,
 ) {
@@ -6313,7 +6316,7 @@ async function handleAccountKeyUsage(
 
 async function handleAccountKeysRoute(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   ctx: ExecutionContext,
   url: URL,
 ) {
@@ -6410,7 +6413,10 @@ async function handleAccountKeysRoute(
 // scan as a confirmed zero. The serving Worker's lakehouse overlay that covered
 // the gap in the meantime (#9146) is gone with #9337: it could only ever fire
 // on a null count, and there are none left to fill.
-type NeuronsStoreRouteHandler = (sql: PgSql, env: Env) => Promise<Response>;
+type NeuronsStoreRouteHandler = (
+  sql: PgSql,
+  env: DataApiEnv,
+) => Promise<Response>;
 
 // The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
 // alpha_price_tao. Group-wise-MAX join instead of DISTINCT ON, same
@@ -6447,7 +6453,7 @@ type NeuronsStoreRouteHandler = (sql: PgSql, env: Env) => Promise<Response>;
 // is left alone and called out rather than quietly redefined here.
 async function loadSubnetTemposFromStore(
   sql: PgSql,
-  env: Env,
+  env: DataApiEnv,
 ): Promise<Map<number, number>> {
   try {
     const rows = await sql<{
@@ -6464,7 +6470,7 @@ async function loadSubnetTemposFromStore(
 
 async function loadStoreAlphaPricesByNetuid(
   sql: PgSql,
-  env: Env,
+  env: DataApiEnv,
 ): Promise<Map<number, number | null>> {
   try {
     const rows = await sql<{
@@ -6550,7 +6556,7 @@ async function loadStoreAlphaPricesByNetuid(
 // the two can never disagree about what "fresh" means.
 async function loadNominatorCountsFromStore(
   sql: PgSql,
-  env: Env,
+  env: DataApiEnv,
 ): Promise<Map<string, number>> {
   try {
     // LEFT JOIN from the permitted set, not an inner read of the counts table:
@@ -6588,7 +6594,7 @@ async function loadNominatorCountsFromStore(
 async function loadNominatorCountFromStore(
   sql: PgSql,
   hotkey: string,
-  env: Env,
+  env: DataApiEnv,
 ): Promise<number | null> {
   try {
     const rows = await sql.unsafe<{
@@ -6628,7 +6634,7 @@ async function loadNominatorCountFromStore(
 async function loadRealizedStakeBaselinesFromStore(
   sql: PgSql,
   { hotkey = null }: { hotkey?: string | null },
-  env: Env,
+  env: DataApiEnv,
 ) {
   const windows = Object.entries(REALIZED_RETURN_WINDOWS);
   try {
@@ -6757,7 +6763,10 @@ async function loadRealizedStakeBaselinesFromStore(
  * all. The callers keep the 503 for that, which is why this returns undefined
  * rather than throwing (#10162 -- a runner over an absent binding was worse).
  */
-function routeRunner(env: Env, ctx: ExecutionContext): PgSql | undefined {
+function routeRunner(
+  env: DataApiEnv,
+  ctx: ExecutionContext,
+): PgSql | undefined {
   return env.HYPERDRIVE ? createPgSql(env.HYPERDRIVE, ctx) : undefined;
 }
 
@@ -8469,7 +8478,7 @@ function matchHyperparamsIdentityStoreRoute(
 // this raw handler directly (unaffected by the wrapper).
 async function dispatchDataApiRequest(
   request: Request,
-  env: Env,
+  env: DataApiEnv,
   // Threaded through for createPgSql, which returns its Hyperdrive connection
   // via waitUntil rather than making the response wait on the teardown.
   ctx: ExecutionContext,
@@ -8891,7 +8900,7 @@ export function decodeBlockHeader(
 export const TAO_USD_INDEX_NEON_LANE = "tao-usd-index";
 
 export async function writeTaoUsdIndexRow(
-  env: Env,
+  env: DataApiEnv,
   row: TaoUsdIndexRow,
   ctx?: ExecutionContext,
 ): Promise<{ written: boolean; skipped?: boolean; reason?: string }> {
@@ -8958,7 +8967,7 @@ export async function writeTaoUsdIndexRow(
  * behaviour anyway -- see taoUsdUsable in src/alpha-usd.ts, where an absent
  * reading is `no_index_reading` rather than a silent zero.
  */
-async function writeTaoUsdCurrentKv(env: Env, row: TaoUsdIndexRow) {
+async function writeTaoUsdCurrentKv(env: DataApiEnv, row: TaoUsdIndexRow) {
   const kv = env.METAGRAPH_CONTROL;
   if (!kv?.put) return;
   try {
@@ -8984,7 +8993,7 @@ async function writeTaoUsdCurrentKv(env: Env, row: TaoUsdIndexRow) {
 }
 
 export async function ingestTaoUsdIndex(
-  env: Env,
+  env: DataApiEnv,
   ctx?: ExecutionContext,
 ): Promise<Row> {
   if (!env.ETH_RPC_URL) {
@@ -9070,7 +9079,7 @@ export default {
   // reach another Worker is the hop #4832 removed, not one to add back.
   async scheduled(
     controller: ScheduledController,
-    env: Env,
+    env: DataApiEnv,
     ctx: ExecutionContext,
   ) {
     // Declined BEFORE the branches, against the declared set, so an expression
@@ -9118,7 +9127,7 @@ export default {
   },
   async fetch(
     request: Request,
-    env: Env,
+    env: DataApiEnv,
     ctx: ExecutionContext,
   ): Promise<Response> {
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
@@ -9209,7 +9218,7 @@ export default {
    */
   async queue(
     batch: MessageBatch<unknown>,
-    env: Env,
+    env: DataApiEnv,
     ctx: ExecutionContext,
   ): Promise<void> {
     // THE DEAD-LETTER BRANCH COMES FIRST (metagraphed-infra#354/#363). The DLQ

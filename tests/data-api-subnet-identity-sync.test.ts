@@ -23,6 +23,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, test, vi } from "vitest";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 const { pg } = await vi.hoisted(async () => ({
   pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
@@ -47,11 +49,11 @@ const MIGRATIONS = [
 let db: PGlite;
 
 function env(overrides: Record<string, unknown> = {}) {
-  return {
+  return dataApiEnv({
     HYPERDRIVE: { connectionString: "postgres://stub" },
     SUBNET_IDENTITY_SYNC_SECRET: SECRET,
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 function req(body: unknown, headers: Record<string, string> = {}) {
@@ -67,7 +69,7 @@ function req(body: unknown, headers: Record<string, string> = {}) {
 }
 
 const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
-const call = (request: Request, e: Env = env()) =>
+const call = (request: Request, e: DataApiWorkerEnv = env()) =>
   worker.fetch(request, e, ctx);
 const count = async (table: string) =>
   Number(

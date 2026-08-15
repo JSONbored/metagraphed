@@ -26,6 +26,8 @@ import { beforeAll, beforeEach, describe, test, vi } from "vitest";
 import { validSyncBatchMessage } from "../src/sync-batch-queue.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import type { Row } from "./row-type.ts";
+import { dataApiEnv } from "./helpers/worker-env.ts";
+import type { DataApiWorkerEnv } from "../workers/types.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/neon-write.ts -- which nothing here can inject into, because the consumer
@@ -67,8 +69,8 @@ let db: PGlite;
 // produces -- the write happens at the other end, in the consumer.
 let enqueued: Record<string, unknown>[] = [];
 
-function env(overrides: Record<string, unknown> = {}): Env {
-  return {
+function env(overrides: Record<string, unknown> = {}): DataApiWorkerEnv {
+  return dataApiEnv({
     ...pgMockEnv(),
     // The consumer's write runs through mirrorLedgerToNeon, which is a no-op
     // unless the lane is named here -- so a suite that left this out would
@@ -80,7 +82,7 @@ function env(overrides: Record<string, unknown> = {}): Env {
       },
     },
     ...overrides,
-  } as unknown as Env;
+  });
 }
 
 /** A ctx with a real `waitUntil`. createPgSql hands the client back through it
@@ -101,7 +103,7 @@ const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
 async function postAndConsume(
   body: unknown,
   token: string | null = SECRET,
-  envOverride?: Env,
+  envOverride?: DataApiWorkerEnv,
 ) {
   const e = envOverride ?? env();
   const response = await post(body, token, e);
@@ -123,7 +125,11 @@ async function postAndConsume(
   return response;
 }
 
-function post(body: unknown, token: string | null = SECRET, envOverride?: Env) {
+function post(
+  body: unknown,
+  token: string | null = SECRET,
+  envOverride?: DataApiWorkerEnv,
+) {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };

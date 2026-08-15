@@ -65,7 +65,7 @@ interface UnkeyVerifySuccess {
 // response body -- a key-management/verification call must fail closed with
 // a discriminated result, not crash the caller's request.
 async function unkeyFetch(
-  env: Env,
+  env: UnkeyEnv,
   path: string,
   body: Row,
 ): Promise<UnkeyFetchResult> {
@@ -104,8 +104,22 @@ async function unkeyFetch(
  * see this file's header for why it isn't an Unkey-side rate limit. Returns
  * { ok: true, keyId, key } -- `key` is the full mg_... credential, returned
  * only once, exactly like the old generateApiKey() contract. */
+/**
+ * The two credentials this client needs.
+ *
+ * `UNKEY_API_ID` is bound in wrangler.data.jsonc and NOWHERE else, so typing
+ * this as the ambient `Env` was only possible while every generated Worker env
+ * merged into one -- and it read cleanly inside Workers that do not have it
+ * (#10186, #11339). Both optional: a deployment without them declines with
+ * `provider_not_configured`, which is the local/CI state.
+ */
+export interface UnkeyEnv {
+  UNKEY_ROOT_KEY?: string;
+  UNKEY_API_ID?: string;
+}
+
 export async function createUnkeyKey(
-  env: Env,
+  env: UnkeyEnv,
   { externalId, tier }: { externalId: string; tier: unknown },
 ): Promise<UnkeyMintSuccess | UnkeyFetchFailure> {
   const result = await unkeyFetch(env, "/v2/keys.createKey", {
@@ -129,7 +143,7 @@ export async function createUnkeyKey(
  * misconfigured -- callers must treat ok:false the same as valid:false
  * (fail closed), never distinguish the two into a different error surface. */
 export async function verifyUnkeyKey(
-  env: Env,
+  env: UnkeyEnv,
   rawKey: string,
 ): Promise<UnkeyVerifySuccess | UnkeyFetchFailure> {
   const result = await unkeyFetch(env, "/v2/keys.verifyKey", { key: rawKey });
@@ -151,7 +165,7 @@ export async function verifyUnkeyKey(
  * rate limit (there isn't one); the caller's own rpc_accounts.tier row is
  * what actually changes the request-throttling binding selection. */
 export async function updateUnkeyKeyTier(
-  env: Env,
+  env: UnkeyEnv,
   { keyId, tier }: { keyId: string; tier: unknown },
 ): Promise<UnkeyFetchResult> {
   return unkeyFetch(env, "/v2/keys.updateKey", { keyId, meta: { tier } });
@@ -167,7 +181,7 @@ export async function updateUnkeyKeyTier(
  * one-way behavior is enforced at our API layer, not by permanently
  * destroying the underlying key. */
 export async function revokeUnkeyKey(
-  env: Env,
+  env: UnkeyEnv,
   keyId: string,
 ): Promise<UnkeyFetchResult> {
   return unkeyFetch(env, "/v2/keys.updateKey", { keyId, enabled: false });

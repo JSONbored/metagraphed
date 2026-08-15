@@ -149,7 +149,6 @@ describe("NEURON_MIRROR_PLANS", () => {
     };
     const out = await mirrorNeuronSnapshotToNeon(
       {
-        NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE,
         NEON_WRITE_BUFFER_LANES: NEURONS_NEON_LANE,
         NEON_WRITE_BUFFER: ns,
         HYPERDRIVE: { connectionString: "postgresql://x" },

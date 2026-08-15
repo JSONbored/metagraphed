@@ -30,6 +30,7 @@
 // it.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { dataApiEnv } from "./helpers/worker-env.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -74,7 +75,7 @@ function post(
       headers: { "content-type": "application/json", [header]: token },
       body: JSON.stringify(body),
     }),
-    env(owned) as unknown as Env,
+    dataApiEnv(env(owned)),
     ctx,
   );
 }
@@ -279,7 +280,7 @@ describe("poller-lane-health-sync", () => {
         },
         body: JSON.stringify([outcome]),
       }),
-      { POLLER_LANE_HEALTH_SYNC_SECRET } as unknown as Env,
+      dataApiEnv({ POLLER_LANE_HEALTH_SYNC_SECRET }),
       ctx,
     );
     assert.equal(res.status, 503);

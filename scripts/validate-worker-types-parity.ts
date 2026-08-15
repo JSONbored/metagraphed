@@ -50,17 +50,43 @@ export interface WorkerConfig {
   config: string;
   /** The generated types file it writes, relative to the repo root. */
   types: string;
+  /**
+   * The interface name that file must declare.
+   *
+   * DISTINCT PER WORKER, and the reason this field exists (#11339). Every
+   * generated file used to end with a top-level `interface Env`, and
+   * TypeScript merges all top-level declarations of one name across the
+   * program -- so four separately generated envs collapsed into a single
+   * `Env` that was the UNION of all four. `registry-sync`'s env advertised
+   * data-api's `METAGRAPH_CONTROL`; data-api's advertised registry-sync's
+   * rate limiter; and `POSTHOG_TRACES_SAMPLE_RATE`, a different literal in
+   * two configs, resolved to `string | undefined` -- so the literal check
+   * below, whose whole point is that "a stale literal SUPPRESSES type errors",
+   * was already blind to any var that differed between configs.
+   *
+   * `skipLibCheck: true` hides the conflicting redeclaration, which is why
+   * none of this ever surfaced as an error.
+   */
+  envInterface: string;
 }
 
 export const WORKERS: WorkerConfig[] = [
-  { config: "wrangler.jsonc", types: "workers/worker-configuration.d.ts" },
+  {
+    config: "wrangler.jsonc",
+    types: "workers/worker-configuration.d.ts",
+    // The main API Worker keeps the bare name: `src/**` shared code means this
+    // one when it says `Env`, and 841 parameters across 150 files say it.
+    envInterface: "Env",
+  },
   {
     config: "wrangler.data.jsonc",
     types: "workers/data-api.worker-configuration.d.ts",
+    envInterface: "DataApiEnv",
   },
   {
     config: "wrangler.registry.jsonc",
     types: "workers/registry-sync-api.worker-configuration.d.ts",
+    envInterface: "RegistrySyncApiEnv",
   },
   // #10861: the fourth, and the one this list was missing. Every wrangler
   // config in the repo belongs here -- an omission is invisible, because a
@@ -68,8 +94,47 @@ export const WORKERS: WorkerConfig[] = [
   {
     config: "wrangler.wss-lb.jsonc",
     types: "workers/wss-lb.worker-configuration.d.ts",
+    envInterface: "WssLbWorkerEnv",
   },
 ];
+
+/**
+ * Each generated file must declare ITS OWN interface name.
+ *
+ * THE INVARIANT THIS GATE WAS MISSING (#11339). `wrangler types` names the
+ * interface `Env` unless told otherwise, and every top-level `interface Env`
+ * in the program merges into one. Four separately generated envs therefore
+ * became a single union: every Worker's env advertised every other Worker's
+ * bindings, and a `env.SOME_OTHER_WORKERS_QUEUE` reference typed cleanly and
+ * was `undefined` at runtime -- exactly the class #10186 was filed for, one
+ * level up.
+ *
+ * It also silently defeated the literal check below. `POSTHOG_TRACES_SAMPLE_RATE`
+ * is "0.002" in wrangler.data.jsonc and "1" in wrangler.registry.jsonc;
+ * merged, it resolved to `string | undefined`, so the check that exists
+ * because "a stale literal SUPPRESSES type errors" could not see any var whose
+ * value differed between configs.
+ *
+ * Regenerating without `--env-interface` is the one-command way to undo all of
+ * that, and it produces no error of its own -- `skipLibCheck: true` hides the
+ * conflicting redeclaration. Hence a gate.
+ */
+export function envInterfaceErrors(
+  worker: WorkerConfig,
+  types: string,
+): string[] {
+  const declared = [...types.matchAll(/^interface (\w+) extends /gm)]
+    .map((match) => match[1])
+    .filter((name) => !name.startsWith("__BaseEnv_"));
+  if (declared.includes(worker.envInterface)) return [];
+  return [
+    `${worker.types} declares ${declared.length ? declared.join(", ") : "no env interface"}, ` +
+      `not \`${worker.envInterface}\`. Every generated file naming its interface ` +
+      `\`Env\` merges them into one union, so each Worker's env advertises every ` +
+      `other Worker's bindings. Regenerate with ` +
+      `\`--env-interface ${worker.envInterface}\` (the \`types:workers\` script does).`,
+  ];
+}
 
 /**
  * EVERY wrangler config must appear in WORKERS above (#10861).
@@ -215,6 +280,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       continue;
     }
     errors.push(...workerTypesParityErrors(worker, config, types));
+    errors.push(...envInterfaceErrors(worker, types));
   }
 
   // The roster itself, checked against the filesystem (#10861). Without this a

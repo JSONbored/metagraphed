@@ -233,7 +233,6 @@ describe("runNeonPrune", () => {
     await runNeonPrune(
       {
         HYPERDRIVE: {},
-        NEON_BACKFILL_LANES: "",
       },
       ctx,
       { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
