@@ -258,14 +258,30 @@ describe("Discovery artifacts", () => {
   // /api/v1/blocks/{ref} URLs beneath the same prefix are not. Mirrors
   // apps/ui/src/server.robots.test.ts, which gates the apex's own copy — the two
   // hosts are one policy and a change to either alone reopens the walk.
-  test("robots.txt declares the Content Signals, before any group", async () => {
+  test("robots.txt declares the Content Signals INSIDE the user-agent group", async () => {
     // contentsignals.org: the declaration of HOW fetched content may be used.
     // All three yes is the deliberate posture of a public registry that exists
     // to be read by machines -- see the comment at the writer.
+    //
+    // The POSITION is what makes it mean anything. robots.txt is defined (RFC
+    // 9309) as groups introduced by a `User-agent` line, and Content Signals is
+    // a directive of its group -- the spec's example is `User-Agent: *` /
+    // `Content-Signal: ...` / `Allow: /`. #11174 emitted it ABOVE the first
+    // `User-agent` line, where it belongs to no group and parsers ignore it,
+    // and this test asserted only that the line existed, so it passed on a
+    // declaration nothing read. (Its name even said "before any group".)
     const txt = await fs.readFile(path.join(publicDir, "robots.txt"), "utf8");
     assert.match(
       txt,
       /^Content-Signal: search=yes, ai-input=yes, ai-train=yes$/m,
+    );
+    const lines = txt.split("\n");
+    const group = lines.findIndex((line) => /^User-agent:/i.test(line));
+    const signal = lines.findIndex((line) => /^Content-Signal:/i.test(line));
+    assert.ok(group >= 0, "a User-agent group must exist");
+    assert.ok(
+      signal > group,
+      "Content-Signal must come after the User-agent line",
     );
   });
 
