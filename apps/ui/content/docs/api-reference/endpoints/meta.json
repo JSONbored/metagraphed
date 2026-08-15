@@ -1,6 +1,7 @@
 {
   "title": "Endpoints",
   "pages": [
+    "index",
     "endpoint-incidents",
     "endpoint-pools",
     "endpoints",

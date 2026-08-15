@@ -1,6 +1,7 @@
 {
   "title": "Agents",
   "pages": [
+    "index",
     "agent-catalog",
     "agent-catalog-subnet"
   ]

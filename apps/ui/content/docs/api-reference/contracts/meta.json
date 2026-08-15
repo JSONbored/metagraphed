@@ -1,6 +1,7 @@
 {
   "title": "Contracts",
   "pages": [
+    "index",
     "api-index",
     "contracts",
     "openapi"

@@ -1,6 +1,7 @@
 {
   "title": "Extrinsics",
   "pages": [
+    "index",
     "extrinsic-detail",
     "extrinsic-detail-by-network",
     "extrinsics-feed",

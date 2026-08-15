@@ -1,6 +1,7 @@
 {
   "title": "Feeds",
   "pages": [
+    "index",
     "feed-gaps",
     "feed-gaps-atom",
     "feed-gaps-json",

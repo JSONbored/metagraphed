@@ -1,0 +1,21 @@
+---
+title: Operations
+description: Every Operations endpoint in the metagraphed API, with its method and path.
+---
+
+7 endpoints.
+
+- [Build](/docs/api-reference/operations/build) — `GET /api/v1/build`  
+  Fetch generated build summary.
+- [Changelog](/docs/api-reference/operations/changelog) — `GET /api/v1/changelog`  
+  Fetch latest generated change summary.
+- [Freshness](/docs/api-reference/operations/freshness) — `GET /api/v1/freshness`  
+  Fetch freshness and staleness state.
+- [Network Capabilities](/docs/api-reference/operations/network-capabilities) — `GET /api/v1/networks`  
+  List every addressable network and what it actually serves.
+- [Network Capabilities By Network](/docs/api-reference/operations/network-capabilities-by-network) — `GET /api/v1/{network}/networks`  
+  Network-addressed form of the route above.
+- [Source Health](/docs/api-reference/operations/source-health) — `GET /api/v1/source-health`  
+  Fetch upstream source health.
+- [Source Snapshots](/docs/api-reference/operations/source-snapshots) — `GET /api/v1/source-snapshots`  
+  Fetch source input hashes and counts.

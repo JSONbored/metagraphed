@@ -1,6 +1,7 @@
 {
   "title": "Profiles",
   "pages": [
+    "index",
     "profiles",
     "subnet-profile"
   ]

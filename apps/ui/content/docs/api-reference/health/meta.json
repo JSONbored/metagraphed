@@ -1,6 +1,7 @@
 {
   "title": "Health",
   "pages": [
+    "index",
     "failure-reasons",
     "health",
     "health-history",

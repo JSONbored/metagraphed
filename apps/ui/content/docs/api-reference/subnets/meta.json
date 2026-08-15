@@ -1,6 +1,7 @@
 {
   "title": "Subnets",
   "pages": [
+    "index",
     "deregistration-ranking",
     "domain-summary",
     "domains",
