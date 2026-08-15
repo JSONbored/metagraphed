@@ -245,6 +245,48 @@ function indexPage(digests: WeeklyDigest[]): string {
   ].join("\n");
 }
 
+/**
+ * `/news/sn38` — the archive for one subject.
+ *
+ * #11283: the breadcrumb on every digest links its parent folder, and that
+ * folder had no page. 124 of them, one per subject, each a 404 the reader was
+ * invited to click. Exactly the defect #11234 fixed for the API reference,
+ * where each tag's `meta.json` was written and its `index.mdx` never was.
+ *
+ * Generated rather than hand-written for the same reason: a subject added to
+ * the store cannot reintroduce the hole.
+ */
+function subjectIndexPage(netuid: number | null, entries: WeeklyDigest[]): string {
+  const label = subjectLabel(netuid);
+  const sorted = [...entries].sort((a, b) => b.slug.localeCompare(a.slug));
+  const segment = subjectSegment(netuid);
+  const links = sorted
+    .map(
+      (digest) =>
+        `- [${weekLabel(digest)}](/news/${segment}/${digest.slug}) — ${digest.sources.length} source${digest.sources.length === 1 ? "" : "s"}`,
+    )
+    .join("\n");
+  const scope = netuid === null ? "the network as a whole" : `subnet ${netuid}`;
+  const week = sorted.length === 1 ? "week" : "weeks";
+  return [
+    "---",
+    `title: "${escapeYaml(label)} — weekly digests"`,
+    `description: "Every published weekly digest for ${escapeYaml(scope)} — ${sorted.length} ${week}, each written only from this registry's own primary-source feed items."`,
+    "---",
+    "",
+    `Every week written up for ${scope}, newest first. Each digest is derived only from this registry's own feed items, and cites every one it rests on.`,
+    "",
+    links,
+    "",
+    netuid === null
+      ? "[Browse all subnets](/subnets)"
+      : `[Subnet ${netuid} overview](/subnets/${netuid})`,
+    "",
+    "[All weekly digests](/news)",
+    "",
+  ].join("\n");
+}
+
 async function main() {
   const raw = await readFile(STORE_PATH, "utf8").catch(() => null);
   const store = raw ? (JSON.parse(raw) as { digests?: WeeklyDigest[] }) : { digests: [] };
@@ -258,6 +300,24 @@ async function main() {
   const format = (source: string) => prettier.format(source, { parser: "mdx" });
 
   await writeFile(path.join(OUTPUT_DIR, "index.mdx"), await format(indexPage(digests)), "utf8");
+
+  // One index per subject folder, so the digest breadcrumb's parent link
+  // resolves -- see subjectIndexPage.
+  const bySubject = new Map<number | null, WeeklyDigest[]>();
+  for (const digest of digests) {
+    const bucket = bySubject.get(digest.netuid);
+    if (bucket) bucket.push(digest);
+    else bySubject.set(digest.netuid, [digest]);
+  }
+  for (const [netuid, entries] of bySubject) {
+    const dir = path.join(OUTPUT_DIR, subjectSegment(netuid));
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      path.join(dir, "index.mdx"),
+      await format(subjectIndexPage(netuid, entries)),
+      "utf8",
+    );
+  }
 
   for (const digest of digests) {
     const dir = path.join(OUTPUT_DIR, subjectSegment(digest.netuid));

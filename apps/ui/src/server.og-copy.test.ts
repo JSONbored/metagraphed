@@ -56,7 +56,6 @@ describe("OG card copy coverage (#8489)", () => {
     const ALLOW_GENERIC = new Set([
       "/", // home: the brand card IS the right card
       "/design/primitives", // internal design harness, never shared
-      "/portfolio", // retired -> redirects into /accounts (#8252)
     ]);
 
     const paths = fs
@@ -69,6 +68,14 @@ describe("OG card copy coverage (#8489)", () => {
         (f) =>
           f.endsWith(".tsx") && !f.includes(".test.") && !f.startsWith("-") && !f.startsWith("__"),
       )
+      // #11287: a route with no `component` RENDERS NOTHING -- it only throws a
+      // redirect, so no HTML is produced and there is no card to give it OG
+      // copy for. There are 19 of them (every retired route, plus the
+      // /graphql, /tools and /design container segments), and listing them by
+      // hand is how this guard turns into an exemption list that hides what it
+      // names. Derived from the file instead: `component` present or absent is
+      // structural, and every one of the 27 routes that does render declares it.
+      .filter((f) => /\bcomponent\s*[:,]/.test(fs.readFileSync(path.join(routesDir, f), "utf8")))
       .map((f) => f.replace(/\.tsx$/, ""))
       // Route-file naming -> pathname; skip param and splat segments, which are
       // handled by the regex branches above, not the exact-path map.

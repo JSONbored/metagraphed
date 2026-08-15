@@ -1,0 +1,19 @@
+---
+title: Protocol
+description: How Bittensor actually works underneath the registry — stake weighting, UID registration and permits, weight setting, proxies, and root delegation.
+---
+
+The chain mechanics the rest of these docs assume. Each page explains one part of
+Bittensor's protocol as it behaves today, with the on-chain fields and thresholds
+named so a claim here can be checked against the API.
+
+- [Stake weight](/docs/protocol/stake-weight) — the two-component formula, and why
+  root TAO counts differently from subnet Alpha.
+- [Registration and permits](/docs/protocol/registration-and-permits) — what a UID
+  costs, and why holding a validator permit is a different thing entirely.
+- [Weight setting and rewards](/docs/protocol/weight-setting-and-rewards) — how
+  validators score miners and how that becomes emission.
+- [Proxies](/docs/protocol/proxies) — delegating scoped, revocable authority to
+  another key without a multisig ceremony per action.
+- [Root delegation](/docs/protocol/root-delegation) — how `set_children` backs child
+  hotkeys across many subnets at once.
