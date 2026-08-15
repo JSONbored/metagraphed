@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   MAX_UNREFERENCED_ROUTES,
+  stripCodeComments,
   publishedRoutes,
   routePattern,
   unreferencedRoutes,
@@ -114,5 +115,52 @@ describe("the ratchet", () => {
     // report everything missing, not report success over an empty set.
     const routes = ["/api/v1/a", "/api/v1/b"];
     assert.deepEqual(unreferencedRoutes(routes, ""), routes);
+  });
+});
+
+// Prose is not a consumer (#10517).
+//
+// The check matches route paths against a concatenation of apps/ui, so for a
+// long time a docs table counted as a render -- and so did a code comment. Both
+// are gone; what remains unseen is whether the reference is MOUNTED, which the
+// failure messages no longer claim.
+describe("stripCodeComments", () => {
+  test("a route named only in a comment is not a reference", () => {
+    const src = `// TODO: someday render /api/v1/chain/burn\nconst x = 1;`;
+    assert.doesNotMatch(stripCodeComments(src), /chain\/burn/);
+  });
+
+  test("a route in a BLOCK comment is not a reference either", () => {
+    const src = `/**\n * Fetches /api/v1/chain/burn eventually.\n */\nconst x = 1;`;
+    assert.doesNotMatch(stripCodeComments(src), /chain\/burn/);
+  });
+
+  test("A ROUTE IN A TEMPLATE LITERAL SURVIVES -- this is how they are built", () => {
+    // The failure that would be silent and total: this codebase composes paths
+    // as `` `/api/v1/accounts/${ss58}/events` ``, so a stripper that does not
+    // know backticks deletes the references the check exists to find, and every
+    // one reads as a real gap.
+    const src = "const p = `/api/v1/accounts/${ss58}/identity-history`;";
+    assert.match(stripCodeComments(src), /identity-history/);
+  });
+
+  test("`https://` inside a string is not a comment", () => {
+    // The classic naive-stripper bug, in all three quote forms.
+    for (const q of ['"', "'", "`"]) {
+      const src = `const u = ${q}https://api.metagraph.sh/api/v1/networks${q};`;
+      assert.match(stripCodeComments(src), /api\.metagraph\.sh/, q);
+    }
+  });
+
+  test("an escaped quote does not end the string early", () => {
+    const src = 'const s = "a \\" /api/v1/chain/burn";';
+    assert.match(stripCodeComments(src), /chain\/burn/);
+  });
+
+  test("code after a comment survives", () => {
+    // Non-vacuity for the tests above: the stripper has to stop at the newline
+    // rather than eating the rest of the file.
+    const src = `// note\nconst p = "/api/v1/chain/burn";`;
+    assert.match(stripCodeComments(src), /chain\/burn/);
   });
 });

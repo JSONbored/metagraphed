@@ -75,6 +75,27 @@ const FEED_PREFIX = "/api/v1/feeds/";
 /** Network-prefixed testnet variants mirror their mainnet twin's rendering. */
 const NETWORK_PREFIX = "/api/v1/{network}/";
 
+/**
+ * Routes whose consumer is an API CALLER rather than our own UI.
+ *
+ * The same exemption the feeds already have, named per route because this one
+ * cannot be recognised by prefix. `/api/v1/networks` is a capability matrix --
+ * which chains are addressable and which route families each one actually
+ * serves -- and the thing that needs it is a client deciding what to call, not
+ * a person reading a page. Rendering it in the UI to satisfy a checker would be
+ * building a surface for the checker.
+ *
+ * EXPLICIT AND JUSTIFIED, one line each, because this is the mechanism most
+ * likely to rot into "the list of routes we could not be bothered to render".
+ * A route belongs here when its consumer is external BY DESIGN -- not when it
+ * is merely unrendered today, which is what the ceiling is for.
+ */
+const EXTERNAL_CONSUMER_ROUTES: readonly string[] = [
+  // Answers "what can this deployment serve", for a caller choosing a network
+  // prefix. Its rendered form is the docs page that documents it.
+  "/api/v1/networks",
+];
+
 const escapeLiteral = (segment: string): string =>
   segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -99,7 +120,9 @@ export function publishedRoutes(openapi: {
     .map(([route]) => route)
     .filter(
       (route) =>
-        !route.startsWith(NETWORK_PREFIX) && !route.startsWith(FEED_PREFIX),
+        !route.startsWith(NETWORK_PREFIX) &&
+        !route.startsWith(FEED_PREFIX) &&
+        !EXTERNAL_CONSUMER_ROUTES.includes(route),
     )
     .sort();
 }
@@ -110,6 +133,76 @@ export function unreferencedRoutes(
   source: string,
 ): string[] {
   return routes.filter((route) => !routePattern(route).test(source));
+}
+
+/**
+ * One file's CODE, with comments removed.
+ *
+ * PROSE IS NOT A CONSUMER, and dropping `.mdx` alone does not achieve that: a
+ * route path written in a `//` comment counts identically. Found by writing
+ * one -- the component added for `/api/v1/accounts/{ss58}/identity-history`
+ * explains itself by naming the route, and that sentence alone held the gate up
+ * when the query beneath it was mutated away.
+ *
+ * STRING-AWARE ACROSS ALL THREE QUOTE FORMS, which is the whole difficulty. A
+ * naive stripper eats `"https://…"` at the `//`, and this codebase builds route
+ * paths in TEMPLATE literals -- `` `/api/v1/accounts/${ss58}/identity-history` ``
+ * -- so backticks matter as much as quotes. Getting that wrong deletes the very
+ * references the check exists to find, and it fails SILENTLY: the count climbs
+ * and every entry looks like a real gap.
+ */
+export function stripCodeComments(source: string): string {
+  let out = "";
+  let quote: string | null = null;
+  let inLine = false;
+  let inBlock = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i]!;
+    const next = source[i + 1];
+    if (inLine) {
+      if (ch === "\n") {
+        inLine = false;
+        out += ch;
+      }
+      continue;
+    }
+    if (inBlock) {
+      if (ch === "*" && next === "/") {
+        inBlock = false;
+        i += 1;
+      }
+      continue;
+    }
+    if (quote) {
+      out += ch;
+      // A backslash escapes whatever follows, so a path ending `\"` does not
+      // close the string.
+      if (ch === "\\") {
+        out += next ?? "";
+        i += 1;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
+      out += ch;
+      continue;
+    }
+    if (ch === "/" && next === "/") {
+      inLine = true;
+      i += 1;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      inBlock = true;
+      i += 1;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
 }
 
 function uiSource(): string {
@@ -130,7 +223,9 @@ function uiSource(): string {
       // A checkout without apps/ui is not this check's problem to report.
     }
   }
-  return files.map((file) => readFileSync(file, "utf8")).join("\n");
+  return files
+    .map((file) => stripCodeComments(readFileSync(file, "utf8")))
+    .join("\n");
 }
 
 // The check runs only when this file is EXECUTED, never when it is imported.
