@@ -947,9 +947,14 @@ describe("runLaneAlarm", () => {
     assert.deepEqual(github.closed, [4242]);
   });
 
-  test("an unreadable issue list stops the tick rather than duplicating every alarm", async () => {
+  test("an unreadable issue list stops the WRITES, and still records every lane", async () => {
     // The single most damaging thing this could do: treat a failed list as
     // "nothing is open" and re-open every outstanding alarm, every tick.
+    //
+    // The second most damaging is what the fix for that used to do -- return
+    // early, and take the per-lane captures with it. The one failure mode
+    // where GitHub is unreachable is exactly when the second channel matters,
+    // so the writes stop and the recording does not.
     const db = healthDb({
       latest: [
         {
@@ -966,16 +971,32 @@ describe("runLaneAlarm", () => {
     github.listOpen = async () => {
       throw new Error("502 from github");
     };
+    const seen: Array<{ errorCode?: string }> = [];
     const out = await runLaneAlarm(
       { ...TOKEN, ...db.env },
-      { github, now: () => NOW },
+      {
+        github,
+        now: () => NOW,
+        recordException: async (_env, payload) => {
+          seen.push(payload as { errorCode?: string });
+          return true;
+        },
+      },
     );
-    assert.deepEqual(out, {
-      ok: false,
-      reason: "issue_list_unavailable",
-      lanes: 1,
-    });
-    assert.deepEqual(github.opened, []);
+    assert.equal((out as { reason?: string }).reason, "issue_list_unavailable");
+    assert.equal((out as { delivered?: boolean }).delivered, false);
+    assert.deepEqual(github.opened, [], "nothing was filed blind");
+    // ...and the lane was still reported, on the channel that still worked.
+    assert.equal(
+      seen.filter((p) => p.errorCode === "lane_stale").length,
+      1,
+      "the alarming lane was still recorded",
+    );
+    assert.equal(
+      seen.filter((p) => p.errorCode === "alarm_list_unavailable").length,
+      1,
+      "and the dead list reported itself",
+    );
   });
 
   // The same failure through the door the client used to leave open: a non-2xx
@@ -1065,20 +1086,29 @@ describe("runLaneAlarm", () => {
       ],
       runs: [{ lane: "a", since: NOW - 28 * HOUR, ticks: 100 }],
     });
-    const github = fakeGitHub();
-    github.open = async () => null;
-    const out = await runLaneAlarm(
+    const throwing = async () => {
+      throw new Error("posthog down");
+    };
+
+    // Both captures on this path, because both are `.catch(() => false)` and a
+    // swallowed rejection is only safe if something proves it is swallowed.
+    const refused = fakeGitHub();
+    refused.open = async () => null;
+    const a = await runLaneAlarm(
       { ...TOKEN, ...db.env },
-      {
-        github,
-        now: () => NOW,
-        recordException: async () => {
-          throw new Error("posthog down");
-        },
-      },
+      { github: refused, now: () => NOW, recordException: throwing },
     );
-    assert.equal((out as { ok?: boolean }).ok, true);
-    assert.equal((out as { opened?: number }).opened, 0);
+    assert.equal((a as { ok?: boolean }).ok, true);
+    assert.equal((a as { opened?: number }).opened, 0);
+
+    const unlistable = fakeGitHub();
+    unlistable.listOpen = async () => null;
+    const b = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      { github: unlistable, now: () => NOW, recordException: throwing },
+    );
+    assert.equal((b as { ok?: boolean }).ok, true);
+    assert.equal((b as { delivered?: boolean }).delivered, false);
   });
 
   test("a tick that DELIVERS reports nothing extra", async () => {
@@ -1111,6 +1141,64 @@ describe("runLaneAlarm", () => {
     assert.deepEqual(
       seen.filter((p) => p.errorCode === "alarm_undelivered"),
       [],
+    );
+  });
+
+  // ITS OWN SECRET, falling back to the shared one. GITHUB_TOKEN is declared as
+  // the upgrade radar's public-READ token; opening an issue needs
+  // `issues: write` on this repository, and sharing one credential let the
+  // weaker requirement set the ceiling.
+  test("prefers LANE_ALARM_GITHUB_TOKEN, and falls back to GITHUB_TOKEN", async () => {
+    const db = healthDb({
+      latest: [
+        {
+          lane: "a",
+          verdict: "stale",
+          age_ms: 1,
+          detail: null,
+          checked_at: NOW,
+        },
+      ],
+      runs: [{ lane: "a", since: NOW - 28 * HOUR, ticks: 100 }],
+    });
+    /** Every `authorization` header the run sent, for one env. */
+    async function authHeaders(
+      env: Record<string, unknown>,
+    ): Promise<string[]> {
+      const seen: string[] = [];
+      const fetchImpl = (async (url: string, init?: RequestInit) => {
+        seen.push(
+          String((init?.headers as Record<string, string>)?.authorization),
+        );
+        // An empty issue list, then accept the create.
+        return String(url).includes("state=open")
+          ? new Response("[]", { status: 200 })
+          : new Response(JSON.stringify({ number: 7 }), { status: 201 });
+      }) as unknown as typeof fetch;
+      await runLaneAlarm(env, { now: () => NOW, fetchImpl });
+      return seen;
+    }
+
+    const both = await authHeaders({
+      GITHUB_TOKEN: "read-only",
+      LANE_ALARM_GITHUB_TOKEN: "writer",
+      ...db.env,
+    });
+    assert.ok(both.length > 0, "the run actually called GitHub");
+    assert.deepEqual(
+      [...new Set(both)],
+      ["Bearer writer"],
+      "the write-scoped secret wins when both are set",
+    );
+
+    const sharedOnly = await authHeaders({
+      GITHUB_TOKEN: "read-only",
+      ...db.env,
+    });
+    assert.deepEqual(
+      [...new Set(sharedOnly)],
+      ["Bearer read-only"],
+      "and the shared one still works where it has the scope",
     );
   });
 

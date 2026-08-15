@@ -79,6 +79,21 @@ interface Env {
    * GitHub throttles. */
   GITHUB_TOKEN?: string;
   /**
+   * Authenticates the lane alarm's ISSUE WRITES (src/lane-alarm.ts).
+   *
+   * Its own secret rather than sharing GITHUB_TOKEN above, for the same reason
+   * GITHUB_SIGNALS_TOKEN is: they want different scopes. GITHUB_TOKEN is a
+   * public-repo READ token for rate-limit relief, and the alarm needs
+   * `issues: write` on this repository -- so sharing one credential let the
+   * weaker requirement set the ceiling, and the alarm filed nothing for as long
+   * as it has existed while reporting itself healthy.
+   *
+   * Falls back to GITHUB_TOKEN when unset, so this is a no-op wherever that one
+   * does carry write access. An alarm that cannot deliver now says so
+   * (`alarm_undelivered`) rather than counting the refusal and moving on.
+   */
+  LANE_ALARM_GITHUB_TOKEN?: string;
+  /**
    * #8600: Ethereum MAINNET JSON-RPC endpoint for the TAO/USD index (ADR
    * 0025). Mainnet specifically -- every pool ADR 0025 names is Uniswap v3 on
    * Ethereum L1, not an L2.

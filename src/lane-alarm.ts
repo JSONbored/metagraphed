@@ -849,7 +849,23 @@ export async function runLaneAlarm(
   const db = laneHealthStore(env) as unknown as StatementClientLike | undefined;
   if (!db?.query) return { ok: false, reason: "no lane_health store bound" };
 
-  const token = typeof env?.GITHUB_TOKEN === "string" ? env.GITHUB_TOKEN : "";
+  // ITS OWN SECRET, falling back to the shared one.
+  //
+  // `GITHUB_TOKEN` is declared, in workers/env-extra.d.ts, as the upgrade
+  // radar's rate-limit token: "public-repo read-only metadata", and a lane that
+  // "still runs without it". This file's header read that as "already
+  // provisioned on this Worker" and inferred it could open issues. Opening an
+  // issue needs `issues: write` on THIS repository, which a public-read token
+  // does not carry -- and the result was an alarm that has never filed one.
+  //
+  // Split for the same reason GITHUB_SIGNALS_TOKEN was split off it: the two
+  // want different scopes, and sharing one credential means the weaker
+  // requirement silently sets the ceiling. The fallback keeps this a no-op
+  // wherever the shared token does happen to have write access.
+  const token =
+    (typeof env?.LANE_ALARM_GITHUB_TOKEN === "string"
+      ? env.LANE_ALARM_GITHUB_TOKEN
+      : "") || (typeof env?.GITHUB_TOKEN === "string" ? env.GITHUB_TOKEN : "");
   const repo =
     typeof env?.LANE_ALARM_REPO === "string" && env.LANE_ALARM_REPO
       ? env.LANE_ALARM_REPO
@@ -879,16 +895,18 @@ export async function runLaneAlarm(
   // duplicate of every alarm still outstanding, which is the failure that makes
   // an alerting system get muted.
   const openAlarms = github ? await github.listOpen().catch(() => null) : null;
-  if (github && openAlarms === null) {
-    // Deliberately NOT falling back to `{}`. An unreadable issue list is
-    // indistinguishable from "no alarms are open", and acting on that
-    // assumption opens a duplicate of everything currently outstanding.
-    return {
-      ok: false,
-      reason: "issue_list_unavailable",
-      lanes: Object.keys(latest).length,
-    };
-  }
+  // Deliberately NOT read as `{}`. An unreadable issue list is
+  // indistinguishable from "no alarms are open", and acting on that assumption
+  // opens a duplicate of everything currently outstanding.
+  //
+  // But it must not go the other way either. Returning here -- which is what
+  // this did -- SILENCED the per-lane captures below, so the one failure mode
+  // where GitHub is unreachable also lost the second channel that could still
+  // have reported the lanes. Quieter, in the moment that needs louder.
+  //
+  // So: still plan, still record every alarming lane, and suppress only the
+  // WRITES, which are the part a stale list makes dangerous.
+  const listUnavailable = Boolean(github) && openAlarms === null;
 
   const plan = laneAlarmPlan({
     latest,
@@ -921,7 +939,7 @@ export async function runLaneAlarm(
       fingerprintDetail: alarm.lane,
       errorCode: alarm.kind === "stale" ? "lane_stale" : "lane_silent",
     }).catch(() => false);
-    if (!github) continue;
+    if (!github || listUnavailable) continue;
     const number = await github
       .open(alarm, laneAlarmTitle(alarm.lane), body)
       .catch(() => null);
@@ -943,12 +961,29 @@ export async function runLaneAlarm(
   // Its OWN fingerprint, deliberately: filed under a lane it would hide behind
   // that lane's alarm and read as one more stale producer, when it is the
   // opposite -- the watchdog cannot report at all.
-  if (github && plan.open.length > 0 && opened === 0) {
+  if (listUnavailable) {
+    // Its own code, because the two are different problems with different
+    // fixes: this one is "we could not ask GitHub what is already open", and
+    // the one below is "we asked, and it refused everything we sent".
+    await record(env as never, {
+      error: new Error(
+        `lane-alarm could not read its issue list: ${plan.open.length} alarming lane(s) ` +
+          "recorded but none filed, because opening without the list would " +
+          "duplicate every outstanding alarm.",
+      ),
+      route: "watchdog:lane-alarm",
+      fingerprintDetail: "delivery",
+      errorCode: "alarm_list_unavailable",
+    }).catch(() => false);
+  }
+  if (github && !listUnavailable && plan.open.length > 0 && opened === 0) {
     await record(env as never, {
       error: new Error(
         `lane-alarm delivered nothing: ${plan.open.length} alarming lane(s) planned, ` +
-          "GitHub accepted none. The alarm's only push channel is not working " +
-          "-- check GITHUB_TOKEN's issues:write scope on this Worker.",
+          "GitHub accepted none. The alarm's only push channel is not working. " +
+          "Opening an issue needs `issues: write` on this repository; " +
+          "GITHUB_TOKEN is the upgrade radar's public-read token and does not " +
+          "carry it. Set LANE_ALARM_GITHUB_TOKEN to a credential that does.",
       ),
       route: "watchdog:lane-alarm",
       fingerprintDetail: "delivery",
@@ -958,7 +993,7 @@ export async function runLaneAlarm(
 
   // Guarded as a whole rather than per entry: with no client there are no open
   // alarms to have recovered, so the loop body is unreachable, not skipped.
-  if (github) {
+  if (github && !listUnavailable) {
     for (const entry of plan.close) {
       const ok = await github
         .close(entry.issue, laneAlarmRecoveryComment(entry.lane, entry.record))
@@ -987,6 +1022,7 @@ export async function runLaneAlarm(
     suppressed: plan.suppressed,
     opened,
     closed,
-    delivered: Boolean(github),
+    delivered: Boolean(github) && !listUnavailable,
+    ...(listUnavailable ? { reason: "issue_list_unavailable" } : {}),
   };
 }
