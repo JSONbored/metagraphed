@@ -3544,6 +3544,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/review/attribution-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the attribution sweep's review queue. The attribution sweep's REVIEW QUEUE (#11227). src/attribution-sweep.ts looks at what each subnet publishes and records ss58 strings it finds; #10818 fixed that lane so it actually fetches sources, and the table it writes had no reader at all -- a candidate nobody can see is the same as no candidate. EVERY ROW IS A LEAD, NEVER AN ATTRIBUTION. An address appearing in the text of a page a subnet published does not make the address theirs: the common false positive is a hotkey belonging to a validator, appearing inside an API response that validator publishes -- somebody else's key, on their own page. Clearing docs/nametag-evidence-bar.md -- a public source tying THIS address to THIS entity -- is a human judgement, and this surface exists to put candidates in front of one rather than to skip it. source_url rides on every candidate because the review IS opening it. THE LISTING RULE IS RE-DERIVED AT READ TIME, over the table rather than trusted from the writer: a source yielding more than listing_address_cap distinct addresses is a metagraph dump or a holder list, and every address on it belongs to somebody else. The sweep enforces that cap when a row is WRITTEN, but rows outlive rules -- measured 2026-08-15 the table held 4,913 rows from 87 sources, of which 25 pre-cap sources (/allHolders, /api/miners, /snap/metagraph and their kin) accounted for 4,751 -- and the cap is an explicitly revisable judgement, so deriving it here moves the whole history when it moves. Applying it leaves 162 rows across 49 subnets from 62 sources. THE SUPPRESSION IS PUBLISHED, never silent: suppressed_count, suppressed_source_count and listing_address_cap ride on every response, so a filter a caller cannot see is not a filter they cannot check -- and if the suppressed share stops falling, the sweep's fan-out needs narrowing before a human is asked to read the result. COUNTS ARE UNBOUNDED AND THE LIST IS BOUNDED: reviewable_count is measured over the whole table beside a ?limit=-trimmed candidates array, so counting the array can never be mistaken for the population. ?netuid= narrows to one subnet; ?limit= defaults to 200 (max 500) because the whole queue in one fetch is what a reviewer wants. An EMPTY queue is a measurement -- every candidate adjudicated, every source a listing, or a subnet nobody has swept -- and only a failed read carries degraded.reason: unavailable. Mainnet-only: the sweep reads the registry's surfaces, and the registry is mainnet's. */
+        get: operations["reviewAttributionCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/review/enrichment-evidence": {
         parameters: {
             query?: never;
@@ -6214,6 +6231,37 @@ export interface components {
         };
         AskRequest: {
             question: string;
+        };
+        AttributionCandidate: {
+            first_seen: string | null;
+            last_seen: string | null;
+            netuid: number;
+            /** @description How many distinct addresses that page yielded. The reviewer's first filter: an address found on a page carrying eleven others is a weaker lead than one found alone. Anything above listing_address_cap is suppressed entirely rather than shown with a warning. */
+            source_address_count: number | null;
+            /** @description The page the address was found on. Required on every candidate, because the review is opening it -- a row a reviewer cannot trace back to a document is not reviewable. */
+            source_url: string;
+            /** @description A checksum-valid Finney address found in the text of source_url. NOT an attribution: the common false positive is a hotkey belonging to a validator, appearing inside an API response that validator publishes -- somebody else's key, on their own page. Clearing the evidence bar is a human judgement this row exists to prompt, not to replace. */
+            ss58: string;
+        };
+        AttributionCandidatesReviewArtifact: {
+            /** @description Rows on THIS page. Never the population -- see reviewable_count, which is measured over the whole table. */
+            candidate_count: number | null;
+            candidates: components["schemas"]["AttributionCandidate"][];
+            /** @description Present ONLY on a decline. An empty queue is a measurement -- every candidate adjudicated, or every source a listing, or a subnet nobody has swept. */
+            degraded?: components["schemas"]["UnavailableDegraded"];
+            limit: number | null;
+            /** @description The rule: a source yielding MORE than this many distinct addresses is a listing and contributes no candidates. Published so a caller can reproduce the split rather than trust it. A judgement calibrated on an empty band in the observed distribution, not a law. */
+            listing_address_cap: number;
+            /** @description The subnet filter applied, or null for every subnet. */
+            netuid: number | null;
+            offset: number | null;
+            /** @description Candidates passing the listing rule across the whole table, before ?limit=. Published so a bounded page can never be mistaken for the population; NULL when the count could not be read, never defaulted to the page length. */
+            reviewable_count: number | null;
+            schema_version: number;
+            /** @description Candidates hidden because the page they came from is a LISTING -- a metagraph dump or holder list, every address on which belongs to somebody else. Published rather than silently applied: a filter a caller cannot see is one they cannot check. */
+            suppressed_count: number | null;
+            /** @description How many distinct source pages that suppression covered. */
+            suppressed_source_count: number | null;
         };
         /** @enum {string} */
         Authority: "community" | "official" | "provider-claimed" | "registry-observed";
@@ -37732,6 +37780,133 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reviewAttributionCandidates: {
+        parameters: {
+            query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
+                netuid?: number;
+                /** @description Maximum number of rows to return in one page (at most 500). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 200. */
+                limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "candidate_count": 1,
+                     *         "candidates": [
+                     *           {
+                     *             "first_seen": "2026-06-01T00:00:00.000Z",
+                     *             "last_seen": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 7,
+                     *             "source_address_count": 1,
+                     *             "source_url": "https://api.metagraph.sh/example",
+                     *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *           }
+                     *         ],
+                     *         "degraded": {
+                     *           "reason": "unavailable"
+                     *         },
+                     *         "limit": 1,
+                     *         "listing_address_cap": 1,
+                     *         "netuid": 7,
+                     *         "offset": 1,
+                     *         "reviewable_count": 1,
+                     *         "schema_version": 1,
+                     *         "suppressed_count": 1,
+                     *         "suppressed_source_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AttributionCandidatesReviewArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

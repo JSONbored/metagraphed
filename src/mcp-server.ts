@@ -700,6 +700,11 @@ import {
   type GetDeregistrationHistoryInput,
 } from "../schemas-src/mcp-tools/get-deregistration-ranking-history.ts";
 import {
+  ListReviewAttributionCandidatesInputSchema,
+  ListReviewAttributionCandidatesOutputSchema,
+  type ListReviewAttributionCandidatesInput,
+} from "../schemas-src/mcp-tools/list-review-attribution-candidates.ts";
+import {
   GetEmissionChangesInputSchema,
   GetEmissionChangesOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-changes.ts";
@@ -1629,6 +1634,14 @@ import {
   DEREGISTRATION_HISTORY_WINDOWS,
 } from "./subnet-deregistration-history.ts";
 import {
+  buildAttributionCandidatesReview,
+  declineAttributionCandidatesReview,
+  loadAttributionCandidateTotals,
+  loadAttributionCandidates,
+  type AttributionCandidatesDb,
+} from "./attribution-candidates-review.ts";
+import {
+  ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT,
   DEFAULT_DEREGISTRATION_HISTORY_WINDOW,
   DEFAULT_PIPELINE_HISTORY_WINDOW,
 } from "./route-limits.ts";
@@ -10428,6 +10441,59 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "list_review_attribution_candidates",
+    title: "List the attribution sweep's review queue",
+    description:
+      "Fetch the ADDRESSES THE SWEEP FOUND AND A HUMAN HAS NOT YET JUDGED " +
+      "(#11227). src/attribution-sweep.ts reads what each subnet publishes and " +
+      "records every checksum-valid ss58 it finds in the text; this is that " +
+      "queue. " +
+      "EVERY ROW IS A LEAD, NEVER AN ATTRIBUTION -- do not present one as an " +
+      "address belonging to a subnet. An ss58 appearing on a team's page does " +
+      "not make it theirs, and the common false positive is a hotkey " +
+      "belonging to a validator, appearing inside an API response that " +
+      "validator publishes -- somebody else's key, on their own page. " +
+      "source_url rides on every candidate because verifying one " +
+      "means OPENING it. " +
+      "PAGES THAT ARE LISTINGS ARE SUPPRESSED: a source yielding more than " +
+      "listing_address_cap distinct addresses is a metagraph dump or a holder " +
+      "list, and every address on it belongs to somebody else. That rule is " +
+      "re-derived over the table on every read rather than trusted from the " +
+      "writer, because rows outlive rules -- measured 2026-08-15, 25 pre-cap " +
+      "sources accounted for 4,751 of 4,913 rows. suppressed_count and " +
+      "suppressed_source_count are published so the filter is checkable. " +
+      "READ reviewable_count, NOT candidates.length, for the population: the " +
+      "array is trimmed by ?limit= and the count is measured over the whole " +
+      "table. An empty queue is a measurement -- everything adjudicated, every " +
+      "source a listing, or a subnet nobody has swept. netuid narrows to one " +
+      "subnet; limit defaults to 200 (max 500). Mainnet only. Mirrors GET " +
+      "/api/v1/review/attribution-candidates.",
+    inputSchema: inputJsonSchema(ListReviewAttributionCandidatesInputSchema),
+    async handler(args: ListReviewAttributionCandidatesInput, ctx: McpCtx) {
+      // The ROUTER's `\d+` guard does not exist in front of a tool argument,
+      // so the bound is re-stated by the input schema above and the value is
+      // taken as parsed.
+      const netuid = typeof args?.netuid === "number" ? args.netuid : undefined;
+      const limit =
+        typeof args?.limit === "number"
+          ? args.limit
+          : ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT;
+      const offset = typeof args?.offset === "number" ? args.offset : 0;
+      const opts = { netuid, limit, offset };
+      const db = readStore(
+        ctx.env,
+        ATTRIBUTION_SWEEP_TABLES,
+      ) as never as unknown as AttributionCandidatesDb;
+      const [rows, totals] = await Promise.all([
+        loadAttributionCandidates(db, opts),
+        loadAttributionCandidateTotals(db, { netuid }),
+      ]);
+      return rows === null
+        ? declineAttributionCandidatesReview("unavailable", opts)
+        : buildAttributionCandidatesReview(rows, totals, opts);
+    },
+  },
+  {
     name: "get_subnet_holders",
     title: "Get a subnet's alpha holder leaderboard",
     description:
@@ -15352,6 +15418,9 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   ),
   get_deregistration_ranking_history: outputJsonSchema(
     GetDeregistrationHistoryOutputSchema,
+  ),
+  list_review_attribution_candidates: outputJsonSchema(
+    ListReviewAttributionCandidatesOutputSchema,
   ),
   get_emission_changes: outputJsonSchema(GetEmissionChangesOutputSchema),
   get_failure_reasons: outputJsonSchema(GetFailureReasonsOutputSchema),

@@ -1813,6 +1813,53 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/review/attribution-candidates",
+    (body) => {
+      // #11227. A candidate is a LEAD, and the two things that make it
+      // reviewable are the address and the page it came from -- a row missing
+      // either is not something a human can adjudicate.
+      if (body.data.degraded) {
+        assert.equal(body.data.candidate_count, null);
+        assert.equal(body.data.reviewable_count, null);
+        return;
+      }
+      assert.equal(Array.isArray(body.data.candidates), true);
+      assert.equal(body.data.candidate_count, body.data.candidates.length);
+      // THE RULE IS PUBLISHED, so a caller can reproduce the split rather than
+      // trust it. Without this the suppression is invisible.
+      assert.equal(Number.isInteger(body.data.listing_address_cap), true);
+      assert.equal(body.data.listing_address_cap >= 1, true);
+      // A BOUNDED PAGE MUST NEVER READ AS THE POPULATION. This is the defect
+      // the older registry list routes have: no total, so counting a limited
+      // fetch reports the limit.
+      assert.equal(
+        body.data.candidate_count <= body.data.reviewable_count,
+        true,
+      );
+      for (const c of body.data.candidates as Array<{
+        ss58: string;
+        source_url: string;
+        netuid: number;
+        source_address_count: number | null;
+      }>) {
+        assert.equal(typeof c.ss58, "string");
+        assert.equal(c.ss58.length > 0, true);
+        assert.equal(typeof c.source_url, "string");
+        assert.equal(c.source_url.length > 0, true);
+        assert.equal(Number.isInteger(c.netuid), true);
+        // The listing rule, verified on the served rows rather than assumed:
+        // anything over the cap must have been suppressed, not shown.
+        if (c.source_address_count !== null) {
+          assert.equal(
+            c.source_address_count <= body.data.listing_address_cap,
+            true,
+            `${c.source_url} yielded ${c.source_address_count} addresses`,
+          );
+        }
+      }
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either

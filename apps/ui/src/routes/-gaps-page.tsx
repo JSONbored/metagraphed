@@ -32,6 +32,7 @@ import {
   reviewAdapterCandidatesQuery,
   reviewEnrichmentQueueQuery,
   reviewEnrichmentTargetsQuery,
+  reviewAttributionCandidatesQuery,
   reviewEnrichmentEvidenceQuery,
   reviewGapPrioritiesQuery,
   subnetsQuery,
@@ -180,6 +181,17 @@ export function GapsPage() {
         </PageSection>
 
         <PageSection
+          id="attribution-candidates"
+          eyebrow="Unjudged"
+          title="Attribution candidates"
+          description="Addresses the sweep found in the text of pages subnets publish, which nobody has judged yet. Each row is a LEAD, not an attribution — open the source and decide."
+        >
+          <AsyncPanel height="md">
+            <AttributionCandidates />
+          </AsyncPanel>
+        </PageSection>
+
+        <PageSection
           id="gap-priorities"
           eyebrow="Priorities"
           title="Gap priorities"
@@ -198,6 +210,7 @@ export function GapsPage() {
           "/api/v1/review/adapter-candidates",
           "/api/v1/review/enrichment-queue",
           "/api/v1/review/enrichment-targets",
+          "/api/v1/review/attribution-candidates",
           "/api/v1/review/enrichment-evidence",
           "/api/v1/review/gaps",
         ]}
@@ -1206,6 +1219,96 @@ function EnrichmentEvidence() {
           </tbody>
         </table>
       </div>
+    </Panel>
+  );
+}
+
+/**
+ * #11227: the attribution sweep's review queue.
+ *
+ * THE ONLY BOARD ON THIS PAGE WHOSE ROWS ARE UNVERIFIED CLAIMS. The others say
+ * "this subnet is missing something we can add"; this one says "this string
+ * looked like an address on that page". So the source is a link rather than
+ * text, the address is shown whole rather than truncated to a badge, and the
+ * header says LEAD -- because a table that reads like the ones above it would
+ * be asserting attributions the sweep explicitly refuses to assert.
+ *
+ * The count line is the second half of that honesty: `reviewableCount` comes
+ * off the payload, and the suppressed figures say how many candidates the
+ * listing rule removed and from how many pages. A filter a reviewer cannot see
+ * is one they cannot check -- and a rising suppressed share is the signal that
+ * the sweep's fan-out needs narrowing before anyone is asked to read more.
+ */
+function AttributionCandidates() {
+  const { data } = useSuspenseQuery(reviewAttributionCandidatesQuery());
+  const meta = data.meta;
+  const rows = data.data ?? [];
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No attribution candidates"
+        description="Nothing is waiting for a judgement — every candidate has been adjudicated, or every source the sweep reached was a listing."
+        cta={{ label: "Browse registry", href: "/subnets" }}
+        generatedAt={meta?.generated_at}
+      />
+    );
+  return (
+    <Panel as="div" flush className="overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
+            <tr>
+              <th className="px-4 py-2.5 text-left">Netuid</th>
+              <th className="px-4 py-2.5 text-left">Address (unverified)</th>
+              <th className="px-4 py-2.5 text-left">Found on</th>
+              <th className="px-4 py-2.5 text-left">Addresses on that page</th>
+              <th className="px-4 py-2.5 text-left">Last seen</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((r) => (
+              <tr key={r.id} className="mg-row-hover">
+                <td className="px-4 py-2.5 mg-type-data">
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: r.netuid }}
+                    className="hover:text-accent"
+                  >
+                    SN{r.netuid}
+                  </Link>
+                </td>
+                {/* WHOLE, not truncated: a reviewer compares it against the
+                    page, and a shortened address cannot be compared. */}
+                <td className="px-4 py-2.5 mg-type-data break-all text-ink-muted">{r.ss58}</td>
+                {/* ExternalLink, not a bare anchor: these URLs are UNTRUSTED
+                    third-party strings scraped off pages the registry does not
+                    control, and it is the component that runs safeExternalUrl
+                    over them. A raw href here would render whatever the sweep
+                    found. */}
+                <td className="px-4 py-2.5 mg-type-caption break-all">
+                  <ExternalLink href={r.sourceUrl} className="text-ink-muted">
+                    {r.sourceUrl}
+                  </ExternalLink>
+                </td>
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                  {r.sourceAddressCount ?? "—"}
+                </td>
+                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">
+                  {r.lastSeen ? r.lastSeen.slice(0, 10) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="border-t border-border px-4 py-2.5 mg-type-caption text-ink-muted">
+        Showing {rows.length}
+        {data.reviewableCount != null ? ` of ${data.reviewableCount} awaiting review` : ""}.
+        {data.suppressedCount != null && data.suppressedSourceCount != null
+          ? ` ${data.suppressedCount} more were suppressed from ${data.suppressedSourceCount} page(s) carrying more than ${data.listingAddressCap ?? "the cap"} addresses each — those are listings, and every address on one belongs to somebody else.`
+          : ""}
+      </p>
     </Panel>
   );
 }

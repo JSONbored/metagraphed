@@ -292,6 +292,23 @@ export const PIPELINE_HISTORY_WINDOWS = Object.keys(
 export const DEFAULT_PIPELINE_HISTORY_WINDOW = "30d";
 
 /**
+ * `/api/v1/review/attribution-candidates` -- the sweep's review queue (#11227).
+ *
+ * 200 by default against a reviewable population measured at 162 rows
+ * (2026-08-15, after the listing rule), so the first page is normally the whole
+ * queue and pagination is the exception rather than the path. The ceiling is
+ * 500 because this is a REVIEW surface: the thing a reviewer wants is the whole
+ * queue in one fetch, and a cap that forces paging through work is a cap that
+ * loses items between pages.
+ *
+ * Bounded at all because the population is not: the table accumulates until a
+ * candidate is adjudicated, and a route that answers "everything" answers
+ * differently every week.
+ */
+export const ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT = 200;
+export const ATTRIBUTION_CANDIDATES_LIMIT_MAX = 500;
+
+/**
  * `/api/v1/subnets/{netuid}/deregistration-ranking/history` -- one subnet's
  * trajectory toward or away from the pruning bar (#10296).
  *

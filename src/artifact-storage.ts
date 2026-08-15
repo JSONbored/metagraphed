@@ -102,6 +102,12 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // pallet rule into the artifact, which is the one thing that lane's
   // store-the-inputs design exists to prevent.
   /^subnets\/(?:\d+|\{netuid\})\/deregistration-ranking\/history\.json$/,
+  // The attribution sweep's review queue (#11227), read live from the store
+  // table the lane writes. A baked copy would freeze the queue at build time,
+  // on a surface whose entire subject is what has arrived since a human last
+  // looked -- and it would bake the LISTING RULE's output rather than the rule,
+  // so a change to the cap would not reach the history.
+  /^review\/attribution-candidates\.json$/,
   // The emission-gate change log (#9615), read live from three append-on-change
   // store tables -- a baked copy would stop recording the moment it built.
   /^chain\/governance\/emission-changes\.json$/,

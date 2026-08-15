@@ -194,6 +194,10 @@ import {
   DeregistrationHistoryArtifactSchema,
 } from "./routes/subnet-deregistration-history.ts";
 import {
+  AttributionCandidateSchema,
+  AttributionCandidatesReviewArtifactSchema,
+} from "./routes/attribution-candidates-review.ts";
+import {
   EmissionParamChangeSchema,
   EmissionSubnetChangeSchema,
   EmissionFlowChangeSchema,
@@ -638,6 +642,11 @@ register(PipelineHistoryPointSchema, "PipelineHistoryPoint");
 register(PipelineHistoryArtifactSchema, "PipelineHistoryArtifact");
 register(DeregistrationHistoryPointSchema, "DeregistrationHistoryPoint");
 register(DeregistrationHistoryArtifactSchema, "DeregistrationHistoryArtifact");
+register(AttributionCandidateSchema, "AttributionCandidate");
+register(
+  AttributionCandidatesReviewArtifactSchema,
+  "AttributionCandidatesReviewArtifact",
+);
 register(EmissionParamChangeSchema, "EmissionParamChange");
 register(EmissionSubnetChangeSchema, "EmissionSubnetChange");
 register(EmissionFlowChangeSchema, "EmissionFlowChange");

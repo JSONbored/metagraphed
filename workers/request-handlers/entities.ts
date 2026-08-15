@@ -94,6 +94,12 @@ import {
   declineDeregistrationHistory,
   loadDeregistrationHistory,
 } from "../../src/subnet-deregistration-history.ts";
+import {
+  buildAttributionCandidatesReview,
+  declineAttributionCandidatesReview,
+  loadAttributionCandidateTotals,
+  loadAttributionCandidates,
+} from "../../src/attribution-candidates-review.ts";
 import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.ts";
 import {
@@ -6287,6 +6293,53 @@ export async function handleChainHolders(request: Request, env: Env, url: URL) {
     >[0],
   );
   const data = buildChainHolders(read, { sort, limit: limit });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/review/attribution-candidates (#11227): the attribution sweep's
+// review queue. #10818 made that lane produce candidates and nothing read the
+// table it wrote — a candidate nobody can see is the same as no candidate.
+//
+// TWO READS, DELIBERATELY. The page is bounded by `?limit=` and the counts are
+// not: `reviewable_count` describes the whole table, and deriving it from the
+// page would report the limit as the population — the defect the older registry
+// list routes have. The totals read failing degrades the counts to null rather
+// than the queue to empty, because those are different facts.
+export async function handleAttributionCandidatesReview(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const validationError = validateResponseFormat(url);
+  if (validationError) return analyticsQueryError(validationError);
+
+  // `netuid` publishes NO default -- its absence means "no filter", which is
+  // the one case routeValue refuses to invent a value for -- so it is read as
+  // an optional int. `limit` and `offset` do publish theirs, and are read back
+  // off the contract rather than restated here.
+  const netuid = routeInt(url, "netuid") ?? undefined;
+  const limit = pageLimit(url);
+  const offset = routeValue<number>(url, "offset");
+  const opts = { netuid, limit, offset };
+
+  const db = readStore(
+    env,
+    ATTRIBUTION_SWEEP_TABLES,
+  ) as never as unknown as Parameters<typeof loadAttributionCandidates>[0];
+  const [rows, totals] = await Promise.all([
+    loadAttributionCandidates(db, opts),
+    loadAttributionCandidateTotals(db, { netuid }),
+  ]);
+  // An empty queue is a MEASUREMENT — every candidate adjudicated, every source
+  // a listing, or a subnet nobody has swept — so only a failed read declines.
+  const data =
+    rows === null
+      ? declineAttributionCandidatesReview("unavailable", opts)
+      : buildAttributionCandidatesReview(rows, totals, opts);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

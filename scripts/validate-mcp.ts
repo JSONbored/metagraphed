@@ -2146,6 +2146,17 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
     "DATA_API-tier series; the harness binds no data Worker, so points is empty by construction",
   ],
   [
+    "list_review_attribution_candidates",
+    // The queue reads `attribution_candidates` through readStore, and the
+    // hermetic harness binds no Postgres -- so the loader returns null, the
+    // tool answers the DECLINE builder, and `candidates` has no row for the
+    // item shape to be checked against. The row shape IS covered: it is the
+    // route's own artifact schema by identity, and
+    // tests/attribution-candidates-review.test.ts safeParses a populated
+    // payload built from real production rows through it.
+    "store-backed queue; the harness binds no Postgres, so candidates is empty by construction",
+  ],
+  [
     "get_deregistration_ranking_history",
     // The series reads `subnet_deregistration_daily` through readStore, and the
     // hermetic harness binds no Postgres -- so the loader correctly returns

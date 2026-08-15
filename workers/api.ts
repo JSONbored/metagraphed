@@ -343,6 +343,7 @@ import {
   handleIndexerLag,
   handleTaoUsd,
   handleSubnetSurfaceHistory,
+  handleAttributionCandidatesReview,
   handleSubnetDeregistrationHistory,
   handleSubnetPipelineHistory,
   handleSubnetBurnHistory,
@@ -8146,6 +8147,8 @@ const REGISTRY_ONLY_API_PATHS = new Set([
   "/api/v1/review/enrichment-evidence",
   "/api/v1/review/enrichment-queue",
   "/api/v1/review/enrichment-targets",
+  // #11227: the sweep reads REGISTRY surfaces, and the registry is mainnet's.
+  "/api/v1/review/attribution-candidates",
   "/api/v1/review/gaps",
   "/api/v1/review/profile-completeness",
   // The indexes and agent-facing views built over the registry. Same reason as
@@ -8436,6 +8439,18 @@ async function dispatchLiveChainRoute(
   // both source tables are -- see MAINNET_ONLY_ROUTE_PATHS.
   if (pathname === "/api/v1/chain/holders") {
     return handleChainHolders(request, env, new URL(request.url));
+  }
+  // #11227: the attribution sweep's review queue. Exact-path for the same
+  // reason as the two above, and dispatched HERE rather than served as a baked
+  // artifact because the table it reads is written by a Worker lane — a
+  // build-time copy would freeze the queue and, worse, bake the listing rule's
+  // OUTPUT instead of the rule.
+  if (pathname === "/api/v1/review/attribution-candidates") {
+    return handleAttributionCandidatesReview(
+      request,
+      env,
+      new URL(request.url),
+    );
   }
   // #9622: the probe failure-reason mix, read from the daily rollup. Exact-path
   // match for the same reason as the line above.

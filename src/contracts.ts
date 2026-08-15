@@ -2431,6 +2431,13 @@ export const PUBLIC_ARTIFACTS = [
     "ReviewEnrichmentTargetsArtifact",
   ),
   artifact(
+    "review-attribution-candidates",
+    "/metagraph/review/attribution-candidates.json",
+    "The attribution sweep's REVIEW QUEUE (#11227). src/attribution-sweep.ts looks at what each subnet publishes and records ss58 strings it finds; #10818 fixed that lane so it actually fetches sources, and the table it writes had no reader at all -- a candidate nobody can see is the same as no candidate. EVERY ROW IS A LEAD, NEVER AN ATTRIBUTION. An address appearing in the text of a page a subnet published does not make the address theirs: the common false positive is a hotkey belonging to a validator, appearing inside an API response that validator publishes -- somebody else's key, on their own page. Clearing docs/nametag-evidence-bar.md -- a public source tying THIS address to THIS entity -- is a human judgement, and this surface exists to put candidates in front of one rather than to skip it. source_url rides on every candidate because the review IS opening it. THE LISTING RULE IS RE-DERIVED AT READ TIME, over the table rather than trusted from the writer: a source yielding more than listing_address_cap distinct addresses is a metagraph dump or a holder list, and every address on it belongs to somebody else. The sweep enforces that cap when a row is WRITTEN, but rows outlive rules -- measured 2026-08-15 the table held 4,913 rows from 87 sources, of which 25 pre-cap sources (/allHolders, /api/miners, /snap/metagraph and their kin) accounted for 4,751 -- and the cap is an explicitly revisable judgement, so deriving it here moves the whole history when it moves. Applying it leaves 162 rows across 49 subnets from 62 sources. THE SUPPRESSION IS PUBLISHED, never silent: suppressed_count, suppressed_source_count and listing_address_cap ride on every response, so a filter a caller cannot see is not a filter they cannot check -- and if the suppressed share stops falling, the sweep's fan-out needs narrowing before a human is asked to read the result. COUNTS ARE UNBOUNDED AND THE LIST IS BOUNDED: reviewable_count is measured over the whole table beside a ?limit=-trimmed candidates array, so counting the array can never be mistaken for the population. ?netuid= narrows to one subnet; ?limit= defaults to 200 (max 500) because the whole queue in one fetch is what a reviewer wants. An EMPTY queue is a measurement -- every candidate adjudicated, every source a listing, or a subnet nobody has swept -- and only a failed read carries degraded.reason: unavailable. Mainnet-only: the sweep reads the registry's surfaces, and the registry is mainnet's.",
+    "AttributionCandidatesReviewArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "review-decisions",
     "/metagraph/review/maintainer-decisions.json",
     "Public-safe maintainer review decision ledger.",
@@ -2921,6 +2928,17 @@ export const API_ROUTES = [
     "standard",
     ["registry", "review", "profiles"],
     listQuery("enrichment-targets"),
+  ),
+  route(
+    "review-attribution-candidates",
+    "GET",
+    "/api/v1/review/attribution-candidates",
+    "/metagraph/review/attribution-candidates.json",
+    "Fetch the attribution sweep's review queue. The attribution sweep's REVIEW QUEUE (#11227). src/attribution-sweep.ts looks at what each subnet publishes and records ss58 strings it finds; #10818 fixed that lane so it actually fetches sources, and the table it writes had no reader at all -- a candidate nobody can see is the same as no candidate. EVERY ROW IS A LEAD, NEVER AN ATTRIBUTION. An address appearing in the text of a page a subnet published does not make the address theirs: the common false positive is a hotkey belonging to a validator, appearing inside an API response that validator publishes -- somebody else's key, on their own page. Clearing docs/nametag-evidence-bar.md -- a public source tying THIS address to THIS entity -- is a human judgement, and this surface exists to put candidates in front of one rather than to skip it. source_url rides on every candidate because the review IS opening it. THE LISTING RULE IS RE-DERIVED AT READ TIME, over the table rather than trusted from the writer: a source yielding more than listing_address_cap distinct addresses is a metagraph dump or a holder list, and every address on it belongs to somebody else. The sweep enforces that cap when a row is WRITTEN, but rows outlive rules -- measured 2026-08-15 the table held 4,913 rows from 87 sources, of which 25 pre-cap sources (/allHolders, /api/miners, /snap/metagraph and their kin) accounted for 4,751 -- and the cap is an explicitly revisable judgement, so deriving it here moves the whole history when it moves. Applying it leaves 162 rows across 49 subnets from 62 sources. THE SUPPRESSION IS PUBLISHED, never silent: suppressed_count, suppressed_source_count and listing_address_cap ride on every response, so a filter a caller cannot see is not a filter they cannot check -- and if the suppressed share stops falling, the sweep's fan-out needs narrowing before a human is asked to read the result. COUNTS ARE UNBOUNDED AND THE LIST IS BOUNDED: reviewable_count is measured over the whole table beside a ?limit=-trimmed candidates array, so counting the array can never be mistaken for the population. ?netuid= narrows to one subnet; ?limit= defaults to 200 (max 500) because the whole queue in one fetch is what a reviewer wants. An EMPTY queue is a measurement -- every candidate adjudicated, every source a listing, or a subnet nobody has swept -- and only a failed read carries degraded.reason: unavailable. Mainnet-only: the sweep reads the registry's surfaces, and the registry is mainnet's.",
+    "short",
+    ["registry", "review"],
+    [],
+    [],
   ),
   route(
     "health",
@@ -5541,6 +5559,8 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/review/enrichment-queue",
   "/api/v1/review/enrichment-evidence",
   "/api/v1/review/enrichment-targets",
+  // #11227: the sweep reads REGISTRY surfaces, and the registry is mainnet's.
+  "/api/v1/review/attribution-candidates",
   "/api/v1/health/history/{date}",
   "/api/v1/subnets/{netuid}/weights",
   "/api/v1/subnets/{netuid}/weights/setters",
