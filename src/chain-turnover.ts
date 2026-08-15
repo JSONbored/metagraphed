@@ -15,6 +15,10 @@ import {
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
 } from "./route-limits.ts";
+// Shared with the per-subnet family rather than reimplemented: the two routes
+// answer the same question at different scopes, and a second copy of the
+// truncation rule would be free to drift from the one the schema documents.
+import { windowCoverage } from "./turnover.ts";
 export { CHAIN_TURNOVER_LIMIT_DEFAULT, CHAIN_TURNOVER_LIMIT_MAX };
 
 // The neuron_daily columns the handler reads — its store read contract. `hotkey` is public
@@ -181,6 +185,23 @@ export interface ChainTurnoverResult {
   window: string | null;
   start_date: string | null;
   end_date: string | null;
+  /**
+   * Days actually spanned, and the days asked for (#10798, #11360).
+   *
+   * `neuron_daily` is ~36 days deep, so `?window=90d` was answered with 36 days
+   * and labelled `"90d"` -- measured on production 2026-08-15, start_date came
+   * back as the store floor 2026-07-10 rather than 90 days before the end,
+   * beside `comparable: true` and a network `stability_score` computed over a
+   * third of the claimed span.
+   *
+   * It matters in ONE direction, which is why silence was the wrong default:
+   * turnover compares the window's ENDPOINTS, so a shortened span reports LOWER
+   * churn and HIGHER stability. A network that replaced its whole validator set
+   * over a quarter reads as a calm month.
+   */
+  covered_days: number | null;
+  requested_days: number | null;
+  window_truncated: boolean | null;
   comparable: boolean;
   subnet_count: number;
   network: ChainTurnoverNetwork;
@@ -217,6 +238,18 @@ export function buildChainTurnover(
     window: window ?? null,
     start_date: startDate ?? null,
     end_date: endDate ?? null,
+    // Spread into BOTH the empty and populated results below, so a cold store
+    // reports the same shape rather than omitting the fields exactly when the
+    // window is least trustworthy. Requested days come from the window table
+    // rather than from the caller's string: an unsupported label resolves to
+    // null, which windowCoverage reports as "unknowable" instead of guessing.
+    ...windowCoverage(
+      startDate,
+      endDate,
+      window != null && Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)
+        ? CHAIN_TURNOVER_WINDOWS[window]
+        : null,
+    ),
   };
   // Clamp limit to a whole number in [0, MAX] so a direct caller cannot make slice() behave
   // oddly (the HTTP layer already validates 1..MAX; this keeps the pure builder aligned).

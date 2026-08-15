@@ -503,3 +503,77 @@ describe("GET /api/v1/chain/turnover", () => {
 // /api/v1/chain/turnover now busts on the shared health-cron `last_run_at` KV
 // stamp instead, exercised end-to-end by the "GET /api/v1/chain/turnover"
 // describe block above.
+
+describe("window coverage — a short store must not read as a calm quarter", () => {
+  // #10798/#11360. Measured on production 2026-08-15: `?window=90d` returned
+  // start_date 2026-07-10 -- the store floor, not 90 days back -- beside
+  // `comparable: true` and a network stability_score computed over 36 days.
+  // The bias runs ONE way: a shortened span compares closer endpoints, so it
+  // reports lower churn and higher stability than the window claims to measure.
+
+  test("a 90d window answered with 36 days is flagged, not silently served", () => {
+    const data = buildChainTurnover(ROWS, {
+      window: "90d",
+      startDate: "2026-07-10",
+      endDate: "2026-08-15",
+    });
+    assert.equal(data.covered_days, 36);
+    assert.equal(data.requested_days, 90);
+    assert.equal(data.window_truncated, true);
+  });
+
+  test("a window the store fully covers is not flagged", () => {
+    // The positive control: a detector that flagged everything would pass the
+    // test above while saying nothing.
+    const data = buildChainTurnover(ROWS, {
+      window: "30d",
+      startDate: "2026-07-16",
+      endDate: "2026-08-15",
+    });
+    assert.equal(data.covered_days, 30);
+    assert.equal(data.requested_days, 30);
+    assert.equal(data.window_truncated, false);
+  });
+
+  test("an unresolvable bound is null, never false", () => {
+    // `false` would assert a window nobody measured was complete.
+    const data = buildChainTurnover([], {
+      window: "90d",
+      startDate: null,
+      endDate: null,
+    });
+    assert.equal(data.comparable, false);
+    assert.equal(data.covered_days, null);
+    assert.equal(data.requested_days, 90);
+    assert.equal(data.window_truncated, null);
+  });
+
+  test("the COLD result carries the fields too", () => {
+    // The empty and populated results share one `base`, so a cold store cannot
+    // omit them exactly when the window is least trustworthy.
+    const cold = buildChainTurnover(null, {
+      window: "7d",
+      startDate: "2026-08-14",
+      endDate: "2026-08-15",
+    });
+    assert.equal(cold.comparable, false);
+    assert.equal(cold.covered_days, 1);
+    assert.equal(cold.requested_days, 7);
+    assert.equal(cold.window_truncated, true);
+  });
+
+  test("an unsupported label reports requested_days null rather than guessing", () => {
+    const data = buildChainTurnover(ROWS, {
+      window: "1y",
+      startDate: "2026-07-10",
+      endDate: "2026-08-15",
+    });
+    assert.equal(data.requested_days, null);
+    assert.equal(data.covered_days, 36);
+    assert.equal(
+      data.window_truncated,
+      false,
+      "a window with no declared length cannot be short of itself",
+    );
+  });
+});

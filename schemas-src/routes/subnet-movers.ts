@@ -89,6 +89,24 @@ export const SubnetMoversArtifactSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable(),
+    covered_days: z
+      .int()
+      .nullable()
+      .describe(
+        "Days actually spanned between start_date and end_date. Null when either bound is unresolvable.",
+      ),
+    requested_days: z
+      .int()
+      .nullable()
+      .describe(
+        "Days the requested window asked for (7, 30 or 90). Null when no window was resolved.",
+      ),
+    window_truncated: z
+      .boolean()
+      .nullable()
+      .describe(
+        "True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: every figure here is a DELTA between the window's endpoints, so a shortened span understates each change -- and the leaderboard is ORDERED by that understated delta, so truncation reorders it, not just shrinks it. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete.",
+      ),
     sort: z.enum(SUBNET_MOVERS_MOVERS_SORTS_VALUES),
     subnet_count: z.int().min(0),
     network: MoversNetworkSummarySchema,

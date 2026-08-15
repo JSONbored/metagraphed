@@ -7165,6 +7165,21 @@ type SubnetMovers {
   window: String
   start_date: String
   end_date: String
+
+  """
+  Days actually spanned between start_date and end_date. Null when either bound is unresolvable.
+  """
+  covered_days: Int
+
+  """
+  Days the requested window asked for (7, 30 or 90). Null when no window was resolved.
+  """
+  requested_days: Int
+
+  """
+  True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: every figure here is a DELTA between the window's endpoints, so a shortened span understates each change -- and the leaderboard is ORDERED by that understated delta, so truncation reorders it, not just shrinks it. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete.
+  """
+  window_truncated: Boolean
   sort: String!
   subnet_count: Int!
 
@@ -7239,6 +7254,21 @@ type ChainTurnover {
 
   """End snapshot date; null on a cold store."""
   end_date: String
+
+  """
+  Days actually spanned between start_date and end_date. Null when either bound is unresolvable.
+  """
+  covered_days: Int
+
+  """
+  Days the requested window asked for (7, 30 or 90). Null when the label is not one this route serves.
+  """
+  requested_days: Int
+
+  """
+  True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: turnover compares the window's endpoints, so a shortened span reports LOWER churn and HIGHER stability -- a network that replaced its whole validator set over a quarter reads as a calm month. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete.
+  """
+  window_truncated: Boolean
 
   """
   False when the window resolved to fewer than two distinct snapshots, so start/end churn is not measurable.
