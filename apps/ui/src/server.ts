@@ -333,6 +333,26 @@ async function buildSitemap(): Promise<Response> {
   } catch {
     // Docs source unavailable — omit rather than fail the whole sitemap.
   }
+  // #11266: the weekly digests, absent since they shipped (#8705). 161 pages of
+  // per-subnet prose that nothing linked and the sitemap never listed, so a
+  // crawler had no way to reach them at all -- their own route comment calls
+  // them "the pages the issue expects search and social to land on".
+  //
+  // Same lazy import and same tolerance as docs above; a separate collection
+  // (source.config.ts keeps them apart so "Subnet 104 — 2026-W29" never lands
+  // in the API-reference nav), so it needs its own loop.
+  //
+  // No <lastmod>: the digest store is append-only and a published week is never
+  // rewritten, so there is no honest "changed at" to emit -- and a synthesised
+  // one costs the real timestamps elsewhere in this file their credibility.
+  try {
+    const { newsSource } = await import("./lib/news-source");
+    for (const page of newsSource.getPages()) {
+      entries.push({ loc: `${SITE_ORIGIN}${page.url}` });
+    }
+  } catch {
+    // News source unavailable — omit rather than fail the whole sitemap.
+  }
   try {
     const res = await fetch(`${API_ORIGIN}/api/v1/subnets?limit=500`, {
       headers: { accept: "application/json" },
