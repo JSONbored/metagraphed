@@ -1143,7 +1143,6 @@ import {
   storeSurfaceCredential,
   type ConfiguredSurfaceCredentialEnv,
   type StoredSurfaceCredential,
-  type SurfaceCredentialEnv,
 } from "./mcp-surface-credentials.ts";
 import {
   buildChainConcentration,
@@ -1654,7 +1653,6 @@ import {
   EMISSION_PIPELINE_LIMIT_MAX,
   EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,
 } from "./route-limits.ts";
-import type { Row as FieldProjectionRow } from "./field-projection.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
@@ -1965,8 +1963,7 @@ const asMcpLoaderCtx = (ctx: McpCtx) =>
 // (METAGRAPH_CONTROL, MCP_SURFACE_CREDENTIAL_SECRET) and declares them
 // against its own minimal KV shape, so it stays unit-testable with a
 // Map-backed fake. Same narrowing convention as asMcpLoaderCtx above.
-const asCredentialStoreEnv = (env: Env) =>
-  env as unknown as SurfaceCredentialEnv;
+const asCredentialStoreEnv = (env: Env) => env;
 
 // The per-request context buildMcpContext assembles for every tool handler:
 // env + domain + optional session/telemetry plumbing, plus the artifact/KV
@@ -6803,7 +6800,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       const narrowing = parseEmissionPipelineNarrowing(
         params,
-        surface.subnets as unknown as FieldProjectionRow[],
+        surface.subnets,
         { limitMax: EMISSION_PIPELINE_LIMIT_MAX },
       );
       if ("error" in narrowing) {
@@ -17086,10 +17083,7 @@ async function dispatchTool(
     //
     // Not under `waitUntil`: it throws, and the throw has to reach the caller
     // below as a tool error rather than an unhandled rejection.
-    if (
-      (ctx?.env as unknown as Row | undefined)?.METAGRAPH_VALIDATE_RESPONSES ===
-      "true"
-    ) {
+    if (ctx?.env?.METAGRAPH_VALIDATE_RESPONSES === "true") {
       // `argsProject` is the MCP half of the signal workers/api.ts derives
       // from the URL -- one rule, one module, so a projection lever added to
       // one surface cannot go missing on the other (#11142).

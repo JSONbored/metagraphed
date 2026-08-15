@@ -2479,7 +2479,7 @@ async function defaultChangeEvent(env: Env): Promise<Record<string, unknown>> {
   // notification at every subscriber, and the next tick recovers on its own.
   return buildChangeEvent({
     changelog: (changelogArtifact.ok ? changelogArtifact.data : null) as Row,
-    pointer: pointer as unknown as Row,
+    pointer,
   }) as Record<string, unknown>;
 }
 
@@ -10646,7 +10646,7 @@ async function handleEventsRequest(request: Request, env: Env) {
   const changelog = changelogArtifact.ok ? changelogArtifact.data : null;
   const event = buildChangeEvent({
     changelog: changelog as Row,
-    pointer: pointer as unknown as Row,
+    pointer,
   });
   const eventId = event.published_at || event.generated_at || "0";
   // Reconnect replays the last id; if the snapshot hasn't moved, answer with a

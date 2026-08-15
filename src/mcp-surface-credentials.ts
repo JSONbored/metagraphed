@@ -64,7 +64,16 @@ interface CredentialEnvelope {
 /** Minimal KV surface this module needs -- matches KVNamespace, kept loose so
  * tests can inject a Map-backed fake without the full binding type. */
 export interface SurfaceCredentialKv {
-  get?: (key: string, options?: { type?: string }) => Promise<unknown>;
+  // `"json"`, not `string`. Every read in this module passes exactly
+  // `{ type: "json" }`, and a WIDER parameter type here made the real
+  // `KVNamespace` incompatible rather than more compatible -- parameters are
+  // contravariant, so a `get` accepting any string is not a `get` accepting
+  // the platform's literal union. That is what forced
+  // `env as unknown as SurfaceCredentialEnv` at the call sites (#11339).
+  get?: (
+    key: string,
+    options?: KVNamespaceGetOptions<"json">,
+  ) => Promise<unknown>;
   put?: (
     key: string,
     value: string,
