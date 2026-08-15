@@ -122,7 +122,7 @@ describe("tallySql", () => {
 describe("the declared lanes", () => {
   test("attribution_sweeps declares the verdict its own type names", () => {
     // The barren value has to be one the producer can actually write, or the
-    // check silently never matches. `SweepVerdict` in src/attribution-sweep.ts
+    // check silently never matches. `SweepVerdict` in src/attribution-verdicts.ts
     // is the union; `no-sources` is its "publishes nothing fetchable" member.
     assert.equal(SWEEP.table, "attribution_sweeps");
     assert.equal(SWEEP.barren, "no-sources");

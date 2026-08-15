@@ -33,13 +33,13 @@ import { probeJob } from "./probe-jobs.ts";
 // waiting to happen.
 import type { AttributionSweeps } from "../generated/db/types.ts";
 
-/** Verdicts, matching the CHECK constraint on attribution_sweeps. */
-export type SweepVerdict =
-  | "none-published"
-  | "candidates-found"
-  | "unreachable"
-  | "no-sources"
-  | "listings-only";
+// The verdict list lives in src/attribution-verdicts.ts and is re-exported
+// here, where every existing caller already imports it from. That module has no
+// dependencies on purpose: `schemas-src/routes/subnet-wallets.ts` publishes the
+// same list as a Zod enum and cannot reach into this one, which is how
+// `listings-only` came to be written by the lane, accepted by the database, and
+// REJECTED by the published contract on six subnets in production.
+import type { SweepVerdict } from "./attribution-verdicts.ts";
 
 /**
  * How many DISTINCT addresses one page may yield before it is a LISTING.
