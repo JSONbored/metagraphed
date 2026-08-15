@@ -1,4 +1,4 @@
-import { SITE_ORIGIN } from "./identity";
+import { API_ORIGIN, GITHUB_REPO_URL, SITE_ORIGIN, X_PROFILE_URL } from "./identity";
 
 /**
  * Pure schema.org JSON-LD builders (#11204 item 4).
@@ -40,6 +40,178 @@ export function stringifyJsonLd(value: unknown): string {
   );
 }
 
+/**
+ * Stable `@id`s for the nodes that exist ONCE across the whole site.
+ *
+ * These are what turn a page's markup from a pile of disconnected objects into
+ * a graph. A page emits two `<script type="application/ld+json">` blocks — the
+ * server-injected site graph and, on an entity route, that route's own node —
+ * and a consumer merges them by `@id`. So an entity node must REFERENCE
+ * `{ "@id": JSONLD_IDS.org }` rather than restating an inline Organization: an
+ * inline copy mints a second, unrelated entity every time, which is the exact
+ * opposite of what structured data is for.
+ *
+ * Fragment identifiers on the origins, not invented URLs, so each `@id` is
+ * dereferenceable to the thing it names.
+ */
+export const JSONLD_IDS = {
+  org: `${SITE_ORIGIN}/#org`,
+  website: `${SITE_ORIGIN}/#website`,
+  /** The registry as a whole: the thing every per-subnet Dataset belongs to. */
+  catalog: `${SITE_ORIGIN}/#catalog`,
+  /** The public REST API. */
+  restApi: `${API_ORIGIN}/#api`,
+  /** The Model Context Protocol server. */
+  mcp: `${API_ORIGIN}/#mcp`,
+} as const;
+
+/** A bare `@id` reference to another node in the page's merged graph. */
+function ref(id: string) {
+  return { "@id": id };
+}
+
+/**
+ * The nodes every page carries, in the order a reader would want them.
+ *
+ * Lives here rather than inline in server.ts so the site graph and the entity
+ * routes share ONE definition of who we are — server.ts open-coded the
+ * Organization and WebSite, and an entity route open-coded a second
+ * Organization inside its Dataset, so the same publisher was described twice
+ * with different fields and no link between them.
+ *
+ * The two WebAPI nodes are the point of this for AI answer engines: a crawler
+ * reading any page of this site now finds, typed and machine-readable, that the
+ * data behind the page is available over a documented REST API and an MCP
+ * server, published by a named organization. That claim is honest in a way the
+ * per-subnet markup deliberately is not — these are OUR services, so describing
+ * them as software we vouch for is exactly what we are entitled to say.
+ */
+export function siteGraphNodes(): unknown[] {
+  return [
+    {
+      "@type": "Organization",
+      "@id": JSONLD_IDS.org,
+      name: "Metagraphed",
+      url: SITE_ORIGIN,
+      description:
+        "The Bittensor subnet integration registry — what each subnet exposes (APIs, docs, schemas), whether it is healthy, and how to call it.",
+      // #11204: the profiles that let a search engine resolve "Metagraphed" to
+      // one entity rather than treating each surface as an unrelated site.
+      // Only accounts this project actually controls are listed — a sameAs is
+      // an identity claim, and a wrong one merges us with someone else.
+      sameAs: [GITHUB_REPO_URL, X_PROFILE_URL],
+    },
+    {
+      "@type": "WebSite",
+      "@id": JSONLD_IDS.website,
+      url: SITE_ORIGIN,
+      name: "Metagraphed",
+      publisher: ref(JSONLD_IDS.org),
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${SITE_ORIGIN}/subnets?q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      // The registry itself. Each subnet page's Dataset says
+      // `includedInDataCatalog` back to this, which is what makes 129 isolated
+      // Datasets read as one catalog rather than 129 unrelated files — the
+      // relationship dataset indexes and answer engines actually traverse.
+      "@type": "DataCatalog",
+      "@id": JSONLD_IDS.catalog,
+      name: "Metagraphed — the Bittensor subnet integration registry",
+      description:
+        "Per-subnet records of what each Bittensor subnet publishes: APIs, documentation, schemas, endpoints, probe-derived health and economics.",
+      url: `${SITE_ORIGIN}/subnets`,
+      publisher: ref(JSONLD_IDS.org),
+      isAccessibleForFree: true,
+      potentialAction: {
+        // Natural-language search over the registry, which is the entry point
+        // an agent wants and the one a keyword SearchAction cannot express.
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${API_ORIGIN}/api/v1/search/semantic?q={search_term_string}`,
+          contentType: "application/json",
+        },
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@type": "WebAPI",
+      "@id": JSONLD_IDS.restApi,
+      name: "Metagraphed REST API",
+      description:
+        "Public, read-only JSON over every registry record: subnets, surfaces, endpoints, providers, health and economics.",
+      url: `${API_ORIGIN}/api/v1`,
+      documentation: `${SITE_ORIGIN}/docs/api-reference`,
+      provider: ref(JSONLD_IDS.org),
+      termsOfService: `${SITE_ORIGIN}/docs/limits`,
+      isAccessibleForFree: true,
+    },
+    {
+      "@type": "WebAPI",
+      "@id": JSONLD_IDS.mcp,
+      name: "Metagraphed MCP server",
+      description:
+        "Model Context Protocol endpoint: an AI agent queries the Bittensor subnet registry as tools — discover subnets by capability, read live health, and fetch the schema needed to call a subnet's API.",
+      url: `${API_ORIGIN}/mcp`,
+      documentation: `${SITE_ORIGIN}/docs/mcp`,
+      provider: ref(JSONLD_IDS.org),
+      isAccessibleForFree: true,
+      // The transport an agent needs to know before it can connect. `sameAs`
+      // points at the machine-readable descriptor rather than restating the
+      // tool list, which changes with every release.
+      sameAs: [`${API_ORIGIN}/.well-known/mcp/server-card.json`],
+    },
+  ];
+}
+
+/**
+ * Routes whose page has a single machine-readable record behind it.
+ *
+ * Every path and collection here was verified to answer 200 on the live API
+ * before being listed -- a `rel="alternate"` pointing at a 404 is worse than no
+ * alternate at all, because it advertises a machine format that does not exist.
+ */
+const API_RECORD_COLLECTIONS = [
+  "subnets",
+  "validators",
+  "accounts",
+  "providers",
+  "blocks",
+  "extrinsics",
+] as const;
+
+/**
+ * The JSON record for a page, or null when the page is not one record.
+ *
+ * This is what backs the `<link rel="alternate" type="application/json">` the
+ * server injects: the oldest and most widely understood way to say "there is a
+ * machine-readable copy of this page, here". The site already advertised its
+ * RSS and Atom feeds this way and never advertised its own data.
+ *
+ * Kept pure and pathname-only so it can be tested without a router, and so the
+ * ONE injection point in server.ts covers every entity family at once rather
+ * than six route files each remembering to do it.
+ */
+export function apiRecordUrl(pathname: string): string | null {
+  const trimmed = pathname.replace(/\/+$/, "") || "/";
+  for (const collection of API_RECORD_COLLECTIONS) {
+    if (trimmed === `/${collection}`) return `${API_ORIGIN}/api/v1/${collection}`;
+    const detail = new RegExp(`^/${collection}/([^/]+)$`).exec(trimmed);
+    // Already URL-encoded as part of the pathname; re-encoding would double it.
+    if (detail?.[1]) return `${API_ORIGIN}/api/v1/${collection}/${detail[1]}`;
+  }
+  // The providers hub lives at /apis/providers, and the directory it links.
+  if (trimmed === "/apis/providers") return `${API_ORIGIN}/api/v1/providers`;
+  return null;
+}
+
 export interface BreadcrumbCrumb {
   name: string;
   /** Absolute URL — a crawler cannot resolve a relative `item`. */
@@ -56,6 +228,49 @@ export function breadcrumbListJsonLd(crumbs: BreadcrumbCrumb[]) {
       name: crumb.name,
       item: crumb.item,
     })),
+  };
+}
+
+export interface TechArticleInput {
+  /** The page's own title. */
+  headline: string;
+  description?: string | null;
+  /** Canonical URL for this page. */
+  url: string;
+}
+
+/**
+ * schema.org TechArticle for one documentation page.
+ *
+ * Docs are the pages an answer engine quotes — "how do I call a Bittensor
+ * subnet's API", "what does readiness mean here" — and they carried no node at
+ * all, so the ~49 most quotable pages on the site were untyped prose under a
+ * generic site graph.
+ *
+ * `about` pointing at the catalog is the part that does work beyond the type
+ * name: it states that this prose documents THAT data, which is what lets a
+ * consumer follow a quoted sentence back to the machine-readable record behind
+ * it — and, from the catalog, on to the REST and MCP endpoints.
+ *
+ * Deliberately no `dateModified`: the loader carries no timestamp, and a date
+ * we made up would be a claim about freshness we cannot support. Deliberately
+ * not FAQPage either — these are reference pages, not question/answer pairs,
+ * and marking them up as FAQ to chase a rich result is the kind of over-claim
+ * that costs more than it earns.
+ */
+export function techArticleJsonLd(input: TechArticleInput) {
+  const description = input.description?.trim();
+  return {
+    "@type": "TechArticle",
+    headline: input.headline,
+    ...(description ? { description } : {}),
+    url: input.url,
+    mainEntityOfPage: input.url,
+    inLanguage: "en",
+    author: ref(JSONLD_IDS.org),
+    publisher: ref(JSONLD_IDS.org),
+    isPartOf: ref(JSONLD_IDS.website),
+    about: ref(JSONLD_IDS.catalog),
   };
 }
 
@@ -89,20 +304,87 @@ export interface SubnetDatasetInput {
  * what a dataset consumer wants and what Google's dataset index reads.
  */
 export function subnetDatasetJsonLd(input: SubnetDatasetInput) {
-  const label = input.name ? `${input.name} (Subnet ${input.netuid})` : `Subnet ${input.netuid}`;
-  const description =
-    input.description?.trim() ||
-    `Registry record for Bittensor subnet ${input.netuid}: published interfaces, endpoints, schemas, health and economics.`;
-  return {
-    "@type": "Dataset",
-    name: label,
-    description,
-    url: input.url,
+  return registryDatasetJsonLd({
+    ...input,
+    name: input.name ? `${input.name} (Subnet ${input.netuid})` : `Subnet ${input.netuid}`,
     // The netuid is the subnet's stable on-chain identifier, and the term a
     // reader is most likely to have searched to arrive here.
     identifier: String(input.netuid),
+    description:
+      input.description?.trim() ||
+      `Registry record for Bittensor subnet ${input.netuid}: published interfaces, endpoints, schemas, health and economics.`,
+  });
+}
+
+export interface ProviderDatasetInput {
+  /** Registry slug — the provider's stable key and its URL segment. */
+  slug: string;
+  name?: string | null;
+  description?: string | null;
+  url: string;
+  apiUrl: string;
+  artifactUrl: string;
+  /** The provider's own site, when the registry holds one. */
+  sameAs?: string | null;
+}
+
+/**
+ * schema.org Dataset for one provider's registry record.
+ *
+ * Dataset, and NOT an `Organization` node for the provider itself — the same
+ * restraint the subnet records ship under. This page publishes OUR measured
+ * record of a third party: the endpoints they operate, the surfaces we found,
+ * the health we probed. Emitting an `Organization` would be asserting an
+ * identity for a company on their behalf, which is exactly the over-claim the
+ * registry exists not to make.
+ */
+export function providerDatasetJsonLd(input: ProviderDatasetInput) {
+  const name = input.name?.trim() || input.slug;
+  return registryDatasetJsonLd({
+    ...input,
+    name: `${name} — provider record`,
+    identifier: input.slug,
+    description:
+      input.description?.trim() ||
+      `Registry record for ${name}: the public endpoints and operational surfaces this provider runs for Bittensor subnets, with probe-derived health.`,
+  });
+}
+
+interface RegistryDatasetInput {
+  name: string;
+  identifier: string;
+  description: string;
+  url: string;
+  apiUrl: string;
+  artifactUrl: string;
+  sameAs?: string | null;
+}
+
+/**
+ * The shape every registry record shares: a named, freely accessible dataset
+ * inside our catalog, distributed as the two JSON representations the page
+ * already links.
+ *
+ * One builder rather than one per entity kind, because the parts that differ
+ * are only the label, the identifier and the fallback sentence -- and a second
+ * copy is how the `creator`/`publisher`/`includedInDataCatalog` wiring ends up
+ * on subnets and missing on providers.
+ */
+function registryDatasetJsonLd(input: RegistryDatasetInput) {
+  return {
+    "@type": "Dataset",
+    name: input.name,
+    description: input.description,
+    url: input.url,
+    identifier: input.identifier,
     isAccessibleForFree: true,
-    creator: { "@type": "Organization", name: "Metagraphed", url: SITE_ORIGIN },
+    // References, not a restated Organization. The inline copy this replaces
+    // minted a second, unrelated publisher on every one of the 129 subnet
+    // pages, so nothing tied the record to the site that publishes it.
+    creator: ref(JSONLD_IDS.org),
+    publisher: ref(JSONLD_IDS.org),
+    // What makes 129 Datasets one catalog rather than 129 loose files.
+    includedInDataCatalog: ref(JSONLD_IDS.catalog),
     distribution: [
       {
         "@type": "DataDownload",

@@ -4,14 +4,13 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleOgImage } from "./lib/og-image";
 import { routeOwnsOgImage } from "./lib/metagraphed/og-card";
-import { breadcrumbListJsonLd, stringifyJsonLd } from "./lib/metagraphed/json-ld";
 import {
-  API_ORIGIN,
-  GITHUB_REPO_URL,
-  SITE_ORIGIN,
-  X_HANDLE,
-  X_PROFILE_URL,
-} from "./lib/metagraphed/identity";
+  apiRecordUrl,
+  breadcrumbListJsonLd,
+  siteGraphNodes,
+  stringifyJsonLd,
+} from "./lib/metagraphed/json-ld";
+import { API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
 
 type ServerEntry = {
@@ -516,36 +515,10 @@ function titleCaseSlug(slug: string): string {
 // results); the per-subnet Dataset lives in the route's own head(), where the
 // loader data it describes is available.
 export function buildJsonLd(pathname: string): string {
-  const graph: unknown[] = [
-    {
-      "@type": "Organization",
-      "@id": `${SITE_ORIGIN}/#org`,
-      name: "Metagraphed",
-      url: SITE_ORIGIN,
-      description:
-        "The Bittensor subnet integration registry — what each subnet exposes (APIs, docs, schemas), whether it is healthy, and how to call it.",
-      // #11204: the profiles that let a search engine resolve "Metagraphed" to
-      // one entity rather than treating each surface as an unrelated site.
-      // Only accounts this project actually controls are listed — a sameAs is
-      // an identity claim, and a wrong one merges us with someone else.
-      sameAs: [GITHUB_REPO_URL, X_PROFILE_URL],
-    },
-    {
-      "@type": "WebSite",
-      "@id": `${SITE_ORIGIN}/#website`,
-      url: SITE_ORIGIN,
-      name: "Metagraphed",
-      publisher: { "@id": `${SITE_ORIGIN}/#org` },
-      potentialAction: {
-        "@type": "SearchAction",
-        target: {
-          "@type": "EntryPoint",
-          urlTemplate: `${SITE_ORIGIN}/subnets?q={search_term_string}`,
-        },
-        "query-input": "required name=search_term_string",
-      },
-    },
-  ];
+  // The site nodes are defined in json-ld.ts, not here: an entity route's own
+  // markup has to reference them by @id, and two hand-written copies of the
+  // same Organization is how a page ends up describing two publishers.
+  const graph: unknown[] = [...siteGraphNodes()];
   const breadcrumb = buildBreadcrumb(pathname);
   if (breadcrumb) graph.push(breadcrumb);
   return stringifyJsonLd({
@@ -906,6 +879,15 @@ function injectAnalytics(response: Response, request: Request): Response {
   // a static homepage value.
   const ogUrlTag = `<meta property="og:url" content="${escapeHtmlAttr(canonicalUrl)}">`;
   const jsonLdTag = `<script type="application/ld+json">${buildJsonLd(pathname)}</script>`;
+  // #11204: the machine-readable copy of THIS page. The site advertised its RSS
+  // and Atom feeds this way and never advertised its own data, so a crawler
+  // that had just read a subnet page had no typed pointer to the JSON record
+  // behind it. One injection point covers every entity family and hub, rather
+  // than six route files each having to remember.
+  const apiRecord = apiRecordUrl(pathname);
+  const apiAlternateTag = apiRecord
+    ? `<link rel="alternate" type="application/json" href="${escapeHtmlAttr(apiRecord)}" title="Metagraphed API record for this page">`
+    : "";
   // #8489: the three entity detail routes emit their own og:image in head(),
   // where loaderData is available and the card can carry real per-entity data.
   // Skipping them here is what keeps exactly ONE og:image tag on the page --
@@ -941,6 +923,7 @@ function injectAnalytics(response: Response, request: Request): Response {
               element.append(canonicalTag, { html: true });
               element.append(ogUrlTag, { html: true });
               element.append(jsonLdTag, { html: true });
+              if (apiAlternateTag) element.append(apiAlternateTag, { html: true });
               element.append(SEO_DEFAULT_TAGS, { html: true });
               if (!routeOwnsCard) element.append(ogImageTags, { html: true });
               element.append(WEB_VITALS_SNIPPET, { html: true });

@@ -2,6 +2,8 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { docsSource } from "@/lib/docs-source";
 import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { stringifyJsonLd, techArticleJsonLd } from "@/lib/metagraphed/json-ld";
+import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
 import { openapi } from "@/lib/openapi-source";
 import type { OpenAPIPreloaded } from "@/lib/openapi-preload-context";
 import { DocsSplatPage } from "./-docs-splat-page";
@@ -37,7 +39,7 @@ export const Route = createFileRoute("/docs/$")({
     const slugs = params._splat?.split("/") ?? [];
     return serverLoader({ data: slugs });
   },
-  head: ({ loaderData }) => ({
+  head: ({ loaderData, params }) => ({
     meta: [
       { title: loaderData ? `${loaderData.title} — Metagraphed Docs` : "Metagraphed Docs" },
       { name: "description", content: loaderData?.description ?? "" },
@@ -62,6 +64,26 @@ export const Route = createFileRoute("/docs/$")({
         entity: false,
       }),
     ],
+    // #11204: docs are the pages an answer engine quotes, and they carried no
+    // node of their own. TechArticle types the prose and, via `about`, ties it
+    // to the catalog the prose documents -- so a quoted sentence leads back to
+    // the machine-readable record, and from there to the REST and MCP
+    // endpoints. Emitted only when the page actually loaded: a node built from
+    // a missing title would assert a document that isn't there.
+    scripts: loaderData
+      ? [
+          {
+            type: "application/ld+json",
+            children: stringifyJsonLd(
+              techArticleJsonLd({
+                headline: loaderData.title,
+                description: loaderData.description,
+                url: `${SITE_ORIGIN}/docs/${params._splat ?? ""}`.replace(/\/+$/, ""),
+              }),
+            ),
+          },
+        ]
+      : [],
   }),
 });
 
