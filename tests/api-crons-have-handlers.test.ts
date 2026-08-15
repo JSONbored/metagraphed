@@ -10,21 +10,89 @@
 // writes surface_checks, surface_status, surface_uptime_daily, subnet_snapshots
 // and lane_health, on whatever cadence the stray expression happened to have.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, test } from "vitest";
 import { API_HANDLED_CRONS } from "../workers/api.ts";
 import { HEALTH_PROBER_CRON } from "../workers/config.ts";
+import { stripJsonComments } from "../scripts/lib.ts";
 
 const CONFIG = "wrangler.jsonc";
 
-/** The cron expressions declared in a wrangler config. JSONC, so parsed rather
- * than JSON.parse'd -- see tests/data-api-crons-have-handlers.test.ts. */
+/**
+ * The cron expressions declared in a wrangler config.
+ *
+ * COMMENTS ARE STRIPPED FIRST, and that is not tidiness. This used to match
+ * every quoted string inside the `crons` block, including quoted text inside
+ * `//` comments -- and the block is heavily commented, one paragraph per lane.
+ *
+ * Both directions were wrong. A comment quoting a phrase that is not a cron
+ * ("Workers Builds does not ...") failed the DECLARED direction on text alone.
+ * Worse, the HANDLED direction builds a Set from this list, so a comment merely
+ * MENTIONING a cron in quotes made that expression look declared -- and a
+ * handled lane whose trigger was never actually registered would have passed,
+ * while silently never firing. That is the exact failure this file exists to
+ * catch, so the parser must not be the thing that hides it.
+ */
 function declaredCrons(path: string): string[] {
-  const source = readFileSync(path, "utf8");
+  const source = stripJsonComments(readFileSync(path, "utf8"));
   const block = /"crons"\s*:\s*\[([\s\S]*?)\]/.exec(source);
   assert.ok(block, `no "crons" array found in ${path}`);
   return [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 }
+
+describe("the parser itself — a comment is not a declaration", () => {
+  // Without these, the two directions below are assertions about prose. The
+  // real `crons` block carries one commented paragraph per lane, so quoted text
+  // inside comments is the normal case, not a contrived one.
+  const fixture = (body: string) => {
+    const file = path.join(
+      os.tmpdir(),
+      `crons-${Math.random().toString(36).slice(2)}.jsonc`,
+    );
+    writeFileSync(file, `{ "triggers": { "crons": [\n${body}\n] } }`);
+    return file;
+  };
+
+  test("a cron quoted inside a // comment is NOT read as declared", () => {
+    // The false-PASS direction, and the dangerous one: `every HANDLED cron is
+    // declared` builds a Set from this list, so a lane whose trigger was never
+    // registered would look scheduled because a comment mentioned it.
+    const file = fixture(
+      `      // renamed from "9,39 * * * *" when the lane moved\n      "26 * * * *",`,
+    );
+    const parsed = declaredCrons(file);
+    assert.deepEqual(parsed, ["26 * * * *"]);
+    unlinkSync(file);
+  });
+
+  test("quoted prose in a comment is not read as a cron", () => {
+    // The false-FAILURE direction: this is what actually broke, on a comment
+    // reading `the blanket "Workers Builds does not ..." note`.
+    const file = fixture(
+      `      // the blanket "Workers Builds does not apply cron triggers" claim\n      "26 * * * *",`,
+    );
+    assert.deepEqual(declaredCrons(file), ["26 * * * *"]);
+    unlinkSync(file);
+  });
+
+  test("a /* block */ comment is stripped too", () => {
+    const file = fixture(
+      `      /* was "1,16,31,46 * * * *" */\n      "26 * * * *",`,
+    );
+    assert.deepEqual(declaredCrons(file), ["26 * * * *"]);
+    unlinkSync(file);
+  });
+
+  test("a real cron containing no comment survives unchanged", () => {
+    // The positive control: a stripper that returned nothing would pass every
+    // test above.
+    const file = fixture(`      "26 * * * *",\n      "17,56 * * * *",`);
+    assert.deepEqual(declaredCrons(file), ["26 * * * *", "17,56 * * * *"]);
+    unlinkSync(file);
+  });
+});
 
 describe("wrangler.jsonc crons and their handlers", () => {
   test("the parse finds the full grid, so the assertions below are real", () => {

@@ -143,14 +143,29 @@ export const LANE_HEARTBEAT_CRON = "26 * * * *";
  * per-lane crons gave back.
  *
  * A SECOND EXPRESSION RATHER THAN A WIDER FIRST ONE, deliberately. Dispatch
- * compares the literal string, and Workers Builds ships code without applying
- * cron triggers -- so editing LANE_HEARTBEAT_CRON to "17,26,56 * * * *" would
- * deploy code that matches an expression the account has not registered, and the
- * heartbeat would stop dead until someone ran `wrangler triggers deploy`. Every
- * queue-backed lane would go silent, which is precisely the failure #10709
- * exists to remove. Adding an expression is safe in both orders: until the
- * trigger is deployed it simply never fires, and minute 26 carries the lanes
- * exactly as it does today.
+ * compares the literal string, so editing LANE_HEARTBEAT_CRON to
+ * "17,26,56 * * * *" replaces the expression the account has registered. If the
+ * code reaches production before the schedule does, it matches nothing, the
+ * heartbeat stops dead, and every queue-backed lane goes silent -- precisely the
+ * failure #10709 exists to remove. Appending needs no ordering assumption at
+ * all: until the new trigger is applied it simply never fires, and minute 26
+ * carries the lanes exactly as it does today.
+ *
+ * ON WHETHER A DEPLOY APPLIES TRIGGERS -- MEASURE, DO NOT ASSUME. This file
+ * previously asserted that Workers Builds ships code without applying cron
+ * triggers. That is NOT true of this Worker: #11362's merge deployed
+ * 7c354652a at 17:40:17Z and Cloudflare's schedules API shows "17,56 * * * *"
+ * with created_on 17:40:19Z, two seconds later, with no `wrangler triggers
+ * deploy` run by hand. The same day, every schedule's modified_on tracked the
+ * preceding deployment by two seconds. The manual step WAS needed on
+ * wrangler.registry.jsonc on 2026-08-08 -- a different Worker, with its own
+ * build command -- which is where the blanket claim came from. Check the Worker
+ * you actually changed:
+ *
+ *   GET /accounts/{account}/workers/scripts/{script}/schedules
+ *
+ * and compare created_on against the deployment. The append-don't-edit rule
+ * above stands either way, which is the point of choosing it.
  *
  * 24 is left FREE on purpose -- the last slot on the grid, kept for a lane that
  * genuinely cannot be expressed as a cadence. It would also sit two minutes
