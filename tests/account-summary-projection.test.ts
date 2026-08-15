@@ -522,8 +522,12 @@ function withRecent(
   recent: Record<string, unknown>,
   { over = {}, limit = 10 as number | undefined } = {},
 ) {
+  // `count: 1`, so a fixture holding ONE event is a COMPLETE list. The reader
+  // serves a list only when it holds `min(published, lifetime)` entries, and
+  // the default `group()` claims three events -- which would make every
+  // fixture below fall back for a reason none of them is about.
   const objects = published(
-    { [HOT]: [group()] },
+    { [HOT]: [group({ count: 1 })] },
     {
       through: "2026-08-13",
       ...(limit === undefined ? {} : { recent_limit: limit }),
@@ -686,6 +690,58 @@ describe("the projection's recent map", () => {
     const store = archive(withRecent({ [HOT]: [event()] }));
     const read = await loadAccountSummaryProjection(store.env, HOT, FRESH);
     assert.equal(read!.recent, null);
+  });
+});
+
+describe("a published list is only served when it IS the newest N", () => {
+  // THE PROPERTY THAT LETS THE FEATURE SHIP BEFORE THE WALK FINISHES. The
+  // producer seeds these lists backward from the day it folded to, so mid-walk
+  // they are a suffix of history. `min(published, lifetime)` is how many
+  // entries a COMPLETE list has, and the shard already carries both numbers.
+
+  /** A shard whose groups sum to `lifetime` and whose list holds `held`. */
+  function shard(lifetime: number, held: number) {
+    const objects = published(
+      { [HOT]: [group({ count: lifetime })] },
+      {
+        through: "2026-08-13",
+        recent_limit: 10,
+      },
+    ) as Record<string, Record<string, unknown>>;
+    objects[accountSummaryShardKey(HOT, SHARDS, GEN)]!.recent = {
+      [HOT]: Array.from({ length: held }, (_, i) =>
+        event({ block_number: 900 - i, event_index: i }),
+      ),
+    };
+    return archive(objects);
+  }
+
+  const read = (store: ReturnType<typeof archive>) =>
+    loadAccountSummaryProjection(store.env, HOT, { ...FRESH, recentLimit: 10 });
+
+  test("a FULL list is served -- the walk has passed this account's events", async () => {
+    assert.equal((await read(shard(500, 10)))!.recent!.rows.length, 10);
+  });
+
+  test("A SHORT LIST IS REFUSED when the account has more events than it holds", async () => {
+    // The failure this exists for: four events served as though they were the
+    // newest ten, on an account with five hundred. Nothing in the payload
+    // distinguishes that from an account that has only ever done four things.
+    assert.equal((await read(shard(500, 4)))!.recent, null);
+    // And the aggregate leg is untouched -- only the feed falls back.
+    assert.equal((await read(shard(500, 4)))!.groups.length, 1);
+  });
+
+  test("a short list IS served when it is the account's whole history", async () => {
+    // `min(10, 4) === 4`, so four of four is complete. Refusing here would
+    // send every low-activity account to the lakehouse forever.
+    assert.equal((await read(shard(4, 4)))!.recent!.rows.length, 4);
+  });
+
+  test("the boundary is exact on both sides", async () => {
+    assert.equal((await read(shard(10, 10)))!.recent!.rows.length, 10);
+    assert.equal((await read(shard(11, 10)))!.recent!.rows.length, 10);
+    assert.equal((await read(shard(5, 4)))!.recent, null);
   });
 });
 
