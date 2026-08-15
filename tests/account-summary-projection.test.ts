@@ -133,7 +133,6 @@ describe("loadAccountSummaryProjection", () => {
       // No `recentLimit` asked for, so the feed leg is not read at all -- the
       // aggregate leg is what every caller before #575 wanted and still gets.
       recent: null,
-      floorMs: null,
     });
   });
 
@@ -318,7 +317,6 @@ describe("loadAccountSummaryProjection", () => {
       await loadAccountSummaryProjection(store.env, HOT, FRESH),
       {
         recent: null,
-        floorMs: null,
         groups: [
           {
             kind: "Transfer",
@@ -573,8 +571,8 @@ describe("the projection's recent map", () => {
       ...FRESH,
       recentLimit: 10,
     });
-    assert.deepEqual(read!.recent, [event()]);
-    assert.equal(read!.floorMs, Date.parse("2026-08-14T00:00:00.000Z"));
+    assert.deepEqual(read!.recent!.rows, [event()]);
+    assert.equal(read!.recent!.floorMs, Date.parse("2026-08-14T00:00:00.000Z"));
     // The aggregate leg is unaffected by any of this.
     assert.equal(read!.groups.length, 1);
   });
@@ -600,7 +598,7 @@ describe("the projection's recent map", () => {
       ...FRESH,
       recentLimit: 10,
     });
-    assert.deepEqual(read!.recent, [event()]);
+    assert.deepEqual(read!.recent!.rows, [event()]);
   });
 
   test("a generation published before #575 declines the leg alone", async () => {
@@ -616,7 +614,6 @@ describe("the projection's recent map", () => {
       recentLimit: 10,
     });
     assert.equal(read!.recent, null);
-    assert.equal(read!.floorMs, null);
     assert.equal(read!.groups.length, 1);
   });
 
@@ -689,7 +686,6 @@ describe("the projection's recent map", () => {
     const store = archive(withRecent({ [HOT]: [event()] }));
     const read = await loadAccountSummaryProjection(store.env, HOT, FRESH);
     assert.equal(read!.recent, null);
-    assert.equal(read!.floorMs, null);
   });
 });
 
