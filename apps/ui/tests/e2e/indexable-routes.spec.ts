@@ -208,6 +208,65 @@ test.describe("#11279 the digests are typed, and say what week they cover", () =
   });
 });
 
+test.describe("#11294 the markdown twin is reachable, and a stale one 404s", () => {
+  // 634 prose pages compile a clean `_markdown` export (source.config.ts's
+  // remarkLLMs plugin, declared once for both collections). /docs/raw/* served
+  // it and nothing pointed at it; /news had no such route at all; and an
+  // unknown path answered 500, because `throw notFound()` has no boundary in a
+  // server route handler.
+  //
+  // These assert the raw HTTP response, because the status and the headers ARE
+  // the property under test.
+
+  for (const [html, raw] of [
+    ["/docs/mcp", "/docs/raw/mcp"],
+    ["/docs", "/docs/raw"],
+    ["/news/sn38/2026-w25", "/news/raw/sn38/2026-w25"],
+    ["/news", "/news/raw"],
+  ] as const) {
+    test(`${html} links and serves ${raw}`, async ({ request }) => {
+      const page = await request.get(html);
+      expect(page.status()).toBe(200);
+      expect(await page.text(), `${html} does not advertise its markdown twin`).toContain(
+        `href="https://metagraph.sh${raw}"`,
+      );
+
+      const markdown = await request.get(raw, { maxRedirects: 0 });
+      expect(markdown.status(), `${raw} does not answer`).toBe(200);
+      expect(markdown.headers()["content-type"]).toContain("text/markdown");
+      // The HTML page is the canonical, sitemapped copy; two indexable copies
+      // of one page is the duplicate-content bet #11204 records losing.
+      expect(markdown.headers()["x-robots-tag"]).toContain("noindex");
+      expect((await markdown.text()).length, `${raw} is empty`).toBeGreaterThan(0);
+    });
+  }
+
+  for (const path of ["/docs/raw/index", "/docs/raw/does-not-exist", "/news/raw/sn0/1999-w01"]) {
+    test(`${path} is a 404, not a 500`, async ({ request }) => {
+      const response = await request.get(path, { maxRedirects: 0 });
+      // A 5xx tells Googlebot the host is unhealthy and it backs off crawling
+      // ALL of it; it tells an agent to retry. 404 is true and terminal.
+      expect(response.status(), `${path} answered ${response.status()}`).toBe(404);
+    });
+  }
+
+  for (const [path, mustContain] of [
+    ["/docs/llms.txt", "/docs/raw/"],
+    ["/news/llms.txt", "/news/raw/"],
+  ] as const) {
+    test(`${path} indexes its section and states the twin rule`, async ({ request }) => {
+      const response = await request.get(path);
+      expect(response.status()).toBe(200);
+      const body = await response.text();
+      expect(body).toContain(mustContain);
+      // Absolute links only: a machine fetching a text file has no base to
+      // resolve "/docs/feeds" against.
+      expect(body, `${path} still carries site-relative links`).not.toMatch(/\]\(\/(docs|news)/);
+      expect(body.split("\n").filter((l) => l.includes("](http")).length).toBeGreaterThan(5);
+    });
+  }
+});
+
 test.describe("#11283 every breadcrumb link goes somewhere", () => {
   // buildCrumbs (components/metagraphed/breadcrumb-nav.ts) makes a link out of
   // EVERY path segment, so a page at /a/b/c offers /a and /a/b whether or not

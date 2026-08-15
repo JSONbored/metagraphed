@@ -1,4 +1,3 @@
-import { isNotFound } from "@tanstack/react-router";
 import { describe, expect, it, vi } from "vitest";
 
 const mockGetPage = vi.fn();
@@ -8,8 +7,11 @@ vi.mock("@/lib/docs-source", () => ({
 
 const { resolveRawMarkdown } = await import("./docs.raw.$");
 
-describe("resolveRawMarkdown", () => {
-  it("splits the splat into slugs and returns the page's processed markdown", async () => {
+// The response policy itself is covered by lib/metagraphed/raw-markdown.test.ts.
+// What is only true HERE is the wiring: this route reads the DOCS collection,
+// and it answers as the docs section.
+describe("docs /docs/raw/$", () => {
+  it("resolves against docsSource and returns its processed markdown", async () => {
     const getText = vi.fn().mockResolvedValue("# Account Axon Removals\n");
     mockGetPage.mockReturnValue({ data: { getText } });
 
@@ -21,24 +23,14 @@ describe("resolveRawMarkdown", () => {
       "account-axon-removals",
     ]);
     expect(getText).toHaveBeenCalledWith("processed");
-    expect(res.headers.get("content-type")).toBe("text/markdown; charset=utf-8");
+    expect(res.status).toBe(200);
     await expect(res.text()).resolves.toBe("# Account Axon Removals\n");
   });
 
-  it("resolves an undefined splat (the docs index) as an empty slug array", async () => {
-    mockGetPage.mockReturnValue({ data: { getText: vi.fn().mockResolvedValue("") } });
-
-    await resolveRawMarkdown(undefined);
-
-    expect(mockGetPage).toHaveBeenCalledWith([]);
-  });
-
-  it("throws TanStack Router's notFound() when no page matches the slug", async () => {
+  it("answers 404 for a path that is not a docs page", async () => {
     mockGetPage.mockReturnValue(undefined);
-
-    await resolveRawMarkdown("does/not/exist").then(
-      () => expect.unreachable("should have thrown notFound()"),
-      (err) => expect(isNotFound(err)).toBe(true),
-    );
+    const res = await resolveRawMarkdown("does/not/exist");
+    expect(res.status).toBe(404);
+    expect(await res.text()).toContain("No docs page at");
   });
 });

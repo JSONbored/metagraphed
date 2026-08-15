@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { llms } from "fumadocs-core/source/llms";
 import { docsSource } from "@/lib/docs-source";
+import { llmsIndexBody, llmsIndexHeaders } from "@/lib/metagraphed/llms-index";
 
 const docsLlms = llms(docsSource);
 
@@ -11,17 +12,18 @@ const docsLlms = llms(docsSource);
 export const Route = createFileRoute("/docs/llms.txt")({
   server: {
     handlers: {
-      // Absolutizes the page links -- docsSource's baseUrl ("/docs") makes
-      // index() emit relative ones, fine for in-app rendering but not for a
-      // plain-text file a machine fetches with no page context to resolve
-      // "/docs/feeds" against. Derived from the request's own origin rather
-      // than a hardcoded domain so this works in dev and any deploy target.
       GET: ({ request }) => {
         const { origin } = new URL(request.url);
-        const body = docsLlms.index().replace(/\]\(\//g, `](${origin}/`);
-        return new Response(body, {
-          headers: { "content-type": "text/plain; charset=utf-8" },
-        });
+        return new Response(
+          llmsIndexBody({
+            index: docsLlms.index(),
+            section: "docs",
+            origin,
+            title: "Metagraphed documentation",
+            example: "mcp",
+          }),
+          { headers: llmsIndexHeaders() },
+        );
       },
     },
   },

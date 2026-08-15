@@ -55,6 +55,7 @@ import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
 import { Route as GraphqlIndexRouteImport } from './routes/graphql.index'
 import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
 import { Route as NewsSplatRouteImport } from './routes/news.$'
+import { Route as NewsLlmsDottxtRouteImport } from './routes/news.llms[.]txt'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
@@ -66,6 +67,7 @@ import { Route as ToolsSs58RouteImport } from './routes/tools.ss58'
 import { Route as ValidatorsIndexRouteImport } from './routes/validators.index'
 import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
 import { Route as DocsRawSplatRouteImport } from './routes/docs.raw.$'
+import { Route as NewsRawSplatRouteImport } from './routes/news.raw.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -297,6 +299,11 @@ const NewsSplatRoute = NewsSplatRouteImport.update({
   path: '/news/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsLlmsDottxtRoute = NewsLlmsDottxtRouteImport.update({
+  id: '/news/llms.txt',
+  path: '/news/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
   id: '/providers/',
   path: '/providers/',
@@ -352,6 +359,11 @@ const DocsRawSplatRoute = DocsRawSplatRouteImport.update({
   path: '/docs/raw/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsRawSplatRoute = NewsRawSplatRouteImport.update({
+  id: '/news/raw/$',
+  path: '/news/raw/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -391,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/news/$': typeof NewsSplatRoute
+  '/news/llms.txt': typeof NewsLlmsDottxtRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
@@ -411,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/tools/': typeof ToolsIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
+  '/news/raw/$': typeof NewsRawSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -448,6 +462,7 @@ export interface FileRoutesByTo {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/news/$': typeof NewsSplatRoute
+  '/news/llms.txt': typeof NewsLlmsDottxtRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
@@ -468,6 +483,7 @@ export interface FileRoutesByTo {
   '/tools': typeof ToolsIndexRoute
   '/validators': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
+  '/news/raw/$': typeof NewsRawSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -508,6 +524,7 @@ export interface FileRoutesById {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/news/$': typeof NewsSplatRoute
+  '/news/llms.txt': typeof NewsLlmsDottxtRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
@@ -528,6 +545,7 @@ export interface FileRoutesById {
   '/tools/': typeof ToolsIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
+  '/news/raw/$': typeof NewsRawSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -569,6 +587,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/news/$'
+    | '/news/llms.txt'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/tools/ss58'
@@ -589,6 +608,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/validators/'
     | '/docs/raw/$'
+    | '/news/raw/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -626,6 +646,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/news/$'
+    | '/news/llms.txt'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/tools/ss58'
@@ -646,6 +667,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/validators'
     | '/docs/raw/$'
+    | '/news/raw/$'
   id:
     | '__root__'
     | '/'
@@ -685,6 +707,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/news/$'
+    | '/news/llms.txt'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/tools/ss58'
@@ -705,6 +728,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/validators/'
     | '/docs/raw/$'
+    | '/news/raw/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -735,6 +759,7 @@ export interface RootRouteChildren {
   ExtrinsicsHashRoute: typeof ExtrinsicsHashRoute
   GraphqlExplorerRoute: typeof GraphqlExplorerRoute
   NewsSplatRoute: typeof NewsSplatRoute
+  NewsLlmsDottxtRoute: typeof NewsLlmsDottxtRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
   ToolsSs58Route: typeof ToolsSs58Route
@@ -753,6 +778,7 @@ export interface RootRouteChildren {
   ToolsIndexRoute: typeof ToolsIndexRoute
   ValidatorsIndexRoute: typeof ValidatorsIndexRoute
   DocsRawSplatRoute: typeof DocsRawSplatRoute
+  NewsRawSplatRoute: typeof NewsRawSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1079,6 +1105,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/llms.txt': {
+      id: '/news/llms.txt'
+      path: '/news/llms.txt'
+      fullPath: '/news/llms.txt'
+      preLoaderRoute: typeof NewsLlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/providers/': {
       id: '/providers/'
       path: '/providers'
@@ -1156,6 +1189,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsRawSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/raw/$': {
+      id: '/news/raw/$'
+      path: '/news/raw/$'
+      fullPath: '/news/raw/$'
+      preLoaderRoute: typeof NewsRawSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1227,6 +1267,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExtrinsicsHashRoute: ExtrinsicsHashRoute,
   GraphqlExplorerRoute: GraphqlExplorerRoute,
   NewsSplatRoute: NewsSplatRoute,
+  NewsLlmsDottxtRoute: NewsLlmsDottxtRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
   ToolsSs58Route: ToolsSs58Route,
@@ -1245,6 +1286,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsIndexRoute: ToolsIndexRoute,
   ValidatorsIndexRoute: ValidatorsIndexRoute,
   DocsRawSplatRoute: DocsRawSplatRoute,
+  NewsRawSplatRoute: NewsRawSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
