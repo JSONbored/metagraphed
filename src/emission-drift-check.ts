@@ -26,6 +26,7 @@
 
 import {
   DEFAULT_EMISSION_GATE_EXPONENT,
+  decodeLeU16,
   decodeLeU64,
   decodeLeU128,
   u64f64U128ToFloat,
@@ -41,7 +42,42 @@ import {
 } from "./emission-pipeline.ts";
 import { createSubtensorPinnedStorage } from "./subtensor-pinned-storage.ts";
 
-const MAX_NETUID = 128;
+/**
+ * Hard ceiling on how many netuids are probed.
+ *
+ * NOT the expected count. The range comes from `SubtensorModule.TotalNetworks`
+ * (see probedNetuids) so a new subnet is read the moment it exists; this only
+ * bounds a chain reporting something absurd, and must stay well above
+ * `SubnetLimit` or a legitimately grown network would be silently truncated --
+ * which is the exact failure it replaced.
+ */
+const MAX_PROBED_NETUIDS = 1024;
+
+/**
+ * The netuids to read, from the chain's own count.
+ *
+ * WAS `Array.from({ length: 128 })`, and the 129th subnet had already arrived.
+ * `TotalNetworks` was 129 while this read 0..127, so netuid 128's channels were
+ * missing from every sum -- and the aggregate identity is a SUM, so the check
+ * reported the network as drifting by exactly the emission of the subnet it had
+ * not looked at. Measured 2026-08-14: Δ -110,236 to -125,520 rao against
+ * netuid 128 (`ByteLeap`) carrying tao_in_emission of ~120,705 rao and moving
+ * per block. The alarm was right that something was wrong and wrong about what.
+ *
+ * NO `+ 1` HERE, unlike src/chain-burn.ts's otherwise-identical probe. That
+ * lane reads one past the count as cheap insurance, because an absent key is
+ * simply null to it. Here an absent key is not free: emission_enabled is
+ * ABSENT-MEANS-ENABLED (see emissionIdentityChecks' fourth check), so a
+ * phantom netuid would enter the reconstruction as an enabled subnet with no
+ * emission and shift every share. `TotalNetworks` is a count and netuids are
+ * 0-indexed from root, so the count IS the exclusive upper bound.
+ */
+export function probedNetuids(totalNetworks: number): number[] {
+  return Array.from(
+    { length: Math.min(totalNetworks, MAX_PROBED_NETUIDS) },
+    (_, i) => i,
+  );
+}
 
 const MAPS = {
   moving_price: "1abf1b0f4fd14f7b72ee50f9d91d5915",
@@ -58,6 +94,8 @@ const VALUES = {
   emission_gate_bar: "7c9b0d2964cc73e7519676c3cc4d5df9",
   emission_bar_quantile: "a772007dde2ed63e0f21b5f9d7f16650",
   emission_gate_exponent: "88c70e8dd0cf4af3aeb977ba2eee1df4",
+  // twox128("TotalNetworks") -- the netuid range, read rather than assumed.
+  total_networks: "5f3bb7bcd0a076a48abf8c256d221721",
   total_issuance: "57c875e4cff74148e4628f264b974c80",
 } as const;
 
@@ -102,17 +140,27 @@ export async function checkEmissionDrift(
   options: EmissionDriftCheckOptions,
 ): Promise<EmissionDriftResult> {
   const storage = createSubtensorPinnedStorage(options);
-  const netuids = Array.from({ length: MAX_NETUID }, (_, i) => i);
 
   const { blockNumber, blockHash } = await storage.pinHead();
+
+  // VALUES first, because the netuid range is one of them now.
+  const values: Record<string, string | null> = {};
+  for (const [name, hash] of Object.entries(VALUES)) {
+    values[name] = await storage.readValue(hash, blockHash);
+  }
+
+  const totalNetworks = decodeLeU16(values.total_networks);
+  if (totalNetworks === null) {
+    // Never assumed, for the same reason block emission is not: guessing the
+    // range is how this check came to report a drift that was its own blind
+    // spot. A partial read must never be scored as if it were a complete one.
+    throw new Error("could not read TotalNetworks -- netuid range unknown");
+  }
+  const netuids = probedNetuids(totalNetworks);
 
   const maps: Record<string, Map<number, string>> = {};
   for (const [name, hash] of Object.entries(MAPS)) {
     maps[name] = await storage.readNetuidMap(hash, blockHash, netuids);
-  }
-  const values: Record<string, string | null> = {};
-  for (const [name, hash] of Object.entries(VALUES)) {
-    values[name] = await storage.readValue(hash, blockHash);
   }
 
   const theta = u64f64U128ToFloat(decodeLeU128(values.emission_gate_bar) ?? 0n);

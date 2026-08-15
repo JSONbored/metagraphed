@@ -8,7 +8,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import fixture from "./fixtures/emission-pipeline.json" with { type: "json" };
-import { checkEmissionDrift } from "../src/emission-drift-check.ts";
+import {
+  checkEmissionDrift,
+  probedNetuids,
+} from "../src/emission-drift-check.ts";
 import {
   DEFAULT_EMISSION_GATE_EXPONENT,
   decodeLeU64,
@@ -194,5 +197,88 @@ describe("checkEmissionDrift", () => {
     } finally {
       globalThis.fetch = realFetch;
     }
+  });
+});
+
+// --- the netuid range is READ, not assumed (the 129th subnet) ---------------
+//
+// `Array.from({ length: 128 })` read netuids 0..127 while TotalNetworks was
+// already 129. The aggregate identity is a SUM, so the check reported the
+// network as drifting by exactly the emission of the subnet it had not looked
+// at -- measured in production as Δ -110,236 to -125,520 rao, against netuid
+// 128 carrying ~120,705 rao of tao_in_emission. Right that something was
+// wrong; wrong about what.
+
+describe("the netuid range", () => {
+  /** The item hash TotalNetworks is served under, from the fixture itself. */
+  const TOTAL_NETWORKS_HASH = (fixture.item_hashes as Record<string, string>)
+    .total_networks;
+
+  /** Every netuid the run actually asked the chain about. */
+  function netuidsRead(
+    calls: { method: string; params: unknown[] }[],
+  ): number[] {
+    const seen = new Set<number>();
+    for (const call of calls) {
+      if (call.method !== "state_queryStorageAt") continue;
+      for (const key of call.params[0] as string[]) {
+        const suffix = key.slice(-4);
+        seen.add(
+          Number.parseInt(suffix.slice(0, 2), 16) +
+            Number.parseInt(suffix.slice(2, 4), 16) * 256,
+        );
+      }
+    }
+    return [...seen].sort((a, b) => a - b);
+  }
+
+  /** Serve the fixture, but report a different TotalNetworks. */
+  function withTotalNetworks(hex: string | null) {
+    return fixtureFetch((method, params) => {
+      if (method !== "state_getStorage") return undefined;
+      const key = params[0] as string;
+      return key.endsWith(TOTAL_NETWORKS_HASH) ? hex : undefined;
+    });
+  }
+
+  test("follows TotalNetworks, so a NEW subnet is read the block it appears", async () => {
+    // 129 subnets means netuids 0..128 -- the case production was in.
+    const { impl, calls } = withTotalNetworks("0x8100");
+    await checkEmissionDrift({ rpcUrl: "https://rpc.test", fetchImpl: impl });
+    const read = netuidsRead(calls);
+    assert.equal(read.at(-1), 128, "the newest subnet was read");
+    assert.equal(read.length, 129);
+  });
+
+  test("does NOT probe one past the count, unlike the burn lane", async () => {
+    // src/chain-burn.ts deliberately reads `total + 1` as cheap insurance,
+    // because an absent key is simply null to it. Here it is not free:
+    // emission_enabled is ABSENT-MEANS-ENABLED, so a phantom netuid would
+    // enter the reconstruction as an enabled subnet with no emission and shift
+    // every share.
+    const { impl, calls } = withTotalNetworks("0x8000");
+    await checkEmissionDrift({ rpcUrl: "https://rpc.test", fetchImpl: impl });
+    const read = netuidsRead(calls);
+    assert.equal(read.at(-1), 127);
+    assert.equal(read.length, 128);
+  });
+
+  test("an unreadable count throws rather than guessing a range", async () => {
+    // The same rule the block-emission read follows: a partial read must never
+    // be scored as if it were a complete one. Guessing the range is precisely
+    // how this check came to report its own blind spot as chain drift.
+    const { impl } = withTotalNetworks(null);
+    await assert.rejects(
+      () => checkEmissionDrift({ rpcUrl: "https://rpc.test", fetchImpl: impl }),
+      /TotalNetworks/,
+    );
+  });
+
+  test("probedNetuids caps an absurd count instead of minting a million keys", () => {
+    assert.deepEqual(probedNetuids(3), [0, 1, 2]);
+    assert.equal(probedNetuids(65535).length, 1024);
+    // A chain reporting zero subnets reads none -- and the identity checks
+    // then fail loudly on an empty sum, which is the correct outcome.
+    assert.deepEqual(probedNetuids(0), []);
   });
 });
