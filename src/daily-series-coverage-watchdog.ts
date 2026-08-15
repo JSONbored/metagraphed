@@ -39,7 +39,7 @@
 // late. Freshness already covers that end, which is the half this is not.
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore, type UntypedRowQuerier } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 
 export const DAILY_COVERAGE_LANE = "daily-series-coverage";
