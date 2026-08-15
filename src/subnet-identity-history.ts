@@ -226,7 +226,7 @@ function rowNetuid(value: unknown): number | null {
  */
 async function latestIdentityHashes(env: Env): Promise<Map<number, unknown>> {
   const rows = await storeAll(
-    readStore(env, SUBNET_IDENTITY_HISTORY_TABLES) as never,
+    readStore(env, SUBNET_IDENTITY_HISTORY_TABLES),
     "SELECT DISTINCT ON (netuid) netuid, identity_hash FROM subnet_identity_history " +
       "ORDER BY netuid, observed_at DESC, id DESC",
     [],
@@ -267,7 +267,7 @@ async function latestIdentityHashes(env: Env): Promise<Map<number, unknown>> {
  */
 async function latestBlockNumber(env: Env): Promise<number | null> {
   const rows = await storeAll(
-    readStore(env, BLOCKS_HEAD_TABLES) as never,
+    readStore(env, BLOCKS_HEAD_TABLES),
     "SELECT MAX(block_number) AS block_number FROM blocks_head",
     [],
   );

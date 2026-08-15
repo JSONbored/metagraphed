@@ -418,7 +418,7 @@ async function alphaPriceByNetuidDate(
   try {
     const since = new Date(cutoff).toISOString().slice(0, 10);
     const snapshots = await storeAll(
-      readStore(env, ACCOUNT_STAKE_MOVES_PRICE_TABLES) as never,
+      readStore(env, ACCOUNT_STAKE_MOVES_PRICE_TABLES),
       `SELECT netuid, snapshot_date, alpha_price_tao FROM subnet_snapshots
        WHERE snapshot_date >= ? AND netuid IN (${netuids.join(", ")})
          AND alpha_price_tao IS NOT NULL`,

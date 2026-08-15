@@ -633,7 +633,7 @@ export async function composeLeaderboardsData(
     // The only read in this file that was not already asking observationsReadDb
     // (#10158). It issues four statements across surface_status,
     // subnet_snapshots and surface_uptime_daily -- all three Neon's.
-    await loadLeaderboardStoreRows(readStore(env, LEADERBOARD_TABLES) as never);
+    await loadLeaderboardStoreRows(readStore(env, LEADERBOARD_TABLES));
   const data = formatLeaderboards({
     board,
     limit,
@@ -891,7 +891,7 @@ export async function handleCompare(
           requestedNetuids.map((netuid) => Number(netuid)),
         );
         const grouped = await storeAll(
-          readStore(env, COMPARE_SUBNETS_TABLES) as never,
+          readStore(env, COMPARE_SUBNETS_TABLES),
           `SELECT netuid,
                   COUNT(*) AS surface_count,
                   SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,

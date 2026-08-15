@@ -563,6 +563,7 @@ import {
 } from "../src/subnet-identity-history.ts";
 import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import {
+  type BlockChainEventsPayload,
   type ColdTierAnswer,
   parseCachedColdTierAnswer,
   chainEventsQueryFromUrl,
@@ -905,6 +906,7 @@ import {
 import type { WalletFlowRow } from "../src/wallet-activity.ts";
 import { ENTITY_LABELS_ARTIFACT } from "../src/entity-labels.ts";
 import { LIVE_CRON_PROBER } from "../src/field-provenance.ts";
+import { recordOrNull } from "../src/read-store.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -1164,7 +1166,7 @@ export async function runFreshnessWatchdog(
   const readArtifactFn: ArtifactReader = deps.readArtifact ?? readArtifact;
   // laneHealthStore, not the binding (#10158) -- one of the last three callers
   // still reaching past it.
-  const laneHealthDb = laneHealthStore(env, deps.laneHealthDb) as never;
+  const laneHealthDb = laneHealthStore(env, deps.laneHealthDb);
   try {
     const artifact = (await readArtifactFn(
       env,
@@ -2337,16 +2339,14 @@ export default {
       // The dead-letter record is a lane verdict, so it goes where the other
       // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
       // written to a store nobody reads is a message lost twice over.
-      await handleDeadLetterBatch(batch, laneHealthStore(env) as never);
+      await handleDeadLetterBatch(batch, laneHealthStore(env));
       return;
     }
     if (batch.queue === PROBE_JOBS_QUEUE) {
       // ONE QUEUE, FOUR OWNERS (#10894). A batch may mix them freely, so it is
       // partitioned before anything runs -- the handlers are not
       // interchangeable, each opening a store scoped to its own tables.
-      const { byType, unrecognised } = partitionProbeJobs(
-        batch.messages as unknown as LaneMessage[],
-      );
+      const { byType, unrecognised } = partitionProbeJobs(batch.messages);
       // DECLINED FIRST, and never by falling through to a default branch. An
       // unmatched discriminator must produce a verdict (#10827); a silent ack
       // would make a half-deployed rename look like a healthy queue draining.
@@ -4522,7 +4522,10 @@ export async function handleChainEventsFamily(
   // same `meta.source` the miss did rather than guessing one back. PARSED, not
   // cast (#11194) -- see parseCachedColdTierAnswer for why a cache read is a
   // boundary even though this Worker wrote the bytes.
-  let answer: ColdTierAnswer | null = cacheHit
+  // Either tier's payload: the cold one answers with a `Row`, the hot one with
+  // its own typed `BlockChainEventsPayload`. Naming both is what lets the hot
+  // branch below assign without a cast (#11339).
+  let answer: ColdTierAnswer<Row | BlockChainEventsPayload> | null = cacheHit
     ? parseCachedColdTierAnswer(await cacheHit.json())
     : null;
 
@@ -4538,7 +4541,7 @@ export async function handleChainEventsFamily(
     answer =
       hot?.kind === "answer"
         ? {
-            data: hot.data as unknown as ColdTierAnswer["data"],
+            data: hot.data,
             // Name the tier that ACTUALLY served. Labelling a lakehouse row as
             // the hot tier's would make the one thing this meta exists to
             // report -- which store answered -- a guess.
@@ -4600,7 +4603,7 @@ export async function handleChainEventsFamily(
   // handler also serves have no top-level row array, so their CSV request falls
   // through to the JSON envelope (a header-only export would be meaningless).
   if (url.pathname === "/api/v1/chain-events" && csvRequested(url, request)) {
-    const events = (answer.data as { events?: unknown }).events;
+    const events = recordOrNull(answer.data)?.events;
     return csvResponse(
       Array.isArray(events) ? events : [],
       "chain-events",
@@ -10847,10 +10850,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
       {
         readArtifact,
         liveHealth,
-        overlayCatalogIndex: overlayCatalogIndex as unknown as (
-          input: { subnets: unknown[] },
-          liveHealthArg: unknown,
-        ) => { subnets?: unknown[] } | null | undefined,
+        overlayCatalogIndex,
       },
     );
     return dataResponse(env, data, 200, { source: "ai-live" });

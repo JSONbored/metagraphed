@@ -23,7 +23,7 @@
 import {
   ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES,
   triggerMatchesEvent,
-  type EvaluatorAlertTrigger,
+  type AlertConditionInput,
 } from "../src/alert-triggers.ts";
 import {
   recordExceptionEvent,
@@ -55,18 +55,24 @@ import {
   isDeliveryRateLimited,
   type AlertTrigger,
 } from "../src/alert-delivery.ts";
+import { z } from "zod";
 
 // #6746/#6747: the empty snapshot every AlerterHub starts with and falls
 // back to whenever a metric refresh is skipped/fails -- both of
 // triggerMatchesEvent's own metric lookups already treat a missing map
 // entry as "does not match" (fails closed), so an empty snapshot is a
 // genuinely safe default, not a placeholder that needs special-casing.
-export interface Trigger {
-  id: string;
-  channel: string;
-  condition?: unknown;
-  [key: string]: unknown;
-}
+/**
+ * An active trigger, as the schema that parses it defines it.
+ *
+ * Derived rather than restated (#11339). This used to be a hand-written
+ * interface with an index signature, so every field the parse establishes --
+ * `tableFilter`, `netuid`, `eventKind` -- resolved through that signature as
+ * `unknown`, and the evaluator call site asserted the whole object back into
+ * shape. `z.infer` keeps the two in step, and `.catchall(z.unknown())` in the
+ * schema preserves the per-channel fields this type must not enumerate.
+ */
+export type Trigger = z.infer<typeof AlertTriggerRowSchema>;
 
 export interface MetricSnapshot {
   subnetAlphaPriceRank: Map<unknown, unknown>;
@@ -362,7 +368,7 @@ export async function deliverAlertMatch(
             init: {
               method: "POST",
               headers: pushRequest.headers,
-              body: pushRequest.body as unknown as BodyInit,
+              body: pushRequest.body,
             },
           }
         : null;
@@ -554,7 +560,7 @@ export class AlerterHub implements DurableObject {
       if (body.success) {
         this.triggers = body.data.triggers.flatMap((row) => {
           const parsed = AlertTriggerRowSchema.safeParse(row);
-          return parsed.success ? [parsed.data as Trigger] : [];
+          return parsed.success ? [parsed.data] : [];
         });
         this.triggersLoadedAt = Date.now();
         // #5024: prune any lastDeliveredAt entry for a trigger id that is
@@ -681,12 +687,21 @@ export class AlerterHub implements DurableObject {
   // this just applies it across every cached trigger.
   matchingTriggers(payload: unknown): Trigger[] {
     return this.triggers.filter((trigger) =>
-      // this.triggers is fetched straight from the active-triggers response
-      // (built server-side via evaluatorAlertTriggerView), so it already has
-      // EvaluatorAlertTrigger's shape at runtime even though Trigger's own
-      // index signature doesn't statically expose it.
+      // The parse establishes the evaluator's fields now, rather than this
+      // call site asserting them -- AlertTriggerRowSchema names what
+      // `evaluatorAlertTriggerView` emits (#11339).
       triggerMatchesEvent(
-        trigger as unknown as EvaluatorAlertTrigger,
+        {
+          ...trigger,
+          name: trigger.name,
+          tableFilter: trigger.tableFilter ?? null,
+          netuid: trigger.netuid ?? null,
+          eventKind: trigger.eventKind ?? null,
+          account: trigger.account ?? null,
+          minAmountTao: trigger.minAmountTao ?? null,
+          condition: (trigger.condition ?? null) as AlertConditionInput | null,
+          destination: trigger.destination,
+        },
         payload as Record<string, unknown> | null | undefined,
         this.metricSnapshot,
       ),

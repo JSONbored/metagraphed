@@ -6141,7 +6141,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // resolved to null before it could touch DATA_API.
         await loadSubnetHealthTrends(netuid, {
           observedAt: await mcpObservedAt(ctx),
-          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES),
         })
       );
     },
@@ -6188,7 +6188,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // takes the same three parameters directly, so nothing is dropped.
       const { data } = await loadBulkHealthTrends({
         observedAt: await mcpObservedAt(ctx),
-        db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
+        db: readStore(ctx.env, UPTIME_DAILY_TABLES),
         window,
         limit,
         offset,
@@ -6221,7 +6221,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
-          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES),
         })
       );
     },
@@ -6253,7 +6253,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
-          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES),
         })
       );
     },
@@ -6595,7 +6595,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // absent from FORWARDABLE_TIER_FLAGS, so that arm resolved to null on
       // every call.
       const data = await loadSubnetTrajectory(netuid, {
-        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
+        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES),
       });
       // `netuid` is the SUBJECT here, not a filter -- the artifact already
       // holds one subnet, so it is excluded from the query the same way
@@ -6664,7 +6664,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { data } = await loadEconomicsTrends({
         windowLabel: label,
         windowDays: days,
-        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
+        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES),
       });
       return data;
     },
@@ -8463,7 +8463,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           window: window ?? undefined,
           observedAt: await mcpObservedAt(ctx),
           minSamples: minSamples ?? null,
-          db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
+          db: readStore(ctx.env, UPTIME_DAILY_TABLES),
         })) as Row
       );
     },
@@ -8494,7 +8494,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         board,
         limit,
         observedAt: await mcpObservedAt(ctx),
-        db: readStore(ctx.env, LEADERBOARD_TABLES) as never,
+        db: readStore(ctx.env, LEADERBOARD_TABLES),
       });
     },
   },
@@ -8613,7 +8613,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         netuids,
         dimensions,
         observedAt,
-        db: readStore(ctx.env, COMPARE_SUBNETS_TABLES) as never,
+        db: readStore(ctx.env, COMPARE_SUBNETS_TABLES),
       });
     },
   },
@@ -8640,7 +8640,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           windowLabel: label,
           windowDays: days,
           observedAt: await mcpObservedAt(ctx),
-          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES),
         });
       return applyGlobalIncidentsListQuery(
         data as Record<string, unknown>,
@@ -13569,7 +13569,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: "30d",
             windowDays: 30,
             observedAt: await mcpObservedAt(ctx),
-            db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
+            db: readStore(ctx.env, HEALTH_CHECK_TABLES),
           });
         },
       });

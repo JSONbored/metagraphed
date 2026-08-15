@@ -9230,7 +9230,7 @@ export default {
       // The dead-letter record is a lane verdict, so it goes where the other
       // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
       // written to a store nobody reads is a message lost twice over.
-      await handleDeadLetterBatch(batch, laneHealthStore(env) as never);
+      await handleDeadLetterBatch(batch, laneHealthStore(env));
       return;
     }
     // DECOMPRESS BEFORE ANYTHING READS THE BODY (metagraphed#9759). A

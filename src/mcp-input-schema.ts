@@ -58,7 +58,11 @@ export function stripSentinelIntegerBounds<T>(schema: T): T {
   }
   if (!schema || typeof schema !== "object") return schema;
 
-  const out: Json = { ...(schema as unknown as Json) };
+  // The guard above narrows `T` to an object, but an object is still not a
+  // `Record` -- TypeScript never gives one an implicit index signature. So the
+  // spread names that single step rather than routing the whole value through
+  // `unknown` (#11339).
+  const out: Json = { ...(schema as Json) };
 
   // Only on integers: a `number` with these bounds would be a deliberate (if odd)
   // choice, and this has no business rewriting it.
@@ -92,7 +96,11 @@ export function stripSentinelIntegerBounds<T>(schema: T): T {
     }
   }
 
-  return out as unknown as T;
+  // ONE cast, and a checked one. TypeScript cannot express "the same type with
+  // some optional numeric bounds removed", so the shape-preserving claim lives
+  // here -- but `as T` keeps the compiler verifying that `Json` and `T`
+  // overlap, which `as unknown as T` switched off entirely (#11339).
+  return out as T;
 }
 
 /**

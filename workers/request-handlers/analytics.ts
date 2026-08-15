@@ -936,7 +936,7 @@ export async function loadGlobalIncidentsLedger(
   // caller left that can forget one. surface_checks is the only table the
   // statement names.
   const incidentRows = await loadGlobalIncidentRows(
-    readStore(env, HEALTH_CHECK_TABLES) as never,
+    readStore(env, HEALTH_CHECK_TABLES),
     days,
   );
   const meta = await readHealthMetaKv(env);
@@ -978,7 +978,7 @@ export async function resolveGlobalIncidents(
   const storeGeneration = currentStoreReadFailureGeneration();
   const result = await loadGlobalIncidentsLedger(env, { label, days });
   return {
-    data: result.data as unknown as Record<string, unknown>,
+    data: result.data,
     // Only an EMPTY ledger counts as a fallback for caching purposes — no
     // store bound, or a read failure mid-load. A store-served ledger carries
     // real rows.
