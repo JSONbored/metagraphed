@@ -29,6 +29,7 @@
 // buildSubnetConviction) rather than a hand-written literal, so a field added
 // to a payload cannot drift out of its degraded twin.
 
+import { ColdTierAnswerSchema } from "../schemas-src/internal-wire.ts";
 import {
   CHAIN_EVENTS_LIMIT_DEFAULT,
   CHAIN_EVENTS_LIMIT_MAX,
@@ -199,6 +200,25 @@ export function degradedChainEventsPayload(url: URL): Row | null {
 export interface ColdTierAnswer {
   data: Row;
   source: string;
+}
+
+/**
+ * One of these as it comes BACK OUT of the edge cache, or null (#11194).
+ *
+ * Lives beside the type rather than at the call site because this is where
+ * "what a cold-tier answer is" is decided, and a cache read is the one place
+ * that fact is not guaranteed: the entry was written by a PREVIOUS deploy of
+ * this Worker, so "our own code wrote it" says nothing about its shape.
+ *
+ * Null means MISS, which recomputes -- strictly better than serving an entry
+ * whose `source` no longer parses under a `meta.source` claiming a tier it did
+ * not come from, which is the mislabelling ColdTierAnswer exists to prevent.
+ */
+export function parseCachedColdTierAnswer(
+  value: unknown,
+): ColdTierAnswer | null {
+  const parsed = ColdTierAnswerSchema.safeParse(value);
+  return parsed.success ? (parsed.data as ColdTierAnswer) : null;
 }
 
 /** Every branch below except conviction reads the lakehouse. */

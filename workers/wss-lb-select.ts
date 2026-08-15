@@ -20,6 +20,19 @@ export type PoolEndpoint = WssPoolEndpoint;
 export type Pool = WssPool;
 export type PoolsArtifact = WssPoolsArtifact;
 
+/**
+ * What the selectors below ACCEPT, which is broader than what `loadPools`
+ * returns.
+ *
+ * `pools` is required on the parsed artifact -- a body without it is a decline,
+ * not an empty pool list, which is the distinction #11194 restored. But these
+ * functions are pure and are called with `null`, with a stale value, and with
+ * a hand-built object in tests, and they already answer `[]` for every one of
+ * those through their own `Array.isArray` guard. Saying so is more honest than
+ * making the parsed shape looser to suit its consumers.
+ */
+export type PoolsArtifactInput = Partial<PoolsArtifact>;
+
 function scoreOf(e: PoolEndpoint): number {
   const n = Number(e.score);
   return Number.isFinite(n) ? n : 0;
@@ -52,7 +65,7 @@ export function isWssUpstream(e: unknown): e is PoolEndpoint & { url: string } {
 
 // The subtensor-wss pool for `network` (pool id `<network>-wss`, e.g. finney-wss).
 export function wssPoolFor(
-  poolsArtifact: PoolsArtifact | null | undefined,
+  poolsArtifact: PoolsArtifactInput | null | undefined,
   network: string,
 ): Pool | null {
   const pools = Array.isArray(poolsArtifact?.pools) ? poolsArtifact.pools : [];
@@ -68,7 +81,7 @@ export function wssPoolFor(
 // no reported block is kept — benefit of the doubt), score desc. Empty when the
 // pool is absent or has no eligible members (the caller 503s).
 export function selectWssUpstreams(
-  poolsArtifact: PoolsArtifact | null | undefined,
+  poolsArtifact: PoolsArtifactInput | null | undefined,
   network: string,
   opts: { maxBlockLag?: number } = {},
 ): string[] {

@@ -210,10 +210,12 @@ export const ColdTierAnswerSchema = z.object({
  * block-less endpoint as height 0. Typing them here would state a second,
  * stricter contract that the selector then ignores.
  *
- * What IS pinned is the structure the selector navigates: pools is a list, each
- * pool has an endpoint list. Those are the only two claims the cast made that
- * were worth checking, and a `{ error: ... }` body now fails them instead of
- * arriving as a pool-less artifact indistinguishable from "no pools today".
+ * What IS pinned is the structure the selector navigates: `pools` is a list --
+ * REQUIRED, which is the whole point. Optional here would let `{ error: "not
+ * found" }` parse as an artifact with no pools, which is precisely the reading
+ * the cast produced and precisely what a caller cannot tell from "no upstream
+ * is eligible right now". One of those is an outage; the other is Tuesday.
+ * An EMPTY list still parses, because that genuinely is the second case.
  */
 export const WssPoolEndpointSchema = z.object({
   id: z.string().optional(),
@@ -234,7 +236,7 @@ export const WssPoolSchema = z.object({
 export type WssPool = z.infer<typeof WssPoolSchema>;
 
 export const WssPoolsArtifactSchema = z.object({
-  pools: z.array(WssPoolSchema).optional(),
+  pools: z.array(WssPoolSchema),
 });
 export type WssPoolsArtifact = z.infer<typeof WssPoolsArtifactSchema>;
 

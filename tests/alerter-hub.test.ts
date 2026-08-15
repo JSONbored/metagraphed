@@ -1751,6 +1751,38 @@ test("deliverAlertMatch: webpush is a recorded failure when DATA_API isn't bound
   assert.equal(outcomes[0]!.responseSnippet, "device expired");
 });
 
+// #11194: the lookup is parsed, so a 200 carrying something else is the same
+// answer as no subscription -- which it already was, via a three-field
+// truthiness check. What changed is that a body which is not JSON at all, or a
+// subscription with a non-string key, now lands there too instead of reaching
+// the encryption with `undefined` key material.
+test("deliverAlertMatch: webpush treats an unreadable subscription lookup as no device", async () => {
+  for (const body of [
+    "<html>captive portal</html>",
+    JSON.stringify({ subscription: { endpoint: PUSH_ENDPOINT, p256dh: 42 } }),
+    JSON.stringify({
+      subscription: { endpoint: PUSH_ENDPOINT, p256dh: "", auth: "" },
+    }),
+    JSON.stringify({ subscription: {} }),
+  ]) {
+    const env = mockEnv({
+      ...VAPID_ENV,
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      DATA_API: fakeDataApi(async () => new Response(body, { status: 200 })),
+    });
+    const outcomes: Row[] = [];
+    const ok = await deliverAlertMatch(
+      triggerRow({ channel: "webpush", destination: PUSH_ENDPOINT }) as never,
+      { netuid: 7 },
+      env,
+      vi.fn() as never,
+      { onOutcome: (o: Row) => outcomes.push(o) },
+    );
+    assert.equal(ok, false, `expected a decline for ${body.slice(0, 40)}`);
+    assert.equal(outcomes[0]!.responseSnippet, "device expired");
+  }
+});
+
 test("deliverAlertMatch: webpush survives a DATA_API lookup that throws or 500s", async () => {
   for (const dataApi of [
     fakeDataApi(async () => {
@@ -2285,6 +2317,65 @@ test("#11194: a non-ok snapshot refresh is reported, not swallowed", async () =>
   } finally {
     cap.restore();
   }
+});
+
+// #11194: per-ROW trigger parsing. `Array.isArray(body.triggers)` checked the
+// envelope and nothing checked the rows, so a trigger with no `id` reached the
+// rate-limit map keyed on `undefined` -- one bucket shared by every id-less
+// trigger, rate-limiting them against each other.
+test("#11194: a trigger row without an id is dropped; the rest of the page loads", async () => {
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(
+        async () =>
+          new Response(
+            JSON.stringify({
+              triggers: [
+                { channel: "webhook", destination: "https://x.example" },
+                "not a trigger at all",
+                triggerRow({ id: "keeper", netuid: 7 }),
+              ],
+            }),
+            { status: 200 },
+          ),
+      ),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+  );
+  await hub.refreshTriggers();
+  assert.deepEqual(
+    hub.triggers.map((t) => t.id),
+    ["keeper"],
+  );
+});
+
+// A snapshot that carries rows but NO current_block is a partial answer the
+// builder already handles (`Number.isFinite` refuses it), not a malformed one:
+// the schema passes it through as null and the caller hands `undefined` on.
+test("#11194: a snapshot with a null current_block loads the rows it does have", async () => {
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async (url) => {
+        if (String(url).includes("alert-triggers-active")) {
+          return conditionedTriggersResponse();
+        }
+        return new Response(
+          JSON.stringify({
+            current_block: null,
+            subnets: [{ netuid: 7, alpha_price_tao: 1 }],
+            immune_neurons: [],
+          }),
+          { status: 200 },
+        );
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+  );
+  await hub.refreshTriggers();
+  assert.equal(hub.metricSnapshot.subnetAlphaPriceRank.get(7), 1);
+  assert.equal(hub.metricSnapshot.neuronImmunityCountdownBlocks.size, 0);
 });
 
 // The other half: a HEALTHY refresh stays silent. This runs behind a gate that

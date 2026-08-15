@@ -274,6 +274,26 @@ describe("surface credential store", () => {
     }
   });
 
+  // #11194: the decrypted blob is PARSED, not cast. `storeSurfaceCredential`
+  // does not re-validate -- the normaliser at the MCP boundary is what refuses
+  // a bad argument -- so the read is the floor for anything that gets past it,
+  // including an older deploy's shape. An empty bundle is the case the parity
+  // test caught: the type admits `{}` and the write rule does not.
+  test("a decrypted value the schema rejects reads as absent", async () => {
+    const { env } = fakeEnv();
+    await storeSurfaceCredential(
+      env,
+      "account:7",
+      "sn-1-x-api",
+      {} as unknown as string,
+    );
+    assert.equal(
+      await loadSurfaceCredential(env, "account:7", "sn-1-x-api"),
+      null,
+      "a credential with no entries is nothing stored, not an empty header set",
+    );
+  });
+
   test("a KV read failure degrades to absent rather than throwing", async () => {
     const env = {
       METAGRAPH_CONTROL: {

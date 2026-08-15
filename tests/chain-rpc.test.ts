@@ -11,7 +11,11 @@
 // which is the rule the whole boundary-parsing effort is built on.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { chainRpc, describeRpcError } from "../src/chain-rpc.ts";
+import {
+  UNDESCRIBED_RPC_ERROR,
+  chainRpc,
+  describeRpcError,
+} from "../src/chain-rpc.ts";
 
 const URL = "https://rpc.test/";
 
@@ -145,5 +149,22 @@ describe("describeRpcError", () => {
         `empty description for ${JSON.stringify(shape)}`,
       );
     }
+  });
+
+  test("the floor holds even when BOTH serializations are empty", () => {
+    // The only input that reaches the fallback: JSON.stringify declines it
+    // (a function), and its own toString hands back nothing. Falling back to
+    // `String(error)` here -- which this first did -- would have returned the
+    // empty string it was called to replace, so the caller would read
+    // `state_getStorage: ` with nothing after the colon.
+    const mute = () => {};
+    mute.toString = () => "";
+    assert.equal(
+      JSON.stringify(mute),
+      undefined,
+      "premise: stringify declines",
+    );
+    assert.equal(String(mute), "", "premise: toString is empty");
+    assert.equal(describeRpcError(mute), UNDESCRIBED_RPC_ERROR);
   });
 });

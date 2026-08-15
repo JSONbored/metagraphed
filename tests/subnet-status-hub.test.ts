@@ -153,6 +153,54 @@ test("a netuid outside the u16 range is refused, not indexed", async () => {
   assert.equal(hub.byNetuid.size, 0);
 });
 
+// The URI spelling is accepted on BOTH halves, and a string that is not one is
+// refused rather than silently resolving to nothing (#11194).
+test("a netuid string that is not a status URI is refused", async () => {
+  const hub = new SubnetStatusHub(stubState(), {} as unknown as Env);
+  const res = await hub.fetch(
+    jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+      sessionId: "session-1",
+      netuid: "metagraph://chain/stream",
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(hub.byNetuid.size, 0);
+});
+
+test("unsubscribe accepts the URI spelling too, and ignores an unresolvable one", async () => {
+  // The two halves used to disagree: subscribe resolved a status URI, and
+  // unsubscribe took only a number -- so a client that spelled its subscribe
+  // one way could not undo it the other. Both read the same schema now.
+  const hub = new SubnetStatusHub(stubState(), {} as unknown as Env);
+  await hub.fetch(
+    jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+      sessionId: "session-1",
+      netuid: 42,
+    }),
+  );
+  const unresolvable = await hub.fetch(
+    jsonRequest("https://subnet-status-hub.internal/mcp-unsubscribe", {
+      sessionId: "session-1",
+      netuid: "not a resource uri",
+    }),
+  );
+  assert.equal(unresolvable.status, 200, "teardown never 400s");
+  assert.equal(
+    hub.byNetuid.get(42)!.has("session-1"),
+    true,
+    "still subscribed",
+  );
+
+  const byUri = await hub.fetch(
+    jsonRequest("https://subnet-status-hub.internal/mcp-unsubscribe", {
+      sessionId: "session-1",
+      netuid: buildSubnetStatusResourceUri(42),
+    }),
+  );
+  assert.equal(byUri.status, 200);
+  assert.equal(hub.byNetuid.has(42), false, "the URI spelling removed it");
+});
+
 test("handleUnsubscribe + unsubscribe-session clear membership", async () => {
   const hub = new SubnetStatusHub(stubState(), {} as unknown as Env);
   await hub.fetch(

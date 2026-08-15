@@ -326,6 +326,22 @@ describe("runAbuseScan reports, it does not enforce (#8611)", () => {
     assert.equal(captured.length, 0);
   });
 
+  // #11194: the anomalies body is parsed, not cast. `Number(body.flagged_count)
+  // || 0` already coerced, so a garbage body always scanned as zero -- an
+  // "all clear" indistinguishable from a real one, on a job whose only output
+  // is whether to raise an alert. It is now a reported failure instead.
+  test("a body the schema cannot read is a failed scan, not a quiet all-clear", async () => {
+    const { runAbuseScan } = await import("../workers/api.ts");
+    const unreadable = {
+      fetch: async () => Response.json({ flagged_count: "lots" }),
+    };
+    const result = await runAbuseScan(envWith({ DATA_API: unreadable }), {
+      waitUntil: () => {},
+    } as never);
+    assert.deepEqual(result, { ok: false, reason: "unreadable_body" });
+    assert.equal(captured.length, 0, "and nothing was reported as a spike");
+  });
+
   test("works without an ExecutionContext, reporting inline", async () => {
     // The cron path always has a ctx, but runAbuseScan is exported and a
     // caller without one must not blow up on `ctx.waitUntil`.

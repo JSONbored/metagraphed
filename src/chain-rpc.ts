@@ -49,6 +49,9 @@ import { ChainRpcEnvelopeSchema } from "../schemas-src/chain-rpc-envelope.ts";
  * `state_getStorage: ` with nothing after the colon: a decline that does not
  * say why, which is the failure the message prefix exists to prevent.
  */
+/** What a decline says when the node gave nothing to say it with. */
+export const UNDESCRIBED_RPC_ERROR = "rpc error with no description";
+
 export function describeRpcError(error: unknown): string {
   if (
     error !== null &&
@@ -59,9 +62,17 @@ export function describeRpcError(error: unknown): string {
   ) {
     return (error as { message: string }).message;
   }
-  // `?? "undefined"` covers the one input JSON.stringify does not stringify.
+  // `?? String(error)` covers the inputs JSON.stringify returns UNDEFINED for
+  // -- undefined itself, a function, a symbol -- which is the case that let
+  // this return a non-string while declaring `string`.
+  //
+  // The literal is the actual floor. Falling back to `String(error)` a second
+  // time, as this first did, cannot help: the only way to reach the fallback at
+  // all is for `String(error)` to have already produced the empty string (a
+  // function whose own `toString` returns one), so it would hand back exactly
+  // the value it was called to replace.
   const serialized = JSON.stringify(error) ?? String(error);
-  return serialized.trim() === "" ? String(error) : serialized;
+  return serialized.trim() === "" ? UNDESCRIBED_RPC_ERROR : serialized;
 }
 
 export interface ChainRpcOptions {

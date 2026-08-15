@@ -520,6 +520,26 @@ test("loadPools accepts both the enveloped and bare artifact shapes", async () =
   assert.equal(bare?.pools?.length, 1);
 });
 
+// #11194. The cast this replaced was an INTERSECTION of the two shapes above,
+// which no runtime value can be -- so ANY 200 satisfied it, and an error page
+// arrived as a pool-less artifact the caller could not tell from "no upstream
+// is eligible right now". One of those is an outage an operator should see.
+test("loadPools declines a body that is neither shape, rather than reading it as empty", async () => {
+  for (const body of [
+    { error: "not found" },
+    { pools: "finney-wss" },
+    { pools: [{ endpoints: "wss://one.example" }] },
+    "a string",
+    null,
+  ]) {
+    assert.equal(
+      await loadPools({} as WssLbEnv, poolsFetch(body)),
+      null,
+      `expected a decline for ${JSON.stringify(body)}`,
+    );
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Condition-level PostHog capture (#9046). What is pinned here, deliberately:
 // the two availability conditions and the unhandled-throw path emit; routine

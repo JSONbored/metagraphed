@@ -1263,6 +1263,43 @@ test("handleSubscribe: a body whose sessionId is the wrong type is a 400", async
   assert.equal(hub.sessionId, null);
 });
 
+test("handleUnsubscribe: a body missing sessionId is a 400, and removes nothing", async () => {
+  // The direction that matters: an unsubscribe accepted with `undefined` would
+  // set `this.sessionId = undefined` and then delete the uri anyway, leaving a
+  // session subscribed upstream (ChainFirehoseHub still holds the id) while
+  // this object believes it is not.
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/unsubscribe", {
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(hub.sessionId, "session-1");
+  assert.equal(hub.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI), true);
+});
+
+test("handleTerminate: a body this hub cannot read is a 400, not a tombstone", async () => {
+  // Terminate is the one route that can create durable state for an ARBITRARY
+  // Durable Object name, so an unreadable body must not reach it.
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const res = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/terminate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "not json at all",
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(hub.terminated, false);
+});
+
 test("handleNotify: a body missing uri is a 400", async () => {
   const hub = new McpSessionHub(stubState(), mockEnv());
   const res = await hub.fetch(

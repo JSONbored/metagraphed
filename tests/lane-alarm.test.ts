@@ -727,6 +727,21 @@ describe("laneAlarmGitHub", () => {
     assert.deepEqual(await odd.gh.listOpen(), {});
   });
 
+  // #11194: per-ROW parsing. One issue GitHub shapes unexpectedly must cost
+  // that issue and not the page -- refusing the whole list would drop every
+  // open alarm and re-raise all of them on the next tick.
+  test("an unreadable row is skipped; the rest of the page still lists", async () => {
+    const { gh } = client(() => ({
+      ok: true,
+      json: async () => [
+        { number: 5, title: 42 },
+        "not an object even slightly",
+        { number: 1, title: `${LANE_ALARM_TITLE_PREFIX}neurons-staleness` },
+      ],
+    }));
+    assert.deepEqual(await gh.listOpen(), { "neurons-staleness": 1 });
+  });
+
   test("opens an issue and returns its number", async () => {
     const { gh, seen } = client(() => ({
       ok: true,

@@ -188,10 +188,7 @@ import {
 import { SUBNET_DETAIL_SECTIONS } from "../schemas-src/routes/subnet-detail.ts";
 import { SUBNET_OVERVIEW_SECTIONS } from "../schemas-src/routes/subnet-overview.ts";
 import { SUBNET_PROFILE_SECTIONS } from "../schemas-src/routes/subnet-profiles.ts";
-import {
-  AbuseScanAnomaliesResponseSchema,
-  ColdTierAnswerSchema,
-} from "../schemas-src/internal-wire.ts";
+import { AbuseScanAnomaliesResponseSchema } from "../schemas-src/internal-wire.ts";
 
 /**
  * Route id -> the sections that route serves (#10600).
@@ -551,6 +548,7 @@ import {
 import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import {
   type ColdTierAnswer,
+  parseCachedColdTierAnswer,
   chainEventsQueryFromUrl,
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
@@ -4341,17 +4339,11 @@ export async function handleChainEventsFamily(
     ? await cacheable.store.match(cacheable.key)
     : null;
   // The tier travels WITH the payload through the cache, so a hit reports the
-  // same `meta.source` the miss did rather than guessing one back.
-  // PARSED, NOT CAST (#11194). A cache entry was written by a PREVIOUS deploy
-  // of this Worker, so "our own code wrote it" is not a guarantee about its
-  // shape. An entry that no longer parses is treated as a MISS, which recomputes
-  // -- strictly better than serving a stale shape under a `meta.source` that
-  // claims a tier it did not come from.
-  const cachedAnswer = cacheHit
-    ? ColdTierAnswerSchema.safeParse(await cacheHit.json())
-    : null;
-  let answer: ColdTierAnswer | null = cachedAnswer?.success
-    ? (cachedAnswer.data as ColdTierAnswer)
+  // same `meta.source` the miss did rather than guessing one back. PARSED, not
+  // cast (#11194) -- see parseCachedColdTierAnswer for why a cache read is a
+  // boundary even though this Worker wrote the bytes.
+  let answer: ColdTierAnswer | null = cacheHit
+    ? parseCachedColdTierAnswer(await cacheHit.json())
     : null;
 
   if (!answer) {
