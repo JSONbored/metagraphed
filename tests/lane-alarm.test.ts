@@ -717,14 +717,23 @@ describe("laneAlarmGitHub", () => {
     );
   });
 
-  test("an error or a non-array body lists nothing", async () => {
+  // NULL, not `{}`. This asserted the opposite, and the opposite is what put
+  // production in the state it was in: runLaneAlarm's own comment says an
+  // unreadable issue list must not be read as "no alarms are open" -- and then
+  // this client answered exactly that for every non-2xx, so the runner's guard
+  // could never fire. A token that cannot LIST issues cannot CREATE them
+  // either, so every tick planned a full set of opens and got none.
+  test("an error or an unreadable body DECLINES, rather than reporting nothing open", async () => {
     const bad = client(() => ({ ok: false, json: async () => [] }));
-    assert.deepEqual(await bad.gh.listOpen(), {});
+    assert.equal(await bad.gh.listOpen(), null);
     const odd = client(() => ({
       ok: true,
       json: async () => ({ message: "nope" }),
     }));
-    assert.deepEqual(await odd.gh.listOpen(), {});
+    assert.equal(await odd.gh.listOpen(), null);
+    // And an empty list still means empty -- the two must stay distinguishable.
+    const empty = client(() => ({ ok: true, json: async () => [] }));
+    assert.deepEqual(await empty.gh.listOpen(), {});
   });
 
   // #11194: per-ROW parsing. One issue GitHub shapes unexpectedly must cost
@@ -967,6 +976,142 @@ describe("runLaneAlarm", () => {
       lanes: 1,
     });
     assert.deepEqual(github.opened, []);
+  });
+
+  // The same failure through the door the client used to leave open: a non-2xx
+  // LIST. It used to flatten to `{}`, which is "no alarms are open" -- so the
+  // guard above could never fire on the case that actually happens, and every
+  // tick planned a full set of opens against a token that could not create
+  // them.
+  test("a REFUSED issue list stops the tick too, not just a thrown one", async () => {
+    const db = healthDb({
+      latest: [
+        {
+          lane: "a",
+          verdict: "stale",
+          age_ms: 1,
+          detail: null,
+          checked_at: NOW,
+        },
+      ],
+      runs: [{ lane: "a", since: NOW - 28 * HOUR, ticks: 100 }],
+    });
+    const github = fakeGitHub();
+    github.listOpen = async () => null;
+    const out = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      { github, now: () => NOW },
+    );
+    assert.equal((out as { reason?: string }).reason, "issue_list_unavailable");
+    assert.deepEqual(github.opened, []);
+  });
+
+  // THE ALARM'S ONLY PUSH CHANNEL, CHECKED. `opened` was a number in a return
+  // value nothing read: a tick that planned alarms and got none of them
+  // accepted was indistinguishable from a quiet one, and production sat in
+  // exactly that state -- zero `alarm(lane):` issues ever filed, against days
+  // of alarming lanes, while the per-lane events kept firing into PostHog.
+  test("an alarm GitHub refuses to open is reported, not counted and dropped", async () => {
+    const db = healthDb({
+      latest: [
+        {
+          lane: "a",
+          verdict: "stale",
+          age_ms: 1,
+          detail: null,
+          checked_at: NOW,
+        },
+      ],
+      runs: [{ lane: "a", since: NOW - 28 * HOUR, ticks: 100 }],
+    });
+    const github = fakeGitHub();
+    github.open = async () => null; // GitHub said no -- 403, 422, anything.
+    const seen: Array<{ errorCode?: string; error?: Error }> = [];
+    const out = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      {
+        github,
+        now: () => NOW,
+        recordException: async (_env, payload) => {
+          seen.push(payload as { errorCode?: string; error?: Error });
+          return true;
+        },
+      },
+    );
+    assert.equal((out as { opened?: number }).opened, 0);
+    const undelivered = seen.filter((p) => p.errorCode === "alarm_undelivered");
+    assert.equal(undelivered.length, 1, "the dead channel reported itself");
+    assert.match(String(undelivered[0].error?.message), /delivered nothing/);
+    // Under its OWN fingerprint -- filed as a lane it would read as one more
+    // stale producer, when it is the watchdog failing to report at all.
+    assert.equal(
+      (undelivered[0] as { fingerprintDetail?: string }).fingerprintDetail,
+      "delivery",
+    );
+  });
+
+  test("a telemetry failure never fails the tick that found the dead channel", async () => {
+    // The one thing worse than an alarm nobody can see is an alarm that takes
+    // the watchdog down with it. Both captures on this path are best-effort.
+    const db = healthDb({
+      latest: [
+        {
+          lane: "a",
+          verdict: "stale",
+          age_ms: 1,
+          detail: null,
+          checked_at: NOW,
+        },
+      ],
+      runs: [{ lane: "a", since: NOW - 28 * HOUR, ticks: 100 }],
+    });
+    const github = fakeGitHub();
+    github.open = async () => null;
+    const out = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      {
+        github,
+        now: () => NOW,
+        recordException: async () => {
+          throw new Error("posthog down");
+        },
+      },
+    );
+    assert.equal((out as { ok?: boolean }).ok, true);
+    assert.equal((out as { opened?: number }).opened, 0);
+  });
+
+  test("a tick that DELIVERS reports nothing extra", async () => {
+    // The negative control: the capture above must not fire on a working tick,
+    // or it becomes the noise it exists to cut through.
+    const db = healthDb({
+      latest: [
+        {
+          lane: "a",
+          verdict: "stale",
+          age_ms: 1,
+          detail: null,
+          checked_at: NOW,
+        },
+      ],
+      runs: [{ lane: "a", since: NOW - 28 * HOUR, ticks: 100 }],
+    });
+    const seen: Array<{ errorCode?: string }> = [];
+    await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      {
+        github: fakeGitHub(),
+        now: () => NOW,
+        recordException: async (_env, payload) => {
+          seen.push(payload as { errorCode?: string });
+          return true;
+        },
+      },
+    );
+    assert.deepEqual(
+      seen.filter((p) => p.errorCode === "alarm_undelivered"),
+      [],
+    );
   });
 
   test("still records the alarm when no token is configured", async () => {
