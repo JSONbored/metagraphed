@@ -106,14 +106,23 @@ export const MAX_UNREFERENCED_ROUTES = 0;
  * where it can be read, instead of being cleared by a table row.
  */
 export const PROSE_ONLY_ROUTES: readonly string[] = [
-  // Its whole presence in apps/ui is one row of `content/docs/accounts.mdx`:
-  // "| `GET /api/v1/accounts/{ss58}/identity-history` | Diff timeline of
-  // identity changes. |". No query, no component, nothing fetches it. Its two
-  // siblings ARE rendered -- `/chain/identity-history` and
-  // `/subnets/{netuid}/identity-history` both have real fetches in
-  // `lib/metagraphed/queries.ts` -- which is what makes this one an omission
-  // rather than a decision.
-  "/api/v1/accounts/{ss58}/identity-history",
+  // `/api/v1/accounts/{ss58}/identity-history` WAS HERE, and the reason it is
+  // not any more is that the omission it recorded has been fixed: previous
+  // revisions now render inside the account page's Identity section, from a
+  // real query in `lib/metagraphed/queries.ts`. The staleness check above is
+  // what caught the list going out of date -- it failed the moment the
+  // reference appeared, which is exactly what it is for.
+  //
+  // A CAPABILITY MATRIX FOR A CLIENT, not a page. `/api/v1/networks` answers
+  // "which chains are addressable and which route families does each actually
+  // serve", for a caller deciding what to call. Its two mentions in apps/ui are
+  // a comment in `lib/metagraphed/config.ts` and the generated api-reference
+  // tree this walk already skips, so once comments stop counting it has no code
+  // reference at all -- correctly. Rendering it in the UI to satisfy a checker
+  // would be building a surface for the checker; the docs page IS its rendered
+  // form. Listed here rather than exempted by a second mechanism, because this
+  // list already means "referenced only by prose, deliberately written down".
+  "/api/v1/networks",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */
@@ -171,6 +180,76 @@ export function unreferencedRoutes(
   return routes.filter((route) => !routePattern(route).test(source));
 }
 
+/**
+ * One file's CODE, with comments removed.
+ *
+ * PROSE IS NOT A CONSUMER, and dropping `.mdx` is only half of that: a route
+ * path written in a `//` comment counts identically. Found by writing one --
+ * the component added for `/api/v1/accounts/{ss58}/identity-history` explains
+ * itself by naming the route, and that sentence alone held the gate up when the
+ * query beneath it was mutated away.
+ *
+ * STRING-AWARE ACROSS ALL THREE QUOTE FORMS, which is the whole difficulty and
+ * the one way this could be worse than no change. A naive stripper eats
+ * `"https://…"` at the `//`, and this codebase composes paths in TEMPLATE
+ * literals -- `` `/api/v1/accounts/${ss58}/events` `` -- so backticks matter as
+ * much as quotes. Getting it wrong deletes the very references the check exists
+ * to find, silently: the count climbs and every entry looks like a real gap.
+ */
+export function stripCodeComments(source: string): string {
+  let out = "";
+  let quote: string | null = null;
+  let inLine = false;
+  let inBlock = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i]!;
+    const next = source[i + 1];
+    if (inLine) {
+      if (ch === "\n") {
+        inLine = false;
+        out += ch;
+      }
+      continue;
+    }
+    if (inBlock) {
+      if (ch === "*" && next === "/") {
+        inBlock = false;
+        i += 1;
+      }
+      continue;
+    }
+    if (quote) {
+      out += ch;
+      // A backslash escapes whatever follows, so a path ending `\"` does not
+      // close the string.
+      if (ch === "\\") {
+        out += next ?? "";
+        i += 1;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
+      out += ch;
+      continue;
+    }
+    if (ch === "/" && next === "/") {
+      inLine = true;
+      i += 1;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      inBlock = true;
+      i += 1;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
 function uiSource(): string {
   const files: string[] = [];
   const walk = (dir: string): void => {
@@ -190,7 +269,7 @@ function uiSource(): string {
     }
   }
   return files
-    .map((file) => readFileSync(file, "utf8"))
+    .map((file) => stripCodeComments(readFileSync(file, "utf8")))
     .join("\n")
     .replace(FOOTER_PATHS, "");
 }

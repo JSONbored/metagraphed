@@ -14,6 +14,7 @@ import {
   MAX_UNREFERENCED_ROUTES,
   publishedRoutes,
   routePattern,
+  stripCodeComments,
   unreferencedRoutes,
   PROSE_ONLY_ROUTES,
 } from "../scripts/validate-ui-route-coverage.ts";
@@ -160,6 +161,73 @@ describe("the named prose-only exemption (#10517)", () => {
     assert.ok(!PROSE_ONLY_ROUTES.includes("/api/v1/chain/identity-history"));
     assert.ok(
       !PROSE_ONLY_ROUTES.includes("/api/v1/subnets/{netuid}/identity-history"),
+    );
+  });
+});
+
+// Prose is not a consumer, in a doc OR in a comment (#10517).
+//
+// `.mdx` and the ApiSourceFooter `paths` arrays were already out of the
+// evidence. Comments were not, and a route named in one counted identically --
+// found by writing the comment that kept `/api/v1/accounts/{ss58}/identity-history`
+// green while the query beneath it was mutated away.
+describe("stripCodeComments", () => {
+  test("a route named only in a line comment is not a reference", () => {
+    assert.doesNotMatch(
+      stripCodeComments(
+        `// TODO: render /api/v1/chain/burn one day\nconst x = 1;`,
+      ),
+      /chain\/burn/,
+    );
+  });
+
+  test("a route in a BLOCK comment is not a reference either", () => {
+    assert.doesNotMatch(
+      stripCodeComments(
+        `/**\n * Fetches /api/v1/chain/burn eventually.\n */\nconst x = 1;`,
+      ),
+      /chain\/burn/,
+    );
+  });
+
+  test("A ROUTE IN A TEMPLATE LITERAL SURVIVES -- this is how they are built", () => {
+    // The failure that would be silent and total. This codebase composes paths
+    // as `` `/api/v1/accounts/${ss58}/events` ``, so a stripper that does not
+    // know backticks deletes the references the check exists to find, and every
+    // one of them then reads as a real gap.
+    assert.match(
+      stripCodeComments(
+        "const p = `/api/v1/accounts/${ss58}/identity-history`;",
+      ),
+      /identity-history/,
+    );
+  });
+
+  test("`https://` inside a string is not a comment, in any quote form", () => {
+    for (const q of ['"', "'", "`"]) {
+      assert.match(
+        stripCodeComments(
+          `const u = ${q}https://api.metagraph.sh/api/v1/networks${q};`,
+        ),
+        /api\.metagraph\.sh/,
+        q,
+      );
+    }
+  });
+
+  test("an escaped quote does not end the string early", () => {
+    assert.match(
+      stripCodeComments('const s = "a \\" /api/v1/chain/burn";'),
+      /chain\/burn/,
+    );
+  });
+
+  test("code after a comment survives", () => {
+    // Non-vacuity: the stripper must stop at the newline rather than eating the
+    // rest of the file, which would make every route look unreferenced.
+    assert.match(
+      stripCodeComments(`// note\nconst p = "/api/v1/chain/burn";`),
+      /chain\/burn/,
     );
   });
 });
