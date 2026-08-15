@@ -34,7 +34,13 @@ import { handleScheduled } from "../workers/api.ts";
 import * as workerConfig from "../workers/config.ts";
 
 const NOW = 1_785_800_000_000;
+
 const HOUR = 60 * 60_000;
+
+/** An age comfortably past whatever the bound currently is. Derived so the
+ * fixtures do not have to be rewritten every time the threshold is re-sized
+ * against a fresh measurement of the producer. */
+const PAST_THRESHOLD = NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS + HOUR;
 
 /** A pass that covered the keyspace, so coverage is never the thing under test
  * unless a case says so. */
@@ -107,15 +113,17 @@ describe("evaluateNominatorPositionsStaleness", () => {
     assert.equal(fresh.reason, null);
     assert.equal(fresh.age_ms, 2 * HOUR);
 
-    // 31h, not 7h: the threshold moved to 30h in #9301 once the lane had a
-    // real producer on a 24h tick. A 7-hour-old capture is now a HEALTHY
-    // mid-cycle reading -- see the constant's own header.
+    // DERIVED from the threshold, not a literal. This fixture has been
+    // rewritten twice as the bound moved (6h -> 30h in #9301, 30h -> 36h once
+    // the producer's real 34.57h worst case was measured), and a hard-coded
+    // hour count is a test that fails for the wrong reason every time the
+    // number it is testing changes.
     const stalled = evaluateNominatorPositionsStaleness(
-      inputs({ latestCapturedAtMs: NOW - 31 * HOUR }),
+      inputs({ latestCapturedAtMs: NOW - PAST_THRESHOLD }),
     );
     assert.equal(stalled.stale, true);
     assert.equal(stalled.reason, "stale");
-    assert.equal(stalled.latest_captured_at, NOW - 31 * HOUR);
+    assert.equal(stalled.latest_captured_at, NOW - PAST_THRESHOLD);
   });
 
   test("a capture from the middle of the producer's 24h cycle is quiet", () => {
@@ -211,7 +219,10 @@ describe("evaluateNominatorPositionsStaleness", () => {
     // If a whole 24h pass has been missed, "the producer stopped" is the
     // headline and the coverage of its last attempt is a detail.
     const verdict = evaluateNominatorPositionsStaleness(
-      inputs({ latestCapturedAtMs: NOW - 34 * HOUR, coveredColdkeys: 11_800 }),
+      inputs({
+        latestCapturedAtMs: NOW - PAST_THRESHOLD,
+        coveredColdkeys: 11_800,
+      }),
     );
     assert.equal(verdict.reason, "stale");
   });
@@ -366,7 +377,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   });
 
   test("a stalled lane records ONE exception naming the age and the route it breaks", async () => {
-    const { env } = fakeDb(NOW - 34 * HOUR);
+    const { env } = fakeDb(NOW - PAST_THRESHOLD);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
     const result = await runNominatorPositionsStalenessWatchdog(env, {
@@ -380,8 +391,18 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0]!.route, "watchdog:nominator-positions-staleness");
     assert.equal(recorded[0]!.errorCode, "stale_lane");
-    assert.match(String(recorded[0]!.error?.message), /34\.0 h old/);
-    assert.match(String(recorded[0]!.error?.message), /threshold 30 h/);
+    // Both numbers derived, so the message assertion follows the bound rather
+    // than pinning a stale pair of literals.
+    assert.match(
+      String(recorded[0]!.error?.message),
+      new RegExp(`${(PAST_THRESHOLD / HOUR).toFixed(1)} h old`),
+    );
+    assert.match(
+      String(recorded[0]!.error?.message),
+      new RegExp(
+        `threshold ${NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS / HOUR} h`,
+      ),
+    );
     assert.match(String(recorded[0]!.error?.message), /positions/);
   });
 

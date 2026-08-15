@@ -68,7 +68,7 @@ import { requireFullScanValue } from "./lane-table-topology.ts";
 /**
  * How old the ledger may get before this is a stall.
  *
- * THIRTY HOURS, not the neurons lane's 45 minutes, and the difference is the
+ * THIRTY-SIX HOURS, not the neurons lane's 45 minutes, and the difference is the
  * work: this lane is a full SubtensorModule::Alpha scan (~153k rows across
  * every coldkey on the network), which is why it never shared the 15-minute
  * metagraph cadence even when it ran.
@@ -83,17 +83,43 @@ import { requireFullScanValue } from "./lane-table-topology.ts";
  * alerted for roughly three quarters of every day on a lane working perfectly
  * -- the failure mode where an alarm that always fires stops being read.
  *
- * 30h is one missed pass plus slack for the scan itself (~4 minutes at the
- * measured ~3,100 rows/sec) and cron jitter. It fires only once a pass has
- * genuinely been skipped, and still catches a writer that stopped entirely
- * inside a day and a quarter rather than never.
+ * CORRECTED AGAIN, from 30h, and for the same reason one level finer: 30h was
+ * "one missed pass plus slack for the scan itself (~4 minutes) and cron
+ * jitter", and the producer's real worst case is far wider than jitter.
+ * Measured against production 2026-08-15 over 29 consecutive pass gaps:
+ *
+ *     min 0.66h    p90 24.41h    MAX 34.57h
+ *     4 gaps exceed the 24h cadence; 2 exceed the 30h bound
+ *
+ * A gap of 34.6h is not a skipped pass -- a skipped pass on a daily poller is
+ * ~48h. It is the pass running LATE, which is what a container running its
+ * lanes sequentially does when something ahead of this one runs long. The
+ * premise "a healthy lane presents an age anywhere in [0h, 24h+scan]" is
+ * therefore measurably false; the observed range is [0.66h, 34.57h].
+ *
+ * What that cost, from `lane_health` over 535 ticks: 519 `ok` (worst age
+ * 29.95h, just under the old bound) and **9 age-based `stale` verdicts between
+ * 30.02h and 33.02h**, every one of them from the two late passes above rather
+ * than from a producer that stopped. An alarm firing on a working lane 3% of
+ * the time is the #9301 failure this constant has already been corrected for
+ * once -- corrected then from 6h, and still left under the real ceiling.
+ *
+ * THIRTY-SIX HOURS: 1.5 ticks, clearing the measured 34.57h maximum by ~1.4h.
+ * The cost is stated rather than hidden -- a writer that stops entirely is now
+ * reported six hours later than before, at a day and a half rather than a day
+ * and a quarter. Against a daily producer that is still well inside "caught
+ * the same day", and it buys an alarm that means something when it fires.
+ *
+ * NOT a suppression of a known-bad state (which #9475 rightly refuses): the
+ * lane is healthy in every one of these cases, and the bound was describing a
+ * cadence the producer does not have.
  *
  * Overridable per-deployment via NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS so
  * the number can follow the Container's cadence without a code deploy.
  */
 export const NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS = missedTicksMs(
   "validator_nominators",
-  1.25,
+  1.5,
 );
 
 /**
