@@ -64,6 +64,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://github.com/entrius/gittensor"],
       "url": "https://docs.gittensor.io/"
     },
     {
@@ -79,6 +80,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://docs.gittensor.io/"],
       "url": "https://gittensor.io/"
     },
     {
@@ -94,6 +96,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://docs.gittensor.io/"],
       "url": "https://github.com/entrius/gittensor"
     },
     {
@@ -109,6 +112,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://docs.gittensor.io/"],
       "url": "https://docs.gittensor.io/register-repository.html"
     },
     {
@@ -124,6 +128,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://docs.gittensor.io/register-repository.html"],
       "url": "https://docs.gittensor.io/repository-hyperparameters"
     },
     {

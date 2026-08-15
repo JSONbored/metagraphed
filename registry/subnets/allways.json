@@ -9,7 +9,7 @@
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-06T00:00:00.000Z",
     "source_count": 3,
-    "verified_at": null
+    "verified_at": "2026-08-15T00:00:00.000Z"
   },
   "dashboard_url": null,
   "docs_url": "https://docs.all-ways.io/how-it-works.html",
@@ -58,6 +58,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://docs.all-ways.io/"],
       "url": "https://docs.all-ways.io/how-it-works.html"
     },
     {
@@ -73,6 +74,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://docs.all-ways.io/"],
       "url": "https://all-ways.io/"
     },
     {
@@ -88,6 +90,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://docs.all-ways.io/"],
       "url": "https://github.com/entrius/allways"
     },
     {
@@ -105,6 +108,7 @@
       "public_safe": true,
       "schema_status": "machine-readable",
       "schema_url": "https://api.all-ways.io/swagger-json",
+      "source_urls": ["https://api.all-ways.io/swagger/swagger-ui-init.js"],
       "url": "https://api.all-ways.io/swagger"
     },
     {
@@ -120,6 +124,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/health"
     },
     {
@@ -135,6 +140,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/protocol/constants"
     },
     {
@@ -150,6 +156,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/protocol/chain-state"
     },
     {
@@ -165,6 +172,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/network/overview"
     },
     {
@@ -180,6 +188,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/miners"
     },
     {
@@ -211,6 +220,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/miners/reliability"
     },
     {
@@ -226,6 +236,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/events/latest"
     },
     {
@@ -241,6 +252,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/crown"
     },
     {
@@ -257,6 +269,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/crown/history?direction=SOL-BTC"
     },
     {
@@ -273,6 +286,7 @@
       },
       "provider": "allways",
       "public_safe": true,
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/sse"
     },
     {
