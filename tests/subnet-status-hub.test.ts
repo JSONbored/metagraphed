@@ -119,6 +119,40 @@ test("handleSubscribe: rejects missing sessionId / netuid", async () => {
   assert.equal(missingNetuid.status, 400);
 });
 
+// #11194: the four handlers below used to read their bodies with
+// `as { sessionId?: unknown }` and re-check each field by hand, so a body that
+// was not JSON at all reached `request.json()` and threw out of the Durable
+// Object as a 500. These pin the parse that replaced that: a body this hub
+// cannot read is a DECLINE it states, not a fault it leaks.
+test("a body that is not JSON is a 400, not a throw out of the DO", async () => {
+  const hub = new SubnetStatusHub(stubState(), {} as unknown as Env);
+  const res = await hub.fetch(
+    new Request("https://subnet-status-hub.internal/mcp-subscribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "not json",
+    }),
+  );
+  assert.equal(res.status, 400);
+});
+
+// The bound the schema brought with it. `Number.isInteger(n) && n >= 0` -- the
+// hand-rolled test this replaced -- admitted 999999, which is not a netuid: it
+// is a u16 on chain, and every other surface in this repo rejects it. A
+// subscription for a netuid that cannot exist is an index key nothing can ever
+// notify, held for the life of the session.
+test("a netuid outside the u16 range is refused, not indexed", async () => {
+  const hub = new SubnetStatusHub(stubState(), {} as unknown as Env);
+  const res = await hub.fetch(
+    jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+      sessionId: "session-1",
+      netuid: 999999,
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(hub.byNetuid.size, 0);
+});
+
 test("handleUnsubscribe + unsubscribe-session clear membership", async () => {
   const hub = new SubnetStatusHub(stubState(), {} as unknown as Env);
   await hub.fetch(
@@ -181,6 +215,36 @@ test("handleNotifyChanged: fans out only to subscribed sessions for changed netu
   assert.deepEqual(sessions.calls[0].body, {
     uri: buildSubnetStatusResourceUri(7),
   });
+});
+
+// The DELIBERATE asymmetry between the envelope and its elements (#11194): a
+// prober that sends one bad netuid among many still delivers the rest, because
+// refusing the whole call would turn a partial producer fault into a total
+// delivery outage. Only a body with no `netuids` array at all declines.
+test("handleNotifyChanged: a bad element drops, a bad envelope declines", async () => {
+  const sessions = fakeMcpSessionHubBinding();
+  const hub = new SubnetStatusHub(stubState(), {
+    MCP_SESSION_HUB: sessions,
+  } as unknown as Env);
+  await hub.fetch(
+    jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+      sessionId: "interested",
+      netuid: 7,
+    }),
+  );
+  const withJunk = await hub.fetch(
+    jsonRequest("https://subnet-status-hub.internal/notify-changed", {
+      netuids: [7, "seven", null, -1, 999999, 7.5],
+    }),
+  );
+  assert.equal(((await withJunk.json()) as Row).delivered, 1);
+
+  const noArray = await hub.fetch(
+    jsonRequest("https://subnet-status-hub.internal/notify-changed", {
+      netuids: "7",
+    }),
+  );
+  assert.equal(((await noArray.json()) as Row).delivered, 0);
 });
 
 test("handleNotifyChanged: best-effort — a failing session does not abort others", async () => {
@@ -438,16 +502,24 @@ test("fetch: a thrown handler is captured as an $exception and still propagates"
     const hub = new SubnetStatusHub(stubState(), {
       POSTHOG_PROJECT_TOKEN: "phc_test_token",
     } as unknown as Env);
-    // A body that is not JSON makes handleSubscribe's request.json() throw --
-    // an unhandled fault, not a validated rejection.
+    // A STORAGE fault, not a malformed body. #11194 made an unreadable body a
+    // 400 -- an internal caller sending garbage should read a decline, not a
+    // 500 that reads as "this hub is broken" -- so the old trigger no longer
+    // throws. What this test is actually about is the wrapper: a handler that
+    // faults for a reason NOT on any validated path still emits an $exception
+    // and still propagates. A storage write that rejects is that reason, and a
+    // truer one than a body the schema now catches.
+    hub.state.storage.put = (async () => {
+      throw new Error("storage unavailable");
+    }) as unknown as DurableObjectStorage["put"];
     await assert.rejects(
       hub.fetch(
-        new Request("https://subnet-status-hub.internal/mcp-subscribe", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: "not json",
+        jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+          sessionId: "session-1",
+          netuid: 42,
         }),
       ),
+      /storage unavailable/,
     );
 
     const exceptions = posted.filter(

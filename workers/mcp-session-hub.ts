@@ -58,52 +58,15 @@ import {
 } from "../src/usage-telemetry.ts";
 
 import { parseSubnetStatusResourceUri } from "../src/subnet-status-subscribe.ts";
+import { badRequest, parseRequestBody } from "../src/hub-request.ts";
 import {
   MCP_SESSION_STATE_KEYS,
   type McpSessionState,
-  McpNotifyBodySchema,
-  McpSessionIdBodySchema,
+  HubNotifyBodySchema,
+  HubSessionIdBodySchema,
   McpSessionStateSchema,
-  McpSessionUriBodySchema,
-} from "../schemas-src/mcp-session-wire.ts";
-
-/**
- * A request body parsed against its schema, or null.
- *
- * PARSED, NOT CAST (#11194). These bodies arrive over `fetch()` from the
- * Worker, and `as { sessionId: string }` over a body that lacks it assigned
- * `undefined` straight onto session state -- a session that answers to
- * nothing, throwing nothing. Null here becomes a 400 at the call site, which
- * is a decline the caller can see.
- *
- * A body that is not JSON at all lands here as null too, rather than as an
- * exception escaping the DO.
- */
-async function parseRequestBody<T>(
-  request: Request,
-  schema: {
-    safeParse: (
-      value: unknown,
-    ) => { success: true; data: T } | { success: false };
-  },
-): Promise<T | null> {
-  let raw: unknown;
-  try {
-    raw = await request.json();
-  } catch {
-    return null;
-  }
-  const parsed = schema.safeParse(raw);
-  return parsed.success ? parsed.data : null;
-}
-
-/** The 400 a malformed body earns, in the shape this hub already answers in. */
-function badRequest(message: string): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status: 400,
-    headers: { "content-type": "application/json" },
-  });
-}
+  HubSessionUriBodySchema,
+} from "../schemas-src/hub-wire.ts";
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 
@@ -371,7 +334,7 @@ export class McpSessionHub implements DurableObject {
    * `terminated` session stays terminated rather than being resurrected by a late call.
    */
   async handleRegister(request: Request): Promise<Response> {
-    const body = await parseRequestBody(request, McpSessionIdBodySchema);
+    const body = await parseRequestBody(request, HubSessionIdBodySchema);
     const sessionId = body?.sessionId;
     if (!sessionId) {
       // Unchanged message: a malformed body and an absent id are the same
@@ -396,7 +359,7 @@ export class McpSessionHub implements DurableObject {
   }
 
   async handleSubscribe(request: Request): Promise<Response> {
-    const body = await parseRequestBody(request, McpSessionUriBodySchema);
+    const body = await parseRequestBody(request, HubSessionUriBodySchema);
     if (!body) return badRequest("sessionId and uri are required");
     const { sessionId, uri } = body;
     this.sessionId = sessionId;
@@ -437,7 +400,7 @@ export class McpSessionHub implements DurableObject {
   }
 
   async handleUnsubscribe(request: Request): Promise<Response> {
-    const body = await parseRequestBody(request, McpSessionUriBodySchema);
+    const body = await parseRequestBody(request, HubSessionUriBodySchema);
     if (!body) return badRequest("sessionId and uri are required");
     const { sessionId, uri } = body;
     this.sessionId = sessionId;
@@ -485,7 +448,7 @@ export class McpSessionHub implements DurableObject {
   // not a growing queue, since resources/read always returns CURRENT state
   // regardless of how many events fired in between.
   async handleNotify(request: Request): Promise<Response> {
-    const body = await parseRequestBody(request, McpNotifyBodySchema);
+    const body = await parseRequestBody(request, HubNotifyBodySchema);
     if (!body) return badRequest("uri is required");
     const { uri } = body;
     if (!this.subscribedUris.has(uri)) {
@@ -558,7 +521,7 @@ export class McpSessionHub implements DurableObject {
     // way. A client-supplied id is authority only after this object already
     // knows the session from resources/subscribe; otherwise DELETE must not
     // create/persist a tombstone for an arbitrary Durable Object name.
-    const body = await parseRequestBody(request, McpSessionIdBodySchema);
+    const body = await parseRequestBody(request, HubSessionIdBodySchema);
     if (!body) return badRequest("sessionId is required");
     const { sessionId } = body;
     if (!this.sessionId || (sessionId && sessionId !== this.sessionId)) {

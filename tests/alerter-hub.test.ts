@@ -2183,3 +2183,152 @@ test("#9440: a successful evaluate() captures nothing", async () => {
     cap.restore();
   }
 });
+
+// --- #11194: the dereg-risk snapshot is parsed, and its failures are reported --
+
+// A conditioned trigger, so refreshTriggers() actually reaches the snapshot
+// fetch (it is gated on at least one active trigger carrying a condition).
+function conditionedTriggersResponse() {
+  return new Response(
+    JSON.stringify({
+      triggers: [
+        triggerRow({
+          condition: {
+            metric: "neuron_immunity_countdown_blocks",
+            operator: "lt",
+            threshold: 100,
+          },
+        }),
+      ],
+    }),
+    { status: 200 },
+  );
+}
+
+// THE TWO EMPTIES. A `current_block` of the wrong type ALREADY produced an
+// empty snapshot before this change -- buildDeregRiskSnapshot's
+// `Number.isFinite` guard saw to that -- so this is not a crash being fixed.
+// What it fixes is that the empty was indistinguishable from "the producer had
+// nothing to report", on the path that decides whether a user's alert fires.
+//
+// So this asserts the REPORT, not the map: the map was already empty, and a
+// test that only checked it would pass against the cast it replaced.
+test("#11194: a snapshot this hub cannot read is reported, not just quietly empty", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new AlerterHub(
+      STATE,
+      mockEnv({
+        ...TELEMETRY_ENV,
+        DATA_API: fakeDataApi(async (url) => {
+          if (String(url).includes("alert-triggers-active")) {
+            return conditionedTriggersResponse();
+          }
+          return new Response(
+            JSON.stringify({
+              current_block: "1000",
+              subnets: [],
+              immune_neurons: [
+                { netuid: 7, hotkey: "5Fhot", immunity_expires_at_block: 1500 },
+              ],
+            }),
+            { status: 200 },
+          );
+        }),
+        ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      }),
+    );
+    await hub.refreshTriggers();
+    assert.equal(hub.metricSnapshot.neuronImmunityCountdownBlocks.size, 0);
+    const usage = cap.posted.filter(
+      (p) =>
+        ((p.body as Row).properties as Row)?.route ===
+        "alerter-hub:metric-snapshot-refresh",
+    );
+    assert.equal(usage.length, 1);
+    assert.equal(((usage[0].body as Row).properties as Row).ok, false);
+  } finally {
+    cap.restore();
+  }
+});
+
+// #9440's lesson, which this refresh never got: a refresh that silently does
+// not happen looks exactly like one with nothing to do. This is the refresh
+// currently failing EVERY time -- the route's chain-table reads went with the
+// box's Postgres (#9193), so it answers 503 -- and it said nothing at all.
+test("#11194: a non-ok snapshot refresh is reported, not swallowed", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new AlerterHub(
+      STATE,
+      mockEnv({
+        ...TELEMETRY_ENV,
+        DATA_API: fakeDataApi(async (url) => {
+          if (String(url).includes("alert-triggers-active")) {
+            return conditionedTriggersResponse();
+          }
+          return new Response(
+            JSON.stringify({ error: "hyperdrive binding unavailable" }),
+            { status: 503 },
+          );
+        }),
+        ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      }),
+    );
+    await hub.refreshTriggers();
+    const usage = cap.posted.filter(
+      (p) =>
+        ((p.body as Row).properties as Row)?.route ===
+        "alerter-hub:metric-snapshot-refresh",
+    );
+    assert.equal(usage.length, 1);
+  } finally {
+    cap.restore();
+  }
+});
+
+// The other half: a HEALTHY refresh stays silent. This runs behind a gate that
+// only opens when a condition trigger exists, but it still must not emit per
+// refresh cycle on a working deployment.
+test("#11194: a healthy snapshot refresh emits nothing", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new AlerterHub(
+      STATE,
+      mockEnv({
+        ...TELEMETRY_ENV,
+        DATA_API: fakeDataApi(async (url) => {
+          if (String(url).includes("alert-triggers-active")) {
+            return conditionedTriggersResponse();
+          }
+          return new Response(
+            JSON.stringify({
+              current_block: 1000,
+              subnets: [],
+              immune_neurons: [
+                { netuid: 7, hotkey: "5Fhot", immunity_expires_at_block: 1500 },
+              ],
+            }),
+            { status: 200 },
+          );
+        }),
+        ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      }),
+    );
+    await hub.refreshTriggers();
+    assert.equal(
+      hub.metricSnapshot.neuronImmunityCountdownBlocks.get("7:5Fhot"),
+      500,
+    );
+    assert.deepEqual(
+      cap.posted.filter(
+        (p) =>
+          ((p.body as Row).properties as Row)?.route ===
+          "alerter-hub:metric-snapshot-refresh",
+      ),
+      [],
+    );
+  } finally {
+    cap.restore();
+  }
+});
