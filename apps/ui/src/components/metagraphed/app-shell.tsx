@@ -517,6 +517,11 @@ function SiteFooter() {
           <FooterLink to="/status">Status</FooterLink>
           <FooterLink to="/contribute">Contribute</FooterLink>
           <FooterLink to="/agents">For agents</FooterLink>
+          {/* #11266: the ONLY link to /news anywhere on the site. Its 161
+              weekly digests were reachable from /news and from nowhere else,
+              and /news itself from nothing at all -- so the whole subtree was
+              unreachable by a crawler, sitemap included. */}
+          <FooterLink to="/news">Weekly digests</FooterLink>
           <FooterLink to="/about">About</FooterLink>
         </FooterCol>
         <FooterCol title="Guides">

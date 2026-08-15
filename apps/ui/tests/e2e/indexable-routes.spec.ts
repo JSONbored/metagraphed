@@ -143,3 +143,41 @@ test.describe("#11258 docs pages describe themselves, within budget", () => {
     expect(text).toContain("no API key");
   });
 });
+
+test.describe("#11266 the weekly digests are reachable at all", () => {
+  // 161 digest pages shipped in #8705 and were reachable from NOTHING: absent
+  // from sitemap.xml, and /news itself had no inbound link anywhere on the site
+  // (measured against production — 0 links from /, /subnets, /subnets/38,
+  // /docs, /about). /news linked its own 160 children, so the whole subtree
+  // hung off a page a crawler could not find. Their own route comment calls
+  // them "the pages the issue expects search and social to land on".
+
+  test("sitemap.xml lists the digests", async ({ request }) => {
+    const xml = await (await request.get("/sitemap.xml")).text();
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!);
+    const news = locs.filter((u) => new URL(u).pathname.startsWith("/news"));
+    expect(news.length, "no /news URLs in the sitemap").toBeGreaterThan(100);
+    expect(news, "the /news index itself must be listed").toContain("https://metagraph.sh/news");
+    // A sitemap that lists a URL twice is a sitemap the crawler distrusts.
+    expect(new Set(locs).size).toBe(locs.length);
+  });
+
+  test("every page links /news, so the subtree is not sitemap-only", async ({ request }) => {
+    // Sitemap-only is the textbook profile for "Crawled – currently not
+    // indexed": discoverable, but with nothing saying it matters.
+    for (const path of ["/", "/subnets", "/docs"]) {
+      const html = await (await request.get(path)).text();
+      expect(html, `${path} does not link /news`).toContain('href="/news"');
+    }
+  });
+
+  test("a digest the sitemap lists actually answers", async ({ request }) => {
+    const xml = await (await request.get("/sitemap.xml")).text();
+    const digest = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+      .map((m) => new URL(m[1]!).pathname)
+      .find((p) => /^\/news\/sn\d+\//.test(p));
+    expect(digest, "the sitemap lists no per-week digest").toBeTruthy();
+    const response = await request.get(digest!, { maxRedirects: 0 });
+    expect(response.status(), `${digest} is in the sitemap but does not answer 200`).toBe(200);
+  });
+});
