@@ -63,6 +63,7 @@ import {
   GithubCreatedIssueSchema,
   GithubIssueListSchema,
   GithubIssueSchema,
+  GithubSearchResultSchema,
 } from "../schemas-src/foreign-wire.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { countOrZero } from "./read-store.ts";
@@ -986,19 +987,39 @@ export function laneAlarmGitHub(
   };
   return {
     async listAcknowledged() {
-      // CLOSED, newest first. Only the most recent close per lane matters --
-      // an older one cannot acknowledge a loss the newer one already did.
+      // SEARCHED BY TITLE, because a page of closed issues cannot reach far
+      // enough to matter. #11305 asked
+      // /issues?state=closed&sort=updated&per_page=100, and measured on this
+      // repo that page carries 100 rows of which only 38 are issues -- the
+      // endpoint returns pull requests too, and the loop below then discards
+      // them -- spanning about FOURTEEN HOURS. The window an acknowledgement
+      // has to survive is the residue guard's SEVEN DAYS, because that is how
+      // long a dead-letter record keeps qualifying.
+      //
+      // So that fix worked for its first night. Once the close scrolled off the
+      // page the lane looked unacknowledged again and the alarm re-filed it,
+      // every half hour, for the six days left on the record -- the same
+      // issue-about-nothing #11305 set out to stop, arriving a day late.
+      //
+      // `in:title` narrows to the issues this alarm has itself filed, so one
+      // request covers the whole population however busy the repo gets, and no
+      // paging loop reads thousands of unrelated issues every tick to find one
+      // close. Newest first still, for the same reason: only the most recent
+      // close per lane matters, since an older one cannot acknowledge a loss
+      // the newer one already did.
+      const query = `repo:${repo} is:issue in:title "${LANE_ALARM_TITLE_PREFIX}"`;
       const response = await fetchImpl(
-        `${GITHUB_API}/repos/${repo}/issues?state=closed&sort=updated&direction=desc&per_page=100`,
+        `${GITHUB_API}/search/issues?q=${encodeURIComponent(query)}` +
+          "&sort=updated&order=desc&per_page=100",
         { headers },
       );
       // `{}` on every failure, deliberately, and the opposite of `listOpen`:
       // an acknowledgement we cannot read must never suppress an alarm.
       if (!response.ok) return {};
-      const page = GithubIssueListSchema.safeParse(await response.json());
+      const page = GithubSearchResultSchema.safeParse(await response.json());
       if (!page.success) return {};
       const out: Record<string, number> = {};
-      for (const row of page.data) {
+      for (const row of page.data.items) {
         const parsed = GithubIssueSchema.safeParse(row);
         if (!parsed.success) continue;
         const issue = parsed.data;

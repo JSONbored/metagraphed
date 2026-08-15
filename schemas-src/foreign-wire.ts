@@ -62,6 +62,19 @@ export const GithubIssueSchema = z.object({
  */
 export const GithubIssueListSchema = z.array(z.unknown());
 
+/**
+ * `GET /search/issues` — the alarm's own issues, found by title.
+ *
+ * A DIFFERENT SHAPE FROM THE LIST ABOVE, which is why it is a different
+ * schema: search wraps its results in an object, so a body that parsed as the
+ * plain array would be one we misread rather than one we rejected. `items`
+ * carries `z.unknown()` for the same reason the list does — one issue GitHub
+ * shapes unexpectedly costs that issue, not the whole page.
+ */
+export const GithubSearchResultSchema = z.object({
+  items: z.array(z.unknown()),
+});
+
 /** `POST /repos/{repo}/issues` — only the created number is read. */
 export const GithubCreatedIssueSchema = z.object({
   number: z.number().optional(),
