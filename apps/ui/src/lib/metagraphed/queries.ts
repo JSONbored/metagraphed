@@ -208,6 +208,8 @@ import type {
   SubnetIdleStake,
   ChainIdleStake,
   ChainIdleStakeSubnet,
+  AccountIdentityHistory,
+  AccountIdentityHistoryEntry,
   SubnetIdentityHistory,
   SubnetWeightSetter,
   SubnetWeightSetters,
@@ -7263,6 +7265,70 @@ function normalizeSubnetIdentityHistory(netuid: number, raw: unknown): SubnetIde
   };
 }
 
+/** One account identity revision. Dropped when it carries no hash: that is the
+ * only field identifying a revision, and a row without it cannot be keyed or
+ * de-duplicated against its neighbours. */
+export function normalizeAccountIdentityHistoryEntry(
+  raw: unknown,
+): AccountIdentityHistoryEntry | null {
+  if (!isRecord(raw)) return null;
+  const identity_hash = firstString(raw.identity_hash);
+  if (!identity_hash) return null;
+  return {
+    identity_hash,
+    observed_at: firstString(raw.observed_at) ?? null,
+    name: firstString(raw.name) ?? null,
+    url: firstString(raw.url) ?? null,
+    github: firstString(raw.github) ?? null,
+    image: firstString(raw.image) ?? null,
+    discord: firstString(raw.discord) ?? null,
+    description: firstString(raw.description) ?? null,
+    additional: firstString(raw.additional) ?? null,
+  };
+}
+
+function normalizeAccountIdentityHistory(ss58: string, raw: unknown): AccountIdentityHistory {
+  const rec = isRecord(raw) ? raw : {};
+  const entries = Array.isArray(rec.entries)
+    ? rec.entries
+        .map(normalizeAccountIdentityHistoryEntry)
+        .filter((e): e is AccountIdentityHistoryEntry => e !== null)
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    account: firstString(rec.account) ?? ss58,
+    // The SERVED count, not the parsed length, when the payload states one --
+    // they differ exactly when a row was dropped above, and flattening that to
+    // the survivors would hide the drop.
+    entry_count: firstFiniteNumber(rec.entry_count) ?? entries.length,
+    entries,
+    limit: firstFiniteNumber(rec.limit) ?? null,
+    offset: firstFiniteNumber(rec.offset) ?? null,
+    next_cursor: firstString(rec.next_cursor) ?? null,
+  };
+}
+
+/** Append-only on-chain identity timeline for one account (#10517), newest
+ * first. Published since #1647's account sibling landed and rendered nowhere --
+ * its only mention anywhere in apps/ui was a row in a docs table, which is what
+ * `validate:ui-route-coverage` was counting as a render. */
+export const accountIdentityHistoryQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-identity-history", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountIdentityHistory>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/identity-history`,
+        { signal },
+      );
+      return {
+        data: normalizeAccountIdentityHistory(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
 // #1647: append-only on-chain identity timeline for one subnet (newest first),
 // from the subnet_identity_history store tier. No paging params surfaced yet — the
 // default page (limit<=1000) is enough for the profile tab that consumes this.
@@ -8140,43 +8206,20 @@ export const subnetValidatorsQuery = (netuid: number) =>
     staleTime: STALE_SHORT,
   });
 
-/**
- * Network-wide validator/operator leaderboard grouped by hotkey.
- *
- * `subnets` — the per-subnet breakdown array — is **66% of every row** (1,090
- * of 1,641 bytes, measured 2026-08-15) and most callers never read it. Passing
- * `subnets: false` drops it during normalization, which keeps it out of the
- * react-query cache and therefore out of the SSR dehydration inlined into the
- * document (#11315).
- *
- * That is the whole cost being paid: `/validators` rendered **50** rows while
- * dehydrating **1,447**, and the resulting 983 KB of inline JSON is decompressed,
- * parsed and deserialised on the main thread of whatever phone loaded the page.
- * The API has no field projection (`?fields=` answers 400), and the fetch itself
- * happens during SSR, so it never crosses the user's wire — dropping the array
- * client-side removes the part the user actually pays for.
- *
- * It is part of the query KEY on purpose: two callers asking for different
- * shapes must not share a cache entry, or whichever ran second would read rows
- * that are missing a field it needs.
- */
+/** Network-wide validator/operator leaderboard grouped by hotkey. */
 export const validatorsQuery = ({
   sort = "subnet_count",
   limit = 20,
-  subnets = true,
-}: { sort?: GlobalValidatorSort; limit?: number; subnets?: boolean } = {}) =>
+}: { sort?: GlobalValidatorSort; limit?: number } = {}) =>
   queryOptions({
-    queryKey: k("global-validators", sort, limit, subnets),
+    queryKey: k("global-validators", sort, limit),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<Partial<GlobalValidators>>("/api/v1/validators", {
         params: { sort, limit },
         signal,
       });
-      const data = normalizeGlobalValidators(res.data);
       return {
-        data: subnets
-          ? data
-          : { ...data, validators: data.validators.map((v) => ({ ...v, subnets: [] })) },
+        data: normalizeGlobalValidators(res.data),
         meta: res.meta,
         url: res.url,
       } as ApiResult<GlobalValidators>;
@@ -9420,41 +9463,11 @@ export function statusToHealth(v: unknown): HealthState | undefined {
   return "unknown";
 }
 
-/**
- * Fields the API sends on every endpoint row that this app reads NOWHERE
- * (#11326).
- *
- * `normalizeEndpoint` spreads the raw row, so anything the API adds survives
- * into the react-query cache and therefore into the SSR dehydration inlined in
- * the document. `/apis/endpoints` fetches the whole catalogue — **3,372 rows** —
- * which is why it is the heaviest page on the site at **4,948 KB uncompressed**
- * in production, nearly 4x /validators.
- *
- * Each name below was checked across the whole of apps/ui: zero references
- * outside queries.ts and types.ts, and none is declared on `Endpoint`. Fields
- * that ARE read somewhere — `source_urls`, `rate_limit_notes`,
- * `classification` — are deliberately absent from this list and still pass
- * through.
- *
- * This is dead data, not a per-query projection: there is no caller for whom
- * these are live, so unlike `validatorsQuery`'s `subnets` option this needs no
- * cache-key split. Re-check with a grep before adding to it.
- */
-const UNREAD_ENDPOINT_FIELDS = [
-  "monitoring_policy",
-  "method_support",
-  "method_tested",
-  "score_reasons",
-  "pool_eligibility_reasons",
-] as const;
-
 function normalizeEndpoint(raw: unknown): Endpoint {
   if (!raw || typeof raw !== "object") return raw as Endpoint;
   const e = raw as Record<string, unknown>;
-  const lean: Record<string, unknown> = { ...e };
-  for (const field of UNREAD_ENDPOINT_FIELDS) delete lean[field];
   return {
-    ...(lean as object),
+    ...(e as object),
     id: asString(e.id) ?? "",
     health: (e.health as HealthState) ?? statusToHealth(e.status) ?? "unknown",
     provider_slug: asString(e.provider_slug) ?? asString(e.provider) ?? asString(e.operator),
