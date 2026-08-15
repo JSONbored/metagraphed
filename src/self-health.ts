@@ -27,7 +27,11 @@ import type {
   SelfHealthLane as PublishedSelfHealthLane,
 } from "../schemas-src/routes/self-health.ts";
 import type { LaneHealthRecord } from "./lane-health.ts";
-import { laneSilenceThresholdMs } from "./lane-alarm.ts";
+import {
+  LANE_ALARM_MAX_VERDICT_AGE_MS,
+  laneSilenceThresholdMs,
+} from "./lane-alarm.ts";
+import { DEAD_LETTER_LANES } from "./dead-letter.ts";
 import { laneSilenceCadenceMs } from "./producer-cadence.ts";
 
 export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
@@ -267,6 +271,12 @@ export function buildSelfHealth(
  * D1 regardless of which one answered. Merging here means a degraded serving tier still
  * reports lane health — which is the situation the caller most wants it in.
  */
+/** The lane names `handleDeadLetterBatch` can write, from the map it dispatches
+ * on rather than from a `-dlq` suffix guess -- a lane missing from that map
+ * produces no verdict at all, which is the #10894 defect in the other
+ * direction. */
+const DEAD_LETTER_LANE_NAMES = new Set(Object.values(DEAD_LETTER_LANES));
+
 export function withLaneHealth(
   card: SelfHealth,
   laneRows: Record<string, LaneHealthRecord>,
@@ -300,6 +310,37 @@ export function withLaneHealth(
 ): SelfHealth {
   const { cadences, nowMs = Date.now() } = options;
   const lanes: SelfHealthLaneView[] = Object.values(laneRows)
+    // A DEAD-LETTER VERDICT IS AN EVENT, NOT A STATE (#11297).
+    //
+    // Every other lane here reports a continuous condition and can say `ok`
+    // again. A `*-dlq` lane cannot: `handleDeadLetterBatch` is its only writer
+    // and it writes only when a message is lost, because nothing un-loses one.
+    // So the last loss is served as the current state forever, and
+    // `stale_lane_count` can never return to zero -- measured 2026-08-15, one
+    // stale lane on a fleet whose every cause was fixed and verified hours
+    // earlier.
+    //
+    // THE SILENCE PATH BELOW CANNOT REACH IT, which is why this is separate.
+    // That bound is a multiple of the lane's own cadence, and a dlq has none --
+    // nothing writes it on a schedule -- so `laneSilenceCadenceMs` returns null
+    // and the verdict is left alone by design.
+    //
+    // DROPPED RATHER THAN MARKED, because absence is already this family's
+    // healthy representation: a dlq that has never lost a message has no row at
+    // all. One that lost a message a fortnight ago should look the same, and
+    // `unknown` would claim we cannot tell when we can.
+    //
+    // NOT SUPPRESSION. A fresh loss writes a fresh row and the count goes back
+    // up on the same tick. The row also stays in `lane_health` for triage --
+    // what changes is only whether it counts as NOW. Sharing the alarm's own
+    // residue constant rather than picking a second number: it already argues
+    // that a lane silent for a week is residue rather than an outage, and it
+    // already applies that to whether an issue gets filed.
+    .filter(
+      (row) =>
+        !DEAD_LETTER_LANE_NAMES.has(row.lane) ||
+        nowMs - row.checked_at <= LANE_ALARM_MAX_VERDICT_AGE_MS,
+    )
     .map((row) => {
       // The lane's own observed maximum gap, floored by its producer's
       // declared cadence where one exists (#10333). Neither alone is enough:
