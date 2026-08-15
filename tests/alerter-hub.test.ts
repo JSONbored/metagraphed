@@ -928,8 +928,11 @@ test("matchingTriggers: a trigger with NO filters matches every event (#11339)",
   // comparison would have made it fire on nothing.
   const hub = new AlerterHub(STATE, mockEnv());
   hub.triggers = [
-    // Every optional filter absent: the shape a hand-created trigger has.
-    triggerRow({ id: "bare" }),
+    // Built literally, NOT through `triggerRow`: that helper defaults
+    // `netuid: 7`, so it can never produce the absent-filter shape this test
+    // is about -- and the `?? null` arm it exercises stayed uncovered while a
+    // test that looked like this one passed.
+    { id: "bare", channel: "email", destination: "a@b.com" },
     triggerRow({ id: "scoped", netuid: 8 }),
   ];
   const matches = hub.matchingTriggers({

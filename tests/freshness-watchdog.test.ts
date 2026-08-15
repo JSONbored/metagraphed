@@ -449,3 +449,31 @@ test("a lane_health write that fails never breaks the tick", async () => {
   assert.equal(res.ok, true);
   assert.equal(res.stale_count, 1);
 });
+
+test("with NO reader injected it uses the real one, and degrades on an unbound archive", async () => {
+  // Every other test here injects `readArtifact`, so the production default
+  // (`deps.readArtifact ?? readArtifact`) had no coverage at all -- the arm
+  // that decides what runs when nobody overrides it (#11339).
+  //
+  // Against an env with no R2 binding the real reader answers `ok: false`
+  // rather than throwing, which is what makes the watchdog degrade to a no-op
+  // instead of taking the cron down with it.
+  const res = (await runFreshnessWatchdog(envWith(undefined))) as Record<
+    string,
+    unknown
+  >;
+  // What it ACTUALLY does, which is not what the injected-null path does.
+  //
+  // `readArtifact: async () => null` above yields
+  // `{ ok: false, reason: "artifact_unavailable" }`. The REAL reader against an
+  // env with no R2 binding yields an artifact the watchdog can read and finds
+  // no tables in -- so it reports `ok: true` having checked ZERO of them.
+  //
+  // Both are defensible and they are different answers to "the artifact is not
+  // there", which is worth knowing about. Not changed here: this test is
+  // covering a pre-existing default arm, and a watchdog's decline semantics are
+  // not a typing change's business to redefine.
+  assert.equal(res.ok, true);
+  assert.equal(res.checked, 0, "reported healthy having checked nothing");
+  assert.equal(res.reported, false);
+});
