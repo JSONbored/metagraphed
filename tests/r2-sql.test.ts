@@ -21,6 +21,7 @@ import {
   R2_SQL_MAX_BODY_BYTES_DEFAULT,
   R2_SQL_MAX_BODY_BYTES_ENV,
   R2_SQL_TOKEN_ENV,
+  maxBodyBytes,
   safeBlockNumber,
   safeHexLiteral,
   safeSs58Literal,
@@ -1431,6 +1432,108 @@ describe("a lakehouse read is VALIDATED, not cast (#11000)", () => {
         ...noCapture,
       }),
       [{ x: "free" }],
+    );
+  });
+
+  // TESTNET IS A SERVED NETWORK. The lookup tested for a `chain.` prefix
+  // alone, so a `chain_testnet.*` statement kept its namespace, matched no
+  // key, and resolved to no schema -- every testnet read skipped validation
+  // entirely. Silently, because an unvalidated read looks exactly like a
+  // validated one that passed.
+  test("a testnet read is validated against the same row schema", async () => {
+    const rows = await r2SqlQuery(
+      mockEnv(TOKEN),
+      "SELECT block_number FROM chain_testnet.blocks LIMIT 1",
+      {
+        fetch: streamOf({
+          success: true,
+          result: { rows: [{ block_number: "not-a-height" }] },
+        }),
+        ...noCapture,
+      },
+    );
+    // Refused, not served -- the mainnet behaviour, now reached from testnet.
+    assert.equal(rows, null);
+  });
+
+  test("a legitimate testnet row still comes back", async () => {
+    // The other half, and the one that catches an over-eager fix: refusing
+    // everything would also make the test above pass.
+    assert.deepEqual(
+      await r2SqlQuery(
+        mockEnv(TOKEN),
+        "SELECT block_number FROM chain_testnet.blocks LIMIT 1",
+        {
+          fetch: streamOf({
+            success: true,
+            result: { rows: [{ block_number: 42 }] },
+          }),
+          ...noCapture,
+        },
+      ),
+      [{ block_number: 42 }],
+    );
+  });
+
+  test("a namespace that merely starts like one is left unqualified", async () => {
+    // `chain_other.blocks` is not a lakehouse namespace. Stripping any prefix
+    // that ends in a known table name would validate a table this repo has no
+    // description of -- so the match requires the full namespace and its dot.
+    assert.deepEqual(
+      await r2SqlQuery(
+        mockEnv(TOKEN),
+        "SELECT block_number FROM chain_other.blocks LIMIT 1",
+        {
+          fetch: streamOf({
+            success: true,
+            result: { rows: [{ block_number: "not-a-height" }] },
+          }),
+          ...noCapture,
+        },
+      ),
+      [{ block_number: "not-a-height" }],
+    );
+  });
+});
+
+describe("the body ceiling reads a declared field, not a cast (#11067)", () => {
+  test("an unset ceiling falls back to the default", () => {
+    // `env.R2_SQL_MAX_BODY_BYTES` was reached through `as keyof Env`, which
+    // typechecked precisely BECAUSE it asserted past the interface the field
+    // was missing from. Declaring it makes the read ordinary; this pins that
+    // the behaviour did not move with it.
+    assert.equal(maxBodyBytes(mockEnv(TOKEN)), R2_SQL_MAX_BODY_BYTES_DEFAULT);
+    assert.equal(maxBodyBytes(null), R2_SQL_MAX_BODY_BYTES_DEFAULT);
+    assert.equal(maxBodyBytes(undefined), R2_SQL_MAX_BODY_BYTES_DEFAULT);
+  });
+
+  test("an explicit ceiling is honoured, and 0 disables the cap", () => {
+    const withCeiling = (value: string) => ({
+      ...mockEnv(TOKEN),
+      [R2_SQL_MAX_BODY_BYTES_ENV]: value,
+    });
+    assert.equal(maxBodyBytes(withCeiling("2048")), 2048);
+    // A real "0" turns the cap off -- an operator must be able to open a
+    // safety valve they have decided is in the way.
+    assert.equal(maxBodyBytes(withCeiling("0")), 0);
+  });
+
+  test("a blank or unparseable ceiling falls back rather than throwing", () => {
+    const withCeiling = (value: string) => ({
+      ...mockEnv(TOKEN),
+      [R2_SQL_MAX_BODY_BYTES_ENV]: value,
+    });
+    assert.equal(
+      maxBodyBytes(withCeiling("   ")),
+      R2_SQL_MAX_BODY_BYTES_DEFAULT,
+    );
+    assert.equal(
+      maxBodyBytes(withCeiling("not-a-number")),
+      R2_SQL_MAX_BODY_BYTES_DEFAULT,
+    );
+    assert.equal(
+      maxBodyBytes(withCeiling("-1")),
+      R2_SQL_MAX_BODY_BYTES_DEFAULT,
     );
   });
 });
