@@ -241,7 +241,7 @@ CREATE TABLE public.attribution_sweeps (
     verdict text NOT NULL,
     CONSTRAINT attribution_sweeps_counts_are_sane CHECK (((sources_checked >= 0) AND (sources_read >= 0) AND (sources_read <= sources_checked) AND (candidates >= 0))),
     CONSTRAINT attribution_sweeps_swept_at_is_millis CHECK ((swept_at >= '1000000000000'::bigint)),
-    CONSTRAINT attribution_sweeps_verdict_is_known CHECK ((verdict = ANY (ARRAY['none-published'::text, 'candidates-found'::text, 'unreachable'::text, 'no-sources'::text])))
+    CONSTRAINT attribution_sweeps_verdict_is_known CHECK ((verdict = ANY (ARRAY['none-published'::text, 'candidates-found'::text, 'unreachable'::text, 'no-sources'::text, 'listings-only'::text])))
 );
 
 --
