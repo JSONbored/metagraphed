@@ -264,20 +264,22 @@ const withVolumeFieldSources = (blob: Row): Row => ({
 });
 
 /** Decorate one subnet's 24h volume scorecard. */
-export function withAlphaVolumeUsd(
-  blob: Row | null | undefined,
+/** Shape-preserving, so generic -- see {@link withChainAlphaVolumeUsd}. */
+export function withAlphaVolumeUsd<T extends object | null | undefined>(
+  blob: T,
   reading: TaoUsdReading | null | undefined,
   nowMs: number,
-): Row | null | undefined {
-  if (!blob || typeof blob !== "object") return blob;
+): T {
+  const bag = recordOrNull(blob);
+  if (!bag) return blob;
   const { usable, overlay } = volumeUsdOverlay(reading, nowMs);
   return {
     ...(usable
-      ? priceTaoFields(blob, VOLUME_USD_FIELDS, reading as TaoUsdReading, nowMs)
-      : blob),
+      ? priceTaoFields(bag, VOLUME_USD_FIELDS, reading as TaoUsdReading, nowMs)
+      : bag),
     ...overlay,
-    field_sources: withVolumeFieldSources(blob),
-  };
+    field_sources: withVolumeFieldSources(bag),
+  } as T;
 }
 
 /** Decorate the network-wide 24h volume blob: totals, spread, and per subnet. */

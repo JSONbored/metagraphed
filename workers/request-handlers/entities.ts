@@ -4360,7 +4360,7 @@ export async function handleSubnetAlphaVolume(
       // the window is fixed at 24h and the totals arrive already summed, so no
       // per-trade instant survives to here. See src/alpha-usd-overlay.ts.
       data: withAlphaVolumeUsd(
-        data as unknown as Record<string, unknown>,
+        data,
         await readTaoUsdCurrentKv(env),
         Date.now(),
       ),
@@ -4927,9 +4927,7 @@ export async function handleAccountEvents(
   // production for a 200-event page: 1.9ms, 200 probes on an index that
   // already exists. Events predating the index carry nulls rather than the
   // oldest rate carried backwards.
-  const eventRows = Array.isArray(data?.events)
-    ? (data.events as unknown as Record<string, unknown>[])
-    : [];
+  const eventRows = recordsOrEmpty(data?.events);
   const usdByInstant = eventRows.length
     ? await loadTaoUsdAtInstants(
         readStore(env, TAO_USD_TABLES),
@@ -6268,10 +6266,7 @@ export async function handleAttributionCandidatesReview(
   const offset = routeValue<number>(url, "offset");
   const opts = { netuid, limit, offset };
 
-  const db = readStore(
-    env,
-    ATTRIBUTION_SWEEP_TABLES,
-  ) as never as unknown as Parameters<typeof loadAttributionCandidates>[0];
+  const db = readStore(env, ATTRIBUTION_SWEEP_TABLES);
   const [rows, totals] = await Promise.all([
     loadAttributionCandidates(db, opts),
     loadAttributionCandidateTotals(db, { netuid }),

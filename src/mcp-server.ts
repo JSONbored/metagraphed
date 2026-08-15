@@ -1637,7 +1637,6 @@ import {
   declineAttributionCandidatesReview,
   loadAttributionCandidateTotals,
   loadAttributionCandidates,
-  type AttributionCandidatesDb,
 } from "./attribution-candidates-review.ts";
 import {
   ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT,
@@ -10396,10 +10395,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           : ATTRIBUTION_CANDIDATES_LIMIT_DEFAULT;
       const offset = typeof args?.offset === "number" ? args.offset : 0;
       const opts = { netuid, limit, offset };
-      const db = readStore(
-        ctx.env,
-        ATTRIBUTION_SWEEP_TABLES,
-      ) as never as unknown as AttributionCandidatesDb;
+      const db = readStore(ctx.env, ATTRIBUTION_SWEEP_TABLES);
       const [rows, totals] = await Promise.all([
         loadAttributionCandidates(db, opts),
         loadAttributionCandidateTotals(db, { netuid }),
