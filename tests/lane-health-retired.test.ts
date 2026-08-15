@@ -23,6 +23,10 @@ import {
   loadLatestLaneHealth,
 } from "../src/lane-health.ts";
 import { neonLaneKey } from "../src/neon-write.ts";
+import {
+  DEAD_LETTER_LANE_NAMES,
+  isDeadLetterQueue,
+} from "../src/dead-letter.ts";
 import { RAW_CAPTURE_STATE_NEON_LANE } from "../src/capture-state-neon-write.ts";
 import { NEURONS_NEON_LANE } from "../src/neurons-neon-write.ts";
 // The lane constant lives with its cron in the data-api Worker.
@@ -42,6 +46,10 @@ const PRODUCERS: Record<string, string | null> = {
   // assertion below rather than by a deleted file.
   neurons: null,
   "tao-usd-index": null,
+  // Its producer was a QUEUE, not a file -- justified by the code assertion
+  // below: nothing can write a `*-dlq` lane that DEAD_LETTER_LANES no longer
+  // names.
+  "revenue-probes-dlq": null,
 };
 
 function fakeDb(rows: Record<string, unknown>[]) {
@@ -95,6 +103,21 @@ describe("retired lanes (#10222)", () => {
         `${neonLaneKey(lane)} stays watched`,
       );
     }
+  });
+
+  test("a dead-letter lane whose QUEUE was deleted cannot be written", () => {
+    // #11254 collapsed four probe dead letters into one `probe-jobs-dlq` and
+    // deleted `revenue-probes` from the account. `handleDeadLetterBatch` is the
+    // ONLY writer for a `*-dlq` lane and it keys off DEAD_LETTER_LANES, so a
+    // queue no longer in that map can produce no verdict at all -- which is
+    // this list's criterion, reached through code rather than a deleted file.
+    assert.equal(isDeadLetterQueue("revenue-probes-dlq"), false);
+    assert.equal(DEAD_LETTER_LANE_NAMES.has("revenue-probes-dlq"), false);
+    assert.equal(isRetiredLane("revenue-probes-dlq"), true);
+    // ...and the lane that REPLACED it stays watched. Retiring the survivor
+    // would be suppression rather than cleanup, and it has a live writer.
+    assert.equal(isDeadLetterQueue("probe-jobs-dlq"), true);
+    assert.equal(isRetiredLane("probe-jobs-dlq"), false);
   });
 
   test("the POLLER's own bare lanes are NOT retired", () => {

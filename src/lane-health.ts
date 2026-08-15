@@ -111,6 +111,25 @@ export const RETIRED_LANES: readonly string[] = [
   // therefore live, these two are written only from inside the Worker.
   "neurons",
   "tao-usd-index",
+  // The DLQ whose QUEUE was deleted (#10894, merged as #11254). Four probe
+  // dead letters collapsed into one `probe-jobs-dlq`, and `revenue-probes`
+  // went with the account's queue list.
+  //
+  // `handleDeadLetterBatch` is the ONLY writer for a `*-dlq` lane and it keys
+  // off `DEAD_LETTER_LANES`, so a queue no longer in that map can produce no
+  // verdict at all -- which is this list's exact criterion, reached through
+  // code rather than through a deleted file.
+  //
+  // Its last row is a real loss (`1 dead-lettered message(s) ... sn-51-lium-
+  // revenue-for-validators`) and it is frozen: the alarm re-raised it at
+  // 05:28Z on 2026-08-15 as #11267, twenty minutes after a human had closed
+  // #11251 explaining that the queue no longer exists. Without this it would
+  // re-file every half hour until the seven-day residue guard expired it.
+  //
+  // The loss itself is not dropped. The revenue producer re-reads its eligible
+  // set every tick, so a surface that keeps failing dead-letters again on
+  // `probe-jobs-dlq` and is reported there -- under a lane that has a writer.
+  "revenue-probes-dlq",
 ];
 
 /**
