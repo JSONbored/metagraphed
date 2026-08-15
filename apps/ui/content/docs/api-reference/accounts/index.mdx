@@ -10,11 +10,11 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
 - [Account Balance](/docs/api-reference/accounts/account-balance) — `GET /api/v1/accounts/{ss58}/balance`  
   Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache.
 - [Account Balance By Network](/docs/api-reference/accounts/account-balance-by-network) — `GET /api/v1/{network}/accounts/{ss58}/balance`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/accounts/\{ss58}/balance — prefix the route with a network to choose which chain answers it.
 - [Account Children](/docs/api-reference/accounts/account-children) — `GET /api/v1/accounts/{ss58}/children`  
   Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache.
 - [Account Children By Network](/docs/api-reference/accounts/account-children-by-network) — `GET /api/v1/{network}/accounts/{ss58}/children`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/accounts/\{ss58}/children — prefix the route with a network to choose which chain answers it.
 - [Account Counterparties](/docs/api-reference/accounts/account-counterparties) — `GET /api/v1/accounts/{ss58}/counterparties`  
   Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=\<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events store.
 - [Account Deregistrations](/docs/api-reference/accounts/account-deregistrations) — `GET /api/v1/accounts/{ss58}/deregistrations`  
@@ -34,7 +34,7 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
 - [Account Parents](/docs/api-reference/accounts/account-parents) — `GET /api/v1/accounts/{ss58}/parents`  
   Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache.
 - [Account Parents By Network](/docs/api-reference/accounts/account-parents-by-network) — `GET /api/v1/{network}/accounts/{ss58}/parents`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/accounts/\{ss58}/parents — prefix the route with a network to choose which chain answers it.
 - [Account Portfolio](/docs/api-reference/accounts/account-portfolio) — `GET /api/v1/accounts/{ss58}/portfolio`  
   Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration).
 - [Account Positions](/docs/api-reference/accounts/account-positions) — `GET /api/v1/accounts/{ss58}/positions`  
@@ -46,7 +46,7 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
 - [Account Root Claim](/docs/api-reference/accounts/account-root-claim) — `GET /api/v1/accounts/{ss58}/root-claim`  
   Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache.
 - [Account Root Claim By Network](/docs/api-reference/accounts/account-root-claim-by-network) — `GET /api/v1/{network}/accounts/{ss58}/root-claim`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/accounts/\{ss58}/root-claim — prefix the route with a network to choose which chain answers it.
 - [Account Serving](/docs/api-reference/accounts/account-serving) — `GET /api/v1/accounts/{ss58}/serving`  
   Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events store.
 - [Account Stake Flow](/docs/api-reference/accounts/account-stake-flow) — `GET /api/v1/accounts/{ss58}/stake-flow`  
@@ -68,19 +68,19 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
 - [Evm Address Mapping](/docs/api-reference/accounts/evm-address-mapping) — `GET /api/v1/evm/address/{h160}`  
   Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache.
 - [Evm Address Mapping By Network](/docs/api-reference/accounts/evm-address-mapping-by-network) — `GET /api/v1/{network}/evm/address/{h160}`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/evm/address/\{h160} — prefix the route with a network to choose which chain answers it.
 - [Network Parameters](/docs/api-reference/accounts/network-parameters) — `GET /api/v1/network/parameters`  
   Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache.
 - [Network Parameters By Network](/docs/api-reference/accounts/network-parameters-by-network) — `GET /api/v1/{network}/network/parameters`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/network/parameters — prefix the route with a network to choose which chain answers it.
 - [Randomness](/docs/api-reference/accounts/randomness) — `GET /api/v1/network/randomness`  
   Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache.
 - [Randomness By Network](/docs/api-reference/accounts/randomness-by-network) — `GET /api/v1/{network}/network/randomness`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/network/randomness — prefix the route with a network to choose which chain answers it.
 - [Sudo Key](/docs/api-reference/accounts/sudo-key) — `GET /api/v1/sudo/key`  
   Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310).
 - [Sudo Key By Network](/docs/api-reference/accounts/sudo-key-by-network) — `GET /api/v1/{network}/sudo/key`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/sudo/key — prefix the route with a network to choose which chain answers it.
 - [TAO Usd](/docs/api-reference/accounts/tao-usd) — `GET /api/v1/network/tao-usd`  
   Fetch the TAO/USD index.
 - [Top Holders](/docs/api-reference/accounts/top-holders) — `GET /api/v1/accounts/top-holders`  

@@ -650,3 +650,75 @@ describe("which query parameters the spec calls required (#10401)", () => {
     );
   });
 });
+
+describe("network-variant descriptions name the route they vary (#11251)", () => {
+  // All 42 network twins shared one sentence: "Network-addressed form of the
+  // route above." That is only true in a spec read top to bottom -- the same
+  // string is also the description of a generated docs page, a search-result
+  // snippet, and an MCP tool, and in all three it pointed at nothing. It was
+  // additionally the ONLY description 14% of the API reference had.
+  type Op = { operationId?: string; description?: string };
+  const generatedAt = "2026-01-01T00:00:00.000Z";
+
+  async function networkVariants(): Promise<
+    Array<[string, Record<string, Op>]>
+  > {
+    const openapi = buildOpenApiArtifact(
+      generatedAt,
+      await loadOpenApiComponentSchemas(generatedAt),
+    ) as unknown as { paths: Record<string, Record<string, Op>> };
+    return Object.entries(openapi.paths).filter(([path]) =>
+      path.includes("/{network}/"),
+    );
+  }
+
+  test("there are variants to check, so this cannot pass on an empty set", async () => {
+    assert.ok(
+      (await networkVariants()).length > 0,
+      "no /{network}/ paths in the built spec",
+    );
+  });
+
+  test("no description refers to a position in the document", async () => {
+    for (const [path, methods] of await networkVariants()) {
+      for (const op of Object.values(methods)) {
+        if (!op?.description) continue;
+        assert.doesNotMatch(
+          op.description,
+          /route above|the above|see above/i,
+          `${path}: refers to document position, which means nothing off-page`,
+        );
+      }
+    }
+  });
+
+  test("each names the unprefixed route it varies, so it stands alone", async () => {
+    for (const [path, methods] of await networkVariants()) {
+      const base = path.replace("/{network}", "");
+      for (const op of Object.values(methods)) {
+        if (!op?.description) continue;
+        assert.ok(
+          op.description.includes(base),
+          `${path}: should name ${base}, got: ${op.description.slice(0, 90)}`,
+        );
+      }
+    }
+  });
+
+  test("the first sentence is plain text — it becomes a meta description", async () => {
+    // Markdown renders literally in <meta name="description">, so a backtick in
+    // the FIRST sentence shows as a backtick in the search result.
+    for (const [path, methods] of await networkVariants()) {
+      for (const op of Object.values(methods)) {
+        if (!op?.description) continue;
+        const flat = op.description.replace(/\s+/g, " ").trim();
+        const end = flat.search(/\.\s|\.$/);
+        assert.doesNotMatch(
+          end === -1 ? flat : flat.slice(0, end + 1),
+          /`/,
+          `${path}: first sentence carries markdown`,
+        );
+      }
+    }
+  });
+});

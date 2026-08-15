@@ -14,7 +14,7 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Economics](/docs/api-reference/subnets/economics) — `GET /api/v1/economics`  
   List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height).
 - [Economics By Network](/docs/api-reference/subnets/economics-by-network) — `GET /api/v1/{network}/economics`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/economics — prefix the route with a network to choose which chain answers it.
 - [Economics Trends](/docs/api-reference/subnets/economics-trends) — `GET /api/v1/economics/trends`  
   Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup.
 - [Emission Pipeline](/docs/api-reference/subnets/emission-pipeline) — `GET /api/v1/chain/emission-pipeline`  
@@ -26,7 +26,7 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Subnet Burn](/docs/api-reference/subnets/subnet-burn) — `GET /api/v1/subnets/{netuid}/burn`  
   Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/\{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache.
 - [Subnet Burn By Network](/docs/api-reference/subnets/subnet-burn-by-network) — `GET /api/v1/{network}/subnets/{netuid}/burn`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/subnets/\{netuid}/burn — prefix the route with a network to choose which chain answers it.
 - [Subnet Burn History](/docs/api-reference/subnets/subnet-burn-history) — `GET /api/v1/subnets/{netuid}/burn/history`  
   Fetch one subnet's registration-cost series.
 - [Subnet Concentration](/docs/api-reference/subnets/subnet-concentration) — `GET /api/v1/subnets/{netuid}/concentration`  
@@ -42,7 +42,7 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Subnet Detail](/docs/api-reference/subnets/subnet-detail) — `GET /api/v1/subnets/{netuid}`  
   Fetch per-subnet detail.
 - [Subnet Detail By Network](/docs/api-reference/subnets/subnet-detail-by-network) — `GET /api/v1/{network}/subnets/{netuid}`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/subnets/\{netuid} — prefix the route with a network to choose which chain answers it.
 - [Subnet Emission Pipeline History](/docs/api-reference/subnets/subnet-emission-pipeline-history) — `GET /api/v1/subnets/{netuid}/emission-pipeline/history`  
   Fetch one subnet's emission-pipeline series.
 - [Subnet Emission Split History](/docs/api-reference/subnets/subnet-emission-split-history) — `GET /api/v1/subnets/{netuid}/emission-split/history`  
@@ -66,7 +66,7 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Subnet Lease](/docs/api-reference/subnets/subnet-lease) — `GET /api/v1/subnets/{netuid}/lease`  
   Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache.
 - [Subnet Lease By Network](/docs/api-reference/subnets/subnet-lease-by-network) — `GET /api/v1/{network}/subnets/{netuid}/lease`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/subnets/\{netuid}/lease — prefix the route with a network to choose which chain answers it.
 - [Subnet Lease History](/docs/api-reference/subnets/subnet-lease-history) — `GET /api/v1/subnets/{netuid}/lease/history`  
   Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing.
 - [Subnet Lifecycle](/docs/api-reference/subnets/subnet-lifecycle) — `GET /api/v1/subnets/{netuid}/lifecycle`  
@@ -100,7 +100,7 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Subnet Recycled](/docs/api-reference/subnets/subnet-recycled) — `GET /api/v1/subnets/{netuid}/recycled`  
   Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache.
 - [Subnet Recycled By Network](/docs/api-reference/subnets/subnet-recycled-by-network) — `GET /api/v1/{network}/subnets/{netuid}/recycled`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/subnets/\{netuid}/recycled — prefix the route with a network to choose which chain answers it.
 - [Subnet Registrations](/docs/api-reference/subnets/subnet-registrations) — `GET /api/v1/subnets/{netuid}/registrations`  
   Fetch neuron-registration activity for one subnet over a 7d or 30d window: the distinct registrants (hotkeys), the NeuronRegistered event count, and the average registrations per registrant, computed live from the account_events NeuronRegistered stream.
 - [Subnet Revenue](/docs/api-reference/subnets/subnet-revenue) — `GET /api/v1/subnets/{netuid}/revenue`  
@@ -142,4 +142,4 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Subnets](/docs/api-reference/subnets/subnets) — `GET /api/v1/subnets`  
   List active Finney subnets.
 - [Subnets By Network](/docs/api-reference/subnets/subnets-by-network) — `GET /api/v1/{network}/subnets`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/subnets — prefix the route with a network to choose which chain answers it.

@@ -38,7 +38,8 @@
 // it pulls in a yoga `.wasm` that Node's ESM loader can't resolve, which would
 // break `vite dev` SSR for every route. It only has to work on the Cloudflare
 // Worker, which reaches the dynamic import only on an actual /og request.
-import { clampCardText, OG_LIMITS } from "./metagraphed/og-card-limits";
+import { OG_LIMITS } from "./metagraphed/og-card-limits";
+import { clampText } from "./metagraphed/truncate";
 
 type WorkersOg = typeof import("workers-og");
 
@@ -246,7 +247,7 @@ export function sanitizeText(value: string): string {
 }
 
 export function normalizeTitle(value: string | null): string {
-  return clampCardText((value || "").trim() || DEFAULT_TITLE, OG_LIMITS.title);
+  return clampText((value || "").trim() || DEFAULT_TITLE, OG_LIMITS.title);
 }
 
 /**
@@ -256,7 +257,7 @@ export function normalizeTitle(value: string | null): string {
  * bounded like the title so a long one can't overflow the card.
  */
 export function normalizeSubtitle(value: string | null): string {
-  return clampCardText((value || "").trim() || SUBTITLE, OG_LIMITS.subtitle);
+  return clampText((value || "").trim() || SUBTITLE, OG_LIMITS.subtitle);
 }
 
 /**
@@ -267,7 +268,7 @@ export function normalizeSubtitle(value: string | null): string {
  * `?:` rather than scattered emptiness checks.
  */
 export function normalizeParam(value: string | null, max: number): string | null {
-  return clampCardText(value, max) || null;
+  return clampText(value, max) || null;
 }
 
 /** One "LABEL / value" cell in the card's stat rail. */

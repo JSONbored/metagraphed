@@ -237,6 +237,16 @@ export interface TechArticleInput {
   description?: string | null;
   /** Canonical URL for this page. */
   url: string;
+  /**
+   * ISO 8601, from the docs collection's git-derived `lastModified`.
+   *
+   * Only ever a date the PAGE ALSO SHOWS — it renders as "Last updated" in the
+   * footer of every docs page — so the markup states nothing a reader cannot
+   * check. Omitted when absent rather than defaulted to now.
+   */
+  dateModified?: string | null;
+  /** Absolute URL of the page's representative image (its OG card). */
+  image?: string | null;
 }
 
 /**
@@ -252,11 +262,15 @@ export interface TechArticleInput {
  * consumer follow a quoted sentence back to the machine-readable record behind
  * it — and, from the catalog, on to the REST and MCP endpoints.
  *
- * Deliberately no `dateModified`: the loader carries no timestamp, and a date
- * we made up would be a claim about freshness we cannot support. Deliberately
- * not FAQPage either — these are reference pages, not question/answer pairs,
- * and marking them up as FAQ to chase a rich result is the kind of over-claim
- * that costs more than it earns.
+ * `dateModified` comes from the docs collection's git-derived `lastModified`
+ * and is the date the page itself prints as "Last updated" — never a
+ * fabricated one, and omitted entirely when the collection has none. (An
+ * earlier revision of this comment claimed the loader carried no timestamp;
+ * source.config.ts sets `docs.lastModified: true`, so it does.)
+ *
+ * Deliberately not FAQPage — these are reference pages, not question/answer
+ * pairs, and marking them up as FAQ to chase a rich result is the kind of
+ * over-claim that costs more than it earns.
  */
 export function techArticleJsonLd(input: TechArticleInput) {
   const description = input.description?.trim();
@@ -266,6 +280,8 @@ export function techArticleJsonLd(input: TechArticleInput) {
     ...(description ? { description } : {}),
     url: input.url,
     mainEntityOfPage: input.url,
+    ...(input.dateModified ? { dateModified: input.dateModified } : {}),
+    ...(input.image ? { image: input.image } : {}),
     inLanguage: "en",
     author: ref(JSONLD_IDS.org),
     publisher: ref(JSONLD_IDS.org),

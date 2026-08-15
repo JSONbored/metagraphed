@@ -10,7 +10,7 @@ description: Every Registry endpoint in the metagraphed API, with its method and
 - [Coverage](/docs/api-reference/registry/coverage) — `GET /api/v1/coverage`  
   Fetch registry coverage summary.
 - [Coverage By Network](/docs/api-reference/registry/coverage-by-network) — `GET /api/v1/{network}/coverage`  
-  Network-addressed form of the route above.
+  Network-scoped form of /api/v1/coverage — prefix the route with a network to choose which chain answers it.
 - [Coverage Depth](/docs/api-reference/registry/coverage-depth) — `GET /api/v1/coverage-depth`  
   Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.
 - [Curation](/docs/api-reference/registry/curation) — `GET /api/v1/curation`  

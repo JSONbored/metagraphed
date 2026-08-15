@@ -63152,7 +63152,7 @@
     },
     "/api/v1/{network}/accounts/{ss58}/balance": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/accounts/{ss58}/balance — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "accountBalanceByNetwork",
         "parameters": [
           {
@@ -63276,7 +63276,7 @@
     },
     "/api/v1/{network}/accounts/{ss58}/children": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/accounts/{ss58}/children — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "accountChildrenByNetwork",
         "parameters": [
           {
@@ -63400,7 +63400,7 @@
     },
     "/api/v1/{network}/accounts/{ss58}/parents": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/accounts/{ss58}/parents — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "accountParentsByNetwork",
         "parameters": [
           {
@@ -63524,7 +63524,7 @@
     },
     "/api/v1/{network}/accounts/{ss58}/root-claim": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/accounts/{ss58}/root-claim — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "accountRootClaimByNetwork",
         "parameters": [
           {
@@ -63648,7 +63648,7 @@
     },
     "/api/v1/{network}/blocks": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/blocks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "blocksFeedByNetwork",
         "parameters": [
           {
@@ -63899,7 +63899,7 @@
     },
     "/api/v1/{network}/blocks/{ref}": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/blocks/{ref} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "blockDetailByNetwork",
         "parameters": [
           {
@@ -64024,7 +64024,7 @@
     },
     "/api/v1/{network}/blocks/{ref}/chain-events": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/blocks/{ref}/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "blockChainEventsByNetwork",
         "parameters": [
           {
@@ -64150,7 +64150,7 @@
     },
     "/api/v1/{network}/blocks/{ref}/events": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/blocks/{ref}/events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "blockEventsByNetwork",
         "parameters": [
           {
@@ -64325,7 +64325,7 @@
     },
     "/api/v1/{network}/blocks/{ref}/extrinsics": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/blocks/{ref}/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "blockExtrinsicsByNetwork",
         "parameters": [
           {
@@ -64500,7 +64500,7 @@
     },
     "/api/v1/{network}/blocks/summary": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/blocks/summary — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "blocksSummaryByNetwork",
         "parameters": [
           {
@@ -64617,7 +64617,7 @@
     },
     "/api/v1/{network}/chain-events": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain-events — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainEventsFeedByNetwork",
         "parameters": [
           {
@@ -64828,7 +64828,7 @@
     },
     "/api/v1/{network}/chain-events/stats": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain-events/stats — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainEventsStatsByNetwork",
         "parameters": [
           {
@@ -64956,7 +64956,7 @@
     },
     "/api/v1/{network}/chain/activity": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/activity — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainActivityByNetwork",
         "parameters": [
           {
@@ -65111,7 +65111,7 @@
     },
     "/api/v1/{network}/chain/alpha-volume": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/alpha-volume — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainAlphaVolumeByNetwork",
         "parameters": [
           {
@@ -65265,7 +65265,7 @@
     },
     "/api/v1/{network}/chain/burn": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/burn — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainBurnByNetwork",
         "parameters": [
           {
@@ -65381,7 +65381,7 @@
     },
     "/api/v1/{network}/chain/calls": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/calls — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainCallsByNetwork",
         "parameters": [
           {
@@ -65570,7 +65570,7 @@
     },
     "/api/v1/{network}/chain/deregistrations": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/deregistrations — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainDeregistrationsByNetwork",
         "parameters": [
           {
@@ -65738,7 +65738,7 @@
     },
     "/api/v1/{network}/chain/fees": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/fees — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainFeesByNetwork",
         "parameters": [
           {
@@ -65915,7 +65915,7 @@
     },
     "/api/v1/{network}/chain/registrations": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/registrations — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainRegistrationsByNetwork",
         "parameters": [
           {
@@ -66083,7 +66083,7 @@
     },
     "/api/v1/{network}/chain/signers": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/signers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainSignersByNetwork",
         "parameters": [
           {
@@ -66274,7 +66274,7 @@
     },
     "/api/v1/{network}/chain/stake-flow": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/stake-flow — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainStakeFlowByNetwork",
         "parameters": [
           {
@@ -66442,7 +66442,7 @@
     },
     "/api/v1/{network}/chain/stake-moves": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/stake-moves — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainStakeMovesByNetwork",
         "parameters": [
           {
@@ -66610,7 +66610,7 @@
     },
     "/api/v1/{network}/chain/stake-transfers": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/stake-transfers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainStakeTransfersByNetwork",
         "parameters": [
           {
@@ -66778,7 +66778,7 @@
     },
     "/api/v1/{network}/chain/transfer-pairs": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/transfer-pairs — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainTransferPairsByNetwork",
         "parameters": [
           {
@@ -66960,7 +66960,7 @@
     },
     "/api/v1/{network}/chain/transfers": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/chain/transfers — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "chainTransfersByNetwork",
         "parameters": [
           {
@@ -67128,7 +67128,7 @@
     },
     "/api/v1/{network}/coverage": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/coverage — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "coverageByNetwork",
         "parameters": [
           {
@@ -67244,7 +67244,7 @@
     },
     "/api/v1/{network}/crowdloans": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/crowdloans — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "crowdloansByNetwork",
         "parameters": [
           {
@@ -67360,7 +67360,7 @@
     },
     "/api/v1/{network}/crowdloans/{crowdloan_id}": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/crowdloans/{crowdloan_id} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "crowdloanDetailByNetwork",
         "parameters": [
           {
@@ -67486,7 +67486,7 @@
     },
     "/api/v1/{network}/economics": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/economics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "economicsByNetwork",
         "parameters": [
           {
@@ -67736,7 +67736,7 @@
     },
     "/api/v1/{network}/evm/address/{h160}": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/evm/address/{h160} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "evmAddressMappingByNetwork",
         "parameters": [
           {
@@ -67860,7 +67860,7 @@
     },
     "/api/v1/{network}/extrinsics": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/extrinsics — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "extrinsicsFeedByNetwork",
         "parameters": [
           {
@@ -68133,7 +68133,7 @@
     },
     "/api/v1/{network}/extrinsics/{hash}": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/extrinsics/{hash} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "extrinsicDetailByNetwork",
         "parameters": [
           {
@@ -68258,7 +68258,7 @@
     },
     "/api/v1/{network}/network/parameters": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/network/parameters — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "networkParametersByNetwork",
         "parameters": [
           {
@@ -68374,7 +68374,7 @@
     },
     "/api/v1/{network}/network/randomness": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/network/randomness — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "randomnessByNetwork",
         "parameters": [
           {
@@ -68490,7 +68490,7 @@
     },
     "/api/v1/{network}/networks": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/networks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "networkCapabilitiesByNetwork",
         "parameters": [
           {
@@ -68606,7 +68606,7 @@
     },
     "/api/v1/{network}/search/resolve": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/search/resolve — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "searchResolveByNetwork",
         "parameters": [
           {
@@ -68731,7 +68731,7 @@
     },
     "/api/v1/{network}/subnets": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/subnets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "subnetsByNetwork",
         "parameters": [
           {
@@ -69178,7 +69178,7 @@
     },
     "/api/v1/{network}/subnets/{netuid}": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/subnets/{netuid} — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "subnetDetailByNetwork",
         "parameters": [
           {
@@ -69313,7 +69313,7 @@
     },
     "/api/v1/{network}/subnets/{netuid}/burn": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/subnets/{netuid}/burn — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "subnetBurnByNetwork",
         "parameters": [
           {
@@ -69439,7 +69439,7 @@
     },
     "/api/v1/{network}/subnets/{netuid}/lease": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/subnets/{netuid}/lease — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "subnetLeaseByNetwork",
         "parameters": [
           {
@@ -69565,7 +69565,7 @@
     },
     "/api/v1/{network}/subnets/{netuid}/recycled": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/subnets/{netuid}/recycled — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "subnetRecycledByNetwork",
         "parameters": [
           {
@@ -69691,7 +69691,7 @@
     },
     "/api/v1/{network}/sudo/key": {
       "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "description": "Network-scoped form of /api/v1/sudo/key — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
         "operationId": "sudoKeyByNetwork",
         "parameters": [
           {
