@@ -61,6 +61,7 @@ import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
 import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
 import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
+import { Route as SubnetsWithApiRouteImport } from './routes/subnets.with-api'
 import { Route as SudoIndexRouteImport } from './routes/sudo.index'
 import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsSs58RouteImport } from './routes/tools.ss58'
@@ -329,6 +330,11 @@ const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
   path: '/subnets/$netuid',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubnetsWithApiRoute = SubnetsWithApiRouteImport.update({
+  id: '/subnets/with-api',
+  path: '/subnets/with-api',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SudoIndexRoute = SudoIndexRouteImport.update({
   id: '/sudo/',
   path: '/sudo/',
@@ -406,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/news/llms.txt': typeof NewsLlmsDottxtRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/subnets/with-api': typeof SubnetsWithApiRoute
   '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts/': typeof AccountsIndexRoute
@@ -465,6 +472,7 @@ export interface FileRoutesByTo {
   '/news/llms.txt': typeof NewsLlmsDottxtRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/subnets/with-api': typeof SubnetsWithApiRoute
   '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts': typeof AccountsIndexRoute
@@ -527,6 +535,7 @@ export interface FileRoutesById {
   '/news/llms.txt': typeof NewsLlmsDottxtRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/subnets/with-api': typeof SubnetsWithApiRoute
   '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts/': typeof AccountsIndexRoute
@@ -590,6 +599,7 @@ export interface FileRouteTypes {
     | '/news/llms.txt'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/subnets/with-api'
     | '/tools/ss58'
     | '/validators/$hotkey'
     | '/accounts/'
@@ -649,6 +659,7 @@ export interface FileRouteTypes {
     | '/news/llms.txt'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/subnets/with-api'
     | '/tools/ss58'
     | '/validators/$hotkey'
     | '/accounts'
@@ -710,6 +721,7 @@ export interface FileRouteTypes {
     | '/news/llms.txt'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/subnets/with-api'
     | '/tools/ss58'
     | '/validators/$hotkey'
     | '/accounts/'
@@ -762,6 +774,7 @@ export interface RootRouteChildren {
   NewsLlmsDottxtRoute: typeof NewsLlmsDottxtRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
+  SubnetsWithApiRoute: typeof SubnetsWithApiRoute
   ToolsSs58Route: typeof ToolsSs58Route
   ValidatorsHotkeyRoute: typeof ValidatorsHotkeyRoute
   AccountsIndexRoute: typeof AccountsIndexRoute
@@ -1147,6 +1160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubnetsNetuidRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/subnets/with-api': {
+      id: '/subnets/with-api'
+      path: '/subnets/with-api'
+      fullPath: '/subnets/with-api'
+      preLoaderRoute: typeof SubnetsWithApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sudo/': {
       id: '/sudo/'
       path: '/sudo'
@@ -1270,6 +1290,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewsLlmsDottxtRoute: NewsLlmsDottxtRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
+  SubnetsWithApiRoute: SubnetsWithApiRoute,
   ToolsSs58Route: ToolsSs58Route,
   ValidatorsHotkeyRoute: ValidatorsHotkeyRoute,
   AccountsIndexRoute: AccountsIndexRoute,
