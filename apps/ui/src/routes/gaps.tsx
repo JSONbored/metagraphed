@@ -9,6 +9,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  */
 export const Route = createFileRoute("/gaps")({
   beforeLoad: ({ search }) => {
-    throw redirect({ to: "/contribute", search, replace: true });
+    throw redirect({ to: "/contribute", search, replace: true, statusCode: 301 });
   },
 });

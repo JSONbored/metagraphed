@@ -1,4 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import type { AnalyticsSearch } from "./chain.analytics";
 import { useSuspenseQueries } from "@tanstack/react-query";
 import { SectionLabel, Skeleton } from "@jsonbored/ui-kit";
 import { AsyncPanel } from "@/components/metagraphed/primitives";
@@ -40,7 +41,7 @@ const WINDOWS: Window[] = ["7d", "30d"];
  * #8378 alongside the PR.
  */
 function AnalyticsBody() {
-  const search = useSearch({ from: "/chain/analytics" });
+  const search = useSearch({ from: "/chain/analytics" }) as AnalyticsSearch;
   const win = search.window;
 
   const [
@@ -89,7 +90,7 @@ function AnalyticsBody() {
 }
 
 export function ChainAnalyticsPage() {
-  const search = useSearch({ from: "/chain/analytics" });
+  const search = useSearch({ from: "/chain/analytics" }) as AnalyticsSearch;
   const navigate = useNavigate({ from: "/chain/analytics" });
 
   return (

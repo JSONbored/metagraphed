@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChainEmissionsPage } from "./-chain-emissions-page";
@@ -22,6 +23,7 @@ const DESCRIPTION =
 
 export const Route = createFileRoute("/chain/emissions")({
   validateSearch: zodValidator(emissionsSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(emissionsSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Emissions — Metagraphed" },

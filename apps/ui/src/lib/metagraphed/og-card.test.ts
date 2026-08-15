@@ -7,7 +7,7 @@ import {
   logoHostFrom,
   ogImageMeta,
 } from "./og-card";
-import { OG_LIMITS } from "./og-card-limits";
+import { clampCardText, OG_LIMITS } from "./og-card-limits";
 
 // The route → card adapters (#11204). Each one exists because the obvious
 // reduction threw away the better answer; the tests below pin the case that
@@ -171,5 +171,45 @@ describe("ogImageMeta", () => {
         .filter((content) => content.includes("/og?")),
     );
     expect(urls.size).toBe(1);
+  });
+});
+
+describe("clampCardText (#11244) — a cut card reads as shortened, not broken", () => {
+  it("cuts at a word boundary instead of mid-word", () => {
+    // The live subnet cards ended "…machine-readable on Meta…", chopping our
+    // own name in half on every share.
+    const subtitle =
+      "Apex (SN1): Bittensor subnet 1 — interfaces, endpoints, schemas, machine-readable on Metagraphed. Source: macrocosm-os/apex.";
+    const out = clampCardText(subtitle, OG_LIMITS.subtitle);
+    expect(out).toBe(
+      "Apex (SN1): Bittensor subnet 1 — interfaces, endpoints, schemas, machine-readable on…",
+    );
+    expect(out.length).toBeLessThanOrEqual(OG_LIMITS.subtitle);
+  });
+
+  it("drops trailing punctuation so a cut after a comma is not ', …'", () => {
+    const out = clampCardText(
+      "404-GEN: Bittensor infrastructure provider — public endpoints, operational surfaces, and live health on Metagraphed.",
+      OG_LIMITS.subtitle,
+    );
+    expect(out.endsWith("and…")).toBe(true);
+    expect(out).not.toContain(", …");
+  });
+
+  it("still fills the budget when there is no boundary worth reaching", () => {
+    // A truncated ss58 or a block hash has no space in it at all; backing off
+    // would collapse the value rather than shorten it.
+    const key = "5Grwvaef5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+    expect(clampCardText(key, 28)).toHaveLength(28);
+    expect(clampCardText("x".repeat(200), OG_LIMITS.subtitle)).toHaveLength(OG_LIMITS.subtitle);
+    // A space too early to be useful is ignored for the same reason.
+    expect(clampCardText(`ab ${"y".repeat(200)}`, 40)).toHaveLength(40);
+  });
+
+  it("leaves anything already inside its budget untouched", () => {
+    const fits = "Chutes (SN64): Bittensor subnet 64 — interfaces, endpoints, schemas.";
+    expect(clampCardText(fits, OG_LIMITS.subtitle)).toBe(fits);
+    expect(clampCardText("  padded  ", OG_LIMITS.subtitle)).toBe("padded");
+    expect(clampCardText(null, OG_LIMITS.subtitle)).toBe("");
   });
 });

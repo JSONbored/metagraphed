@@ -1,4 +1,5 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import type { ContributeSearch } from "./contribute";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useEffect, useState } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -309,7 +310,7 @@ function MissingKindsAtAGlance() {
   const gapsRes = useSuspenseQuery(gapsQuery()).data;
   const rows = useMemo(() => (gapsRes.data ?? []) as Gap[], [gapsRes.data]);
   const navigate = useNavigate({ from: "/contribute" });
-  const search = useSearch({ from: "/contribute" });
+  const search = useSearch({ from: "/contribute" }) as ContributeSearch;
   const activeMissing = useMemo<Set<string>>(
     () => new Set((search.missing ?? "").split(",").filter(Boolean)),
     [search.missing],
@@ -452,7 +453,7 @@ function OpenGapsSection() {
     return m;
   }, [snRes]);
   const rows = useMemo(() => (data.data ?? []) as Gap[], [data.data]);
-  const search = useSearch({ from: "/contribute" });
+  const search = useSearch({ from: "/contribute" }) as ContributeSearch;
   const navigate = useNavigate({ from: "/contribute" });
 
   const setSearch = (patch: Partial<typeof search>) =>

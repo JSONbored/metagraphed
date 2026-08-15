@@ -7,6 +7,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  */
 export const Route = createFileRoute("/providers/")({
   beforeLoad: ({ search }) => {
-    throw redirect({ to: "/apis/providers", search, replace: true });
+    throw redirect({ to: "/apis/providers", search, replace: true, statusCode: 301 });
   },
 });

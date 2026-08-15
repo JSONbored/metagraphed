@@ -7,6 +7,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  */
 export const Route = createFileRoute("/extrinsics/")({
   beforeLoad: ({ search }) => {
-    throw redirect({ to: "/chain/extrinsics", search, replace: true });
+    throw redirect({ to: "/chain/extrinsics", search, replace: true, statusCode: 301 });
   },
 });

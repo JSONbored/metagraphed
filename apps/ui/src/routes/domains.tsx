@@ -6,6 +6,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 // filter chips that were already there.
 export const Route = createFileRoute("/domains")({
   beforeLoad: () => {
-    throw redirect({ to: "/subnets", hash: "domains", replace: true });
+    throw redirect({ to: "/subnets", hash: "domains", replace: true, statusCode: 301 });
   },
 });

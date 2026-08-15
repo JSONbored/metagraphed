@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { GapsPage } from "./-gaps-page";
@@ -33,8 +34,11 @@ const searchSchema = z.object({
   sort: fallback(z.enum(SORT_OPTIONS), "priority").default("priority"),
 });
 
+export type ContributeSearch = z.infer<typeof searchSchema>;
+
 export const Route = createFileRoute("/contribute")({
   validateSearch: zodValidator(searchSchema),
+  search: { middlewares: [stripDefaultSearchParams(searchSchema)] },
   head: () => ({
     meta: [
       { title: "Contribute — Metagraphed" },

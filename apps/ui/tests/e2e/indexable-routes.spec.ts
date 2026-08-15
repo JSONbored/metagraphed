@@ -1,0 +1,94 @@
+import { test, expect } from "@playwright/test";
+
+// #11204: a URL we ask Google to index must ANSWER, and a URL we have retired
+// must say so permanently.
+//
+// Measured against production on 2026-08-15, sampling the live sitemap: 33 of
+// 113 sampled URLs answered 307, including every one of the 1,023 validator
+// pages — 62% of the sitemap. Each redirected to itself plus a full dump of its
+// default search params:
+//
+//   /validators/5E2LP…  307 -> /validators/5E2LP…?tab=subnets&window=30d&sort=…
+//   /apis               307 -> /apis?q=&sort=&order=asc&limit=25&cursor=&page=1…
+//
+// Googlebot got the identical 307. The page it lands on canonicalizes back to
+// the clean URL, so the crawler is handed a redirect whose destination points
+// home again — the shape that fills the "Page with redirect" and "Alternate
+// page with proper canonical tag" buckets and spends crawl budget doing it.
+//
+// The cause is TanStack Router materialising `.default()` values during
+// `validateSearch` and rewriting the URL to match. `stripDefaultSearchParams`
+// (lib/metagraphed/url-state.ts) exists for exactly this and had been applied
+// to some routes and not others; nothing asserted which.
+//
+// These assert against the RAW HTTP RESPONSE with redirects disabled, because
+// the status code IS the property under test. A normal `page.goto` follows the
+// redirect and reports the 200 at the end of it, which is precisely how this
+// stayed invisible.
+
+/** Every path in server.ts's SITEMAP_STATIC_PATHS, plus one of each entity family. */
+const MUST_BE_200 = [
+  "/",
+  "/subnets",
+  "/apis",
+  "/apis/providers",
+  "/apis/endpoints",
+  "/apis/schemas",
+  "/chain",
+  "/chain/blocks",
+  "/chain/extrinsics",
+  "/chain/events",
+  "/chain/governance",
+  "/chain/runtime",
+  "/health",
+  "/status",
+  "/contribute",
+  "/about",
+  "/validators",
+  "/accounts",
+  "/docs",
+];
+
+/** Retired paths: permanent moves, every one documented as such in its route. */
+const MUST_BE_301 = [
+  ["/explorer", "/chain"],
+  ["/blocks", "/chain/blocks"],
+  ["/events", "/chain/events"],
+  ["/extrinsics", "/chain/extrinsics"],
+  ["/runtime", "/chain/runtime"],
+  ["/schemas", "/apis/schemas"],
+  ["/surfaces", "/apis"],
+  ["/endpoints", "/apis/endpoints"],
+  ["/providers", "/apis/providers"],
+  ["/gaps", "/contribute"],
+  ["/portfolio", "/accounts"],
+  ["/sudo", "/chain/governance"],
+  ["/tools/ss58", "/accounts"],
+] as const;
+
+test.describe("#11204 indexable routes answer, retired routes redirect permanently", () => {
+  for (const path of MUST_BE_200) {
+    test(`${path} answers 200 with no redirect hop`, async ({ request }) => {
+      const response = await request.get(path, { maxRedirects: 0 });
+      expect(
+        response.status(),
+        `${path} must not redirect — it is a URL the sitemap asks Google to index. ` +
+          `Got ${response.status()} -> ${response.headers()["location"] ?? "(no location)"}. ` +
+          `A route whose validateSearch schema uses .default() needs ` +
+          `search: { middlewares: [stripDefaultSearchParams(schema)] }.`,
+      ).toBe(200);
+    });
+  }
+
+  for (const [from, to] of MUST_BE_301) {
+    test(`${from} is a permanent redirect to ${to}`, async ({ request }) => {
+      const response = await request.get(from, { maxRedirects: 0 });
+      // 301, not the framework's 307 default: these routes are retired, and a
+      // temporary redirect tells a search engine to keep the old URL and keep
+      // re-checking it instead of moving the signals to the new page.
+      expect(response.status(), `${from} should be 301 (permanent)`).toBe(301);
+      const location = response.headers()["location"] ?? "";
+      expect(new URL(location, "http://localhost").pathname).toBe(to);
+    });
+  }
+});

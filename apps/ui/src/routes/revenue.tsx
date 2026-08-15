@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { RevenuePage } from "./-revenue-page";
@@ -30,6 +31,7 @@ const DESCRIPTION =
 
 export const Route = createFileRoute("/revenue")({
   validateSearch: zodValidator(revenueSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(revenueSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Revenue coverage — Metagraphed" },

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { HealthPage } from "./-health-page";
@@ -19,8 +20,11 @@ const healthSearchSchema = z.object({
   status: fallback(z.enum(HEALTH_STATUSES), "all").default("all"),
 });
 
+export type HealthSearch = z.infer<typeof healthSearchSchema>;
+
 export const Route = createFileRoute("/health")({
   validateSearch: zodValidator(healthSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(healthSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Health — Metagraphed" },

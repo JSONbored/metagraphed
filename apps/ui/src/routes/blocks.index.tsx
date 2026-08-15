@@ -12,6 +12,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  */
 export const Route = createFileRoute("/blocks/")({
   beforeLoad: ({ search }) => {
-    throw redirect({ to: "/chain/blocks", search, replace: true });
+    throw redirect({ to: "/chain/blocks", search, replace: true, statusCode: 301 });
   },
 });

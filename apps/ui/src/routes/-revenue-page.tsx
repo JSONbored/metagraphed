@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { RevenueSearch } from "./revenue";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Chip, StatTile } from "@jsonbored/ui-kit";
@@ -58,7 +59,7 @@ function SubnetCell({ row }: { row: CoverageRow }) {
 }
 
 export function RevenuePage() {
-  const search = Route.useSearch();
+  const search = Route.useSearch() as RevenueSearch;
   const navigate = useNavigate({ from: Route.fullPath });
   const q = useQuery(chainRevenueCoverageQuery());
 

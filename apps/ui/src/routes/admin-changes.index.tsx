@@ -10,6 +10,11 @@ export const Route = createFileRoute("/admin-changes/")({
       to: "/chain/governance",
       search: { ...(search as Record<string, unknown>), view: "admin" } as never,
       replace: true,
+      // 301, not the 307 default: this route is permanently retired. A
+      // temporary redirect tells a search engine to keep the old URL and
+      // re-check it forever; a permanent one moves the signals to the new
+      // page and lets the old URL drop out of the index.
+      statusCode: 301,
     });
   },
 });
