@@ -88,7 +88,11 @@ export async function answerAccountEntities(
   // half must not disappear just because the transfer half declined.
   const ownerSnapshot = await owners();
 
-  const answered = tierResult ?? ((await coldTier(env, coldkey)) as Row | null);
+  // PARSED at the tier, not just at the fallback (#11339). Read-tolerantly, so
+  // a sparse answer -- the frozen export carries what it carries -- is still an
+  // answer, and only a wrong-TYPED field is a refusal that falls through.
+  const answered =
+    entities(tierResult) ?? entities(await coldTier(env, coldkey));
 
   // A tier that answered already shaped its payload from the transfer stream.
   // Its ties are merged with the owned ones rather than rebuilt, so the tier

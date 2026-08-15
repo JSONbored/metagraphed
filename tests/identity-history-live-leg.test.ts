@@ -366,3 +366,75 @@ describe("liveStore, the resolver the surfaces actually get", () => {
     assert.equal(frozenCalls, 1);
   });
 });
+
+// A tier whose body does not PARSE has not answered (#11339).
+//
+// The composers used to declare `Promise<Row>` and assert their way to it, so
+// whatever a tier returned was served. They parse each tier's answer now, and
+// a failure falls through — which is exactly what the `??` cascade already
+// meant by "this tier declined". These pin that the fall-through is real in
+// both directions: a malformed tier must not be served, and must not stop the
+// next tier from answering either.
+describe("a tier that answers something malformed (#11339)", () => {
+  test("the SUBNET timeline falls through to the frozen export", async () => {
+    // `entry_count` is declared `int`, so a string is a wrong TYPE rather than
+    // an absent field — the one thing the read-tolerant schema still refuses.
+    const out = (await answerSubnetIdentityHistory(
+      {},
+      64,
+      { schema_version: 1, netuid: 64, entry_count: "lots", entries: [{}] },
+      { limit: 5 },
+      { coldTier: frozenSubnet as never, live: async () => null },
+    )) as Record<string, unknown>;
+    const entries = out.entries as Record<string, unknown>[];
+    assert.equal(
+      entries[0]?.subnet_name,
+      "Frozen Name",
+      "the malformed tier was skipped, not served",
+    );
+  });
+
+  test("the CHAIN feed falls through too", async () => {
+    const out = (await answerChainIdentityHistory(
+      {},
+      { schema_version: 1, count: "one", subnet_count: 1, changes: [{}] },
+      { limit: 5 },
+      { coldTier: frozenChain as never, live: async () => null },
+    )) as Record<string, unknown>;
+    const changes = out.changes as Record<string, unknown>[];
+    assert.equal(changes[0]?.subnet_name, "Frozen Name");
+  });
+
+  test("EVERY tier malformed still yields the schema-stable empty timeline", async () => {
+    // Never a throw and never the malformed body: the builder at the end of the
+    // chain is what makes a parse-and-fall-through safe to do at all.
+    const out = (await answerSubnetIdentityHistory(
+      {},
+      64,
+      { schema_version: 1, netuid: 64, entry_count: "lots", entries: [{}] },
+      { limit: 5 },
+      {
+        coldTier: (async () => ({ entry_count: "also wrong" })) as never,
+        live: async () => null,
+      },
+    )) as Record<string, unknown>;
+    assert.deepEqual(out.entries, []);
+    assert.equal(out.entry_count, 0);
+    assert.equal(out.netuid, 64);
+  });
+
+  test("and the chain feed's empty twin", async () => {
+    const out = (await answerChainIdentityHistory(
+      {},
+      { count: "wrong" },
+      { limit: 5 },
+      {
+        coldTier: (async () => ({ count: "also wrong" })) as never,
+        live: async () => null,
+      },
+    )) as Record<string, unknown>;
+    assert.deepEqual(out.changes, []);
+    assert.equal(out.count, 0);
+    assert.equal(out.subnet_count, 0);
+  });
+});
