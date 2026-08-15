@@ -33,15 +33,28 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
     assert.deepEqual(body.data.positions, []);
   });
 
-  test("flag=postgres proxies to DATA_API and returns its shape", async () => {
+  test("the flag being set does NOT proxy this route to DATA_API", async () => {
+    // This route no longer forwards, and the whole-dispatch view is where that
+    // is worth pinning: METAGRAPH_NEURONS_SOURCE is still "data-api" -- it must
+    // be, for the 37 routes DATA_API really does dispatch -- and this one still
+    // must not hop. DATA_API has never had a branch for
+    // /accounts/:ss58/positions, so the forward could only ever reach that
+    // Worker's terminal 503, at the price of two subrequests and an awaited
+    // PostHog $exception before the hot leg answered anyway.
+    //
+    // The stub answers a PERFECTLY GOOD payload rather than failing, so the
+    // assertion cannot pass by accident: if the leg came back, `position_count`
+    // would be 1 and this test would say so.
+    let dataApiCalls = 0;
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/positions`),
       {
         ...createLocalArtifactEnv(),
         METAGRAPH_NEURONS_SOURCE: "data-api",
         DATA_API: {
-          fetch: async () =>
-            Response.json({
+          fetch: async () => {
+            dataApiCalls += 1;
+            return Response.json({
               schema_version: 1,
               ss58: SS58,
               captured_at: null,
@@ -55,15 +68,18 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
                   stake_tao: 250,
                 },
               ],
-            }),
+            });
+          },
         },
       } as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
+    assert.equal(dataApiCalls, 0, "the DATA_API leg is gone, not merely quiet");
     const body = await res.json();
-    assert.equal(body.data.position_count, 1);
-    assert.equal(body.data.positions[0].stake_tao, 250);
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.position_count, 0);
+    assert.deepEqual(body.data.positions, []);
   });
 
   test("testnet variant 404s instead of leaking a D1/R2 key (mainnet-only tier)", async () => {
