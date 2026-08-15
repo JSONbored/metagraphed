@@ -70,6 +70,26 @@ export const PRODUCER_CADENCE_SECS = {
   /** The top-holders flow materialization, rebuilt daily. */
   top_holders_flow: 86_400,
   /**
+   * The top-holders WATCHDOG's own tick -- TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
+   * twice hourly.
+   *
+   * A WATCHDOG IS THE PRODUCER OF ITS OWN VERDICT ROW, and that is the sense
+   * this table is keyed in: `laneSilenceCadenceMs` asks "how often does this
+   * lane_health row get written", and for `top-holders-flow-staleness` /
+   * `top-holders-holdings-staleness` the answer is the watchdog's cron, not the
+   * cadence of the artifact it judges. The two are different numbers -- the
+   * flow artifact is daily and the holdings half three-hourly, while both
+   * verdicts are written every 30 minutes.
+   *
+   * WITHOUT THIS THE BOUND IS THE OBSERVED SAMPLE ALONE, and a lane's FIRST
+   * hours are a sample of one or two. `top-holders-holdings-staleness` alarmed
+   * once at 14:29Z on 2026-08-15, 66 minutes after its first row, against a
+   * bound derived from the only gap it had seen -- and then never again,
+   * because by the third row the sample was stable. Every new watchdog lane
+   * gets that birth alarm; a declared floor is what removes it.
+   */
+  top_holders_staleness_watchdog: 1_800,
+  /**
    * The STORE-backed half of that same artifact, republished three-hourly by
    * TOP_HOLDERS_HOLDINGS_REFRESH_CRON (#9632).
    *
@@ -169,6 +189,7 @@ export const WORKER_CRON_LANES: Readonly<
 > = {
   top_holders_flow: "TOP_HOLDERS_FLOW_CRON",
   top_holders_holdings: "TOP_HOLDERS_HOLDINGS_REFRESH_CRON",
+  top_holders_staleness_watchdog: "TOP_HOLDERS_STALENESS_WATCHDOG_CRON",
 } as const;
 
 /**
@@ -298,6 +319,12 @@ export const LANE_PRODUCER: Readonly<Record<string, ProducerLane>> = {
   "neon:account-identity": "account_identity",
   "subnet-hyperparams": "subnet_hyperparams",
   "neon:subnet-hyperparams": "subnet_hyperparams",
+  // The top-holders watchdog's own two verdict rows. Mapped to the WATCHDOG's
+  // cadence rather than to either artifact's: these rows are written by the
+  // watchdog cron, so that is the interval a silence is measured against. Their
+  // STALENESS bounds are separate and live in the watchdog itself.
+  "top-holders-flow-staleness": "top_holders_staleness_watchdog",
+  "top-holders-holdings-staleness": "top_holders_staleness_watchdog",
   "self-stake": "self_stake",
   "neon:self-stake": "self_stake",
   "subnet-identity": "subnet_identity",

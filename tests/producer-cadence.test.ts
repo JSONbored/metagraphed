@@ -14,6 +14,7 @@ import {
   LANE_PRODUCER,
   PRODUCER_CADENCE_SECS,
   cadenceMs,
+  laneSilenceCadenceMs,
   missedTicksMs,
   passWindowMs,
   type ProducerLane,
@@ -212,10 +213,43 @@ describe("a worker lane's declared cadence matches the cron it runs on", () => {
 
   // The map is the thing that can silently shrink: dropping a lane from it
   // removes the check rather than failing it.
-  test("both worker-cron lanes are still named", () => {
+  // A PROMPT TO THINK, not to widen: dropping a lane from the map removes its
+  // check rather than failing it, so the set is pinned and every addition is
+  // deliberate. `top_holders_staleness_watchdog` is the WATCHDOG's own tick --
+  // a watchdog is the producer of its verdict row, and that row's cadence is
+  // the watchdog cron rather than the cadence of anything it judges.
+  // The birth alarm this mapping removes: `top-holders-holdings-staleness`
+  // fired once at 14:29Z on 2026-08-15, 66 minutes after its first row, against
+  // a silence bound derived from the only gap it had seen. Its verdict rows
+  // have landed every 30 minutes since with no gap at all -- lane_health shows
+  // 13:23, 13:53, 14:23, 14:53, 15:23 -- so the alarm was about the sample, not
+  // the lane. A declared floor is what makes a new lane's first hours quiet.
+  test("both top-holders verdict rows are floored at the watchdog's own tick", () => {
+    for (const lane of [
+      "top-holders-flow-staleness",
+      "top-holders-holdings-staleness",
+    ]) {
+      assert.equal(LANE_PRODUCER[lane], "top_holders_staleness_watchdog", lane);
+    }
+    // A sample of one 30-minute gap can no longer bound the lane below the
+    // watchdog's real cadence.
+    assert.equal(
+      laneSilenceCadenceMs("top-holders-holdings-staleness", 30 * MINUTE),
+      30 * MINUTE,
+    );
+    // And with NO sample at all -- the state a lane is in on its first tick --
+    // the floor answers instead of nothing.
+    assert.equal(
+      laneSilenceCadenceMs("top-holders-holdings-staleness", null),
+      30 * MINUTE,
+    );
+  });
+
+  test("the worker-cron lanes are still named", () => {
     assert.deepEqual(Object.keys(WORKER_CRON_LANES).sort(), [
       "top_holders_flow",
       "top_holders_holdings",
+      "top_holders_staleness_watchdog",
     ]);
   });
 });
