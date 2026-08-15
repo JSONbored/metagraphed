@@ -9,6 +9,9 @@ import {
   logoHostFrom,
   ogImageMeta,
 } from "@/lib/metagraphed/og-card";
+import { providerDatasetJsonLd, stringifyJsonLd } from "@/lib/metagraphed/json-ld";
+import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
+import { API_BASE } from "@/lib/metagraphed/config";
 import { ProviderDetail } from "./-providers-slug-page";
 import {
   entityNotFoundMeta,
@@ -92,6 +95,25 @@ export const Route = createFileRoute("/providers/$slug")({
               : []),
           ],
         }),
+      ],
+      // #11204: the provider pages carried no node of their own, so 138 registry
+      // records were untyped prose. Dataset, matching the subnet treatment --
+      // and deliberately NOT an Organization for the provider, which would be
+      // asserting a third party's identity on their behalf.
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: stringifyJsonLd(
+            providerDatasetJsonLd({
+              slug: params.slug,
+              name: loaderData?.name ?? null,
+              url: `${SITE_ORIGIN}/providers/${encodeURIComponent(params.slug)}`,
+              apiUrl: `${API_BASE}/api/v1/providers/${encodeURIComponent(params.slug)}`,
+              artifactUrl: `${API_BASE}/metagraph/providers/${encodeURIComponent(params.slug)}.json`,
+              sameAs: loaderData?.website ?? null,
+            }),
+          ),
+        },
       ],
     };
   },
