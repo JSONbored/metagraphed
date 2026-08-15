@@ -49,6 +49,7 @@ import {
   recordUsageEvent,
 } from "../src/usage-telemetry.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import type { TelemetryEnv } from "../src/usage-telemetry.ts";
 
 /**
  * This Worker's OWN bindings, kept hand-written on purpose (#10861).
@@ -68,7 +69,7 @@ import { registerModuleStateReset } from "../src/module-state-registry.ts";
  * `POSTHOG_EXCEPTION_STORM_WINDOW_MS` bound in the config and absent below,
  * which is why they now appear.
  */
-export interface WssLbEnv {
+export interface WssLbEnv extends TelemetryEnv {
   // Where the pools artifact is read from. Not hardcoded so a staging
   // deployment can point at a staging API without a code change.
   METAGRAPHED_API?: string;
@@ -76,18 +77,13 @@ export interface WssLbEnv {
   NETWORKS?: string;
   MAX_BLOCK_LAG?: string;
   HANDSHAKE_TIMEOUT_MS?: string;
-  // PostHog wiring, matching every other Worker (secret + optional host
-  // override). Absent => capture is a no-op, the same
-  // isUsageTelemetryConfigured contract src/usage-telemetry.ts gives the
-  // main Workers.
-  POSTHOG_PROJECT_TOKEN?: string;
-  POSTHOG_HOST?: string;
-  // Read by src/usage-telemetry.ts through the `env as unknown as Env` casts
-  // below, never by this file directly -- which is exactly how it stayed
-  // undeclared here while being bound in the config all along.
-  POSTHOG_EXCEPTION_STORM_WINDOW_MS?: string;
-  // Same: bound in the config, consumed by shared helpers rather than here.
-  CF_VERSION_METADATA?: { id: string; tag?: string };
+  // The PostHog wiring is inherited from `TelemetryEnv` rather than restated
+  // here (#11339). It was restated because `recordExceptionEvent` used to
+  // demand the whole ambient `Env`, so this file listed the keys AND cast to
+  // `Env` at each call -- and that cast is what made the header's own warning
+  // toothless: it asserted exactly the bindings this Worker does not have.
+  // The shared helper now takes the five keys it reads, so the calls below
+  // pass `env` unchanged and the compiler checks them.
   // Optional. Absent => no per-IP limiting (fail open, see header).
   WSS_CONNECT_RATE_LIMITER?: {
     limit(o: { key: string }): Promise<{ success: boolean }>;
@@ -182,7 +178,7 @@ function captureCondition(
 ): void {
   if (!shouldEmitCondition(route)) return;
   const pending = recordUsageEvent(
-    env as unknown as Env,
+    env,
     {
       route,
       ok: false,
@@ -652,7 +648,7 @@ export default {
         // Two statements, not `waitUntil?.(record...())`: an optional call
         // short-circuits its ARGUMENT too, so the one-liner would silently
         // skip the capture whenever ctx is absent.
-        const pending = recordExceptionEvent(env as unknown as Env, {
+        const pending = recordExceptionEvent(env, {
           error,
           route: "wss-lb-unhandled-exception",
         });
