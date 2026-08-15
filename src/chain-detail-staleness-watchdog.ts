@@ -29,7 +29,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore, type ReadStoreDb, safeIntOrNull } from "./read-store.ts";
+import { readStore, safeIntOrNull } from "./read-store.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { TelemetryEnv } from "./usage-telemetry.ts";
 
@@ -118,8 +118,7 @@ export function evaluateChainDetailStaleness(input: {
 export async function readChainDetailHead(
   env: ChainDetailStalenessWatchdogEnv | null | undefined,
 ): Promise<{ latestObservedAtMs: number | null; headBlock: number | null }> {
-  const db = readStore(env, ["chain_detail_blocks"]) as unknown as
-    ReadStoreDb | undefined;
+  const db = readStore(env, ["chain_detail_blocks"]);
   if (!db?.first) return { latestObservedAtMs: null, headBlock: null };
   const row = (await db.first(
     "SELECT MAX(observed_at) AS latest, MAX(block_number) AS head " +
@@ -155,8 +154,7 @@ export async function runChainDetailStalenessWatchdog(
   // laneHealthStore already; this read did not, so the watchdog was measuring
   // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
-  const db = readStore(env, ["chain_detail_blocks"]) as unknown as
-    ReadStoreDb | undefined;
+  const db = readStore(env, ["chain_detail_blocks"]);
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

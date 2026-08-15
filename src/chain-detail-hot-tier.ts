@@ -61,8 +61,7 @@ export const CHAIN_DETAIL_HOT_TIER_TABLES = [
 ] as const;
 
 function db(env: unknown): OptionalRowQuerier | null {
-  const binding = readStore(env, CHAIN_DETAIL_HOT_TIER_TABLES) as unknown as
-    OptionalRowQuerier | undefined;
+  const binding = readStore(env, CHAIN_DETAIL_HOT_TIER_TABLES);
   return binding?.query ? binding : null;
 }
 

@@ -60,7 +60,7 @@ import {
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { r2SqlQuery, safeSs58Literal } from "./r2-sql.ts";
-import { readStore, type OptionalRowQuerier } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the retired Postgres tier's SELECT list (minus `coldkey`,
@@ -102,8 +102,7 @@ export async function neuronStakeByHotkeys(
   hotkeys: string[],
 ): Promise<Map<string, number> | null> {
   if (hotkeys.length === 0) return new Map();
-  const db = readStore(env, ["neurons"]) as unknown as
-    OptionalRowQuerier | undefined;
+  const db = readStore(env, ["neurons"]);
   if (!db?.query) return null;
   const chunks: string[][] = [];
   for (let i = 0; i < hotkeys.length; i += BIND_PARAM_CHUNK) {

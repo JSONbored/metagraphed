@@ -106,7 +106,7 @@ import type { R2SqlReader } from "./r2-sql.ts";
 import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
-import { readStore, type OptionalRowQuerier } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
@@ -561,8 +561,7 @@ async function neuronSlots(
   env: R2SqlEnv | null | undefined,
   addr: string,
 ): Promise<{ netuid: number; uid: number }[] | null> {
-  const db = readStore(env, ["neurons"]) as unknown as
-    OptionalRowQuerier | undefined;
+  const db = readStore(env, ["neurons"]);
   if (!db?.query) return null;
   let results: unknown[];
   try {

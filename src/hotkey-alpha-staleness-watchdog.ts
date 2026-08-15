@@ -64,12 +64,7 @@ import { laneHealthStore } from "./lane-health-store.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import {
-  countOrZero,
-  numberOrNull,
-  readStore,
-  type ReadStoreDb,
-} from "./read-store.ts";
+import { countOrZero, numberOrNull, readStore } from "./read-store.ts";
 import type { HotkeyAlpha } from "../generated/db/types.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { TelemetryEnv } from "./usage-telemetry.ts";
@@ -293,10 +288,7 @@ export async function runHotkeyAlphaStalenessWatchdog(
   // laneHealthStore already; this read did not, so the watchdog was measuring
   // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
-  const db = readStore(env, [
-    "hotkey_alpha",
-    "nominator_positions",
-  ]) as unknown as ReadStoreDb | undefined;
+  const db = readStore(env, ["hotkey_alpha", "nominator_positions"]);
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

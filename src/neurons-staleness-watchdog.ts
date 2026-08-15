@@ -50,12 +50,7 @@ import {
 } from "./neon-write-buffer.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import {
-  countOrZero,
-  numberOrNull,
-  readStore,
-  type ReadStoreDb,
-} from "./read-store.ts";
+import { countOrZero, numberOrNull, readStore } from "./read-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
@@ -306,7 +301,7 @@ export async function runNeuronsStalenessWatchdog(
   // laneHealthStore already; this read did not, so the watchdog was measuring
   // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
-  const db = readStore(env, ["neurons"]) as unknown as ReadStoreDb | undefined;
+  const db = readStore(env, ["neurons"]);
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs = neuronsStalenessThresholdMs(env);

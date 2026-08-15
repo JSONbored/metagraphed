@@ -42,7 +42,7 @@ import {
 } from "./account-events.ts";
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { isR2SqlConfigured } from "./r2-sql.ts";
-import { readStore, type OptionalRowQuerier } from "./read-store.ts";
+import { readStore } from "./read-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
 
 /**
@@ -77,8 +77,7 @@ export async function loadAccountRegistrationsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<AccountRegistrationRow[] | null> {
-  const db = readStore(env, ["neurons"]) as unknown as
-    OptionalRowQuerier | undefined;
+  const db = readStore(env, ["neurons"]);
   if (!db?.query) return [];
   try {
     return await db.query<AccountRegistrationRow>(ACCOUNT_REGISTRATIONS_SQL, [
