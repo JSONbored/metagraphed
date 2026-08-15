@@ -35,6 +35,7 @@ import {
   LANE_VERDICTS,
   type SelfHealthLane,
 } from "../schemas-src/routes/self-health.ts";
+import { safeIntOrNull } from "./read-store.ts";
 
 /**
  * How long a verdict is kept.
@@ -272,9 +273,9 @@ export async function loadLatestLaneHealth(
       const record: LaneHealthRecord = {
         lane,
         verdict: normalizeVerdict(row.verdict),
-        age_ms: toIntOrNull(row.age_ms),
+        age_ms: safeIntOrNull(row.age_ms),
         detail: row.detail == null ? null : String(row.detail),
-        checked_at: toIntOrNull(row.checked_at) ?? 0,
+        checked_at: safeIntOrNull(row.checked_at) ?? 0,
       };
       // TIES ARE REAL, AND THIS USED TO RESOLVE THEM BY ROW ORDER.
       //
@@ -350,12 +351,6 @@ function normalizeVerdict(value: unknown): LaneVerdict {
   return (LANE_VERDICTS as readonly string[]).includes(value as string)
     ? (value as LaneVerdict)
     : "unknown";
-}
-
-function toIntOrNull(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  return Number.isSafeInteger(n) ? n : null;
 }
 
 /**

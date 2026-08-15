@@ -60,7 +60,7 @@ import {
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { r2SqlQuery, safeSs58Literal } from "./r2-sql.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, type OptionalRowQuerier } from "./read-store.ts";
 
 /** Kept identical to the retired Postgres tier's SELECT list (minus `coldkey`,
  * which the predicate already fixes) so both tiers hand the formatter the
@@ -87,12 +87,6 @@ export const POSITION_SCAN_CAP = 2_000;
  */
 export const BIND_PARAM_CHUNK = 100;
 
-/** The store surface this module needs from `neurons` -- structural, so tests can
- * hand a plain object (same pattern as src/account-feeds-cold-tier.ts). */
-interface StatementClientLike {
-  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
-}
-
 /**
  * `neurons.stake_tao` for every (hotkey, netuid) a coldkey's positions
  * reference, as buildAccountPositions' join map -- or null when any chunk
@@ -108,7 +102,7 @@ export async function neuronStakeByHotkeys(
 ): Promise<Map<string, number> | null> {
   if (hotkeys.length === 0) return new Map();
   const db = readStore(env, ["neurons"]) as unknown as
-    StatementClientLike | undefined;
+    OptionalRowQuerier | undefined;
   if (!db?.query) return null;
   const chunks: string[][] = [];
   for (let i = 0; i < hotkeys.length; i += BIND_PARAM_CHUNK) {

@@ -50,6 +50,7 @@
 //   depends on a payload we have never seen.
 
 import { SITE_ORIGIN as SITE_URL } from "./contracts.ts";
+import { integerOrNull } from "./read-store.ts";
 
 /** Feed item shape, structurally identical to src/feeds.ts' FeedItem. */
 export interface NewsItem {
@@ -98,13 +99,6 @@ function toIso(value: unknown): string | null {
     return Number.isFinite(date.getTime()) ? date.toISOString() : null;
   }
   return null;
-}
-
-function toInt(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isInteger(n) ? n : null;
 }
 
 /**
@@ -229,7 +223,7 @@ export function diffHyperparamSnapshots(
   for (let index = 1; index < snapshots.length; index += 1) {
     const previous = snapshots[index - 1];
     const current = snapshots[index];
-    const blockNumber = toInt(current?.block_number);
+    const blockNumber = integerOrNull(current?.block_number);
     const observedAt = toIso(current?.observed_at);
     if (blockNumber == null || observedAt == null) continue;
     // `?? {}` already guarantees objects, so there is no null check here --
@@ -336,13 +330,13 @@ export function ownershipChangeItems(
     // without it. Everything else flows into newsItem, which is the single
     // place an item is accepted or rejected -- validating twice invites the
     // two checks to disagree.
-    const blockNumber = toInt(row?.block_number);
+    const blockNumber = integerOrNull(row?.block_number);
     if (blockNumber == null) continue;
-    const rowNetuid = toInt(unwrapArg(row?.args?.netuid));
+    const rowNetuid = integerOrNull(unwrapArg(row?.args?.netuid));
     if (rowNetuid != null && rowNetuid !== netuid) continue;
     const from = shortAddress(unwrapArg(row?.args?.old_coldkey));
     const to = shortAddress(unwrapArg(row?.args?.new_coldkey));
-    const extrinsicIndex = toInt(row?.extrinsic_index);
+    const extrinsicIndex = integerOrNull(row?.extrinsic_index);
     const item = newsItem({
       id: `chain:sn${netuid}:owner:${blockNumber}:${row?.event_index ?? 0}`,
       url:
@@ -389,11 +383,11 @@ export function leaseEventItems(
     const method = typeof row?.method === "string" ? row.method : "";
     const verb = LEASE_VERBS[method];
     if (!verb) continue;
-    const blockNumber = toInt(row?.block_number);
+    const blockNumber = integerOrNull(row?.block_number);
     if (blockNumber == null) continue;
-    const rowNetuid = toInt(unwrapArg(row?.args?.netuid));
+    const rowNetuid = integerOrNull(unwrapArg(row?.args?.netuid));
     if (rowNetuid != null && rowNetuid !== netuid) continue;
-    const extrinsicIndex = toInt(row?.extrinsic_index);
+    const extrinsicIndex = integerOrNull(row?.extrinsic_index);
     const item = newsItem({
       id: `chain:sn${netuid}:lease:${blockNumber}:${row?.event_index ?? 0}`,
       url:

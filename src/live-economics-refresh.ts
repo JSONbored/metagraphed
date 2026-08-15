@@ -61,7 +61,7 @@ import {
 import { encodeAccountId32 } from "./ss58.ts";
 import { createSubtensorPinnedStorage } from "./subtensor-pinned-storage.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, type RowQuerier } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -430,10 +430,6 @@ export function buildSubnetEconomics(
   };
 }
 
-interface StatementClientLike {
-  query(text: string, values?: unknown[]): Promise<Row[]>;
-}
-
 interface KvLike {
   put(key: string, value: string): Promise<unknown>;
 }
@@ -478,7 +474,7 @@ export async function refreshLiveEconomics(
   // history -- off a frozen table it would republish yesterday's economics
   // every three hours, with a fresh timestamp on it.
   const db = readStore(env, ["neurons", "subnet_snapshots"]) as unknown as
-    StatementClientLike | undefined;
+    RowQuerier | undefined;
   if (!db?.query) return { ok: false, reason: "store_unavailable" };
 
   const now = deps.now ?? Date.now;

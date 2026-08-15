@@ -1,3 +1,4 @@
+import type { RowReader } from "./read-store.ts";
 // "Is the account_balances ledger safe to rank from?" (#9511)
 //
 // THE QUESTION A ROW COUNT CANNOT ANSWER. `ORDER BY free_tao DESC LIMIT n` over
@@ -27,10 +28,6 @@
 //      clears it and publishes.
 //
 // Neither is a producer bug. Both are why the reader needs its own answer.
-
-interface StatementClientLike {
-  first(text: string, values?: unknown[]): Promise<unknown>;
-}
 
 export interface AccountBalancesCompleteness {
   /** captured_at of the newest pass that fully landed, or null if none has. */
@@ -65,7 +62,7 @@ const NONE: AccountBalancesCompleteness = {
  * leaderboard that cannot prove its inputs should fall back, not 500.
  */
 export async function latestCompleteAccountBalancesPass(
-  db: StatementClientLike | null | undefined,
+  db: RowReader | null | undefined,
 ): Promise<AccountBalancesCompleteness> {
   if (!db?.first) return { ...NONE, reason: "unavailable" };
   try {

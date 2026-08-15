@@ -42,14 +42,8 @@ import {
 } from "./account-events.ts";
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { isR2SqlConfigured } from "./r2-sql.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, type OptionalRowQuerier } from "./read-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
-
-/** The store surface this module needs -- structural, so tests can hand it a
- * plain object (the same pattern as src/blocks-cold-tier.ts). */
-interface StatementClientLike {
-  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
-}
 
 /**
  * The registration read, character-for-character the one DATA_API's D1 leg
@@ -84,7 +78,7 @@ export async function loadAccountRegistrationsFromStore(
   ss58: string,
 ): Promise<AccountRegistrationRow[] | null> {
   const db = readStore(env, ["neurons"]) as unknown as
-    StatementClientLike | undefined;
+    OptionalRowQuerier | undefined;
   if (!db?.query) return [];
   try {
     return await db.query<AccountRegistrationRow>(ACCOUNT_REGISTRATIONS_SQL, [

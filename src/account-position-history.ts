@@ -1,4 +1,5 @@
 import { numberOrZero, round9 } from "./lib/rao.ts";
+import { nonNegativeIntOrNull } from "./read-store.ts";
 // Per-account daily position HISTORY (block-explorer Tier-1, epic #4329/6.1).
 //
 // The refresh-metagraph cron lands the LATEST per-UID snapshot in Postgres's
@@ -60,16 +61,6 @@ function nullableScore(value: unknown): number | null {
   return Number.isFinite(n) ? round9(n) : null;
 }
 
-function toInt(value: unknown): number | null {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value >= 0 ? value : null;
-  }
-  if (typeof value === "string" && /^\d+$/.test(value)) {
-    return Number(value);
-  }
-  return null;
-}
-
 function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
@@ -112,7 +103,7 @@ export function formatAccountPosition(
   const emission = numberOrZero(row.emission_tao);
   const isValidator = Number(row.validator_permit) === 1;
   return {
-    uid: toInt(row.uid),
+    uid: nonNegativeIntOrNull(row.uid),
     coldkey: row.coldkey ?? null,
     role: isValidator ? "validator" : "miner",
     active: Number(row.active) === 1,

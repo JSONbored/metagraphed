@@ -48,7 +48,7 @@ import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
 import type { BlocksHead, ChainDetailBlocks } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, type OptionalRowQuerier } from "./read-store.ts";
 import {
   resolveDecodeWatermark,
   type DecodeWatermarkDeps,
@@ -135,10 +135,6 @@ interface BlockSeamRow {
 const STORE_FROM =
   "blocks_head b LEFT JOIN chain_detail_blocks c " +
   "ON c.block_number = b.block_number";
-
-interface StatementClientLike {
-  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
-}
 
 /** The one binding this module still reads directly, independent of the full
  * Env shape so the module stays testable with a plain object. The store behind
@@ -264,7 +260,7 @@ async function storeHeadRows(
   want: number,
 ): Promise<Record<string, unknown>[] | null> {
   const db = readStore(env, BLOCKS_SEAM_TABLES) as unknown as
-    StatementClientLike | undefined;
+    OptionalRowQuerier | undefined;
   if (!db?.query || want <= 0) return null;
 
   // Every predicate is qualified to `b`: block_number, observed_at and
@@ -425,7 +421,7 @@ export async function loadBlockColdTier(
   const db =
     network === DEFAULT_CHAIN_NETWORK
       ? (readStore(env, BLOCKS_SEAM_TABLES) as unknown as
-          StatementClientLike | undefined)
+          OptionalRowQuerier | undefined)
       : undefined;
   // "Above the seam" means "too new for the lakehouse, so D1 is the only
   // source" — a statement that is only true on mainnet, because only mainnet

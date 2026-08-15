@@ -29,7 +29,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore, type ReadStoreDb } from "./read-store.ts";
+import { readStore, type ReadStoreDb, safeIntOrNull } from "./read-store.ts";
 
 /**
  * How far behind the lane may fall before this is a stall.
@@ -110,8 +110,8 @@ export async function readChainDetailHead(
       "FROM chain_detail_blocks",
   )) as { latest?: unknown; head?: unknown } | null;
   return {
-    latestObservedAtMs: toInt(row?.latest),
-    headBlock: toInt(row?.head),
+    latestObservedAtMs: safeIntOrNull(row?.latest),
+    headBlock: safeIntOrNull(row?.head),
   };
 }
 
@@ -122,12 +122,6 @@ export interface ChainDetailStalenessDeps {
   now?: () => number;
   /** Telemetry seam for tests; defaults to the real recordExceptionEvent. */
   recordException?: typeof recordExceptionEvent;
-}
-
-function toInt(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  return Number.isSafeInteger(n) ? n : null;
 }
 
 /**

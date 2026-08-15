@@ -61,7 +61,7 @@ import {
   type HyperdriveLike,
   type WaitUntilLike,
 } from "./pg-sql.ts";
-import { readStore, type ReadStoreDb } from "./read-store.ts";
+import { readStore, type ReadStoreDb, safeIntOrNull } from "./read-store.ts";
 import { CHAIN_DETAIL_HOT_TIER_TABLES } from "./chain-detail-hot-tier.ts";
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
@@ -141,12 +141,6 @@ export function chainDetailPruneWindow(input: {
   return { keepFrom: head - retainedBlocks + 1, retainedBlocks };
 }
 
-function toInt(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  return Number.isSafeInteger(n) ? n : null;
-}
-
 export interface ChainDetailPruneResult {
   ok: boolean;
   reason?: string;
@@ -201,8 +195,8 @@ export async function pruneChainDetail(
       "SELECT MIN(block_number) AS floor, MAX(block_number) AS head " +
         "FROM chain_detail_blocks",
     )) as { floor?: unknown; head?: unknown } | null;
-    const floor = toInt(bounds?.floor);
-    const head = toInt(bounds?.head);
+    const floor = safeIntOrNull(bounds?.floor);
+    const head = safeIntOrNull(bounds?.head);
     // An empty tier is not a failure: the lane has simply not written yet.
     if (floor === null || head === null)
       return { ok: true, reason: "no rows", blocks_pruned: 0 };
