@@ -321,6 +321,19 @@ function ProfileShell({ netuid }: { netuid: number }) {
             {tab === "economics" ? <EconomicsTabPanel netuid={netuid} /> : null}
             {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
             {tab === "governance" ? <GovernancePanel netuid={netuid} /> : null}
+            {/*
+              #11351: the badge embed also renders here, on the DEFAULT view.
+              It has lived inside ApiEndpointsPanel since #8329 — reachable only
+              at ?tab=api, behind a tab bar that is not even in the server-
+              rendered HTML. Measured 2026-08-15: `badge.svg` appears 0 times on
+              /subnets/64 and 3 times on /subnets/64?tab=api.
+              That is almost certainly why the "subnet-team flywheel" produced
+              0 inbound links from 115 reachable subnet READMEs in five months:
+              the mechanism worked and no operator could find it. With outreach
+              deliberately not being done, discoverability is the only lever
+              left, so it goes where an operator actually lands.
+            */}
+            {tab === "overview" ? <UptimeBadgeEmbed entity="subnets" id={netuid} /> : null}
             {tab === "about" ? <AboutPanel netuid={netuid} profile={profile} /> : null}
           </div>
 
@@ -616,7 +629,7 @@ function ApiEndpointsPanel({ netuid }: { netuid: number }) {
       {/* #8329: the subnet-team flywheel -- a badge in their own README
           advertises the registry to exactly the audience we want, and it's
           honest in a way a self-reported one can't be. */}
-      <UptimeBadgeEmbed netuid={netuid} />
+      <UptimeBadgeEmbed entity="subnets" id={netuid} />
 
       <ApiPanel netuid={netuid} />
     </div>
