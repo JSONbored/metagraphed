@@ -50,6 +50,10 @@
 // is safe by construction.
 
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "./account-events.ts";
+import {
+  AccountSummaryGroupsSchema,
+  AccountSummaryPointerSchema,
+} from "../schemas-src/artifacts/account-summary-projection.ts";
 
 /** Objects the producer writes, one per shard. Contract with
  * metagraphed-infra's `services/indexer-rs/account_summary_r2.py`. */
@@ -103,22 +107,6 @@ interface ArtifactBucket {
   get(key: string): Promise<{ json(): Promise<unknown> } | null>;
 }
 
-/** One (event_kind, netuid) group, in the producer's field names. */
-interface ProjectedGroup {
-  kind: unknown;
-  netuid: unknown;
-  count: unknown;
-  fb: unknown;
-  lb: unknown;
-  fo: unknown;
-  lo: unknown;
-}
-
-function finite(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
 async function readJson(
   bucket: ArtifactBucket,
   key: string,
@@ -165,20 +153,21 @@ export async function loadAccountSummaryProjection(
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get || !account) return null;
 
-  const pointer = await readJson(bucket, ACCOUNT_SUMMARY_POINTER_KEY);
-  if (!pointer) return null;
-  if (Number(pointer["schema_version"]) !== ACCOUNT_SUMMARY_SCHEMA_VERSION) {
-    return null;
-  }
-  const shards = finite(pointer["shard_count"]);
-  const generation = pointer["generation"];
-  if (!shards || shards < 1 || typeof generation !== "string" || !generation) {
-    return null;
-  }
-  // A STRING, not whatever coerces: `Date.parse(String(12345))` is a valid date
-  // -- the year 12345 -- so a numeric field would read as fresh forever.
-  const stamp = pointer["generated_at"];
-  const generated = typeof stamp === "string" ? Date.parse(stamp) : Number.NaN;
+  // PARSED, not indexed. The producer is in another repository, so the only
+  // thing that can hold the two ends together is a written-down shape --
+  // `AccountSummaryPointerSchema` is that, and the rules it encodes (a STRING
+  // `generated_at`, a POSITIVE INTEGER `shard_count`) are the two the previous
+  // hand-rolled checks existed to enforce. See the schema's header for why each
+  // one is load-bearing.
+  const parsedPointer = AccountSummaryPointerSchema.safeParse(
+    await readJson(bucket, ACCOUNT_SUMMARY_POINTER_KEY),
+  );
+  if (!parsedPointer.success) return null;
+  const pointer = parsedPointer.data;
+  if (pointer.schema_version !== ACCOUNT_SUMMARY_SCHEMA_VERSION) return null;
+  const shards = pointer.shard_count;
+  const generation = pointer.generation;
+  const generated = Date.parse(pointer.generated_at);
   if (!Number.isFinite(generated)) return null;
   if (maxAgeMs > 0 && now() - generated > maxAgeMs) return null;
 
@@ -189,22 +178,29 @@ export async function loadAccountSummaryProjection(
   if (!payload) return null;
   const accounts = payload["accounts"];
   if (!accounts || typeof accounts !== "object") return null;
-  const raw = (accounts as Record<string, unknown>)[account];
-  if (!Array.isArray(raw)) return null;
-
-  const groups: Record<string, unknown>[] = [];
-  for (const entry of raw as ProjectedGroup[]) {
-    if (!entry || typeof entry !== "object") continue;
-    groups.push({
-      kind: entry.kind ?? null,
-      netuid: entry.netuid ?? null,
-      count: finite(entry.count) ?? 0,
-      fb: entry.fb ?? null,
-      lb: entry.lb ?? null,
-      fo: entry.fo ?? null,
-      lo: entry.lo ?? null,
-    });
-  }
+  // PARSED PER-ACCOUNT, not per-shard. The envelope is checked structurally
+  // above because a shard carries ~1,000 accounts and a request reads one of
+  // them -- validating the whole object would spend the saving this tier
+  // exists to make. The account's own array is small and bounded, so it is
+  // parsed properly.
+  //
+  // A ROW THAT DOES NOT MATCH IS NOT SKIPPED. The loop this replaced dropped
+  // malformed entries silently and coerced a bad `count` to 0, so a producer
+  // writing the wrong shape would publish a card that was quietly short some
+  // events -- confidently wrong, which is the one outcome this family refuses.
+  const parsedGroups = AccountSummaryGroupsSchema.safeParse(
+    (accounts as Record<string, unknown>)[account],
+  );
+  if (!parsedGroups.success) return null;
+  const groups: Record<string, unknown>[] = parsedGroups.data.map((entry) => ({
+    kind: entry.kind ?? null,
+    netuid: entry.netuid ?? null,
+    count: entry.count,
+    fb: entry.fb ?? null,
+    lb: entry.lb ?? null,
+    fo: entry.fo ?? null,
+    lo: entry.lo ?? null,
+  }));
   // An account present with no usable groups is not an answer -- the caller
   // reads the lakehouse rather than publishing an empty card from a shard.
   if (!groups.length) return null;

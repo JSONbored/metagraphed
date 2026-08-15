@@ -101,6 +101,22 @@ export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
     maxAgeMs: 2 * DAY,
     reason: "daily rollup, restore pending",
   },
+  // The account-summary projection's running totals (metagraphed-infra#580).
+  //
+  // TWO DAYS, matching the lane that writes it. The lane folds complete days
+  // only and is throttled to roughly one pass a day
+  // (ACCOUNT_SUMMARY_MIN_INTERVAL_HOURS, default 20), so a healthy table is
+  // never more than a day behind and a two-day bound is one missed pass of
+  // slack -- the same reasoning as `account_events_daily` above.
+  //
+  // A BOUND RATHER THAN AN EXEMPTION, deliberately. This table is now the only
+  // thing standing between /api/v1/accounts/{ss58} and the unbounded lakehouse
+  // read it used to do per request, so "nobody noticed it stopped" is the
+  // failure that matters here, and `maxAgeMs: null` would be exactly that.
+  account_summary_groups: {
+    maxAgeMs: 2 * DAY,
+    reason: "running totals for the account-summary projection",
+  },
   account_identity: {
     maxAgeMs: 2 * DAY,
     reason: "identity poller, restore pending",
