@@ -49,8 +49,6 @@ export const AccountSummaryPointerSchema = z
   })
   .strict();
 
-export type AccountSummaryPointer = z.infer<typeof AccountSummaryPointerSchema>;
-
 /**
  * One group row inside a shard: an account's events of one kind on one subnet.
  *
@@ -75,21 +73,18 @@ export const AccountSummaryGroupSchema = z
   .strict();
 
 /**
- * `{generation}/{shard}.json` -- every account that hashes to this shard.
+ * One account's groups inside a shard object.
  *
- * EVERY SHARD IS PUBLISHED, including empty ones, because the reader cannot
- * tell an absent object from an account that does not exist -- the first is a
- * decline and the second is an answer. So `accounts` may legitimately be `{}`.
+ * PER-ACCOUNT, NOT PER-SHARD, and that is a serving-cost decision rather than
+ * an oversight. A shard object carries every account that hashes to it -- on
+ * the order of a thousand -- and a request reads exactly ONE of them. Parsing
+ * the whole envelope would validate ~1,000 accounts' groups to answer about
+ * one, on a path whose entire reason for existing is that the alternative was
+ * too expensive. So the envelope is checked structurally and the account's own
+ * array is parsed.
+ *
+ * `{}` for `accounts` is legitimate: every shard is published, including empty
+ * ones, because the reader cannot tell an absent object from an account that
+ * does not exist -- the first is a decline and the second is an answer.
  */
-export const AccountSummaryShardSchema = z
-  .object({
-    schema_version: z.number().int(),
-    generated_at: z.string().min(1),
-    shard: z.number().int().nonnegative(),
-    shard_count: z.number().int().positive(),
-    account_count: z.number().int().nonnegative(),
-    accounts: z.record(z.string(), z.array(AccountSummaryGroupSchema)),
-  })
-  .strict();
-
-export type AccountSummaryShard = z.infer<typeof AccountSummaryShardSchema>;
+export const AccountSummaryGroupsSchema = z.array(AccountSummaryGroupSchema);

@@ -263,20 +263,56 @@ describe("loadAccountSummaryProjection", () => {
     );
   });
 
-  test("a malformed entry is skipped and absent fields degrade to null", async () => {
+  test("a malformed entry DECLINES the account rather than dropping the row", async () => {
+    // BEHAVIOUR CHANGE, and deliberate (metagraphed-infra#580). This used to
+    // skip entries it could not read and coerce a missing `count` to 0, so a
+    // producer writing the wrong shape published a card that was quietly short
+    // some events. That is confidently wrong, which is the one outcome this
+    // family refuses -- and the alternative is not an error, it is the lakehouse
+    // read this tier is an optimisation over.
+    //
+    // Safe against the real producer: `iter_shards` emits all seven keys on
+    // every row, explicit nulls included, verified against the live shard on
+    // 2026-08-15 (`['count','fb','fo','kind','lb','lo','netuid']`).
     const store = archive(published({ [HOT]: [null, "text", { count: 2 }] }));
-    const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
-    assert.deepEqual(groups, [
-      {
-        kind: null,
-        netuid: null,
-        count: 2,
-        fb: null,
-        lb: null,
-        fo: null,
-        lo: null,
-      },
-    ]);
+    assert.equal(
+      await loadAccountSummaryProjection(store.env, HOT, FRESH),
+      null,
+    );
+  });
+
+  test("a well-formed entry with null fields is still an answer", async () => {
+    // The other side of the rule: nulls are legitimate -- Transfer carries no
+    // netuid -- so strictness must not turn a real row into a decline.
+    const store = archive(
+      published({
+        [HOT]: [
+          {
+            kind: "Transfer",
+            netuid: null,
+            count: 2,
+            fb: null,
+            lb: null,
+            fo: null,
+            lo: null,
+          },
+        ],
+      }),
+    );
+    assert.deepEqual(
+      await loadAccountSummaryProjection(store.env, HOT, FRESH),
+      [
+        {
+          kind: "Transfer",
+          netuid: null,
+          count: 2,
+          fb: null,
+          lb: null,
+          fo: null,
+          lo: null,
+        },
+      ],
+    );
   });
 
   test("a non-object body is refused, at the pointer and at the shard", async () => {

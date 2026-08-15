@@ -50,7 +50,10 @@
 // is safe by construction.
 
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "./account-events.ts";
-import { AccountSummaryPointerSchema } from "../schemas-src/artifacts/account-summary-projection.ts";
+import {
+  AccountSummaryGroupsSchema,
+  AccountSummaryPointerSchema,
+} from "../schemas-src/artifacts/account-summary-projection.ts";
 
 /** Objects the producer writes, one per shard. Contract with
  * metagraphed-infra's `services/indexer-rs/account_summary_r2.py`. */
@@ -102,22 +105,6 @@ export function accountSummaryShardKey(
 
 interface ArtifactBucket {
   get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
-
-/** One (event_kind, netuid) group, in the producer's field names. */
-interface ProjectedGroup {
-  kind: unknown;
-  netuid: unknown;
-  count: unknown;
-  fb: unknown;
-  lb: unknown;
-  fo: unknown;
-  lo: unknown;
-}
-
-function finite(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
 }
 
 async function readJson(
@@ -191,22 +178,29 @@ export async function loadAccountSummaryProjection(
   if (!payload) return null;
   const accounts = payload["accounts"];
   if (!accounts || typeof accounts !== "object") return null;
-  const raw = (accounts as Record<string, unknown>)[account];
-  if (!Array.isArray(raw)) return null;
-
-  const groups: Record<string, unknown>[] = [];
-  for (const entry of raw as ProjectedGroup[]) {
-    if (!entry || typeof entry !== "object") continue;
-    groups.push({
-      kind: entry.kind ?? null,
-      netuid: entry.netuid ?? null,
-      count: finite(entry.count) ?? 0,
-      fb: entry.fb ?? null,
-      lb: entry.lb ?? null,
-      fo: entry.fo ?? null,
-      lo: entry.lo ?? null,
-    });
-  }
+  // PARSED PER-ACCOUNT, not per-shard. The envelope is checked structurally
+  // above because a shard carries ~1,000 accounts and a request reads one of
+  // them -- validating the whole object would spend the saving this tier
+  // exists to make. The account's own array is small and bounded, so it is
+  // parsed properly.
+  //
+  // A ROW THAT DOES NOT MATCH IS NOT SKIPPED. The loop this replaced dropped
+  // malformed entries silently and coerced a bad `count` to 0, so a producer
+  // writing the wrong shape would publish a card that was quietly short some
+  // events -- confidently wrong, which is the one outcome this family refuses.
+  const parsedGroups = AccountSummaryGroupsSchema.safeParse(
+    (accounts as Record<string, unknown>)[account],
+  );
+  if (!parsedGroups.success) return null;
+  const groups: Record<string, unknown>[] = parsedGroups.data.map((entry) => ({
+    kind: entry.kind ?? null,
+    netuid: entry.netuid ?? null,
+    count: entry.count,
+    fb: entry.fb ?? null,
+    lb: entry.lb ?? null,
+    fo: entry.fo ?? null,
+    lo: entry.lo ?? null,
+  }));
   // An account present with no usable groups is not an answer -- the caller
   // reads the lakehouse rather than publishing an empty card from a shard.
   if (!groups.length) return null;
