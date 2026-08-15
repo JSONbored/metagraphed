@@ -7649,11 +7649,15 @@ export type SubnetTurnover = {
   /** Per-neuron churn detail behind the counts above, populated only when the field's changes toggle is set (mirroring REST's ?changes=true). Null otherwise, and on a cold store. */
   changes?: Maybe<SubnetTurnoverChanges>;
   comparable: Scalars['Boolean']['output'];
+  /** Days actually compared -- end_date minus start_date. Read THIS, not `window`, when stating the period: neuron_daily is shallower than the widest windows, so the store's floor clamps them. Measured 2026-08-15, ?window=90d, 1y and all all returned the same 36-day comparison (#10798). */
+  covered_days?: Maybe<Scalars['Int']['output']>;
   end_date?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
   neuron_retention?: Maybe<Scalars['Float']['output']>;
   neurons_end?: Maybe<Scalars['Int']['output']>;
   neurons_start?: Maybe<Scalars['Int']['output']>;
+  /** The window's declared day count, or NULL for `all`, which asks for whatever exists rather than a fixed span. */
+  requested_days?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   stability_score?: Maybe<Scalars['Int']['output']>;
   start_date?: Maybe<Scalars['String']['output']>;
@@ -7664,6 +7668,8 @@ export type SubnetTurnover = {
   validators_exited?: Maybe<Scalars['Int']['output']>;
   validators_start?: Maybe<Scalars['Int']['output']>;
   window?: Maybe<Scalars['String']['output']>;
+  /** True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: turnover compares the window's endpoints, so a shortened span reports LOWER churn and HIGHER stability -- a subnet that replaced its whole validator set over a year reads as a calm month. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete. */
+  window_truncated?: Maybe<Scalars['Boolean']['output']>;
 };
 
 /** The per-neuron churn behind a subnet's turnover scorecard: which validators entered and exited, and which UIDs were reassigned. Mirrors the changes block of GET /api/v1/subnets/{netuid}/turnover?changes=true. */
@@ -14050,11 +14056,13 @@ export type SubnetTreasuryReadingResolvers<ContextType = GqlContext, ParentType 
 export type SubnetTurnoverResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTurnover'] = ResolversParentTypes['SubnetTurnover']> = ResolversObject<{
   changes?: Resolver<Maybe<ResolversTypes['SubnetTurnoverChanges']>, ParentType, ContextType>;
   comparable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  covered_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   end_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neuron_retention?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   neurons_end?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   neurons_start?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  requested_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   stability_score?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   start_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -14065,6 +14073,7 @@ export type SubnetTurnoverResolvers<ContextType = GqlContext, ParentType extends
   validators_exited?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validators_start?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  window_truncated?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
 export type SubnetTurnoverChangesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTurnoverChanges'] = ResolversParentTypes['SubnetTurnoverChanges']> = ResolversObject<{

@@ -12976,11 +12976,15 @@ export interface components {
                 validators_exited_count?: number;
             } | null;
             comparable: boolean;
+            /** @description Days actually compared -- end_date minus start_date. Read THIS, not `window`, when stating the period: neuron_daily is shallower than the widest windows, so the store's floor clamps them. Measured 2026-08-15, ?window=90d, 1y and all all returned the same 36-day comparison (#10798). */
+            covered_days?: number | null;
             end_date?: string | null;
             netuid: number;
             neuron_retention?: number | null;
             neurons_end?: number;
             neurons_start?: number;
+            /** @description The window's declared day count, or NULL for `all`, which asks for whatever exists rather than a fixed span. */
+            requested_days?: number | null;
             schema_version: number;
             stability_score?: number | null;
             start_date?: string | null;
@@ -12991,6 +12995,8 @@ export interface components {
             validators_exited?: number;
             validators_start?: number;
             window?: string | null;
+            /** @description True when covered_days is short of requested_days because the store does not reach back that far. It matters in ONE direction: turnover compares the window's endpoints, so a shortened span reports LOWER churn and HIGHER stability -- a subnet that replaced its whole validator set over a year reads as a calm month. NULL when the bounds could not be resolved at all, never false, which would assert a window nobody measured was complete. */
+            window_truncated?: boolean | null;
         };
         /** @enum {string} */
         SubnetType: "root" | "application";
@@ -48893,11 +48899,13 @@ export interface operations {
                      *           "validators_exited_count": 1
                      *         },
                      *         "comparable": false,
+                     *         "covered_days": 1,
                      *         "end_date": "example",
                      *         "netuid": 7,
                      *         "neuron_retention": 0.5,
                      *         "neurons_end": 1,
                      *         "neurons_start": 1,
+                     *         "requested_days": 1,
                      *         "schema_version": 1,
                      *         "stability_score": 100,
                      *         "start_date": "example",
@@ -48907,7 +48915,8 @@ export interface operations {
                      *         "validators_entered": 1,
                      *         "validators_exited": 1,
                      *         "validators_start": 1,
-                     *         "window": "30d"
+                     *         "window": "30d",
+                     *         "window_truncated": false
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

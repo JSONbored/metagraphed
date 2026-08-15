@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import {
   buildTurnover,
+  windowCoverage,
   buildTurnoverChanges,
   loadSubnetTurnover,
 } from "../src/turnover.ts";
@@ -781,5 +782,99 @@ describe("buildTurnover — regressions", () => {
     assert.equal(data.validator_retention, 0);
     assert.equal(data.uids_deregistered, 0); // uid 0 kept its hotkey
     assert.equal(data.neuron_retention, 1); // {0:V1} retained
+  });
+});
+
+// #10798: `neuronDailyWindowBounds` resolves the start as
+// `MIN(snapshot_date) WHERE snapshot_date >= endDate - days`, so a table
+// shallower than the window silently returns the table's own floor. Measured
+// against production 2026-08-15, SN64 -- three different questions, one answer:
+//
+//     ?window=90d   start 2026-07-10   entered 6  exited 4  stability 68
+//     ?window=1y    start 2026-07-10   entered 6  exited 4  stability 68
+//     ?window=all   start 2026-07-10   entered 6  exited 4  stability 68
+//
+// Only `1y` was wrong about what it measured, and nothing in the payload said
+// so. It matters in ONE direction: turnover compares the window's endpoints, so
+// a shortened span reports LOWER churn and HIGHER stability.
+describe("a window reports what it actually covered", () => {
+  test("a numbered window short of its span is flagged", () => {
+    // The live case: a year asked for, 36 days available.
+    assert.deepEqual(windowCoverage("2026-07-10", "2026-08-15", 365), {
+      covered_days: 36,
+      requested_days: 365,
+      window_truncated: true,
+    });
+  });
+
+  test("a window the store can satisfy is not flagged", () => {
+    assert.deepEqual(windowCoverage("2026-08-08", "2026-08-15", 7), {
+      covered_days: 7,
+      requested_days: 7,
+      window_truncated: false,
+    });
+    // A span LONGER than asked for is not a truncation either -- the bounds
+    // resolve to real snapshots, and the caller got at least what they wanted.
+    assert.equal(
+      windowCoverage("2026-07-10", "2026-08-15", 30).window_truncated,
+      false,
+    );
+  });
+
+  test("`all` asks for whatever exists, so it cannot be short of itself", () => {
+    const coverage = windowCoverage("2026-07-10", "2026-08-15", null);
+    assert.equal(coverage.requested_days, null);
+    assert.equal(coverage.window_truncated, false);
+    // The DEPTH is still published, which is the number a caller needs when
+    // the label carries none.
+    assert.equal(coverage.covered_days, 36);
+  });
+
+  // NULL, never false. Claiming a window nobody measured was complete is the
+  // same confident-wrong shape the rest of this module avoids.
+  test("unresolvable bounds are unknown, not complete", () => {
+    for (const [start, end] of [
+      [null, "2026-08-15"],
+      ["2026-07-10", null],
+      [null, null],
+      ["not a date", "2026-08-15"],
+      // End before start cannot be a span.
+      ["2026-08-15", "2026-07-10"],
+    ] as [string | null, string | null][]) {
+      const coverage = windowCoverage(start, end, 30);
+      assert.equal(coverage.window_truncated, null, `${start}..${end}`);
+      assert.equal(coverage.covered_days, null, `${start}..${end}`);
+      // The request is still echoed -- it is known even when the answer is not.
+      assert.equal(coverage.requested_days, 30);
+    }
+  });
+
+  test("the card carries the coverage, on the populated and the empty path", () => {
+    const rows = [
+      { snapshot_date: "2026-07-10", uid: 0, hotkey: "A", validator_permit: 1 },
+      { snapshot_date: "2026-08-15", uid: 0, hotkey: "B", validator_permit: 1 },
+    ];
+    const populated = buildTurnover(rows, 64, {
+      window: "1y",
+      startDate: "2026-07-10",
+      endDate: "2026-08-15",
+      requestedDays: 365,
+    }) as Row;
+    assert.equal(populated.covered_days, 36);
+    assert.equal(populated.window_truncated, true);
+    assert.equal(populated.comparable, true);
+
+    // The empty card is where a caller most needs to know the window was not
+    // what they asked for -- an unresolvable comparison and a truncated one
+    // look identical without it.
+    const empty = buildTurnover([], 64, {
+      window: "1y",
+      startDate: null,
+      endDate: null,
+      requestedDays: 365,
+    }) as Row;
+    assert.equal(empty.comparable, false);
+    assert.equal(empty.requested_days, 365);
+    assert.equal(empty.window_truncated, null);
   });
 });

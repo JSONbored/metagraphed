@@ -123,6 +123,72 @@ const EMPTY_TURNOVER_CHANGES = {
   uid_reassignments: [] as Row[],
 };
 
+/**
+ * How many days a window ACTUALLY compared, and whether the store cut it short
+ * (#10798).
+ *
+ * `neuronDailyWindowBounds` resolves the start as
+ * `MIN(snapshot_date) WHERE snapshot_date >= endDate - days`, so when the table
+ * is shallower than the window the start silently becomes the table's own
+ * floor. Measured against production 2026-08-15, SN64:
+ *
+ *     ?window=90d   start 2026-07-10   entered 6  exited 4  stability 68
+ *     ?window=1y    start 2026-07-10   entered 6  exited 4  stability 68
+ *     ?window=all   start 2026-07-10   entered 6  exited 4  stability 68
+ *
+ * Three different questions, one 36-day answer, and only `1y`'s was wrong about
+ * what it measured. `start_date` was published, but reading the clamp off it
+ * requires already knowing the table's floor -- so the truncation was
+ * derivable, not stated.
+ *
+ * IT MATTERS IN ONE DIRECTION. Turnover is entered/exited/retention between the
+ * window's endpoints, so a shorter span reports LOWER churn and HIGHER
+ * stability. A subnet that replaced its whole validator set over a year reads
+ * as a calm month -- confidently wrong on the metric the route exists for,
+ * which is worse than an empty answer.
+ *
+ * This is also the retention constraint #10798 records, arriving early: a prune
+ * moves the floor, and every window deeper than the new floor silently
+ * shortens. Publishing the coverage means that shows up as a number rather than
+ * as a quieter subnet.
+ */
+export function windowCoverage(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+  requestedDays: number | null | undefined,
+): {
+  covered_days: number | null;
+  requested_days: number | null;
+  window_truncated: boolean | null;
+} {
+  const requested = typeof requestedDays === "number" ? requestedDays : null;
+  if (!startDate || !endDate) {
+    return {
+      covered_days: null,
+      requested_days: requested,
+      // Unknowable without both bounds -- null, never `false`, which would
+      // assert a window nobody measured was complete.
+      window_truncated: null,
+    };
+  }
+  const spanMs = Date.parse(endDate) - Date.parse(startDate);
+  if (!Number.isFinite(spanMs) || spanMs < 0) {
+    return {
+      covered_days: null,
+      requested_days: requested,
+      window_truncated: null,
+    };
+  }
+  const covered = Math.round(spanMs / 86_400_000);
+  return {
+    covered_days: covered,
+    requested_days: requested,
+    // `all` asks for whatever exists, so it cannot be short of itself. A
+    // numbered window can, and that is the case worth flagging.
+    window_truncated: requested === null ? false : covered < requested,
+  };
+}
+
 // Compare a subnet's start-of-window vs end-of-window neuron_daily snapshots into a
 // turnover scorecard. `rows` carries both dates' rows (the handler reads exactly
 // the two boundary snapshot_dates); `startDate`/`endDate` name them. Null-safe: no
@@ -135,10 +201,13 @@ export function buildTurnover(
     window,
     startDate,
     endDate,
+    requestedDays,
   }: {
     window?: string;
     startDate?: string | null;
     endDate?: string | null;
+    /** The window's declared day count, or null for `all`. */
+    requestedDays?: number | null;
   } = {},
 ): Row {
   const list = Array.isArray(rows) ? rows : [];
@@ -148,6 +217,7 @@ export function buildTurnover(
     window: window ?? null,
     start_date: startDate ?? null,
     end_date: endDate ?? null,
+    ...windowCoverage(startDate, endDate, requestedDays),
   };
   // A single snapshot (start === end) can't show change: comparing it to itself
   // would report a flawless retention/stability_score of 100 for a populated

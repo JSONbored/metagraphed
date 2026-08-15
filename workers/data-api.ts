@@ -8108,7 +8108,15 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             FROM neuron_daily
             WHERE netuid = ${netuid} AND snapshot_date IN (${startDate}, ${endDate})
             ORDER BY snapshot_date ASC, uid ASC`;
-      const turnoverOptions = { window: windowLabel, startDate, endDate };
+      const turnoverOptions = {
+        window: windowLabel,
+        startDate,
+        endDate,
+        // What the caller ASKED for, so the payload can say when the store's
+        // floor cut it short -- see windowCoverage. `all` is null by
+        // construction: it asks for whatever exists.
+        requestedDays: windowDays ?? null,
+      };
       const data = buildTurnover(rows, netuid, turnoverOptions);
       return json(
         includeChanges
