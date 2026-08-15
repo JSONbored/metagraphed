@@ -30,6 +30,7 @@ import { handleRequest, handleScheduled } from "../workers/api.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { mockEnv, type Row } from "./row-type.ts";
+import type { StorageReadError, StorageReadOk } from "../workers/storage.ts";
 
 // --- Pure format helpers ----------------------------------------------------
 
@@ -1084,7 +1085,9 @@ describe("formatTrajectory", () => {
 // tick. These tests now assert against the write that actually happens.
 describe("writeSubnetSnapshot", () => {
   const profiles = {
-    ok: true,
+    ok: true as const,
+    source: "r2" as const,
+    storage_tier: "r2",
     data: {
       profiles: [
         {
@@ -1105,7 +1108,20 @@ describe("writeSubnetSnapshot", () => {
       ],
     },
   };
-  const reader = (data: unknown) => () => Promise.resolve(data as Row);
+  const reader = (result: { ok: boolean; data?: unknown }) => async () =>
+    result.ok
+      ? ({
+          ok: true as const,
+          data: result.data,
+          source: "r2" as const,
+          storage_tier: "r2",
+        } satisfies StorageReadOk)
+      : ({
+          ok: false as const,
+          status: 404,
+          code: "not_found",
+          message: "artifact missing",
+        } satisfies StorageReadError);
 
   /** The snapshot write's real sink (the store) plus the unrelated identity
    * mirror (DATA_API), captured separately so asserting on one never depends
@@ -1865,8 +1881,12 @@ describe("analytics routes tolerate a failing Postgres tier (D1 fully eliminated
 describe("writeSubnetSnapshot no integer netuids", () => {
   test("returns no_rows when no profile has an integer netuid", async () => {
     const r = await writeSubnetSnapshot(mockEnv(), {
-      readArtifact: () =>
-        Promise.resolve({ ok: true, data: { profiles: [{ netuid: "x" }] } }),
+      readArtifact: async () => ({
+        ok: true as const,
+        source: "r2" as const,
+        storage_tier: "r2",
+        data: { profiles: [{ netuid: "x" }] },
+      }),
     });
     assert.equal(r.reason, "no_rows");
   });

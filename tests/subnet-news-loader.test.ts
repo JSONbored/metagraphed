@@ -120,7 +120,9 @@ describe("resolveSubnetNewsForFeed", () => {
       readArtifact: async (_env: unknown, path: string) => {
         assert.equal(path, "/metagraph/subnets/18.json");
         return {
-          ok: true,
+          ok: true as const,
+          source: "r2" as const,
+          storage_tier: "r2",
           data: {
             netuid: 18,
             github_releases: [
@@ -154,7 +156,12 @@ describe("resolveSubnetNewsForFeed", () => {
     });
     assert.deepEqual(
       await resolveSubnetNewsForFeed(env as never, 18, {
-        readArtifact: async () => ({ ok: true, data: { netuid: 18 } }),
+        readArtifact: async () => ({
+          ok: true as const,
+          source: "r2" as const,
+          storage_tier: "r2",
+          data: { netuid: 18 },
+        }),
       }),
       [],
     );

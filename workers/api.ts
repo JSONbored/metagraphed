@@ -1161,8 +1161,7 @@ export async function runFreshnessWatchdog(
   deps: { readArtifact?: ArtifactReader; laneHealthDb?: LaneHealthDb } = {},
 ) {
   const startedAt = Date.now();
-  const readArtifactFn = (deps.readArtifact ??
-    (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
+  const readArtifactFn: ArtifactReader = deps.readArtifact ?? readArtifact;
   // laneHealthStore, not the binding (#10158) -- one of the last three callers
   // still reaching past it.
   const laneHealthDb = laneHealthStore(env, deps.laneHealthDb) as never;
@@ -1325,7 +1324,16 @@ async function fetchDataApiJson(env: Env, path: string): Promise<Row | null> {
 // The subnet record carries github_releases (scripts/github-signals.ts). Read
 // from the served artifact rather than DATA_API: it is the same file the
 // subnet page already reads, so this adds no query to the indexer box.
-type ArtifactReader = (env: Env, path: string) => Promise<Row>;
+/**
+ * The artifact reader, tied to the real one rather than restated.
+ *
+ * This used to say `=> Promise<Row>` while `readArtifact` returns
+ * `Promise<StorageReadResult>` -- so every default reached the alias through
+ * `readArtifact as unknown as ArtifactReader`, and the alias's own return type
+ * was never checked against the function it exists to describe (#11339).
+ * `typeof` cannot drift from it.
+ */
+type ArtifactReader = typeof readArtifact;
 
 async function readSubnetProfileForNews(
   env: Env,
@@ -1348,8 +1356,7 @@ export async function resolveSubnetNewsForFeed(
   // initialization order, and a seam is cheaper than a mock anyway.
   deps: { readArtifact?: ArtifactReader } = {},
 ): Promise<NewsItem[]> {
-  const readArtifactFn = (deps.readArtifact ??
-    (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
+  const readArtifactFn: ArtifactReader = deps.readArtifact ?? readArtifact;
   if (!Number.isInteger(netuid) || netuid < 0) return [];
   const limit = SUBNET_NEWS_SOURCE_LIMIT;
   const [hyperparams, ownership, lease, profile] = await Promise.all([
@@ -3524,10 +3531,7 @@ async function dispatchScheduled(
     const uptimeRollup = await rollupDailyUptime(env, { ctx });
     const snapshotPromise = writeSubnetSnapshot(env, {
       ctx,
-      readArtifact: readArtifact as unknown as (
-        env: Env,
-        path: string,
-      ) => Promise<Row>,
+      readArtifact,
     });
     if (!uptimeRollup.rolled) {
       const snapshot = await snapshotPromise;
@@ -6235,10 +6239,10 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       // key. Two paths reading one blob on two schedules is how an agent ends up
       // holding two different snapshots of one resource with no way to tell which is
       // current — and MCP is the surface with no second path to check against.
-      readHealthKv: ((e: Env, key: string) =>
+      readHealthKv: (e: Env, key: string) =>
         key === KV_ECONOMICS_CURRENT
           ? readEconomicsCurrentKv(e)
-          : readHealthKv(e, key)) as unknown as typeof readHealthKv,
+          : readHealthKv(e, key),
       executionCtx: ctx,
     });
   }

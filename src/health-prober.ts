@@ -65,7 +65,12 @@ import {
 import { emptyStatusCounts } from "./endpoint-score.ts";
 import { readLiveSurfaceStatus } from "./health-status-live.ts";
 import { LIVE_CRON_PROBER } from "./field-provenance.ts";
-import { hyperdriveConnectionString, recordsOrEmpty } from "./read-store.ts";
+import {
+  hyperdriveConnectionString,
+  recordOrNull,
+  recordsOrEmpty,
+} from "./read-store.ts";
+import type { ArtifactEnv, StorageReadResult } from "../workers/storage.ts";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 type Row = Record<string, unknown>;
@@ -1157,7 +1162,16 @@ export async function writeSubnetSnapshotRows(
 
 interface WriteSubnetSnapshotOverrides {
   now?: () => number;
-  readArtifact?: (env: Env, path: string) => Promise<Row>;
+  /**
+   * Declared as the real reader returns, not as `Promise<Row>`.
+   *
+   * `Row` has an index signature, so `.ok` and `.data` resolved to `unknown`
+   * and every consumer added its own `as Row` on the way out -- while the
+   * caller in workers/api.ts asserted the whole function on the way in
+   * (#11339). `StorageReadResult` is a discriminated union, so `.ok` narrows
+   * `.data` on its own.
+   */
+  readArtifact?: (env: ArtifactEnv, path: string) => Promise<StorageReadResult>;
   /** #9452 seams: the outcome reporting is the behaviour under test, so both
    * of its channels are injectable rather than reachable only against a real
    * D1 and a real PostHog token. */
@@ -1244,8 +1258,10 @@ export async function writeSubnetSnapshot(
   }
   const profilesResult = await readArtifact(env, "/metagraph/profiles.json");
   if (!profilesResult?.ok) return decline("profiles_unavailable");
-  const profiles: Row[] = Array.isArray((profilesResult.data as Row)?.profiles)
-    ? ((profilesResult.data as Row).profiles as Row[])
+  const profiles: Row[] = Array.isArray(
+    recordOrNull(profilesResult.data)?.profiles,
+  )
+    ? recordsOrEmpty(recordOrNull(profilesResult.data)?.profiles)
     : [];
   if (!profiles.length) return decline("no_profiles");
 
@@ -1255,17 +1271,17 @@ export async function writeSubnetSnapshot(
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory
   // still records).
-  let economicsResult: Row | null;
+  let economicsResult: StorageReadResult | null;
   try {
     economicsResult = await readArtifact(env, "/metagraph/economics.json");
   } catch {
     economicsResult = null;
   }
+  const economics = economicsResult?.ok
+    ? recordOrNull(economicsResult.data)
+    : null;
   const economicsByNetuid = new Map<unknown, Row>(
-    (Array.isArray((economicsResult?.data as Row)?.subnets)
-      ? ((economicsResult?.data as Row).subnets as Row[])
-      : []
-    ).map((row) => [row.netuid, row]),
+    recordsOrEmpty(economics?.subnets).map((row) => [row.netuid, row]),
   );
 
   const date = new Date(capturedAt).toISOString().slice(0, 10);
@@ -1285,7 +1301,7 @@ export async function writeSubnetSnapshot(
     economicsByNetuid,
     // #8744: top-level on the artifact, not per subnet -- one
     // state_queryStorageAt produced every row, so they cannot disagree.
-    chainState: ((economicsResult?.data as Row)?.chain_state as Row) ?? null,
+    chainState: recordOrNull(economics?.chain_state),
     date,
     capturedAt,
     ctx: overrides.ctx,
