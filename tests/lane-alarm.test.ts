@@ -40,6 +40,7 @@ import {
   LANE_STALE_RUN_SQL,
   laneAlarmGitHub,
   laneAlarmIssueBody,
+  laneAlarmLossComment,
   laneAlarmPlan,
   laneAlarmRecoveryComment,
   laneAlarmTitle,
@@ -49,6 +50,7 @@ import {
   runLaneAlarm,
   type LaneAlarm,
   type LaneAlarmGitHub,
+  type LaneAlarmOpenIssue,
 } from "../src/lane-alarm.ts";
 import type { LaneHealthRecord } from "../src/lane-health.ts";
 
@@ -467,7 +469,7 @@ describe("laneAlarmPlan", () => {
       ...base,
       latest: { a: record({ lane: "a" }) },
       runs: { a: { since: NOW - 28 * HOUR, ticks: 112 } },
-      openAlarms: { a: 4242 },
+      openAlarms: { a: { issue: 4242, updatedAt: NOW } },
     });
     assert.deepEqual(plan.open, []);
     assert.equal(plan.suppressed, 0);
@@ -493,7 +495,7 @@ describe("laneAlarmPlan", () => {
     const plan = laneAlarmPlan({
       ...base,
       latest: { a: record({ lane: "a", verdict: "ok" }) },
-      openAlarms: { a: 77 },
+      openAlarms: { a: { issue: 77, updatedAt: NOW } },
     });
     assert.deepEqual(
       plan.close.map((c) => ({ lane: c.lane, issue: c.issue })),
@@ -505,13 +507,16 @@ describe("laneAlarmPlan", () => {
     const plan = laneAlarmPlan({
       ...base,
       latest: { a: record({ lane: "a", verdict: "unknown" }) },
-      openAlarms: { a: 77 },
+      openAlarms: { a: { issue: 77, updatedAt: NOW } },
     });
     assert.deepEqual(plan.close, []);
   });
 
   test("does NOT close a lane that has no record at all", () => {
-    const plan = laneAlarmPlan({ ...base, openAlarms: { a: 77 } });
+    const plan = laneAlarmPlan({
+      ...base,
+      openAlarms: { a: { issue: 77, updatedAt: NOW } },
+    });
     assert.deepEqual(plan.close, []);
   });
 
@@ -520,9 +525,118 @@ describe("laneAlarmPlan", () => {
       ...base,
       latest: { a: record({ lane: "a" }) },
       runs: { a: { since: NOW - 28 * HOUR, ticks: 112 } },
-      openAlarms: { a: 77 },
+      openAlarms: { a: { issue: 77, updatedAt: NOW } },
     });
     assert.deepEqual(plan.close, []);
+  });
+
+  // A DEAD-LETTER LANE IS THE ONE THAT NEVER RECOVERS, and that had a cost
+  // nobody had paid yet: nothing writes it `ok`, so its issue never closes, and
+  // while the issue is open `fresh` drops the lane -- so the FIRST loss was
+  // reported and every one after it was reported nowhere. These four cases are
+  // the whole of when a second report is earned.
+  const DLQ = "revenue-probes-dlq";
+  /** A dead-letter lane mid-alarm: one loss recorded, its issue already open. */
+  function dlqBase(over: { updatedAt?: number | null } = {}) {
+    return {
+      ...base,
+      latest: {
+        [DLQ]: record({ lane: DLQ, detail: "2 dead-lettered message(s)" }),
+      },
+      runs: { [DLQ]: { since: NOW - 28 * HOUR, ticks: 3 } },
+      openAlarms: {
+        [DLQ]: {
+          issue: 55,
+          updatedAt:
+            "updatedAt" in over ? (over.updatedAt ?? null) : NOW - HOUR,
+        },
+      },
+    };
+  }
+
+  test("a further loss is reported into the issue that is already open", () => {
+    // The row is newer than the last thing written to the issue, and a
+    // dead-letter lane only writes a row when a message is lost -- so this IS
+    // a loss nobody has been told about.
+    const plan = laneAlarmPlan(dlqBase());
+    assert.deepEqual(
+      plan.update.map((u) => ({ lane: u.lane, issue: u.issue })),
+      [{ lane: DLQ, issue: 55 }],
+    );
+    // And still exactly one issue, not a second.
+    assert.deepEqual(plan.open, []);
+  });
+
+  test("a loss already reported does not comment twice", () => {
+    // The alarm's own comment moves `updated_at`, which is what makes the
+    // comparison self-limiting: one comment per loss, not one per tick.
+    const plan = laneAlarmPlan(dlqBase({ updatedAt: NOW }));
+    assert.deepEqual(plan.update, []);
+  });
+
+  test("an unreadable issue timestamp declines, rather than commenting every tick", () => {
+    // No mark means no way to tell a new loss from an old one. Commenting on
+    // none is recoverable; commenting on every tick is how an alarm gets muted.
+    const plan = laneAlarmPlan(dlqBase({ updatedAt: null }));
+    assert.deepEqual(plan.update, []);
+  });
+
+  test("a PRODUCER lane never comments -- its rows are one verdict, not events", () => {
+    // The distinction the whole list rests on. A staleness watchdog writes
+    // `stale` every tick about ONE condition, so "a row newer than the issue"
+    // is true every half hour and means nothing new.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a", checked_at: NOW }) },
+      runs: { a: { since: NOW - 28 * HOUR, ticks: 112 } },
+      openAlarms: { a: { issue: 77, updatedAt: NOW - HOUR } },
+    });
+    assert.deepEqual(plan.update, []);
+  });
+
+  test("a dead-letter lane that has stopped qualifying stops growing its issue", () => {
+    // Residue: nothing has been written to this lane in over a week, so the
+    // stale loop drops it as an outage that no longer exists. An issue about it
+    // must stop accumulating too -- the second report is held to every bound
+    // the first one cleared.
+    const stale = NOW - 8 * 24 * HOUR;
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { [DLQ]: record({ lane: DLQ, checked_at: stale }) },
+      runs: { [DLQ]: { since: stale, ticks: 1 } },
+      openAlarms: { [DLQ]: { issue: 55, updatedAt: stale - HOUR } },
+    });
+    assert.deepEqual(plan.update, []);
+    assert.deepEqual(plan.open, []);
+  });
+});
+
+describe("laneAlarmLossComment", () => {
+  test("names the loss, and why it is a comment rather than a new issue", () => {
+    const body = laneAlarmLossComment(
+      "revenue-probes-dlq",
+      record({
+        lane: "revenue-probes-dlq",
+        detail: "1 dead-lettered message(s) on revenue-probes-dlq (sn-51)",
+        checked_at: NOW,
+      }),
+    );
+    assert.match(body, /`revenue-probes-dlq` lost more at /);
+    assert.ok(body.includes(new Date(NOW).toISOString()));
+    assert.match(body, /sn-51/);
+    // The reader has to be told this is not the alarm re-firing for the same
+    // thing, or these get muted as duplicates.
+    assert.match(body, /still open/);
+    assert.match(body, /never reports `ok`/);
+  });
+
+  test("a loss with no detail still reports the loss", () => {
+    const body = laneAlarmLossComment(
+      "sync-batches-dlq",
+      record({ lane: "sync-batches-dlq", detail: null, checked_at: NOW }),
+    );
+    assert.match(body, /`sync-batches-dlq` lost more at /);
+    assert.ok(!body.includes("``"));
   });
 });
 
@@ -710,11 +824,71 @@ describe("laneAlarmGitHub", () => {
         {},
       ],
     }));
-    assert.deepEqual(await gh.listOpen(), { "neurons-staleness": 1 });
+    assert.deepEqual(await gh.listOpen(), {
+      "neurons-staleness": { issue: 1, updatedAt: null },
+    });
     assert.match(
       seen[0].url,
       /\/repos\/o\/r\/issues\?state=open&per_page=100$/,
     );
+  });
+
+  // The mark a recurrence is measured against. Without it the alarm has no way
+  // to tell a loss it has already reported from one it has not, and a
+  // dead-letter lane's issue either grows every tick or never grows at all.
+  test("carries when each issue was last written to, as epoch ms", async () => {
+    const { gh } = client(() => ({
+      ok: true,
+      json: async () => [
+        {
+          number: 1,
+          title: `${LANE_ALARM_TITLE_PREFIX}revenue-probes-dlq`,
+          updated_at: "2026-08-15T03:28:00.000Z",
+        },
+      ],
+    }));
+    assert.deepEqual(await gh.listOpen(), {
+      "revenue-probes-dlq": {
+        issue: 1,
+        updatedAt: Date.parse("2026-08-15T03:28:00.000Z"),
+      },
+    });
+  });
+
+  // NULL, not 0. Zero dates the issue to 1970, which makes every dead-letter
+  // row look newer than it -- a comment every tick, on the lane whose whole
+  // point is that it only speaks when something was lost.
+  test("an unreadable timestamp becomes null, not the epoch", async () => {
+    const { gh } = client(() => ({
+      ok: true,
+      json: async () => [
+        {
+          number: 1,
+          title: `${LANE_ALARM_TITLE_PREFIX}a`,
+          updated_at: "not a date",
+        },
+        { number: 2, title: `${LANE_ALARM_TITLE_PREFIX}b`, updated_at: null },
+      ],
+    }));
+    assert.deepEqual(await gh.listOpen(), {
+      a: { issue: 1, updatedAt: null },
+      b: { issue: 2, updatedAt: null },
+    });
+  });
+
+  test("comments on an issue that stays open", async () => {
+    const { gh, seen } = client(() => ({ ok: true, json: async () => ({}) }));
+    assert.equal(await gh.comment(55, "lost more"), true);
+    assert.match(seen[0].url, /\/repos\/o\/r\/issues\/55\/comments$/);
+    assert.equal(seen[0].init?.method, "POST");
+    assert.deepEqual(JSON.parse(String(seen[0].init?.body)), {
+      body: "lost more",
+    });
+  });
+
+  test("a refused comment reports false rather than throwing", async () => {
+    const { gh } = client(() => ({ ok: false, json: async () => ({}) }));
+    assert.equal(await gh.comment(55, "lost more"), false);
   });
 
   // NULL, not `{}`. This asserted the opposite, and the opposite is what put
@@ -748,7 +922,9 @@ describe("laneAlarmGitHub", () => {
         { number: 1, title: `${LANE_ALARM_TITLE_PREFIX}neurons-staleness` },
       ],
     }));
-    assert.deepEqual(await gh.listOpen(), { "neurons-staleness": 1 });
+    assert.deepEqual(await gh.listOpen(), {
+      "neurons-staleness": { issue: 1, updatedAt: null },
+    });
   });
 
   test("opens an issue and returns its number", async () => {
@@ -826,19 +1002,28 @@ describe("laneAlarmGitHub", () => {
 
 describe("runLaneAlarm", () => {
   /** A GitHub double that records what it was asked to do. */
-  function fakeGitHub(open: Record<string, number> = {}): LaneAlarmGitHub & {
+  function fakeGitHub(
+    open: Record<string, LaneAlarmOpenIssue> = {},
+  ): LaneAlarmGitHub & {
     opened: string[];
     closed: number[];
+    commented: { issue: number; body: string }[];
   } {
     const opened: string[] = [];
     const closed: number[] = [];
+    const commented: { issue: number; body: string }[] = [];
     return {
       opened,
       closed,
+      commented,
       listOpen: async () => open,
       open: async (alarm) => {
         opened.push(alarm.lane);
         return 100 + opened.length;
+      },
+      comment: async (issue, body) => {
+        commented.push({ issue, body });
+        return true;
       },
       close: async (issue) => {
         closed.push(issue);
@@ -920,7 +1105,7 @@ describe("runLaneAlarm", () => {
       "lane-alarm",
       "ok",
       null,
-      "1 alarming, 0 recovered, 1 lanes",
+      "1 alarming, 0 recovered, 0 recurred, 1 lanes",
       NOW,
     ]);
   });
@@ -937,7 +1122,9 @@ describe("runLaneAlarm", () => {
         },
       ],
     });
-    const github = fakeGitHub({ "neurons-staleness": 4242 });
+    const github = fakeGitHub({
+      "neurons-staleness": { issue: 4242, updatedAt: NOW },
+    });
     const out = await runLaneAlarm(
       { ...TOKEN, ...db.env },
       { github, now: () => NOW, recordException: async () => true },
@@ -945,6 +1132,93 @@ describe("runLaneAlarm", () => {
     assert.equal(out.recovered, 1);
     assert.equal(out.closed, 1);
     assert.deepEqual(github.closed, [4242]);
+  });
+
+  // THE END OF THE HOLE THE TOKEN OPENED. A dead-letter lane never reports
+  // `ok`, so its issue never closes -- and while it was open the lane was
+  // dropped from `fresh`, which meant the first lost message was filed and
+  // every one after it was reported NOWHERE. Both channels get it now.
+  test("a further dead-letter loss comments on the open issue, and records", async () => {
+    const db = healthDb({
+      latest: [
+        {
+          lane: "revenue-probes-dlq",
+          verdict: "stale",
+          age_ms: null,
+          detail: "2 dead-lettered message(s) on revenue-probes-dlq (sn-51)",
+          checked_at: NOW,
+        },
+      ],
+      runs: [{ lane: "revenue-probes-dlq", since: NOW - 28 * HOUR, ticks: 4 }],
+    });
+    const github = fakeGitHub({
+      // Last written to an hour ago; the row above landed since.
+      "revenue-probes-dlq": { issue: 55, updatedAt: NOW - HOUR },
+    });
+    const seen: Array<{ errorCode?: string }> = [];
+    const out = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      {
+        github,
+        now: () => NOW,
+        recordException: async (_env, payload) => {
+          seen.push(payload as { errorCode?: string });
+          return true;
+        },
+      },
+    );
+    assert.equal(out.recurred, 1);
+    assert.equal(out.commented, 1);
+    assert.equal(github.commented.length, 1);
+    assert.equal(github.commented[0].issue, 55);
+    assert.match(github.commented[0].body, /sn-51/);
+    // NOT a second issue, and not a close either.
+    assert.deepEqual(github.opened, []);
+    assert.deepEqual(github.closed, []);
+    // Its own code: "more was lost on a queue already alarming" is a different
+    // event from the first loss, and must not fingerprint as a repeat of it.
+    assert.deepEqual(
+      seen.map((p) => p.errorCode),
+      ["lane_lost_again"],
+    );
+    // And the reader's own verdict counts it, so a tick that only commented
+    // does not read as a tick with nothing to report.
+    assert.deepEqual(db.written[0].values, [
+      "lane-alarm",
+      "ok",
+      null,
+      "0 alarming, 0 recovered, 1 recurred, 1 lanes",
+      NOW,
+    ]);
+  });
+
+  test("a comment GitHub refuses is not counted as delivered", async () => {
+    const db = healthDb({
+      latest: [
+        {
+          lane: "revenue-probes-dlq",
+          verdict: "stale",
+          age_ms: null,
+          detail: "1 dead-lettered message(s)",
+          checked_at: NOW,
+        },
+      ],
+      runs: [{ lane: "revenue-probes-dlq", since: NOW - 28 * HOUR, ticks: 4 }],
+    });
+    const github = fakeGitHub({
+      "revenue-probes-dlq": { issue: 55, updatedAt: NOW - HOUR },
+    });
+    github.comment = async () => {
+      throw new Error("502 from github");
+    };
+    const out = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      { github, now: () => NOW, recordException: async () => true },
+    );
+    // Planned, so the finding is still reported; not delivered, so the count
+    // stays honest -- the same distinction `opened` draws for a failed create.
+    assert.equal(out.recurred, 1);
+    assert.equal(out.commented, 0);
   });
 
   test("an unreadable issue list stops the WRITES, and still records every lane", async () => {
@@ -1324,7 +1598,7 @@ describe("runLaneAlarm", () => {
         { lane: "a", verdict: "ok", age_ms: 1, detail: null, checked_at: NOW },
       ],
     });
-    const github = fakeGitHub({ a: 5 });
+    const github = fakeGitHub({ a: { issue: 5, updatedAt: NOW } });
     github.close = async () => {
       throw new Error("rate limited");
     };

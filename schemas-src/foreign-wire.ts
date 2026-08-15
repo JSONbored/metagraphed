@@ -29,11 +29,19 @@ import { z } from "zod";
  * whose title matches. A PR that happened to match would have been closed as
  * though it were an alarm, so this field is checked for existence and never
  * for shape -- which is exactly what `unknown` says.
+ *
+ * `updated_at` is how the alarm tells a loss it has already reported from one
+ * it has not. GitHub stamps it on every write to the issue, including the
+ * alarm's own comments, so "newer than this" means "since we last said
+ * anything here" without the alarm keeping state of its own. Nullish because
+ * the alarm treats an unreadable timestamp as "do not comment" rather than as
+ * "comment always" -- see laneAlarmPlan.
  */
 export const GithubIssueSchema = z.object({
   number: z.number().nullish(),
   title: z.string().nullish(),
   pull_request: z.unknown().optional(),
+  updated_at: z.string().nullish(),
 });
 
 /**

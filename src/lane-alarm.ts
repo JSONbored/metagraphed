@@ -474,9 +474,22 @@ export interface LaneAlarmPlanInput {
    */
   observedMaxGap: Record<string, number | null>;
   /** Lanes that already have an open alarm issue. */
-  openAlarms: Record<string, number>;
+  openAlarms: Record<string, LaneAlarmOpenIssue>;
   nowMs: number;
   minStaleMs: number;
+}
+
+/**
+ * An alarm issue that is already open, and when it was last written to.
+ *
+ * The timestamp is what lets a lane report a SECOND finding into an issue that
+ * is already open. `updatedAt` is null when GitHub's stamp could not be read,
+ * and the plan then declines to comment -- see the `update` list for why that
+ * is the safe direction.
+ */
+export interface LaneAlarmOpenIssue {
+  issue: number;
+  updatedAt: number | null;
 }
 
 export interface LaneAlarmPlan {
@@ -485,6 +498,51 @@ export interface LaneAlarmPlan {
   /** Lanes that recovered and whose issue should close. Never carries a null
    * record: an entry only exists because a record said `ok`. */
   close: { lane: string; issue: number; record: LaneHealthRecord }[];
+  /**
+   * Losses to report into an alarm issue that is ALREADY OPEN (#11248's blind
+   * spot, found once the alarm could finally write).
+   *
+   * ## WHY AN OPEN ISSUE IS NOT THE END OF THE STORY
+   *
+   * `fresh` below drops every lane that already has one, which is right for a
+   * producer: an issue saying "this lane is stale" stays true while it stays
+   * stale, and a second issue every half hour is the noise that gets an alarm
+   * muted.
+   *
+   * A DEAD-LETTER LANE IS NOT THAT SHAPE. Nothing writes it a row except
+   * `handleDeadLetterBatch`, and only when a message has just been lost -- so
+   * its rows are EVENTS, not a repeated verdict about one condition. And
+   * nothing ever writes it `ok`: a lost message is not un-lost, so the close
+   * loop below can never fire for one, and the issue stays open by design.
+   *
+   * Those two facts together made a hole: the first loss opened an issue, and
+   * from that moment every FURTHER loss on that queue was reported nowhere. The
+   * lane was already in `openAlarms`, so `fresh` dropped it; the issue was
+   * already open, so nothing reopened it; no `ok` ever arrived, so nothing
+   * closed it either. The alarm went quiet exactly as the queue got worse --
+   * the failure mode the whole file is shaped against, reached from the other
+   * direction.
+   *
+   * ## THE TEST, AND WHY IT NEEDS NO STATE
+   *
+   * A dead-letter lane writes only on loss, so "a row newer than the last time
+   * we wrote to the issue" IS "a loss we have not reported". GitHub stamps
+   * `updated_at` on every write including the alarm's own comment, so the
+   * comparison de-duplicates itself: one comment per loss, and the comment
+   * moves the mark.
+   *
+   * A human commenting on the issue in the same window also moves it, and can
+   * therefore swallow one report. That is the acceptable direction: it costs a
+   * comment precisely when somebody is already reading the issue, whereas the
+   * alternative -- keeping our own high-water mark -- is durable state this
+   * reader has deliberately never had. An unreadable `updated_at` declines for
+   * the same reason: no mark means no way to tell a new loss from an old one,
+   * and commenting on every tick is worse than commenting on none.
+   *
+   * Bounded without a cap: at most one comment per dead-letter lane per tick,
+   * and `DEAD_LETTER_LANES` has five entries.
+   */
+  update: { lane: string; issue: number; record: LaneHealthRecord }[];
   /** Alarms that qualified but lost to the per-tick cap. Reported, not dropped. */
   suppressed: number;
 }
@@ -603,17 +661,40 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
   const open = fresh.slice(0, LANE_ALARM_MAX_OPENS_PER_TICK);
 
   const close: LaneAlarmPlan["close"] = [];
-  for (const [lane, issue] of Object.entries(openAlarms)) {
+  for (const [lane, open] of Object.entries(openAlarms)) {
     const record = latest[lane] ?? null;
     // Only `ok` closes. A lane that went `unknown` has not recovered -- the
     // watchdog could not evaluate it -- and closing on an absence of
     // measurement is the confident-wrong-answer this repo avoids everywhere
     // else. A lane with no record at all keeps its issue for the same reason.
     if (record?.verdict !== "ok") continue;
-    close.push({ lane, issue, record });
+    close.push({ lane, issue: open.issue, record });
   }
 
-  return { open, close, suppressed: fresh.length - open.length };
+  // Further losses on a queue whose alarm is already open. See
+  // LaneAlarmPlan.update for the whole argument.
+  //
+  // Gated on `qualified` -- not merely on having a row -- so a second report
+  // still has to clear every bound the first one did: the residue guard that
+  // drops a lane nothing has written in a week, and the stale floor. A lane
+  // that stopped qualifying has stopped alarming, and an issue about it should
+  // stop growing too. Membership rather than the alarm itself, because what a
+  // recurrence needs is the NEWEST row, and `alarm.since` is the oldest.
+  const qualifiedLanes = new Set(qualified.map((alarm) => alarm.lane));
+  const update: LaneAlarmPlan["update"] = [];
+  for (const [lane, openIssue] of Object.entries(openAlarms)) {
+    if (!isDeadLetterLane(lane)) continue;
+    if (!qualifiedLanes.has(lane)) continue;
+    if (openIssue.updatedAt === null) continue;
+    // Indexed without a guard: membership above is derived from `latest`, so a
+    // qualified lane has a record by construction. A `?? continue` here would
+    // be a branch no test could reach.
+    const record = latest[lane];
+    if (record.checked_at <= openIssue.updatedAt) continue;
+    update.push({ lane, issue: openIssue.issue, record });
+  }
+
+  return { open, close, update, suppressed: fresh.length - open.length };
 }
 
 function humanDuration(ms: number): string {
@@ -664,6 +745,27 @@ export function laneAlarmIssueBody(alarm: LaneAlarm, nowMs: number): string {
     "`GET /api/v1/self-health`.",
   );
   return lines.join("\n");
+}
+
+/**
+ * The comment a FURTHER loss earns on an alarm issue that is already open.
+ *
+ * States the loss and then says why it arrived as a comment rather than as its
+ * own issue, because the alternative reading -- "the alarm re-fired for the
+ * same thing" -- is what would get these muted. See LaneAlarmPlan.update.
+ */
+export function laneAlarmLossComment(
+  lane: string,
+  record: LaneHealthRecord,
+): string {
+  const detail = record.detail ? `: \`${record.detail}\`` : "";
+  return (
+    `\`${lane}\` lost more at ${new Date(record.checked_at).toISOString()}${detail}.\n\n` +
+    "Reported here rather than as a new issue because this one is still open. " +
+    "A dead-letter lane never reports `ok` -- nothing un-loses a message -- so " +
+    "this issue will not close itself; closing it is a decision, and the next " +
+    "loss after it closes opens a fresh alarm."
+  );
 }
 
 /** The recovery comment. States what recovered and how long it was out. */
@@ -729,8 +831,12 @@ export interface LaneAlarmGitHub {
    * runner acts on it by opening one for every alarming lane; "we could not
    * ask" must never produce that action, and the two are indistinguishable
    * once a failure has been flattened into an empty object. */
-  listOpen(): Promise<Record<string, number> | null>;
+  listOpen(): Promise<Record<string, LaneAlarmOpenIssue> | null>;
   open(alarm: LaneAlarm, title: string, body: string): Promise<number | null>;
+  /** Say something on an issue that stays open. Its own method rather than a
+   * flag on `close`, because reporting a further loss and closing on recovery
+   * are opposite outcomes that happen to share a request. */
+  comment(issue: number, body: string): Promise<boolean>;
   close(issue: number, comment: string): Promise<boolean>;
 }
 
@@ -773,7 +879,7 @@ export function laneAlarmGitHub(
       // Same reasoning as the status check: a body we cannot read is not a
       // report that nothing is open.
       if (!page.success) return null;
-      const out: Record<string, number> = {};
+      const out: Record<string, LaneAlarmOpenIssue> = {};
       for (const row of page.data) {
         // Per ROW, so one issue GitHub shapes unexpectedly costs that issue
         // and not the whole page -- see GithubIssueListSchema.
@@ -786,7 +892,17 @@ export function laneAlarmGitHub(
         const title = issue.title ?? "";
         if (!title.startsWith(LANE_ALARM_TITLE_PREFIX)) continue;
         const lane = title.slice(LANE_ALARM_TITLE_PREFIX.length).trim();
-        if (lane && typeof issue.number === "number") out[lane] = issue.number;
+        if (!lane || typeof issue.number !== "number") continue;
+        // A stamp we cannot read becomes null rather than 0. Zero would date
+        // the issue to 1970 and make every dead-letter row look newer than it,
+        // which is a comment every tick -- see LaneAlarmPlan.update.
+        const parsedAt = issue.updated_at
+          ? Date.parse(issue.updated_at)
+          : Number.NaN;
+        out[lane] = {
+          issue: issue.number,
+          updatedAt: Number.isFinite(parsedAt) ? parsedAt : null,
+        };
       }
       return out;
     },
@@ -801,6 +917,13 @@ export function laneAlarmGitHub(
       return typeof created.data?.number === "number"
         ? created.data.number
         : null;
+    },
+    async comment(issue, body) {
+      const response = await fetchImpl(
+        `${GITHUB_API}/repos/${repo}/issues/${issue}/comments`,
+        { method: "POST", headers, body: JSON.stringify({ body }) },
+      );
+      return response.ok;
     },
     async close(issue, comment) {
       // Comment first: a close that lands without its reason is an issue whose
@@ -920,6 +1043,7 @@ export async function runLaneAlarm(
 
   let opened = 0;
   let closed = 0;
+  let commented = 0;
   for (const alarm of plan.open) {
     const body = laneAlarmIssueBody(alarm, nowMs);
     // PostHog stays a second channel rather than the only one. It is recorded
@@ -1000,6 +1124,25 @@ export async function runLaneAlarm(
         .catch(() => false);
       if (ok) closed += 1;
     }
+    for (const entry of plan.update) {
+      // Recorded to PostHog too, and for the same reason the opens are: the
+      // GitHub write is one channel, and a loss nobody can see is the thing
+      // this whole list exists to end. Its own code, because "more was lost on
+      // a queue already alarming" is a different event from the first loss.
+      await record(env as never, {
+        error: new Error(
+          `lane ${entry.lane} lost more while already alarming` +
+            (entry.record.detail ? ` -- ${entry.record.detail}` : ""),
+        ),
+        route: "watchdog:lane-alarm",
+        fingerprintDetail: entry.lane,
+        errorCode: "lane_lost_again",
+      }).catch(() => false);
+      const ok = await github
+        .comment(entry.issue, laneAlarmLossComment(entry.lane, entry.record))
+        .catch(() => false);
+      if (ok) commented += 1;
+    }
   }
 
   await recordLaneVerdict(db, {
@@ -1010,7 +1153,7 @@ export async function runLaneAlarm(
     // and a healthy platform look identical.
     verdict: "ok",
     age_ms: null,
-    detail: `${plan.open.length} alarming, ${plan.close.length} recovered, ${Object.keys(latest).length} lanes`,
+    detail: `${plan.open.length} alarming, ${plan.close.length} recovered, ${plan.update.length} recurred, ${Object.keys(latest).length} lanes`,
     checked_at: nowMs,
   });
 
@@ -1019,9 +1162,11 @@ export async function runLaneAlarm(
     lanes: Object.keys(latest).length,
     alarming: plan.open.length,
     recovered: plan.close.length,
+    recurred: plan.update.length,
     suppressed: plan.suppressed,
     opened,
     closed,
+    commented,
     delivered: Boolean(github) && !listUnavailable,
     ...(listUnavailable ? { reason: "issue_list_unavailable" } : {}),
   };
