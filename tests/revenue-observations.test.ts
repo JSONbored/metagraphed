@@ -251,11 +251,81 @@ describe("eligibleRevenueSurfaces", () => {
             surface_id: "typo",
             netuid: 1,
             url: "https://example/typo",
-            revenue: { shape: "scalarr", currency: "USD" },
+            revenue: {
+              role: "external-revenue",
+              provenance: "probe-derived",
+              shape: "scalarr",
+              currency: "USD",
+            },
           },
         ],
       }).map((s) => s.id),
       ["typo"],
+    );
+  });
+
+  // THE TWO GATES THIS CLAIMED TO MIRROR AND DID NOT. `probeEligibility` -- the
+  // check the lane actually applies on delivery -- opens with the role and then
+  // a readable provenance, so a surface failing either was enqueued once an
+  // hour and could never be probed.
+  test("a role that is not external-revenue is not enqueued", () => {
+    // Measured on the published artifact: `sn-64-chutes-invocations-usage` is
+    // `usage-proxy` -- a usage signal, deliberately not revenue -- and it made
+    // the lane's own verdict read `5 enqueued` against four probeable surfaces,
+    // every hour.
+    assert.deepEqual(
+      eligibleRevenueSurfaces({
+        surfaces: [
+          {
+            surface_id: "sn-64-chutes-invocations-usage",
+            netuid: 64,
+            url: "https://example/usage",
+            revenue: {
+              role: "usage-proxy",
+              provenance: "probe-derived",
+              shape: "scalar",
+              currency: "USD",
+            },
+          },
+        ],
+      }),
+      [],
+    );
+  });
+
+  test("a provenance the store would refuse is not enqueued", () => {
+    // migrations/neon/0016 rejects any provenance outside the readable two:
+    // "a row claiming one of them means something wrote a figure it could not
+    // have read". Enqueueing one asks the lane to produce a row its own table
+    // will not accept.
+    assert.deepEqual(
+      eligibleRevenueSurfaces({
+        surfaces: [
+          {
+            surface_id: "attested",
+            netuid: 1,
+            url: "https://example/attested",
+            revenue: {
+              role: "external-revenue",
+              provenance: "operator-attested",
+              shape: "scalar",
+              currency: "USD",
+            },
+          },
+          // ...and a missing one is not readable either.
+          {
+            surface_id: "unset",
+            netuid: 2,
+            url: "https://example/unset",
+            revenue: {
+              role: "external-revenue",
+              shape: "scalar",
+              currency: "USD",
+            },
+          },
+        ],
+      }),
+      [],
     );
   });
 
@@ -511,6 +581,7 @@ describe("degenerate input", () => {
           netuid: 7,
           revenue: {
             role: "external-revenue",
+            provenance: "probe-derived",
             shape: "scalar",
             currency: "USD",
           },
@@ -749,7 +820,12 @@ describe("the queue lane (#10715)", () => {
   test("probes one surface per message and ACKS it on success", async () => {
     const m = message({ surface_id: surface.id });
     const out = await handleRevenueProbeBatch([m], store(), deps() as never);
-    assert.deepEqual(out, { done: 1, retried: 0, dropped: 0 });
+    assert.deepEqual(out, {
+      done: 1,
+      retried: 0,
+      dropped: 0,
+      firstFailure: null,
+    });
     assert.equal(m.calls.acked, 1);
   });
 
@@ -780,7 +856,12 @@ describe("the queue lane (#10715)", () => {
     );
     assert.equal(m.calls.retried, 0, "a deterministic failure must not retry");
     assert.equal(m.calls.acked, 1);
-    assert.deepEqual(out, { done: 1, retried: 0, dropped: 0 });
+    assert.deepEqual(out, {
+      done: 1,
+      retried: 0,
+      dropped: 0,
+      firstFailure: null,
+    });
   });
 
   test("a FETCH failure still RETRIES, because that one is transient", async () => {
@@ -828,7 +909,12 @@ describe("the queue lane (#10715)", () => {
       store(),
       deps({ surfaceFor: () => null }) as never,
     );
-    assert.deepEqual(out, { done: 0, retried: 0, dropped: 1 });
+    assert.deepEqual(out, {
+      done: 0,
+      retried: 0,
+      dropped: 1,
+      firstFailure: null,
+    });
     assert.equal(m.calls.acked, 1);
   });
 
