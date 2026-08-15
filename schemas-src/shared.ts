@@ -504,6 +504,27 @@ export const SubnetEconomicsSchema = z
   .strict();
 export type SubnetEconomics = z.infer<typeof SubnetEconomicsSchema>;
 
+/**
+ * `SubnetEconomics` as a READ path must take it.
+ *
+ * Same partial+catchall contract every lakehouse row schema is declared with,
+ * and for the same two reasons: a read often carries a SUBSET of the columns
+ * (a `fields=` projection, or a tier whose producer has no such field), and it
+ * may carry MORE than the schema names (a producer that shipped a field before
+ * this file learned about it). What stays pinned is the TYPE of any declared
+ * key that IS present -- which is the half that catches a real defect.
+ *
+ * The strict schema above stays the PRODUCER's contract, where an undeclared
+ * key is a genuine drift worth failing on. Reading through it instead would
+ * make the leaderboards go empty the day a producer adds a field, turning a
+ * schema into an availability risk -- and a route that answers nothing is
+ * indistinguishable from one whose data is gone (#11339, closing #10789's
+ * "replace the assertion with a parse").
+ */
+export const SubnetEconomicsReadSchema =
+  SubnetEconomicsSchema.partial().catchall(z.unknown());
+export type SubnetEconomicsRead = z.infer<typeof SubnetEconomicsReadSchema>;
+
 // The block every v440 emission-pipeline read was pinned to (#8744), carried
 // at the artifact's top level because one `state_queryStorageAt` produced the
 // whole network's row set -- two subnets cannot disagree about it.

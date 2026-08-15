@@ -245,7 +245,7 @@ function parseRate(value: unknown): number | undefined {
 }
 
 function usageSampleRatesByRoute(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
 ): Record<string, number> {
   const raw = env?.[POSTHOG_USAGE_SAMPLE_RATES_ENV];
   if (typeof raw !== "string" || !raw.trim()) return {};
@@ -311,7 +311,7 @@ export const MCP_PING_ROUTE = `${MCP_PROTOCOL_ROUTE_PREFIX}ping`;
  * sampled (failures, every MCP surface), otherwise the route override,
  * otherwise the deployment default. */
 export function resolveUsageSampleRate(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: UsageEvent,
 ): number {
   if (event.ok === false) return 1;
@@ -419,12 +419,11 @@ export type DeploymentEnvironment = "production" | "development";
  * exists on a real deployment, and the case this function exists to detect is
  * precisely the one where it does not.
  */
-export function resolveDeployment(env: Env | null | undefined): {
+export function resolveDeployment(env: TelemetryEnv | null | undefined): {
   environment: DeploymentEnvironment;
   release?: string;
 } {
-  const metadata = (env as Record<string, unknown> | null | undefined)
-    ?.CF_VERSION_METADATA as Partial<WorkerVersionMetadata> | undefined;
+  const metadata = env?.CF_VERSION_METADATA;
   const id = sanitizeLabel(metadata?.id);
   if (id === undefined) return { environment: "development" };
   // Prefer the human-meaningful tag when the deployment set one; the id is a
@@ -438,7 +437,7 @@ export function resolveDeployment(env: Env | null | undefined): {
  * from -- the same discipline assignMcpAttribution already applies. */
 function assignDeployment(
   properties: Record<string, unknown>,
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
 ): void {
   const { environment, release } = resolveDeployment(env);
   properties.environment = environment;
@@ -554,8 +553,41 @@ export function parseUserAgentClient(userAgent: unknown): {
 }
 
 /** True when this deployment has a non-empty PostHog project token configured. */
+/**
+ * What the telemetry path needs from its environment, and nothing else.
+ *
+ * NAMED MINIMAL CONTRACT, following `SurfaceCredentialEnv`'s precedent rather
+ * than taking the whole ambient `Env` (metagraphed#11339). The difference is
+ * not stylistic: `Env` is an INTERFACE, so it has no implicit index signature
+ * and cannot be satisfied by a caller holding a structural bag -- which is why
+ * `neon-write-buffer-hub.ts` was passing `BufferEnv` through five
+ * `as unknown as Parameters<…>` casts to reach this function. A cast at a
+ * boundary that is only about five optional strings.
+ *
+ * Every field is optional and every read below type-guards what it finds
+ * (`typeof token === "string"`), because an unset runtime var reads as
+ * `undefined` rather than absent. So this describes the KEYS this module looks
+ * up, and the guards remain the thing that decides whether a value is usable.
+ *
+ * NOT A ZOD SCHEMA, deliberately: these are platform-injected bindings read
+ * once per invocation, not a payload crossing a wire. The repo's parsed
+ * boundaries are the wire ones -- `schemas-src/lakehouse.ts` for rows,
+ * `foreign-wire.ts` for third-party bodies -- and this is neither.
+ */
+export interface TelemetryEnv {
+  POSTHOG_PROJECT_TOKEN?: string;
+  POSTHOG_HOST?: string;
+  POSTHOG_USAGE_SAMPLE_RATE?: string;
+  POSTHOG_USAGE_SAMPLE_RATES?: string;
+  POSTHOG_EXCEPTION_STORM_WINDOW_MS?: string;
+  /** Stamped onto every event by `assignDeployment`. */
+  CF_VERSION_METADATA?: Partial<WorkerVersionMetadata>;
+  /** The shared storm gate's window store -- see `admitExceptionCaptureShared`. */
+  METAGRAPH_CONTROL?: ExceptionStormKv;
+}
+
 export function isUsageTelemetryConfigured(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
 ): boolean {
   const token = env?.[POSTHOG_PROJECT_TOKEN_ENV];
   return typeof token === "string" && token.trim().length > 0;
@@ -678,7 +710,7 @@ function isUsagePerson(distinctId?: string): boolean {
  * being remembered, which is the only version of this that holds.
  */
 async function capturePostHogEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   eventName: string,
   properties: Record<string, unknown>,
   deps: RecordUsageEventDeps,
@@ -749,7 +781,7 @@ export function assignUsagePersonProcessing(
  * should schedule the returned promise via `ctx.waitUntil(...)`.
  */
 export async function recordUsageEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: UsageEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -783,7 +815,9 @@ export async function recordUsageEvent(
   }
 }
 
-export function resolvePostHogHost(env: Env | null | undefined): string {
+export function resolvePostHogHost(
+  env: TelemetryEnv | null | undefined,
+): string {
   return typeof env?.[POSTHOG_HOST_ENV] === "string" &&
     env[POSTHOG_HOST_ENV].trim()
     ? env[POSTHOG_HOST_ENV].trim()
@@ -1320,7 +1354,7 @@ export interface McpToolsListEvent extends McpServerIdentity {
  * Same no-throw contract as recordUsageEvent.
  */
 export async function recordMcpToolCallEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: McpToolCallEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -1450,7 +1484,7 @@ export async function recordMcpToolCallEvent(
  * Same no-throw contract as recordUsageEvent.
  */
 export async function recordMcpInitializeEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: McpInitializeEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -1490,7 +1524,7 @@ export async function recordMcpInitializeEvent(
  * Same no-throw contract as recordUsageEvent.
  */
 export async function recordMcpToolsListEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: McpToolsListEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -1584,7 +1618,7 @@ export interface McpResourceEvent extends McpServerIdentity {
  * how the deployment stamp ends up on three of them.
  */
 async function postMcpResourceEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   eventName: string,
   event: McpResourceEvent,
   deps: RecordUsageEventDeps,
@@ -1623,7 +1657,7 @@ async function postMcpResourceEvent(
 
 /** Emit `$mcp_resources_list`. Same no-throw contract as recordUsageEvent. */
 export async function recordMcpResourcesListEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: McpResourceEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -1632,7 +1666,7 @@ export async function recordMcpResourcesListEvent(
 
 /** Emit `$mcp_resource_read`. Same no-throw contract as recordUsageEvent. */
 export async function recordMcpResourceReadEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: McpResourceEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -1641,7 +1675,7 @@ export async function recordMcpResourceReadEvent(
 
 /** Emit `$mcp_prompts_list`. Same no-throw contract as recordUsageEvent. */
 export async function recordMcpPromptsListEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: McpResourceEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -1650,7 +1684,7 @@ export async function recordMcpPromptsListEvent(
 
 /** Emit `$mcp_prompt_get`. Same no-throw contract as recordUsageEvent. */
 export async function recordMcpPromptGetEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: McpResourceEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -1686,7 +1720,7 @@ export interface McpMissingCapabilityEvent extends McpServerIdentity {
  * the SDK defined the schema, but the words are the caller's.
  */
 export async function recordMcpMissingCapabilityEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: McpMissingCapabilityEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -1892,8 +1926,8 @@ const ExceptionStormWindowSchema = z.coerce
   .positive()
   .catch(0);
 
-function exceptionStormWindowMs(env: Env | null | undefined): number {
-  const raw = env?.[POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV as keyof Env];
+function exceptionStormWindowMs(env: TelemetryEnv | null | undefined): number {
+  const raw = env?.[POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV];
   // z.coerce.number() maps "" and null to 0, which .positive() then rejects
   // into the same disabled sentinel -- but undefined coerces to NaN, so the
   // schema covers every case without a pre-check.
@@ -1921,7 +1955,7 @@ const exceptionThrottle = new Map<string, ExceptionThrottleState>();
  * Same reasoning as captureDataApiError's boolean return.
  */
 export function admitExceptionCapture(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   fingerprint: string,
   nowMs: number = Date.now(),
 ): number | null {
@@ -1982,15 +2016,14 @@ const KV_MIN_EXPIRATION_TTL_SECONDS = 60;
  * trade a billing problem for an availability one.
  */
 export async function admitExceptionCaptureShared(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   fingerprint: string,
   deps: { now?: () => number } = {},
 ): Promise<number | null> {
   const windowMs = exceptionStormWindowMs(env);
   if (windowMs === 0) return 0;
 
-  const kv = (env as { METAGRAPH_CONTROL?: ExceptionStormKv } | null)
-    ?.METAGRAPH_CONTROL;
+  const kv = env?.METAGRAPH_CONTROL;
   if (!kv?.get || !kv?.put) return 0;
 
   const key = `${EXCEPTION_STORM_KV_PREFIX}${fingerprint}`;
@@ -2042,7 +2075,7 @@ const mcpRefusalThrottle = new Map<string, ExceptionThrottleState>();
  * storm.
  */
 export function admitMcpRefusalCapture(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   reason: string,
   nowMs: number = Date.now(),
 ): number | null {
@@ -2168,7 +2201,7 @@ export function isBenignPlatformMessage(message: string): boolean {
  * into this function, only the general caution free text always deserves.
  */
 export async function recordExceptionEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: ExceptionEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -2352,7 +2385,7 @@ export interface AiDegradedEvent {
  * no-op-when-unconfigured contract as every recorder here.
  */
 export async function recordAiDegradedEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: AiDegradedEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -2407,7 +2440,7 @@ export interface AiEmbeddingEvent {
  * reported and the cost column is left genuinely empty.
  */
 export async function recordAiEmbeddingEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: AiEmbeddingEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
@@ -2475,7 +2508,7 @@ export async function recordAiEmbeddingEvent(
  * no-op-when-unconfigured contract as recordUsageEvent/recordExceptionEvent.
  */
 export async function recordAiGenerationEvent(
-  env: Env | null | undefined,
+  env: TelemetryEnv | null | undefined,
   event: AiGenerationEvent,
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {

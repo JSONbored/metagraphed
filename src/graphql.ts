@@ -957,16 +957,6 @@ type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any;
 
-// The MCP loaders' ctx parameter requires a readArtifact field, but every
-// call site in this file supplies readArtifact through the loaders' own deps
-// override (`read = deps.readArtifact ?? ctx.readArtifact`), so ctx.readArtifact
-// is never dereferenced here. This cast bridges that gap without weakening the
-// loaders' own signatures.
-const mcpCtx = (context: GqlContext) =>
-  context as GqlContext & {
-    readArtifact: (env: Env, path: string) => ReturnType<typeof readArtifact>;
-  };
-
 // The contextValue handleGraphQLRequest passes to execute() (env + a
 // per-request memo Map + the raw Request), plus the extra fields the
 // graphql-ws subscription path stamps on (clientIp/graphqlWsConnection).
@@ -977,6 +967,18 @@ const mcpCtx = (context: GqlContext) =>
 export interface GqlContext {
   env: Env;
   cache: Map<string, unknown>;
+  /**
+   * The artifact reader every MCP loader reached for.
+   *
+   * DECLARED, not asserted (#11339). This used to be absent from the context
+   * and bolted on at each of 33 call sites by an `mcpCtx()` cast, on the
+   * reasoning that the loaders never dereference it because graphql.ts always
+   * passes its own through their `deps` override. That held right up until it
+   * didn't: the two rpc resolvers spread `{ ...context, readHealthKv }`
+   * instead, and the cast was the only thing hiding that they were handing the
+   * loaders a ctx with no reader at all.
+   */
+  readArtifact: (env: Env, path: string) => ReturnType<typeof readArtifact>;
   request?: Request;
   /** The request's ExecutionContext, threaded so resolvers can select a store
    * (#10086). createPgSql returns its connection via waitUntil, so a resolver
@@ -1890,7 +1892,7 @@ function providerNode(provider: Row) {
 async function loadProviderEndpoints(context: GqlContext, slug: string) {
   try {
     const result = await loadProviderEndpointsList(
-      mcpCtx(context),
+      context,
       { slug },
       { readArtifact },
     );
@@ -2463,7 +2465,7 @@ const rootValue = {
     // cache. Its only throw is an invalid netuid, which becomes BAD_USER_INPUT
     // (mirroring REST's invalid_params 400); an un-baked profile is null.
     try {
-      return await loadSubnetProfile(mcpCtx(context), netuid, {
+      return await loadSubnetProfile(context, netuid, {
         readArtifact: loadArtifact as AnyFn,
       });
     } catch (rawErr) {
@@ -2486,7 +2488,7 @@ const rootValue = {
   // cold/absent artifact throws, becoming a GraphQL error (matching the sibling
   // gaps / subnet_candidates convention), rather than a silent default.
   candidates(args: QueryCandidatesArgs, context: GqlContext) {
-    return loadCandidatesList(mcpCtx(context), args, { readArtifact });
+    return loadCandidatesList(context, args, { readArtifact });
   },
 
   async fixtures(args: Row, context: GqlContext) {
@@ -2504,7 +2506,7 @@ const rootValue = {
   // null, matching adapter's cold/absent convention.
   async fixture(args: QueryFixtureArgs, context: GqlContext) {
     try {
-      return await loadFixture(mcpCtx(context), args, { readArtifact });
+      return await loadFixture(context, args, { readArtifact });
     } catch (rawErr) {
       const err = rowOf(rawErr);
       if (err?.toolError && err.code === "invalid_params") {
@@ -2649,9 +2651,7 @@ const rootValue = {
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetEventCardColdTier(
-        context.env as unknown as Parameters<
-          typeof loadSubnetEventCardColdTier
-        >[0],
+        context.env,
         CHAIN_REGISTRATIONS_ROLLUP,
         netuid,
         buildSubnetRegistrations,
@@ -2740,9 +2740,7 @@ const rootValue = {
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetEventCardColdTier(
-        context.env as unknown as Parameters<
-          typeof loadSubnetEventCardColdTier
-        >[0],
+        context.env,
         CHAIN_SERVING_ROLLUP,
         netuid,
         buildSubnetServing,
@@ -2921,9 +2919,7 @@ const rootValue = {
       });
     }
     const rows = await loadTaoUsdSeries(
-      readStore(context.env, TAO_USD_TABLES) as never as unknown as Parameters<
-        typeof loadTaoUsdSeries
-      >[0],
+      readStore(context.env, TAO_USD_TABLES),
       { windowHours: TAO_USD_WINDOWS[label] },
     );
     // #10065: the same opt-out REST and MCP take. REST defaults to sending the
@@ -2956,10 +2952,7 @@ const rootValue = {
     }
     const safeLimit = limit ?? SURFACE_HISTORY_LIMIT_DEFAULT;
     const rows = await loadSurfaceHistory(
-      readStore(
-        context.env,
-        SURFACE_HISTORY_TABLES,
-      ) as never as unknown as Parameters<typeof loadSurfaceHistory>[0],
+      readStore(context.env, SURFACE_HISTORY_TABLES),
       netuid,
       { limit: safeLimit },
     );
@@ -2985,10 +2978,7 @@ const rootValue = {
     const safeLimit = limit ?? EMISSION_CHANGES_LIMIT_DEFAULT;
     const safeKind = kind ?? undefined;
     const rows = await loadEmissionChanges(
-      readStore(
-        context.env,
-        EMISSION_CHANGES_TABLES,
-      ) as never as unknown as Parameters<typeof loadEmissionChanges>[0],
+      readStore(context.env, EMISSION_CHANGES_TABLES),
       { limit: safeLimit, kind: safeKind },
     );
     return buildEmissionChanges(rows, { limit: safeLimit, kind: safeKind });
@@ -3011,10 +3001,7 @@ const rootValue = {
       );
     }
     const read = await loadChainHolders(
-      readStore(
-        context.env,
-        ALPHA_PRICING_TABLES,
-      ) as never as unknown as Parameters<typeof loadChainHolders>[0],
+      readStore(context.env, ALPHA_PRICING_TABLES),
     );
     return buildChainHolders(read, {
       sort: sort ?? DEFAULT_CHAIN_HOLDERS_SORT,
@@ -3045,10 +3032,7 @@ const rootValue = {
       kind: kind ?? undefined,
     };
     const rows = await loadFailureReasons(
-      readStore(
-        context.env,
-        FAILURE_REASONS_TABLES,
-      ) as never as unknown as Parameters<typeof loadFailureReasons>[0],
+      readStore(context.env, FAILURE_REASONS_TABLES),
       args,
     );
     return rows === null
@@ -3059,10 +3043,7 @@ const rootValue = {
   async indexer_lag(_args: Record<string, never>, context: GqlContext) {
     // #9620. Shares the REST/MCP loader for #9540's reason.
     const row = await loadIndexerLag(
-      readStore(
-        context.env,
-        INDEXER_LAG_TABLES,
-      ) as never as unknown as Parameters<typeof loadIndexerLag>[0],
+      readStore(context.env, INDEXER_LAG_TABLES),
     );
     return buildIndexerLag(row, Date.now());
   },
@@ -3076,12 +3057,7 @@ const rootValue = {
       window: window ?? DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW,
     };
     const rows = await loadChainConcentrationHistory(
-      readStore(
-        context.env,
-        CHAIN_CONCENTRATION_HISTORY_TABLES,
-      ) as never as unknown as Parameters<
-        typeof loadChainConcentrationHistory
-      >[0],
+      readStore(context.env, CHAIN_CONCENTRATION_HISTORY_TABLES),
       args,
     );
     return rows === null
@@ -3096,10 +3072,7 @@ const rootValue = {
     // #9625. Shares the REST/MCP loader for #9540's reason.
     const args = { window: window ?? DEFAULT_PIPELINE_HISTORY_WINDOW };
     const rows = await loadPipelineHistory(
-      readStore(
-        context.env,
-        SUBNET_SNAPSHOT_TABLES,
-      ) as never as unknown as Parameters<typeof loadPipelineHistory>[0],
+      readStore(context.env, SUBNET_SNAPSHOT_TABLES),
       netuid,
       args,
     );
@@ -3133,10 +3106,7 @@ const rootValue = {
     }
     const safeLimit = limit ?? SUBNET_HOLDERS_LIMIT_DEFAULT;
     const read = await loadSubnetHolders(
-      readStore(
-        context.env,
-        ALPHA_PRICING_TABLES,
-      ) as never as unknown as Parameters<typeof loadSubnetHolders>[0],
+      readStore(context.env, ALPHA_PRICING_TABLES),
       netuid,
       { limit: safeLimit },
     );
@@ -3638,16 +3608,10 @@ const rootValue = {
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
-      (await loadSubnetWeightsColdTier(
-        context.env as unknown as Parameters<
-          typeof loadSubnetWeightsColdTier
-        >[0],
-        netuid,
-        {
-          windowLabel: windowParam,
-          windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
-        },
-      )) ?? buildSubnetWeights(null, netuid, { window: windowParam });
+      (await loadSubnetWeightsColdTier(context.env, netuid, {
+        windowLabel: windowParam,
+        windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
+      })) ?? buildSubnetWeights(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -3683,9 +3647,7 @@ const rootValue = {
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetEventCardColdTier(
-        context.env as unknown as Parameters<
-          typeof loadSubnetEventCardColdTier
-        >[0],
+        context.env,
         CHAIN_STAKE_MOVES_ROLLUP,
         netuid,
         buildSubnetStakeMoves,
@@ -3729,9 +3691,7 @@ const rootValue = {
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
       (await loadSubnetEventCardColdTier(
-        context.env as unknown as Parameters<
-          typeof loadSubnetEventCardColdTier
-        >[0],
+        context.env,
         CHAIN_STAKE_TRANSFERS_ROLLUP,
         netuid,
         buildSubnetStakeTransfers,
@@ -3974,9 +3934,7 @@ const rootValue = {
       // Without it this resolver bottomed out in the zeroed builder while
       // `chain_prometheus` answered from the same PrometheusServed stream.
       ((await loadSubnetEventCardColdTier(
-        context.env as unknown as Parameters<
-          typeof loadSubnetEventCardColdTier
-        >[0],
+        context.env,
         CHAIN_PROMETHEUS_ROLLUP,
         netuid,
         buildSubnetPrometheus,
@@ -4023,17 +3981,11 @@ const rootValue = {
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
       // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
       // resolved to null before it could touch DATA_API.
-      ((await loadSubnetWeightSettersColdTier(
-        context.env as unknown as Parameters<
-          typeof loadSubnetWeightSettersColdTier
-        >[0],
-        netuid,
-        {
-          windowLabel: windowParam,
-          windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam] ?? 7,
-          limit: SUBNET_WEIGHT_SETTERS_LIMIT,
-        },
-      )) as Row | null) ??
+      ((await loadSubnetWeightSettersColdTier(context.env, netuid, {
+        windowLabel: windowParam,
+        windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam] ?? 7,
+        limit: SUBNET_WEIGHT_SETTERS_LIMIT,
+      })) as Row | null) ??
       buildSubnetWeightSetters([], null, netuid, { window: windowParam });
     return {
       tempo: data.tempo ?? null,
@@ -4076,7 +4028,7 @@ const rootValue = {
       // typed return); the spread into `Row` had kept the dead read compiling,
       // which is exactly what #10864 was filed about.
       const data = await loadProvidersList(
-        mcpCtx(context),
+        context,
         { ...filters },
         {
           readArtifact,
@@ -4119,7 +4071,7 @@ const rootValue = {
   // GraphQL error for an unregistered slug.
   async adapter({ slug }: QueryAdapterArgs, context: GqlContext) {
     try {
-      return await loadAdapter(mcpCtx(context), { slug }, { readArtifact });
+      return await loadAdapter(context, { slug }, { readArtifact });
     } catch (rawErr) {
       const err = rowOf(rawErr);
       if (err?.toolError && err.code === "invalid_params") {
@@ -4186,7 +4138,7 @@ const rootValue = {
   // its own args and throws on an invalid filter/sort (or a cold/absent artifact);
   // that throw becomes a GraphQL error, matching provider_endpoints' convention.
   async surfaces(args: QuerySurfacesArgs, context: GqlContext) {
-    const list = await loadSurfacesList(mcpCtx(context), args, {
+    const list = await loadSurfacesList(context, args, {
       readArtifact,
     });
     // loadSurfacesList's envelope names the rows `surfaces`; the GraphQL
@@ -4207,7 +4159,7 @@ const rootValue = {
   // unsupported filter/sort is a GraphQL error, not a silently substituted
   // default" convention.
   provider_endpoints(args: QueryProvider_EndpointsArgs, context: GqlContext) {
-    return loadProviderEndpointsList(mcpCtx(context), args, { readArtifact });
+    return loadProviderEndpointsList(context, args, { readArtifact });
   },
 
   // #6985: reuse list_endpoint_pools's/list_rpc_pools's/list_endpoint_incidents's
@@ -4219,7 +4171,7 @@ const rootValue = {
   // "an unsupported filter/sort is a GraphQL error, not a silently substituted
   // default" convention.
   endpoint_pools(args: QueryEndpoint_PoolsArgs, context: GqlContext) {
-    return loadEndpointPoolsList(mcpCtx(context), args, { readArtifact });
+    return loadEndpointPoolsList(context, args, { readArtifact });
   },
 
   rpc_pools(args: QueryRpc_PoolsArgs, context: GqlContext) {
@@ -4227,17 +4179,13 @@ const rootValue = {
     // 15-minute cron eligibility overlay (rpc-pools-mcp.ts) -- graphql.ts's
     // own context has no such property, so it's supplied here from the same
     // module-level import loadLiveHealth/loadEconomics already use.
-    return loadRpcPoolsList(
-      { ...context, readHealthKv } as unknown as Parameters<
-        typeof loadRpcPoolsList
-      >[0],
-      args,
-      { readArtifact },
-    );
+    return loadRpcPoolsList({ ...context, readHealthKv }, args, {
+      readArtifact,
+    });
   },
 
   endpoint_incidents(args: QueryEndpoint_IncidentsArgs, context: GqlContext) {
-    return loadEndpointIncidentsList(mcpCtx(context), args, { readArtifact });
+    return loadEndpointIncidentsList(context, args, { readArtifact });
   },
 
   // #6986: reuse list_source_snapshots' own loader unchanged. It validates its
@@ -4247,7 +4195,7 @@ const rootValue = {
   // filter/sort is a GraphQL error, not a silently substituted default"
   // convention.
   source_snapshots(args: QuerySource_SnapshotsArgs, context: GqlContext) {
-    return loadSourceSnapshotsList(mcpCtx(context), args, { readArtifact });
+    return loadSourceSnapshotsList(context, args, { readArtifact });
   },
 
   // #7171: reuse list_gaps / list_evidence loaders unchanged. Each validates
@@ -4256,11 +4204,11 @@ const rootValue = {
   // error, not a silently substituted default" convention. A cold/absent
   // artifact is likewise a GraphQL error (matching REST/MCP not_found).
   gaps(args: QueryGapsArgs, context: GqlContext) {
-    return loadGapsList(mcpCtx(context), args, { readArtifact });
+    return loadGapsList(context, args, { readArtifact });
   },
 
   evidence(args: QueryEvidenceArgs, context: GqlContext) {
-    return loadEvidenceList(mcpCtx(context), args, { readArtifact });
+    return loadEvidenceList(context, args, { readArtifact });
   },
 
   // #6992: reuse list_profiles' own loader unchanged. Its readOptionalArtifact
@@ -4269,7 +4217,7 @@ const rootValue = {
   // exactly that shape (readArtifact(context.env, path), null if not ok), so
   // it's reused directly rather than adding a redundant wrapper.
   profiles(args: QueryProfilesArgs, context: GqlContext) {
-    return loadProfilesList(mcpCtx(context), args, {
+    return loadProfilesList(context, args, {
       readOptionalArtifact: loadArtifact as AnyFn,
     });
   },
@@ -4324,13 +4272,9 @@ const rootValue = {
     // artifact; that throw becomes a GraphQL error, matching endpoint_pools /
     // rpc_pools' "an unsupported filter/sort is a GraphQL error, not a
     // silently substituted default" convention.
-    return loadRpcEndpointsList(
-      { ...context, readHealthKv } as unknown as Parameters<
-        typeof loadRpcEndpointsList
-      >[0],
-      args,
-      { readArtifact },
-    );
+    return loadRpcEndpointsList({ ...context, readHealthKv }, args, {
+      readArtifact,
+    });
   },
 
   // #7170: reuse get_changelog's/get_contracts's own loaders unchanged (the same
@@ -4349,7 +4293,7 @@ const rootValue = {
   // Query resolver is the only hook there is, and the same one subnet_trajectory
   // already uses for its window-keyed deltas.
   async changelog(_args: unknown, context: GqlContext) {
-    const data = (await loadChangelog(mcpCtx(context), {
+    const data = (await loadChangelog(context, {
       readArtifact,
     })) as Row;
     // loadChangelog throws on a cold/absent artifact (the test below pins that
@@ -4364,7 +4308,7 @@ const rootValue = {
 
   async contracts(args: Row, context: GqlContext) {
     return pageDocumentCollection(
-      await loadContracts(mcpCtx(context), { readArtifact }),
+      await loadContracts(context, { readArtifact }),
       "contracts",
       args,
     );
@@ -4374,7 +4318,7 @@ const rootValue = {
   // REST and MCP already use). A cold/absent artifact makes the loader throw,
   // which the graphql executor surfaces as a normal GraphQL error.
   build(_args: unknown, context: GqlContext) {
-    return loadBuildSummary(mcpCtx(context), { readArtifact });
+    return loadBuildSummary(context, { readArtifact });
   },
 
   // #8422: reuse get_self_health's own loader unchanged (the same baked
@@ -4382,7 +4326,7 @@ const rootValue = {
   // artifact makes the loader throw, surfaced as a normal GraphQL error --
   // matching build/changelog/contracts.
   self_health(_args: unknown, context: GqlContext) {
-    return loadSelfHealth(mcpCtx(context), { readArtifact });
+    return loadSelfHealth(context, { readArtifact });
   },
 
   // #7170: reuse get_health_history's own loader unchanged. It takes deps as
@@ -4409,41 +4353,41 @@ const rootValue = {
     args: QueryReview_Adapter_CandidatesArgs,
     context: GqlContext,
   ) {
-    return loadAdapterCandidatesList(mcpCtx(context), args, { readArtifact });
+    return loadAdapterCandidatesList(context, args, { readArtifact });
   },
 
   review_enrichment_evidence(
     args: QueryReview_Enrichment_EvidenceArgs,
     context: GqlContext,
   ) {
-    return loadEnrichmentEvidenceList(mcpCtx(context), args, { readArtifact });
+    return loadEnrichmentEvidenceList(context, args, { readArtifact });
   },
 
   review_enrichment_queue(
     args: QueryReview_Enrichment_QueueArgs,
     context: GqlContext,
   ) {
-    return loadEnrichmentQueueList(mcpCtx(context), args, { readArtifact });
+    return loadEnrichmentQueueList(context, args, { readArtifact });
   },
 
   review_enrichment_targets(
     args: QueryReview_Enrichment_TargetsArgs,
     context: GqlContext,
   ) {
-    return loadReviewEnrichmentTargetsList(mcpCtx(context), args, {
+    return loadReviewEnrichmentTargetsList(context, args, {
       readArtifact,
     });
   },
 
   review_gaps(args: QueryReview_GapsArgs, context: GqlContext) {
-    return loadReviewGapsList(mcpCtx(context), args, { readArtifact });
+    return loadReviewGapsList(context, args, { readArtifact });
   },
 
   review_profile_completeness(
     args: QueryReview_Profile_CompletenessArgs,
     context: GqlContext,
   ) {
-    return loadProfileCompletenessList(mcpCtx(context), args, { readArtifact });
+    return loadProfileCompletenessList(context, args, { readArtifact });
   },
 
   async health(_args: unknown, context: GqlContext) {
@@ -4624,7 +4568,7 @@ const rootValue = {
   // field cannot drift from them. An unsupported filter/sort or a cold artifact
   // is a GraphQL error, matching source_snapshots/evidence/profiles.
   search(args: QuerySearchArgs, context: GqlContext) {
-    return loadSearchList(mcpCtx(context), args, { readArtifact });
+    return loadSearchList(context, args, { readArtifact });
   },
 
   // #7877: reuse loadSearchIndexList (the same loader MCP list_search_index +
@@ -4633,7 +4577,7 @@ const rootValue = {
   // an invalid arg throws and becomes a GraphQL error, matching every other
   // filtered field's convention (search/source_snapshots/evidence/profiles).
   search_index(args: QuerySearch_IndexArgs, context: GqlContext) {
-    return loadSearchIndexList(mcpCtx(context), args, { readArtifact });
+    return loadSearchIndexList(context, args, { readArtifact });
   },
 
   async domains(_args: unknown, context: GqlContext) {
@@ -4714,7 +4658,7 @@ const rootValue = {
   // its own args and throws on an invalid filter/sort (or a cold/absent artifact);
   // that throw becomes a GraphQL error, matching provider_endpoints/evidence.
   curation(args: QueryCurationArgs, context: GqlContext) {
-    return loadCurationList(mcpCtx(context), args, { readArtifact });
+    return loadCurationList(context, args, { readArtifact });
   },
 
   async coverage({ network }: QueryCoverageArgs, context: GqlContext) {
@@ -5189,7 +5133,7 @@ const rootValue = {
     // per-subnet artifact and validates every sort/limit/cursor value against
     // the REST allowlists, throwing on an unsupported one.
     try {
-      return await loadSubnetEvidenceList(mcpCtx(context), args, {
+      return await loadSubnetEvidenceList(context, args, {
         readArtifact,
       });
     } catch (rawErr) {
@@ -5225,7 +5169,7 @@ const rootValue = {
     // allowlists, throwing on an unsupported one; that throw surfaces as a
     // normal GraphQL error, matching the review_* family's convention.
     try {
-      return await loadSubnetCandidatesList(mcpCtx(context), args, {
+      return await loadSubnetCandidatesList(context, args, {
         readArtifact,
       });
     } catch (rawErr) {
@@ -5258,7 +5202,7 @@ const rootValue = {
   // never a silently substituted empty list.
   async subnet_endpoints(args: QuerySubnet_EndpointsArgs, context: GqlContext) {
     try {
-      return await loadSubnetEndpointsList(mcpCtx(context), args, {
+      return await loadSubnetEndpointsList(context, args, {
         readArtifact,
       });
     } catch (rawErr) {
@@ -5430,7 +5374,7 @@ const rootValue = {
   ) {
     try {
       const data = await loadChainEventsFeed(
-        mcpCtx(context),
+        context,
         {
           pallet,
           method,
@@ -5505,7 +5449,7 @@ const rootValue = {
     }
     try {
       return await loadChainActivity(
-        mcpCtx(context),
+        context,
         window,
         chainNetworkFromChainName(network),
       );
@@ -5828,11 +5772,8 @@ const rootValue = {
       // #9265: `chain.blocks` carries the same spec_version column, so the
       // non-null contract below is now satisfied with the real timeline
       // rather than only with the empty shape.
-      ((await loadRuntimeVersionHistoryColdTier(
-        context.env as unknown as Parameters<
-          typeof loadRuntimeVersionHistoryColdTier
-        >[0],
-      )) as Row | null) ?? buildRuntimeVersionHistory([]);
+      ((await loadRuntimeVersionHistoryColdTier(context.env)) as Row | null) ??
+      buildRuntimeVersionHistory([]);
     return {
       // THE PRODUCER (#10786). `coverage_complete` is `gaps.length === 0` and
       // `coverage_gaps` is the array it counted -- buildRuntimeVersionHistory
@@ -6029,7 +5970,7 @@ const rootValue = {
     context: GqlContext,
   ) {
     return loadBlockChainEvents(
-      mcpCtx(context),
+      context,
       blockNumber,
       chainNetworkFromChainName(network),
     );
@@ -6127,10 +6068,7 @@ const rootValue = {
       // the alpha-pricing tables had already left -- and a frozen table answers
       // with a schema-stable wrong number rather than an error.
       const positions = await loadNominatorPositions(
-        readStore(
-          context.env,
-          ALPHA_PRICING_TABLES,
-        ) as never as unknown as Parameters<typeof loadNominatorPositions>[0],
+        readStore(context.env, ALPHA_PRICING_TABLES),
         hotkey,
       );
       return buildNominatorPositions(positions, hotkey, {
@@ -7665,9 +7603,7 @@ const rootValue = {
     }
     const narrowing = parseEmissionPipelineNarrowing(
       narrowingParams,
-      data.subnets as unknown as Parameters<
-        typeof parseEmissionPipelineNarrowing
-      >[1],
+      data.subnets,
       { limitMax: EMISSION_PIPELINE_LIMIT_MAX },
     );
     if ("error" in narrowing) {
@@ -8031,12 +7967,10 @@ const rootValue = {
       // resolved to null before it could touch DATA_API.
       // Same shared loader REST and MCP use; GraphQL keeps its own
       // schema-stable card below because that contract is this surface's own.
-      ((await loadChainWeightsColdTier(
-        context.env as unknown as Parameters<
-          typeof loadChainWeightsColdTier
-        >[0],
-        { window: requestedWindow, limit: safeLimit },
-      )) as Row | null) ??
+      ((await loadChainWeightsColdTier(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainWeights([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -8087,12 +8021,10 @@ const rootValue = {
       // Same shared loader REST and MCP use. GraphQL keeps its own fallback
       // below because answering with the schema-stable card rather than an
       // error is this surface's deliberate contract, not the loader's call.
-      ((await loadChainServingColdTier(
-        context.env as unknown as Parameters<
-          typeof loadChainServingColdTier
-        >[0],
-        { window: requestedWindow, limit: safeLimit },
-      )) as Row | null) ??
+      ((await loadChainServingColdTier(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainServing([], { window: requestedWindow, limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
@@ -8307,12 +8239,10 @@ const rootValue = {
       // The same lakehouse rung REST and MCP now use (#10248). Wiring one
       // surface and not the others is exactly the drift chain-serving-loader.ts
       // was extracted to stop.
-      ((await loadChainPrometheusColdTier(
-        context.env as unknown as Parameters<
-          typeof loadChainPrometheusColdTier
-        >[0],
-        { window: requestedWindow, limit: safeLimit },
-      )) as Row | null) ??
+      ((await loadChainPrometheusColdTier(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainPrometheus([], { window: requestedWindow, limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
@@ -8440,12 +8370,10 @@ const rootValue = {
       // Same lakehouse reader REST and MCP use; the zeroed card below stays the
       // fallback because this resolver's contract is a schema-stable card
       // rather than an error, which is why the loader declines with null.
-      ((await loadChainWeightSettersColdTier(
-        context.env as unknown as Parameters<
-          typeof loadChainWeightSettersColdTier
-        >[0],
-        { window: requestedWindow, limit: safeLimit },
-      )) as Row | null) ??
+      ((await loadChainWeightSettersColdTier(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainWeightSetters([], null, {
         window: requestedWindow,
         limit: safeLimit,
@@ -9297,10 +9225,7 @@ const rootValue = {
     // been recording this subnet" is a real state, and the same convention the
     // sibling history fields already follow.
     const rows = await loadSubnetBurnHistory(
-      readStore(
-        context.env,
-        SUBNET_BURN_HISTORY_TABLES,
-      ) as never as unknown as Parameters<typeof loadSubnetBurnHistory>[0],
+      readStore(context.env, SUBNET_BURN_HISTORY_TABLES),
       netuid,
       { windowDays },
     );
@@ -9963,7 +9888,7 @@ export async function handleGraphQLRequest(
     schema,
     document,
     rootValue: parsedRootValue,
-    contextValue: { env, cache: new Map(), request, ctx },
+    contextValue: { env, cache: new Map(), request, ctx, readArtifact },
     variableValues: variables ?? undefined,
     operationName: operationName ?? undefined,
   });

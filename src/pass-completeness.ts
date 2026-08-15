@@ -1,4 +1,4 @@
-import type { RowReader } from "./read-store.ts";
+import type { OptionalRowReader } from "./read-store.ts";
 // "Did this lane's whole scan arrive?" — one implementation (metagraphed-infra#346).
 //
 // THE QUESTION A ROW COUNT CANNOT ANSWER. `ORDER BY … LIMIT n` over a partial
@@ -85,7 +85,19 @@ export const PASS_TABLES: Readonly<Record<string, string>> = {
  * rank", not as a 500.
  */
 export async function latestCompletePass(
-  db: RowReader | null | undefined,
+  /**
+   * OPTIONAL `first`, matching what the body actually does.
+   *
+   * This declared `RowReader` -- `first` REQUIRED -- while the line below
+   * guards `if (!db?.first)` and declines. The two disagreed, so every caller
+   * holding a store whose `first` is optional had to cast, and four of them
+   * did: `db as unknown as Parameters<typeof …>[0]`. That cast asserted the
+   * method was there, past a guard whose whole purpose is that it might not be.
+   *
+   * Widening the parameter is the honest direction. The guard is the contract;
+   * the signature now says so, and the casts are gone rather than justified.
+   */
+  db: OptionalRowReader | null | undefined,
   lane: string,
 ): Promise<PassCompleteness> {
   const table = PASS_TABLES[lane];

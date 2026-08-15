@@ -209,16 +209,12 @@ export async function loadSelfHealth(
     // reader already goes through it; this one still named D1, so self-health
     // would have reported an empty lane floor -- which renders as "no alarms"
     // -- the moment D1 went away.
-    laneHealthStore(
-      ctx.env as unknown as Record<string, unknown>,
-    ) as unknown as Parameters<typeof loadLatestLaneHealth>[0],
+    laneHealthStore(ctx.env as unknown as Record<string, unknown>),
   );
   // Same sample the REST twin takes (#10232/#10333), so both surfaces judge a
   // silent lane identically rather than one of them serving a dead verdict.
   const cadences = await loadLaneMaxGap(
-    laneHealthStore(
-      ctx.env as unknown as Record<string, unknown>,
-    ) as unknown as Parameters<typeof loadLaneMaxGap>[0],
+    laneHealthStore(ctx.env as unknown as Record<string, unknown>),
     Date.now() - LANE_ALARM_CADENCE_WINDOW_MS,
   );
   return withLaneHealth(card as SelfHealth, lanes, { cadences });

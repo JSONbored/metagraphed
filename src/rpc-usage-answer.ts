@@ -305,10 +305,7 @@ export async function answerRpcUsage(
   // not already hold, and only while such a part exists at all.
   const cold = hotTierCoversWindow(hot, label, now)
     ? null
-    : await coldTier(
-        env as unknown as Parameters<typeof loadRpcUsageColdTier>[0],
-        { window: label, now, until: coverageStart(hot) },
-      );
+    : await coldTier(env, { window: label, now, until: coverageStart(hot) });
 
   if (hot && cold) return mergeRpcUsage(cold, hot);
   if (hot) return hot;

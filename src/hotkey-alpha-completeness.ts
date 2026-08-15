@@ -1,4 +1,4 @@
-import type { RowReader } from "./read-store.ts";
+import type { OptionalRowReader } from "./read-store.ts";
 // "Is the hotkey_alpha pool ledger safe to price positions from?" (#9502)
 //
 // The twin of src/account-balances-completeness.ts, and needed for a strictly
@@ -54,7 +54,19 @@ const NONE: HotkeyAlphaCompleteness = {
  * leaderboard that cannot prove its inputs should fall back, not 500.
  */
 export async function latestCompleteHotkeyAlphaPass(
-  db: RowReader | null | undefined,
+  /**
+   * OPTIONAL `first`, matching what the body actually does.
+   *
+   * This declared `RowReader` -- `first` REQUIRED -- while the line below
+   * guards `if (!db?.first)` and declines. The two disagreed, so every caller
+   * holding a store whose `first` is optional had to cast, and four of them
+   * did: `db as unknown as Parameters<typeof …>[0]`. That cast asserted the
+   * method was there, past a guard whose whole purpose is that it might not be.
+   *
+   * Widening the parameter is the honest direction. The guard is the contract;
+   * the signature now says so, and the casts are gone rather than justified.
+   */
+  db: OptionalRowReader | null | undefined,
 ): Promise<HotkeyAlphaCompleteness> {
   if (!db?.first) return { ...NONE, reason: "unavailable" };
   try {

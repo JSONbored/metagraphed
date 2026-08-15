@@ -95,7 +95,16 @@ export function unknownAgainstSchema(schema: {
  * row. Behaviour is identical to a full-union check, and identical to what
  * workers/list-query.ts did before this module existed.
  */
-export function unknownAgainstRows(rows: Row[]): UnknownFieldResolver {
+// `readonly object[]`, not `Row[]`: this function only ever calls
+// `Object.keys(row)` -- it never indexes a row by a computed key, so requiring
+// an index signature overstated what it needs. The cost of that overstatement
+// was real: a caller holding a well-typed INTERFACE (`SubnetDecomposition`)
+// could not pass it, because TypeScript gives implicit index signatures to type
+// aliases and object literals but never to interfaces -- so the call site
+// reached for a cast, and lost the row type entirely (#11339).
+export function unknownAgainstRows(
+  rows: readonly object[],
+): UnknownFieldResolver {
   const resolve: UnknownFieldResolver = (requested) => {
     const unresolved = new Set(requested);
     for (const row of rows) {

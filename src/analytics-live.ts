@@ -358,7 +358,7 @@ export async function loadSubnetUptime(
     observedAt,
     rows,
     now: now || new Date().toISOString(),
-  } as unknown as Parameters<typeof formatUptime>[0]);
+  });
 }
 
 // One subnet's 7d/30d uptime + latency trend per operational surface, over the

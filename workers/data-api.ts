@@ -1055,7 +1055,7 @@ async function handleChainDetailSync(
     neon = await mirrorChainDetailToNeon(
       env as unknown as Record<string, unknown>,
       ctx,
-      batch.rows as unknown as Parameters<typeof mirrorChainDetailToNeon>[2],
+      batch.rows,
     );
   } catch (err) {
     console.error("data-api chain-detail-sync write failed:", err);

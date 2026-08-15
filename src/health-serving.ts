@@ -7,7 +7,10 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + store rows in.
 
-import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
+import type {
+  SubnetEconomics as SubnetEconomicsRow,
+  SubnetEconomicsRead,
+} from "../schemas-src/shared.ts";
 import {
   computeReliability,
   scoreFromStats,
@@ -2145,7 +2148,7 @@ export async function resolveLiveEconomics({
 // four sites -- which is the signature being ignored rather than used. Both
 // functions are shape-preserving, so the honest spelling is the row/artifact
 // in and the same out.
-export function withSpotPrice<T extends SubnetEconomicsRow | null | undefined>(
+export function withSpotPrice<T extends SubnetEconomicsRead | null | undefined>(
   row: T,
 ): T {
   if (!row || typeof row !== "object") return row;

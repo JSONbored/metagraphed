@@ -71,7 +71,10 @@ export interface EmissionPipelineNarrowing {
  */
 export function parseEmissionPipelineNarrowing(
   params: URLSearchParams,
-  rows: Row[],
+  // Only forwarded to `unknownAgainstRows` for key enumeration, so it takes
+  // what that needs -- which lets the GraphQL resolver pass its typed
+  // `SubnetDecomposition[]` instead of casting it to `Row[]` (#11339).
+  rows: readonly object[],
   { limitMax }: { limitMax: number },
 ):
   | EmissionPipelineNarrowing

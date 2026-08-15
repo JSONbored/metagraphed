@@ -252,6 +252,51 @@ export function integerOrNull(value: unknown): number | null {
   return Number.isInteger(n) ? n : null;
 }
 
+/**
+ * Narrow an untrusted value to a JSON object, or null.
+ *
+ * THE COMPANION TO THE COERCIONS ABOVE, for the shape rather than the scalar.
+ * `readHealthKv` returns `Promise<unknown>` because `KV.get(key, {type:"json"})`
+ * genuinely is arbitrary JSON, and `readArtifact` returns `StorageReadResult`
+ * whose `.data` is `unknown` for the same reason -- an R2 object is whatever
+ * was last written to it. Both are honest. What was NOT honest is that several
+ * consumers DECLARED those producers as returning
+ * `Promise<Record<string, unknown> | null>` and then read fields off the
+ * result: a claim about untrusted bytes that nothing verified, and that
+ * survived only because a cast sat between the two (metagraphed#11339).
+ *
+ * `null` and arrays are excluded deliberately. `typeof null === "object"` is
+ * the classic hole, and an array reaching a site that then reads named fields
+ * is a producer mismatch worth failing on rather than silently indexing.
+ */
+export function recordOrNull(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/**
+ * Narrow an untrusted value to an array of JSON objects, or an empty array.
+ *
+ * EMPTY, NOT NULL, because every caller is building a list response and an
+ * absent collection and an empty one render identically there. A non-array
+ * yields empty for the same reason: it is a producer defect, and returning
+ * `[]` keeps the "absence is 404 or ok+null entity, never 200-with-zeros"
+ * contract in the ROUTE's hands rather than fabricating rows here.
+ *
+ * Non-object members are dropped rather than passed through, so a caller that
+ * reads a field off every element cannot meet a string.
+ */
+export function recordsOrEmpty(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  const rows: Record<string, unknown>[] = [];
+  for (const entry of value) {
+    const row = recordOrNull(entry);
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
 export interface ReadStoreDeps {
   clientFactory?: (connectionString: string) => ReadStoreClient;
 }

@@ -126,9 +126,7 @@ export async function loadChainHolders(
   });
   if (!db?.query) return declined("unavailable");
 
-  const alpha = await latestCompleteHotkeyAlphaPass(
-    db as unknown as Parameters<typeof latestCompleteHotkeyAlphaPass>[0],
-  );
+  const alpha = await latestCompleteHotkeyAlphaPass(db);
   if (!mayPriceHotkeyAlpha(alpha)) {
     return declined(
       alpha.reason === "unavailable" ? "unavailable" : "pool_totals_unproven",

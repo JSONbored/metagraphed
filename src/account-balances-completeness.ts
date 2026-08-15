@@ -1,4 +1,4 @@
-import type { RowReader } from "./read-store.ts";
+import type { OptionalRowReader } from "./read-store.ts";
 // "Is the account_balances ledger safe to rank from?" (#9511)
 //
 // THE QUESTION A ROW COUNT CANNOT ANSWER. `ORDER BY free_tao DESC LIMIT n` over
@@ -62,7 +62,19 @@ const NONE: AccountBalancesCompleteness = {
  * leaderboard that cannot prove its inputs should fall back, not 500.
  */
 export async function latestCompleteAccountBalancesPass(
-  db: RowReader | null | undefined,
+  /**
+   * OPTIONAL `first`, matching what the body actually does.
+   *
+   * This declared `RowReader` -- `first` REQUIRED -- while the line below
+   * guards `if (!db?.first)` and declines. The two disagreed, so every caller
+   * holding a store whose `first` is optional had to cast, and four of them
+   * did: `db as unknown as Parameters<typeof …>[0]`. That cast asserted the
+   * method was there, past a guard whose whole purpose is that it might not be.
+   *
+   * Widening the parameter is the honest direction. The guard is the contract;
+   * the signature now says so, and the casts are gone rather than justified.
+   */
+  db: OptionalRowReader | null | undefined,
 ): Promise<AccountBalancesCompleteness> {
   if (!db?.first) return { ...NONE, reason: "unavailable" };
   try {

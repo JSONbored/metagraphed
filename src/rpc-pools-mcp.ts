@@ -19,6 +19,7 @@ import {
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 import { LIVE_CRON_PROBER } from "./field-provenance.ts";
 import { RPC_POOL_KIND_VALUES } from "../schemas-src/query-params.ts";
+import { recordOrNull } from "./read-store.ts";
 
 export const RPC_POOLS_ARTIFACT = "/metagraph/rpc/pools.json";
 
@@ -150,10 +151,11 @@ export function rpcPoolsQueryUrl(
 interface RpcPoolsMcpCtx {
   env: Env;
   readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
-  readHealthKv?: (
-    env: Env,
-    key: string,
-  ) => Promise<Record<string, unknown> | null>;
+  // `unknown`, matching workers/storage.ts's actual return: KV holds whatever
+  // the 15-minute cron last wrote as JSON. Declaring an object here was a claim
+  // about untrusted bytes that nothing checked (#11339) -- `recordOrNull` at
+  // the point of use is what checks it now.
+  readHealthKv?: (env: Env, key: string) => Promise<unknown>;
 }
 
 export interface RpcPoolsListResult {
@@ -204,7 +206,7 @@ export async function loadRpcPoolsList(
   // like eligible_count reflects the current snapshot, not the baked one.
   let overlaid = blob as Record<string, unknown>;
   const livePool = ctx.readHealthKv
-    ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
+    ? recordOrNull(await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL))
     : null;
   if (
     livePool &&

@@ -3699,9 +3699,7 @@ async function dispatchScheduled(
     // stopped, losing ground to the raw capture, or publishing a height the
     // lakehouse does not back. All three look like a healthy block list with
     // empty block detail, which is why nothing noticed for a day.
-    return runLakehouseSeamWatchdog(
-      env as unknown as Parameters<typeof runLakehouseSeamWatchdog>[0],
-    );
+    return runLakehouseSeamWatchdog(env);
   }
   if (cron === PROJECTION_LANES_CRON) {
     // #9146: recompute the windowed-aggregate artifacts (every lane in
