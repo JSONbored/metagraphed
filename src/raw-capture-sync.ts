@@ -23,7 +23,7 @@ import {
   type WatermarkStore,
 } from "./raw-chain-capture.ts";
 import { RAW_CAPTURE_CRON } from "../workers/config.ts";
-import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import type { WaitUntilLike } from "./pg-sql.ts";
@@ -32,6 +32,7 @@ import {
   type ChainNetworkId,
   DEFAULT_CHAIN_NETWORK,
 } from "./chain-network.ts";
+import type { StoreEnv } from "./read-store.ts";
 
 /** Kill switch, matching CHAIN_HEAD_POLL_ENABLED's convention on the head
  * poller: absent or anything but "true" means this lane does not run. */
@@ -226,7 +227,7 @@ export const RAW_CAPTURE_LANES: readonly RawCaptureLane[] = [
   },
 ];
 
-interface RawCaptureEnv {
+interface RawCaptureEnv extends TelemetryEnv, StoreEnv {
   METAGRAPH_ARCHIVE?: { put(key: string, value: string): Promise<unknown> };
   RAW_CAPTURE_ENABLED?: string;
   CHAIN_HEAD_RPC_URL?: string;
@@ -257,7 +258,7 @@ export interface WatermarkReadDb {
  * read must never be mistaken for a genesis restart.
  */
 function neonWatermarkRead(
-  env: Record<string, unknown> | null | undefined,
+  env: StoreEnv | null | undefined,
   waitUntil: WaitUntilLike | undefined,
   network: string,
 ): (() => Promise<number | null>) | null {
@@ -293,7 +294,7 @@ function neonWatermarkRead(
  * be mistaken for a genesis restart.
  */
 export function neonWatermark(
-  env: Record<string, unknown> | null | undefined,
+  env: StoreEnv | null | undefined,
   waitUntil: WaitUntilLike | undefined,
   network: string,
   now: () => number,
@@ -361,7 +362,7 @@ export async function runRawCaptureSync(
   const capture = deps.recordException ?? recordExceptionEvent;
   const loud = async (reason: string, message: string) => {
     console.error(`[raw-capture-sync] ${message}`);
-    await capture(env as never, {
+    await capture(env, {
       error: new Error(message),
       route: "raw-capture-sync",
     });
@@ -468,12 +469,7 @@ async function runLane(
       rpcUrl: (env[lane.rpcUrlEnv] as string | undefined) || lane.defaultRpcUrl,
       store,
       // THE TABLE IS THE WATERMARK, so this store is the whole write path.
-      watermark: neonWatermark(
-        ctx.env as unknown as Record<string, unknown>,
-        ctx.waitUntil,
-        lane.network,
-        now,
-      ),
+      watermark: neonWatermark(ctx.env, ctx.waitUntil, lane.network, now),
       genesisFloor: lane.genesisFloor,
       maxPerTick: lane.maxPerTick,
       network: lane.network,
@@ -497,7 +493,7 @@ async function runLane(
   } catch (error) {
     const message = String((error as Error)?.message ?? error);
     console.error(`[raw-capture-sync] ${lane.network}`, message);
-    await capture(env as never, {
+    await capture(env, {
       error,
       route: `raw-capture-sync:${lane.network}`,
     });

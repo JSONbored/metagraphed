@@ -42,6 +42,7 @@ import {
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { SELF_HEALTH_COMPONENTS } from "./self-health.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 export const SELF_HEALTH_PROBE_LANE = "self-health-probe";
 
@@ -144,7 +145,7 @@ export interface SelfHealthProbeOutcome {
  * evidence.
  */
 export async function runSelfHealthProbe(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx?: WaitUntilLike | null,
   deps: SelfHealthProberDeps = {},
 ): Promise<SelfHealthProbeOutcome> {

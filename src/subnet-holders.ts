@@ -177,9 +177,7 @@ export async function loadSubnetHolders(
   if (netuid === ROOT_NETUID) return declined("root_not_in_alpha_map");
   if (!db?.query) return declined("unavailable");
 
-  const alpha = await latestCompleteHotkeyAlphaPass(
-    db as unknown as Parameters<typeof latestCompleteHotkeyAlphaPass>[0],
-  );
+  const alpha = await latestCompleteHotkeyAlphaPass(db);
   if (!mayPriceHotkeyAlpha(alpha)) {
     // "The table is missing" and "no pass has completed" are the same fact to a
     // caller -- the pool totals are not proven -- so `unavailable` is reported

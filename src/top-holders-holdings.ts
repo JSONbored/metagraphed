@@ -276,14 +276,10 @@ export async function topHoldersHoldings(
   // this module's OptionalRowStore names bind()/all(), the completeness readers name
   // first() -- so the casts go through unknown rather than widening either
   // interface to satisfy the other.
-  const asFirst = db as unknown as Parameters<
-    typeof latestCompleteAccountBalancesPass
-  >[0];
+  const asFirst = db;
   const [balances, alpha] = await Promise.all([
     latestCompleteAccountBalancesPass(asFirst),
-    latestCompleteHotkeyAlphaPass(
-      db as unknown as Parameters<typeof latestCompleteHotkeyAlphaPass>[0],
-    ),
+    latestCompleteHotkeyAlphaPass(db),
   ]);
   const free = mayRankAccountBalances(balances);
   const delegated = mayPriceHotkeyAlpha(alpha);

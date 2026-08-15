@@ -54,6 +54,24 @@ import {
 import type { ValidatorNominatorCounts } from "../generated/db/types.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type ValidatorNominatorCountsStalenessWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_ROWS?: unknown;
+    VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS?: unknown;
+    VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS?: unknown;
+  };
 
 /**
  * How old the counts table may get before this is a stall.
@@ -282,7 +300,7 @@ export interface ValidatorNominatorCountsStalenessDeps {
  * and a cron that throws is a cron nobody can read the result of.
  */
 export async function runValidatorNominatorCountsStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: ValidatorNominatorCountsStalenessWatchdogEnv | null | undefined,
   deps: ValidatorNominatorCountsStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
@@ -340,7 +358,7 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
         verdict.reason === "partial"
           ? `validator-nominator-counts lane truncated: the newest pass reached only ${verdict.covered_rows} hotkeys against a floor of ${verdict.coverage_floor_rows} (${verdict.total_rows} rows in the table, newest stamp ${age}) -- the capture is RECENT and PARTIAL, so /validators serves a nominator_count that is silently a pass old for every hotkey the scan never got to`
           : `validator-nominator-counts lane stalled: latest snapshot is ${age} (threshold ${thresholdMs / 3_600_000} h) -- /validators is serving nominator_count from a table nothing is refreshing`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:validator-nominator-counts-staleness",
         errorCode: "stale_lane",

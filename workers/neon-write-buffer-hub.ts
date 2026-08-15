@@ -53,7 +53,10 @@ import { createPgSql, type HyperdriveLike } from "../src/pg-sql.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "../src/lane-health.ts";
 import { neonLaneKey } from "../src/neon-write.ts";
-import { recordExceptionEvent } from "../src/usage-telemetry.ts";
+import {
+  recordExceptionEvent,
+  type TelemetryEnv,
+} from "../src/usage-telemetry.ts";
 
 /** The lane the drain itself reports under. */
 export const BUFFER_FLUSH_LANE = "neon:buffer-flush";
@@ -148,7 +151,7 @@ export interface BufferStorage {
 }
 
 /** What the hub needs from its environment, so the flush can be driven alone. */
-export interface BufferEnv {
+export interface BufferEnv extends TelemetryEnv {
   HYPERDRIVE?: HyperdriveLike;
   [key: string]: unknown;
 }
@@ -236,7 +239,6 @@ export async function flushBuffer(
   const now = deps.now ?? Date.now;
   const laneDb = deps.laneHealthDb ?? laneHealthStore(env);
   const capture = deps.captureException ?? recordExceptionEvent;
-  const asEnv = env as unknown as Parameters<typeof recordExceptionEvent>[0];
   const stored = await storage.list<Uint8Array>({
     prefix: STATEMENT_PREFIX,
     limit: FLUSH_LIST_LIMIT,
@@ -278,7 +280,7 @@ export async function flushBuffer(
     });
     // The backlog is safe but growing, and nothing else will say so until a
     // freshness watchdog trips two hours later.
-    await capture(asEnv, {
+    await capture(env, {
       error: new Error(
         `neon write buffer cannot flush: hyperdrive unbound, ${groups.length} statement(s) held`,
       ),
@@ -309,7 +311,7 @@ export async function flushBuffer(
       // DISCARDING A STATEMENT IS DATA LOSS, and the only kind this design can
       // produce. It must page rather than show up as a number in a detail
       // string nobody reads.
-      await capture(asEnv, {
+      await capture(env, {
         error: new Error(
           `neon write buffer discarded an unreadable statement at seq ${group.seq}`,
         ),
@@ -343,7 +345,7 @@ export async function flushBuffer(
       });
       await recordFlushVerdicts(laneDb, perLane, now());
       const reason = error instanceof Error ? error.message : String(error);
-      await capture(asEnv, {
+      await capture(env, {
         error,
         route: BUFFER_ROUTE,
         errorCode: "flush_failed",
@@ -470,16 +472,13 @@ export class NeonWriteBufferHub implements DurableObject {
       // drains, which means the flush is failing or Neon is refusing -- and
       // from here on, capture rows are being turned away. The lane verdict
       // says so too, but this is the path that pages.
-      await recordExceptionEvent(
-        this.env as unknown as Parameters<typeof recordExceptionEvent>[0],
-        {
-          error: new Error(
-            `neon write buffer refused a statement: ${result.reason}`,
-          ),
-          route: BUFFER_ROUTE,
-          errorCode: "buffer_full",
-        },
-      );
+      await recordExceptionEvent(this.env, {
+        error: new Error(
+          `neon write buffer refused a statement: ${result.reason}`,
+        ),
+        route: BUFFER_ROUTE,
+        errorCode: "buffer_full",
+      });
     }
     // 503, not 500: the buffer being full is backpressure the producer should
     // retry against, not a bug in the request it just made.
@@ -502,10 +501,11 @@ export class NeonWriteBufferHub implements DurableObject {
       // WITHOUT THIS THE ALARM DIES SILENTLY: an uncaught throw in alarm()
       // leaves no verdict, no capture, and no rescheduled alarm, so the buffer
       // stops draining and nothing says why until a freshness watchdog trips.
-      await recordExceptionEvent(
-        this.env as unknown as Parameters<typeof recordExceptionEvent>[0],
-        { error, route: BUFFER_ROUTE, errorCode: "flush_alarm_threw" },
-      );
+      await recordExceptionEvent(this.env, {
+        error,
+        route: BUFFER_ROUTE,
+        errorCode: "flush_alarm_threw",
+      });
       outcome = {
         drained: 0,
         undecodable: 0,

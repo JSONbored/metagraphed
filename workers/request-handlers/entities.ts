@@ -511,7 +511,11 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "../../src/chain-turnover.ts";
 import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.ts";
-import { readStore, type ReadStoreDb } from "../../src/read-store.ts";
+import {
+  readStore,
+  recordsOrEmpty,
+  type ReadStoreDb,
+} from "../../src/read-store.ts";
 import { laneHealthStore } from "../../src/lane-health-store.ts";
 import {
   ALPHA_PRICING_TABLES,
@@ -1167,8 +1171,7 @@ export async function handleSubnetHyperparamsHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/hyperparameters/history.json`,
-        (data.entries as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -1218,8 +1221,7 @@ export async function handleSubnetLifecycle(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/lifecycle.json`,
-        (data.entries as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -1587,9 +1589,7 @@ export async function handleValidatorNominators(
     const positionsLimit = pageLimit(url);
     const positionsOffset = routeInt(url, "offset") ?? 0;
     const read = await loadNominatorPositions(
-      readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
-        typeof loadNominatorPositions
-      >[0],
+      readStore(env, ALPHA_PRICING_TABLES),
       hotkey,
     );
     const positionsData = buildNominatorPositions(read, hotkey, {
@@ -1759,8 +1759,7 @@ export async function handleNeuronHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/neurons/${uid}/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.captured_at ?? null,
+        recordsOrEmpty(data.points)[0]?.captured_at ?? null,
       ),
     },
     "short",
@@ -1850,8 +1849,7 @@ export async function handleSubnetIdentityHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/identity-history.json`,
-        (data.entries as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -2117,8 +2115,7 @@ export async function handleChainIdentityHistory(
         "/metagraph/chain/identity-history.json",
         // Freshness = the newest change's observed_at (feed is newest-first), else
         // null when the store is cold.
-        (data.changes as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.changes)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -2172,9 +2169,7 @@ export async function handleSelfHealth(
     // this is /health's own lane floor. Reading it from the store would render an
     // empty result as "no alarms", which is the one answer a health endpoint
     // must never invent.
-    laneHealthStore(env as unknown as Record<string, unknown>) as Parameters<
-      typeof loadLatestLaneHealth
-    >[0],
+    laneHealthStore(env) as Parameters<typeof loadLatestLaneHealth>[0],
   );
   // The sample the silence bound needs (#10232), as the LONGEST observed gap
   // rather than the mean (#10333). One extra GROUP BY over the table the read
@@ -2182,9 +2177,7 @@ export async function handleSelfHealth(
   // withLaneHealth then leaves every verdict alone -- so a failed read costs
   // today's behaviour, never a false alarm.
   const cadences = await loadLaneMaxGap(
-    laneHealthStore(env as unknown as Record<string, unknown>) as Parameters<
-      typeof loadLaneMaxGap
-    >[0],
+    laneHealthStore(env) as Parameters<typeof loadLaneMaxGap>[0],
     Date.now() - LANE_ALARM_CADENCE_WINDOW_MS,
   );
   const withLanes = withLaneHealth(data, lanes, { cadences });
@@ -2539,9 +2532,7 @@ export async function handleSubnetConcentrationHistory(
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [
-      ...(data.points as unknown as Array<Record<string, unknown>>),
-    ].sort((a, b) =>
+    const points = [...recordsOrEmpty(data.points)].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -2559,8 +2550,7 @@ export async function handleSubnetConcentrationHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2600,9 +2590,7 @@ export async function handleSubnetPerformanceHistory(
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [
-      ...(data.points as unknown as Array<Record<string, unknown>>),
-    ].sort((a, b) =>
+    const points = [...recordsOrEmpty(data.points)].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -2620,8 +2608,7 @@ export async function handleSubnetPerformanceHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/performance/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2661,9 +2648,7 @@ export async function handleSubnetYieldHistory(
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [
-      ...(data.points as unknown as Array<Record<string, unknown>>),
-    ].sort((a, b) =>
+    const points = [...recordsOrEmpty(data.points)].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -2681,8 +2666,7 @@ export async function handleSubnetYieldHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/yield/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2721,9 +2705,7 @@ export async function handleSubnetEmissionSplitHistory(
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [
-      ...(data.points as unknown as Array<Record<string, unknown>>),
-    ].sort((a, b) =>
+    const points = [...recordsOrEmpty(data.points)].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -2741,8 +2723,7 @@ export async function handleSubnetEmissionSplitHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/emission-split/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2782,8 +2763,7 @@ export async function handleSubnetMinerFairness(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/miner-fairness.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2903,8 +2883,7 @@ export async function handleSubnetOwnerCapture(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/owner-capture.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2988,14 +2967,10 @@ export async function handleSubnetWeights(
     // it this card answered a confident 0 for every subnet once the Postgres box
     // went away, while the leaderboard it summarises read 14 setters / 2,750 sets
     // from the same stream.
-    (await loadSubnetWeightsColdTier(
-      env as unknown as Parameters<typeof loadSubnetWeightsColdTier>[0],
-      netuid,
-      {
-        windowLabel: windowParam,
-        windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
-      },
-    )) ?? buildSubnetWeights(null, netuid, { window: windowParam });
+    (await loadSubnetWeightsColdTier(env, netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
+    })) ?? buildSubnetWeights(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling stake-flow route.
   return envelopeResponse(
@@ -3041,15 +3016,11 @@ export async function handleSubnetWeightSetters(
     // resolved to null before it could touch DATA_API.
     // #9267: the same WeightsSet stream the chain-wide leaderboard reads
     // (#9251), narrowed to this subnet.
-    (await loadSubnetWeightSettersColdTier(
-      env as unknown as Parameters<typeof loadSubnetWeightSettersColdTier>[0],
-      netuid,
-      {
-        windowLabel: windowParam,
-        windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam] ?? 7,
-        limit: SUBNET_WEIGHT_SETTERS_LIMIT,
-      },
-    )) ?? buildSubnetWeightSetters([], null, netuid, { window: windowParam });
+    (await loadSubnetWeightSettersColdTier(env, netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam] ?? 7,
+      limit: SUBNET_WEIGHT_SETTERS_LIMIT,
+    })) ?? buildSubnetWeightSetters([], null, netuid, { window: windowParam });
   // account_events-derived: the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling /weights route.
   return envelopeResponse(
@@ -3097,7 +3068,7 @@ export async function handleSubnetServing(
     // is "retired", so the tier above declines unconditionally and this was the
     // only thing left -- a confident 0 for every subnet.
     (await loadSubnetEventCardColdTier(
-      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      env,
       CHAIN_SERVING_ROLLUP,
       netuid,
       buildSubnetServing,
@@ -3159,7 +3130,7 @@ export async function handleSubnetPrometheus(
     // 30d while this route answered 0 for that same subnet, so the two
     // contradicted each other on one event stream.
     (await loadSubnetEventCardColdTier(
-      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      env,
       CHAIN_PROMETHEUS_ROLLUP,
       netuid,
       buildSubnetPrometheus,
@@ -3216,7 +3187,7 @@ export async function handleSubnetStakeMoves(
     // is "retired", so the tier above declines unconditionally and this was the
     // only thing left -- a confident 0 for every subnet.
     (await loadSubnetEventCardColdTier(
-      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      env,
       CHAIN_STAKE_MOVES_ROLLUP,
       netuid,
       buildSubnetStakeMoves,
@@ -3273,7 +3244,7 @@ export async function handleSubnetStakeTransfers(
     // is "retired", so the tier above declines unconditionally and this was the
     // only thing left -- a confident 0 for every subnet.
     (await loadSubnetEventCardColdTier(
-      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      env,
       CHAIN_STAKE_TRANSFERS_ROLLUP,
       netuid,
       buildSubnetStakeTransfers,
@@ -3329,7 +3300,7 @@ export async function handleSubnetRegistrations(
     // is "retired", so the tier above declines unconditionally and this was the
     // only thing left -- a confident 0 for every subnet.
     (await loadSubnetEventCardColdTier(
-      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      env,
       CHAIN_REGISTRATIONS_ROLLUP,
       netuid,
       buildSubnetRegistrations,
@@ -4470,12 +4441,10 @@ export async function handleSubnetOhlc(
   const usdRows =
     sinceMs === null
       ? []
-      : await loadTaoUsdBuckets(
-          readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
-            typeof loadTaoUsdBuckets
-          >[0],
-          { sinceMs, bucketMs },
-        );
+      : await loadTaoUsdBuckets(readStore(env, TAO_USD_TABLES), {
+          sinceMs,
+          bucketMs,
+        });
   return envelopeResponse(
     request,
     {
@@ -4966,9 +4935,7 @@ export async function handleAccountEvents(
     : [];
   const usdByInstant = eventRows.length
     ? await loadTaoUsdAtInstants(
-        readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
-          typeof loadTaoUsdAtInstants
-        >[0],
+        readStore(env, TAO_USD_TABLES),
         eventRows
           .map((e) => Date.parse(String(e?.observed_at)))
           .filter((n) => Number.isFinite(n)),
@@ -4991,8 +4958,7 @@ export async function handleAccountEvents(
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/events.json`,
-        (priced.events as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(priced.events)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -5165,8 +5131,7 @@ export async function handleAccountExtrinsics(
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/extrinsics.json`,
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -5240,8 +5205,7 @@ export async function handleAccountTransfers(
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/transfers.json`,
-        (data.transfers as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.transfers)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -5528,8 +5492,7 @@ export async function handleAccountPositionHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/accounts/${ss58}/subnets/${netuid}/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.captured_at ?? null,
+        recordsOrEmpty(data.points)[0]?.captured_at ?? null,
       ),
     },
     "short",
@@ -5628,8 +5591,7 @@ export async function handleAccountIdentityHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/accounts/${ss58}/identity-history.json`,
-        (data.entries as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -5711,8 +5673,7 @@ export async function handleSubnetEvents(
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/events.json`,
-        (data.events as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.events)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -6077,10 +6038,7 @@ export async function handleSubnetBurnHistory(
     });
   }
   const rows = await loadSubnetBurnHistory(
-    readStore(
-      env,
-      SUBNET_BURN_HISTORY_TABLES,
-    ) as never as unknown as Parameters<typeof loadSubnetBurnHistory>[0],
+    readStore(env, SUBNET_BURN_HISTORY_TABLES),
     netuid,
     { windowDays },
   );
@@ -6125,9 +6083,7 @@ export async function handleSubnetHolders(
   const limit = pageLimit(url);
 
   const read = await loadSubnetHolders(
-    readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
-      typeof loadSubnetHolders
-    >[0],
+    readStore(env, ALPHA_PRICING_TABLES),
     netuid,
     { limit: limit },
   );
@@ -6162,12 +6118,9 @@ export async function handleTaoUsd(request: Request, env: Env, url: URL) {
       message: `window must be one of ${Object.keys(TAO_USD_WINDOWS).join(", ")}.`,
     });
   }
-  const rows = await loadTaoUsdSeries(
-    readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
-      typeof loadTaoUsdSeries
-    >[0],
-    { windowHours },
-  );
+  const rows = await loadTaoUsdSeries(readStore(env, TAO_USD_TABLES), {
+    windowHours,
+  });
   // A cold or unwritten table yields an EMPTY series with a null `latest`, not
   // a 404: "we have not priced this window" is a real state.
   const data = buildTaoUsdSeries(rows, {
@@ -6202,9 +6155,7 @@ export async function handleSubnetSurfaceHistory(
   const limit = pageLimit(url);
 
   const rows = await loadSurfaceHistory(
-    readStore(env, SURFACE_HISTORY_TABLES) as never as unknown as Parameters<
-      typeof loadSurfaceHistory
-    >[0],
+    readStore(env, SURFACE_HISTORY_TABLES),
     netuid,
     { limit: limit },
   );
@@ -6245,9 +6196,7 @@ export async function handleEmissionChanges(
   const limit = pageLimit(url);
 
   const rows = await loadEmissionChanges(
-    readStore(env, EMISSION_CHANGES_TABLES) as never as unknown as Parameters<
-      typeof loadEmissionChanges
-    >[0],
+    readStore(env, EMISSION_CHANGES_TABLES),
     { limit: limit, kind: kindParam ?? undefined },
   );
   // These tables gain a row only when a value MOVED, so an empty feed is the
@@ -6287,11 +6236,7 @@ export async function handleChainHolders(request: Request, env: Env, url: URL) {
   }
   const limit = pageLimit(url);
 
-  const read = await loadChainHolders(
-    readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
-      typeof loadChainHolders
-    >[0],
-  );
+  const read = await loadChainHolders(readStore(env, ALPHA_PRICING_TABLES));
   const data = buildChainHolders(read, { sort, limit: limit });
   return envelopeResponse(
     request,
@@ -6374,9 +6319,7 @@ export async function handleFailureReasons(
   const kind = routeText(url, "kind") ?? undefined;
 
   const rows = await loadFailureReasons(
-    readStore(env, FAILURE_REASONS_TABLES) as never as unknown as Parameters<
-      typeof loadFailureReasons
-    >[0],
+    readStore(env, FAILURE_REASONS_TABLES),
     { window, netuid, kind },
   );
   // An empty window is a MEASUREMENT and reaches buildFailureReasons; only a
@@ -6401,11 +6344,7 @@ export async function handleIndexerLag(request: Request, env: Env, url: URL) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
-  const row = await loadIndexerLag(
-    readStore(env, INDEXER_LAG_TABLES) as never as unknown as Parameters<
-      typeof loadIndexerLag
-    >[0],
-  );
+  const row = await loadIndexerLag(readStore(env, INDEXER_LAG_TABLES));
   // The handler owns the clock, so the module whose subject is two clocks does
   // not quietly introduce a third of its own.
   const data = buildIndexerLag(row, Date.now());
@@ -6430,12 +6369,7 @@ export async function handleChainConcentrationHistory(
 
   const window = routeValue<string>(url, "window");
   const rows = await loadChainConcentrationHistory(
-    readStore(
-      env,
-      CHAIN_CONCENTRATION_HISTORY_TABLES,
-    ) as never as unknown as Parameters<
-      typeof loadChainConcentrationHistory
-    >[0],
+    readStore(env, CHAIN_CONCENTRATION_HISTORY_TABLES),
     { window },
   );
   // An empty window is a MEASUREMENT -- a window narrower than the rollup's
@@ -6465,9 +6399,7 @@ export async function handleSubnetPipelineHistory(
 
   const window = routeValue<string>(url, "window");
   const rows = await loadPipelineHistory(
-    readStore(env, SUBNET_SNAPSHOT_TABLES) as never as unknown as Parameters<
-      typeof loadPipelineHistory
-    >[0],
+    readStore(env, SUBNET_SNAPSHOT_TABLES),
     netuid,
     { window },
   );
@@ -6502,10 +6434,7 @@ export async function handleSubnetDeregistrationHistory(
   // NOT filtered to `netuid`: rank is relative and does not exist in one
   // subnet's row, so each day is loaded whole and narrowed in the builder.
   const rows = await loadDeregistrationHistory(
-    readStore(
-      env,
-      SUBNET_DEREGISTRATION_DAILY_TABLES,
-    ) as never as unknown as Parameters<typeof loadDeregistrationHistory>[0],
+    readStore(env, SUBNET_DEREGISTRATION_DAILY_TABLES),
     { window },
   );
   // An empty series is a MEASUREMENT -- a subnet registered after the lane
@@ -6781,8 +6710,7 @@ export async function handleBlocks(
       meta: await accountMeta(
         env,
         "/metagraph/blocks.json",
-        (data.blocks as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.blocks)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -6960,9 +6888,7 @@ export async function handleBlockExtrinsics(
   // the same formatExtrinsic row shape (#5746). Cold block → empty → header-only.
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(
-        data.extrinsics as unknown as Array<Record<string, unknown>>,
-      ),
+      extrinsicsToCsvRows(recordsOrEmpty(data.extrinsics)),
       `block-${ref}-extrinsics`,
       "short",
       request,
@@ -6976,8 +6902,7 @@ export async function handleBlockExtrinsics(
       meta: await accountMeta(
         env,
         `/metagraph/blocks/${ref}/extrinsics.json`,
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     cacheProfile,
@@ -7049,8 +6974,7 @@ export async function handleBlockEvents(
       meta: await accountMeta(
         env,
         `/metagraph/blocks/${ref}/events.json`,
-        (data.events as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.events)[0]?.observed_at ?? null,
       ),
     },
     cacheProfile,
@@ -7160,9 +7084,7 @@ export async function handleExtrinsics(
     unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(
-        data.extrinsics as unknown as Array<Record<string, unknown>>,
-      ),
+      extrinsicsToCsvRows(recordsOrEmpty(data.extrinsics)),
       "extrinsics",
       "short",
       request,
@@ -7176,8 +7098,7 @@ export async function handleExtrinsics(
       meta: await accountMeta(
         env,
         "/metagraph/extrinsics.json",
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -7223,9 +7144,7 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
     unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(
-        data.extrinsics as unknown as Array<Record<string, unknown>>,
-      ),
+      extrinsicsToCsvRows(recordsOrEmpty(data.extrinsics)),
       "sudo-calls",
       "short",
       request,
@@ -7239,8 +7158,7 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
       meta: await accountMeta(
         env,
         "/metagraph/sudo.json",
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -7289,9 +7207,7 @@ export async function handleGovernanceConfigChanges(
     unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(
-        data.extrinsics as unknown as Array<Record<string, unknown>>,
-      ),
+      extrinsicsToCsvRows(recordsOrEmpty(data.extrinsics)),
       "governance-config-changes",
       "short",
       request,
@@ -7305,8 +7221,7 @@ export async function handleGovernanceConfigChanges(
       meta: await accountMeta(
         env,
         "/metagraph/governance/config-changes.json",
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -7343,9 +7258,8 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
     // The same spec_version column, from the tier that actually has it
     // (#9265). Through the shared reader so MCP and GraphQL get the timeline
     // too rather than being wired one surface at a time.
-    (await loadRuntimeVersionHistoryColdTier(
-      env as unknown as Parameters<typeof loadRuntimeVersionHistoryColdTier>[0],
-    )) ?? buildRuntimeVersionHistory([]);
+    (await loadRuntimeVersionHistoryColdTier(env)) ??
+    buildRuntimeVersionHistory([]);
   // #8702: the forward-looking half of the same question. `transitions` is
   // where the runtime has BEEN (first-party block observations); `current` is
   // where it IS and what is queued behind it (live chain reads + the captured
@@ -7377,9 +7291,8 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
       meta: await accountMeta(
         env,
         "/metagraph/runtime.json",
-        (data.transitions as unknown as Array<Record<string, unknown>>)[
-          (data.transitions as unknown as Array<Record<string, unknown>>)
-            .length - 1
+        recordsOrEmpty(data.transitions)[
+          recordsOrEmpty(data.transitions).length - 1
         ]?.observed_at ?? null,
       ),
     },
@@ -7879,9 +7792,5 @@ async function subnetSurfacesFor(
  * correctly converge on "no rate" -- and none of them is a rate of zero.
  */
 async function usdPerTaoOrNull(env: Env): Promise<number | null> {
-  return sharedUsdPerTaoOrNull(
-    readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
-      typeof sharedUsdPerTaoOrNull
-    >[0],
-  );
+  return sharedUsdPerTaoOrNull(readStore(env, TAO_USD_TABLES));
 }

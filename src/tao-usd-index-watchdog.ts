@@ -323,7 +323,7 @@ export function evaluateTaoUsdIndex({
  * failure this issue is about.
  */
 export async function runTaoUsdIndexWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: unknown,
   deps: {
     db?: TaoUsdWatchdogDb | null;
     laneHealthDb?: Parameters<typeof recordLaneVerdict>[0];
@@ -333,8 +333,7 @@ export async function runTaoUsdIndexWatchdog(
   const now = deps.now ?? Date.now;
   const nowMs = now();
   const db =
-    deps.db ??
-    (readStore(env as never, TAO_USD_TABLES) as unknown as TaoUsdWatchdogDb);
+    deps.db ?? (readStore(env, TAO_USD_TABLES) as unknown as TaoUsdWatchdogDb);
 
   let rows: Row[] | null;
   try {

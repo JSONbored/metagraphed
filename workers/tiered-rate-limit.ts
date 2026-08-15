@@ -22,6 +22,32 @@ import {
 } from "../src/api-key-validation.ts";
 import { routeCost } from "../src/route-cost-weights.ts";
 import { evaluateBlock, type BlockVerdict } from "../src/api-key-abuse.ts";
+import { recordOrNull } from "../src/read-store.ts";
+
+/**
+ * The rate-limiter binding a policy NAMES, or undefined.
+ *
+ * A real lookup, not a property access: the policy config carries its binding
+ * as a string (`policy.envVar`), and `Env` is an interface, which TypeScript
+ * never gives an implicit index signature -- so all three call sites wrote
+ * `env as unknown as Record<string, RateLimit | undefined>` to index it
+ * (#11339).
+ *
+ * Narrows on `.limit` rather than on mere presence, which the cast could not
+ * do at all: an unbound name reads as `undefined`, but a WRONG name reads as
+ * whatever else is bound under it. A KV namespace passes `!== undefined` and
+ * then throws inside `.limit()` -- on the request path, mid-flight, as a 500
+ * rather than as the open-fail the callers below intend.
+ */
+export function rateLimiterBinding(
+  env: unknown,
+  name: string,
+): RateLimit | undefined {
+  const binding = recordOrNull(env)?.[name];
+  return typeof (binding as RateLimit | undefined)?.limit === "function"
+    ? (binding as RateLimit)
+    : undefined;
+}
 
 export interface RateLimitTierPolicy {
   /** Env binding name for this tier's Cloudflare Rate Limiting binding. */
@@ -265,9 +291,7 @@ export async function applyTieredRateLimit(
       tier && Object.hasOwn(config.tiers ?? {}, tier)
         ? (config.tiers as Record<string, RateLimitTierPolicy>)[tier]
         : config.keyed;
-    const limiter = (env as unknown as Record<string, RateLimit | undefined>)[
-      policy.envVar
-    ];
+    const limiter = rateLimiterBinding(env, policy.envVar);
     // `String()` unconditionally turned a null account id into the LITERAL
     // "null" -- a single fabricated tenant that every identity-less key shared.
     // verifyUnkeyKey returns `accountId: identity?.externalId ?? null` while
@@ -353,9 +377,7 @@ export async function applyTieredRateLimit(
   }
 
   const policy = config.anonymous;
-  const limiter = (env as unknown as Record<string, RateLimit | undefined>)[
-    policy.envVar
-  ];
+  const limiter = rateLimiterBinding(env, policy.envVar);
   if (!limiter?.limit) {
     return { allowed: true, policy, tier: "anonymous", accountId: null };
   }

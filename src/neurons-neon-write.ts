@@ -43,6 +43,7 @@ import {
   writePassTallyToNeon,
   type PassTallyInput,
 } from "./pass-completeness.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 // ---------------------------------------------------------------------------
 // Moved here when D1 was deleted (#10179). These describe the TABLE -- its
@@ -385,7 +386,7 @@ export interface NeuronMirrorDeps {
  * current.
  */
 export async function mirrorNeuronSnapshotToNeon(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   input: NeuronMirrorInput,
   deps: NeuronMirrorDeps = {},

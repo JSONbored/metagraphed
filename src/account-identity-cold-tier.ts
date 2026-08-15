@@ -18,6 +18,7 @@ import type {
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 // Both SELECT lists are derived from the same exported field set data-api's
 // reads are built on: latest-only is account + the 7 identity fields +
@@ -34,7 +35,7 @@ const CURSOR_ARITY = 2;
  * answer, so the caller keeps its schema-stable "no identity" fallback.
  */
 export async function loadAccountIdentityColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountIdentity> | null> {
   // An unusable address is a decline, not an unfiltered scan: it reaches a
@@ -61,7 +62,7 @@ export async function loadAccountIdentityColdTier(
  * order, columns, cursor token, and OFFSET-only-without-cursor rule.
  */
 export async function loadAccountIdentityHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildAccountIdentityHistory> | null> {

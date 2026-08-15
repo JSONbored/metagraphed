@@ -75,6 +75,7 @@ import {
   type TieredRateLimitConfig,
 } from "../tiered-rate-limit.ts";
 import { buildTierPolicies } from "../../src/api-tiers.ts";
+import { recordOrNull } from "../../src/read-store.ts";
 
 export interface RpcEndpoint {
   id: string;
@@ -317,7 +318,9 @@ export async function handleSurfaceVerify(
       surface = findSurface(
         catalogSurfaces,
         surfaceId,
-        aliases.data as unknown as Parameters<typeof findSurface>[2],
+        // `.data` is `unknown` -- an R2 object is whatever was last written to
+        // it -- so the alias map is narrowed rather than asserted (#11339).
+        recordOrNull(aliases.data),
       );
     }
   }
@@ -340,7 +343,7 @@ export async function handleSurfaceVerify(
     },
     {
       waitUntil: (promise: Promise<unknown>) => ctx?.waitUntil?.(promise),
-    } as unknown as Parameters<typeof verifySurfaceWithCache>[2],
+    },
   );
   return envelopeResponse(
     request,

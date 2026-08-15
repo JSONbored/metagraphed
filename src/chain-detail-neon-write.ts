@@ -24,6 +24,7 @@ import {
   neonWriteRunner,
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 // ---------------------------------------------------------------------------
 // Moved here when D1 was deleted (#10179). These describe the TABLE -- its
@@ -188,7 +189,7 @@ function coerceBooleans(rows: Row[], booleans?: readonly string[]): Row[] {
  * and the write order is the point.
  */
 export async function mirrorChainDetailToNeon(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   input: ChainDetailMirrorInput,
   deps: ChainDetailMirrorDeps = {},

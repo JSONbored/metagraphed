@@ -36,13 +36,35 @@
 // empty it replaced.
 
 import { z } from "zod";
-import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { LAKEHOUSE_ROW_SCHEMAS } from "../schemas-src/lakehouse.ts";
 import { LAKEHOUSE_NAMESPACES } from "./chain-network.ts";
 import { R2SqlBodySchema } from "../schemas-src/r2-sql-envelope.ts";
 
 /** Personal/API token with R2 SQL read access (wrangler secret). */
+/**
+ * What the R2 SQL client needs from its environment, and nothing else.
+ *
+ * FIVE STRINGS. Taking the whole ambient `Env` instead is what put
+ * `as never` on 33 call sites across the cold-tier readers (#11339): every
+ * composer that holds a loose bag -- and they all do, because `readStore`
+ * deliberately takes `unknown` -- had to assert past this signature to reach
+ * a lakehouse read. `as never` is the worst spelling of that, because it also
+ * makes the SQL and deps arguments unverifiable at the same call.
+ *
+ * Optional and string-typed because that is what a Worker var is: unset reads
+ * as `undefined`, and every read below type-guards what it finds rather than
+ * trusting the declaration.
+ */
+export interface R2SqlEnv extends TelemetryEnv {
+  R2_SQL_TOKEN?: string;
+  R2_SQL_ACCOUNT_ID?: string;
+  R2_SQL_WAREHOUSE?: string;
+  R2_SQL_RATE_LIMIT_COOLDOWN_MS?: string;
+  R2_SQL_MAX_BODY_BYTES?: string;
+}
+
 export const R2_SQL_TOKEN_ENV = "R2_SQL_TOKEN";
 /** Cloudflare account that owns the warehouse. */
 export const R2_SQL_ACCOUNT_ENV = "R2_SQL_ACCOUNT_ID";
@@ -256,8 +278,8 @@ const RateLimitCooldownSchema = z.coerce
   .nonnegative()
   .catch(R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS);
 
-function rateLimitCooldownMs(env: Env | null | undefined): number {
-  const raw = env?.[R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV as keyof Env];
+function rateLimitCooldownMs(env: R2SqlEnv | null | undefined): number {
+  const raw = env?.[R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV];
   // Absent coerces to NaN and an empty string to 0, which mean opposite things
   // here -- unset must take the default, while a deliberate "" is as much an
   // unset as `undefined` is. Both route to the default; only a real "0" disables.
@@ -343,7 +365,7 @@ export interface R2SqlDeps {
 type R2SqlBody = z.infer<typeof R2SqlBodySchema>;
 
 /** True when this deployment can talk to R2 SQL at all. */
-export function isR2SqlConfigured(env: Env | null | undefined): boolean {
+export function isR2SqlConfigured(env: R2SqlEnv | null | undefined): boolean {
   const token = env?.[R2_SQL_TOKEN_ENV];
   return typeof token === "string" && token.trim().length > 0;
 }
@@ -386,7 +408,7 @@ const MaxBodyBytesSchema = z.coerce
   .catch(R2_SQL_MAX_BODY_BYTES_DEFAULT);
 
 /** The body-size ceiling for this deployment, or 0 when disabled. */
-export function maxBodyBytes(env: Env | null | undefined): number {
+export function maxBodyBytes(env: R2SqlEnv | null | undefined): number {
   const raw = env?.R2_SQL_MAX_BODY_BYTES;
   if (raw === undefined || raw === null || String(raw).trim() === "") {
     return R2_SQL_MAX_BODY_BYTES_DEFAULT;
@@ -649,13 +671,13 @@ export function isExpectedR2SqlFailure(errorCode: string): boolean {
  * assignable here, because its type parameter defaults.
  */
 export type R2SqlReader = (
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   sql: string,
   deps?: R2SqlDeps,
 ) => Promise<Record<string, unknown>[] | null>;
 
 export async function r2SqlQuery<Row = Record<string, unknown>>(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   sql: string,
   deps: R2SqlDeps = {},
 ): Promise<Row[] | null> {

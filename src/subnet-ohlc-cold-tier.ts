@@ -59,6 +59,7 @@ import {
   STAKE_REMOVED_KIND,
 } from "./subnet-ohlc.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Same day length the REST/MCP callers and data-api use, so every tier
  * resolves the same ?days= to the same request-time cutoff. */
@@ -94,7 +95,7 @@ export interface SubnetOhlcQuery {
  * already carries the correct root_excluded shape.
  */
 export async function loadSubnetOhlcColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: unknown,
   query: SubnetOhlcQuery = {},
 ): Promise<{

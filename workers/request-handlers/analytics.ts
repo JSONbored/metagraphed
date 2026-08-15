@@ -709,7 +709,7 @@ export async function handleBulkHealthTrends(
       const storeGeneration = currentStoreReadFailureGeneration();
       const result = await loadBulkHealthTrends({
         observedAt: meta?.last_run_at || null,
-        db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+        db: observationsReadDb(env, ctx),
         window: trendsWindow ?? null,
         limit: trendsLimit ?? null,
         offset: trendsOffset ?? 0,
@@ -775,8 +775,8 @@ export async function handleHealthTrends(
     const meta = await readHealthMetaKv(env);
     const data = await loadSubnetHealthTrends(netuid, {
       observedAt: meta?.last_run_at || null,
-      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
-    } as unknown as Parameters<typeof loadSubnetHealthTrends>[1]);
+      db: observationsReadDb(env, ctx),
+    });
     const usedFallback =
       !env.HYPERDRIVE?.connectionString ||
       currentStoreReadFailureGeneration() !== storeGeneration;
@@ -831,8 +831,8 @@ export async function handleHealthPercentiles(
       const data = await loadSubnetPercentiles(netuid, {
         window: label,
         observedAt: meta?.last_run_at || null,
-        db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
-      } as unknown as Parameters<typeof loadSubnetPercentiles>[1]);
+        db: observationsReadDb(env, ctx),
+      });
       const usedFallback =
         !env.HYPERDRIVE?.connectionString ||
         currentStoreReadFailureGeneration() !== storeGeneration;
@@ -885,8 +885,8 @@ export async function handleHealthIncidents(
       const data = await loadSubnetIncidents(netuid, {
         window: label,
         observedAt: meta?.last_run_at || null,
-        db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
-      } as unknown as Parameters<typeof loadSubnetIncidents>[1]);
+        db: observationsReadDb(env, ctx),
+      });
       const usedFallback =
         !env.HYPERDRIVE?.connectionString ||
         currentStoreReadFailureGeneration() !== storeGeneration;
@@ -1307,7 +1307,7 @@ export async function handleChainActivity(
             buildChainActivity({
               window: label,
               observedAt: meta?.last_run_at || null,
-            } as unknown as Parameters<typeof buildChainActivity>[0]),
+            }),
           ),
         windowDays,
       );
@@ -1392,7 +1392,7 @@ export async function handleChainCalls(
           observedAt: meta?.last_run_at || null,
           total: 0,
           rows: [],
-        } as unknown as Parameters<typeof buildChainCalls>[0]);
+        });
       }
       if (csv) {
         const csvRes = await csvResponse(
@@ -1478,7 +1478,7 @@ export async function handleChainSigners(
             sort,
             observedAt: meta?.last_run_at || null,
             rows: [],
-          } as unknown as Parameters<typeof buildChainSigners>[0]),
+          }),
         );
       if (csv) {
         return csvResponse(
@@ -1664,7 +1664,7 @@ export async function handleChainTransferPairs(
             window: label,
             sort,
             observedAt: meta?.last_run_at || null,
-          } as unknown as Parameters<typeof buildChainTransferPairs>[0]),
+          }),
         );
       // CSV exports the row-shaped top corridors; the totals + top_pair_share
       // rollup stay JSON-only (mirrors chain-stake-flow / chain-weights).
@@ -1753,7 +1753,7 @@ export async function handleChainStakeFlow(
           buildChainStakeFlow([], {
             window: label,
             limit,
-          } as unknown as Parameters<typeof buildChainStakeFlow>[1]),
+          }),
         );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // net_flow_distribution stay JSON-only (mirrors chain-fees' top_fee_payers).
@@ -1855,7 +1855,7 @@ export async function handleChainAlphaVolume(
         unmeasured(
           buildChainAlphaVolume([], {
             limit,
-          } as unknown as Parameters<typeof buildChainAlphaVolume>[1]),
+          }),
         );
       // USD on the network rollup, the spread and every per-subnet row
       // (#10383). Overlaid before the CSV branch so both formats carry the
@@ -1933,15 +1933,12 @@ export async function handleChainWeights(
         // Same shared loader MCP and GraphQL call, so all three surfaces
         // answer from one implementation. Declines (null) rather than
         // half-answering, leaving the empty payload below as the fallback.
-        (await loadChainWeightsColdTier(
-          env as unknown as Parameters<typeof loadChainWeightsColdTier>[0],
-          { window: label, limit },
-        )) ??
+        (await loadChainWeightsColdTier(env, { window: label, limit })) ??
         unmeasured(
           buildChainWeights([], {
             window: label,
             limit,
-          } as unknown as Parameters<typeof buildChainWeights>[1]),
+          }),
         );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-flow).
@@ -2011,12 +2008,7 @@ export async function handleChainWeightSetters(
         // The same WeightsSet stream /chain/weights already reads, grouped one
         // level finer (#9249). Through the shared loader so MCP and GraphQL get
         // it too rather than being wired one surface at a time.
-        (await loadChainWeightSettersColdTier(
-          env as unknown as Parameters<
-            typeof loadChainWeightSettersColdTier
-          >[0],
-          { window: label, limit },
-        )) ??
+        (await loadChainWeightSettersColdTier(env, { window: label, limit })) ??
         unmeasured(buildChainWeightSetters([], null, { window: label, limit }));
       if (csv) {
         return csvResponse(
@@ -2085,15 +2077,12 @@ export async function handleChainServing(
         // surfaces answer from a single implementation rather than three
         // copies that can drift. It declines (null) rather than
         // half-answering, leaving the empty payload below as the fallback.
-        (await loadChainServingColdTier(
-          env as unknown as Parameters<typeof loadChainServingColdTier>[0],
-          { window: label, limit },
-        )) ??
+        (await loadChainServingColdTier(env, { window: label, limit })) ??
         unmeasured(
           buildChainServing([], {
             window: label,
             limit,
-          } as unknown as Parameters<typeof buildChainServing>[1]),
+          }),
         );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-weights).
@@ -2163,14 +2152,11 @@ export async function handleChainPrometheus(
         // lakehouse rollup here since #9216; prometheus fell straight from a
         // tier that always misses to the empty stub, so it published a
         // confident zero no amount of curation could have fixed.
-        (await loadChainPrometheusColdTier(
-          env as unknown as Parameters<typeof loadChainPrometheusColdTier>[0],
-          { window: label, limit },
-        )) ??
+        (await loadChainPrometheusColdTier(env, { window: label, limit })) ??
         buildChainPrometheus([], {
           window: label,
           limit,
-        } as unknown as Parameters<typeof buildChainPrometheus>[1]);
+        });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -2239,7 +2225,7 @@ export async function handleChainAxonRemovals(
         buildChainAxonRemovals([], {
           window: label,
           limit,
-        } as unknown as Parameters<typeof buildChainAxonRemovals>[1]);
+        });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -2326,7 +2312,7 @@ export async function handleChainRegistrations(
           buildChainRegistrations([], {
             window: label,
             limit,
-          } as unknown as Parameters<typeof buildChainRegistrations>[1]),
+          }),
         );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
@@ -2493,7 +2479,7 @@ export async function handleChainDeregistrations(
             buildChainDeregistrations([], {
               window: label,
               limit,
-            } as unknown as Parameters<typeof buildChainDeregistrations>[1]),
+            }),
           ),
         );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
@@ -2578,7 +2564,7 @@ export async function handleChainStakeMoves(
           buildChainStakeMoves([], {
             window: label,
             limit,
-          } as unknown as Parameters<typeof buildChainStakeMoves>[1]),
+          }),
         );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
@@ -2662,7 +2648,7 @@ export async function handleChainStakeTransfers(
           buildChainStakeTransfers([], {
             window: label,
             limit,
-          } as unknown as Parameters<typeof buildChainStakeTransfers>[1]),
+          }),
         );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-moves).
@@ -2754,7 +2740,7 @@ export async function handleChainFees(
         buildChainFees({
           window: label,
           observedAt: meta?.last_run_at || null,
-        } as unknown as Parameters<typeof buildChainFees>[0]),
+        }),
       );
       // #8242: see handleChainActivity — trim the UTC-day buckets down to the
       // requested window so "7d" never reports 8 days.

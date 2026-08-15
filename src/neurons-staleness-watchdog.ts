@@ -57,6 +57,22 @@ import {
   type ReadStoreDb,
 } from "./read-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type NeuronsStalenessWatchdogEnv = NeonWriteEnv & {
+  NEURONS_COVERAGE_FLOOR_NETUIDS?: unknown;
+  NEURONS_PASS_WINDOW_MS?: unknown;
+  NEURONS_STALENESS_THRESHOLD_MS?: unknown;
+};
 
 /** The buffer lane these rows are written on, when buffering is on. */
 export const NEURONS_BUFFER_LANE = "neurons";
@@ -98,7 +114,7 @@ export const NEURONS_STALENESS_THRESHOLD_MS = missedTicksMs("metagraph", 3);
  * slack behind a flag nobody re-reads.
  */
 export function neuronsStalenessThresholdMs(
-  env: Record<string, unknown> | null | undefined,
+  env: NeuronsStalenessWatchdogEnv | null | undefined,
 ): number {
   const declared =
     Number(env?.NEURONS_STALENESS_THRESHOLD_MS) ||
@@ -281,7 +297,7 @@ export interface NeuronsStalenessDeps {
  * outage, and a cron that throws is a cron nobody can read the result of.
  */
 export async function runNeuronsStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: NeuronsStalenessWatchdogEnv | null | undefined,
   deps: NeuronsStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
@@ -335,7 +351,7 @@ export async function runNeuronsStalenessWatchdog(
         verdict.reason === "partial"
           ? `neurons lane truncated: the newest pass covered only ${verdict.covered_netuids} of ${verdict.total_netuids} subnets against a floor of ${verdict.coverage_floor_netuids} (newest stamp ${age}) -- the capture is RECENT and PARTIAL, so every route over a subnet the scan never reached is serving a pass-old metagraph behind a MAX(captured_at) that just advanced`
           : `neurons lane stalled: the newest READABLE snapshot is ${age} (threshold ${thresholdMs / 60_000} min) -- ${suspects}`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:neurons-staleness",
         errorCode: "stale_lane",

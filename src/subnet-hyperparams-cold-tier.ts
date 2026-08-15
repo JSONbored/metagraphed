@@ -18,6 +18,7 @@ import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
 } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 // Both SELECT lists are DERIVED from the same exported column set the write
 // path and data-api's reads are built on, rather than restated: 35 columns is
@@ -42,7 +43,7 @@ const CURSOR_ARITY = 2;
  * answer, so the caller keeps its existing schema-stable fallback.
  */
 export async function loadSubnetHyperparamsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: unknown,
 ): Promise<ReturnType<typeof buildSubnetHyperparams> | null> {
   // netuid reaches a string-built query (R2 SQL has no bound parameters), so
@@ -64,7 +65,7 @@ export async function loadSubnetHyperparamsColdTier(
  * exact order, columns, cursor token, and OFFSET-only-without-cursor rule.
  */
 export async function loadSubnetHyperparamsHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: unknown,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildSubnetHyperparamsHistory> | null> {

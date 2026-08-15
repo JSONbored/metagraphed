@@ -22,6 +22,8 @@
 //
 // Both feed the same parse, the same error idiom, and the same projector.
 
+import { recordOrNull } from "./read-store.ts";
+
 export type Row = Record<string, unknown>;
 
 /**
@@ -95,7 +97,16 @@ export function unknownAgainstSchema(schema: {
  * row. Behaviour is identical to a full-union check, and identical to what
  * workers/list-query.ts did before this module existed.
  */
-export function unknownAgainstRows(rows: Row[]): UnknownFieldResolver {
+// `readonly object[]`, not `Row[]`: this function only ever calls
+// `Object.keys(row)` -- it never indexes a row by a computed key, so requiring
+// an index signature overstated what it needs. The cost of that overstatement
+// was real: a caller holding a well-typed INTERFACE (`SubnetDecomposition`)
+// could not pass it, because TypeScript gives implicit index signatures to type
+// aliases and object literals but never to interfaces -- so the call site
+// reached for a cast, and lost the row type entirely (#11339).
+export function unknownAgainstRows(
+  rows: readonly object[],
+): UnknownFieldResolver {
   const resolve: UnknownFieldResolver = (requested) => {
     const unresolved = new Set(requested);
     for (const row of rows) {
@@ -200,7 +211,7 @@ export function projectRow<T>(row: T, fields: string[] | null | undefined): T {
   if (!fields || !row || typeof row !== "object" || Array.isArray(row)) {
     return row;
   }
-  const source = row as Row;
+  const source = recordOrNull(row) ?? {};
   return Object.fromEntries(
     fields
       .filter((field) => Object.hasOwn(source, field))
@@ -208,12 +219,21 @@ export function projectRow<T>(row: T, fields: string[] | null | undefined): T {
   ) as T;
 }
 
-/** {@link projectRow} across a collection. */
-export function projectRows(
-  rows: Row[],
+/**
+ * {@link projectRow} across a collection.
+ *
+ * GENERIC, like `projectRow` beside it always was. Pinning this one to `Row[]`
+ * meant a caller holding typed rows had to cast IN and back OUT again --
+ * `projectRows(limited as unknown as Row[], f) as unknown as typeof subnets`
+ * -- which discarded the row type across the projection for no gain (#11339).
+ */
+export function projectRows<T>(
+  rows: T[],
   fields: string[] | null | undefined,
-): Row[] {
+): T[] {
   if (!fields) {
+    // The SAME array, not a copy -- the suite pins this identity, and the
+    // no-projection path is the one every unnarrowed request takes.
     return rows;
   }
   return rows.map((row) => projectRow(row, fields));

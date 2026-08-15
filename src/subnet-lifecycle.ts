@@ -43,6 +43,7 @@ import {
   NEURONS_COVERAGE_FLOOR_NETUIDS,
   NEURONS_PASS_WINDOW_MS,
 } from "./neurons-staleness-watchdog.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 export const SUBNET_LIFECYCLE_LANE = "subnet-lifecycle";
 
@@ -144,7 +145,7 @@ export interface SubnetLifecycleDeps {
  * One tick. Returns a summary rather than throwing, like the rest of the family.
  */
 export async function runSubnetLifecycleLane(
-  env: Record<string, unknown> | null | undefined,
+  env: NeonWriteEnv | null | undefined,
   deps: SubnetLifecycleDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;

@@ -1798,7 +1798,7 @@ import {
   buildNominatorPositions,
   loadNominatorPositions,
 } from "./validator-nominator-positions.ts";
-import { readStore } from "./read-store.ts";
+import { numberOrNull, readStore, recordOrNull } from "./read-store.ts";
 import {
   ALPHA_PRICING_TABLES,
   CHAIN_CONCENTRATION_HISTORY_TABLES,
@@ -3340,20 +3340,13 @@ async function mcpSubnetSurfaces(
  */
 async function mcpRevenueObservations(ctx: McpCtx, netuid: number | null) {
   return loadRevenueObservations(
-    readStore(
-      ctx.env,
-      REVENUE_OBSERVATION_TABLES,
-    ) as never as unknown as Parameters<typeof loadRevenueObservations>[0],
+    readStore(ctx.env, REVENUE_OBSERVATION_TABLES),
     netuid,
   );
 }
 
 async function mcpUsdPerTao(ctx: McpCtx): Promise<number | null> {
-  return usdPerTaoOrNull(
-    readStore(ctx.env, TAO_USD_TABLES) as never as unknown as Parameters<
-      typeof usdPerTaoOrNull
-    >[0],
-  );
+  return usdPerTaoOrNull(readStore(ctx.env, TAO_USD_TABLES));
 }
 
 // One subnet's economics: live KV tier (KV-primary), else the committed R2
@@ -7255,10 +7248,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // Same shared loader REST and GraphQL use (#9229's parity lesson).
-        (await loadChainWeightsColdTier(
-          ctx.env as unknown as Parameters<typeof loadChainWeightsColdTier>[0],
-          { window, limit },
-        )) ??
+        (await loadChainWeightsColdTier(ctx.env, { window, limit })) ??
         buildChainWeights([], {
           window,
           limit,
@@ -7301,12 +7291,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
-        (await loadChainWeightSettersColdTier(
-          ctx.env as unknown as Parameters<
-            typeof loadChainWeightSettersColdTier
-          >[0],
-          { window, limit },
-        )) ?? buildChainWeightSetters([], null, { window, limit })
+        (await loadChainWeightSettersColdTier(ctx.env, { window, limit })) ??
+        buildChainWeightSetters([], null, { window, limit })
       );
     },
   },
@@ -7481,10 +7467,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // surfaces answer from one implementation. Without this the tool kept
         // returning the zeroed card while /api/v1/chain/serving returned real
         // numbers for the identical question (#9216 wired REST only).
-        (await loadChainServingColdTier(
-          ctx.env as unknown as Parameters<typeof loadChainServingColdTier>[0],
-          { window, limit },
-        )) ?? buildChainServing([], { window, limit })
+        (await loadChainServingColdTier(ctx.env, { window, limit })) ??
+        buildChainServing([], { window, limit })
       );
     },
   },
@@ -7526,12 +7510,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The lakehouse rung, same as REST and GraphQL (#10248).
-        (await loadChainPrometheusColdTier(
-          ctx.env as unknown as Parameters<
-            typeof loadChainPrometheusColdTier
-          >[0],
-          { window, limit },
-        )) ?? buildChainPrometheus([], { window, limit })
+        (await loadChainPrometheusColdTier(ctx.env, { window, limit })) ??
+        buildChainPrometheus([], { window, limit })
       );
     },
   },
@@ -8054,14 +8034,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
-        (await loadSubnetWeightsColdTier(
-          ctx.env as unknown as Parameters<typeof loadSubnetWeightsColdTier>[0],
-          netuid,
-          {
-            windowLabel: window,
-            windowDays: SUBNET_WEIGHTS_WINDOWS[window] ?? 7,
-          },
-        )) ?? buildSubnetWeights(null, netuid, { window })
+        (await loadSubnetWeightsColdTier(ctx.env, netuid, {
+          windowLabel: window,
+          windowDays: SUBNET_WEIGHTS_WINDOWS[window] ?? 7,
+        })) ?? buildSubnetWeights(null, netuid, { window })
       );
     },
   },
@@ -8091,17 +8067,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
-        (await loadSubnetWeightSettersColdTier(
-          ctx.env as unknown as Parameters<
-            typeof loadSubnetWeightSettersColdTier
-          >[0],
-          netuid,
-          {
-            windowLabel: window,
-            windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[window] ?? 7,
-            limit: SUBNET_WEIGHT_SETTERS_LIMIT,
-          },
-        )) ?? buildSubnetWeightSetters([], null, netuid, { window })
+        (await loadSubnetWeightSettersColdTier(ctx.env, netuid, {
+          windowLabel: window,
+          windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[window] ?? 7,
+          limit: SUBNET_WEIGHT_SETTERS_LIMIT,
+        })) ?? buildSubnetWeightSetters([], null, netuid, { window })
       );
     },
   },
@@ -8131,9 +8101,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
-          ctx.env as unknown as Parameters<
-            typeof loadSubnetEventCardColdTier
-          >[0],
+          ctx.env,
           CHAIN_REGISTRATIONS_ROLLUP,
           netuid,
           buildSubnetRegistrations,
@@ -8171,9 +8139,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
-          ctx.env as unknown as Parameters<
-            typeof loadSubnetEventCardColdTier
-          >[0],
+          ctx.env,
           CHAIN_STAKE_MOVES_ROLLUP,
           netuid,
           buildSubnetStakeMoves,
@@ -8212,9 +8178,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
-          ctx.env as unknown as Parameters<
-            typeof loadSubnetEventCardColdTier
-          >[0],
+          ctx.env,
           CHAIN_STAKE_TRANSFERS_ROLLUP,
           netuid,
           buildSubnetStakeTransfers,
@@ -8284,9 +8248,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
-          ctx.env as unknown as Parameters<
-            typeof loadSubnetEventCardColdTier
-          >[0],
+          ctx.env,
           CHAIN_SERVING_ROLLUP,
           netuid,
           buildSubnetServing,
@@ -8327,9 +8289,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // resolved to null before it could touch DATA_API.
         // #10322: same cold-tier rung as its REST and GraphQL twins.
         (await loadSubnetEventCardColdTier(
-          ctx.env as unknown as Parameters<
-            typeof loadSubnetEventCardColdTier
-          >[0],
+          ctx.env,
           CHAIN_PROMETHEUS_ROLLUP,
           netuid,
           buildSubnetPrometheus,
@@ -8508,7 +8468,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           observedAt: await mcpObservedAt(ctx),
           minSamples: minSamples ?? null,
           db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
-        } as unknown as Parameters<typeof loadSubnetUptime>[1])) as Row
+        })) as Row
       );
     },
   },
@@ -9090,12 +9050,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         }
         return buildNominatorPositions(
           await loadNominatorPositions(
-            readStore(
-              ctx.env,
-              ALPHA_PRICING_TABLES,
-            ) as never as unknown as Parameters<
-              typeof loadNominatorPositions
-            >[0],
+            readStore(ctx.env, ALPHA_PRICING_TABLES),
             hotkey,
           ),
           hotkey,
@@ -9754,7 +9709,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const loadParams =
         (ctx as { loadNetworkParameters?: typeof loadNetworkParameters })
           .loadNetworkParameters ?? loadNetworkParameters;
-      const parameters = await loadParams(ctx.env as never);
+      const parameters = await loadParams(ctx.env);
       const ownerCut = parameters?.subnet_owner_cut_effective;
       // #10930: the same flow read REST does, from the same cold-tier
       // function over the same window. Wiring this on one surface only would
@@ -9773,7 +9728,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         (ctx as { loadStakeFlow?: typeof loadAccountStakeFlowColdTier })
           .loadStakeFlow ?? loadAccountStakeFlowColdTier;
       const flows = ownerColdkey
-        ? await loadFlows(ctx.env as never, ownerColdkey, {
+        ? await loadFlows(ctx.env, ownerColdkey, {
             window: OWNER_CUT_FLOW_WINDOW,
           })
         : null;
@@ -10015,10 +9970,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         optionalEnum(args, "window", Object.keys(BURN_HISTORY_WINDOWS)) ??
         DEFAULT_BURN_HISTORY_WINDOW;
       const rows = await loadSubnetBurnHistory(
-        readStore(
-          ctx.env,
-          SUBNET_BURN_HISTORY_TABLES,
-        ) as never as unknown as Parameters<typeof loadSubnetBurnHistory>[0],
+        readStore(ctx.env, SUBNET_BURN_HISTORY_TABLES),
         netuid,
         { windowDays: BURN_HISTORY_WINDOWS[label] },
       );
@@ -10054,12 +10006,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const label =
         optionalEnum(args, "window", Object.keys(TAO_USD_WINDOWS)) ??
         DEFAULT_TAO_USD_WINDOW;
-      const rows = await loadTaoUsdSeries(
-        readStore(ctx.env, TAO_USD_TABLES) as never as unknown as Parameters<
-          typeof loadTaoUsdSeries
-        >[0],
-        { windowHours: TAO_USD_WINDOWS[label] },
-      );
+      const rows = await loadTaoUsdSeries(readStore(ctx.env, TAO_USD_TABLES), {
+        windowHours: TAO_USD_WINDOWS[label],
+      });
       // Defaults to FALSE here and to true on REST -- see the schema. The
       // summary is computed over the whole window either way, so this narrows
       // the response without narrowing the measurement.
@@ -10108,10 +10057,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SURFACE_HISTORY_LIMIT_MAX,
       );
       const rows = await loadSurfaceHistory(
-        readStore(
-          ctx.env,
-          SURFACE_HISTORY_TABLES,
-        ) as never as unknown as Parameters<typeof loadSurfaceHistory>[0],
+        readStore(ctx.env, SURFACE_HISTORY_TABLES),
         netuid,
         { limit },
       );
@@ -10156,10 +10102,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         EMISSION_CHANGES_LIMIT_MAX,
       );
       const rows = await loadEmissionChanges(
-        readStore(
-          ctx.env,
-          EMISSION_CHANGES_TABLES,
-        ) as never as unknown as Parameters<typeof loadEmissionChanges>[0],
+        readStore(ctx.env, EMISSION_CHANGES_TABLES),
         { limit, kind },
       );
       return buildEmissionChanges(rows, { limit, kind });
@@ -10203,10 +10146,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_HOLDERS_LIMIT_MAX,
       );
       const read = await loadChainHolders(
-        readStore(
-          ctx.env,
-          ALPHA_PRICING_TABLES,
-        ) as never as unknown as Parameters<typeof loadChainHolders>[0],
+        readStore(ctx.env, ALPHA_PRICING_TABLES),
       );
       return buildChainHolders(read, { sort, limit });
     },
@@ -10246,10 +10186,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = typeof args?.netuid === "number" ? args.netuid : undefined;
       const kind = typeof args?.kind === "string" ? args.kind : undefined;
       const rows = await loadFailureReasons(
-        readStore(
-          ctx.env,
-          FAILURE_REASONS_TABLES,
-        ) as never as unknown as Parameters<typeof loadFailureReasons>[0],
+        readStore(ctx.env, FAILURE_REASONS_TABLES),
         { window, netuid, kind },
       );
       return rows === null
@@ -10283,12 +10220,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       _args: z.infer<typeof GetIndexerLagInputSchema>,
       ctx: McpCtx,
     ) {
-      const row = await loadIndexerLag(
-        readStore(
-          ctx.env,
-          INDEXER_LAG_TABLES,
-        ) as never as unknown as Parameters<typeof loadIndexerLag>[0],
-      );
+      const row = await loadIndexerLag(readStore(ctx.env, INDEXER_LAG_TABLES));
       return buildIndexerLag(row, Date.now());
     },
   },
@@ -10327,12 +10259,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ...CHAIN_CONCENTRATION_HISTORY_WINDOWS,
         ]) ?? DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW;
       const rows = await loadChainConcentrationHistory(
-        readStore(
-          ctx.env,
-          CHAIN_CONCENTRATION_HISTORY_TABLES,
-        ) as never as unknown as Parameters<
-          typeof loadChainConcentrationHistory
-        >[0],
+        readStore(ctx.env, CHAIN_CONCENTRATION_HISTORY_TABLES),
         { window },
       );
       return rows === null
@@ -10375,10 +10302,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         optionalEnum(args, "window", [...PIPELINE_HISTORY_WINDOWS]) ??
         DEFAULT_PIPELINE_HISTORY_WINDOW;
       const rows = await loadPipelineHistory(
-        readStore(
-          ctx.env,
-          SUBNET_SNAPSHOT_TABLES,
-        ) as never as unknown as Parameters<typeof loadPipelineHistory>[0],
+        readStore(ctx.env, SUBNET_SNAPSHOT_TABLES),
         netuid,
         { window },
       );
@@ -10427,12 +10351,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // NOT filtered to `netuid`: rank is relative, so each day is loaded whole
       // and narrowed in the builder -- see the loader's own header.
       const rows = await loadDeregistrationHistory(
-        readStore(
-          ctx.env,
-          SUBNET_DEREGISTRATION_DAILY_TABLES,
-        ) as never as unknown as Parameters<
-          typeof loadDeregistrationHistory
-        >[0],
+        readStore(ctx.env, SUBNET_DEREGISTRATION_DAILY_TABLES),
         { window },
       );
       return rows === null
@@ -10538,10 +10457,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SUBNET_HOLDERS_LIMIT_MAX,
       );
       const read = await loadSubnetHolders(
-        readStore(
-          ctx.env,
-          ALPHA_PRICING_TABLES,
-        ) as never as unknown as Parameters<typeof loadSubnetHolders>[0],
+        readStore(ctx.env, ALPHA_PRICING_TABLES),
         netuid,
         { limit },
       );
@@ -14984,8 +14900,36 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (credentialPlacement?.location === "body" && !requestContentType) {
         requestContentType = "application/json";
       }
+      // The url `callSubnetSurface` will hand to `new URL()` two frames down,
+      // checked HERE rather than assumed. The catalog is a baked artifact, so
+      // by the time a row reaches this line it is untrusted bytes; a row with
+      // no usable url declines the way every other uncallable surface does
+      // instead of throwing a TypeError inside the fetch path (#11339).
+      const surfaceUrl = stringOf(surface.url);
+      if (!surfaceUrl) {
+        throw await uncallableSurfaceError(ctx, args.surface_id);
+      }
+      const surfaceProbe = recordOrNull(surface.probe);
       const result = await callSubnetSurface(
-        surface as unknown as Parameters<typeof callSubnetSurface>[0],
+        {
+          url: surfaceUrl,
+          ...(surfaceProbe
+            ? {
+                probe: {
+                  ...(stringOf(surfaceProbe.method)
+                    ? { method: stringOf(surfaceProbe.method) as string }
+                    : {}),
+                  ...(numberOrNull(surfaceProbe.timeout_ms) !== null
+                    ? {
+                        timeout_ms: numberOrNull(
+                          surfaceProbe.timeout_ms,
+                        ) as number,
+                      }
+                    : {}),
+                },
+              }
+            : {}),
+        },
         {
           query:
             args.query && typeof args.query === "object"
@@ -18583,7 +18527,7 @@ async function serveMcpThroughSdk(
 // a request that never reached a handler.
 export async function handleMcpRequest(
   request: Request,
-  env: Env = {} as unknown as Env,
+  env: Env,
   deps: McpDeps = {},
 ) {
   const response = await dispatchMcpRequest(request, env, deps);
@@ -18593,7 +18537,7 @@ export async function handleMcpRequest(
 
 async function dispatchMcpRequest(
   request: Request,
-  env: Env = {} as unknown as Env,
+  env: Env,
   deps: McpDeps = {},
 ) {
   const { rejection, authTier, accountId, quotaPending } =

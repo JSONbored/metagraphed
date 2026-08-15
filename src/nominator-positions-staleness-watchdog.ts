@@ -64,6 +64,24 @@ import {
 } from "./read-store.ts";
 import type { NominatorPositions } from "../generated/db/types.ts";
 import { requireFullScanValue } from "./lane-table-topology.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type NominatorPositionsStalenessWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS?: unknown;
+    NOMINATOR_POSITIONS_PASS_WINDOW_MS?: unknown;
+    NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS?: unknown;
+  };
 
 /**
  * How old the ledger may get before this is a stall.
@@ -351,7 +369,7 @@ export interface NominatorPositionsStalenessDeps {
  * and a cron that throws is a cron nobody can read the result of.
  */
 export async function runNominatorPositionsStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: NominatorPositionsStalenessWatchdogEnv | null | undefined,
   deps: NominatorPositionsStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
@@ -407,7 +425,7 @@ export async function runNominatorPositionsStalenessWatchdog(
         verdict.reason === "partial"
           ? `nominator-positions lane truncated: the newest pass covered only ${verdict.covered_coldkeys} of ${verdict.total_coldkeys} coldkeys against a floor of ${verdict.coverage_floor_coldkeys} (newest stamp ${age}) -- the capture is RECENT and PARTIAL, so /accounts/{ss58}/positions answers for every coldkey the scan never reached with a confident position set that is silently a pass old`
           : `nominator-positions lane stalled: latest snapshot is ${age} (threshold ${thresholdMs / 3_600_000} h) -- /accounts/{ss58}/positions is answering from a ledger nothing is refreshing`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:nominator-positions-staleness",
         errorCode: "stale_lane",

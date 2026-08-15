@@ -90,6 +90,11 @@ import {
   withAlphaUsdTrendDays,
 } from "../../src/alpha-usd-history.ts";
 import { DAY_MS } from "../config.ts";
+import { recordOrNull, recordsOrEmpty } from "../../src/read-store.ts";
+import {
+  SubnetEconomicsReadSchema,
+  type SubnetEconomicsRead,
+} from "../../schemas-src/shared.ts";
 
 type HealthMetaKvReader = (
   env: Env,
@@ -285,7 +290,7 @@ export async function handleTrajectory(
   // analytics.ts.
   const readFailureGeneration = currentStoreReadFailureGeneration();
   const data = (await loadSubnetTrajectory(netuid, {
-    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+    db: observationsReadDb(env, ctx),
   })) as ReturnType<typeof formatTrajectory>;
   const isFallback =
     !env.HYPERDRIVE?.connectionString ||
@@ -336,7 +341,7 @@ export async function handleEconomicsTrends(
   const loaded = await loadEconomicsTrends({
     windowLabel: label,
     windowDays: days,
-    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+    db: observationsReadDb(env, ctx),
   });
   // `let`, not `const`: the USD overlay below reassigns it (#10382).
   let data = loaded.data;
@@ -355,12 +360,10 @@ export async function handleEconomicsTrends(
     // the floor of the window the index has to cover.
     const oldest = trendDays[trendDays.length - 1]?.snapshot_date;
     const sinceMs = Date.parse(`${String(oldest)}T00:00:00.000Z`);
-    const usdRows = await loadTaoUsdBuckets(
-      readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
-        typeof loadTaoUsdBuckets
-      >[0],
-      { sinceMs: Number.isFinite(sinceMs) ? sinceMs : 0, bucketMs: DAY_MS },
-    );
+    const usdRows = await loadTaoUsdBuckets(readStore(env, TAO_USD_TABLES), {
+      sinceMs: Number.isFinite(sinceMs) ? sinceMs : 0,
+      bucketMs: DAY_MS,
+    });
     data = withAlphaUsdTrendDays(
       data as unknown as Record<string, unknown>,
       usdRows === null ? null : taoUsdBucketMap(usdRows),
@@ -420,10 +423,8 @@ export async function handleUptime(
     window: windowParam,
     observedAt: healthMeta?.last_run_at || null,
     minSamples: (minSamples as number | undefined) ?? null,
-    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
-  } as unknown as Parameters<typeof loadSubnetUptime>[1])) as ReturnType<
-    typeof formatUptime
-  >;
+    db: observationsReadDb(env, ctx),
+  })) as ReturnType<typeof formatUptime>;
   const isFallback =
     !env.HYPERDRIVE?.connectionString ||
     currentStoreReadFailureGeneration() !== storeGeneration;
@@ -553,24 +554,48 @@ async function leaderboardProfilesProjection(
   return projection;
 }
 
-async function resolveEconomicsRows(env: Env): Promise<unknown[]> {
-  const live = (await resolveLiveEconomics({
+/**
+ * Parse a tier's `subnets` into economics rows.
+ *
+ * PARSED, not asserted (#10789). Both tiers arrive as untrusted bytes -- KV
+ * JSON on the live path, an R2 object on the artifact path -- and the four
+ * casts this replaces (`as {data?:{subnets?:unknown[]}}`, `as {subnets?:…}`,
+ * and `row as never` twice) were the only thing typing them. `as never` in
+ * particular defeats the check entirely: it makes ANY row satisfy
+ * `withSpotPrice`, so a producer that renamed `alpha_in_pool` would have gone
+ * on computing spot from `undefined` silently.
+ *
+ * Read-tolerant by construction (SubnetEconomicsReadSchema): a row missing
+ * fields or carrying new ones still ranks, a row whose declared field has the
+ * WRONG TYPE is dropped rather than fed to the arithmetic.
+ */
+function economicsRowsFrom(subnets: unknown): SubnetEconomicsRead[] {
+  const rows: SubnetEconomicsRead[] = [];
+  for (const entry of recordsOrEmpty(subnets)) {
+    const parsed = SubnetEconomicsReadSchema.safeParse(entry);
+    // #9408: spot is derived here, at the ONE point both tiers pass through,
+    // rather than written by either producer -- the inputs are on every row
+    // already, so a stored field would be two writers to keep in step for a
+    // division.
+    if (parsed.success) rows.push(withSpotPrice(parsed.data));
+  }
+  return rows;
+}
+
+async function resolveEconomicsRows(env: Env): Promise<SubnetEconomicsRead[]> {
+  // Already typed `{ data: Row; source: "live-kv" } | null` by its own
+  // signature -- the cast that used to sit here restated it, wrongly.
+  const live = await resolveLiveEconomics({
     readHealthKv: (e: Env) => readEconomicsCurrentKv(e),
     env,
     contractVersion: contractVersion(env),
-  })) as { data?: { subnets?: unknown[] } } | null;
-  // #9408: spot is derived here, at the ONE point both tiers pass through, rather
-  // than written by either producer -- the inputs are on every row already, so a
-  // stored field would be two writers to keep in step for a division.
+  });
   if (Array.isArray(live?.data?.subnets)) {
-    return live.data.subnets.map((row) => withSpotPrice(row as never));
+    return economicsRowsFrom(live.data.subnets);
   }
   const artifact = await readArtifact(env, "/metagraph/economics.json");
-  const artifactSubnets = artifact.ok
-    ? (artifact.data as { subnets?: unknown[] })?.subnets
-    : undefined;
-  return Array.isArray(artifactSubnets)
-    ? artifactSubnets.map((row) => withSpotPrice(row as never))
+  return artifact.ok
+    ? economicsRowsFrom(recordOrNull(artifact.data)?.subnets)
     : [];
 }
 
@@ -621,7 +646,7 @@ export async function composeLeaderboardsData(
     reliabilityRows,
     economicsRows,
     subnetMeta,
-  } as unknown as Parameters<typeof formatLeaderboards>[0]);
+  });
   return {
     data,
     // Only a payload whose boards are genuinely empty is barred from the edge
@@ -1103,7 +1128,7 @@ export async function handleCompareValidators(
 
   const data = composeValidatorComparison(details, {
     netuid: requestedNetuid,
-  } as unknown as Parameters<typeof composeValidatorComparison>[1]);
+  });
   return envelopeResponse(
     request,
     {

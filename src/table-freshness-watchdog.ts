@@ -957,7 +957,7 @@ export interface FreshnessDeps {
  */
 export async function confirmRedirectedStale(
   stale: readonly StaleTable[],
-  env: Record<string, unknown> | null | undefined,
+  env: unknown,
   deps: FreshnessDeps = {},
   now: () => number = Date.now,
   spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
@@ -1000,7 +1000,7 @@ export async function confirmRedirectedStale(
 }
 
 export async function crossCheckStamps(
-  env: Record<string, unknown> | null | undefined,
+  env: unknown,
   deps: FreshnessDeps = {},
   spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
 ): Promise<{ divergences: StampDivergence[]; failed: boolean }> {
@@ -1040,7 +1040,7 @@ export interface FreshnessOutcome {
  * because "nothing was measured" and "nothing is stale" must not look alike.
  */
 export async function runTableFreshnessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: unknown,
   deps: FreshnessDeps = {},
 ): Promise<FreshnessOutcome> {
   const laneDb = laneHealthStore(env, deps.laneHealthDb);

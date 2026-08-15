@@ -35,7 +35,7 @@
 // answer, which is the failure mode this whole migration keeps having to
 // design against.
 import { Client } from "pg";
-import { toPositionalPlaceholders, type HyperdriveLike } from "./pg-sql.ts";
+import { toPositionalPlaceholders } from "./pg-sql.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
 export interface ReadStoreClient {
@@ -252,6 +252,51 @@ export function integerOrNull(value: unknown): number | null {
   return Number.isInteger(n) ? n : null;
 }
 
+/**
+ * Narrow an untrusted value to a JSON object, or null.
+ *
+ * THE COMPANION TO THE COERCIONS ABOVE, for the shape rather than the scalar.
+ * `readHealthKv` returns `Promise<unknown>` because `KV.get(key, {type:"json"})`
+ * genuinely is arbitrary JSON, and `readArtifact` returns `StorageReadResult`
+ * whose `.data` is `unknown` for the same reason -- an R2 object is whatever
+ * was last written to it. Both are honest. What was NOT honest is that several
+ * consumers DECLARED those producers as returning
+ * `Promise<Record<string, unknown> | null>` and then read fields off the
+ * result: a claim about untrusted bytes that nothing verified, and that
+ * survived only because a cast sat between the two (metagraphed#11339).
+ *
+ * `null` and arrays are excluded deliberately. `typeof null === "object"` is
+ * the classic hole, and an array reaching a site that then reads named fields
+ * is a producer mismatch worth failing on rather than silently indexing.
+ */
+export function recordOrNull(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/**
+ * Narrow an untrusted value to an array of JSON objects, or an empty array.
+ *
+ * EMPTY, NOT NULL, because every caller is building a list response and an
+ * absent collection and an empty one render identically there. A non-array
+ * yields empty for the same reason: it is a producer defect, and returning
+ * `[]` keeps the "absence is 404 or ok+null entity, never 200-with-zeros"
+ * contract in the ROUTE's hands rather than fabricating rows here.
+ *
+ * Non-object members are dropped rather than passed through, so a caller that
+ * reads a field off every element cannot meet a string.
+ */
+export function recordsOrEmpty(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  const rows: Record<string, unknown>[] = [];
+  for (const entry of value) {
+    const row = recordOrNull(entry);
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
 export interface ReadStoreDeps {
   clientFactory?: (connectionString: string) => ReadStoreClient;
 }
@@ -300,6 +345,43 @@ export function pgReadStore(
  * comes back when no store is available -- which every caller already handles,
  * because an unbound store has always been possible.
  */
+/**
+ * The one binding `readStore` looks for.
+ *
+ * `readStore` itself keeps taking `unknown` -- see its own note -- because its
+ * callers hand in an `Env`, a bag, or nothing. This names the same shape for
+ * COMPOSERS, which forward one env to both legs (the Neon store and the
+ * lakehouse) and therefore need a type that admits either (#11339).
+ */
+export interface StoreEnv {
+  HYPERDRIVE?: { connectionString?: string };
+}
+
+/**
+ * The Hyperdrive connection string an env carries, or null.
+ *
+ * ONE NARROWING, SHARED. `readStore`, `laneHealthStore` and
+ * `neonOwnsObservations` each did this by hand with two casts apiece
+ * (`env as Record<string, unknown>`, then `?.HYPERDRIVE as HyperdriveLike`),
+ * which is the whole binding-detection rule copy-pasted three times -- and it
+ * is the rule that decides whether a lane writes to Neon or silently declines.
+ *
+ * Takes `unknown` for the reason `readStore` documents: callers hand in an
+ * `Env`, a bag, or nothing. `Record<string, unknown>` READS as loose but is
+ * not -- `Env` is an interface, and TypeScript never gives interfaces implicit
+ * index signatures, so every caller holding a real `Env` had to write
+ * `env` to get past it. That is 65 casts
+ * across this repo whose only cause was a parameter type trying to be lenient
+ * and landing one step too strict (#11339).
+ */
+export function hyperdriveConnectionString(env: unknown): string | null {
+  const hyperdrive = recordOrNull(recordOrNull(env)?.HYPERDRIVE);
+  const connectionString = hyperdrive?.connectionString;
+  return typeof connectionString === "string" && connectionString
+    ? connectionString
+    : null;
+}
+
 export function readStore(
   // Deliberately loose: callers hand in an `Env`, a bag, or `unknown`, and a
   // narrower type would push a cast to every one of them.
@@ -309,12 +391,11 @@ export function readStore(
   deps: ReadStoreDeps = {},
 ): ReadStoreDb | undefined {
   if (injected) return injected;
-  const bag = env as Record<string, unknown> | null | undefined;
-  const hyperdrive = bag?.HYPERDRIVE as HyperdriveLike | undefined;
-  if (!hyperdrive?.connectionString) return undefined;
+  const connectionString = hyperdriveConnectionString(env);
+  if (!connectionString) return undefined;
   // Empty `tables` must never read as "Neon owns them all" -- that would send a
   // caller who forgot to declare its tables to Postgres unconditionally.
   if (tables.length === 0) return undefined;
   // the ownership check collapsed with the flag (#10051): Neon is the only store, so the question answered itself.
-  return pgReadStore(hyperdrive.connectionString, deps);
+  return pgReadStore(connectionString, deps);
 }

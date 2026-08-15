@@ -84,7 +84,7 @@ export async function loadReliabilityAggregate(
       const data = (await loadSubnetUptime(netuid, {
         window: RELIABILITY_BADGE_WINDOW,
         db: readStore(env, UPTIME_DAILY_TABLES) as never,
-      } as unknown as Parameters<typeof loadSubnetUptime>[1])) as {
+      })) as {
         reliability?: Record<string, unknown> | null;
       } | null;
       return data?.reliability ?? null;

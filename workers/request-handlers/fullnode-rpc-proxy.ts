@@ -46,6 +46,7 @@ import {
 } from "../config.ts";
 import { recordUsageEvent } from "../../src/usage-telemetry.ts";
 import { recordRpcUsageEvent } from "../../src/rpc-usage-capture.ts";
+import { rateLimiterBinding } from "../tiered-rate-limit.ts";
 
 // PostHog usage telemetry for this gate (metagraphed#7153): excluded from the
 // generic withUsageTelemetry chokepoint (workers/api.ts's usageRouteLabel
@@ -317,9 +318,7 @@ async function runAuthenticatedFullnodeRpc(
   // `|| FULLNODE_RPC_TIER_RATE_LIMITS.free` fallback already handles a
   // missing/unmapped tier, so this is a safe cast, not a new assumption.
   const rateLimitPolicy = rateLimitPolicyForTier(auth.tier as string);
-  const rateLimiter = (env as unknown as Record<string, RateLimit | undefined>)[
-    rateLimitPolicy.envVar
-  ];
+  const rateLimiter = rateLimiterBinding(env, rateLimitPolicy.envVar);
   if (rateLimiter?.limit) {
     const { success } = await rateLimiter.limit({
       key: `fullnode-rpc:${auth.accountId}`,

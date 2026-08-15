@@ -61,6 +61,7 @@ import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { r2SqlQuery, safeSs58Literal } from "./r2-sql.ts";
 import { readStore, type OptionalRowQuerier } from "./read-store.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the retired Postgres tier's SELECT list (minus `coldkey`,
  * which the predicate already fixes) so both tiers hand the formatter the
@@ -97,7 +98,7 @@ export const BIND_PARAM_CHUNK = 100;
  * not a decline.
  */
 export async function neuronStakeByHotkeys(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   hotkeys: string[],
 ): Promise<Map<string, number> | null> {
   if (hotkeys.length === 0) return new Map();
@@ -170,7 +171,7 @@ registerModuleStateReset(
  * null for five minutes.
  */
 export async function ledgerCapturedAt(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   nowMs: number = Date.now(),
 ): Promise<number | null> {
   if (ledgerStampMemo && ledgerStampMemo.expiresAtMs > nowMs) {
@@ -205,7 +206,7 @@ export async function ledgerCapturedAt(
  * is idempotent on an already-safe literal and costs one regex.
  */
 export async function latestStakeEventAt(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
 ): Promise<number | null> {
   const coldkey = safeSs58Literal(ss58);
@@ -224,7 +225,7 @@ export async function latestStakeEventAt(
  * caller keep its existing empty payload.
  */
 export async function loadAccountPositionsColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
   // An unusable address is a decline, not an unfiltered scan of the ledger.

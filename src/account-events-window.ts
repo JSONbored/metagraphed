@@ -56,6 +56,7 @@
 // and the summary card share one bound instead of one route having it.
 import { r2SqlQuery } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -165,7 +166,7 @@ export interface WindowedRowReadOptions extends WindowWalkDeps {
  * be a worse answer than the slow one it replaces.
  */
 export async function windowedRowRead<Row>(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   options: WindowedRowReadOptions,
 ): Promise<Row[] | null> {
   const { table, columns, where, order, need, ceiling = null } = options;
@@ -242,7 +243,7 @@ export interface WindowedFloorReadOptions<T> extends WindowWalkDeps {
  * always did.
  */
 export async function windowedFloorRead<T>(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   options: WindowedFloorReadOptions<T>,
 ): Promise<T | null> {
   const { attempt, satisfied } = options;

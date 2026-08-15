@@ -871,21 +871,17 @@ async function handleNeuronsSync(
   // store every route reads, so a pass that did not reach it did not happen,
   // and the check below returns 502 rather than recording a mirror verdict.
   // It still reports its own outcome and cannot throw.
-  const neon = await mirrorNeuronSnapshotToNeon(
-    env as unknown as Record<string, unknown>,
-    ctx,
-    {
-      rows,
-      dailyRows,
-      positionRows,
-      // The tally follows the rows into the store that holds them (#10056).
-      pass,
-      // The deregistration prune's cutoffs (#10184). Derived by the SAME
-      // function that produced dailyRows/positionRows above, so the writer and
-      // the prune cannot disagree about where the floor is.
-      netuidMaxCapturedAt,
-    },
-  );
+  const neon = await mirrorNeuronSnapshotToNeon(env, ctx, {
+    rows,
+    dailyRows,
+    positionRows,
+    // The tally follows the rows into the store that holds them (#10056).
+    pass,
+    // The deregistration prune's cutoffs (#10184). Derived by the SAME
+    // function that produced dailyRows/positionRows above, so the writer and
+    // the prune cannot disagree about where the floor is.
+    netuidMaxCapturedAt,
+  });
 
   // AUTHORITATIVE ONCE NEON OWNS THE TABLES. During dual-write a Neon failure
   // cost a mirror and a lane verdict, never the pass, because D1 was still the
@@ -1052,11 +1048,7 @@ async function handleChainDetailSync(
     // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
     // other and mirrors too -- #9728 is the precedent for why covering one of
     // two is worse than covering neither: the row count looks nearly right.
-    neon = await mirrorChainDetailToNeon(
-      env as unknown as Record<string, unknown>,
-      ctx,
-      batch.rows as unknown as Parameters<typeof mirrorChainDetailToNeon>[2],
-    );
+    neon = await mirrorChainDetailToNeon(env, ctx, batch.rows);
   } catch (err) {
     console.error("data-api chain-detail-sync write failed:", err);
     await captureDataApiError(err, "chain-detail-sync-d1", env);
@@ -1267,11 +1259,11 @@ async function handleNeuronDailyBackfill(
   // `rows: []` because this route carries no `neurons` rows: the mirror treats
   // an empty table as a clean no-op and still records its verdict, so the
   // absence is visible rather than assumed.
-  const neon = await mirrorNeuronSnapshotToNeon(
-    env as unknown as Record<string, unknown>,
-    ctx,
-    { rows: [], dailyRows, positionRows },
-  );
+  const neon = await mirrorNeuronSnapshotToNeon(env, ctx, {
+    rows: [],
+    dailyRows,
+    positionRows,
+  });
 
   // Once Neon owns the tables, a backfill that did not reach Neon did not
   // happen -- and the operator replaying a year of history is precisely the
@@ -1570,7 +1562,7 @@ async function handleSubnetHyperparamsSync(
   }
 
   const neon = await mirrorFamilyToNeon(
-    env as unknown as Record<string, unknown>,
+    env,
     ctx,
     SUBNET_HYPERPARAMS_NEON_LANE,
     { rows, historyRows: neonHistoryRows },
@@ -1904,12 +1896,10 @@ async function handleAccountIdentitySync(
     return writeJson({ error: "history read failed" }, 502);
   }
 
-  const neon = await mirrorFamilyToNeon(
-    env as unknown as Record<string, unknown>,
-    ctx,
-    ACCOUNT_IDENTITY_NEON_LANE,
-    { rows, historyRows: neonHistoryRows },
-  );
+  const neon = await mirrorFamilyToNeon(env, ctx, ACCOUNT_IDENTITY_NEON_LANE, {
+    rows,
+    historyRows: neonHistoryRows,
+  });
 
   // AUTHORITATIVE -- see the hyperparams sync for the reasoning.
   const failed = failedTables(neon);
@@ -2065,12 +2055,10 @@ async function handleSubnetIdentitySync(
     historyRows.push({ ...base, observed_at: observedAt });
   }
 
-  const neon = await mirrorFamilyToNeon(
-    env as unknown as Record<string, unknown>,
-    ctx,
-    SUBNET_IDENTITY_NEON_LANE,
-    { rows, historyRows },
-  );
+  const neon = await mirrorFamilyToNeon(env, ctx, SUBNET_IDENTITY_NEON_LANE, {
+    rows,
+    historyRows,
+  });
 
   // AUTHORITATIVE: Neon is the only store, so its failure is the request's.
   const failed = failedTables(neon);
@@ -2219,7 +2207,7 @@ async function handleSubnetOwnershipSync(
   }
 
   const neon = await mirrorFamilyToNeon(
-    env as unknown as Record<string, unknown>,
+    env,
     ctx,
     SUBNET_OWNERSHIP_NEON_LANE,
     // The card and the history take the SAME columns (0024 names the
@@ -2441,7 +2429,7 @@ async function handleValidatorNominatorCountsSync(
   // other and mirrors too -- #9728 was a single unmirrored writer leaving a
   // table short while the row count looked nearly right.
   const neon = await mirrorLedgerToNeon(
-    env as unknown as Record<string, unknown>,
+    env,
     ctx,
     "validator-nominator-counts",
     rows,
@@ -2673,11 +2661,11 @@ async function handleNominatorPositionsSync(
   // NO D1 WRITE, and no store binding requirement: nominator_positions and its
   // pass ledger are Neon's outright (#10111). The queue consumer below is this
   // lane's other entry point and it does not write D1 either.
-  const neon = await mirrorNominatorPositionsToNeon(
-    env as unknown as Record<string, unknown>,
-    ctx,
-    { rows, coldkeyMaxCapturedAt: cutoffs, pass },
-  );
+  const neon = await mirrorNominatorPositionsToNeon(env, ctx, {
+    rows,
+    coldkeyMaxCapturedAt: cutoffs,
+    pass,
+  });
 
   // Once Neon is the store, a pass that did not reach it did not happen.
   {
@@ -2824,16 +2812,12 @@ async function handleSelfStakeSync(
   const rows = incoming.map(coerceNominatorPositionSyncRow);
   const cutoffs = coldkeyMaxCapturedAt(rows);
 
-  const neon = await mirrorNominatorPositionsToNeon(
-    env as unknown as Record<string, unknown>,
-    ctx,
-    {
-      rows,
-      coldkeyMaxCapturedAt: cutoffs,
-      source: POSITION_SOURCE_SELF_STAKE,
-      lane: SELF_STAKE_NEON_LANE,
-    },
-  );
+  const neon = await mirrorNominatorPositionsToNeon(env, ctx, {
+    rows,
+    coldkeyMaxCapturedAt: cutoffs,
+    source: POSITION_SOURCE_SELF_STAKE,
+    lane: SELF_STAKE_NEON_LANE,
+  });
 
   // AUTHORITATIVE, and the prune counts as much as the write: rows landing
   // while this lane's own superseded rows survive is a ledger that
@@ -3396,7 +3380,7 @@ async function handleHotkeyAlphaSync(
   // the row count looked nearly right. THE PASS RIDES ALONG: it did not, so
   // the store's tally filled while hotkey_alpha_passes stayed empty in Neon.
   const neon = await mirrorLedgerToNeon(
-    env as unknown as Record<string, unknown>,
+    env,
     ctx,
     "hotkey-alpha",
     rows,
@@ -3495,7 +3479,7 @@ async function handlePollerLaneHealthSync(request: Request, env: Env) {
   // poller's job outcomes were the only verdicts that would have stopped
   // landing when D1 went away -- and recordLaneVerdict swallows failures, so
   // they would have stopped silently.
-  const laneDb = laneHealthStore(env as unknown as Record<string, unknown>);
+  const laneDb = laneHealthStore(env);
   if (!laneDb) {
     return writeJson({ error: "no lane_health store bound" }, 503);
   }
@@ -8925,7 +8909,7 @@ export async function writeTaoUsdIndexRow(
   // through waitUntil; without one this would leak a connection per tick, so
   // it declines rather than writing.
   const sql = neonWriteRunner(
-    env as unknown as Record<string, unknown>,
+    env,
     ctx ?? null,
     TAO_USD_INDEX_NEON_LANE,
     env.HYPERDRIVE,
@@ -9092,7 +9076,7 @@ export default {
       // through Hyperdrive. This line read "D1 only" until #10223 -- which is
       // exactly the kind of stale marker that sends an investigation looking
       // for a dead store instead of at the verdict (#10635).
-      const bag = env as unknown as Record<string, unknown>;
+      const bag = env;
       // The TAO/USD index rides this cron rather than its own (#8603). Its
       // staleness bound already lives in TABLE_FRESHNESS, the store is already
       // reachable here, and a NEW cron expression would need
@@ -9112,7 +9096,7 @@ export default {
       // prune. Kept separate from the lane that produces the rows it trims for
       // the original reason -- a prune that waits on its producer stops pruning
       // the moment the producer breaks.
-      return runNeonPrune(env as unknown as Record<string, unknown>, ctx);
+      return runNeonPrune(env, ctx);
     }
     // Unreachable for anything DECLARED and branched, and deliberately kept:
     // it is the net under `DATA_API_CRON_LANES` gaining an entry whose branch
@@ -9229,10 +9213,7 @@ export default {
       // The dead-letter record is a lane verdict, so it goes where the other
       // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
       // written to a store nobody reads is a message lost twice over.
-      await handleDeadLetterBatch(
-        batch,
-        laneHealthStore(env as unknown as Record<string, unknown>) as never,
-      );
+      await handleDeadLetterBatch(batch, laneHealthStore(env) as never);
       return;
     }
     // DECOMPRESS BEFORE ANYTHING READS THE BODY (metagraphed#9759). A
@@ -9284,11 +9265,7 @@ export default {
         const result = { statements: 0 };
         // THE LANE'S OTHER WRITER, mirrored here as well as on the HTTP
         // path.
-        await mirrorChainDetailToNeon(
-          env as unknown as Record<string, unknown>,
-          ctx,
-          rows,
-        );
+        await mirrorChainDetailToNeon(env, ctx, rows);
         return result;
       },
     };
@@ -9296,7 +9273,7 @@ export default {
       "hotkey-alpha": async (rows, pass) => {
         const result = { statements: 0 };
         const neon = await mirrorLedgerToNeon(
-          env as unknown as Record<string, unknown>,
+          env,
           ctx,
           "hotkey-alpha",
           rows,
@@ -9342,11 +9319,11 @@ export default {
         // queue knows a message was DELIVERED, not whether the producer's
         // whole scan arrived, and only the second fact catches a load that
         // stopped halfway.
-        const neon = await mirrorNominatorPositionsToNeon(
-          env as unknown as Record<string, unknown>,
-          ctx,
-          { rows, coldkeyMaxCapturedAt: cutoffs, pass },
-        );
+        const neon = await mirrorNominatorPositionsToNeon(env, ctx, {
+          rows,
+          coldkeyMaxCapturedAt: cutoffs,
+          pass,
+        });
         const failed = [neon.write, neon.prune, neon.pass].filter(
           (r) => r && !r.ok,
         );
@@ -9371,7 +9348,7 @@ export default {
         // account_balances_passes was empty there, and this lane was about to
         // become the only writer of it.
         const neon = await mirrorLedgerToNeon(
-          env as unknown as Record<string, unknown>,
+          env,
           ctx,
           "account-balances",
           rows,
@@ -9405,11 +9382,10 @@ export default {
         // reads.
         const write = neuronSnapshotWrite(rows, Date.now());
         const result = { statements: 0 };
-        const neon = await mirrorNeuronSnapshotToNeon(
-          env as unknown as Record<string, unknown>,
-          ctx,
-          { ...write, pass },
-        );
+        const neon = await mirrorNeuronSnapshotToNeon(env, ctx, {
+          ...write,
+          pass,
+        });
         // THROW, never return, on a failed write: a normal return acks the
         // queue message and the rows are gone. writeSyncBatch turns a throw
         // into a retry.
@@ -9439,7 +9415,7 @@ export default {
         // throw rather than return: a normal return acks the message and
         // the rows are gone. writeSyncBatch turns a throw into a retry.
         const neon = await mirrorLedgerToNeon(
-          env as unknown as Record<string, unknown>,
+          env,
           ctx,
           "validator-nominator-counts",
           rows,
@@ -9477,16 +9453,13 @@ export default {
     }
     if (invalid > 0) {
       ctx.waitUntil(
-        recordLaneVerdict(
-          laneHealthStore(env as unknown as Record<string, unknown>),
-          {
-            lane: "sync-batches",
-            verdict: "stale",
-            age_ms: null,
-            detail: `${invalid} unparseable message(s) in a batch of ${batch.messages.length}`,
-            checked_at: Date.now(),
-          },
-        ).then(() => undefined),
+        recordLaneVerdict(laneHealthStore(env), {
+          lane: "sync-batches",
+          verdict: "stale",
+          age_ms: null,
+          detail: `${invalid} unparseable message(s) in a batch of ${batch.messages.length}`,
+          checked_at: Date.now(),
+        }).then(() => undefined),
       );
     }
   },

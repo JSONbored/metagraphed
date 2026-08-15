@@ -30,6 +30,22 @@ import { laneHealthStore } from "./lane-health-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore, type ReadStoreDb, safeIntOrNull } from "./read-store.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type ChainDetailStalenessWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    CHAIN_DETAIL_STALENESS_THRESHOLD_MS?: unknown;
+  };
 
 /**
  * How far behind the lane may fall before this is a stall.
@@ -100,7 +116,7 @@ export function evaluateChainDetailStaleness(input: {
  * drift silently, since each looks correct on its own.
  */
 export async function readChainDetailHead(
-  env: Record<string, unknown> | null | undefined,
+  env: ChainDetailStalenessWatchdogEnv | null | undefined,
 ): Promise<{ latestObservedAtMs: number | null; headBlock: number | null }> {
   const db = readStore(env, ["chain_detail_blocks"]) as unknown as
     ReadStoreDb | undefined;
@@ -130,7 +146,7 @@ export interface ChainDetailStalenessDeps {
  * and a cron that throws is a cron nobody can read the result of.
  */
 export async function runChainDetailStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: ChainDetailStalenessWatchdogEnv | null | undefined,
   deps: ChainDetailStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
@@ -159,7 +175,7 @@ export async function runChainDetailStalenessWatchdog(
         verdict.age_ms === null
           ? "no blocks at all"
           : `${(verdict.age_ms / 60_000).toFixed(1)} min behind`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(
           `chain-detail lane stalled: the live-follow window is ${age} ` +
             `(threshold ${thresholdMs / 60_000} min, head block ` +

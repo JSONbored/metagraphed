@@ -44,6 +44,7 @@ import {
   neonWriteRunner,
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 // ---------------------------------------------------------------------------
 // Moved here when D1 was deleted (#10179). These describe the TABLE -- its
@@ -193,7 +194,7 @@ export interface LedgerMirrorDeps {
  * what the name "mirror" no longer implies.
  */
 export async function mirrorLedgerToNeon(
-  env: Record<string, unknown> | null | undefined,
+  env: (NeonWriteEnv & { METAGRAPH_HEALTH_DB?: unknown }) | null | undefined,
   ctx: WaitUntilLike | null | undefined,
   lane: string,
   rows: Record<string, unknown>[],

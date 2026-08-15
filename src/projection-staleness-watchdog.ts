@@ -23,6 +23,22 @@ import { PROJECTION_LANES, PROJECTION_NETWORKS } from "./projection-lanes.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { PROJECTION_LANES_CRON } from "../workers/config.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type ProjectionStalenessWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    PROJECTION_STALENESS_THRESHOLD_MS?: unknown;
+  };
 
 /**
  * The shortest gap between two ticks of a `minute-list * * * *` cron.
@@ -203,7 +219,7 @@ function watchedLanes(): { lane: string; key: string }[] {
  * and a cron that throws is a cron nobody can read the result of.
  */
 export async function runProjectionStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: ProjectionStalenessWatchdogEnv | null | undefined,
   deps: ProjectionStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
@@ -253,7 +269,7 @@ export async function runProjectionStalenessWatchdog(
           })`,
       )
       .join(", ");
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `projection lanes stalled: ${detail} (threshold ${(
           thresholdMs / 3_600_000

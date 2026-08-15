@@ -86,7 +86,7 @@ interface RunManifestEntry {
 const runManifestMemo = new Map<string, Map<string, string> | null>();
 
 async function runManifestIndex(
-  env: Env,
+  env: ArtifactEnv,
   manifestKey: string,
 ): Promise<Map<string, string> | null> {
   const cached = runManifestMemo.get(manifestKey);
@@ -94,10 +94,10 @@ async function runManifestIndex(
 
   let index: Map<string, string> | null = null;
   try {
-    const object = await withTimeout(
-      env.METAGRAPH_ARCHIVE.get(manifestKey),
-      r2TimeoutMs(env),
-    );
+    const archive = env.METAGRAPH_ARCHIVE;
+    const object = archive
+      ? await withTimeout(archive.get(manifestKey), r2TimeoutMs(env))
+      : null;
     const body = object
       ? ((await object.json()) as { artifacts?: unknown })
       : null;
@@ -124,7 +124,7 @@ async function runManifestIndex(
 // Structured request logging on non-happy paths (R2 timeout, static fallback) so
 // it does not spam logs. Disabled with METAGRAPH_DISABLE_REQUEST_LOGS=true.
 export function logEvent(
-  env: Env,
+  env: ArtifactEnv,
   level: string,
   event: string,
   fields: Record<string, unknown> = {},
@@ -139,7 +139,7 @@ export function logEvent(
   }
 }
 
-export function r2TimeoutMs(env: Env): number {
+export function r2TimeoutMs(env: ArtifactEnv): number {
   const raw = Number(env.METAGRAPH_R2_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_R2_TIMEOUT_MS;
 }
@@ -162,10 +162,36 @@ export async function withTimeout<T>(
   }
 }
 
+/**
+ * What the artifact readers need from their environment, and nothing else.
+ *
+ * Named for the same reason `R2SqlEnv` and `TelemetryEnv` are (#11339): a
+ * composer holding a loose bag had to assert past `Env` to read an artifact,
+ * and `env as never` was the spelling -- which also made the PATH argument
+ * unverifiable at the same call.
+ */
+export interface ArtifactEnv {
+  ASSETS?: { fetch(request: Request): Promise<Response> };
+  METAGRAPH_ARCHIVE?: R2Bucket;
+  METAGRAPH_CONTROL?: KVNamespace;
+  METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
+  METAGRAPH_R2_LATEST_PREFIX?: string;
+  METAGRAPH_R2_TIMEOUT_MS?: string;
+  METAGRAPH_DISABLE_REQUEST_LOGS?: string;
+}
+
 export async function readArtifact(
-  env: Env,
+  // NULLABLE, because callers legitimately hold one: this function is
+  // documented to THROW when the binding is absent, and every caller wraps it
+  // for exactly that. Declaring it non-null pushed a cast onto the composers
+  // instead of stating the contract (#11339).
+  env: ArtifactEnv | null | undefined,
   artifactPath: string,
 ): Promise<StorageReadResult> {
+  // The throw the doc comment promises, said out loud. Previously this was an
+  // implicit TypeError one frame down; callers catch both identically, and an
+  // explicit one names the cause in the log.
+  if (!env) throw new Error("readArtifact: no environment bound");
   const storageTier = artifactStorageTierForPath(artifactPath);
 
   if (storageTier === ARTIFACT_STORAGE_TIERS.r2) {
@@ -210,7 +236,7 @@ export async function readArtifact(
 }
 
 export async function readAsset(
-  env: Env,
+  env: ArtifactEnv,
   artifactPath: string,
   storageTier: string,
 ): Promise<StorageReadResult> {
@@ -245,7 +271,7 @@ export async function readAsset(
 }
 
 export async function readR2(
-  env: Env,
+  env: ArtifactEnv,
   artifactPath: string,
   storageTier: string,
 ): Promise<StorageReadResult> {
@@ -267,7 +293,7 @@ export async function readR2(
 // artifacts (the og-image.png card, see src/og-image.ts) that readR2's
 // .json() would throw on. readR2 above is implemented in terms of this.
 export async function readR2Object(
-  env: Env,
+  env: ArtifactEnv,
   artifactPath: string,
   storageTier: string,
 ): Promise<R2ObjectReadResult> {
@@ -283,10 +309,10 @@ export async function readR2Object(
   const { key, resolution } = await resolveArtifactKey(artifactPath, env);
   let object;
   try {
-    object = await withTimeout(
-      env.METAGRAPH_ARCHIVE.get(key),
-      r2TimeoutMs(env),
-    );
+    const archive = env.METAGRAPH_ARCHIVE;
+    object = archive
+      ? await withTimeout(archive.get(key), r2TimeoutMs(env))
+      : null;
   } catch {
     logEvent(env, "warn", "r2_read_timeout", {
       key,
@@ -411,7 +437,7 @@ const STABLE_LATEST_ARTIFACT_PATTERNS = [
  */
 export async function resolveArtifactKey(
   artifactPath: string,
-  env: Env,
+  env: ArtifactEnv,
 ): Promise<{ key: string; resolution: ArtifactResolution }> {
   const relativePath = artifactPath.replace(/^\/metagraph\//, "");
   if (
@@ -440,7 +466,7 @@ export async function resolveArtifactKey(
 
 export async function latestR2Key(
   artifactPath: string,
-  env: Env,
+  env: ArtifactEnv,
 ): Promise<string> {
   return (await resolveArtifactKey(artifactPath, env)).key;
 }
@@ -455,7 +481,7 @@ export async function latestR2Key(
 // on the env object so tests (and any multi-binding caller) never cross-read.
 const POINTER_MEMO_TTL_MS = 60_000;
 let pointerMemo: {
-  env: Env | null;
+  env: ArtifactEnv | null;
   value: LatestPointer | null;
   expiresAt: number;
 } = { env: null, value: null, expiresAt: 0 };
@@ -464,7 +490,9 @@ registerModuleStateReset("workers/storage.ts", () => {
   pointerMemo = { env: null, value: null, expiresAt: 0 };
 });
 
-export async function latestPointer(env: Env): Promise<LatestPointer | null> {
+export async function latestPointer(
+  env: ArtifactEnv,
+): Promise<LatestPointer | null> {
   if (!env.METAGRAPH_CONTROL?.get) {
     return null;
   }
@@ -487,7 +515,10 @@ export async function latestPointer(env: Env): Promise<LatestPointer | null> {
 // Read a live health snapshot written by the cron prober (KV health:* keys).
 // Returns null when KV is unbound or the key is cold so callers fall back to the
 // static artifact.
-export async function readHealthKv(env: Env, key: string): Promise<unknown> {
+export async function readHealthKv(
+  env: ArtifactEnv,
+  key: string,
+): Promise<unknown> {
   if (!env.METAGRAPH_CONTROL?.get) {
     return null;
   }

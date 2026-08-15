@@ -57,6 +57,7 @@ import {
   AccountSummaryRecentMapSchema,
   AccountSummaryRecentSchema,
 } from "../schemas-src/artifacts/account-summary-projection.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Objects the producer writes, one per shard. Contract with
  * metagraphed-infra's `services/indexer-rs/account_summary_r2.py`. */
@@ -195,7 +196,7 @@ async function readJson(
  * whose meaning depends on its tier is worse than either.
  */
 export async function loadAccountSummaryProjection(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   account: string,
   {
     now = Date.now,

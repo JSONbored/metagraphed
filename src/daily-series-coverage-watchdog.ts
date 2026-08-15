@@ -40,7 +40,8 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
-import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
+import type { StoreEnv } from "./read-store.ts";
 
 export const DAILY_COVERAGE_LANE = "daily-series-coverage";
 
@@ -234,7 +235,7 @@ export interface DailyCoverageDeps {
  * Returns a summary rather than throwing, matching the rest of the cron family.
  */
 export async function runDailySeriesCoverageWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: (StoreEnv & TelemetryEnv) | null | undefined,
   deps: DailyCoverageDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
@@ -274,7 +275,7 @@ export async function runDailySeriesCoverageWatchdog(
   const holed = verdicts.some((v) => v.missing.length > 0 || v.thin.length > 0);
   const detail = coverageDetail(verdicts);
   if (holed) {
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `daily series has a hole: ${detail} -- a missing day is invisible to every freshness check, ` +
           `and neuron_daily is only ~26 days deep, so it ages out of any recomputable window`,

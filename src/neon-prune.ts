@@ -43,6 +43,7 @@ import {
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { HISTORY_RETENTION_MS } from "./health-prober.ts";
 import { BURN_HISTORY_RETENTION_MS } from "./subnet-burn-history.ts";
+import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 
 export const NEON_PRUNE_LANE = "neon-prune";
 
@@ -204,7 +205,7 @@ export interface PruneOutcome {
 }
 
 export async function runNeonPrune(
-  env: Record<string, unknown> | null | undefined,
+  env: (NeonWriteEnv & { NEON_BACKFILL_LANES?: unknown }) | null | undefined,
   ctx: WaitUntilLike,
   deps: PruneDeps = {},
 ): Promise<PruneOutcome> {

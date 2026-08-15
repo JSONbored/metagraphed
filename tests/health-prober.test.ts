@@ -671,6 +671,10 @@ describe("handleScheduled dispatch", () => {
     const probeResult = (await handleScheduled(
       { cron: HEALTH_PROBER_CRON } as unknown as ScheduledController,
       {} as unknown as Env,
+      // Supplied rather than defaulted: the runtime always passes one, and the
+      // default that used to stand in here was `{} as unknown as ExecutionContext`
+      // on the production signature (#11339).
+      { waitUntil: () => {} } as unknown as ExecutionContext,
     )) as Row;
     assert.equal(probeResult.ok, false);
     assert.equal(probeResult.reason, "no-operational-surfaces");
@@ -814,6 +818,7 @@ describe("handleScheduled dispatch", () => {
         const result = (await handleScheduled(
           { cron: HEALTH_PROBER_CRON } as unknown as ScheduledController,
           { POSTHOG_PROJECT_TOKEN: "phc_test_token" } as unknown as Env,
+          { waitUntil: () => {} } as unknown as ExecutionContext,
         )) as Row;
         assert.equal(result.ok, false);
         assert.equal(result.reason, "no-operational-surfaces");

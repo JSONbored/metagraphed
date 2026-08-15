@@ -19,6 +19,7 @@ import {
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
 } from "./chain-identity-history.ts";
 import type { SubnetIdentityHistoryRow } from "../generated/lakehouse/types.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. The network feed adds netuid up front, exactly as
@@ -35,7 +36,7 @@ const CURSOR_ARITY = 2;
  * lakehouse cannot answer, so the caller keeps its schema-stable empty.
  */
 export async function loadSubnetIdentityHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: unknown,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildSubnetIdentityHistory> | null> {
@@ -90,7 +91,7 @@ export async function loadSubnetIdentityHistoryColdTier(
  * data-api's own single-shot LIMIT query.
  */
 export async function loadChainIdentityHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   query: { limit?: unknown } = {},
 ): Promise<ReturnType<typeof buildChainIdentityHistory> | null> {
   // An absent limit takes the route default, exactly as data-api resolves it.

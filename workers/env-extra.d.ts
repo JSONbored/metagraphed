@@ -286,3 +286,25 @@ interface Env {
    * the measured RPC_USAGE_STALENESS_THRESHOLD_MS default. */
   RPC_USAGE_STALENESS_THRESHOLD_MS?: string;
 }
+
+/**
+ * The WebCrypto ECDH member Cloudflare's generated types misname.
+ *
+ * `wrangler types` emits `$public?: CryptoKey` on
+ * `SubtleCryptoDeriveKeyAlgorithm`, but both the WebCrypto spec and the
+ * workerd runtime read `public` -- so src/web-push.ts (RFC 8291 §3.3, the
+ * shared secret behind every push notification) had to spell its call
+ * `{ name: "ECDH", public: uaKey } as unknown as Parameters<…>[0]`.
+ *
+ * DECLARATION MERGE RATHER THAN A CAST (#11339). The cast asserted the whole
+ * parameter, so it also suppressed any error in `name` or in the key itself;
+ * this corrects exactly the one member the vendor types get wrong and leaves
+ * the rest of the signature checked. The emitted object is byte-identical --
+ * this changes what TypeScript believes, not what the runtime receives.
+ *
+ * Remove once the generated types spell it `public`; the call site then still
+ * compiles, which is the property that makes this safe to leave in place.
+ */
+interface SubtleCryptoDeriveKeyAlgorithm {
+  public?: CryptoKey;
+}

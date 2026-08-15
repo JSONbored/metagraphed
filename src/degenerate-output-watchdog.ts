@@ -59,7 +59,7 @@ import {
   readStore,
   type UntypedRowQuerier,
 } from "./read-store.ts";
-import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 
 export const DEGENERATE_OUTPUT_LANE = "degenerate-output";
 
@@ -207,7 +207,7 @@ export interface DegenerateOutputResult {
 export async function runDegenerateOutputWatchdog(
   // The same loose shape every sibling watchdog takes: callers hand in an
   // `Env`, a bag, or nothing, and a narrower type pushes a cast to the cron.
-  env: Record<string, unknown> | null | undefined,
+  env: TelemetryEnv | null | undefined,
   deps: DegenerateOutputDeps = {},
 ): Promise<DegenerateOutputResult> {
   const db = deps.db ?? readStore(env, ["attribution_sweeps"]);
@@ -225,7 +225,7 @@ export async function runDegenerateOutputWatchdog(
       // ONE LANE'S FAILURE IS NOT THE TICK'S. A table that does not exist yet
       // -- a migration applied by hand, which is how they land here -- must not
       // stop the lanes after it being checked.
-      await (deps.recordException ?? recordExceptionEvent)(env as never, {
+      await (deps.recordException ?? recordExceptionEvent)(env, {
         error: err instanceof Error ? err : new Error(String(err)),
         route: `watchdog:${DEGENERATE_OUTPUT_LANE}`,
         errorCode: "degenerate_output_query_failed",

@@ -67,6 +67,25 @@ import {
 } from "../schemas-src/foreign-wire.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { countOrZero } from "./read-store.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type LaneAlarmEnv = StoreEnv &
+  TelemetryEnv & {
+    GITHUB_TOKEN?: unknown;
+    LANE_ALARM_GITHUB_TOKEN?: unknown;
+    LANE_ALARM_MIN_STALE_MS?: unknown;
+    LANE_ALARM_REPO?: unknown;
+  };
 
 /**
  * How long a lane must stay stale before it earns an issue.
@@ -1140,7 +1159,7 @@ export interface LaneAlarmDeps {
  * reads: a tick that cannot run is one missed report, not an outage.
  */
 export async function runLaneAlarm(
-  env: Record<string, unknown> | null | undefined,
+  env: LaneAlarmEnv | null | undefined,
   deps: LaneAlarmDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
@@ -1247,7 +1266,7 @@ export async function runLaneAlarm(
     // Measured on production before the fix: exactly one event per tick for six
     // consecutive hours, while this watchdog's own verdict read "4 alarming".
     // The lane set is declared and small, so per-lane windows are bounded.
-    await record(env as never, {
+    await record(env, {
       error: new Error(laneAlarmSummary(alarm, nowMs)),
       route: "watchdog:lane-alarm",
       fingerprintDetail: alarm.lane,
@@ -1279,7 +1298,7 @@ export async function runLaneAlarm(
     // Its own code, because the two are different problems with different
     // fixes: this one is "we could not ask GitHub what is already open", and
     // the one below is "we asked, and it refused everything we sent".
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `lane-alarm could not read its issue list: ${plan.open.length} alarming lane(s) ` +
           "recorded but none filed, because opening without the list would " +
@@ -1291,7 +1310,7 @@ export async function runLaneAlarm(
     }).catch(() => false);
   }
   if (github && !listUnavailable && plan.open.length > 0 && opened === 0) {
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `lane-alarm delivered nothing: ${plan.open.length} alarming lane(s) planned, ` +
           "GitHub accepted none. The alarm's only push channel is not working. " +
@@ -1319,7 +1338,7 @@ export async function runLaneAlarm(
       // GitHub write is one channel, and a loss nobody can see is the thing
       // this whole list exists to end. Its own code, because "more was lost on
       // a queue already alarming" is a different event from the first loss.
-      await record(env as never, {
+      await record(env, {
         error: new Error(
           `lane ${entry.lane} lost more while already alarming` +
             (entry.record.detail ? ` -- ${entry.record.detail}` : ""),

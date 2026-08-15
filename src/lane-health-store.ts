@@ -32,8 +32,9 @@
 // This preserves that -- a failed verdict write is a dropped verdict, exactly as
 // it is on the store today.
 import { Client } from "pg";
-import { toPositionalPlaceholders, type HyperdriveLike } from "./pg-sql.ts";
+import { toPositionalPlaceholders } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
+import { hyperdriveConnectionString } from "./read-store.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
 export interface LaneHealthPgClient {
@@ -94,17 +95,15 @@ export function pgLaneHealthDb(
  * store" rather than as an error.
  */
 export function laneHealthStore(
-  // Deliberately loose: the callers hand in an `Env`, a bag, or nothing, and a
-  // narrower type would push a cast to 27 call sites.
-  env: Record<string, unknown> | Record<never, never> | null | undefined,
+  // `unknown`, not `Record<string, unknown>`: the intent above was always to be
+  // loose enough for an `Env`, a bag or nothing, and a Record is not -- an
+  // interface has no implicit index signature, so seven call sites holding a
+  // real `Env` wrote `env` (#11339).
+  env: unknown,
   injected?: LaneHealthDb | null,
   deps: LaneHealthStoreDeps = {},
 ): LaneHealthDb | undefined {
   if (injected) return injected;
-  const hyperdrive = (env as Record<string, unknown> | null | undefined)
-    ?.HYPERDRIVE as HyperdriveLike | undefined;
-  if (hyperdrive?.connectionString) {
-    return pgLaneHealthDb(hyperdrive.connectionString, deps);
-  }
-  return undefined;
+  const connectionString = hyperdriveConnectionString(env);
+  return connectionString ? pgLaneHealthDb(connectionString, deps) : undefined;
 }

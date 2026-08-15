@@ -71,6 +71,24 @@ import {
   type ReadStoreDb,
 } from "./read-store.ts";
 import type { HotkeyAlpha } from "../generated/db/types.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type HotkeyAlphaStalenessWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    HOTKEY_ALPHA_COVERAGE_FLOOR_RATIO?: unknown;
+    HOTKEY_ALPHA_PASS_WINDOW_MS?: unknown;
+    HOTKEY_ALPHA_STALENESS_THRESHOLD_MS?: unknown;
+  };
 
 /**
  * How old the pool ledger may get before this is a stall.
@@ -266,7 +284,7 @@ export interface HotkeyAlphaStalenessDeps {
  * and a cron that throws is a cron nobody can read the result of.
  */
 export async function runHotkeyAlphaStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: HotkeyAlphaStalenessWatchdogEnv | null | undefined,
   deps: HotkeyAlphaStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
@@ -319,7 +337,7 @@ export async function runHotkeyAlphaStalenessWatchdog(
         verdict.reason === "partial"
           ? `hotkey-alpha lane truncated: the newest pass wrote only ${verdict.covered_rows} pool totals against a floor of ${verdict.coverage_floor_rows} derived from the ${verdict.referenced_pairs} (hotkey, netuid) pairs nominator_positions references (${verdict.total_rows} rows in the table, newest stamp ${age}) -- the capture is RECENT and PARTIAL, so every position naming a pool the pass never reached prices against nothing and its holder is UNDERSTATED rather than missing`
           : `hotkey-alpha lane ${verdict.reason === "no_rows" ? "has never landed a pass" : "stalled"}: ${age} (threshold ${thresholdMs / 3_600_000} h) -- /accounts/top-holders is answering delegated_tao/total_tao from the frozen 2026-08-02 materialization and /subnets/{netuid}/holders is declining every request with pool_totals_unproven`;
-      await record(env as never, {
+      await record(env, {
         error: new Error(message),
         route: "watchdog:hotkey-alpha-staleness",
         errorCode: "stale_lane",

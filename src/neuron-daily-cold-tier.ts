@@ -63,6 +63,7 @@ import {
 } from "./neuron-history.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** The lakehouse namespace holding the decoded/copied chain tables. */
 const NAMESPACE = "chain";
@@ -183,7 +184,7 @@ function datePredicate(range: {
  * could not look".
  */
 export async function loadSubnetHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: unknown,
   start: string | null,
   seam: string | null,
@@ -241,7 +242,7 @@ export async function loadSubnetHistoryColdTier(
  * something this reader should smooth over.
  */
 export async function loadNeuronHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   netuid: unknown,
   uid: unknown,
   start: string | null,
@@ -380,7 +381,7 @@ export function mergeHistoryDays<T extends { snapshot_date?: unknown }>(
  * "we could not look" from turning into "there is nothing older".
  */
 export async function overlaySubnetHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   data: ReturnType<typeof buildSubnetHistory>,
   netuid: number,
   window: { label: string; days: number | null },
@@ -416,7 +417,7 @@ export async function overlaySubnetHistoryColdTier(
 /** The neuron twin of `overlaySubnetHistoryColdTier`; same reasoning
  * throughout, keyed by (netuid, uid). */
 export async function overlayNeuronHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   data: ReturnType<typeof buildNeuronHistory>,
   netuid: number,
   uid: number,
@@ -484,7 +485,7 @@ export type ColdAccountPositionRow = Pick<
  * inferred from the name.
  */
 export async function loadAccountPositionHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ss58: unknown,
   netuid: unknown,
   start: string | null,
@@ -511,7 +512,7 @@ export async function loadAccountPositionHistoryColdTier(
 
 /** The account-position twin of the history overlays; same seam, same rules. */
 export async function overlayAccountPositionHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   data: ReturnType<typeof buildAccountPositionHistory>,
   ss58: string,
   netuid: number,
@@ -611,7 +612,7 @@ export interface ColdValidatorHistoryRow {
  * request, exactly as the hot tier reads it.
  */
 export async function loadValidatorHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   hotkey: unknown,
   netuid: number | null,
   start: string | null,
@@ -655,7 +656,7 @@ export async function loadValidatorHistoryColdTier(
 
 /** The validator twin of the history overlays. */
 export async function overlayValidatorHistoryColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   data: ReturnType<typeof buildValidatorHistory>,
   hotkey: string,
   netuid: number | null,

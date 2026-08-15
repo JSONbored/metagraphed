@@ -53,6 +53,7 @@ import {
   resolveDecodeWatermark,
   type DecodeWatermarkDeps,
 } from "./decode-watermark.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Floor for the seam, overridable per environment. NOT the seam itself any
  * more: see `resolveBlocksSeam`. */
@@ -253,7 +254,7 @@ export function storeCanServe(query: BlockFeedQuery): boolean {
 /** Rows above the seam, newest first. Bound parameters throughout — D1 had
  * them, so unlike the R2 SQL leg there is no literal-building here. */
 async function storeHeadRows(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   query: BlockFeedQuery,
   cursor: number[] | null,
   seam: number,
@@ -308,7 +309,7 @@ async function storeHeadRows(
  * can answer, so the caller keeps its schema-stable empty.
  */
 export async function loadBlockFeedColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   query: BlockFeedQuery,
   /** Which chain to read (#8700). Off mainnet there is no hot tier, so the
    * whole feed comes from that network's lakehouse namespace. */
@@ -407,7 +408,7 @@ export async function loadBlockFeedColdTier(
  * either, so D1 is asked first and the lakehouse answers if it misses.
  */
 export async function loadBlockColdTier(
-  env: Env | null | undefined,
+  env: R2SqlEnv | null | undefined,
   ref: string,
   /** Which chain to read (#8700). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,

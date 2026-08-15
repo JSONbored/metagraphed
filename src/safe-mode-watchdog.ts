@@ -64,6 +64,22 @@ import { chainRpc } from "./chain-rpc.ts";
 import { bytesToHex, storageMapPrefix } from "../src/twox-storage-key.ts";
 import { loadExtrinsicFeedColdTier } from "./extrinsics-cold-tier.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type SafeModeWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    SAFE_MODE_RPC_URL?: unknown;
+  };
 
 /** Public archive RPC. A var, not a secret: the endpoint is public. */
 export const SAFE_MODE_RPC_URL_DEFAULT = "https://archive.chain.opentensor.ai";
@@ -178,7 +194,7 @@ async function rpc(
 
 /** Reads the SafeMode extrinsic history, or null when the tier declined. */
 export type SafeModeExtrinsicReader = (
-  env: Record<string, unknown> | null | undefined,
+  env: SafeModeWatchdogEnv | null | undefined,
 ) => Promise<Extrinsic[] | null>;
 
 /**
@@ -198,7 +214,7 @@ export type SafeModeExtrinsicReader = (
  * the decoded range holds no SafeMode call.
  */
 export const readSafeModeExtrinsics: SafeModeExtrinsicReader = async (env) => {
-  const feed = await loadExtrinsicFeedColdTier(env as never, {
+  const feed = await loadExtrinsicFeedColdTier(env, {
     limit: SAFE_MODE_EXTRINSIC_LIMIT,
     module: "SafeMode",
   });
@@ -215,7 +231,7 @@ export const readSafeModeExtrinsics: SafeModeExtrinsicReader = async (env) => {
  * measured and the failed path are testable without a chain.
  */
 export async function runSafeModeWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: SafeModeWatchdogEnv | null | undefined,
   deps: {
     fetchImpl?: Fetcher;
     readExtrinsics?: SafeModeExtrinsicReader;
@@ -264,7 +280,7 @@ export async function runSafeModeWatchdog(
     // CHAIN condition, not a staleness of ours -- filing it as a stale lane
     // would publish a false statement about our own freshness.
     if (reasons.length > 0) {
-      await record(env as never, {
+      await record(env, {
         error: new Error(`SafeMode watchdog: ${reasons.join(", ")}`),
         route: "watchdog:safe-mode",
         // fingerprintDetail (#10813). This route reports TWO independent
@@ -286,7 +302,7 @@ export async function runSafeModeWatchdog(
     // reported at all because "the history read has been failing for a week"
     // is exactly the fact that went unnoticed while the 522 ran.
     if (extrinsics === null) {
-      await record(env as never, {
+      await record(env, {
         error:
           historyError ??
           new Error("SafeMode history: the extrinsics tier declined the read"),
@@ -310,7 +326,7 @@ export async function runSafeModeWatchdog(
     // SafeMode monitor is itself worth reporting, because its silence is
     // indistinguishable from "the chain is fine". That equivalence is the
     // whole reason this monitor exists.
-    await record(env as never, {
+    await record(env, {
       error: err,
       route: "watchdog:safe-mode",
       // See above: the two subjects must not share a throttle window.

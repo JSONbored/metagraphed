@@ -18,6 +18,7 @@ import {
   ListRpcEndpointsOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import { recordOrNull } from "./read-store.ts";
 
 export const RPC_ENDPOINTS_ARTIFACT = "/metagraph/rpc-endpoints.json";
 
@@ -235,10 +236,11 @@ export interface RpcEndpointsListResult {
 type RpcEndpointsCtx = {
   env: Env;
   readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
-  readHealthKv?: (
-    env: Env,
-    key: string,
-  ) => Promise<Record<string, unknown> | null>;
+  // `unknown`, matching workers/storage.ts's actual return: KV holds whatever
+  // the 15-minute cron last wrote as JSON. Declaring an object here was a claim
+  // about untrusted bytes that nothing checked (#11339) -- `recordOrNull` at
+  // the point of use is what checks it now.
+  readHealthKv?: (env: Env, key: string) => Promise<unknown>;
 };
 
 export async function loadRpcEndpointsList(
@@ -280,7 +282,7 @@ export async function loadRpcEndpointsList(
   // stale build-time health/latency before filters run.
   let overlaid = blob as Record<string, unknown>;
   const livePool = ctx.readHealthKv
-    ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
+    ? recordOrNull(await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL))
     : null;
   if (livePool) {
     const merged = mergeRpcEndpoints(overlaid, livePool);

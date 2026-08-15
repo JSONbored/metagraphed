@@ -56,6 +56,25 @@ import {
 } from "./top-holders-flow-tier.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+type TopHoldersStalenessWatchdogEnv = StoreEnv &
+  TelemetryEnv & {
+    /** Partial: the guard below handles a binding with no `get`. */
+    METAGRAPH_ARCHIVE?: Partial<ArtifactBucket>;
+    TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS?: unknown;
+    TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS?: unknown;
+  };
 
 /**
  * The same bound for the LIVE half of this leaderboard (#9469).
@@ -200,6 +219,22 @@ export function evaluateTopHoldersStaleness(input: {
   };
 }
 
+/**
+ * Does this binding actually answer `get`?
+ *
+ * A TYPE PREDICATE, not `if (!bucket?.get)` followed by a cast. The binding is
+ * whatever the platform injected -- a deployment can bind nothing, and the
+ * suite exercises exactly that (`{ METAGRAPH_ARCHIVE: {} }` must degrade, not
+ * throw) -- so the declared type is `Partial` and this is what narrows it
+ * (#11339). The old spelling checked the same thing but left the compiler
+ * believing the value could still be partial one line later.
+ */
+function usableBucket(
+  bucket: Partial<ArtifactBucket> | null | undefined,
+): bucket is ArtifactBucket {
+  return typeof bucket?.get === "function";
+}
+
 interface ArtifactBucket {
   get(key: string): Promise<{ json(): Promise<unknown> } | null>;
 }
@@ -264,14 +299,15 @@ export async function readTopHoldersArtifactState(
  * and a cron that throws is a cron nobody can read the result of.
  */
 export async function runTopHoldersStalenessWatchdog(
-  env: Record<string, unknown> | null | undefined,
+  env: TopHoldersStalenessWatchdogEnv | null | undefined,
   deps: TopHoldersStalenessDeps = {},
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return { ok: false, reason: "r2 binding unavailable" };
+  const bucket = env?.METAGRAPH_ARCHIVE;
+  if (!usableBucket(bucket)) {
+    return { ok: false, reason: "r2 binding unavailable" };
+  }
 
   const flowThresholdMs =
     Number(env?.TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS) ||
@@ -301,7 +337,7 @@ export async function runTopHoldersStalenessWatchdog(
       flow.age_ms === null
         ? "age unknown"
         : `${(flow.age_ms / 3_600_000).toFixed(1)} h old`;
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `top-holders flow lane ${flow.reason}: the net_flow_* ranking is ` +
           `${age} (threshold ${(flowThresholdMs / 3_600_000).toFixed(1)} h) ` +
@@ -326,7 +362,7 @@ export async function runTopHoldersStalenessWatchdog(
       holdings.age_ms === null
         ? "age unknown"
         : `${(holdings.age_ms / 3_600_000).toFixed(1)} h old`;
-    await record(env as never, {
+    await record(env, {
       error: new Error(
         `top-holders holdings refresh ${holdings.reason}: free_tao, ` +
           `delegated_tao and total_tao are ${age} (threshold ` +

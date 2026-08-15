@@ -1159,10 +1159,7 @@ export async function runFreshnessWatchdog(
     (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
   // laneHealthStore, not the binding (#10158) -- one of the last three callers
   // still reaching past it.
-  const laneHealthDb = laneHealthStore(
-    env as unknown as Record<string, unknown>,
-    deps.laneHealthDb,
-  ) as never;
+  const laneHealthDb = laneHealthStore(env, deps.laneHealthDb) as never;
   try {
     const artifact = (await readArtifactFn(
       env,
@@ -2327,10 +2324,7 @@ export default {
       // The dead-letter record is a lane verdict, so it goes where the other
       // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
       // written to a store nobody reads is a message lost twice over.
-      await handleDeadLetterBatch(
-        batch,
-        laneHealthStore(env as unknown as Record<string, unknown>) as never,
-      );
+      await handleDeadLetterBatch(batch, laneHealthStore(env) as never);
       return;
     }
     if (batch.queue === PROBE_JOBS_QUEUE) {
@@ -3338,8 +3332,8 @@ export const LANE_PRODUCERS: ReadonlyArray<{
 
 export async function handleScheduled(
   controller: ScheduledController,
-  env: Env = {} as unknown as Env,
-  ctx: ExecutionContext = {} as unknown as ExecutionContext,
+  env: Env,
+  ctx: ExecutionContext,
 ) {
   const startedAt = Date.now();
   const label = cronLabel(controller?.cron || "");
@@ -3455,8 +3449,8 @@ export const API_HANDLED_CRONS: readonly string[] = [
 
 async function dispatchScheduled(
   controller: ScheduledController,
-  env: Env = {} as unknown as Env,
-  ctx: ExecutionContext = {} as unknown as ExecutionContext,
+  env: Env,
+  ctx: ExecutionContext,
 ) {
   const cron = controller?.cron || "";
   // The former fast-load cron (#1346 Option A, EVENTS_LOAD_CRON, "*/3 * * * *")
@@ -3593,18 +3587,15 @@ async function dispatchScheduled(
         // while the series sat frozen. Now it lands where every other lane's
         // does, and lane-alarm can see it.
         ctx.waitUntil(
-          recordLaneVerdict(
-            laneHealthStore(env as unknown as Record<string, unknown>),
-            {
-              lane: "subnet-burn",
-              verdict: result.ok ? "ok" : "stale",
-              age_ms: null,
-              detail: result.ok
-                ? `captured ${result.captured}${result.pruned ? ", pruned" : ""}`
-                : (result.reason ?? "capture failed"),
-              checked_at: Date.now(),
-            },
-          ).then(() => undefined),
+          recordLaneVerdict(laneHealthStore(env), {
+            lane: "subnet-burn",
+            verdict: result.ok ? "ok" : "stale",
+            age_ms: null,
+            detail: result.ok
+              ? `captured ${result.captured}${result.pruned ? ", pruned" : ""}`
+              : (result.reason ?? "capture failed"),
+            checked_at: Date.now(),
+          }).then(() => undefined),
         );
         // COVERAGE, on the same tick that wrote it (#10308).
         //
@@ -3691,7 +3682,7 @@ async function dispatchScheduled(
   if (cron === SAFE_MODE_WATCHDOG_CRON) {
     // SafeMode is the emergency chain pause. Zero alerts is the correct steady
     // state -- it means nothing has gone wrong, not that the watchdog is idle.
-    return runSafeModeWatchdog(env as unknown as Record<string, unknown>);
+    return runSafeModeWatchdog(env);
   }
   if (cron === LAKEHOUSE_SEAM_CRON) {
     // The seam that routes every cold block read now follows the decode
@@ -3699,9 +3690,7 @@ async function dispatchScheduled(
     // stopped, losing ground to the raw capture, or publishing a height the
     // lakehouse does not back. All three look like a healthy block list with
     // empty block detail, which is why nothing noticed for a day.
-    return runLakehouseSeamWatchdog(
-      env as unknown as Parameters<typeof runLakehouseSeamWatchdog>[0],
-    );
+    return runLakehouseSeamWatchdog(env);
   }
   if (cron === PROJECTION_LANES_CRON) {
     // #9146: recompute the windowed-aggregate artifacts (every lane in
@@ -3765,7 +3754,7 @@ async function dispatchScheduled(
     // in this dispatcher produces a verdict; this is the only one that CONSUMES
     // them, which is why a 28-hour outage could sit in lane_health with a
     // correct verdict on every tick and reach nobody (#9330/#9340).
-    return runLaneAlarm(env as unknown as Record<string, unknown>);
+    return runLaneAlarm(env);
   }
   if (cron === NEURONS_STALENESS_WATCHDOG_CRON) {
     // The neurons live lane's alarm. Zero alerts is the correct steady state;
@@ -3781,13 +3770,10 @@ async function dispatchScheduled(
     // bearing half. A lifecycle write that throws must not cost the estate its
     // neurons staleness verdict, so its failure is swallowed here and recorded
     // in its own lane_health row.
-    const staleness = await runNeuronsStalenessWatchdog(
-      env as unknown as Record<string, unknown>,
+    const staleness = await runNeuronsStalenessWatchdog(env);
+    const lifecycle = runSubnetLifecycleLane(env, { ctx }).catch(
+      () => undefined,
     );
-    const lifecycle = runSubnetLifecycleLane(
-      env as unknown as Record<string, unknown>,
-      { ctx },
-    ).catch(() => undefined);
     // waitUntil where there is one, AWAIT where there is not. A bare `{}` ctx
     // reaches here from callers that have none to give, and calling
     // `ctx.waitUntil` on it throws -- which would take the staleness alarm down
@@ -3804,9 +3790,7 @@ async function dispatchScheduled(
     // under watchdog:projection-staleness. An ABSENT artifact alerts too --
     // every registered lane is meant to have written on the last tick, and a
     // route over a missing card serves its zeroed floor as though measured.
-    return runProjectionStalenessWatchdog(
-      env as unknown as Record<string, unknown>,
-    );
+    return runProjectionStalenessWatchdog(env);
   }
   if (cron === NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON) {
     // The nominator-positions lane's alarm (#9273). Zero alerts is the correct
@@ -3814,9 +3798,7 @@ async function dispatchScheduled(
     // watchdog:nominator-positions-staleness, the project's alert channel. An
     // EMPTY table alerts too -- until the revived lane posts, every positions
     // read is still answering from the frozen lakehouse export.
-    return runNominatorPositionsStalenessWatchdog(
-      env as unknown as Record<string, unknown>,
-    );
+    return runNominatorPositionsStalenessWatchdog(env);
   }
   if (cron === VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON) {
     // The validator-nominator-counts lane's alarm (#9301) -- the sibling of
@@ -3826,9 +3808,7 @@ async function dispatchScheduled(
     // project's alert channel. An EMPTY table alerts too -- until the
     // re-enabled lane posts, every nominator_count is still coming from the
     // frozen lakehouse mirror or serving null outright.
-    return runValidatorNominatorCountsStalenessWatchdog(
-      env as unknown as Record<string, unknown>,
-    );
+    return runValidatorNominatorCountsStalenessWatchdog(env);
   }
   if (cron === REGISTRY_SYNC_CRON) {
     // #9779: the registry had NO writer. Its only sync path was a pair of
@@ -3861,7 +3841,7 @@ async function dispatchScheduled(
     // either, so the value is noticing at all, not noticing fast. They record
     // separate lane verdicts, so sharing a minute does not merge their
     // reporting.
-    const bag = env as unknown as Record<string, unknown>;
+    const bag = env;
     const [series] = await Promise.all([
       runDailySeriesCoverageWatchdog(bag),
       runDegenerateOutputWatchdog(bag),
@@ -3903,9 +3883,7 @@ async function dispatchScheduled(
     // The chain-detail live lane's alarm. Zero alerts is the correct steady
     // state; a stale verdict records one exception under
     // watchdog:chain-detail-staleness, the project's alert channel.
-    return runChainDetailStalenessWatchdog(
-      env as unknown as Record<string, unknown>,
-    );
+    return runChainDetailStalenessWatchdog(env);
   }
   if (cron === SUBNET_DEREGISTRATION_DAILY_CRON) {
     // #10296: one row per subnet per day of what the deregistration ranking is
@@ -3916,37 +3894,34 @@ async function dispatchScheduled(
     // Reads the same economics blob the live route does, so there is no
     // producer change and no new chain read. Never throws: a capture lane that
     // could take down the cron it shares would be worse than a gap.
-    return runSubnetDeregistrationDailyLane(
-      env as unknown as Record<string, unknown>,
-      {
-        ctx,
-        readEconomics: () =>
-          resolveEmissionPipelineEconomics({
-            env,
-            // Wrapped rather than passed by reference: readEconomicsCurrentKv's
-            // second parameter is `now`, not the `key` this seam declares, and
-            // handing it over directly would bind a cache key into a clock.
-            readHealthKv: (e: Env) => readEconomicsCurrentKv(e),
-            contractVersion: contractVersion(env),
-            // NO ARTIFACT FALLBACK, deliberately. The published
-            // /metagraph/economics.json cannot produce a ranking -- measured
-            // 2026-08-10, it carries `moving_price_pinned` and NOTHING ELSE
-            // this needs:
-            //
-            //   chain_state.network_immunity_period   absent
-            //   subnets[].registered_at_block         null
-            //   subnets[].subnet_mechanism            null
-            //
-            // Only the live KV blob (meta.source: live-cron-prober) has them,
-            // which is why /api/v1/chain/deregistration-ranking answers from
-            // it. Passing a fallback that provably cannot succeed would mean an
-            // `economics_unavailable` verdict has two possible causes and the
-            // operator has to rule one out; with KV as the only source it has
-            // exactly one.
-            readArtifact: async () => null,
-          }),
-      },
-    );
+    return runSubnetDeregistrationDailyLane(env, {
+      ctx,
+      readEconomics: () =>
+        resolveEmissionPipelineEconomics({
+          env,
+          // Wrapped rather than passed by reference: readEconomicsCurrentKv's
+          // second parameter is `now`, not the `key` this seam declares, and
+          // handing it over directly would bind a cache key into a clock.
+          readHealthKv: (e: Env) => readEconomicsCurrentKv(e),
+          contractVersion: contractVersion(env),
+          // NO ARTIFACT FALLBACK, deliberately. The published
+          // /metagraph/economics.json cannot produce a ranking -- measured
+          // 2026-08-10, it carries `moving_price_pinned` and NOTHING ELSE
+          // this needs:
+          //
+          //   chain_state.network_immunity_period   absent
+          //   subnets[].registered_at_block         null
+          //   subnets[].subnet_mechanism            null
+          //
+          // Only the live KV blob (meta.source: live-cron-prober) has them,
+          // which is why /api/v1/chain/deregistration-ranking answers from
+          // it. Passing a fallback that provably cannot succeed would mean an
+          // `economics_unavailable` verdict has two possible causes and the
+          // operator has to rule one out; with KV as the only source it has
+          // exactly one.
+          readArtifact: async () => null,
+        }),
+    });
   }
   if (cron === TOP_HOLDERS_FLOW_CRON) {
     // #9469: recompute the top-holders net_flow_7d/30d/90d ranking from
@@ -3975,9 +3950,7 @@ async function dispatchScheduled(
     // (#9475 removed the special case that kept this quiet). An ABSENT,
     // UNREADABLE or EMPTY artifact alerts too -- that is the condition where
     // the route silently answers 200 with an empty leaderboard.
-    return runTopHoldersStalenessWatchdog(
-      env as unknown as Record<string, unknown>,
-    );
+    return runTopHoldersStalenessWatchdog(env);
   }
   if (cron === HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON) {
     // The pool ledger's alarm (#9576) -- the twin of the watchdog above, for
@@ -3988,9 +3961,7 @@ async function dispatchScheduled(
     // pool_totals_unproven, both of which are correct and both of which look
     // identical to a producer that died. An EMPTY table alerts, because that is
     // the state the lane has been in since the sink landed.
-    return runHotkeyAlphaStalenessWatchdog(
-      env as unknown as Record<string, unknown>,
-    );
+    return runHotkeyAlphaStalenessWatchdog(env);
   }
   if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON) {
     // The account-balances lane's alarm (#9478) -- the SOURCE side of the
@@ -4003,9 +3974,7 @@ async function dispatchScheduled(
     // project's alert channel. An
     // EMPTY table alerts too -- until the revived lane posts, every top-holders
     // read is still answering from the frozen 2026-08-02 materialization.
-    return runAccountBalancesStalenessWatchdog(
-      env as unknown as Record<string, unknown>,
-    );
+    return runAccountBalancesStalenessWatchdog(env);
   }
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) {
     // The live-economics refresh, formerly the 3-hourly Actions schedule and
@@ -5952,22 +5921,14 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
  * early returns, and wrapping it from outside is what makes the label
  * unforgettable rather than 40 more places to remember.
  */
-export async function handleRequest(
-  request: Request,
-  env: Env = {} as unknown as Env,
-  ctx: Ctx = {},
-) {
+export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
   const before = degradedSnapshot();
   const response = await dispatchRequest(request, env, ctx);
   labelDegradedResponse(response, before);
   return response;
 }
 
-async function dispatchRequest(
-  request: Request,
-  env: Env = {} as unknown as Env,
-  ctx: Ctx = {},
-) {
+async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   let url = new URL(request.url);
 
   if (request.method === "OPTIONS") {
@@ -9034,10 +8995,7 @@ async function handleRawArtifactRequest(
     data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
   ) {
     const liveSnapshot = await resolveLiveHealth({
-      readHealthKv: readHealthKv as unknown as (
-        env: Env,
-        key: string,
-      ) => Promise<Row | null>,
+      readHealthKv: readHealthKv,
       env,
     });
     data = overlayArtifactEndpoints(data, liveSnapshot) ?? data;
@@ -9368,9 +9326,7 @@ export async function readChainEventsDb(
     // THROUGH THE WATCHDOG'S OWN READER, not a second copy of its SQL: this
     // endpoint publishes the number and the watchdog alerts on it, and two
     // queries would drift apart silently, each looking correct alone.
-    const head = await readChainDetailHead(
-      env as unknown as Record<string, unknown>,
-    );
+    const head = await readChainDetailHead(env);
     // A blank or zero timestamp is ABSENT, not the epoch: Number(null) is 0,
     // which would publish an age of 56 years instead of "no heartbeat".
     if (head.latestObservedAtMs && head.latestObservedAtMs > 0) {
@@ -9640,10 +9596,7 @@ async function handleApiRequest(
       data: await loadGlobalOperationalHealth(
         {
           env,
-          readHealthKv: readHealthKv as unknown as (
-            env: Env,
-            key: string,
-          ) => Promise<Record<string, unknown> | null>,
+          readHealthKv,
         },
         { contractVersion: (e: Env) => contractVersion(e) },
       ),
@@ -10811,10 +10764,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
     // current operational status of each subnet's surfaces, not the build-time
     // "unknown" stub baked into the agent-catalog artifact.
     const liveHealth = await resolveLiveHealth({
-      readHealthKv: readHealthKv as unknown as (
-        env: Env,
-        key: string,
-      ) => Promise<Row | null>,
+      readHealthKv: readHealthKv,
       env,
     });
     const data = await askQuestion(
@@ -10890,10 +10840,7 @@ async function liveHealthOverlay(
     if (resolved === undefined) {
       resolved =
         (await resolveLiveHealth({
-          readHealthKv: readHealthKv as unknown as (
-            env: Env,
-            key: string,
-          ) => Promise<Row | null>,
+          readHealthKv: readHealthKv,
           env,
         })) || null;
     }

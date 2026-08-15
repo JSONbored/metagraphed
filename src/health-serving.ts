@@ -7,7 +7,10 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + store rows in.
 
-import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
+import type {
+  SubnetEconomics as SubnetEconomicsRow,
+  SubnetEconomicsRead,
+} from "../schemas-src/shared.ts";
 import {
   computeReliability,
   scoreFromStats,
@@ -28,6 +31,7 @@ import {
 } from "./endpoint-score.ts";
 import { readLiveSurfaceStatus } from "./health-status-live.ts";
 import { LIVE_CRON_PROBER } from "./field-provenance.ts";
+import { recordOrNull } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -2001,13 +2005,16 @@ export async function resolveLiveHealth({
   env,
   now,
 }: {
-  readHealthKv?: (env: Env, key: string) => Promise<Row | null>;
+  // `unknown`, matching workers/storage.ts: KV holds whatever the cron last
+  // wrote as JSON. Declaring `Row` here was a claim about untrusted bytes that
+  // nothing checked, and the callers cast to satisfy it (#11339).
+  readHealthKv?: (env: Env, key: string) => Promise<unknown>;
   env?: Env;
   now?: () => number;
 } = {}): Promise<Row | null> {
   if (typeof readHealthKv === "function" && env) {
     try {
-      const current = await readHealthKv(env, KV_HEALTH_CURRENT);
+      const current = recordOrNull(await readHealthKv(env, KV_HEALTH_CURRENT));
       // The prober writes surfaces + subnets + summary; accept any live snapshot
       // that carries the per-surface or per-subnet rows the overlays consume —
       // but freshness-gate it exactly like the Postgres fallback below. KV
@@ -2022,7 +2029,12 @@ export async function resolveLiveHealth({
         (Array.isArray(current.surfaces) || Array.isArray(current.subnets))
       ) {
         const currentTime = typeof now === "function" ? now() : Date.now();
-        const lastRun = Date.parse(current.last_run_at as string);
+        // A non-string parses to NaN, which the guard below already treats
+        // as "fresh" -- the same outcome the cast produced, said honestly.
+        const lastRun =
+          typeof current.last_run_at === "string"
+            ? Date.parse(current.last_run_at)
+            : Number.NaN;
         if (
           !Number.isFinite(lastRun) ||
           lastRun >= currentTime - HEALTH_FALLBACK_MAX_AGE_MS
@@ -2145,7 +2157,7 @@ export async function resolveLiveEconomics({
 // four sites -- which is the signature being ignored rather than used. Both
 // functions are shape-preserving, so the honest spelling is the row/artifact
 // in and the same out.
-export function withSpotPrice<T extends SubnetEconomicsRow | null | undefined>(
+export function withSpotPrice<T extends SubnetEconomicsRead | null | undefined>(
   row: T,
 ): T {
   if (!row || typeof row !== "object") return row;

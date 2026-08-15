@@ -276,10 +276,7 @@ export async function runLakehouseSeamWatchdog(
   const query = deps.query ?? r2SqlQuery;
   // The only watchdog in the family that still named the binding here; every
   // other one goes through laneHealthStore (#10154).
-  const laneHealthDb = laneHealthStore(
-    env as unknown as Record<string, unknown>,
-    deps.laneHealthDb,
-  );
+  const laneHealthDb = laneHealthStore(env, deps.laneHealthDb);
   const recordVerdict = (verdict: LaneVerdictInput) =>
     recordLaneVerdict(laneHealthDb, {
       lane: LAKEHOUSE_SEAM_LANE,
@@ -335,7 +332,7 @@ export async function runLakehouseSeamWatchdog(
   // this one was simply never wired to either.
   if (reasons.length > 0) {
     const record = deps.recordExceptionEvent ?? recordExceptionEvent;
-    await record(env as never, {
+    await record(env, {
       error: new Error(`lakehouse decode seam drifted: ${reasons.join(", ")}`),
       route: "watchdog:lakehouse-seam",
       errorCode: "stale_lane",
