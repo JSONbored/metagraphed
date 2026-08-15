@@ -4,6 +4,7 @@ import { docsSource } from "@/lib/docs-source";
 import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { stringifyJsonLd, techArticleJsonLd } from "@/lib/metagraphed/json-ld";
 import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
+import { clampText } from "@/lib/metagraphed/truncate";
 import { openapi } from "@/lib/openapi-source";
 import type { OpenAPIPreloaded } from "@/lib/openapi-preload-context";
 import { DocsSplatPage } from "./-docs-splat-page";
@@ -112,6 +113,22 @@ function isOpenAPIFrontmatter(value: unknown): value is { preload: string[] } {
   );
 }
 
+/**
+ * Bound for the docs `<meta name="description">`.
+ *
+ * The generated API-reference pages are already written to 155 (#11258). The
+ * 25 HAND-WRITTEN pages are not: their frontmatter `description` is also the
+ * visible `<DocsDescription>` subtitle, deliberately written as prose, and the
+ * longest runs to 256 characters. Google truncates around 160 either way; this
+ * cuts at a word boundary so the snippet ends deliberately rather than wherever
+ * the pixel budget happened to run out.
+ *
+ * Applied HERE and not to the frontmatter, so the page keeps the full sentence
+ * on screen and only the head is bounded — the same split `metaDescription`
+ * draws for the generated pages.
+ */
+const DOCS_META_DESCRIPTION_MAX = 160;
+
 const serverLoader = createServerFn({ method: "GET" })
   .validator((slugs: string[]) => slugs)
   .handler(async ({ data: slugs }) => {
@@ -144,7 +161,10 @@ const serverLoader = createServerFn({ method: "GET" })
       // shipping `<meta name="description" content="">`, an EMPTY description
       // on 83% of the docs. This reads the meta-only key when there is one, so
       // the head is correct without changing what the page looks like.
-      description: page.data.description || data.metaDescription || "",
+      description: clampText(
+        page.data.description || data.metaDescription || "",
+        DOCS_META_DESCRIPTION_MAX,
+      ),
       // Git-derived at build time (source.config.ts docs.lastModified), and
       // already rendered on the page as "Last updated" -- so the structured
       // data below states a date the reader can see, which is the rule.
