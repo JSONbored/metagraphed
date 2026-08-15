@@ -4,6 +4,7 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { tableSearchSchema } from "@/lib/metagraphed/url-state";
 import { SubnetsPage } from "./-subnets-index-page";
+import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 // #8311: /domains and /leaderboards fold into this page as sections rather
 // than becoming extra `view` modes -- `tableSearchSchema.view` is shared by
@@ -21,20 +22,7 @@ export const Route = createFileRoute("/subnets/")({
   validateSearch: zodValidator(subnetsSearchSchema),
   search: { middlewares: [stripDefaultSearchParams(subnetsSearchSchema)] },
   head: () => ({
-    meta: [
-      { title: "Subnets — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Browse every active Bittensor Finney subnet with curation level, surfaces, health, and freshness.",
-      },
-      { property: "og:title", content: "Subnets — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Browse every active Bittensor Finney subnet with curation level, surfaces, health, and freshness.",
-      },
-    ],
+    meta: hubMeta("/subnets"),
   }),
   component: SubnetsPage,
 });

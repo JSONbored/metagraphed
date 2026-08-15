@@ -54,6 +54,7 @@ import {
   endpointIncidentsQuery,
   agentResourcesQuery,
 } from "@/lib/metagraphed/queries";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { CLAUDE_URL, CHATGPT_URL } from "@/lib/metagraphed/agent-prompt";
@@ -346,6 +347,8 @@ export function OverviewPage() {
           </Link>
         </div>
       </AccentBand>
+      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/" />
     </AppShell>
   );
 }

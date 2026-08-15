@@ -89,6 +89,7 @@ import {
   subnetAgeDays,
   formatSubnetAge,
 } from "@/lib/metagraphed/format";
+import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { joinEconomics, joinHealth, matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -239,7 +240,11 @@ export function SubnetsPage() {
       <PageMasthead
         live
         title="Subnets"
-        description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
+        // #11320: from HUB_COPY, not a second hand-written string. This slot
+        // and <meta name="description"> were separately authored copies of the
+        // same fact -- the shape that let /apis ship a title and an og:title
+        // naming the page differently.
+        description={hubLede("/subnets")}
         actions={
           <>
             {search.section === "registry" ? (
@@ -343,6 +348,8 @@ export function SubnetsPage() {
         }
         artifacts={search.section === "rankings" ? undefined : ["/metagraph/subnets.json"]}
       />
+      {/* Below the table on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/subnets" />
       <SubnetsCompareDrawer />
       <BackToTop />
     </AppShell>

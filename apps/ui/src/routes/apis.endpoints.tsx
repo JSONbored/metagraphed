@@ -5,6 +5,7 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { RoutePending } from "@/components/metagraphed/primitives";
 import { EndpointsPage } from "./-endpoints-page";
+import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 const endpointsSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -43,20 +44,7 @@ export const Route = createFileRoute("/apis/endpoints")({
   validateSearch: zodValidator(endpointsSearchSchema),
   search: { middlewares: [stripDefaultSearchParams(endpointsSearchSchema)] },
   head: () => ({
-    meta: [
-      { title: "Endpoints — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Root Subtensor RPC/WSS and application endpoints with status, latency, and pool eligibility.",
-      },
-      { property: "og:title", content: "Endpoints — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Root Subtensor RPC/WSS and application endpoints with status, latency, and pool eligibility.",
-      },
-    ],
+    meta: hubMeta("/apis/endpoints"),
   }),
   pendingComponent: () => <RoutePending panels={3} />,
   component: EndpointsPage,

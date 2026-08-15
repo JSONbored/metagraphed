@@ -26,6 +26,7 @@ import {
   evidenceQuery,
   metagraphedQueryKey,
 } from "@/lib/metagraphed/queries";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
@@ -134,6 +135,8 @@ export function SchemasPage() {
       <AsyncPanel context="schema drift detail" fallback={null}>
         <SchemaDriftDetailHost />
       </AsyncPanel>
+      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+      <HubSections path="/apis/schemas" />
     </>
   );
 }

@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ValidatorsPage } from "./-validators-index-page";
+import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 // #8251: sort is a plain string (client-side sortBy over the full fetched
 // set) rather than the API's enum -- the page now fetches EVERY validator in
@@ -34,19 +35,7 @@ export const Route = createFileRoute("/validators/")({
   validateSearch: zodValidator(validatorsSearchSchema),
   search: { middlewares: [stripDefaultSearchParams(validatorsSearchSchema)] },
   head: () => ({
-    meta: [
-      { title: "Validators — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Network-wide Bittensor validator directory — hotkeys ranked across subnets, with active-subnet and UID counts, computed live from the chain-direct metagraph.",
-      },
-      { property: "og:title", content: "Validators — Metagraphed" },
-      {
-        property: "og:description",
-        content: "Network-wide Bittensor validator directory across all subnets.",
-      },
-    ],
+    meta: hubMeta("/validators"),
   }),
   component: ValidatorsPage,
 });

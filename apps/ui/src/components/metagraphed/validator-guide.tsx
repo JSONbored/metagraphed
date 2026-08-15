@@ -68,24 +68,36 @@ export function ValidatorGuide() {
     <aside aria-label={HEADING} className="mb-6 rounded-md border border-border mg-glass-soft">
       {/* Desktop / tablet: collapsible callout with the full grid. */}
       <div className="hidden sm:block">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          className="flex w-full items-start gap-2 px-3 py-2 text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
-          <span className="min-w-0 flex-1">
-            <span className="block mg-type-caption text-ink-muted">{HEADING}</span>
-            <span className="mt-0.5 block mg-type-data-sm text-ink-muted/80">{SUBHEADING}</span>
-          </span>
-          <ChevronDown
-            className={classNames(
-              "mt-0.5 size-3.5 shrink-0 text-ink-muted transition-transform",
-              open && "rotate-180",
-            )}
-          />
-        </button>
+        {/*
+          #11320: the <button> is wrapped in an <h2>, not the other way round.
+          This page carried ten metric definitions of real explainer prose and
+          measured ZERO headings, because every one of them was a <span> — so a
+          crawler saw an undifferentiated wall where a reader sees a titled
+          section, and the page competed for nothing.
+          `<h2><button aria-expanded>` is the WAI-ARIA accordion pattern and the
+          only correct nesting: a button's content model is phrasing content, so
+          an <h2> INSIDE it would be invalid HTML.
+        */}
+        <h2>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="flex w-full items-start gap-2 px-3 py-2 text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
+            <span className="min-w-0 flex-1">
+              <span className="block mg-type-caption text-ink-muted">{HEADING}</span>
+              <span className="mt-0.5 block mg-type-data-sm text-ink-muted/80">{SUBHEADING}</span>
+            </span>
+            <ChevronDown
+              className={classNames(
+                "mt-0.5 size-3.5 shrink-0 text-ink-muted transition-transform",
+                open && "rotate-180",
+              )}
+            />
+          </button>
+        </h2>
         {open ? (
           <div className="border-t border-border px-3 py-3">
             <dl className="grid gap-3 mg-type-caption leading-relaxed text-ink-muted md:grid-cols-2">
@@ -105,13 +117,18 @@ export function ValidatorGuide() {
 
       {/* Mobile: FAQ-style accordion — tap a metric to reveal its definition. */}
       <div className="sm:hidden">
-        <div className="flex items-start gap-2 px-3 py-2">
+        {/*
+          Same heading, same reason as the desktop branch above. No button to
+          nest here, so the <h2> simply replaces the <div> — mobile-first
+          indexing means this is the copy Google actually reads.
+        */}
+        <h2 className="flex items-start gap-2 px-3 py-2">
           <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
           <span className="min-w-0 flex-1">
             <span className="block mg-type-caption text-ink-muted">{HEADING}</span>
             <span className="mt-0.5 block mg-type-data-sm text-ink-muted/80">{SUBHEADING}</span>
           </span>
-        </div>
+        </h2>
         <div className="divide-y divide-border border-t border-border">
           {METRICS.map((m) => (
             <details key={m.term} className="group px-3">

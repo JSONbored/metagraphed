@@ -3,6 +3,7 @@ import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ExplorerPage } from "./-explorer-page";
+import { hubMeta } from "@/lib/metagraphed/hub-copy";
 
 /**
  * Chain hub Overview — the retired /explorer (#8292, completing #8244).
@@ -20,20 +21,7 @@ export const Route = createFileRoute("/chain/")({
   validateSearch: zodValidator(overviewSearchSchema),
   search: { middlewares: [stripDefaultSearchParams(overviewSearchSchema)] },
   head: () => ({
-    meta: [
-      { title: "Chain — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers.",
-      },
-      { property: "og:title", content: "Chain — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers.",
-      },
-    ],
+    meta: hubMeta("/chain"),
   }),
   component: ExplorerPage,
 });
