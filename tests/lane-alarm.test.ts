@@ -911,65 +911,88 @@ describe("laneAlarmGitHub", () => {
     return { seen, gh: laneAlarmGitHub("t0ken", "o/r", impl) };
   }
 
-  test("listAcknowledged asks for CLOSED issues, newest first", async () => {
-    const { gh, seen } = client(() => ({ ok: true, json: async () => [] }));
+  test("listAcknowledged SEARCHES by title, because a page of closed issues cannot reach", async () => {
+    // THE ENDPOINT IS THE ASSERTION. /issues?state=closed&per_page=100 returns
+    // 100 rows of which only 38 are issues on this repo -- the rest are pull
+    // requests -- reaching back about fourteen hours, against a residue window
+    // of seven days. An acknowledgement that scrolls off the page is one the
+    // alarm forgets, and it re-files the issue it was told to stop filing.
+    const { gh, seen } = client(() => ({
+      ok: true,
+      json: async () => ({ items: [] }),
+    }));
     await gh.listAcknowledged();
-    assert.match(seen[0]!.url, /state=closed/);
+    assert.match(seen[0]!.url, /\/search\/issues\?q=/);
+    const asked = decodeURIComponent(seen[0]!.url);
+    assert.match(asked, /is:issue/);
+    assert.match(asked, /in:title "alarm\(lane\): "/);
+    // Newest first still matters: only the most recent close per lane counts.
     assert.match(seen[0]!.url, /sort=updated/);
-    assert.match(seen[0]!.url, /direction=desc/);
+    assert.match(seen[0]!.url, /order=desc/);
+  });
+
+  test("listAcknowledged refuses the shape the old endpoint returned", async () => {
+    // A bare array is /issues' shape, not search's. Reading it as an empty
+    // page would acknowledge nothing while looking like a successful call --
+    // and `{}` is indistinguishable from "no lane has ever been closed".
+    const { gh } = client(() => ({ ok: true, json: async () => [] }));
+    assert.deepEqual(await gh.listAcknowledged(), {});
   });
 
   test("listAcknowledged keys the newest close per lane", async () => {
     const { gh } = client(() => ({
       ok: true,
-      json: async () => [
-        {
-          number: 1,
-          title: `${LANE_ALARM_TITLE_PREFIX}probe-jobs-dlq`,
-          closed_at: "2026-08-15T08:32:00Z",
-        },
-        // An OLDER close of the same lane cannot acknowledge a loss the newer
-        // one already did, so it must not win by arriving later in the page.
-        {
-          number: 2,
-          title: `${LANE_ALARM_TITLE_PREFIX}probe-jobs-dlq`,
-          closed_at: "2026-08-14T01:00:00Z",
-        },
-        {
-          number: 3,
-          title: "chore: unrelated",
-          closed_at: "2026-08-15T09:00:00Z",
-        },
-        // A PR whose title matches would otherwise acknowledge a real lane.
-        {
-          number: 4,
-          title: `${LANE_ALARM_TITLE_PREFIX}metagraph`,
-          closed_at: "2026-08-15T09:00:00Z",
-          pull_request: {},
-        },
-        {
-          number: 5,
-          title: LANE_ALARM_TITLE_PREFIX,
-          closed_at: "2026-08-15T09:00:00Z",
-        },
-        // Unparseable and absent stamps are SKIPPED, never read as the epoch --
-        // zero would make every loss look newer and defeat the rule silently.
-        {
-          number: 6,
-          title: `${LANE_ALARM_TITLE_PREFIX}sync-batches-dlq`,
-          closed_at: "not a date",
-        },
-        {
-          number: 7,
-          title: `${LANE_ALARM_TITLE_PREFIX}webhook-deliveries-dlq`,
-        },
-        {},
-        // A row that is not an object at all costs THAT row and not the page --
-        // the same per-row posture `listOpen` takes, and the reason the list
-        // schema's elements are `z.unknown()`.
-        42,
-        "not an issue",
-      ],
+      // Search wraps its results; every row below is unchanged.
+      json: async () => ({
+        items: [
+          {
+            number: 1,
+            title: `${LANE_ALARM_TITLE_PREFIX}probe-jobs-dlq`,
+            closed_at: "2026-08-15T08:32:00Z",
+          },
+          // An OLDER close of the same lane cannot acknowledge a loss the newer
+          // one already did, so it must not win by arriving later in the page.
+          {
+            number: 2,
+            title: `${LANE_ALARM_TITLE_PREFIX}probe-jobs-dlq`,
+            closed_at: "2026-08-14T01:00:00Z",
+          },
+          {
+            number: 3,
+            title: "chore: unrelated",
+            closed_at: "2026-08-15T09:00:00Z",
+          },
+          // A PR whose title matches would otherwise acknowledge a real lane.
+          {
+            number: 4,
+            title: `${LANE_ALARM_TITLE_PREFIX}metagraph`,
+            closed_at: "2026-08-15T09:00:00Z",
+            pull_request: {},
+          },
+          {
+            number: 5,
+            title: LANE_ALARM_TITLE_PREFIX,
+            closed_at: "2026-08-15T09:00:00Z",
+          },
+          // Unparseable and absent stamps are SKIPPED, never read as the epoch --
+          // zero would make every loss look newer and defeat the rule silently.
+          {
+            number: 6,
+            title: `${LANE_ALARM_TITLE_PREFIX}sync-batches-dlq`,
+            closed_at: "not a date",
+          },
+          {
+            number: 7,
+            title: `${LANE_ALARM_TITLE_PREFIX}webhook-deliveries-dlq`,
+          },
+          {},
+          // A row that is not an object at all costs THAT row and not the page --
+          // the same per-row posture `listOpen` takes, and the reason the list
+          // schema's elements are `z.unknown()`.
+          42,
+          "not an issue",
+        ],
+      }),
     }));
     assert.deepEqual(await gh.listAcknowledged(), {
       "probe-jobs-dlq": Date.parse("2026-08-15T08:32:00Z"),
