@@ -125,3 +125,53 @@ describe("buildIndexNowPayload", () => {
     expect(buildIndexNowPayload(many, ORIGIN, "k")?.urlList).toHaveLength(INDEXNOW_MAX_URLS);
   });
 });
+
+describe("news digests and new routes are announced too (#11348)", () => {
+  const origin = "https://metagraph.sh";
+
+  it("maps a weekly digest to its page", () => {
+    // 285 pages this job never submitted: the path filter watched docs and the
+    // registry, and the digests are neither — so the one family whose whole
+    // value is being NEW was the family never announced.
+    expect(urlForChangedPath("apps/ui/content/news/sn38/2026-w25.mdx", origin)).toBe(
+      "https://metagraph.sh/news/sn38/2026-w25",
+    );
+  });
+
+  it("maps a subject index to the folder, not to /index", () => {
+    expect(urlForChangedPath("apps/ui/content/news/sn38/index.mdx", origin)).toBe(
+      "https://metagraph.sh/news/sn38",
+    );
+  });
+
+  it("maps a new static route to its URL", () => {
+    // Shipping a route is exactly when a crawler most needs telling, and this
+    // job was blind to it — /subnets/with-api had to be submitted by hand.
+    expect(urlForChangedPath("apps/ui/src/routes/subnets.with-api.tsx", origin)).toBe(
+      "https://metagraph.sh/subnets/with-api",
+    );
+    expect(urlForChangedPath("apps/ui/src/routes/apis.providers.tsx", origin)).toBe(
+      "https://metagraph.sh/apis/providers",
+    );
+  });
+
+  it("refuses to guess a URL it cannot know", () => {
+    // A param route expands to as many URLs as there are values; a page
+    // component is not a route at all; a test file is neither. Submitting a URL
+    // that 404s is worse than submitting nothing.
+    for (const path of [
+      "apps/ui/src/routes/subnets.category.$slug.tsx",
+      "apps/ui/src/routes/-subnets-index-page.tsx",
+      "apps/ui/src/routes/docs.raw.$.test.ts",
+      "apps/ui/src/routes/__root.tsx",
+    ]) {
+      expect(urlForChangedPath(path, origin), path).toBeNull();
+    }
+  });
+
+  it("leaves the docs and registry rules untouched", () => {
+    expect(urlForChangedPath("apps/ui/content/docs/economics.mdx", origin)).toBe(
+      "https://metagraph.sh/docs/economics",
+    );
+  });
+});
