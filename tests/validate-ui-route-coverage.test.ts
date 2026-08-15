@@ -9,10 +9,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
-  MAX_UNRENDERED_ROUTES,
+  MAX_UNREFERENCED_ROUTES,
   publishedRoutes,
   routePattern,
-  unrenderedRoutes,
+  unreferencedRoutes,
 } from "../scripts/validate-ui-route-coverage.ts";
 
 describe("matching a route against UI source", () => {
@@ -91,7 +91,7 @@ describe("which routes are counted", () => {
 describe("the ratchet", () => {
   test("unrendered is the set with no reference anywhere", () => {
     const routes = ["/api/v1/a", "/api/v1/b"];
-    assert.deepEqual(unrenderedRoutes(routes, "fetch('/api/v1/a')"), [
+    assert.deepEqual(unreferencedRoutes(routes, "fetch('/api/v1/a')"), [
       "/api/v1/b",
     ]);
   });
@@ -106,13 +106,13 @@ describe("the ratchet", () => {
     // Asserted here as well as in the script so RAISING it is a visible test
     // change rather than a one-character edit. A ceiling that can drift up
     // quietly is not a ratchet.
-    assert.equal(MAX_UNRENDERED_ROUTES, 0);
+    assert.equal(MAX_UNREFERENCED_ROUTES, 0);
   });
 
   test("an empty source means every route is unrendered, not zero", () => {
     // The direction that matters: a sweep that silently reads nothing must
     // report everything missing, not report success over an empty set.
     const routes = ["/api/v1/a", "/api/v1/b"];
-    assert.deepEqual(unrenderedRoutes(routes, ""), routes);
+    assert.deepEqual(unreferencedRoutes(routes, ""), routes);
   });
 });

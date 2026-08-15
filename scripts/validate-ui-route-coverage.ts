@@ -40,7 +40,11 @@ import { pathToFileURL } from "node:url";
 import { repoRoot } from "./lib.ts";
 
 /**
- * The most unrendered routes allowed. THE CEILING ONLY FALLS.
+ * The most UNREFERENCED routes allowed. THE CEILING ONLY FALLS.
+ *
+ * Unreferenced, not unrendered: this counts routes that appear nowhere in the
+ * apps/ui source at all, which is a weaker claim than being rendered and is
+ * the one the evidence supports. See the note beside the success line.
  *
  * NOW ZERO (#10300). Every published non-feed GET route is referenced by
  * apps/ui, so this has stopped being a ratchet with slack in it and become a
@@ -63,7 +67,7 @@ import { repoRoot } from "./lib.ts";
  * -- an undifferentiated allowance is exactly the shape that let this reach 35
  * with nothing watching.
  */
-export const MAX_UNRENDERED_ROUTES = 0;
+export const MAX_UNREFERENCED_ROUTES = 0;
 
 /** Feed routes: consumed by feed readers, not by our UI. */
 const FEED_PREFIX = "/api/v1/feeds/";
@@ -101,7 +105,7 @@ export function publishedRoutes(openapi: {
 }
 
 /** Which of `routes` never appear in `source`. */
-export function unrenderedRoutes(
+export function unreferencedRoutes(
   routes: readonly string[],
   source: string,
 ): string[] {
@@ -146,30 +150,32 @@ function main(): void {
   ) as { paths: Record<string, Record<string, unknown>> };
 
   const routes = publishedRoutes(openapi);
-  const unrendered = unrenderedRoutes(routes, uiSource());
+  const unreferenced = unreferencedRoutes(routes, uiSource());
 
-  if (unrendered.length > MAX_UNRENDERED_ROUTES) {
+  if (unreferenced.length > MAX_UNREFERENCED_ROUTES) {
     console.error(
-      `UI route coverage regressed: ${unrendered.length} published route(s) are rendered nowhere, ` +
-        `ceiling is ${MAX_UNRENDERED_ROUTES}.\n` +
-        `New routes must either be rendered or the gap grows silently, which is how ` +
+      `UI route references regressed: ${unreferenced.length} published route(s) appear ` +
+        `nowhere in apps/ui, ceiling is ${MAX_UNREFERENCED_ROUTES}.\n` +
+        `New routes must either be referenced or the gap grows silently, which is how ` +
         `#10300 went from 30 to 35 with nothing watching.\n` +
-        unrendered.map((route) => `  - ${route}`).join("\n"),
+        unreferenced.map((route) => `  - ${route}`).join("\n"),
     );
     process.exit(1);
   }
 
-  if (unrendered.length < MAX_UNRENDERED_ROUTES) {
+  if (unreferenced.length < MAX_UNREFERENCED_ROUTES) {
     console.error(
-      `UI route coverage improved: ${unrendered.length} unrendered, ceiling is ` +
-        `${MAX_UNRENDERED_ROUTES}. Lower MAX_UNRENDERED_ROUTES in ` +
-        `scripts/validate-ui-route-coverage.ts to ${unrendered.length} so the ` +
+      `UI route references improved: ${unreferenced.length} unreferenced, ceiling is ` +
+        `${MAX_UNREFERENCED_ROUTES}. Lower MAX_UNREFERENCED_ROUTES in ` +
+        `scripts/validate-ui-route-coverage.ts to ${unreferenced.length} so the ` +
         `gain is locked in -- a ceiling nobody lowers stops being a ratchet.`,
     );
     process.exit(1);
   }
 
-  // "REFERENCED BY", not "rendered" (#10517).
+  // "REFERENCED BY", not "rendered" (#10517). The failure messages above say
+  // the same thing, which is where it matters most: that is the text somebody
+  // reads while deciding what their PR has to do.
   //
   // This check matches a route path against the apps/ui source blob, so any
   // occurrence counts -- a comment, an `.mdx` line, or an ApiSourceFooter
@@ -177,14 +183,26 @@ function main(): void {
   // occur by accident. It cannot see whether anything fetches the route or
   // whether the component holding it is ever mounted.
   //
+  // THAT GAP IS NOT HYPOTHETICAL, measured 2026-08-15: excluding `.mdx` from
+  // the blob turns up exactly one route, and it is genuinely unrendered --
+  // `/api/v1/accounts/{ss58}/identity-history`, whose only occurrence anywhere
+  // in apps/ui is a row in `content/docs/accounts.mdx`. No fetch, no
+  // component. The check is green at a ceiling of 0 on documentation prose.
+  //
+  // NARROWING TO A FETCH LAYER DOES NOT WORK HERE, also measured: restricting
+  // the blob to `lib/` and `hooks/` adds two false positives, and both are real
+  // renders whose fetch lives in a component -- evidence-panel.tsx builds
+  // `/api/v1/subnets/${netuid}/evidence` inline, and alert-trigger-lookup.tsx
+  // exists specifically to render `/api/v1/alerts/triggers/{id}`.
+  //
   // At a ceiling of 25 that slack did not matter: the check was a ratchet
   // against a backlog. At 0 it gets read as a guarantee, so the wording says
   // what was actually measured. #10517 tracks narrowing the evidence.
   console.log(
-    MAX_UNRENDERED_ROUTES === 0
+    MAX_UNREFERENCED_ROUTES === 0
       ? `UI route coverage: all ${routes.length} published route(s) are referenced by apps/ui ` +
           `(feeds excluded, their consumer is external).`
-      : `UI route coverage: ${routes.length - unrendered.length}/${routes.length} published route(s) referenced, ` +
-          `${unrendered.length} not (at the ceiling; feeds excluded, their consumer is external).`,
+      : `UI route coverage: ${routes.length - unreferenced.length}/${routes.length} published route(s) referenced, ` +
+          `${unreferenced.length} not (at the ceiling; feeds excluded, their consumer is external).`,
   );
 }
