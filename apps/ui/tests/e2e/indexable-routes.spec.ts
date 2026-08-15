@@ -548,3 +548,163 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
     expect(inline).toContain("total_stake_tao");
   });
 });
+
+test.describe("#11319 the SEO invariants are derived, not listed", () => {
+  // Every SEO property this repo has fixed was re-broken by a route family that
+  // shipped later:
+  //
+  //   /news shipped after buildBreadcrumb   -> 285 pages, no BreadcrumbList (#11303)
+  //   /news shipped after the sitemap       -> 161 pages reachable from nothing (#11277)
+  //   the API-reference generator wrote children and no index, three times (#11234, #11287)
+  //   server.og-copy.test.ts hand-listed ALLOW_GENERIC, which hid what it named (#11294)
+  //
+  // The pattern is always the same: a gate that lists its subjects goes blind to
+  // the next one. So the subjects here come from sitemap.xml, and one page per
+  // FAMILY is sampled — a family being the first two path segments. A new route
+  // family is covered the moment it enters the sitemap, with nobody remembering
+  // to add it.
+  //
+  // Sampling by family rather than exhaustively keeps this bounded: the sitemap
+  // is ~1,900 URLs and the families are a couple of dozen.
+
+  const DESCRIPTION_MAX = 160;
+  /**
+   * Minimum share of tokens that are words rather than identifiers.
+   *
+   * The floor #11313 §3 ships under. `?tab=metagraph` renders 8,112 words of
+   * which 45% are ss58 hashes and bare numbers — the page shape that put 5,797
+   * URLs in "Crawled – currently not indexed". Any page family we ask Google to
+   * index has to clear this.
+   */
+  const MIN_PROSE_RATIO = 0.6;
+
+  const decode = (value: string) =>
+    value
+      .replace(/&amp;/g, "&")
+      .replace(/&#x27;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">");
+
+  /**
+   * A bounded, derived sample: up to three second-level shapes per top-level
+   * section.
+   *
+   * Two rules were tried and rejected against real data. "First two segments"
+   * makes /subnets/64 and /validators/5Grwva… each their own family — 1,461 of
+   * the sitemap's 1,945 URLs, a near-exhaustive crawl run three times per
+   * suite. Adding an identifier regex fixed those but not /providers/{slug},
+   * whose segments are words: still 184 families, 138 of them one provider each.
+   *
+   * Anything that tries to classify a segment as "an identifier" is guessing at
+   * the route template from the outside. Capping per section does not: it needs
+   * no such judgement, it is bounded by construction, and every top-level area
+   * of the site is still represented — which is the property that matters, since
+   * the failure this gate exists for is a whole page FAMILY shipping wrong
+   * (#11303's 285 digests, #11277's 161), never one instance of one.
+   */
+  const PER_SECTION = 3;
+
+  /** Representative URLs, derived from the live sitemap. */
+  async function sampleByFamily(request: import("@playwright/test").APIRequestContext) {
+    const xml = await (await request.get("/sitemap.xml")).text();
+    const paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname);
+    expect(paths.length, "sitemap is empty").toBeGreaterThan(20);
+
+    const bySection = new Map<string, Map<string, string>>();
+    for (const path of paths) {
+      const parts = path.split("/").filter(Boolean);
+      const section = parts.length === 0 ? "/" : `/${parts[0]}`;
+      const shape = parts.length > 1 ? `/${parts[0]}/${parts[1]}` : section;
+      const shapes = bySection.get(section) ?? new Map<string, string>();
+      if (!shapes.has(shape) && shapes.size < PER_SECTION) shapes.set(shape, path);
+      bySection.set(section, shapes);
+    }
+
+    const sample = [...bySection.values()].flatMap((shapes) => [...shapes.entries()]);
+    // A sample that collapsed to nothing would make every assertion below pass
+    // vacuously, and one that failed to collapse would make the suite crawl the
+    // whole sitemap. Both are bugs in the rule above, so both fail here.
+    expect(sample.length, "sampler returned nothing").toBeGreaterThan(10);
+    expect(sample.length, "sampler is not bounded").toBeLessThan(60);
+    return sample.sort(([a], [b]) => a.localeCompare(b));
+  }
+
+  test("every page family describes itself, within budget", async ({ request }) => {
+    // Extends #11258's docs-only check to the whole sitemap. An empty
+    // description is worse than none — 290 pages shipped `content=""`.
+    const failures: string[] = [];
+    for (const [family, path] of await sampleByFamily(request)) {
+      const response = await request.get(path);
+      if (!(response.headers()["content-type"] ?? "").includes("text/html")) continue;
+      const raw = /<meta name="description" content="([^"]*)"/.exec(await response.text())?.[1];
+      const description = decode(raw ?? "");
+      if (!description) failures.push(`${family} (${path}): no description`);
+      else if (description.length > DESCRIPTION_MAX) {
+        failures.push(`${family} (${path}): ${description.length} chars`);
+      }
+    }
+    expect(failures, `page families with a bad description:\n${failures.join("\n")}`).toStrictEqual(
+      [],
+    );
+  });
+
+  test("every Dataset asserts when it was last modified", async ({ request }) => {
+    // #11314 added dateModified to subnet and provider records. This is what
+    // stops the NEXT Dataset-emitting family shipping without it — the exact
+    // way /news shipped without a BreadcrumbList.
+    const failures: string[] = [];
+    for (const [family, path] of await sampleByFamily(request)) {
+      const response = await request.get(path);
+      if (!(response.headers()["content-type"] ?? "").includes("text/html")) continue;
+      const html = await response.text();
+      const nodes = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)]
+        .flatMap((m) => {
+          const parsed = JSON.parse(m[1]!) as Record<string, unknown>;
+          return (parsed["@graph"] as Record<string, unknown>[]) ?? [parsed];
+        })
+        .filter((node) => node["@type"] === "Dataset");
+      for (const node of nodes) {
+        // A facet page describes a live selection and carries no single publish
+        // timestamp of its own; every per-entity record has one.
+        if (!node.dateModified && !String(node.identifier ?? "").startsWith("subnets-with-api")) {
+          failures.push(`${family} (${path}): Dataset "${node.identifier}" has no dateModified`);
+        }
+      }
+    }
+    expect(failures, `Datasets missing dateModified:\n${failures.join("\n")}`).toStrictEqual([]);
+  });
+
+  test("no page family is mostly identifiers", async ({ request }) => {
+    const failures: string[] = [];
+    for (const [family, path] of await sampleByFamily(request)) {
+      const response = await request.get(path);
+      if (!(response.headers()["content-type"] ?? "").includes("text/html")) continue;
+      const text = (await response.text())
+        .replace(/<script[\s\S]*?<\/script>/g, " ")
+        .replace(/<style[\s\S]*?<\/style>/g, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&[a-z#0-9]+;/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const tokens = text.split(" ").filter(Boolean);
+      if (tokens.length < 50) continue;
+      // ss58 addresses, hex hashes and bare numbers — the tokens that inflate a
+      // word count without telling a reader anything.
+      const identifiers = tokens.filter(
+        (t) =>
+          /^5[A-HJ-NP-Za-km-z1-9]{6,}$/.test(t) ||
+          /^0x[0-9a-f]+$/i.test(t) ||
+          /^[\d.,%τ$-]+$/.test(t),
+      ).length;
+      const ratio = (tokens.length - identifiers) / tokens.length;
+      if (ratio < MIN_PROSE_RATIO) {
+        failures.push(`${family} (${path}): ${Math.round(ratio * 100)}% prose`);
+      }
+    }
+    expect(
+      failures,
+      `page families below the ${MIN_PROSE_RATIO * 100}% prose floor:\n${failures.join("\n")}`,
+    ).toStrictEqual([]);
+  });
+});
