@@ -105,9 +105,133 @@ export function numberOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export interface ReadStoreDb {
+/**
+ * THE MINIMAL CONTRACTS A READER CAN ASK FOR (#11207).
+ *
+ * Fourteen modules each declared their own `StatementClientLike`, and they were
+ * not copies: six distinct shapes shared one name, so every file read as
+ * duplication while actually stating a different requirement. The name is what
+ * was wrong, not the narrowness -- declaring the structural minimum a call site
+ * needs is the right thing to do, because it is what lets a test hand in a
+ * double that implements only the half it exercises.
+ *
+ * So the shapes are named for what they REQUIRE and live in one place. A call
+ * site picks the one it means, and the name says which. Replacing them all with
+ * `ReadStoreDb` was the alternative and it is a widening: every double
+ * implementing only `query` would stop satisfying its own reader.
+ *
+ * `Partial<>` for the optional variants rather than a hand-written `query?`,
+ * so the required and optional forms cannot drift into describing different
+ * methods.
+ */
+
+/** A store that can read MANY rows. */
+export interface RowQuerier {
   query<T = Row>(text: string, values?: unknown[]): Promise<T[]>;
+}
+
+/** A store that can read ONE row.
+ *
+ * NON-GENERIC, and returning `unknown` rather than `T | null`, because this is
+ * the MINIMUM a caller can require rather than what the real store offers. A
+ * generic signature is not satisfied by a double that returns one concrete row
+ * type -- `T` could be instantiated with anything -- so widening this to match
+ * `ReadStoreDb` would break every fake in the completeness tests, which is the
+ * precise failure that made #11207 "looks like cleanup, is a regression". */
+export interface RowReader {
+  first(text: string, values?: unknown[]): Promise<unknown>;
+}
+
+/** ...where the binding may be absent, so the reader degrades rather than throws. */
+export type OptionalRowQuerier = Partial<RowQuerier>;
+export type OptionalRowReader = Partial<RowReader>;
+/** Both capabilities, either of which may be absent. */
+export type OptionalRowStore = Partial<RowQuerier & RowReader>;
+
+/** Both capabilities, required -- what `pgReadStore` actually returns.
+ *
+ * COMPOSED for the `query` half, which is identical, and stating the stronger
+ * `first` once: the store really does return `T | null`, and ~45 call sites
+ * read named columns off it. That is assignable to `RowReader`'s `unknown`, so
+ * a `ReadStoreDb` still satisfies every minimal contract above -- the arrow
+ * only points one way, which is what makes the minimal ones safe to require. */
+export type ReadStoreDb = RowQuerier & {
   first<T = Row>(text: string, values?: unknown[]): Promise<T | null>;
+};
+
+/**
+ * FOUR NAMINGS OF "COERCE TO A NUMBER OR NULL", SIDE BY SIDE (#11207).
+ *
+ * `toInt` was copy-pasted into six modules under one name with THREE different
+ * bodies, and `numberOrNull` above is a fourth rule again. Consolidating them
+ * under one implementation would silently change behaviour in whichever domain
+ * lost its variant -- a negative block number becoming valid, a blank string
+ * becoming zero -- which is the "looks like cleanup, is a regression" trap.
+ *
+ * So they keep their semantics and gain names that state them, and they live
+ * together so the differences are readable rather than three files apart:
+ *
+ *   helper                 accepts          rejects              blank string
+ *   --------------------   --------------   ------------------   ------------
+ *   nonNegativeIntOrNull   0, 7, "7"        -1, 1.5, " 7 "       null
+ *   safeIntOrNull          -1, 7, " 7 "     1.5, 2^53, "abc"     0
+ *   integerOrNull          -1, 7, 1e300     1.5, "abc"           null
+ *   numberOrNull           -1, 1.5, 1e300   "abc"                0
+ *
+ * Picking one is a judgement about what the READER needs, not about which is
+ * strictest. A block number is non-negative and arrives as a digit string, so
+ * `nonNegativeIntOrNull` refusing " 7 " is the point. A prune's row count is
+ * signed and comes off the driver already trimmed, so `safeIntOrNull` coercing
+ * it is the point.
+ */
+
+/**
+ * A non-negative integer, or null -- with a STRING accepted only in its exact
+ * digit form.
+ *
+ * The strictness is about where these values come from: block heights, indexes
+ * and counts arriving as query parameters or JSON, where " 7 " or "7abc" means
+ * a caller sent something malformed rather than a number that needs trimming.
+ */
+export function nonNegativeIntOrNull(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    return Number(value);
+  }
+  return null;
+}
+
+/**
+ * A safe integer, or null. Signed, and coercive the way `Number` is.
+ *
+ * For values off the DRIVER rather than off the wire: a delta, a row count, a
+ * BIGINT the driver may have handed back as a string. Negatives are legitimate
+ * and `Number("")` is 0, which is left alone because no caller here can receive
+ * a blank -- see `integerOrNull` for the one that can.
+ */
+export function safeIntOrNull(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
+/**
+ * An integer of any magnitude, or null, with a blank string treated as absent.
+ *
+ * The chain-event reader's rule. Its inputs are decoded call arguments, where a
+ * field present-but-empty means "not supplied" -- `Number("")` is 0, and a zero
+ * netuid is a real subnet, so the blank has to be caught before the coercion.
+ * `isInteger` rather than `isSafeInteger` is deliberate here and NOT copied
+ * elsewhere: these values have already been through JSON, so one beyond 2^53
+ * has lost precision upstream and rejecting it would not recover it.
+ */
+export function integerOrNull(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isInteger(n) ? n : null;
 }
 
 export interface ReadStoreDeps {

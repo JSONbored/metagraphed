@@ -11,7 +11,7 @@
 // emits [netuid, uid]. buildSubnetWeightSetters reads `hotkey` and `uid`
 // independently and is null-safe on the first, so the published row carries the
 // identity the event actually recorded and nothing invents a hotkey.
-import { readStore } from "./read-store.ts";
+import { readStore, type OptionalRowReader } from "./read-store.ts";
 import { SUBNET_HYPERPARAMS_TEMPO_TABLES } from "./read-store-tables.ts";
 import { buildSubnetWeightSetters } from "./subnet-weight-setters.ts";
 import {
@@ -90,7 +90,7 @@ async function loadSubnetTempo(
   // `overdue: null` on every subnet's weight-setters card, which is exactly the
   // #9389 regression #9396 fixed.
   const db = readStore(env, SUBNET_HYPERPARAMS_TEMPO_TABLES) as unknown as
-    StatementClientLike | undefined;
+    OptionalRowReader | undefined;
   if (!db?.first) return null;
   try {
     const res = await db.first(
@@ -101,9 +101,4 @@ async function loadSubnetTempo(
   } catch {
     return null;
   }
-}
-
-/** The minimal store surface this needs, so tests can hand it a plain object. */
-interface StatementClientLike {
-  first?(text: string, values?: unknown[]): Promise<unknown>;
 }

@@ -12,6 +12,7 @@
 
 import { computeConcentration } from "./concentration.ts";
 import { percentile } from "./lib/stats.ts";
+import { nonNegativeIntOrNull } from "./read-store.ts";
 
 // The `blocks` columns the summary reads. `author` is best-effort/nullable; the
 // counts are nullable INTEGERs; `observed_at` is the block timestamp (epoch ms).
@@ -40,18 +41,9 @@ function round2(value: number): number {
 // Strict non-negative integer coercion for identity/timestamp cells: accept ONLY a
 // real number or an all-digits string, so a blank/null/false cell is rejected
 // rather than coerced to 0 (Number("") === Number(null) === Number(false) === 0).
-function toInt(value: unknown): number | null {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value >= 0 ? value : null;
-  }
-  if (typeof value === "string" && /^\d+$/.test(value)) {
-    return Number(value);
-  }
-  return null;
-}
 
 function toTimestamp(value: unknown): number | null {
-  const ms = toInt(value);
+  const ms = nonNegativeIntOrNull(value);
   if (ms == null) return null;
   return Number.isFinite(new Date(ms).getTime()) ? ms : null;
 }
@@ -134,7 +126,7 @@ export function buildBlocksSummary(
   const list = Array.isArray(rows) ? rows : [];
   const blocks: ParsedBlock[] = [];
   for (const row of list) {
-    const blockNumber = toInt(row?.block_number);
+    const blockNumber = nonNegativeIntOrNull(row?.block_number);
     if (blockNumber == null) continue;
     blocks.push({
       block_number: blockNumber,
@@ -142,7 +134,7 @@ export function buildBlocksSummary(
       author: typeof row?.author === "string" && row.author ? row.author : null,
       extrinsic_count: toCount(row?.extrinsic_count),
       event_count: toCount(row?.event_count),
-      spec_version: toInt(row?.spec_version),
+      spec_version: nonNegativeIntOrNull(row?.spec_version),
     });
   }
   blocks.sort((a, b) => a.block_number - b.block_number);

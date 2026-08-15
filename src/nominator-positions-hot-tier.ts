@@ -35,15 +35,8 @@ import {
   neuronStakeByHotkeys,
   POSITION_SCAN_CAP,
 } from "./nominator-positions-cold-tier.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, type OptionalRowStore } from "./read-store.ts";
 import type { NominatorPositions } from "../generated/db/types.ts";
-
-/** The store surface this module needs -- structural, so tests can hand a plain
- * object (same pattern as src/nominator-positions-cold-tier.ts). */
-interface StatementClientLike {
-  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
-  first?(text: string, values?: unknown[]): Promise<unknown>;
-}
 
 /** Kept identical to the cold tier's SELECT list (minus `coldkey`, which the
  * predicate already fixes) so both tiers hand the formatter the same shape. */
@@ -71,7 +64,7 @@ export async function loadAccountPositionsFromStore(
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
   const db = readStore(env, ["nominator_positions"]) as unknown as
-    StatementClientLike | undefined;
+    OptionalRowStore | undefined;
   if (!db?.query || !db?.first) return null;
 
   let rows: Record<string, unknown>[];

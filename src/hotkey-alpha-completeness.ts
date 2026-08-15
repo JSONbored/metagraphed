@@ -1,3 +1,4 @@
+import type { RowReader } from "./read-store.ts";
 // "Is the hotkey_alpha pool ledger safe to price positions from?" (#9502)
 //
 // The twin of src/account-balances-completeness.ts, and needed for a strictly
@@ -21,10 +22,6 @@
 // See tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql for what the producer's floor
 // does and does not cover (a failed POST mid-sequence, and a 10%-of-762,577
 // floor that leaves a wide publishing band).
-
-interface StatementClientLike {
-  first(text: string, values?: unknown[]): Promise<unknown>;
-}
 
 export interface HotkeyAlphaCompleteness {
   /** captured_at of the newest pass that fully landed, or null if none has. */
@@ -57,7 +54,7 @@ const NONE: HotkeyAlphaCompleteness = {
  * leaderboard that cannot prove its inputs should fall back, not 500.
  */
 export async function latestCompleteHotkeyAlphaPass(
-  db: StatementClientLike | null | undefined,
+  db: RowReader | null | undefined,
 ): Promise<HotkeyAlphaCompleteness> {
   if (!db?.first) return { ...NONE, reason: "unavailable" };
   try {

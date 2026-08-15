@@ -65,6 +65,7 @@ import {
   GithubIssueSchema,
 } from "../schemas-src/foreign-wire.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
+import { countOrZero } from "./read-store.ts";
 
 /**
  * How long a lane must stay stale before it earns an issue.
@@ -371,7 +372,7 @@ export const LANE_MAX_GAP_SQL =
  * verdict alone when it gets none.
  */
 export async function loadLaneMaxGap(
-  db: StatementClientLike | null | undefined,
+  db: LaneHealthDb | null | undefined,
   sinceMs: number,
 ): Promise<Record<string, number | null>> {
   if (!db?.query) return {};
@@ -386,8 +387,8 @@ export async function loadLaneMaxGap(
       if (!lane) continue;
       // The same sample floor the mean uses. `n` here counts GAPS, one fewer
       // than rows, so a lane with exactly the minimum rows still qualifies.
-      const n = toInt(row.n);
-      const gap = toInt(row.max_gap);
+      const n = countOrZero(row.n);
+      const gap = countOrZero(row.max_gap);
       out[lane] =
         n + 1 >= LANE_ALARM_MIN_CADENCE_SAMPLES && gap > 0 ? gap : null;
     }
@@ -863,32 +864,22 @@ export function laneAlarmRecoveryComment(
   );
 }
 
-// The verdict store's surface is the whole surface these readers need
-// (#10909): they SELECT through query() and record through run(), which is
-// exactly LaneHealthDb.
-type StatementClientLike = LaneHealthDb;
-
-function toInt(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
 /** Current stale runs, keyed by lane. `{}` on any failure -- a reader that
  * throws is a reader that stops reading. */
 export async function loadLaneUnknownRuns(
-  db: StatementClientLike | null | undefined,
+  db: LaneHealthDb | null | undefined,
 ): Promise<LaneVerdictRuns> {
   return loadLaneRuns(db, LANE_UNKNOWN_RUN_SQL);
 }
 
 export async function loadLaneStaleRuns(
-  db: StatementClientLike | null | undefined,
+  db: LaneHealthDb | null | undefined,
 ): Promise<LaneVerdictRuns> {
   return loadLaneRuns(db, LANE_STALE_RUN_SQL);
 }
 
 async function loadLaneRuns(
-  db: StatementClientLike | null | undefined,
+  db: LaneHealthDb | null | undefined,
   sql: string,
 ): Promise<LaneVerdictRuns> {
   if (!db?.query) return {};
@@ -898,7 +889,10 @@ async function loadLaneRuns(
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);
       if (!lane) continue;
-      out[lane] = { since: toInt(row.since), ticks: toInt(row.ticks) };
+      out[lane] = {
+        since: countOrZero(row.since),
+        ticks: countOrZero(row.ticks),
+      };
     }
     return out;
   } catch {
@@ -1052,7 +1046,11 @@ export async function runLaneAlarm(
   // GitHub issues from lane_health verdicts, so pointing it at a store nothing
   // writes any more would replay stale verdicts forever -- filing issues for
   // lanes that recovered, and none for lanes that broke.
-  const db = laneHealthStore(env) as unknown as StatementClientLike | undefined;
+  // NO CAST. `laneHealthStore` already returns `LaneHealthDb | undefined`,
+  // which is exactly what these readers take -- the `as unknown as` here was
+  // converting a value to its own type through `unknown`, which is the one
+  // form of cast that can never be checked again if either side moves.
+  const db = laneHealthStore(env);
   if (!db?.query) return { ok: false, reason: "no lane_health store bound" };
 
   // ITS OWN SECRET, falling back to the shared one.

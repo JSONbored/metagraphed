@@ -106,7 +106,7 @@ import type { R2SqlReader } from "./r2-sql.ts";
 import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, type OptionalRowQuerier } from "./read-store.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -551,12 +551,6 @@ export async function loadAccountPrometheusColdTier(
   };
 }
 
-/** The store surface this module needs from `neurons` -- structural, so tests
- * can hand a plain object (same pattern as src/blocks-cold-tier.ts). */
-interface StatementClientLike {
-  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
-}
-
 /** The hotkey's registered (netuid, uid) slots from `neurons` -- the same
  * decomposition data-api runs now that neurons is off Postgres. null when the
  * slots cannot be read (no binding, D1 failure, or an unusable cell), because
@@ -567,7 +561,7 @@ async function neuronSlots(
   addr: string,
 ): Promise<{ netuid: number; uid: number }[] | null> {
   const db = readStore(env, ["neurons"]) as unknown as
-    StatementClientLike | undefined;
+    OptionalRowQuerier | undefined;
   if (!db?.query) return null;
   let results: unknown[];
   try {

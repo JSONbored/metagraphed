@@ -1,3 +1,4 @@
+import type { RowReader } from "./read-store.ts";
 // "Did this lane's whole scan arrive?" — one implementation (metagraphed-infra#346).
 //
 // THE QUESTION A ROW COUNT CANNOT ANSWER. `ORDER BY … LIMIT n` over a partial
@@ -20,10 +21,6 @@
 // diff rather than riding along with the lanes that had no gate at all — but
 // they should move, and the shapes are identical on purpose so that it is a
 // mechanical change when someone does.
-
-interface StatementClientLike {
-  first(text: string, values?: unknown[]): Promise<unknown>;
-}
 
 export interface PassCompleteness {
   /** captured_at of the newest pass that fully landed, or null if none has. */
@@ -88,7 +85,7 @@ export const PASS_TABLES: Readonly<Record<string, string>> = {
  * rank", not as a 500.
  */
 export async function latestCompletePass(
-  db: StatementClientLike | null | undefined,
+  db: RowReader | null | undefined,
   lane: string,
 ): Promise<PassCompleteness> {
   const table = PASS_TABLES[lane];

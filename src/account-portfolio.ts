@@ -10,6 +10,7 @@
 import { computeConcentration } from "./concentration.ts";
 import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
 import { numberOrZero, round9 } from "./lib/rao.ts";
+import { nonNegativeIntOrNull } from "./read-store.ts";
 
 // The neurons-tier columns the portfolio reads for one hotkey.
 export const ACCOUNT_PORTFOLIO_READ_COLUMNS =
@@ -27,15 +28,6 @@ function nullableScore(value: unknown): number | null {
 
 // Strict non-negative integer coercion: accept ONLY a real number or an all-digits
 // string, so a blank/null/false cell is rejected rather than read as 0.
-function toInt(value: unknown): number | null {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value >= 0 ? value : null;
-  }
-  if (typeof value === "string" && /^\d+$/.test(value)) {
-    return Number(value);
-  }
-  return null;
-}
 
 interface CaptureStamp {
   ms: number;
@@ -117,7 +109,7 @@ export function buildAccountPortfolio(
   let totalEmission = 0;
   let capturedAt: CaptureStamp | null = null;
   for (const row of list) {
-    const netuid = toInt(row?.netuid);
+    const netuid = nonNegativeIntOrNull(row?.netuid);
     if (netuid == null) continue;
     netuids.add(netuid);
     const captured = captureStamp(row?.captured_at);
@@ -144,7 +136,7 @@ export function buildAccountPortfolio(
     }
     positions.push({
       netuid,
-      uid: toInt(row?.uid),
+      uid: nonNegativeIntOrNull(row?.uid),
       role: isValidator ? "validator" : "miner",
       active: Number(row?.active) === 1,
       stake_alpha: round9(stake),

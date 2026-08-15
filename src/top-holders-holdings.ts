@@ -52,7 +52,7 @@
 // src/hotkey-alpha-completeness.ts for why a row count cannot answer this and
 // the producers declare their pass sizes instead.
 
-import { readStore } from "./read-store.ts";
+import { readStore, type OptionalRowStore } from "./read-store.ts";
 import { TOP_HOLDERS_HOLDINGS_TABLES } from "./read-store-tables.ts";
 import {
   latestCompleteAccountBalancesPass,
@@ -89,11 +89,6 @@ export interface HoldingsLeg {
   cells: Map<string, HoldingsCells>;
   /** The holdings sorts this leg proved it can rank. */
   sorts: string[];
-}
-
-interface StatementClientLike {
-  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
-  first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
 /**
@@ -251,11 +246,11 @@ export async function topHoldersHoldings(
   // artifact entirely, which reads as "these sorts are unavailable" rather than
   // as a broken read.
   const db = readStore(env, TOP_HOLDERS_HOLDINGS_TABLES) as unknown as
-    StatementClientLike | undefined;
+    OptionalRowStore | undefined;
   if (!db?.query) return null;
 
   // The two readers describe the same binding with different minimal shapes --
-  // this module's StatementClientLike names bind()/all(), the completeness readers name
+  // this module's OptionalRowStore names bind()/all(), the completeness readers name
   // first() -- so the casts go through unknown rather than widening either
   // interface to satisfy the other.
   const asFirst = db as unknown as Parameters<
