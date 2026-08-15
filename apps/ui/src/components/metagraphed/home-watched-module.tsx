@@ -283,8 +283,8 @@ function WatchedValidators({ hotkeys }: { hotkeys: string[] }) {
   // Same sort + limit as the /validators index, so this shares that query's
   // cache key instead of firing a second 2000-row fetch.
   const validators =
-    useQuery(validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT, subnets: false }))
-      .data?.data?.validators ?? [];
+    useQuery(validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT })).data?.data
+      ?.validators ?? [];
   const watched = new Set(hotkeys);
 
   const { flashed, flash } = useRowFlash();
