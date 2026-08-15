@@ -93,6 +93,7 @@ import {
   API_ROUTES,
   CONTRACT_VERSION,
   PRIMARY_DOMAIN,
+  SITE_ORIGIN,
   buildApiIndexArtifact,
   buildContractsArtifact,
 } from "../src/contracts.ts";
@@ -2153,6 +2154,20 @@ const llmsHeader = [
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
   `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
   `- [Bulk datasets](${llmsApiBase}/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)`,
+  "",
+  // #11294: this file is served at BOTH origins -- metagraph.sh proxies it
+  // (apps/ui/src/server.ts's DISCOVERY_PROXY_PATHS) so an agent that fetches
+  // the well-known location on the human-facing host gets the canonical copy.
+  // It described only the API. An agent arriving at metagraph.sh/llms.txt was
+  // sent straight back to api.metagraph.sh and never learned the site has 129
+  // subnet pages, 349 docs pages and 285 weekly digests -- the prose an answer
+  // engine actually quotes, all of it already compiled to clean markdown.
+  "## Site pages (metagraph.sh)",
+  `- [Docs index](${SITE_ORIGIN}/docs/llms.txt): every guide and API-reference page with its description`,
+  `- [Weekly digests](${SITE_ORIGIN}/news/llms.txt): per-subnet digests — what changed on one subnet, week by week`,
+  `- Markdown twin: any docs or news page is also served as plain markdown by inserting \`raw/\` after the section — ${SITE_ORIGIN}/docs/raw/mcp, ${SITE_ORIGIN}/news/raw/sn38/2026-w25. Each HTML page links its own twin as \`rel="alternate" type="text/markdown"\`.`,
+  `- [Subnet pages](${SITE_ORIGIN}/subnets): one page per subnet — surfaces, health and economics, each linking its API record as \`rel="alternate" type="application/json"\``,
+  `- [Sitemap](${SITE_ORIGIN}/sitemap.xml): every indexable page on the site`,
   "",
   "## Key endpoints",
   "- Subnets: `GET /api/v1/subnets`, `GET /api/v1/subnets/{netuid}`",

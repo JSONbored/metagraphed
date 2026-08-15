@@ -1,35 +1,34 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { docsSource } from "@/lib/docs-source";
+import { rawMarkdownResponse } from "@/lib/metagraphed/raw-markdown";
 
-// Backs docs.$.tsx's <ViewOptionsPopover markdownUrl>. That popover's "View
-// as Markdown" item is a plain <a target="_blank" href> -- Chrome silently
-// blocks target="_blank" navigation to data: URLs (no console error, no new
-// tab), so markdownUrl needs a real fetchable route, not a client-built
-// data: URI.
+// The markdown twin of every /docs/* page.
 //
-// getText("processed") reads the compiled MDX module's own `_markdown`
-// export (source.config.ts's remarkLLMs plugin) straight from the eagerly-
-// imported collections/server glob -- no filesystem access, so this works
-// the same in the Cloudflare Worker runtime as it does in dev. The other
-// getText() mode, "raw", does a real fs readFile of the source .mdx file
-// and would only work locally.
+// Backs docs.$.tsx's <ViewOptionsPopover markdownUrl> AND its
+// `<link rel="alternate" type="text/markdown">`. The popover's "View as
+// Markdown" item is a plain <a target="_blank" href> -- Chrome silently blocks
+// target="_blank" navigation to data: URLs (no console error, no new tab), so
+// markdownUrl needs a real fetchable route, not a client-built data: URI.
 //
-// Extracted from the GET handler so it's unit-testable without depending on
-// createFileRoute's internal shape -- see docs.raw.$.test.ts.
-export async function resolveRawMarkdown(splat: string | undefined): Promise<Response> {
-  const slugs = splat?.split("/") ?? [];
-  const page = docsSource.getPage(slugs);
-  if (!page) throw notFound();
-  const markdown = await page.data.getText("processed");
-  return new Response(markdown, {
-    headers: { "content-type": "text/markdown; charset=utf-8" },
-  });
+// getText("processed") reads the compiled MDX module's own `_markdown` export
+// (source.config.ts's remarkLLMs plugin) straight from the eagerly-imported
+// collections/server glob -- no filesystem access, so this works the same in
+// the Cloudflare Worker runtime as it does in dev. The other getText() mode,
+// "raw", does a real fs readFile of the source .mdx file and would only work
+// locally.
+//
+// The response policy (404 rather than a 500, noindex, caching) lives in
+// raw-markdown.ts so the /news twin cannot drift from this one.
+
+/** Extracted so it is unit-testable without depending on createFileRoute's internal shape. */
+export function resolveRawMarkdown(splat: string | undefined): Promise<Response> {
+  return rawMarkdownResponse(docsSource, "docs", splat);
 }
 
 export const Route = createFileRoute("/docs/raw/$")({
   server: {
     handlers: {
-      GET: async ({ params }) => resolveRawMarkdown(params._splat),
+      GET: ({ params }) => resolveRawMarkdown(params._splat),
     },
   },
 });

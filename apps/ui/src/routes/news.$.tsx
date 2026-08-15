@@ -4,6 +4,7 @@ import { newsSource } from "@/lib/news-source";
 import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { stringifyJsonLd, techArticleJsonLd } from "@/lib/metagraphed/json-ld";
 import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
+import { rawMarkdownLink } from "@/lib/metagraphed/raw-markdown";
 import { clampText } from "@/lib/metagraphed/truncate";
 import { NewsSplatPage } from "./-news-splat-page";
 
@@ -45,6 +46,10 @@ export const Route = createFileRoute("/news/$")({
         entity: false,
       }),
     ],
+    // #11294: this digest as plain markdown. These are the pages whose value is
+    // a specific quotable claim, so they are exactly the ones worth handing to
+    // an answer engine without HTML around it.
+    links: [rawMarkdownLink("news", params._splat)],
     // #11279: a digest is editorial prose about a subnet's week, so Article --
     // not the TechArticle the reference docs use, which would claim these
     // document an interface. `about` points at the catalog, so a quoted

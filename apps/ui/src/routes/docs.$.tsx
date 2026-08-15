@@ -4,6 +4,7 @@ import { docsSource } from "@/lib/docs-source";
 import { buildOgImageUrl, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { stringifyJsonLd, techArticleJsonLd } from "@/lib/metagraphed/json-ld";
 import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
+import { rawMarkdownLink } from "@/lib/metagraphed/raw-markdown";
 import { clampText } from "@/lib/metagraphed/truncate";
 import { openapi } from "@/lib/openapi-source";
 import type { OpenAPIPreloaded } from "@/lib/openapi-preload-context";
@@ -65,6 +66,11 @@ export const Route = createFileRoute("/docs/$")({
         entity: false,
       }),
     ],
+    // #11294: point at this page's markdown twin. Emitted unconditionally --
+    // unlike the JSON-LD below, this claims nothing about the page's content,
+    // only where its machine-readable form lives, and that URL is correct
+    // whether or not the loader resolved.
+    links: [rawMarkdownLink("docs", params._splat)],
     // #11204: docs are the pages an answer engine quotes, and they carried no
     // node of their own. TechArticle types the prose and, via `about`, ties it
     // to the catalog the prose documents -- so a quoted sentence leads back to
