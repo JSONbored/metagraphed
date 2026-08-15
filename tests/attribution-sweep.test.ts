@@ -359,7 +359,9 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /if \(cron === LANE_HEARTBEAT_CRON\) \{/);
+    // Membership since #10709 -- the heartbeat runs on more than one
+    // expression, so equality against a single constant would be the bug.
+    assert.match(api, /if \(LANE_HEARTBEAT_CRONS\.includes\(cron\)\) \{/);
     assert.match(api, /return "lane-heartbeat"/);
   });
 

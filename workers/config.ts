@@ -107,32 +107,6 @@ export const SELF_HEALTH_PROBE_CRON =
  */
 export const SUBNET_BURN_CAPTURE_CRON = "1,16,31,46 * * * *";
 
-/**
- * The revenue probe lane (#10566).
- *
- * src/revenue-probe.ts shipped in #10444 with NO caller -- no worker imported
- * it and no config carried a trigger -- so `revenue_observations` was never
- * written and every revenue route reported null for all 129 subnets. Nothing
- * failed, because the epic's own rule is that absent revenue serialises as null
- * rather than zero, which is exactly what a dead producer looks like.
- *
- * Minute 24 is one of only TWO free on the hourly grid (24 and 56), computed
- * from the full trigger list in wrangler.jsonc rather than guessed.
- *
- * HOURLY, not the 15-minute probe grid. Four surfaces are eligible today --
- * three on SN64, one on SN51 -- and these are a small team's BILLING endpoints,
- * which the lane's own header calls out: a lane that hammers them is a bad
- * citizen. Hourly is chosen for correctness rather than freshness: SN64's
- * `daily_revenue_summary` restates the current day all day, so an hourly pass
- * settles each day's final value, where a single daily snapshot would capture
- * whatever the figure happened to be mid-afternoon and store it as the day. 4
- * surfaces x 24 = 96 requests/day.
- *
- * THE TRIGGER MUST BE DEPLOYED SEPARATELY. Workers Builds ships code but not
- * cron triggers, so this expression needs a `wrangler triggers deploy` or the
- * lane silently never fires -- which is indistinguishable from the state it was
- * added to fix.
- */
 /** #10715: ONE producer heartbeat for every queue-backed lane.
  *
  * Replaces three per-lane crons -- the attribution sweep, the origin
@@ -145,36 +119,58 @@ export const SUBNET_BURN_CAPTURE_CRON = "1,16,31,46 * * * *";
  * A new lane joins LANE_PRODUCERS, not this grid. That is the property worth
  * having: the next lane needs no minute at all.
  *
- * Hourly, matching what the three replaced. Minute 26 was one of only two still
- * free; retiring the others returns 17, 24 and 56 to the pool.
+ * Minute 26 was one of only two still free; retiring the others returned 17, 24
+ * and 56 to the pool. Recomputed from the full trigger list 2026-08-15,
+ * accounting for the `*\/5` and `*\/15` expressions that the earlier count
+ * missed: 17, 24 and 56 are the ONLY free every-hour minutes.
+ *
+ * WHAT EACH RETIRED LANE'S CADENCE WAS FOR, since the comments that carried this
+ * outlived their constants and were describing minutes nobody owns any more:
+ *   - revenue-probe: hourly for CITIZENSHIP, not freshness. These are a small
+ *     team's billing endpoints. SN64's `daily_revenue_summary` restates the
+ *     current day all day, so an hourly pass settles each day's final value
+ *     where a daily snapshot would freeze whatever it read mid-afternoon.
+ *   - attribution-sweep: hourly with a SLICE. 129 subnets x up to 8 sources is
+ *     ~1000 outbound requests, which is not a tick; the lane takes the eight
+ *     least-recently-swept, so a full pass lands inside a day and never bursts.
+ *   - origin-reachability: hourly with a SLICE. 277 origins x up to 3 samples is
+ *     ~800 requests, already down from the ~2700 a per-surface pass would cost.
  */
 export const LANE_HEARTBEAT_CRON = "26 * * * *";
 
-/** #10489-#10509: the attribution sweep.
+/**
+ * The rest of the heartbeat grid (#10709), spending the minutes the retired
+ * per-lane crons gave back.
  *
- * Minute 56 is the other free slot on the hourly grid (24 went to the revenue
- * probe). Hourly with a SLICE rather than daily with a full pass: 129 subnets x
- * up to 8 sources is ~1000 outbound requests, which is not a tick. The lane
- * takes the eight least-recently-swept each hour, so a full pass lands inside a
- * day and never bursts. */
+ * A SECOND EXPRESSION RATHER THAN A WIDER FIRST ONE, deliberately. Dispatch
+ * compares the literal string, and Workers Builds ships code without applying
+ * cron triggers -- so editing LANE_HEARTBEAT_CRON to "17,26,56 * * * *" would
+ * deploy code that matches an expression the account has not registered, and the
+ * heartbeat would stop dead until someone ran `wrangler triggers deploy`. Every
+ * queue-backed lane would go silent, which is precisely the failure #10709
+ * exists to remove. Adding an expression is safe in both orders: until the
+ * trigger is deployed it simply never fires, and minute 26 carries the lanes
+ * exactly as it does today.
+ *
+ * 24 is left FREE on purpose -- the last slot on the grid, kept for a lane that
+ * genuinely cannot be expressed as a cadence. It would also sit two minutes
+ * after 26, and LANE_DUE_TOLERANCE_MS has to stay below the smallest gap between
+ * ticks or a lane could come due on two consecutive ones.
+ *
+ * These extra ticks do NOT make any lane run more often -- `lanesDue` gates on
+ * declared cadence, and every registered lane is hourly. They shorten the worst
+ * case when a tick fails: a lane that missed :26 runs at :56 instead of waiting
+ * a full hour. See src/lane-scheduler.ts.
+ */
+export const LANE_HEARTBEAT_EXTRA_CRON = "17,56 * * * *";
 
-/** #10548: the origin-reachability lane.
- *
- * Minute 17 -- one of only TWO minutes still free on this grid (17 and 26; the
- * other 58 are taken, and dispatch keys on the literal string so a duplicate
- * silently routes one lane into another lane's branch). Hourly rather than the
- * twice-hourly this wanted, because there is no free pair left. A
- * SLICE per tick: 277 distinct origins x up to 3 samples is ~800 requests, and
- * one check per ORIGIN already replaces the ~2700 a per-surface pass would
- * cost. Twice-hourly rather than hourly because a deleted host is not urgent to
- * catch within the hour -- it is urgent to catch AT ALL, which is what
- * probe.enabled:false prevented.
- *
- * THE GRID IS 97% FULL AND THIS IS THE SECOND-TO-LAST SLOT. Keying dispatch on
- * the literal cron string does not scale past 60 lanes, and the next one after
- * 26 has nowhere to go. The fix is a single dispatcher cron running whichever
- * lanes are due from a declared cadence -- which decouples "how often" from
- * "which minute is free" and removes this whole failure class. */
+/** Every expression that dispatches the lane heartbeat. Dispatch tests
+ * membership rather than equality so the grid can be widened by appending, with
+ * no window where the deployed triggers and the deployed code disagree. */
+export const LANE_HEARTBEAT_CRONS: readonly string[] = [
+  LANE_HEARTBEAT_CRON,
+  LANE_HEARTBEAT_EXTRA_CRON,
+];
 
 // The remaining three machine-data lanes (#9096), moved off their retired
 // GitHub Actions sync workflows onto Worker-native crons writing their R2
