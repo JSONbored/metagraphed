@@ -16,6 +16,7 @@ import {
   MIN_COMPUTE_SURFACES_REGISTERED,
   SUBNETS_IN_REGISTRY,
   SUBNETS_WITHOUT_A_DECLARATION,
+  SURFACES_ON_A_MOVING_REF,
 } from "../../src/compute-declaration-figures.ts";
 import { z } from "zod";
 import {
@@ -84,8 +85,7 @@ const DeclaredRoleSpecSchema = z
 const ServedDeclarationSchema = z
   .object({
     evidence: ComputeDeclarationEvidenceSchema.meta({
-      description:
-        "The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at `main`, which moves under the claim.",
+      description: `The citation. \`read_at_sha\` is the commit that was HEAD when the file was read — ${SURFACES_ON_A_MOVING_REF} of the ${MIN_COMPUTE_SURFACES_REGISTERED} registered surfaces point at \`main\`, which moves under the claim.`,
     }),
     found: z.boolean().meta({
       description:
@@ -93,6 +93,10 @@ const ServedDeclarationSchema = z
     }),
     miner: DeclaredRoleSpecSchema.nullable(),
     validator: DeclaredRoleSpecSchema.nullable(),
+    unscoped: DeclaredRoleSpecSchema.nullable().meta({
+      description:
+        "Requirements this file declared WITHOUT saying whose they are — a flat `compute_spec` with no `miner`/`validator` split. Non-null only for a document that made no role distinction, in which case `miner` and `validator` are both null because that is true of the file. Same shape as the other two, so the four-valued GPU answer reads identically. Never a guess at which role was meant: attributing an unattributed requirement is the one thing this key exists to avoid.",
+    }),
   })
   .strict();
 
@@ -129,11 +133,12 @@ export const SubnetCostToParticipateArtifactSchema = z
       .object({
         miner: DeclaredRoleSpecSchema.nullable(),
         validator: DeclaredRoleSpecSchema.nullable(),
+        unscoped: DeclaredRoleSpecSchema.nullable(),
         evidence: ComputeDeclarationEvidenceSchema.nullable(),
       })
       .strict()
       .describe(
-        "The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them.",
+        "The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. A file that draws no such distinction publishes under `unscoped` instead, with both roles null — read all three, because which one carries the answer is a property of the document rather than of the subnet.",
       ),
     declarations: z.array(ServedDeclarationSchema).meta({
       description:

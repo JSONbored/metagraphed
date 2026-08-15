@@ -57,6 +57,15 @@ export const MIN_COMPUTE_SURFACES_REGISTERED = 18;
  * checks it read the same way. */
 export const SUBNETS_WITHOUT_A_DECLARATION = 111;
 
+/** Registered surfaces whose URL points at a MOVING ref (`/main/`, `/master/`)
+ * rather than a pinned commit -- the reason `read_at_sha` resolves the commit
+ * that last touched the path instead of trusting the branch.
+ *
+ * Registry-derived like the three above, and re-checked by the same test: the
+ * denominator moved from 17 to 18 on 2026-08-15 while this numerator did not,
+ * which is exactly the drift a literal hides. */
+export const SURFACES_ON_A_MOVING_REF = 14;
+
 /** Declarations that ask for a GPU: SN3, SN29, SN63, SN81, SN108.
  *
  * MEASURED 2026-08-15, and the measurement is the point. The published figure

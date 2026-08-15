@@ -9093,6 +9093,15 @@
                   "network": {},
                   "storage": {}
                 },
+                "unscoped": {
+                  "cpu": {},
+                  "gpu": {
+                    "requirement": "required"
+                  },
+                  "memory": {},
+                  "network": {},
+                  "storage": {}
+                },
                 "validator": {
                   "cpu": {},
                   "gpu": {
@@ -9112,6 +9121,15 @@
                 "source_url": "https://api.metagraph.sh/example"
               },
               "miner": {
+                "cpu": {},
+                "gpu": {
+                  "requirement": "required"
+                },
+                "memory": {},
+                "network": {},
+                "storage": {}
+              },
+              "unscoped": {
                 "cpu": {},
                 "gpu": {
                   "requirement": "required"
@@ -45818,7 +45836,7 @@
               "properties": {
                 "evidence": {
                   "additionalProperties": false,
-                  "description": "The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at `main`, which moves under the claim.",
+                  "description": "The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 18 registered surfaces point at `main`, which moves under the claim.",
                   "properties": {
                     "first_seen": {
                       "anyOf": [
@@ -46080,6 +46098,220 @@
                     }
                   ]
                 },
+                "unscoped": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "description": "One role's DECLARED minimum, in the subnet's own numbers. Units are carried in the field names; nothing is converted or defaulted. This is the floor to RUN, never the spec to EARN.",
+                      "properties": {
+                        "cpu": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "architecture": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_cores": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_speed_ghz": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "gpu": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "declared_min_count": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "declared_min_vram_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration."
+                            },
+                            "declared_model": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own."
+                            },
+                            "declared_required": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it."
+                            },
+                            "requirement": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "required",
+                                    "not-required",
+                                    "declared-inconsistently"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'."
+                            }
+                          },
+                          "required": [
+                            "requirement"
+                          ],
+                          "type": "object"
+                        },
+                        "memory": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_ram_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_swap_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "network": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_download_speed_mbps": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_upload_speed_mbps": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "storage": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "min_iops": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "min_space_gb": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "type": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "gpu",
+                        "cpu",
+                        "memory",
+                        "storage",
+                        "network"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Requirements this file declared WITHOUT saying whose they are — a flat `compute_spec` with no `miner`/`validator` split. Non-null only for a document that made no role distinction, in which case `miner` and `validator` are both null because that is true of the file. Same shape as the other two, so the four-valued GPU answer reads identically. Never a guess at which role was meant: attributing an unattributed requirement is the one thing this key exists to avoid."
+                },
                 "validator": {
                   "anyOf": [
                     {
@@ -46298,7 +46530,8 @@
                 "evidence",
                 "found",
                 "miner",
-                "validator"
+                "validator",
+                "unscoped"
               ],
               "type": "object"
             },
@@ -46312,7 +46545,7 @@
           },
           "declared_compute": {
             "additionalProperties": false,
-            "description": "The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them.",
+            "description": "The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. A file that draws no such distinction publishes under `unscoped` instead, with both roles null — read all three, because which one carries the answer is a property of the document rather than of the subnet.",
             "properties": {
               "evidence": {
                 "anyOf": [
@@ -46368,6 +46601,219 @@
                 ]
               },
               "miner": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "One role's DECLARED minimum, in the subnet's own numbers. Units are carried in the field names; nothing is converted or defaulted. This is the floor to RUN, never the spec to EARN.",
+                    "properties": {
+                      "cpu": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "architecture": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_cores": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_speed_ghz": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "gpu": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "declared_min_count": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "declared_min_vram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration."
+                          },
+                          "declared_model": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own."
+                          },
+                          "declared_required": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it."
+                          },
+                          "requirement": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "required",
+                                  "not-required",
+                                  "declared-inconsistently"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'."
+                          }
+                        },
+                        "required": [
+                          "requirement"
+                        ],
+                        "type": "object"
+                      },
+                      "memory": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_ram_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_swap_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "network": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_download_speed_mbps": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_upload_speed_mbps": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "storage": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "min_iops": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "min_space_gb": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "type": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "gpu",
+                      "cpu",
+                      "memory",
+                      "storage",
+                      "network"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "unscoped": {
                 "anyOf": [
                   {
                     "additionalProperties": false,
@@ -46797,6 +47243,7 @@
             "required": [
               "miner",
               "validator",
+              "unscoped",
               "evidence"
             ],
             "type": "object"

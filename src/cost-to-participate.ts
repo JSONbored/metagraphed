@@ -89,6 +89,13 @@ export const SUBNET_COST_TO_PARTICIPATE_FIELD_SOURCES = {
     kind: "measured",
     storage: "compute_declarations",
   },
+  // MEASURED, exactly as its two siblings are: it is the document's own
+  // `compute_spec`, read at a commit. What makes it a separate key is WHOSE
+  // requirement it is -- unstated -- not how it was obtained.
+  "declared_compute.unscoped": {
+    kind: "measured",
+    storage: "compute_declarations",
+  },
   "declared_compute.miner.gpu.requirement": {
     kind: "reconstructed",
     storage: null,
@@ -280,6 +287,28 @@ function declarationRow(row: Row): Row {
     found,
     miner: found ? roleSpec(row?.miner) : null,
     validator: found ? roleSpec(row?.validator) : null,
+    // REQUIREMENTS THE DOCUMENT DID NOT ATTRIBUTE TO A ROLE (#11284).
+    //
+    // SN29 (coldint) and SN108 (talkhead) publish a FLAT `compute_spec` -- cpu,
+    // gpu and memory at the top level, with no `miner`/`validator` split -- and
+    // both of them declare a GPU. Until 0030 those rows could not be stored at
+    // all; storing them left a second gap, which this closes: the card said
+    // `declarations_read: 1` and then showed nothing, so a caller asking what
+    // SN29 needs got silence over a 24GB-VRAM requirement we hold.
+    //
+    // A THIRD KEY, NOT A GUESS. Copying it into `miner` AND `validator` would
+    // assert a role split the document does not make, and picking one would
+    // invent the other. `unscoped` says exactly what is known -- requirements
+    // were declared, and the file did not say for whom -- which is the same
+    // rule 0029 set for the stanza itself. `miner` and `validator` stay null
+    // for these subnets because that is TRUE of the document, so nothing a
+    // caller already reads changes shape or meaning.
+    //
+    // Shaped by the SAME roleSpec as the other two, so the four-valued GPU
+    // answer and the units-in-names convention hold here identically. A reader
+    // that already understands `declared_compute.miner.gpu.requirement`
+    // understands this one without learning a second shape.
+    unscoped: found ? roleSpec(row?.unscoped) : null,
   };
 }
 
@@ -380,6 +409,11 @@ export function buildSubnetCostToParticipate(
     declared_compute: {
       miner: (primary?.miner as Row | null) ?? null,
       validator: (primary?.validator as Row | null) ?? null,
+      // Non-null only for a declaration that named no role at all -- see
+      // declarationRow. On every subnet whose file uses the two-stanza
+      // template this is null and the other two carry the answer, which is
+      // the arrangement almost every caller will ever see.
+      unscoped: (primary?.unscoped as Row | null) ?? null,
       evidence: (primary?.evidence as Row | null) ?? null,
     },
     declarations,

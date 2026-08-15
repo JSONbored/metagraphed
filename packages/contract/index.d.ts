@@ -10809,7 +10809,7 @@ export interface components {
         SubnetCostToParticipateArtifact: {
             /** @description Every declaration read for this subnet. A subnet registering two files that disagree keeps both here rather than being collapsed to whichever was read last. */
             declarations: {
-                /** @description The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at `main`, which moves under the claim. */
+                /** @description The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 18 registered surfaces point at `main`, which moves under the claim. */
                 evidence: {
                     /** @description When this file was first read, preserved across re-reads. */
                     first_seen?: string | null;
@@ -10825,6 +10825,38 @@ export interface components {
                 /** @description Did the fetch yield a parseable compute_spec? `false` IS A MEASUREMENT — the file was read at that commit and declared nothing — and is distinct from a subnet that registers no min_compute surface at all, which has no declaration here. */
                 found: boolean;
                 miner: {
+                    cpu: {
+                        architecture?: string | null;
+                        min_cores?: number | null;
+                        min_speed_ghz?: number | null;
+                    };
+                    gpu: {
+                        declared_min_count?: number | null;
+                        /** @description The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration. */
+                        declared_min_vram_gb?: number | null;
+                        /** @description The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own. */
+                        declared_model?: string | null;
+                        /** @description The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it. */
+                        declared_required?: boolean | null;
+                        /** @description Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'. */
+                        requirement: ("required" | "not-required" | "declared-inconsistently") | null;
+                    };
+                    memory: {
+                        min_ram_gb?: number | null;
+                        min_swap_gb?: number | null;
+                    };
+                    network: {
+                        min_download_speed_mbps?: number | null;
+                        min_upload_speed_mbps?: number | null;
+                    };
+                    storage: {
+                        min_iops?: number | null;
+                        min_space_gb?: number | null;
+                        type?: string | null;
+                    };
+                } | null;
+                /** @description Requirements this file declared WITHOUT saying whose they are — a flat `compute_spec` with no `miner`/`validator` split. Non-null only for a document that made no role distinction, in which case `miner` and `validator` are both null because that is true of the file. Same shape as the other two, so the four-valued GPU answer reads identically. Never a guess at which role was meant: attributing an unattributed requirement is the one thing this key exists to avoid. */
+                unscoped: {
                     cpu: {
                         architecture?: string | null;
                         min_cores?: number | null;
@@ -10889,7 +10921,7 @@ export interface components {
             }[];
             /** @description How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 129 subnets register none, and a card with `declarations_read: 0` makes no claim about what running here takes. */
             declarations_read: number;
-            /** @description The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. */
+            /** @description The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. A file that draws no such distinction publishes under `unscoped` instead, with both roles null — read all three, because which one carries the answer is a property of the document rather than of the subnet. */
             declared_compute: {
                 evidence: {
                     /** @description When this file was first read, preserved across re-reads. */
@@ -10904,6 +10936,37 @@ export interface components {
                     spec_version?: string | null;
                 } | null;
                 miner: {
+                    cpu: {
+                        architecture?: string | null;
+                        min_cores?: number | null;
+                        min_speed_ghz?: number | null;
+                    };
+                    gpu: {
+                        declared_min_count?: number | null;
+                        /** @description The file's own `min_vram`, in the GB the template asks for. Not converted, not rounded — a declaration we alter is no longer the subnet's declaration. */
+                        declared_min_vram_gb?: number | null;
+                        /** @description The file's own `recommended_gpu`. RECOMMENDED, not required: naming a card for a workload that does not need one is coherent, so this never moves `requirement` on its own. */
+                        declared_model?: string | null;
+                        /** @description The file's own `required:` value, published verbatim so a reader can see why `requirement` is not a boolean rather than take our word for it. */
+                        declared_required?: boolean | null;
+                        /** @description Does this role need a GPU, as the DECLARATION supports it? FOUR answers. `required` and `not-required` are what they say. `declared-inconsistently` is a declared `required: False` sitting beside a non-zero minimum VRAM, CUDA-core or GPU count — the shape an unedited template field takes beside an edited one, and never coerced to either boolean. `null` means no GPU stanza was declared at all, which is not a 'no'. */
+                        requirement: ("required" | "not-required" | "declared-inconsistently") | null;
+                    };
+                    memory: {
+                        min_ram_gb?: number | null;
+                        min_swap_gb?: number | null;
+                    };
+                    network: {
+                        min_download_speed_mbps?: number | null;
+                        min_upload_speed_mbps?: number | null;
+                    };
+                    storage: {
+                        min_iops?: number | null;
+                        min_space_gb?: number | null;
+                        type?: string | null;
+                    };
+                } | null;
+                unscoped: {
                     cpu: {
                         architecture?: string | null;
                         min_cores?: number | null;
@@ -41715,6 +41778,15 @@ export interface operations {
                      *               "network": {},
                      *               "storage": {}
                      *             },
+                     *             "unscoped": {
+                     *               "cpu": {},
+                     *               "gpu": {
+                     *                 "requirement": "required"
+                     *               },
+                     *               "memory": {},
+                     *               "network": {},
+                     *               "storage": {}
+                     *             },
                      *             "validator": {
                      *               "cpu": {},
                      *               "gpu": {
@@ -41734,6 +41806,15 @@ export interface operations {
                      *             "source_url": "https://api.metagraph.sh/example"
                      *           },
                      *           "miner": {
+                     *             "cpu": {},
+                     *             "gpu": {
+                     *               "requirement": "required"
+                     *             },
+                     *             "memory": {},
+                     *             "network": {},
+                     *             "storage": {}
+                     *           },
+                     *           "unscoped": {
                      *             "cpu": {},
                      *             "gpu": {
                      *               "requirement": "required"

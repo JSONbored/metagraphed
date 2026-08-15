@@ -197,6 +197,7 @@ describe("buildSubnetCostToParticipate", () => {
     assert.deepEqual(card.declared_compute, {
       miner: null,
       validator: null,
+      unscoped: null,
       evidence: null,
     });
     // The state most subnets are in. Every one of these must be null
@@ -275,6 +276,109 @@ describe("buildSubnetCostToParticipate", () => {
     // is no longer the subnet's declaration.
     assert.equal(((compute.miner as Row).gpu as Row).declared_min_vram_gb, 192);
     assert.equal(((compute.miner as Row).memory as Row).min_ram_gb, 1200);
+  });
+
+  // --- a declaration that names no role (#11284 follow-up) ------------------
+  //
+  // SN29 (coldint) and SN108 (talkhead) publish a FLAT compute_spec: cpu/gpu/
+  // memory at the top level, no miner/validator split, and both ask for a GPU.
+  // Migration 0030 gave those rows somewhere to live; these pin the half that
+  // makes them VISIBLE, which is the point of storing them.
+  const FLAT_SPEC = {
+    gpu: {
+      required: true,
+      min_vram: 24,
+      cuda_cores: 1024,
+      min_compute_capability: 6,
+    },
+    memory: { min_ram: 32, min_swap: 4 },
+    cpu: { min_cores: 4 },
+  };
+
+  test("an unscoped declaration is SERVED, not silently held", () => {
+    const card = buildSubnetCostToParticipate(
+      [
+        declarationRow({
+          netuid: 29,
+          miner: null,
+          validator: null,
+          unscoped: FLAT_SPEC,
+        }),
+      ],
+      29,
+    );
+    const compute = card.declared_compute as Row;
+    // The defect this closes: the card said `declarations_read: 1` and then
+    // showed nothing, so a caller asking what SN29 needs got silence over a
+    // 24GB-VRAM requirement we already held.
+    assert.equal(card.declarations_read, 1);
+    const gpu = (compute.unscoped as Row).gpu as Row;
+    assert.equal(gpu.requirement, "required");
+    assert.equal(gpu.declared_min_vram_gb, 24);
+    assert.equal(((compute.unscoped as Row).memory as Row).min_ram_gb, 32);
+  });
+
+  test("an unscoped declaration is NEVER attributed to a role", () => {
+    const card = buildSubnetCostToParticipate(
+      [
+        declarationRow({
+          netuid: 29,
+          miner: null,
+          validator: null,
+          unscoped: FLAT_SPEC,
+        }),
+      ],
+      29,
+    );
+    const compute = card.declared_compute as Row;
+    // Copying it into either role would assert a split the document does not
+    // make, and picking one would invent the other. Both stay null because
+    // that is TRUE of the file -- the assertion is the whole design decision.
+    assert.equal(compute.miner, null);
+    assert.equal(compute.validator, null);
+    assert.notEqual(compute.unscoped, null);
+  });
+
+  test("a two-stanza declaration leaves unscoped null, so nothing existing moves", () => {
+    const card = buildSubnetCostToParticipate(
+      [declarationRow({ miner: TEMPLAR_MINER, validator: CPU_ONLY_MINER })],
+      3,
+    );
+    const compute = card.declared_compute as Row;
+    // The arrangement almost every caller will ever see. A reader that never
+    // looks at `unscoped` reads exactly what it read before this field existed.
+    assert.equal(compute.unscoped, null);
+    assert.notEqual(compute.miner, null);
+  });
+
+  test("a found:false row declares nothing in ANY of the three", () => {
+    const card = buildSubnetCostToParticipate(
+      [
+        declarationRow({
+          found: false,
+          miner: null,
+          validator: null,
+          unscoped: null,
+        }),
+      ],
+      44,
+    );
+    const compute = card.declared_compute as Row;
+    assert.equal(compute.miner, null);
+    assert.equal(compute.validator, null);
+    assert.equal(compute.unscoped, null);
+    // The headline stays entirely empty because `primary` is the first
+    // declaration that FOUND something and there is none -- adding a third
+    // stanza did not give a found:false row a way to populate the card.
+    assert.equal(compute.evidence, null);
+    // The reading is still on record, which is the distinction `found: false`
+    // exists to carry: the file was fetched at a commit and declared nothing,
+    // as against a subnet nobody has looked at.
+    assert.equal(card.declarations_read, 1);
+    const only = (card.declarations as Row[])[0]!;
+    assert.equal(only.found, false);
+    assert.equal(only.unscoped, null);
+    assert.notEqual((only.evidence as Row).read_at_sha, null);
   });
 
   test("two declarations that disagree are both kept", () => {

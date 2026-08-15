@@ -42,7 +42,8 @@ export const GpuRequirementSchema = z.enum(GPU_REQUIREMENT_STATES);
  * The citation for one reading.
  *
  * `read_at_sha` is required, for the same reason it is on a treasury reading:
- * 14 of the 17 registered surfaces point at `main`, a branch moves under the
+ * most registered surfaces point at `main` (SURFACES_ON_A_MOVING_REF in
+ * src/compute-declaration-figures.ts), a branch moves under the
  * claim, and what makes a reading checkable is the commit that was HEAD when
  * it was taken.
  */
