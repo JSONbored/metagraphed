@@ -14,8 +14,12 @@
 // makes the claim checkable -- a lane can only be retired if the thing that wrote it
 // is genuinely gone, and resurrecting a producer fails here until its name is removed.
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, test } from "vitest";
+import { PRODUCER_CADENCE_SECS } from "../src/producer-cadence.ts";
+// The string-aware stripper, not a regex: wrangler.jsonc holds `"*/2 * * * *"`
+// and `"/api/*"`, which a naive comment regex splices together.
+import { stripJsonComments } from "../scripts/lib.ts";
 import {
   RETIRED_LANES,
   RETIRED_LANE_PREFIXES,
@@ -50,7 +54,41 @@ const PRODUCERS: Record<string, string | null> = {
   // below: nothing can write a `*-dlq` lane that DEAD_LETTER_LANES no longer
   // names.
   "revenue-probes-dlq": null,
+  // The same #10851 key change again, and the two the 2026-08-12 sweep missed
+  // -- justified by the DERIVED assertion below rather than by a deleted file.
+  "nominator-positions": null,
+  "validator-nominator-counts": null,
 };
+
+/**
+ * The lanes whose Neon writes go through the write-behind buffer, read from the
+ * DEPLOYED configs rather than hand-copied into this file.
+ *
+ * The UNION across the three Workers, not one of them and not an equality
+ * assertion between them. Each Worker sets its own `NEON_WRITE_BUFFER_LANES`
+ * and they are free to differ -- but `RETIRED_LANES` is global, so a lane
+ * buffered by any one of them is a lane whose bare spelling this rule must
+ * classify. Reading a single config would sample the set that the rule below
+ * exists to stop anyone sampling.
+ */
+function bufferedLanes(): string[] {
+  const lanes = new Set<string>();
+  for (const config of [
+    "../wrangler.jsonc",
+    "../wrangler.data.jsonc",
+    "../wrangler.registry.jsonc",
+  ]) {
+    const parsed = JSON.parse(
+      stripJsonComments(readFileSync(new URL(config, import.meta.url), "utf8")),
+    ) as { vars?: { NEON_WRITE_BUFFER_LANES?: string } };
+    for (const lane of (parsed.vars?.NEON_WRITE_BUFFER_LANES ?? "").split(
+      ",",
+    )) {
+      if (lane.trim()) lanes.add(lane.trim());
+    }
+  }
+  return [...lanes].sort();
+}
 
 function fakeDb(rows: Record<string, unknown>[]) {
   return {
@@ -118,6 +156,72 @@ describe("retired lanes (#10222)", () => {
     // would be suppression rather than cleanup, and it has a live writer.
     assert.equal(isDeadLetterQueue("probe-jobs-dlq"), true);
     assert.equal(isRetiredLane("probe-jobs-dlq"), false);
+  });
+
+  test("a buffered lane's bare spelling is retired EXACTLY when no producer writes it", () => {
+    // THE RULE THE LIST ABOVE WAS MISSING, and the reason #11268/#11269 were
+    // filed three days after the fossils they name were created.
+    //
+    // #10851 moved the buffer flush onto `neonLaneKey`, so every buffered
+    // lane's verdict now lands under `neon:<lane>`. For a bare spelling that
+    // leaves exactly one possible writer: the POLLER, which reports its own
+    // scan outcome ("120221 scanned, 130194 written, 0 error(s)") under its
+    // lane name. Poller lane names ARE the producer names -- that is what
+    // PRODUCER_CADENCE_SECS is keyed by, stated in its own doc comment -- so a
+    // buffered lane whose bare name is not a producer has no writer at all.
+    //
+    // NOT CIRCULAR, and this is the part that matters. PRODUCER_CADENCE_SECS is
+    // maintained for a different purpose (silence floors) and cross-checked
+    // against each `*-staleness-watchdog.ts` threshold in
+    // tests/lane-silence-cadence.test.ts, so it is an independent artifact
+    // rather than a restatement of this list. The classification was then
+    // MEASURED: on 2026-08-15 production `lane_health` held exactly five bare
+    // lanes frozen at the #10851 deploy -- raw-capture-state, neurons,
+    // tao-usd-index, nominator-positions, validator-nominator-counts -- and
+    // exactly the other five buffered lanes were live that hour. Ten of ten.
+    //
+    // Derived rather than listed, because the list is what failed: the three
+    // retired on 2026-08-12 were the ones ALARMING that day, and the two daily
+    // lanes had not yet crossed a 24h bound. Any future key change is caught
+    // here on the commit that makes it, not on whatever schedule the slowest
+    // affected producer happens to run at.
+    const fossils: string[] = [];
+    const live: string[] = [];
+    for (const lane of bufferedLanes()) {
+      const hasProducer = lane.replaceAll("-", "_") in PRODUCER_CADENCE_SECS;
+      (hasProducer ? live : fossils).push(lane);
+      assert.equal(
+        isRetiredLane(lane),
+        !hasProducer,
+        hasProducer
+          ? `${lane} is written by the poller under its bare name -- retiring it would be suppression`
+          : `${lane} is buffered and has no producer of its own name, so since #10851 nothing writes the bare spelling: retire it in RETIRED_LANES`,
+      );
+      // The prefixed spelling is the live one in BOTH cases and is never
+      // retired -- retiring it would mute the flush itself.
+      assert.equal(
+        isRetiredLane(neonLaneKey(lane)),
+        false,
+        `${neonLaneKey(lane)} stays watched`,
+      );
+    }
+    // Non-vacuity, on both sides. An empty `fossils` would pass the loop while
+    // proving nothing, and an empty `live` would mean the producer table had
+    // been emptied rather than that the rule holds.
+    assert.deepEqual(fossils, [
+      "neurons",
+      "nominator-positions",
+      "raw-capture-state",
+      "tao-usd-index",
+      "validator-nominator-counts",
+    ]);
+    assert.deepEqual(live, [
+      "account-balances",
+      "account-identity",
+      "hotkey-alpha",
+      "subnet-hyperparams",
+      "subnet-identity",
+    ]);
   });
 
   test("the POLLER's own bare lanes are NOT retired", () => {

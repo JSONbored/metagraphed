@@ -178,9 +178,17 @@ describe("loadLatestLaneHealth", () => {
   // that tie and CLOSED #11252 and #11253 as recovered, while
   // /api/v1/self-health served `unknown` for the same lanes at the same
   // millisecond. Both lanes had been dead 76 hours.
+  //
+  // THE `neon:` SPELLING, not the bare one the incident was reported under.
+  // That bare name is retired as of the #10851 fossil sweep, so
+  // loadLatestLaneHealth now DROPS it -- and a fixture the reader discards
+  // makes every assertion below pass on an empty result. Same lane, same
+  // "127 statement(s) flushed" that its flush actually writes, still watched.
+  const TIED_LANE = "neon:validator-nominator-counts";
+
   const tiedRows = (first: string, second: string) => [
     {
-      lane: "validator-nominator-counts",
+      lane: TIED_LANE,
       verdict: first,
       age_ms: null,
       detail:
@@ -188,7 +196,7 @@ describe("loadLatestLaneHealth", () => {
       checked_at: NOW,
     },
     {
-      lane: "validator-nominator-counts",
+      lane: TIED_LANE,
       verdict: second,
       age_ms: null,
       detail:
@@ -205,16 +213,13 @@ describe("loadLatestLaneHealth", () => {
       const { db } = fakeDb(tiedRows(a, b));
       const latest = await loadLatestLaneHealth(db);
       assert.equal(
-        latest["validator-nominator-counts"].verdict,
+        latest[TIED_LANE].verdict,
         "unknown",
         `order ${a},${b}: a finding must survive a tie with ok`,
       );
       // And it carries THAT row's detail, so the reader is not shown the
       // reassuring half of a contradiction.
-      assert.match(
-        latest["validator-nominator-counts"].detail ?? "",
-        /no verdict for/,
-      );
+      assert.match(latest[TIED_LANE].detail ?? "", /no verdict for/);
     }
   });
 
@@ -225,7 +230,7 @@ describe("loadLatestLaneHealth", () => {
     ]) {
       const { db } = fakeDb(tiedRows(a, b));
       const latest = await loadLatestLaneHealth(db);
-      assert.equal(latest["validator-nominator-counts"].verdict, "stale");
+      assert.equal(latest[TIED_LANE].verdict, "stale");
     }
   });
 
