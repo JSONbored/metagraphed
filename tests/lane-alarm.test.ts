@@ -665,6 +665,45 @@ describe("laneAlarmIssueBody", () => {
     assert.match(body, /FROM lane_health WHERE lane = 'neurons-staleness'/);
   });
 
+  // #10695 added `unknown` to the OPEN path and never told this sentence, so
+  // an unknown alarm was described as a watchdog that had STOPPED -- the exact
+  // opposite of what the verdict means. The watchdog is running; it is the
+  // measurement that did not happen.
+  test("an unknown body does not claim the watchdog stopped", () => {
+    const body = laneAlarmIssueBody(alarm({ kind: "unknown", ticks: 4 }), NOW);
+    assert.match(body, /reported \*\*unknown\*\* on every tick/);
+    assert.match(body, /4 consecutive verdicts/);
+    assert.match(body, /The watchdog is running/);
+    assert.doesNotMatch(body, /no verdict at all/);
+    assert.doesNotMatch(body, /appears to have stopped running/);
+  });
+
+  // THE FIRST ISSUE THIS ALARM EVER FILED (#11251) said all three of these
+  // things about a dead-letter lane, and all three were wrong.
+  test("a dead-letter body counts losses, drops the cadence, and promises nothing", () => {
+    const body = laneAlarmIssueBody(
+      alarm({
+        lane: "revenue-probes-dlq",
+        ticks: 89,
+        age_ms: null,
+        detail: "1 dead-lettered message(s) on revenue-probes-dlq (sn-51)",
+      }),
+      NOW,
+    );
+    // Rows are LOSSES, not one condition observed 89 times.
+    assert.match(body, /dead-lettered \*\*89 time\(s\)\*\*/);
+    assert.match(body, /a count of losses, not of ticks/);
+    assert.doesNotMatch(body, /on every tick/);
+    // The cadence belongs to the producer and says nothing about when a
+    // message was lost -- the misreading #10809 measured, in the other
+    // direction.
+    assert.doesNotMatch(body, /observed cadence/);
+    // And it must not promise a close that cannot happen.
+    assert.match(body, /will NOT close itself/);
+    assert.match(body, /further losses arrive here as\ncomments/);
+    assert.doesNotMatch(body, /Closed automatically/);
+  });
+
   test("a silent body says the watchdog stopped, and what it last said", () => {
     const body = laneAlarmIssueBody(
       alarm({ kind: "silent", ticks: 0, detail: "ok", age_ms: null }),

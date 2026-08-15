@@ -705,16 +705,50 @@ function humanDuration(ms: number): string {
 }
 
 /**
+ * The opening sentence, one per fault, and THREE FAULTS EXIST.
+ *
+ * This branched `stale` against everything-else, so an `unknown` alarm was
+ * described as "has written no verdict at all ... its watchdog appears to have
+ * stopped running", which is the opposite of what `unknown` means: the watchdog
+ * IS running and IS writing, and what it is saying is that it could not
+ * evaluate the lane. #10695 added the verdict to the OPEN path and this
+ * sentence was not told. The three are kept apart here rather than at the call
+ * site so the compiler checks the set: `LaneAlarmKind` is derived from the
+ * published schema, and a fourth member stops this switch compiling.
+ *
+ * A DEAD-LETTER LANE OUTRANKS ITS KIND. Its rows are losses, not ticks, so
+ * "reported stale on every tick (89 consecutive verdicts)" -- measured on the
+ * first issue this alarm ever filed -- described 89 separate lost messages as
+ * one condition observed 89 times.
+ */
+function issueOpening(alarm: LaneAlarm, forHow: string): string {
+  if (isDeadLetterLane(alarm.lane)) {
+    return (
+      `\`${alarm.lane}\` has dead-lettered **${alarm.ticks} time(s)** in the **${forHow}** since the first loss. ` +
+      "Each row is a message that exhausted its retries and was acked to keep it out of a second-order queue -- so this is a count of losses, not of ticks."
+    );
+  }
+  switch (alarm.kind) {
+    case "stale":
+      return `\`${alarm.lane}\` has reported **stale** on every tick for **${forHow}** (${alarm.ticks} consecutive verdicts).`;
+    case "unknown":
+      return (
+        `\`${alarm.lane}\` has reported **unknown** on every tick for **${forHow}** (${alarm.ticks} consecutive verdicts). ` +
+        "The watchdog is running; what it cannot do is evaluate this lane, so nothing here is a measurement -- neither a breach nor a clean bill."
+      );
+    case "silent":
+      return `\`${alarm.lane}\` has written **no verdict at all** for **${forHow}**. Its watchdog appears to have stopped running -- the last verdict it did write said \`${alarm.detail ?? "ok"}\`, so nothing else will report this.`;
+  }
+}
+
+/**
  * The issue body. Written to be actionable without opening anything else:
  * which lane, which fault, how long, what the watchdog said, and the query that
  * shows the history.
  */
 export function laneAlarmIssueBody(alarm: LaneAlarm, nowMs: number): string {
   const forHow = humanDuration(nowMs - alarm.since);
-  const opening =
-    alarm.kind === "stale"
-      ? `\`${alarm.lane}\` has reported **stale** on every tick for **${forHow}** (${alarm.ticks} consecutive verdicts).`
-      : `\`${alarm.lane}\` has written **no verdict at all** for **${forHow}**. Its watchdog appears to have stopped running -- the last verdict it did write said \`${alarm.detail ?? "ok"}\`, so nothing else will report this.`;
+  const opening = issueOpening(alarm, forHow);
   const lines = [
     opening,
     "",
@@ -726,7 +760,15 @@ export function laneAlarmIssueBody(alarm: LaneAlarm, nowMs: number): string {
   if (alarm.age_ms !== null) {
     lines.push(`| lane was behind by | ${humanDuration(alarm.age_ms)} |`);
   }
-  if (alarm.cadence_ms !== null) {
+  // NOT FOR A DEAD-LETTER LANE, and this is the same call laneAlarmSummary
+  // already makes one floor up (#10809, in the other direction). A cadence next
+  // to a duration invites "cycles missed", and for a queue that is meaningless:
+  // the producer's hourly cadence has nothing to do with when a message was
+  // lost. Measured: `41.0h against a 1.0h cadence` was triaged as the most
+  // urgent lane in the fleet, ahead of six that were genuinely dead. The
+  // summary stopped saying it and the ISSUE BODY went on saying it -- the first
+  // one this alarm ever filed carried `observed cadence | 1.0h`.
+  if (alarm.cadence_ms !== null && !isDeadLetterLane(alarm.lane)) {
     lines.push(`| observed cadence | ${humanDuration(alarm.cadence_ms)} |`);
   }
   if (alarm.detail) {
@@ -740,9 +782,16 @@ export function laneAlarmIssueBody(alarm: LaneAlarm, nowMs: number): string {
     `ORDER BY checked_at DESC LIMIT 40;`,
     "```",
     "",
-    "Closed automatically on the first `ok` verdict. Opened by the lane-health",
-    "reader (`src/lane-alarm.ts`); the record it reads is also served at",
-    "`GET /api/v1/self-health`.",
+    // A PROMISE THIS ISSUE CAN KEEP. "Closed automatically on the first `ok`
+    // verdict" is true of a producer and impossible for a dead-letter lane --
+    // nothing writes one `ok`, so the sentence told the reader to wait for an
+    // event that cannot happen, on the one lane whose issue a human has to
+    // close.
+    isDeadLetterLane(alarm.lane)
+      ? "This will NOT close itself: nothing writes a dead-letter lane `ok`, because\nnothing un-loses a message. Closing it is a decision, and the next loss after\nit closes opens a fresh alarm. Until then, further losses arrive here as\ncomments."
+      : "Closed automatically on the first `ok` verdict.",
+    "Opened by the lane-health reader (`src/lane-alarm.ts`); the record it reads",
+    "is also served at `GET /api/v1/self-health`.",
   );
   return lines.join("\n");
 }
