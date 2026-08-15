@@ -27,6 +27,7 @@
 // an outage. So a one-off dead letter produces one issue, not a permanent one.
 
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
+import { ProbeJobTypeSchema } from "../schemas-src/probe-jobs.ts";
 
 /** The two dead-letter queues, and the lane each reports under.
  *
@@ -127,7 +128,7 @@ export const DEAD_LETTER_SUBJECT_KEYS = [
 export const DEAD_LETTER_MAX_NAMED_SUBJECTS = 12;
 
 /** The subject a body names, or null when it names none of them. */
-function subjectOf(body: Record<string, unknown>): string | null {
+function subjectKeyOf(body: Record<string, unknown>): string | null {
   for (const key of DEAD_LETTER_SUBJECT_KEYS) {
     const value = body[key];
     // Numbers count -- `netuid` is one, and rejecting it would have left the
@@ -139,6 +140,38 @@ function subjectOf(body: Record<string, unknown>): string | null {
     if (typeof value === "string" && value) return value;
   }
   return null;
+}
+
+/**
+ * What was lost, and -- since one queue serves four lanes -- WHICH LANE lost it.
+ *
+ * ONE QUEUE MADE THE SUBJECT AMBIGUOUS. Before #10894 the queue name was the
+ * lane, so `netuid=29` on `attribution-sweeps-dlq` needed no qualifier. Now
+ * every probe lane produces to `probe-jobs` and both `SweepMessage` and
+ * `ComputeDeclarationMessage` carry `netuid` and nothing else this function
+ * recognises -- so an identical `netuid=29` can come from either, and the
+ * verdict a maintainer reads cannot say which.
+ *
+ * Measured 2026-08-15: `probe-jobs-dlq` reported
+ * `2 dead-lettered message(s) on probe-jobs-dlq (netuid=108,netuid=29)`. Those
+ * were compute-declaration reads, not attribution sweeps -- I read them as
+ * sweeps, and the only way to tell was to notice the pair matched the two
+ * subnets whose `compute_declarations` rows were missing.
+ *
+ * The discriminator was already on every message: #10894 put `job_type` there
+ * precisely because a batch may mix lanes freely. This reads it.
+ *
+ * VALIDATED AGAINST THE VOCABULARY, not passed through. The body is a message
+ * from a queue -- untrusted input that lands in a log line and a
+ * `lane_health.detail` column -- so only a declared job type is echoed, and an
+ * unrecognised one is dropped rather than printed. `declineUnknownProbeJobs`
+ * already reports that case as its own finding.
+ */
+function subjectOf(body: Record<string, unknown>): string | null {
+  const subject = subjectKeyOf(body);
+  if (subject === null) return null;
+  const jobType = ProbeJobTypeSchema.safeParse(body.job_type);
+  return jobType.success ? `${jobType.data} ${subject}` : subject;
 }
 
 /**
