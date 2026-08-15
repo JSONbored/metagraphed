@@ -18,6 +18,7 @@ import {
   isMissingEntityError,
   isNotFoundMatch,
 } from "@/lib/metagraphed/entity-not-found-meta";
+import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 
 type SearchParams = { tab?: string };
 
@@ -34,8 +35,11 @@ export const Route = createFileRoute("/providers/$slug")({
   // to the slug on any failure.
   loader: async ({ context, params }) => {
     try {
-      const { data } = await context.queryClient.ensureQueryData(providerQuery(params.slug));
+      const { data, meta } = await context.queryClient.ensureQueryData(providerQuery(params.slug));
       return {
+        // #11314: the record's publish timestamp -- see recordModifiedAt for why
+        // it is not the probe observation.
+        dateModified: recordModifiedAt(meta) ?? null,
         name: data.name ?? null,
         // #11204: the card's own fields. The registry curates a logo for 102 of
         // the 138 providers, and the counts are what the page's pulse tiles
@@ -111,6 +115,7 @@ export const Route = createFileRoute("/providers/$slug")({
               apiUrl: `${API_BASE}/api/v1/providers/${encodeURIComponent(params.slug)}`,
               artifactUrl: `${API_BASE}/metagraph/providers/${encodeURIComponent(params.slug)}.json`,
               sameAs: loaderData?.website ?? null,
+              dateModified: loaderData?.dateModified ?? null,
             }),
           ),
         },

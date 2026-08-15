@@ -1,3 +1,4 @@
+import { isoTimestamp } from "./freshness";
 import { API_ORIGIN, GITHUB_REPO_URL, SITE_ORIGIN, X_PROFILE_URL } from "./identity";
 
 /**
@@ -308,6 +309,8 @@ export function techArticleJsonLd(input: TechArticleInput) {
 }
 
 export interface SubnetDatasetInput {
+  /** When this record was last rebuilt. Omitted from the node when absent. */
+  dateModified?: string | null;
   netuid: number;
   /** Registry / on-chain name, when we have one. */
   name?: string | null;
@@ -350,6 +353,8 @@ export function subnetDatasetJsonLd(input: SubnetDatasetInput) {
 }
 
 export interface ProviderDatasetInput {
+  /** When this record was last rebuilt. Omitted from the node when absent. */
+  dateModified?: string | null;
   /** Registry slug — the provider's stable key and its URL segment. */
   slug: string;
   name?: string | null;
@@ -391,6 +396,14 @@ interface RegistryDatasetInput {
   apiUrl: string;
   artifactUrl: string;
   sameAs?: string | null;
+  /**
+   * When the record was last rebuilt (#11314).
+   *
+   * Emitted only when we actually have it -- see `recordModifiedAt`, which
+   * takes the PUBLISH timestamp rather than the probe observation for the same
+   * reason `sitemapLastmod` refuses to synthesise one.
+   */
+  dateModified?: string | null;
 }
 
 /**
@@ -407,6 +420,7 @@ function registryDatasetJsonLd(input: RegistryDatasetInput) {
   return {
     "@type": "Dataset",
     name: input.name,
+    ...(isoTimestamp(input.dateModified) ? { dateModified: isoTimestamp(input.dateModified) } : {}),
     description: input.description,
     url: input.url,
     identifier: input.identifier,

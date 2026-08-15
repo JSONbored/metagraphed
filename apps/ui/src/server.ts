@@ -10,6 +10,7 @@ import {
   siteGraphNodes,
   stringifyJsonLd,
 } from "./lib/metagraphed/json-ld";
+import { isoTimestamp } from "./lib/metagraphed/freshness";
 import { API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
 
@@ -307,12 +308,16 @@ interface SitemapEntry {
   lastmod?: string;
 }
 
-/** ISO-8601 date (W3C Datetime) if the value is a usable timestamp, else undefined. */
-export function sitemapLastmod(value: unknown): string | undefined {
-  if (typeof value !== "string" || !value) return undefined;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
-}
+/**
+ * ISO-8601 date (W3C Datetime) if the value is a usable timestamp, else undefined.
+ *
+ * #11314: the rule itself moved to lib/metagraphed/freshness.ts so the JSON-LD
+ * builders can apply the identical one -- a page whose `dateModified` and whose
+ * sitemap `lastmod` disagree is a page making two different claims about the
+ * same fact. Re-exported under the original name because this is the export the
+ * sitemap tests and every existing call site already use.
+ */
+export const sitemapLastmod = isoTimestamp;
 
 async function buildSitemap(): Promise<Response> {
   const entries: SitemapEntry[] = SITEMAP_STATIC_PATHS.map((path) => ({
