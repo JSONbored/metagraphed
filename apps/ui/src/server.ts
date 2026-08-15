@@ -1040,7 +1040,9 @@ export default {
       console.error("[analytics-proxy] request handling failed:", error);
     }
     if (analyticsResponse) return analyticsResponse;
-    const ogResponse = await handleOgImage(request);
+    // env carries the ASSETS binding, which is how a card inlines the
+    // registry's own cached logo for an entity -- see resolveLocalLogo.
+    const ogResponse = await handleOgImage(request, env);
     if (ogResponse) return ogResponse;
     const artifactRedirect = handleArtifactHostRedirect(request);
     if (artifactRedirect) return artifactRedirect;

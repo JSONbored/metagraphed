@@ -1,4 +1,5 @@
 import { SITE_ORIGIN } from "./identity";
+import { clampCardText, OG_LIMITS } from "./og-card-limits";
 
 // Builds the /og card URL a route puts in its own og:image (#8489).
 //
@@ -37,6 +38,13 @@ export interface OgCardOptions {
    * SSRF-safe icon proxy; absent, it falls back to a monogram. */
   logoHost?: string | null;
   /**
+   * Path to one of OUR OWN cached logo assets (use `firstPartyLogoPath`),
+   * e.g. `/logos/cache/<sha256>.png`. Preferred over `logoHost` when present:
+   * it is the logo the registry curated, and the card reads it from the
+   * Worker's ASSETS binding rather than guessing at a favicon.
+   */
+  logoPath?: string | null;
+  /**
    * Health state ("ok" | "warn" | "down" | "unknown") — colours the card's
    * footer dot the way the site's health pill colours itself. Anything outside
    * that vocabulary is dropped by the renderer rather than guessed at.
@@ -59,15 +67,22 @@ export interface OgCardOptions {
  * Absolute /og URL carrying this page's card content.
  *
  * Only non-empty values are appended, so the card's own fallbacks apply
- * naturally and the URL stays short -- the endpoint rejects a query over
- * MAX_QUERY_LENGTH (512), and every param here is additionally length-bounded
- * on the render side.
+ * naturally and the URL stays short -- the endpoint refuses an over-long query
+ * outright, and every param is bounded on both sides from OG_LIMITS.
  */
 export function buildOgImageUrl(options: OgCardOptions): string {
-  const params = new URLSearchParams({ title: options.title });
-  if (options.subtitle) params.set("subtitle", options.subtitle);
-  if (options.eyebrow) params.set("eyebrow", options.eyebrow);
-  if (options.logoHost) params.set("logo", options.logoHost);
+  // Clamped HERE as well as in the renderer, from the same shared bounds. The
+  // renderer truncates anyway, so an over-long value only ever bought a longer
+  // URL -- and once the first-party logo path joined the query (#11204) that
+  // slack was enough to push a legitimate card past the endpoint's own
+  // MAX_QUERY_LENGTH, which answers 414 and unfurls with no image at all.
+  const params = new URLSearchParams({ title: clampCardText(options.title, OG_LIMITS.title) });
+  const subtitle = clampCardText(options.subtitle, OG_LIMITS.subtitle);
+  if (subtitle) params.set("subtitle", subtitle);
+  const eyebrow = clampCardText(options.eyebrow, OG_LIMITS.eyebrow);
+  if (eyebrow) params.set("eyebrow", eyebrow);
+  if (options.logoPath) params.set("logop", options.logoPath);
+  if (options.logoHost) params.set("logo", options.logoHost.slice(0, OG_LIMITS.logoHost));
   if (options.status) params.set("status", options.status);
   // The flag tells the renderer which fallback to use when there is no icon: a
   // monogram for a named thing, our mark for one of our own pages. "TA" is
@@ -77,9 +92,13 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   // Only the first three stats are rendered; sending more would just push the
   // URL toward the length cap for content the card ignores.
   (options.stats ?? []).slice(0, 3).forEach((stat, index) => {
-    if (!stat.label || !stat.value) return;
-    params.set(`stat${index + 1}`, stat.label);
-    params.set(`stat${index + 1}v`, stat.value);
+    const label = clampCardText(stat.label, OG_LIMITS.statLabel);
+    const value = clampCardText(stat.value, OG_LIMITS.statValue);
+    // Both halves required, matching readCardParams: a value with no label is
+    // unreadable, and a label with no value is an empty promise.
+    if (!label || !value) return;
+    params.set(`stat${index + 1}`, label);
+    params.set(`stat${index + 1}v`, value);
   });
   return `${SITE_ORIGIN}/og?${params.toString()}`;
 }
@@ -106,7 +125,14 @@ export function logoHostFrom(
     try {
       // Accept a bare host too, not just an absolute URL.
       const url = new URL(raw.includes("://") ? raw : `https://${raw}`);
-      if (url.hostname) return url.hostname.toLowerCase();
+      // OUR host is never an identity signal. The registry caches an entity's
+      // logo at metagraph.sh/logos/cache/<sha>.<ext>, and reducing that to a
+      // host asks the favicon proxy for METAGRAPHED's icon — so an entity that
+      // has a curated logo would wear our mark, or (as today, since the proxy
+      // has no icon for us) fall through to a monogram. Those URLs are handled
+      // by firstPartyLogoPath instead; here they must not shadow the entity's
+      // own website, which is the next-best identity we have.
+      if (url.hostname && !isFirstPartyHost(url.hostname)) return url.hostname.toLowerCase();
     } catch {
       // Unparseable candidate — try the next one rather than failing the card.
     }
@@ -114,14 +140,90 @@ export function logoHostFrom(
   return null;
 }
 
+const SITE_HOST = new URL(SITE_ORIGIN).hostname.toLowerCase();
+
+function isFirstPartyHost(hostname: string): boolean {
+  return hostname.toLowerCase() === SITE_HOST;
+}
+
+/**
+ * The two shapes the registry's own logo assets take: a subnet's
+ * content-addressed cache entry, and a provider's slug.
+ *
+ * Mirrors `LOGO_ASSET_PATH` in src/lib/og-image.ts, which validates the param
+ * again on the way in — /og is a public endpoint and must never trust a
+ * caller, including us. The name charset excludes `.`, so `..` cannot be
+ * spelled and the path can only ever name an image this repo ships.
+ */
+const LOGO_ASSET_PATH =
+  /^\/logos\/(?:cache\/[0-9a-f]{64}|[a-z0-9][a-z0-9-]{0,62})\.(?:png|svg|jpg|jpeg|webp)$/;
+
+/** The first candidate that is one of OUR OWN logo assets, as a path. */
+export function firstPartyLogoPath(
+  ...candidates: Array<string | { light?: string; dark?: string } | null | undefined>
+): string | null {
+  for (const candidate of candidates) {
+    const raw =
+      typeof candidate === "string" ? candidate : (candidate?.dark ?? candidate?.light ?? null);
+    if (!raw) continue;
+    try {
+      const url = new URL(raw, SITE_ORIGIN);
+      if (!isFirstPartyHost(url.hostname)) continue;
+      if (LOGO_ASSET_PATH.test(url.pathname)) {
+        return url.pathname;
+      }
+    } catch {
+      // Unparseable candidate — try the next one.
+    }
+  }
+  return null;
+}
+
+/**
+ * Summarize per-endpoint probe verdicts into the card's one status dot.
+ *
+ * A SUMMARY of probe-derived counts, never a health judgement of our own: the
+ * input is `endpoint_summary.by_status`, which the prober owns, and the rule is
+ * the obvious one — all monitored endpoints ok is ok, none ok is down, a mix is
+ * warn. Returns null when there is nothing to summarize, so the card falls back
+ * to its brand-coloured bullet instead of asserting "unknown".
+ *
+ * Lives here because this is where a route's data becomes card params, next to
+ * logoHostFrom and firstPartyLogoPath.
+ */
+export function healthFromStatusCounts(
+  byStatus: Record<string, number> | undefined | null,
+): "ok" | "warn" | "down" | null {
+  if (!byStatus) return null;
+  let ok = 0;
+  let total = 0;
+  for (const [status, count] of Object.entries(byStatus)) {
+    if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) continue;
+    total += count;
+    if (status === "ok") ok += count;
+  }
+  if (total === 0) return null;
+  if (ok === total) return "ok";
+  return ok === 0 ? "down" : "warn";
+}
+
 /** The og:image + twitter:image meta a route's head() returns. */
 export function ogImageMeta(options: OgCardOptions) {
   const url = buildOgImageUrl(options);
+  // #11204: og:image:alt was emitted ONLY by the server-injected card, so every
+  // page that took ownership of its own card silently lost it -- all 129 subnet
+  // pages, every validator, account, doc and news page. It is what a screen
+  // reader announces for an unfurl and what several platforms show as the
+  // caption, and the card's own copy is exactly the right text: it IS what the
+  // image says. Built the same way server.ts builds its own.
+  const alt = options.subtitle ? `${options.title} — ${options.subtitle}` : options.title;
   return [
     { property: "og:image", content: url },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
+    { property: "og:image:alt", content: alt },
     { name: "twitter:image", content: url },
+    { name: "twitter:image:alt", content: alt },
   ];
 }
 
@@ -143,6 +245,12 @@ export function routeOwnsOgImage(pathname: string): boolean {
     /^\/subnets\/[^/]+\/?$/.test(pathname) ||
     /^\/validators\/[^/]+\/?$/.test(pathname) ||
     /^\/accounts\/[^/]+\/?$/.test(pathname) ||
+    // #11204: /providers/* too. All 138 provider pages were unfurling the
+    // pathname-derived card -- the raw slug as a title ("404-gen"), no logo and
+    // no numbers -- because server.ts builds that card from the URL alone. The
+    // route has the provider's real name, its curated logo and its endpoint
+    // counts in loaderData, and 102 of the 138 have a logo to show.
+    /^\/providers\/[^/]+\/?$/.test(pathname) ||
     // #8624: /docs/* too. The docs splat route has the page's real title and
     // description in loaderData; server.ts, working from the pathname alone,
     // gave all 20 doc pages the identical brand card. Note this matches the
