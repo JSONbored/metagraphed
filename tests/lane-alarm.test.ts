@@ -911,6 +911,91 @@ describe("laneAlarmGitHub", () => {
     return { seen, gh: laneAlarmGitHub("t0ken", "o/r", impl) };
   }
 
+  test("listAcknowledged asks for CLOSED issues, newest first", async () => {
+    const { gh, seen } = client(() => ({ ok: true, json: async () => [] }));
+    await gh.listAcknowledged();
+    assert.match(seen[0]!.url, /state=closed/);
+    assert.match(seen[0]!.url, /sort=updated/);
+    assert.match(seen[0]!.url, /direction=desc/);
+  });
+
+  test("listAcknowledged keys the newest close per lane", async () => {
+    const { gh } = client(() => ({
+      ok: true,
+      json: async () => [
+        {
+          number: 1,
+          title: `${LANE_ALARM_TITLE_PREFIX}probe-jobs-dlq`,
+          closed_at: "2026-08-15T08:32:00Z",
+        },
+        // An OLDER close of the same lane cannot acknowledge a loss the newer
+        // one already did, so it must not win by arriving later in the page.
+        {
+          number: 2,
+          title: `${LANE_ALARM_TITLE_PREFIX}probe-jobs-dlq`,
+          closed_at: "2026-08-14T01:00:00Z",
+        },
+        {
+          number: 3,
+          title: "chore: unrelated",
+          closed_at: "2026-08-15T09:00:00Z",
+        },
+        // A PR whose title matches would otherwise acknowledge a real lane.
+        {
+          number: 4,
+          title: `${LANE_ALARM_TITLE_PREFIX}metagraph`,
+          closed_at: "2026-08-15T09:00:00Z",
+          pull_request: {},
+        },
+        {
+          number: 5,
+          title: LANE_ALARM_TITLE_PREFIX,
+          closed_at: "2026-08-15T09:00:00Z",
+        },
+        // Unparseable and absent stamps are SKIPPED, never read as the epoch --
+        // zero would make every loss look newer and defeat the rule silently.
+        {
+          number: 6,
+          title: `${LANE_ALARM_TITLE_PREFIX}sync-batches-dlq`,
+          closed_at: "not a date",
+        },
+        {
+          number: 7,
+          title: `${LANE_ALARM_TITLE_PREFIX}webhook-deliveries-dlq`,
+        },
+        {},
+        // A row that is not an object at all costs THAT row and not the page --
+        // the same per-row posture `listOpen` takes, and the reason the list
+        // schema's elements are `z.unknown()`.
+        42,
+        "not an issue",
+      ],
+    }));
+    assert.deepEqual(await gh.listAcknowledged(), {
+      "probe-jobs-dlq": Date.parse("2026-08-15T08:32:00Z"),
+    });
+  });
+
+  test("AN UNREADABLE CLOSED LIST SUPPRESSES NOTHING", async () => {
+    // The opposite posture to `listOpen`, deliberately. An unreadable OPEN list
+    // returns null and stops the tick, because acting on it means re-raising
+    // every alarm. An acknowledgement we cannot read must never mute one, so
+    // every failure here is `{}` -- the value that suppresses nothing.
+    const bad = client(() => ({
+      ok: false,
+      status: 403,
+      json: async () => ({}),
+    }));
+    assert.deepEqual(await bad.gh.listAcknowledged(), {});
+    const odd = client(() => ({
+      ok: true,
+      json: async () => ({ message: "nope" }),
+    }));
+    assert.deepEqual(await odd.gh.listAcknowledged(), {});
+    const empty = client(() => ({ ok: true, json: async () => [] }));
+    assert.deepEqual(await empty.gh.listAcknowledged(), {});
+  });
+
   test("lists only open lane alarms, keyed by lane", async () => {
     const { gh, seen } = client(() => ({
       ok: true,
@@ -1215,6 +1300,35 @@ describe("runLaneAlarm", () => {
       "1 alarming, 0 recovered, 0 recurred, 1 lanes",
       NOW,
     ]);
+  });
+
+  test("A THROWING ACKNOWLEDGEMENT READ ALARMS ANYWAY", async () => {
+    // The failure this read is allowed to have. It only ever narrows what gets
+    // filed, so a throw costs an extra issue rather than a missed one -- and it
+    // is caught into `{}` rather than being allowed to end the tick.
+    const db = healthDb({
+      latest: [
+        {
+          lane: "probe-jobs-dlq",
+          verdict: "stale",
+          age_ms: null,
+          detail: "1 dead-lettered message(s)",
+          checked_at: NOW - 1000,
+        },
+      ],
+      runs: [{ lane: "probe-jobs-dlq", since: NOW - 28 * HOUR, ticks: 5 }],
+      maxGap: [{ lane: "probe-jobs-dlq", n: 100, max_gap: 15 * 60_000 }],
+    });
+    const github = fakeGitHub();
+    github.listAcknowledged = async () => {
+      throw new Error("github down");
+    };
+    const out = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      { github, now: () => NOW, recordException: async () => true },
+    );
+    assert.equal(out.ok, true);
+    assert.deepEqual(github.opened, ["probe-jobs-dlq"]);
   });
 
   test("closes the issue once the lane reports ok", async () => {
