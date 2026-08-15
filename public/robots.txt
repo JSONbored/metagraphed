@@ -1,5 +1,5 @@
-Content-Signal: search=yes, ai-input=yes, ai-train=yes
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 # Unbounded per-entity detail: one uncached scan per URL, not in the sitemap.
 # The collection routes (/api/v1/blocks, /api/v1/extrinsics,

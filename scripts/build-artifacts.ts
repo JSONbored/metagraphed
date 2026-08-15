@@ -2550,8 +2550,14 @@ await fs.writeFile(
   // to teach. Revisit alongside the paid tier if premium data ever needs a
   // different posture (it would need its own path-scoped block, not a flip
   // of this one).
-  `Content-Signal: search=yes, ai-input=yes, ai-train=yes\n` +
-    `User-agent: *\n` +
+  // INSIDE the group, not above it. robots.txt is defined (RFC 9309) as groups
+  // introduced by a `User-agent` line, and Content Signals is specified as a
+  // directive of the group it sits in -- contentsignals.org's own example is
+  // `User-Agent: *` / `Content-Signal: ...` / `Allow: /`, in that order. Emitted
+  // above the first `User-agent` line it belongs to no group at all, which is
+  // how it shipped in #11174: present in the file, and read by nothing.
+  `User-agent: *\n` +
+    `Content-Signal: search=yes, ai-input=yes, ai-train=yes\n` +
     `Allow: /\n` +
     `# Unbounded per-entity detail: one uncached scan per URL, not in the sitemap.\n` +
     `# The collection routes (/api/v1/blocks, /api/v1/extrinsics,\n` +

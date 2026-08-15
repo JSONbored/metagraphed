@@ -120,9 +120,18 @@ describe("non-canonical hosts are withheld whole (#11002)", () => {
     expect(isCrawlable(robotsBody("metagraph.sh"), "/subnets")).toBe(true);
   });
 
-  it("the canonical host declares the Content Signals", () => {
+  it("the canonical host declares the Content Signals INSIDE the user-agent group", () => {
     const body = robotsBody("metagraph.sh");
     expect(body).toMatch(/^Content-Signal: search=yes, ai-input=yes, ai-train=yes$/m);
+    // Position is the property that makes it mean anything (#11174 shipped it
+    // above the first `User-agent` line, where it belongs to no group and RFC
+    // 9309 parsers ignore it). Asserting only that the line exists — which is
+    // all this test used to do — passes on a declaration nothing reads.
+    const lines = body.split("\n");
+    const group = lines.findIndex((line) => /^User-agent:/i.test(line));
+    const signal = lines.findIndex((line) => /^Content-Signal:/i.test(line));
+    expect(group, "a User-agent group must exist").toBeGreaterThanOrEqual(0);
+    expect(signal, "Content-Signal must come after the User-agent line").toBeGreaterThan(group);
     // And the non-canonical duplicate does not: it disallows everything, and a
     // usage signal on a host nobody may crawl is noise.
     expect(robotsBody("other.example")).not.toContain("Content-Signal");

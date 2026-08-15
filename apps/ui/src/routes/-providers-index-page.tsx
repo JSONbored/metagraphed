@@ -4,11 +4,13 @@ import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { ProviderIndexDirectory } from "@/components/metagraphed/provider-index-directory";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import {
   AsyncPanel,
   FilterChipRow,
+  PanelSkeleton,
   FilterSheet,
   QueryBar,
   QueryProgress,
@@ -97,6 +99,17 @@ export function ProvidersPage() {
         ]}
       >
         <ProvidersGrid view={view} />
+      </AsyncPanel>
+      {/* #11204: the grid above renders one screenful into the server-rendered
+          HTML, so 113 of 138 provider pages had no internal link anywhere on
+          the site. This is the complete index — see the component for why it is
+          not a duplicate of the grid. */}
+      <AsyncPanel
+        context="provider index"
+        fallback={<PanelSkeleton height="sm" className="mt-8" />}
+        retryQueryKeys={[metagraphedQueryKey("providers")]}
+      >
+        <ProviderIndexDirectory />
       </AsyncPanel>
       <ApiSourceFooter
         paths={["/api/v1/providers", "/api/v1/source-health"]}

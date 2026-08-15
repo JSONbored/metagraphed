@@ -257,8 +257,15 @@ export function robotsBody(host: string): string {
     // Content Signals (contentsignals.org): all three yes, deliberately —
     // public data that exists to be read and reasoned over by machines. The
     // API host carries the same declaration (scripts/build-artifacts.ts).
-    `Content-Signal: search=yes, ai-input=yes, ai-train=yes\n` +
+    //
+    // INSIDE the group, not above it. robots.txt is defined (RFC 9309) as
+    // groups introduced by a `User-agent` line, and Content Signals is a
+    // directive of the group it sits in — the spec's own example is
+    // `User-Agent: *` / `Content-Signal: ...` / `Allow: /`, in that order.
+    // Emitted above the first `User-agent` line it belongs to no group at all,
+    // which is how it shipped in #11174: present in the file, read by nothing.
     `User-agent: *\n` +
+    `Content-Signal: search=yes, ai-input=yes, ai-train=yes\n` +
     `Allow: /\n` +
     `# Unbounded per-entity detail: not in the sitemap, one uncached scan per URL.\n` +
     `# The hub indexes (/chain/blocks, /chain/extrinsics) stay crawlable, as does\n` +
