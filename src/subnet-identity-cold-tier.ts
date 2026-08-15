@@ -18,6 +18,7 @@ import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
 } from "./chain-identity-history.ts";
+import type { SubnetIdentityHistoryRow } from "../generated/lakehouse/types.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. The network feed adds netuid up front, exactly as
@@ -59,7 +60,10 @@ export async function loadSubnetIdentityHistoryColdTier(
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
 
-  const rows = await r2SqlQuery(
+  // `IDENTITY_COLUMNS` is every column of the generated row except `netuid`,
+  // and this read is already scoped to one -- so that column would be a
+  // constant in every row. `Omit` names which one is missing and why.
+  const rows = await r2SqlQuery<Omit<SubnetIdentityHistoryRow, "netuid">>(
     env,
     `SELECT ${IDENTITY_COLUMNS} FROM chain.subnet_identity_history` +
       ` WHERE ${where.join(" AND ")}` +
@@ -100,7 +104,9 @@ export async function loadChainIdentityHistoryColdTier(
   if (cap === null || cap <= 0 || cap > CHAIN_IDENTITY_HISTORY_LIMIT_MAX)
     return null;
 
-  const rows = await r2SqlQuery(
+  // The network feed puts `netuid` back, so this one is the whole generated
+  // row -- the same list, differing by exactly the column the scoped read drops.
+  const rows = await r2SqlQuery<SubnetIdentityHistoryRow>(
     env,
     `SELECT netuid, ${IDENTITY_COLUMNS} FROM chain.subnet_identity_history` +
       // data-api's exact feed order: newest block first, netuid as a stable

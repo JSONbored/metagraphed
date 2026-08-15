@@ -11,6 +11,10 @@
 
 import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
+import type {
+  AccountIdentityHistoryRow,
+  AccountIdentityRow,
+} from "../generated/lakehouse/types.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
@@ -38,7 +42,11 @@ export async function loadAccountIdentityColdTier(
   // SS58 guard -- refused rather than escaped.
   const addr = safeSs58Literal(ss58);
   if (addr === null) return null;
-  const rows = await r2SqlQuery(
+  // TYPED, because the SELECT list IS the generated row. `LATEST_COLUMNS` is
+  // `account` + the seven identity fields + `captured_at`, which is every column
+  // `AccountIdentityRow` declares -- so naming it here is a restatement of what
+  // the catalog already says rather than a guess about it.
+  const rows = await r2SqlQuery<AccountIdentityRow>(
     env,
     `SELECT ${LATEST_COLUMNS} FROM chain.account_identity WHERE account = '${addr}'`,
   );
@@ -76,7 +84,11 @@ export async function loadAccountIdentityHistoryColdTier(
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
 
-  const rows = await r2SqlQuery(
+  // The history frame swaps `account`/`captured_at` for `id`/`observed_at` and
+  // adds the diff hash, which is `AccountIdentityHistoryRow` minus `account` --
+  // and the read is already scoped to one account, so that column would be a
+  // constant. `Omit` states which one and why, rather than widening the type.
+  const rows = await r2SqlQuery<Omit<AccountIdentityHistoryRow, "account">>(
     env,
     `SELECT ${HISTORY_COLUMNS} FROM chain.account_identity_history` +
       ` WHERE ${where.join(" AND ")}` +
