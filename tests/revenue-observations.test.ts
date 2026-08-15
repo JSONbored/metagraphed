@@ -869,7 +869,7 @@ describe("the queue lane (#10715)", () => {
       path.join(repoRoot, "src/dead-letter.ts"),
       "utf8",
     );
-    assert.match(source, /"revenue-probes-dlq"/);
+    assert.match(source, /"probe-jobs-dlq"/);
   });
 
   test("both queues are declared, with a dead letter", async () => {
@@ -877,8 +877,8 @@ describe("the queue lane (#10715)", () => {
       path.join(repoRoot, "wrangler.jsonc"),
       "utf8",
     );
-    assert.match(wrangler, /"binding": "REVENUE_PROBES"/);
-    assert.match(wrangler, /"dead_letter_queue": "revenue-probes-dlq"/);
+    assert.match(wrangler, /"binding": "PROBE_JOBS"/);
+    assert.match(wrangler, /"dead_letter_queue": "probe-jobs-dlq"/);
   });
 
   test("the consumer branches on the queue name", async () => {
@@ -886,7 +886,7 @@ describe("the queue lane (#10715)", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /batch\.queue === REVENUE_PROBE_QUEUE/);
+    assert.match(api, /"revenue-probe": run[A-Za-z]+Jobs,/);
   });
 });
 
@@ -945,7 +945,7 @@ describe("the revenue queue, through the Worker's own handler", () => {
         env(
           { surfaces: [SURFACE] },
           {
-            REVENUE_PROBES: {
+            PROBE_JOBS: {
               async sendBatch(
                 messages: Array<{ body: { surface_id: string } }>,
               ) {
@@ -966,10 +966,10 @@ describe("the revenue queue, through the Worker's own handler", () => {
     // would be handed to the webhook deliverer.
     let acked = 0;
     const batch = {
-      queue: "revenue-probes",
+      queue: "probe-jobs",
       messages: [
         {
-          body: { surface_id: "sn-64-x" },
+          body: { job_type: "revenue-probe", surface_id: "sn-64-x" },
           ack: () => void (acked += 1),
           retry: () => {},
         },
@@ -991,7 +991,7 @@ describe("the revenue queue, through the Worker's own handler", () => {
       await handleScheduled(
         { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
         env(null, {
-          REVENUE_PROBES: { async sendBatch() {} },
+          PROBE_JOBS: { async sendBatch() {} },
         }) as never,
         { waitUntil: () => {} } as unknown as ExecutionContext,
       ),
@@ -1006,10 +1006,10 @@ describe("the revenue queue, through the Worker's own handler", () => {
     // that is not there.
     let acked = 0;
     const batch = {
-      queue: "revenue-probes",
+      queue: "probe-jobs",
       messages: [
         {
-          body: { surface_id: "sn-64-x" },
+          body: { job_type: "revenue-probe", surface_id: "sn-64-x" },
           ack: () => void (acked += 1),
           retry: () => {},
         },
@@ -1026,10 +1026,10 @@ describe("the revenue queue, through the Worker's own handler", () => {
   test("a withdrawn surface is acked at the Worker level too", async () => {
     let acked = 0;
     const batch = {
-      queue: "revenue-probes",
+      queue: "probe-jobs",
       messages: [
         {
-          body: { surface_id: "gone" },
+          body: { job_type: "revenue-probe", surface_id: "gone" },
           ack: () => void (acked += 1),
           retry: () => {},
         },

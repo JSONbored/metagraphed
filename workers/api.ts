@@ -176,6 +176,14 @@ import {
   isDeadLetterQueue,
 } from "../src/dead-letter.ts";
 import {
+  PROBE_JOBS_QUEUE,
+  type ProbeJobType,
+} from "../schemas-src/probe-jobs.ts";
+import {
+  declineUnknownProbeJobs,
+  partitionProbeJobs,
+} from "../src/probe-jobs.ts";
+import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
@@ -827,7 +835,6 @@ import { laneHealthStore } from "../src/lane-health-store.ts";
 import type { EnqueueResult, LaneMessage } from "../src/lane-queue.ts";
 import {
   OPERATIONAL_SURFACES_ARTIFACT,
-  REVENUE_PROBE_QUEUE,
   eligibleRevenueSurfaces,
   enqueueRevenueProbes,
   fetchRevenuePayload,
@@ -841,7 +848,6 @@ import {
   REVENUE_OBSERVATION_TABLES,
 } from "../src/read-store-tables.ts";
 import {
-  ATTRIBUTION_SWEEP_QUEUE,
   SWEEP_FETCH_TIMEOUT_MS,
   SWEEP_MAX_BYTES,
   enqueueSweeps,
@@ -856,7 +862,6 @@ import {
 import {
   ORIGIN_PROBE_MAX_BYTES,
   ORIGIN_PROBE_TIMEOUT_MS,
-  ORIGIN_REACHABILITY_QUEUE,
   enqueueOriginChecks,
   handleOriginBatch,
   normaliseBody,
@@ -867,7 +872,6 @@ import {
 import { githubAuthHeader } from "../src/link-status-core.ts";
 import {
   COMPUTE_DECLARATIONS_LANE,
-  COMPUTE_DECLARATIONS_QUEUE,
   enqueueComputeDeclarations,
   handleComputeDeclarationBatch,
   minComputeSurfaces,
@@ -2135,6 +2139,131 @@ export async function auditResponse(
   }
 }
 
+/**
+ * The four probe lanes, one function each.
+ *
+ * EXTRACTED WHEN THE QUEUES COLLAPSED (#10894). They were inline `if
+ * (batch.queue === ...)` blocks, which worked while a batch belonged to one
+ * lane; a partitioned dispatch calls them per group instead, and four bodies
+ * inline in a switch would have buried the routing they exist to serve.
+ *
+ * EACH OPENS ITS OWN STORE, and that is why they cannot be merged: `producerStore`
+ * refuses a table it was not told about, so the table list is per lane and a
+ * shared store would either over-grant or fail.
+ */
+async function runAttributionSweepJobs(
+  messages: LaneMessage[],
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<void> {
+  // One subnet per message. The registry record is read HERE rather than
+  // carried in the message, so a message that waited in the queue cannot
+  // sweep a stale copy of the subnet's surfaces.
+  const store = producerStore(env, ctx, [...ATTRIBUTION_SWEEP_TABLES]);
+  try {
+    const byNetuid = new Map(
+      (await sweepableSubnets(env)).map((s) => [s.netuid, s.record]),
+    );
+    await handleSweepBatch(messages, store.db as SweepStoreDb, {
+      fetchText: fetchSweepText,
+      recordFor: async (netuid: number) =>
+        sweepRecordFor(env, netuid, byNetuid.get(netuid)),
+    });
+  } finally {
+    store.close();
+  }
+}
+
+async function runRevenueProbeJobs(
+  messages: LaneMessage[],
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<void> {
+  // The eligible set is re-read HERE, so a message that waited cannot probe
+  // a surface the registry has since withdrawn.
+  const store = producerStore(env, ctx, [...REVENUE_OBSERVATION_TABLES]);
+  try {
+    const artifact = await readArtifact(
+      env,
+      `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
+    );
+    const byId = new Map(
+      eligibleRevenueSurfaces(
+        artifact.ok ? (artifact.data as Row | undefined) : null,
+      ).map((s) => [s.id, s]),
+    );
+    await handleRevenueProbeBatch(messages, store.db as RevenueStoreDb, {
+      fetchPayload: (url: string) => fetchRevenuePayload(url),
+      hash: sha256Hex,
+      now: Date.now,
+      surfaceFor: (id: string) => byId.get(id) ?? null,
+    });
+  } finally {
+    store.close();
+  }
+}
+
+async function runComputeDeclarationJobs(
+  messages: LaneMessage[],
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<void> {
+  const store = producerStore(env, ctx, [...COMPUTE_DECLARATIONS_TABLES]);
+  try {
+    await handleComputeDeclarationBatch(messages, store.db as ComputeStoreDb, {
+      // The same token the link lane uses. Without one the GitHub API
+      // allows 60 requests an hour, which still covers 17 surfaces --
+      // so a missing token degrades the rate limit, never the lane.
+      githubAuth: githubAuthHeader(env),
+    });
+  } finally {
+    store.close();
+  }
+}
+
+async function runOriginReachabilityJobs(
+  messages: LaneMessage[],
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<void> {
+  // The surfaces are resolved HERE, so a message that waited cannot check a
+  // stale copy of what the registry advertises.
+  const store = producerStore(env, ctx, [...ORIGIN_REACHABILITY_TABLES]);
+  try {
+    const byOrigin = surfacesByOrigin(await registeredSurfaces(env));
+    await handleOriginBatch(messages, store.db as OriginStoreDb, {
+      probe: probeOrigin,
+      surfacesFor: async (origin: string) => byOrigin.get(origin) ?? [],
+    });
+  } finally {
+    store.close();
+  }
+}
+
+/**
+ * Which lane owns which job type.
+ *
+ * A `Record<ProbeJobType, ...>` RATHER THAN A SWITCH, and the difference is not
+ * style. A switch needs a `default` for exhaustiveness -- `const _: never =
+ * jobType` -- and that branch is unreachable by construction, so it can never be
+ * covered and costs the patch-coverage gate a line nobody can test. This gets
+ * the same guarantee from the type: adding a member to `ProbeJobTypeSchema`
+ * without adding it here is a compile error, and there is no runtime arm to
+ * leave untested.
+ *
+ * `partitionProbeJobs` only ever yields keys from the vocabulary, so the lookup
+ * cannot miss.
+ */
+const PROBE_JOB_HANDLERS: Record<
+  ProbeJobType,
+  (messages: LaneMessage[], env: Env, ctx: ExecutionContext) => Promise<void>
+> = {
+  "attribution-sweep": runAttributionSweepJobs,
+  "origin-reachability": runOriginReachabilityJobs,
+  "revenue-probe": runRevenueProbeJobs,
+  "compute-declaration": runComputeDeclarationJobs,
+};
+
 export default {
   async fetch(request: Request, env: Env, ctx: Ctx) {
     const response = await withUsageTelemetry(request, env, ctx, () =>
@@ -2186,92 +2315,19 @@ export default {
       );
       return;
     }
-    if (batch.queue === ATTRIBUTION_SWEEP_QUEUE) {
-      // One subnet per message. The registry record is read HERE rather than
-      // carried in the message, so a message that waited in the queue cannot
-      // sweep a stale copy of the subnet's surfaces.
-      const store = producerStore(env, ctx, [...ATTRIBUTION_SWEEP_TABLES]);
-      try {
-        const byNetuid = new Map(
-          (await sweepableSubnets(env)).map((s) => [s.netuid, s.record]),
-        );
-        await handleSweepBatch(
-          batch.messages as unknown as LaneMessage[],
-          store.db as SweepStoreDb,
-          {
-            fetchText: fetchSweepText,
-            recordFor: async (netuid: number) =>
-              sweepRecordFor(env, netuid, byNetuid.get(netuid)),
-          },
-        );
-      } finally {
-        store.close();
-      }
-      return;
-    }
-    if (batch.queue === REVENUE_PROBE_QUEUE) {
-      // The eligible set is re-read HERE, so a message that waited cannot probe
-      // a surface the registry has since withdrawn.
-      const store = producerStore(env, ctx, [...REVENUE_OBSERVATION_TABLES]);
-      try {
-        const artifact = await readArtifact(
-          env,
-          `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
-        );
-        const byId = new Map(
-          eligibleRevenueSurfaces(
-            artifact.ok ? (artifact.data as Row | undefined) : null,
-          ).map((s) => [s.id, s]),
-        );
-        await handleRevenueProbeBatch(
-          batch.messages as unknown as LaneMessage[],
-          store.db as RevenueStoreDb,
-          {
-            fetchPayload: (url: string) => fetchRevenuePayload(url),
-            hash: sha256Hex,
-            now: Date.now,
-            surfaceFor: (id: string) => byId.get(id) ?? null,
-          },
-        );
-      } finally {
-        store.close();
-      }
-      return;
-    }
-    if (batch.queue === COMPUTE_DECLARATIONS_QUEUE) {
-      const store = producerStore(env, ctx, [...COMPUTE_DECLARATIONS_TABLES]);
-      try {
-        await handleComputeDeclarationBatch(
-          batch.messages as unknown as LaneMessage[],
-          store.db as ComputeStoreDb,
-          {
-            // The same token the link lane uses. Without one the GitHub API
-            // allows 60 requests an hour, which still covers 17 surfaces --
-            // so a missing token degrades the rate limit, never the lane.
-            githubAuth: githubAuthHeader(env),
-          },
-        );
-      } finally {
-        store.close();
-      }
-      return;
-    }
-    if (batch.queue === ORIGIN_REACHABILITY_QUEUE) {
-      // The surfaces are resolved HERE, so a message that waited cannot check a
-      // stale copy of what the registry advertises.
-      const store = producerStore(env, ctx, [...ORIGIN_REACHABILITY_TABLES]);
-      try {
-        const byOrigin = surfacesByOrigin(await registeredSurfaces(env));
-        await handleOriginBatch(
-          batch.messages as unknown as LaneMessage[],
-          store.db as OriginStoreDb,
-          {
-            probe: probeOrigin,
-            surfacesFor: async (origin: string) => byOrigin.get(origin) ?? [],
-          },
-        );
-      } finally {
-        store.close();
+    if (batch.queue === PROBE_JOBS_QUEUE) {
+      // ONE QUEUE, FOUR OWNERS (#10894). A batch may mix them freely, so it is
+      // partitioned before anything runs -- the handlers are not
+      // interchangeable, each opening a store scoped to its own tables.
+      const { byType, unrecognised } = partitionProbeJobs(
+        batch.messages as unknown as LaneMessage[],
+      );
+      // DECLINED FIRST, and never by falling through to a default branch. An
+      // unmatched discriminator must produce a verdict (#10827); a silent ack
+      // would make a half-deployed rename look like a healthy queue draining.
+      declineUnknownProbeJobs(unrecognised);
+      for (const [jobType, messages] of byType) {
+        await PROBE_JOB_HANDLERS[jobType](messages, env, ctx);
       }
       return;
     }
@@ -3181,14 +3237,14 @@ export const LANE_PRODUCERS: ReadonlyArray<{
     name: "attribution-sweep",
     enqueue: async (env) =>
       enqueueSweeps(
-        env.ATTRIBUTION_SWEEPS,
+        env.PROBE_JOBS,
         (await sweepableSubnets(env)).map((s) => s.netuid),
       ),
   },
   {
     name: "origin-reachability",
     enqueue: async (env) =>
-      enqueueOriginChecks(env.ORIGIN_REACHABILITY, [
+      enqueueOriginChecks(env.PROBE_JOBS, [
         ...surfacesByOrigin(await registeredSurfaces(env)).keys(),
       ]),
   },
@@ -3199,7 +3255,7 @@ export const LANE_PRODUCERS: ReadonlyArray<{
     // lane on the next tick with nothing else to change.
     enqueue: async (env) =>
       enqueueComputeDeclarations(
-        env.COMPUTE_DECLARATIONS,
+        env.PROBE_JOBS,
         minComputeSurfaces(await registeredSurfaces(env)),
       ),
   },
@@ -3211,7 +3267,7 @@ export const LANE_PRODUCERS: ReadonlyArray<{
         `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
       );
       return enqueueRevenueProbes(
-        env.REVENUE_PROBES,
+        env.PROBE_JOBS,
         eligibleRevenueSurfaces(
           artifact.ok ? (artifact.data as Row | undefined) : null,
         ).map((s) => s.id),

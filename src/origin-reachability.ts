@@ -51,6 +51,7 @@ import {
   type LaneMessage,
   type LaneQueue,
 } from "./lane-queue.ts";
+import { probeJob } from "./probe-jobs.ts";
 
 /** What one origin's check concluded. */
 export type OriginVerdict =
@@ -365,15 +366,13 @@ export interface OriginMessage {
   origin: string;
 }
 
-export const ORIGIN_REACHABILITY_QUEUE = "origin-reachability";
-
 export async function enqueueOriginChecks(
   queue: LaneQueue<OriginMessage> | null | undefined,
   origins: string[],
 ) {
   return enqueueAll(
     queue,
-    origins.map((origin) => ({ origin })),
+    origins.map((origin) => probeJob("origin-reachability", { origin })),
     "no_origins_to_check",
   );
 }

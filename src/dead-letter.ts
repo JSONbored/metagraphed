@@ -36,13 +36,24 @@ import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 export const DEAD_LETTER_LANES: Readonly<Record<string, string>> = {
   "sync-batches-dlq": "sync-batches-dlq",
   "webhook-deliveries-dlq": "webhook-deliveries-dlq",
-  // #10709: the attribution sweep. A subnet that keeps failing to fetch used to
-  // produce an `unreachable` row forever and nothing said the LANE was
-  // struggling; now it exhausts its retries and lands here as a verdict.
-  "attribution-sweeps-dlq": "attribution-sweeps-dlq",
-  // #10715: the origin-reachability lane, same argument as the sweep above.
-  "origin-reachability-dlq": "origin-reachability-dlq",
-  "revenue-probes-dlq": "revenue-probes-dlq",
+  // ONE DLQ FOR ALL FOUR PROBE LANES (#10894). It replaced
+  // `attribution-sweeps-dlq`, `origin-reachability-dlq`, `revenue-probes-dlq`
+  // and `compute-declarations-dlq`.
+  //
+  // THE FOURTH WAS NEVER IN THIS MAP, which is the defect the collapse also
+  // fixes. `compute-declarations-dlq` was declared as a consumer in
+  // wrangler.jsonc and omitted here, so `isDeadLetterQueue` returned false for
+  // it, every branch below missed it, and its dead letters fell through to the
+  // WEBHOOK handler -- deliveries POSTed at subscribers from a queue that has
+  // nothing to do with them. A per-queue list that must be extended by hand
+  // every time a lane is added is a list that eventually is not, which is the
+  // argument for one queue rather than a better list.
+  //
+  // #10709/#10715 established why these lanes need a dead letter at all: a
+  // target that keeps failing used to produce an `unreachable` row forever with
+  // nothing saying the LANE was struggling. It now exhausts its retries and
+  // lands here as a verdict.
+  "probe-jobs-dlq": "probe-jobs-dlq",
 };
 
 /**

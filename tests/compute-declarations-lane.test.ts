@@ -611,7 +611,7 @@ describe("the compute-declarations lane, end to end", () => {
     const result = await handleScheduled(
       { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
       env(registry, {
-        COMPUTE_DECLARATIONS: {
+        PROBE_JOBS: {
           async sendBatch(messages: Array<{ body: unknown }>) {
             for (const m of messages) sent.push(m.body);
           },
@@ -624,8 +624,19 @@ describe("the compute-declarations lane, end to end", () => {
     assert.ok(lane, "compute-declarations must be in LANE_PRODUCERS");
     assert.equal(lane.ok, true, JSON.stringify(lane));
     assert.equal(lane.enqueued, 1);
+    // FILTERED BY `job_type`, because the heartbeat runs every probe producer
+    // and they all write to ONE queue now (#10894). This capture therefore sees
+    // origin-reachability's messages beside this lane's, which is the
+    // discriminator earning its keep rather than a leak: a consumer partitions
+    // on exactly this field.
+    const mine = sent.filter(
+      (body) =>
+        (body as { job_type?: string }).job_type === "compute-declaration",
+    );
     // The README surface is not a declaration and must not be enqueued.
-    assert.deepEqual(sent, [{ netuid: 3, source_url: RAW }]);
+    assert.deepEqual(mine, [
+      { job_type: "compute-declaration", netuid: 3, source_url: RAW },
+    ]);
   });
 
   test("a declaration batch routes to THIS consumer, not the webhook path", async () => {
@@ -643,10 +654,10 @@ describe("the compute-declarations lane, end to end", () => {
     let acked = 0;
     let retried = 0;
     const batch = {
-      queue: "compute-declarations",
+      queue: "probe-jobs",
       messages: [
         {
-          body: { netuid: 3, source_url: RAW },
+          body: { job_type: "compute-declaration", netuid: 3, source_url: RAW },
           ack: () => {
             acked += 1;
           },
