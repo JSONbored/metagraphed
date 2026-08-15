@@ -7656,7 +7656,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       const netuid = Number(costToParticipateMatch[1]);
       const rows = await sql<ComputeDeclarationRow>`
         SELECT netuid, source_url, read_at_sha, observed_at, first_seen,
-               found, spec_version, miner, validator
+               found, spec_version, miner, validator, unscoped
         FROM compute_declarations
         WHERE netuid = ${netuid}
         ORDER BY source_url ASC`;

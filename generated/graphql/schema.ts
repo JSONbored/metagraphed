@@ -2916,7 +2916,7 @@ type SubnetCostToParticipate {
   declarations_read: Int!
 
   """
-  The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them.
+  The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. A file that draws no such distinction publishes under \`unscoped\` instead, with both roles null — read all three, because which one carries the answer is a property of the document rather than of the subnet.
   """
   declared_compute: SubnetDeclaredCompute!
 
@@ -2962,11 +2962,12 @@ type SubnetEntryCost {
 }
 
 """
-The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them.
+The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. A file that draws no such distinction publishes under \`unscoped\` instead, with both roles null — read all three, because which one carries the answer is a property of the document rather than of the subnet.
 """
 type SubnetDeclaredCompute {
   miner: SubnetDeclaredComputeSpec
   validator: SubnetDeclaredComputeSpec
+  unscoped: SubnetDeclaredComputeSpec
   evidence: SubnetComputeDeclarationEvidence
 }
 
@@ -3053,7 +3054,7 @@ type SubnetComputeDeclarationEvidence {
 
 type SubnetComputeDeclaration {
   """
-  The citation. \`read_at_sha\` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at \`main\`, which moves under the claim.
+  The citation. \`read_at_sha\` is the commit that was HEAD when the file was read — 14 of the 18 registered surfaces point at \`main\`, which moves under the claim.
   """
   evidence: SubnetComputeDeclarationEvidence!
 
@@ -3063,6 +3064,11 @@ type SubnetComputeDeclaration {
   found: Boolean!
   miner: SubnetDeclaredComputeSpec
   validator: SubnetDeclaredComputeSpec
+
+  """
+  Requirements this file declared WITHOUT saying whose they are — a flat \`compute_spec\` with no \`miner\`/\`validator\` split. Non-null only for a document that made no role distinction, in which case \`miner\` and \`validator\` are both null because that is true of the file. Same shape as the other two, so the four-valued GPU answer reads identically. Never a guess at which role was meant: attributing an unattributed requirement is the one thing this key exists to avoid.
+  """
+  unscoped: SubnetDeclaredComputeSpec
 }
 
 type SubnetParticipationEarnings {

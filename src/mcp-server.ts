@@ -7784,6 +7784,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       `READ, which is the state ${SUBNETS_WITHOUT_A_DECLARATION} of ${SUBNETS_IN_REGISTRY} subnets are in, and is never a ` +
       "'this subnet needs no GPU'. A CPU-only subnet reports no GPU cost " +
       "rather than a zero: those are different claims. " +
+      "READ ALL THREE OF `miner`, `validator` AND `unscoped`. Some subnets " +
+      "publish a flat compute_spec that never says whose requirements it " +
+      "states; those land in `unscoped`, and for those `miner` and `validator` " +
+      "are BOTH null because that is true of the file, not because nothing " +
+      "was declared. Reporting 'no requirements' off `miner` alone is wrong " +
+      "for exactly the subnets that ask for the most, and you must NOT " +
+      "attribute an unscoped requirement to a role the document did not name. " +
       "`not_modelled` is served in the payload and every entry in it applies " +
       "to any answer you give from this tool. " +
       "Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.",

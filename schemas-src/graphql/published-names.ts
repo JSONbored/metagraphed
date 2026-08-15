@@ -484,12 +484,16 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetCostToParticipateArtifactEntryCost: "SubnetEntryCost",
   SubnetCostToParticipateArtifactDeclaredCompute: "SubnetDeclaredCompute",
   SubnetCostToParticipateArtifactDeclarations: "SubnetComputeDeclaration",
-  // ONE ROLE SPEC, FOUR USE SITES. `declared_compute.miner`,
-  // `declared_compute.validator` and both of their twins inside `declarations`
-  // are the same Zod object, so the generator would mint four identical types
-  // (and five nested ones each) that no consumer could compare. Every use site
-  // is aliased to the one published name for the same reason the two
-  // miner-fairness concentration lenses are.
+  // ONE ROLE SPEC, SIX USE SITES. `declared_compute.miner`,
+  // `declared_compute.validator`, `declared_compute.unscoped` and all three of
+  // their twins inside `declarations` are the same Zod object, so the generator
+  // would mint six identical types (and five nested ones each) that no consumer
+  // could compare. Every use site is aliased to the one published name for the
+  // same reason the two miner-fairness concentration lenses are.
+  //
+  // `unscoped` was the sixth (#11284 follow-up): a declaration that names no
+  // role publishes there, and it is the SAME shape deliberately -- a reader
+  // who understands SubnetDeclaredComputeSpec understands it already.
   SubnetCostToParticipateArtifactDeclarationsEvidence:
     "SubnetComputeDeclarationEvidence",
   SubnetCostToParticipateArtifactDeclarationsMiner: "SubnetDeclaredComputeSpec",
@@ -510,6 +514,16 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetCostToParticipateArtifactDeclarationsValidatorNetwork:
     "SubnetDeclaredNetwork",
   SubnetCostToParticipateArtifactDeclarationsValidatorStorage:
+    "SubnetDeclaredStorage",
+  SubnetCostToParticipateArtifactDeclarationsUnscoped:
+    "SubnetDeclaredComputeSpec",
+  SubnetCostToParticipateArtifactDeclarationsUnscopedCpu: "SubnetDeclaredCpu",
+  SubnetCostToParticipateArtifactDeclarationsUnscopedGpu: "SubnetDeclaredGpu",
+  SubnetCostToParticipateArtifactDeclarationsUnscopedMemory:
+    "SubnetDeclaredMemory",
+  SubnetCostToParticipateArtifactDeclarationsUnscopedNetwork:
+    "SubnetDeclaredNetwork",
+  SubnetCostToParticipateArtifactDeclarationsUnscopedStorage:
     "SubnetDeclaredStorage",
   SubnetCostToParticipateArtifactDeclaredComputeEvidence:
     "SubnetComputeDeclarationEvidence",
@@ -534,6 +548,18 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetCostToParticipateArtifactDeclaredComputeValidatorNetwork:
     "SubnetDeclaredNetwork",
   SubnetCostToParticipateArtifactDeclaredComputeValidatorStorage:
+    "SubnetDeclaredStorage",
+  SubnetCostToParticipateArtifactDeclaredComputeUnscoped:
+    "SubnetDeclaredComputeSpec",
+  SubnetCostToParticipateArtifactDeclaredComputeUnscopedCpu:
+    "SubnetDeclaredCpu",
+  SubnetCostToParticipateArtifactDeclaredComputeUnscopedGpu:
+    "SubnetDeclaredGpu",
+  SubnetCostToParticipateArtifactDeclaredComputeUnscopedMemory:
+    "SubnetDeclaredMemory",
+  SubnetCostToParticipateArtifactDeclaredComputeUnscopedNetwork:
+    "SubnetDeclaredNetwork",
+  SubnetCostToParticipateArtifactDeclaredComputeUnscopedStorage:
     "SubnetDeclaredStorage",
   SubnetCostToParticipateArtifactEarnings: "SubnetParticipationEarnings",
   SubnetTreasuryArtifact: "SubnetTreasury",

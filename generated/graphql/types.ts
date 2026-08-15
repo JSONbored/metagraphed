@@ -6145,11 +6145,13 @@ export type SubnetBurnHistoryPoint = {
 
 export type SubnetComputeDeclaration = {
   __typename?: 'SubnetComputeDeclaration';
-  /** The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 17 registered surfaces point at `main`, which moves under the claim. */
+  /** The citation. `read_at_sha` is the commit that was HEAD when the file was read — 14 of the 18 registered surfaces point at `main`, which moves under the claim. */
   evidence: SubnetComputeDeclarationEvidence;
   /** Did the fetch yield a parseable compute_spec? `false` IS A MEASUREMENT — the file was read at that commit and declared nothing — and is distinct from a subnet that registers no min_compute surface at all, which has no declaration here. */
   found: Scalars['Boolean']['output'];
   miner?: Maybe<SubnetDeclaredComputeSpec>;
+  /** Requirements this file declared WITHOUT saying whose they are — a flat `compute_spec` with no `miner`/`validator` split. Non-null only for a document that made no role distinction, in which case `miner` and `validator` are both null because that is true of the file. Same shape as the other two, so the four-valued GPU answer reads identically. Never a guess at which role was meant: attributing an unattributed requirement is the one thing this key exists to avoid. */
+  unscoped?: Maybe<SubnetDeclaredComputeSpec>;
   validator?: Maybe<SubnetDeclaredComputeSpec>;
 };
 
@@ -6243,7 +6245,7 @@ export type SubnetCostToParticipate = {
   declarations: Array<SubnetComputeDeclaration>;
   /** How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 129 subnets register none, and a card with `declarations_read: 0` makes no claim about what running here takes. */
   declarations_read: Scalars['Int']['output'];
-  /** The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. */
+  /** The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. A file that draws no such distinction publishes under `unscoped` instead, with both roles null — read all three, because which one carries the answer is a property of the document rather than of the subnet. */
   declared_compute: SubnetDeclaredCompute;
   /** What miners here actually earned, projected from /api/v1/subnets/{netuid}/miner-fairness — never recomputed. Present so a floor-to-run can never sit on the page without the distribution that says whether running is worth it. Deliberately carries NO mean earning: that would invite exactly the cost-minus-revenue arithmetic these numbers do not support. */
   earnings?: Maybe<SubnetParticipationEarnings>;
@@ -6257,11 +6259,12 @@ export type SubnetCostToParticipate = {
   schema_version: Scalars['Int']['output'];
 };
 
-/** The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. */
+/** The headline declaration: the first read that found a spec. Miner and validator are kept apart because a subnet whose validator needs a GPU and whose miner does not is ordinary, and one answer for both would be wrong for one of them. A file that draws no such distinction publishes under `unscoped` instead, with both roles null — read all three, because which one carries the answer is a property of the document rather than of the subnet. */
 export type SubnetDeclaredCompute = {
   __typename?: 'SubnetDeclaredCompute';
   evidence?: Maybe<SubnetComputeDeclarationEvidence>;
   miner?: Maybe<SubnetDeclaredComputeSpec>;
+  unscoped?: Maybe<SubnetDeclaredComputeSpec>;
   validator?: Maybe<SubnetDeclaredComputeSpec>;
 };
 
@@ -12902,6 +12905,7 @@ export type SubnetComputeDeclarationResolvers<ContextType = GqlContext, ParentTy
   evidence?: Resolver<ResolversTypes['SubnetComputeDeclarationEvidence'], ParentType, ContextType>;
   found?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   miner?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
+  unscoped?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
   validator?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
 }>;
 
@@ -12980,6 +12984,7 @@ export type SubnetCostToParticipateResolvers<ContextType = GqlContext, ParentTyp
 export type SubnetDeclaredComputeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeclaredCompute'] = ResolversParentTypes['SubnetDeclaredCompute']> = ResolversObject<{
   evidence?: Resolver<Maybe<ResolversTypes['SubnetComputeDeclarationEvidence']>, ParentType, ContextType>;
   miner?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
+  unscoped?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
   validator?: Resolver<Maybe<ResolversTypes['SubnetDeclaredComputeSpec']>, ParentType, ContextType>;
 }>;
 

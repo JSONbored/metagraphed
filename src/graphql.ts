@@ -3332,6 +3332,7 @@ const rootValue = {
       declared_compute: data.declared_compute ?? {
         miner: null,
         validator: null,
+        unscoped: null,
         evidence: null,
       },
       declarations: data.declarations ?? [],
