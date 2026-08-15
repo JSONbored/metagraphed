@@ -16,6 +16,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
+import { stripJsonComments } from "../scripts/lib.ts";
 import { DATA_API_CRON_LANES } from "../workers/data-api.ts";
 import { TABLE_FRESHNESS_CRON, TAO_USD_INDEX_CRON } from "../workers/config.ts";
 import { NEON_PRUNE_CRON } from "../src/neon-prune.ts";
@@ -30,7 +31,11 @@ const CONFIG = "wrangler.data.jsonc";
  * lifting the quoted strings out of it is exact rather than approximate.
  */
 function declaredCrons(path: string): string[] {
-  const source = readFileSync(path, "utf8");
+  // Comments stripped first -- a quoted string inside a `//` comment is not a
+  // declaration. See the long note on the same helper in
+  // tests/api-crons-have-handlers.test.ts: reading comments as declarations
+  // makes the HANDLED direction pass for a cron that was never registered.
+  const source = stripJsonComments(readFileSync(path, "utf8"));
   const block = /"crons"\s*:\s*\[([^\]]*)\]/.exec(source);
   assert.ok(
     block,

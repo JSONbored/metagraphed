@@ -3665,12 +3665,15 @@ async function dispatchScheduled(
         );
         // COVERAGE, on the same tick that wrote it (#10308).
         //
-        // Deliberately not its own cron. Workers Builds deploys code but not
-        // cron triggers, so a new expression would need a separate
-        // `wrangler triggers deploy` and would silently never fire until
-        // someone ran it -- and a watchdog that does not run is worse than
-        // none, because the lane card then reads "no verdict" rather than
-        // "nobody checked".
+        // Deliberately not its own cron -- but NOT for the reason this comment
+        // used to give. It cited Workers Builds deploying code without cron
+        // triggers; measured 2026-08-15 that is false for this Worker (#11362's
+        // new schedule appeared two seconds after its deploy, with no manual
+        // step). See workers/config.ts's LANE_HEARTBEAT_EXTRA_CRON note.
+        //
+        // The reasons that survive are the ones below: a minute on this grid is
+        // scarce (three were free), and riding the capture tick is when the
+        // answer is knowable at all.
         //
         // Riding the capture tick is also when the answer is knowable: the
         // rows have just landed, so "how many netuids does the newest stamp

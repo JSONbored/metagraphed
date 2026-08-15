@@ -1206,9 +1206,14 @@
       // Replaces the three per-lane crons that used to sit on 17, 24 and 56 --
       // each of which only read a list and enqueued it. A new lane joins
       // LANE_PRODUCERS in workers/api.ts and needs no minute here at all, which
-      // matters on a grid that was 97% full. NOTE: Workers Builds does not apply
-      // cron triggers; this one needs `wrangler triggers deploy` or nothing
-      // fires.
+      // matters on a grid that was 97% full. NOTE: this Worker's deploy DOES
+      // apply cron triggers -- measured 2026-08-15, #11362's merge deployed at
+      // 17:40:17Z and the new schedule's created_on was 17:40:19Z with no
+      // `wrangler triggers deploy` by hand. The blanket "Workers Builds does not
+      // apply cron triggers" note this replaces came from wrangler.registry.jsonc
+      // on 2026-08-08, a different Worker with its own build command. Verify per
+      // Worker via GET /accounts/{account}/workers/scripts/{script}/schedules
+      // rather than assuming either way.
       "26 * * * *",
       // 17,56 = the rest of the heartbeat grid (#10709). The lanes are gated on
       // a declared cadence (src/lane-scheduler.ts), so these ticks do NOT make

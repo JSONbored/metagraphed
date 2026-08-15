@@ -316,11 +316,15 @@ export function evaluateTaoUsdIndex({
  * Load the recent window and record a verdict.
  *
  * Runs on the freshness cron rather than on its own: `tao_usd_index`'s
- * staleness is already checked there, the store is already reachable, and a new
- * cron expression would need `wrangler triggers deploy` to take effect (Workers
- * Builds deploys code, not schedules) -- a deployment step that is easy to
- * forget and silently leaves the watchdog never running, which is the exact
- * failure this issue is about.
+ * staleness is already checked there, and the store is already reachable.
+ *
+ * This previously also cited a manual `wrangler triggers deploy` as a reason.
+ * Measured 2026-08-15, that is false for this Worker -- #11362's new schedule
+ * was created two seconds after the merge deployed, with no manual step (see
+ * workers/config.ts's LANE_HEARTBEAT_EXTRA_CRON note). What still argues
+ * against a dedicated cron is the grid: only three every-hour minutes were
+ * free, and a watchdog that shares a tick with the thing it watches costs none
+ * of them.
  */
 export async function runTaoUsdIndexWatchdog(
   env: unknown,
