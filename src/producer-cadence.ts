@@ -127,6 +127,126 @@ export const PRODUCER_CADENCE_SECS = {
 export type ProducerLane = keyof typeof PRODUCER_CADENCE_SECS;
 
 /**
+ * Which of those cadences belong to a WORKER CRON in this repo, and to which
+ * `workers/config.ts` constant (#10709).
+ *
+ * ## The drift this closes
+ *
+ * Most entries above are transcribed from metagraphed-infra's ansible defaults
+ * — this repo cannot check those, and the header says so. But two of them are
+ * OURS: the lane runs on a cron declared a few files away, so its interval is
+ * stated TWICE, in two languages, with nothing comparing them.
+ *
+ * That is not hypothetical. #9632 added `top_holders_holdings: 10_800` beside
+ * `TOP_HOLDERS_HOLDINGS_REFRESH_CRON = "49 *\/3 * * *"` in the same change, and
+ * nothing would have failed if one had said three hours and the other six.
+ *
+ * ## Why the consequence is an alarm rather than a stale lane
+ *
+ * The number here is what every staleness watchdog sizes its bound from —
+ * `missedTicksMs(lane, n)`. A cadence that disagrees with the cron does not
+ * make the producer late; it makes the ALARM wrong, in whichever direction the
+ * error points:
+ *
+ *   - declared too LONG  → the bound never fires, and a dead lane is silent.
+ *     That is #10566's shape.
+ *   - declared too SHORT → a healthy lane reads `stale` for most of every
+ *     cycle. That is #10329 (`account_identity` bounded at half a tick) and
+ *     #9301, both of which cost a real alarm and the trust in it.
+ *
+ * Both are invisible from either side, because each file is internally correct.
+ *
+ * ## Deliberately partial
+ *
+ * Only the lanes whose producer is a cron in THIS repo can be checked, so this
+ * map names them explicitly rather than deriving the set. An infra-poller
+ * cadence has no local expression to compare against, and inventing one would
+ * be a second copy of the thing this exists to stop.
+ * tests/producer-cadence.test.ts asserts the agreement.
+ */
+export const WORKER_CRON_LANES: Readonly<
+  Partial<Record<ProducerLane, string>>
+> = {
+  top_holders_flow: "TOP_HOLDERS_FLOW_CRON",
+  top_holders_holdings: "TOP_HOLDERS_HOLDINGS_REFRESH_CRON",
+} as const;
+
+/**
+ * How often a cron expression fires, in seconds — or null where the shape is
+ * not one this can reason about.
+ *
+ * NULL RATHER THAN A GUESS. A list expression (`3,13,23,...`) has no single
+ * interval unless the values are evenly spaced, and `*\/n` inside an hour field
+ * only divides evenly when n divides 24. Returning a number for a shape it
+ * cannot actually measure would put a wrong bound under a watchdog, which is
+ * the failure this whole module exists to prevent — so an unrecognised shape is
+ * reported as unmeasurable and the caller decides.
+ *
+ * Handles the shapes this repo's lane crons actually use:
+ *   `M H * * *`      once a day
+ *   `M *\/N * * *`    every N hours
+ *   `M * * * *`      hourly
+ *   `M1,M2,... * * * *`  evenly-spaced minutes within an hour
+ */
+export function cronIntervalSecs(expression: string): number | null {
+  const fields = expression.trim().split(/\s+/);
+  if (fields.length !== 5) return null;
+  const [minute, hour, dom, month, dow] = fields as [
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  // Anything narrowing the DAY is not a fixed interval in seconds.
+  if (dom !== "*" || month !== "*" || dow !== "*") return null;
+
+  const minutes = evenlySpaced(minute, 60);
+  if (minutes === null) return null;
+
+  if (hour === "*") return minutes * 60;
+  const hourStep = /^\*\/(\d+)$/.exec(hour);
+  if (hourStep) {
+    const step = Number(hourStep[1]);
+    // 24 % step !== 0 means the last window of the day is short, so the
+    // interval is not constant.
+    if (!Number.isInteger(step) || step <= 0 || 24 % step !== 0) return null;
+    // A step within the hour AND across hours is two cadences, not one.
+    if (minutes !== 60) return null;
+    return step * 3_600;
+  }
+  // A single fixed hour: once a day, and only when the minute is fixed too.
+  if (/^\d+$/.test(hour)) return minutes === 60 ? 86_400 : null;
+  return null;
+}
+
+/** The interval a minute field describes, in minutes, or null when its values
+ * are not evenly spaced. `*` and `*\/n` are spaced by construction; a list is
+ * only if every gap matches, INCLUDING the wrap back to the first value. */
+function evenlySpaced(field: string, period: number): number | null {
+  if (field === "*") return 1;
+  const step = /^\*\/(\d+)$/.exec(field);
+  if (step) {
+    const n = Number(step[1]);
+    return Number.isInteger(n) && n > 0 && period % n === 0 ? n : null;
+  }
+  const values = field.split(",").map(Number);
+  if (values.some((v) => !Number.isInteger(v) || v < 0 || v >= period)) {
+    return null;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  if (sorted.length === 1) return period;
+  const gap = sorted[1]! - sorted[0]!;
+  for (let i = 1; i < sorted.length; i += 1) {
+    if (sorted[i]! - sorted[i - 1]! !== gap) return null;
+  }
+  // The wrap: the last value back round to the first must be the same gap, or
+  // the lane has a long window once a period.
+  if (period - sorted[sorted.length - 1]! + sorted[0]! !== gap) return null;
+  return gap;
+}
+
+/**
  * Which `lane_health` lane names are written by a producer we know the cadence
  * of (#10333).
  *
