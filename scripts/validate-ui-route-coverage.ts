@@ -12,7 +12,31 @@
 // current number in one place, fails when it grows, and asks to be lowered
 // whenever anyone renders one.
 //
-// ## What counts as "referenced"
+// ## What counts as "referenced" -- NARROWED (#10517)
+//
+// CODE, not prose. The evidence is `.ts/.tsx/.json` under apps/ui, with
+// `<ApiSourceFooter paths={[...]} />` arrays stripped before matching. At a
+// ceiling of 25 this check was a ratchet against a backlog and the strength of
+// each reference barely mattered; at 0 it gets read as "every published route
+// is rendered", and a claim stronger than its evidence is the shape this repo
+// keeps finding elsewhere.
+//
+// BOTH NARROWINGS WERE MEASURED FIRST, 2026-08-15, against the 215 published
+// routes:
+//
+//   stripping ApiSourceFooter `paths` arrays   removes 0 routes
+//   dropping .mdx from the evidence            removes 1 route
+//
+// So the footer case -- the one most likely to happen by accident, since
+// adding a path to a footer is the natural thing to do when you touch a page
+// -- has not happened yet, and closing it costs nothing. The prose case HAS
+// happened: `/api/v1/accounts/{ss58}/identity-history` was cleared by a single
+// row of a markdown table, which is why it is now named in PROSE_ONLY_ROUTES
+// rather than counted as covered.
+//
+// WHAT IS STILL NOT PROVED: that a referencing component is ever MOUNTED. A
+// reference behind a collapsed disclosure counts, and static analysis cannot
+// reasonably decide otherwise. A green check is not a visible panel.
 //
 // A route is referenced when its path appears in apps/ui source, with each
 // `{token}` matching ONE path segment however it is constructed -- a literal,
@@ -69,11 +93,46 @@ import { repoRoot } from "./lib.ts";
  */
 export const MAX_UNREFERENCED_ROUTES = 0;
 
+/**
+ * Routes whose only trace in `apps/ui` is DOCUMENTATION PROSE, named one at a
+ * time with the reason (#10517).
+ *
+ * The ceiling above says "add it to a named exemption with a reason instead"
+ * rather than raising the number, because an undifferentiated allowance hides
+ * exactly what it names. This is that list, and it is meant to shrink.
+ *
+ * Each entry is a published route the UI does not consume. It is NOT an
+ * assertion that it should never be consumed -- it is the gap, written down
+ * where it can be read, instead of being cleared by a table row.
+ */
+export const PROSE_ONLY_ROUTES: readonly string[] = [
+  // Its whole presence in apps/ui is one row of `content/docs/accounts.mdx`:
+  // "| `GET /api/v1/accounts/{ss58}/identity-history` | Diff timeline of
+  // identity changes. |". No query, no component, nothing fetches it. Its two
+  // siblings ARE rendered -- `/chain/identity-history` and
+  // `/subnets/{netuid}/identity-history` both have real fetches in
+  // `lib/metagraphed/queries.ts` -- which is what makes this one an omission
+  // rather than a decision.
+  "/api/v1/accounts/{ss58}/identity-history",
+];
+
 /** Feed routes: consumed by feed readers, not by our UI. */
 const FEED_PREFIX = "/api/v1/feeds/";
 
 /** Network-prefixed testnet variants mirror their mainnet twin's rendering. */
 const NETWORK_PREFIX = "/api/v1/{network}/";
+
+/**
+ * `<ApiSourceFooter paths={[...]} />` — a plain string array, removed from the
+ * evidence before matching (#10517).
+ *
+ * Adding a route to a footer is the natural thing to do when you touch a page,
+ * and it would satisfy a string match while rendering nothing. MEASURED
+ * 2026-08-15: stripping these removes ZERO routes from the referenced set, so
+ * this costs nothing today and closes the hole before it is used -- which is
+ * the cheap moment to do it.
+ */
+const FOOTER_PATHS = /paths=\{\[[\s\S]*?\]\}/g;
 
 const escapeLiteral = (segment: string): string =>
   segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -120,7 +179,7 @@ function uiSource(): string {
       if (statSync(full).isDirectory()) {
         // The generated reference tree names every route by construction.
         if (!full.includes("api-reference")) walk(full);
-      } else if (/\.(ts|tsx|mdx|json)$/.test(name)) files.push(full);
+      } else if (/\.(ts|tsx|json)$/.test(name)) files.push(full);
     }
   };
   for (const root of ["apps/ui/src", "apps/ui/content"]) {
@@ -130,7 +189,10 @@ function uiSource(): string {
       // A checkout without apps/ui is not this check's problem to report.
     }
   }
-  return files.map((file) => readFileSync(file, "utf8")).join("\n");
+  return files
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n")
+    .replace(FOOTER_PATHS, "");
 }
 
 // The check runs only when this file is EXECUTED, never when it is imported.
@@ -150,7 +212,23 @@ function main(): void {
   ) as { paths: Record<string, Record<string, unknown>> };
 
   const routes = publishedRoutes(openapi);
-  const unreferenced = unreferencedRoutes(routes, uiSource());
+  // The exemption is applied AFTER matching, never by removing the routes from
+  // the set first: an entry that has since been rendered must show up as a
+  // list to shorten rather than sit there being silently true.
+  const missing = unreferencedRoutes(routes, uiSource());
+  const unreferenced = missing.filter(
+    (route) => !PROSE_ONLY_ROUTES.includes(route),
+  );
+  const stale = PROSE_ONLY_ROUTES.filter((route) => !missing.includes(route));
+  if (stale.length > 0) {
+    console.error(
+      `PROSE_ONLY_ROUTES lists ${stale.length} route(s) that apps/ui now references. ` +
+        `Delete them from the list in scripts/validate-ui-route-coverage.ts -- an ` +
+        `exemption nobody removes is the allowlist this check exists to avoid.\n` +
+        stale.map((route) => `  - ${route}`).join("\n"),
+    );
+    process.exit(1);
+  }
 
   if (unreferenced.length > MAX_UNREFERENCED_ROUTES) {
     console.error(
@@ -198,11 +276,16 @@ function main(): void {
   // At a ceiling of 25 that slack did not matter: the check was a ratchet
   // against a backlog. At 0 it gets read as a guarantee, so the wording says
   // what was actually measured. #10517 tracks narrowing the evidence.
+  const exempt =
+    PROSE_ONLY_ROUTES.length > 0
+      ? ` ${PROSE_ONLY_ROUTES.length} route(s) are referenced ONLY by documentation prose and ` +
+        `are exempt by name: ${PROSE_ONLY_ROUTES.join(", ")}.`
+      : "";
   console.log(
     MAX_UNREFERENCED_ROUTES === 0
-      ? `UI route coverage: all ${routes.length} published route(s) are referenced by apps/ui ` +
-          `(feeds excluded, their consumer is external).`
-      : `UI route coverage: ${routes.length - unreferenced.length}/${routes.length} published route(s) referenced, ` +
-          `${unreferenced.length} not (at the ceiling; feeds excluded, their consumer is external).`,
+      ? `UI route coverage: all ${routes.length - PROSE_ONLY_ROUTES.length} published route(s) are ` +
+          `referenced by apps/ui CODE (feeds excluded, their consumer is external).${exempt}`
+      : `UI route coverage: ${routes.length - unreferenced.length}/${routes.length} published route(s) referenced by code, ` +
+          `${unreferenced.length} not (at the ceiling; feeds excluded).${exempt}`,
   );
 }
