@@ -347,7 +347,26 @@ export function withLaneHealth(
       // observation drifts to zero for a mirror that writes many rows per
       // pass, and a declaration alone cannot notice a lane whose real interval
       // has moved away from the configured one.
-      const cadence = laneSilenceCadenceMs(row.lane, cadences?.[row.lane]);
+      // A DEAD-LETTER LANE'S SILENCE IS THE GOAL, NOT AN ABSENCE (#11297).
+      //
+      // `laneSilenceCadenceMs` derives a bound from the observed gaps between
+      // a lane's rows. For every other lane those gaps are its heartbeat. For a
+      // `*-dlq` they are the spacing between FAILURES, so a queue that lost
+      // messages roughly hourly for an afternoon gets handed a "cadence" of an
+      // hour -- and three hours later the card reports `unknown`, detail
+      // `no verdict for 186m (cadence ~60m)`, which reads as "this lane was
+      // expected to lose a message every hour and has not".
+      //
+      // Measured on production 2026-08-15, that exact string, on a queue whose
+      // last loss was three hours earlier and whose causes were all fixed.
+      //
+      // So they are exempt from the silence treatment entirely. What remains is
+      // the honest set: a recent loss is `stale` and counted, a loss past the
+      // residue window is dropped above, and a queue that has never lost
+      // anything has no row at all.
+      const cadence = DEAD_LETTER_LANE_NAMES.has(row.lane)
+        ? null
+        : laneSilenceCadenceMs(row.lane, cadences?.[row.lane]);
       const quietFor = nowMs - row.checked_at;
       const silent =
         typeof cadence === "number" &&
