@@ -89,6 +89,7 @@ import {
   subnetAgeDays,
   formatSubnetAge,
 } from "@/lib/metagraphed/format";
+import { SubnetCategoryLinks } from "@/components/metagraphed/subnet-category-links";
 import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { joinEconomics, joinHealth, matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
@@ -349,10 +350,13 @@ export function SubnetsPage() {
         artifacts={search.section === "rankings" ? undefined : ["/metagraph/subnets.json"]}
       />
       {/*
-        #11316: a REAL anchor, not prose naming a path. Sitemap-only is the
-        profile that lands a URL in "Crawled - currently not indexed" (#11277),
-        and the faceted page needs an inbound link from the hub it filters.
+        #11316 / #11342: REAL anchors, not prose naming a path. Sitemap-only is
+        the profile that lands a URL in "Crawled - currently not indexed"
+        (#11277), and every faceted page needs an inbound link from the hub it
+        filters. The category list is derived from the rendered rows, so a
+        category the registry stops deriving stops being linked.
       */}
+      <SubnetCategoryLinks />
       <p className="mt-8 mg-type-caption text-ink-muted">
         Looking for the ones you can integrate with?{" "}
         <Link to="/subnets/with-api" className="text-accent-text hover:underline">

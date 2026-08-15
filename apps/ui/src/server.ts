@@ -10,6 +10,7 @@ import {
   siteGraphNodes,
   stringifyJsonLd,
 } from "./lib/metagraphed/json-ld";
+import { categoryPath, MIN_CATEGORY_SUBNETS } from "./lib/metagraphed/subnet-categories";
 import { isoTimestamp } from "./lib/metagraphed/freshness";
 import { API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
@@ -368,14 +369,38 @@ async function buildSitemap(): Promise<Response> {
     });
     if (res.ok) {
       const payload = (await res.json()) as {
-        data?: { subnets?: Array<{ netuid?: unknown; updated_at?: unknown }> };
+        data?: {
+          subnets?: Array<{
+            netuid?: unknown;
+            updated_at?: unknown;
+            derived_categories?: unknown;
+          }>;
+        };
       };
+      // #11342: category pages are derived from the SAME response, so the
+      // sitemap can never advertise a category the registry stopped deriving,
+      // nor miss one it started. Counted first, because a category below the
+      // threshold renders a "not enough to compare" page and must not be
+      // offered to a crawler as though it were a listing.
+      const categoryCounts = new Map<string, number>();
       for (const subnet of payload.data?.subnets ?? []) {
         if (Number.isInteger(subnet?.netuid)) {
           entries.push({
             loc: `${SITE_ORIGIN}/subnets/${String(subnet.netuid)}`,
             lastmod: sitemapLastmod(subnet?.updated_at),
           });
+        }
+        for (const category of Array.isArray(subnet?.derived_categories)
+          ? subnet.derived_categories
+          : []) {
+          if (typeof category === "string" && category) {
+            categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+          }
+        }
+      }
+      for (const [category, count] of [...categoryCounts].sort()) {
+        if (count >= MIN_CATEGORY_SUBNETS) {
+          entries.push({ loc: `${SITE_ORIGIN}${categoryPath(category)}` });
         }
       }
     }

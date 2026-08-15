@@ -69,6 +69,8 @@ import { Route as ValidatorsIndexRouteImport } from './routes/validators.index'
 import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
 import { Route as DocsRawSplatRouteImport } from './routes/docs.raw.$'
 import { Route as NewsRawSplatRouteImport } from './routes/news.raw.$'
+import { Route as SubnetsCategoryIndexRouteImport } from './routes/subnets.category.index'
+import { Route as SubnetsCategorySlugRouteImport } from './routes/subnets.category.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -370,6 +372,16 @@ const NewsRawSplatRoute = NewsRawSplatRouteImport.update({
   path: '/news/raw/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubnetsCategoryIndexRoute = SubnetsCategoryIndexRouteImport.update({
+  id: '/subnets/category/',
+  path: '/subnets/category/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubnetsCategorySlugRoute = SubnetsCategorySlugRouteImport.update({
+  id: '/subnets/category/$slug',
+  path: '/subnets/category/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -432,6 +444,8 @@ export interface FileRoutesByFullPath {
   '/validators/': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
   '/news/raw/$': typeof NewsRawSplatRoute
+  '/subnets/category/$slug': typeof SubnetsCategorySlugRoute
+  '/subnets/category/': typeof SubnetsCategoryIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -492,6 +506,8 @@ export interface FileRoutesByTo {
   '/validators': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
   '/news/raw/$': typeof NewsRawSplatRoute
+  '/subnets/category/$slug': typeof SubnetsCategorySlugRoute
+  '/subnets/category': typeof SubnetsCategoryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -555,6 +571,8 @@ export interface FileRoutesById {
   '/validators/': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
   '/news/raw/$': typeof NewsRawSplatRoute
+  '/subnets/category/$slug': typeof SubnetsCategorySlugRoute
+  '/subnets/category/': typeof SubnetsCategoryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -619,6 +637,8 @@ export interface FileRouteTypes {
     | '/validators/'
     | '/docs/raw/$'
     | '/news/raw/$'
+    | '/subnets/category/$slug'
+    | '/subnets/category/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -679,6 +699,8 @@ export interface FileRouteTypes {
     | '/validators'
     | '/docs/raw/$'
     | '/news/raw/$'
+    | '/subnets/category/$slug'
+    | '/subnets/category'
   id:
     | '__root__'
     | '/'
@@ -741,6 +763,8 @@ export interface FileRouteTypes {
     | '/validators/'
     | '/docs/raw/$'
     | '/news/raw/$'
+    | '/subnets/category/$slug'
+    | '/subnets/category/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -792,6 +816,8 @@ export interface RootRouteChildren {
   ValidatorsIndexRoute: typeof ValidatorsIndexRoute
   DocsRawSplatRoute: typeof DocsRawSplatRoute
   NewsRawSplatRoute: typeof NewsRawSplatRoute
+  SubnetsCategorySlugRoute: typeof SubnetsCategorySlugRoute
+  SubnetsCategoryIndexRoute: typeof SubnetsCategoryIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1216,6 +1242,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewsRawSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/subnets/category/': {
+      id: '/subnets/category/'
+      path: '/subnets/category'
+      fullPath: '/subnets/category/'
+      preLoaderRoute: typeof SubnetsCategoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subnets/category/$slug': {
+      id: '/subnets/category/$slug'
+      path: '/subnets/category/$slug'
+      fullPath: '/subnets/category/$slug'
+      preLoaderRoute: typeof SubnetsCategorySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1308,6 +1348,8 @@ const rootRouteChildren: RootRouteChildren = {
   ValidatorsIndexRoute: ValidatorsIndexRoute,
   DocsRawSplatRoute: DocsRawSplatRoute,
   NewsRawSplatRoute: NewsRawSplatRoute,
+  SubnetsCategorySlugRoute: SubnetsCategorySlugRoute,
+  SubnetsCategoryIndexRoute: SubnetsCategoryIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
