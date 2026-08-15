@@ -8140,20 +8140,43 @@ export const subnetValidatorsQuery = (netuid: number) =>
     staleTime: STALE_SHORT,
   });
 
-/** Network-wide validator/operator leaderboard grouped by hotkey. */
+/**
+ * Network-wide validator/operator leaderboard grouped by hotkey.
+ *
+ * `subnets` — the per-subnet breakdown array — is **66% of every row** (1,090
+ * of 1,641 bytes, measured 2026-08-15) and most callers never read it. Passing
+ * `subnets: false` drops it during normalization, which keeps it out of the
+ * react-query cache and therefore out of the SSR dehydration inlined into the
+ * document (#11315).
+ *
+ * That is the whole cost being paid: `/validators` rendered **50** rows while
+ * dehydrating **1,447**, and the resulting 983 KB of inline JSON is decompressed,
+ * parsed and deserialised on the main thread of whatever phone loaded the page.
+ * The API has no field projection (`?fields=` answers 400), and the fetch itself
+ * happens during SSR, so it never crosses the user's wire — dropping the array
+ * client-side removes the part the user actually pays for.
+ *
+ * It is part of the query KEY on purpose: two callers asking for different
+ * shapes must not share a cache entry, or whichever ran second would read rows
+ * that are missing a field it needs.
+ */
 export const validatorsQuery = ({
   sort = "subnet_count",
   limit = 20,
-}: { sort?: GlobalValidatorSort; limit?: number } = {}) =>
+  subnets = true,
+}: { sort?: GlobalValidatorSort; limit?: number; subnets?: boolean } = {}) =>
   queryOptions({
-    queryKey: k("global-validators", sort, limit),
+    queryKey: k("global-validators", sort, limit, subnets),
     queryFn: async ({ signal }) => {
       const res = await apiFetch<Partial<GlobalValidators>>("/api/v1/validators", {
         params: { sort, limit },
         signal,
       });
+      const data = normalizeGlobalValidators(res.data);
       return {
-        data: normalizeGlobalValidators(res.data),
+        data: subnets
+          ? data
+          : { ...data, validators: data.validators.map((v) => ({ ...v, subnets: [] })) },
         meta: res.meta,
         url: res.url,
       } as ApiResult<GlobalValidators>;
