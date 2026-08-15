@@ -8803,14 +8803,25 @@ async function dispatchDataApiRequest(
       }
     }
 
-    // #9193: the Postgres read tier is gone. HYPERDRIVE was unbound with the
-    // box (#9186) and no wrangler config declares it any more, so every read
-    // route that used to live below this point was already unreachable -- this
-    // gate answered all of them. The status and body are deliberately
-    // UNCHANGED, because the forward gate depends on them: tryDataApiTier's
-    // callers in the main Worker read a non-2xx here as "this tier declines"
-    // and fall through to the lakehouse/store tiers exactly as they do today.
-    return json({ error: "hyperdrive binding unavailable" }, 503);
+    // NO BRANCH ABOVE MATCHED. That is all this gate means, and the message
+    // now says so.
+    //
+    // It used to read `hyperdrive binding unavailable`, which was true when
+    // #9193 wrote it: #9186 had unbound HYPERDRIVE with the box, so every read
+    // route below this point was unreachable and this gate answered all of
+    // them. #10060 bound Hyperdrive again -- wrangler.data.jsonc declares it,
+    // and the branches above serve /accounts/:ss58/portfolio, /subnets,
+    // /identity, the accounts list and the rest straight off Neon through it.
+    // The sentence outlived its condition, so a 503 from here read as "the
+    // database link is down" when it actually meant "this Worker has no
+    // handler for that path" -- a wrong diagnosis waiting for whoever met it
+    // next, and it was collected at least once.
+    //
+    // The STATUS is deliberately unchanged, because the forward gate depends
+    // on it: tryDataApiTier's callers in the main Worker read a non-2xx here
+    // as "this tier declines" and fall through to the store/lakehouse tiers.
+    // Only the message moves; nothing reads the body but a human.
+    return json({ error: "no handler on the data tier for this route" }, 503);
   }
 }
 

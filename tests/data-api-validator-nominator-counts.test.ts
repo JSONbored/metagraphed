@@ -2,8 +2,10 @@
 // END against a REAL SQLite database through the real Worker fetch handler --
 // same harness and rationale as tests/data-api-nominator-positions.test.ts.
 //
-// This route answered `503 hyperdrive binding unavailable` from the box wipe
-// (#9193) until migration 0012 gave it a Cloudflare-native store. Its producer
+// This route answered the dispatcher's no-handler 503 from the box wipe
+// (#9193) until migration 0012 gave it a Cloudflare-native store. (That gate
+// worded itself `hyperdrive binding unavailable` at the time; it says what it
+// actually tests now that Hyperdrive is bound again.) Its producer
 // never went away: metagraphed-infra's poller Container already runs the full
 // SubtensorModule::Alpha scan this table is derived from, and was disabled only
 // because it wrote to a Postgres that no longer exists.

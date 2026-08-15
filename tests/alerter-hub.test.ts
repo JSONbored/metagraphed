@@ -2300,7 +2300,9 @@ test("#11194: a non-ok snapshot refresh is reported, not swallowed", async () =>
             return conditionedTriggersResponse();
           }
           return new Response(
-            JSON.stringify({ error: "hyperdrive binding unavailable" }),
+            JSON.stringify({
+              error: "no handler on the data tier for this route",
+            }),
             { status: 503 },
           );
         }),

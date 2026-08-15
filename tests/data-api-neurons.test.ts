@@ -573,11 +573,15 @@ test("backfill-neuron-daily maps a write failure to a 502", async () => {
 
 // --- The D1 read dispatcher: gates and fallthrough ---------------------------
 
-test("a route no matcher claims falls through to the gone-tier 503", async () => {
+test("a route no matcher claims falls through to the no-handler 503", async () => {
+  // The message says what the gate actually tests -- no branch matched. It read
+  // `hyperdrive binding unavailable` from #9193 until #10060 bound Hyperdrive
+  // again, after which a 503 from here pointed a reader at a healthy database
+  // link instead of at the missing route.
   const res = await call(req("/api/v1/blocks"));
   assert.equal(res.status, 503);
   assert.deepEqual(await res.json(), {
-    error: "hyperdrive binding unavailable",
+    error: "no handler on the data tier for this route",
   });
 });
 
