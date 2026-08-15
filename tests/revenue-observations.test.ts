@@ -169,6 +169,85 @@ describe("persistRevenueProbe", () => {
     assert.match(r.reason ?? "", /write_failed/);
   });
 
+  // THE FAILURE ROW HELD THE ANSWER AND NOBODY COULD REACH IT. A pass that
+  // fetched nothing and failed once returns ok:false/retryable:true, and used
+  // to carry NO reason -- the only branch that set one was the probed-nothing
+  // case. So the diagnosis went to `revenue_probe_failures`, which nothing
+  // reads, and the retry report said "run() declined without throwing".
+  //
+  // `sn-51-lium-revenue-for-validators` dead-lettered roughly hourly for 3.7
+  // days in exactly this state.
+  test("a decline carries the FAILURE's own reason, and its subject", async () => {
+    const { db } = recordingDb();
+    const r = await persistRevenueProbe(db, {
+      observations: [],
+      failures: [
+        {
+          surface_id: "sn-51-lium-revenue-for-validators",
+          netuid: 51,
+          reason: "fetch failed: HTTP 503",
+          observed_at: 1786320000000,
+          terminal: false,
+        },
+      ],
+      skipped: [],
+    });
+    assert.equal(r.ok, false);
+    assert.equal(
+      r.retryable,
+      true,
+      "a fetch failure is worth another delivery",
+    );
+    // The SUBJECT as well as the reason: "fetch failed: HTTP 503" with no
+    // surface named is the same dead end one layer down.
+    assert.equal(
+      r.reason,
+      "sn-51-lium-revenue-for-validators: fetch failed: HTTP 503",
+    );
+  });
+
+  test("many failures are summarised, not concatenated into a log", async () => {
+    // A lane whose dependency is down fails every surface identically. Two
+    // named and a count keeps the reason readable and bounded.
+    const { db } = recordingDb();
+    const r = await persistRevenueProbe(db, {
+      observations: [],
+      failures: ["a", "b", "c", "d"].map((id, i) => ({
+        surface_id: id,
+        netuid: i,
+        reason: "fetch failed: HTTP 503",
+        observed_at: 1786320000000,
+        terminal: false,
+      })),
+      skipped: [],
+    });
+    assert.equal(
+      r.reason,
+      "a: fetch failed: HTTP 503; b: fetch failed: HTTP 503 (+2 more)",
+    );
+  });
+
+  test("an observation alongside a failure is not a decline", async () => {
+    // Partial success is success for the queue: the rows landed, so a retry
+    // would re-fetch somebody else's API to write them again.
+    const { db } = recordingDb();
+    const r = await persistRevenueProbe(db, {
+      observations: [OBSERVATION],
+      failures: [
+        {
+          surface_id: "x",
+          netuid: 1,
+          reason: "fetch failed",
+          observed_at: 1786320000000,
+          terminal: false,
+        },
+      ],
+      skipped: [],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.reason, undefined);
+  });
+
   test("a pass that probed nothing says so rather than reporting success", async () => {
     // A lane silently probing an empty set looks identical to one whose every
     // surface passed — which is exactly the state this issue was filed about.

@@ -433,7 +433,10 @@ describe("persistComputeDeclaration", () => {
         miner: {},
         validator: null,
       }),
-      { ok: false },
+      // NAMED, not a bare false. The reason rides out to the retry report, so
+      // "this lane is retrying" and "this lane has no store bound" stop
+      // looking the same in error tracking.
+      { ok: false, reason: "no_store_binding" },
     );
   });
 });

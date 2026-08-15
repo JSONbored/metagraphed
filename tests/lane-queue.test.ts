@@ -62,6 +62,53 @@ describe("a retry reports its reason", () => {
     assert.deepEqual(seen, ["run() declined without throwing"]);
   });
 
+  // A DECLINE THAT SAYS WHY. `false` is the one failure with nothing attached:
+  // a throw carries its message, and a boolean carries a shrug. Measured 16
+  // seconds after the retry reason first reached PostHog --
+  // `revenue-probe: 1 message(s) retried -- run() declined without throwing` --
+  // which is the right lane and the end of the trail, while the store had
+  // already computed `write_failed: <driver message>`.
+  test("a STRING decline is reported as the reason", async () => {
+    const seen: string[] = [];
+    const a = msg({ id: 1 });
+    const result = await consumeBatch([a.message], {
+      parse: (b) => b as { id: number },
+      run: async () => "write_failed: syntax error at or near",
+      onRetry: (reason) => void seen.push(reason),
+    });
+    assert.deepEqual(a.calls, ["retry"], "a decline still retries");
+    assert.deepEqual(seen, ["write_failed: syntax error at or near"]);
+    assert.equal(result.firstFailure, "write_failed: syntax error at or near");
+  });
+
+  test("an EMPTY string is not a reason, and keeps the generic one", async () => {
+    // A handler with nothing to add must not be able to report nothing at all
+    // by accident -- the empty string is falsy exactly where `false` is, and
+    // silently swallowing it would be the failure this whole seam exists to
+    // end.
+    const seen: string[] = [];
+    await consumeBatch([msg({ id: 1 }).message], {
+      parse: (b) => b as { id: number },
+      run: async () => "",
+      onRetry: (reason) => void seen.push(reason),
+    });
+    assert.deepEqual(seen, ["run() declined without throwing"]);
+  });
+
+  test("only `true` acks -- a truthy string is still a decline", async () => {
+    // The trap in widening a boolean return: `if (outcome)` would ACK on every
+    // reason string, turning the most diagnostic failures into silent
+    // successes. The check is `=== true`.
+    const a = msg({ id: 1 });
+    const result = await consumeBatch([a.message], {
+      parse: (b) => b as { id: number },
+      run: async () => "no_store_binding",
+    });
+    assert.deepEqual(a.calls, ["retry"]);
+    assert.equal(result.done, 0);
+    assert.equal(result.retried, 1);
+  });
+
   test("a non-Error throw still yields a readable reason", async () => {
     const seen: string[] = [];
     const a = msg({ id: 1 });

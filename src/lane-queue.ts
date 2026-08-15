@@ -119,9 +119,23 @@ export interface ConsumeResult {
 export interface ConsumeHandlers<TSubject> {
   /** Read a delivered body. Null means it can never be acted on. */
   parse(body: unknown): TSubject | null;
-  /** Do the work. Return false or throw to have the message redelivered;
-   * return true when the result is durably written. */
-  run(subject: TSubject): Promise<boolean>;
+  /**
+   * Do the work. `true` when the result is durably written; anything else has
+   * the message redelivered.
+   *
+   * A NON-EMPTY STRING IS A DECLINE THAT SAYS WHY, and it exists because
+   * `false` is the one failure with no diagnosis attached. A throw carries its
+   * message; a `false` carried nothing, so the loop below could only report
+   * "run() declined without throwing" -- which names the lane and not the bug.
+   *
+   * Measured 2026-08-15, 16 seconds after the retry reason first reached
+   * PostHog: `revenue-probe: 1 message(s) retried -- run() declined without
+   * throwing`. That is the right lane, and it is as far as the trail went,
+   * while `persistRevenueProbe` had already computed
+   * `write_failed: <driver message>` or `no_store_binding` and every handler
+   * threw it away collapsing the outcome to a boolean.
+   */
+  run(subject: TSubject): Promise<boolean | string>;
   /**
    * Called ONCE per batch when something was retried, with the first failure
    * and the count.
@@ -176,16 +190,22 @@ export async function consumeBatch<TSubject>(
         dropped += 1;
         continue;
       }
-      if (await handlers.run(subject)) {
+      const outcome = await handlers.run(subject);
+      if (outcome === true) {
         message.ack();
         done += 1;
       } else {
         message.retry();
         retried += 1;
-        // A HANDLER THAT RETURNS FALSE IS ALSO A FAILURE. It is the quieter of
-        // the two -- no stack, no message -- and leaving it unreported would
-        // keep exactly half of this fix.
-        firstFailure ??= "run() declined without throwing";
+        // A HANDLER THAT DECLINES IS ALSO A FAILURE. It is the quieter of the
+        // two -- no stack, no message -- and leaving it unreported would keep
+        // exactly half of this fix. A handler that knows WHY says so by
+        // returning the reason; `false` keeps the generic sentence, so a
+        // handler with nothing to add is not forced to invent something.
+        firstFailure ??=
+          typeof outcome === "string" && outcome
+            ? outcome
+            : "run() declined without throwing";
       }
     } catch (error) {
       message.retry();

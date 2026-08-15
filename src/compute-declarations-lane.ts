@@ -329,8 +329,16 @@ export interface ComputeStoreDb {
 export async function persistComputeDeclaration(
   db: ComputeStoreDb | null | undefined,
   record: ComputeDeclarationRecord,
-): Promise<{ ok: boolean }> {
-  if (!db?.run) return { ok: false };
+  // A DECLINE MUST SAY WHY, at the type level. `reason?: string` let a caller
+  // collapse the outcome to a boolean and lose the diagnosis, which is exactly
+  // what left the retry report reading "run() declined without throwing" while
+  // this function had already computed the answer.
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  // NAMED, like its three sibling stores. A decline with no reason reaches the
+  // retry report as the generic "run() declined without throwing", which names
+  // the lane and not the fault -- and a missing binding is the one decline
+  // here that a redelivery cannot fix, so it is worth saying out loud.
+  if (!db?.run) return { ok: false, reason: "no_store_binding" };
   // A found:false row must carry no stanza, which the constraint enforces and
   // this makes true at the source rather than relying on the write to bounce.
   const miner = record.found ? record.miner : null;
@@ -387,7 +395,8 @@ export async function handleComputeDeclarationBatch(
       const record = await readComputeDeclaration(message, deps);
       // Nothing to write is a completed subject, not a failed one.
       if (!record) return true;
-      return (await persistComputeDeclaration(db, record)).ok;
+      const written = await persistComputeDeclaration(db, record);
+      return written.ok || written.reason;
     },
   });
 }

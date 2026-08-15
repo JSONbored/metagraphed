@@ -826,9 +826,11 @@ describe("consuming a sweep batch", () => {
       done: 0,
       retried: 1,
       dropped: 0,
-      // The quieter of the two failures -- no stack, no message. Returned
-      // now rather than only logged: see ConsumeResult.firstFailure.
-      firstFailure: "run() declined without throwing",
+      // THE REASON, not the generic decline. The store already knew why --
+      // there is no db here -- and collapsing that to `false` is what left
+      // production reading "run() declined without throwing", which names the
+      // lane and not the fault.
+      firstFailure: "no_store_binding",
     });
     assert.equal(m.calls.retried, 1);
   });
