@@ -190,6 +190,10 @@ import {
   PipelineHistoryArtifactSchema,
 } from "./routes/emission-pipeline-history.ts";
 import {
+  DeregistrationHistoryPointSchema,
+  DeregistrationHistoryArtifactSchema,
+} from "./routes/subnet-deregistration-history.ts";
+import {
   EmissionParamChangeSchema,
   EmissionSubnetChangeSchema,
   EmissionFlowChangeSchema,
@@ -632,6 +636,8 @@ register(
 );
 register(PipelineHistoryPointSchema, "PipelineHistoryPoint");
 register(PipelineHistoryArtifactSchema, "PipelineHistoryArtifact");
+register(DeregistrationHistoryPointSchema, "DeregistrationHistoryPoint");
+register(DeregistrationHistoryArtifactSchema, "DeregistrationHistoryArtifact");
 register(EmissionParamChangeSchema, "EmissionParamChange");
 register(EmissionSubnetChangeSchema, "EmissionSubnetChange");
 register(EmissionFlowChangeSchema, "EmissionFlowChange");

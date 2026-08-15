@@ -4724,6 +4724,46 @@ export interface NetworkConcentrationHistoryPoint {
  * `point_count`: the gap between the two is how a reader tells a pipeline that
  * did not move from a lane that did not run.
  */
+/**
+ * One subnet's deregistration-rank trajectory (#10296).
+ *
+ * `rank` is NULL while `immune` is true, and that is not a missing value: an
+ * immune subnet holds no position in the prunable order at all. Rendering a
+ * null rank as "unknown" would hide the one fact the day actually establishes.
+ */
+export interface SubnetDeregistrationHistory {
+  netuid: number | null;
+  window: string | null;
+  point_count: number;
+  distinct_observations: number | null;
+  oldest_day: string | null;
+  newest_day: string | null;
+  /** The first day the lane wrote — earlier gaps are unwatched, not empty. */
+  first_captured_day: string | null;
+  points: SubnetDeregistrationHistoryPoint[];
+}
+
+/** One day of the pruning order, from this subnet's point of view. */
+export interface SubnetDeregistrationHistoryPoint {
+  day: string;
+  pinned_block: number | null;
+  /** True when this day carried the previous observation, not a fresh read. */
+  repeats_previous_observation: boolean | null;
+  captured_at: string | null;
+  /** Position in the prunable order, 1 = next to go. NULL while immune. */
+  rank: number | null;
+  immune: boolean | null;
+  blocks_until_prunable: number | null;
+  /** The field the rank was taken against — 94 of 100 is not 94 of 128. */
+  ranked_count: number | null;
+  immune_count: number | null;
+  /** What the pallet compares: a flat 1.0 for a Stable-mechanism subnet. */
+  comparison_price: number | null;
+  moving_price: number | null;
+  next_to_deregister: number | null;
+  next_to_deregister_comparison_price: number | null;
+}
+
 export interface SubnetEmissionPipelineHistory {
   netuid: number | null;
   window: string | null;

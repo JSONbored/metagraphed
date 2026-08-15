@@ -343,6 +343,7 @@ import {
   handleIndexerLag,
   handleTaoUsd,
   handleSubnetSurfaceHistory,
+  handleSubnetDeregistrationHistory,
   handleSubnetPipelineHistory,
   handleSubnetBurnHistory,
   handleSubnetHolders,
@@ -733,6 +734,7 @@ import {
   SUBNET_BURN_HISTORY_PATH_PATTERN,
   SUBNET_HOLDERS_PATH_PATTERN,
   SUBNET_SURFACE_HISTORY_PATH_PATTERN,
+  SUBNET_DEREGISTRATION_HISTORY_PATH_PATTERN,
   SUBNET_PIPELINE_HISTORY_PATH_PATTERN,
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_HYPERPARAMS_PATH_PATTERN,
@@ -7452,6 +7454,18 @@ async function dispatchRequest(
         resolved.url,
       );
     }
+    // #10296: the deregistration-rank series. Mainnet-only for the same reason
+    // -- subnet_deregistration_daily carries no network dimension.
+    const deregistrationHistoryMatch =
+      SUBNET_DEREGISTRATION_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (deregistrationHistoryMatch) {
+      return handleSubnetDeregistrationHistory(
+        request,
+        env,
+        Number(deregistrationHistoryMatch[1]),
+        resolved.url,
+      );
+    }
     const subnetHistoryMatch = SUBNET_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8300,6 +8314,8 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // #9625: subnet_snapshots carries no network dimension, so a testnet-
     // addressed request would be served MAINNET pipeline captures.
     SUBNET_PIPELINE_HISTORY_PATH_PATTERN.test(pathname) ||
+    // #10296: subnet_deregistration_daily carries no network dimension either.
+    SUBNET_DEREGISTRATION_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||

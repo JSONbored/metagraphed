@@ -695,6 +695,11 @@ import {
   GetPipelineHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-pipeline-history.ts";
 import {
+  GetDeregistrationHistoryInputSchema,
+  GetDeregistrationHistoryOutputSchema,
+  type GetDeregistrationHistoryInput,
+} from "../schemas-src/mcp-tools/get-deregistration-ranking-history.ts";
+import {
   GetEmissionChangesInputSchema,
   GetEmissionChangesOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-changes.ts";
@@ -1617,7 +1622,16 @@ import {
   loadPipelineHistory,
   PIPELINE_HISTORY_WINDOWS,
 } from "./emission-pipeline-history.ts";
-import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "./route-limits.ts";
+import {
+  buildDeregistrationHistory,
+  declineDeregistrationHistory,
+  loadDeregistrationHistory,
+  DEREGISTRATION_HISTORY_WINDOWS,
+} from "./subnet-deregistration-history.ts";
+import {
+  DEFAULT_DEREGISTRATION_HISTORY_WINDOW,
+  DEFAULT_PIPELINE_HISTORY_WINDOW,
+} from "./route-limits.ts";
 import {
   ATTRIBUTION_WINDOW_DAYS,
   DEFAULT_SUBNET_REVENUE_WINDOW,
@@ -1783,6 +1797,7 @@ import {
   INDEXER_LAG_TABLES,
   LEADERBOARD_TABLES,
   SUBNET_BURN_HISTORY_TABLES,
+  SUBNET_DEREGISTRATION_DAILY_TABLES,
   SUBNET_SNAPSHOT_TABLES,
   SURFACE_HISTORY_TABLES,
   REVENUE_OBSERVATION_TABLES,
@@ -10360,6 +10375,59 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_deregistration_ranking_history",
+    title: "Get a subnet's deregistration-rank trajectory",
+    description:
+      "Fetch ONE SUBNET'S position in the chain's pruning order OVER TIME " +
+      "(#10296). get_deregistration_ranking answers that order AS OF ONE " +
+      "BLOCK; this answers one subnet across days, because a single day's " +
+      "rank is noise and a trend is a warning -- 'rank 94' says almost " +
+      "nothing, 'rank 94, was 71 a month ago' says what to act on. " +
+      "THE RANK IS REPLAYED, NEVER STORED: the daily lane persists the four " +
+      "MEASURED inputs (moving_price, registered_at_block, subnet_mechanism, " +
+      "network_immunity_period) plus the block they were pinned at, and the " +
+      "pallet rule is re-applied on read, so a correction to that rule reaches " +
+      "the whole series rather than leaving a record of the old rule's " +
+      "answers. " +
+      "rank is NULL while immune -- an immune subnet holds no position in the " +
+      "prunable order -- so read `immune` beside it rather than treating null " +
+      "as missing. ranked_count rides with every rank because 94 means " +
+      "different things in a field of 100 and a field of 128, and " +
+      "comparison_price is what the pallet COMPARES (a flat 1.0 for a Stable " +
+      "subnet) beside the raw moving_price. " +
+      "READ THE DEPTH BEFORE DRAWING A TREND: the lane began on 2026-08-10, so " +
+      "a 90d window returns the days that EXIST -- first_captured_day says " +
+      "where the series starts. AND READ distinct_observations, NOT " +
+      "point_count, when claiming a rank moved: a day can carry the previous " +
+      "day's observation, flagged per point as repeats_previous_observation, " +
+      "and treating it as an independent sample reports a rank as STEADY when " +
+      "it was simply not re-measured. window is 7d, 30d (default), 90d or " +
+      "180d. An empty series is a measurement -- a subnet registered after the " +
+      "lane began returns one legitimately. Mainnet only. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/deregistration-ranking/history.",
+    inputSchema: inputJsonSchema(GetDeregistrationHistoryInputSchema),
+    async handler(args: GetDeregistrationHistoryInput, ctx: McpCtx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalEnum(args, "window", [...DEREGISTRATION_HISTORY_WINDOWS]) ??
+        DEFAULT_DEREGISTRATION_HISTORY_WINDOW;
+      // NOT filtered to `netuid`: rank is relative, so each day is loaded whole
+      // and narrowed in the builder -- see the loader's own header.
+      const rows = await loadDeregistrationHistory(
+        readStore(
+          ctx.env,
+          SUBNET_DEREGISTRATION_DAILY_TABLES,
+        ) as never as unknown as Parameters<
+          typeof loadDeregistrationHistory
+        >[0],
+        { window },
+      );
+      return rows === null
+        ? declineDeregistrationHistory("unavailable", netuid, { window })
+        : buildDeregistrationHistory(rows, netuid, { window });
+    },
+  },
+  {
     name: "get_subnet_holders",
     title: "Get a subnet's alpha holder leaderboard",
     description:
@@ -15281,6 +15349,9 @@ const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   ),
   get_emission_pipeline_history: outputJsonSchema(
     GetPipelineHistoryOutputSchema,
+  ),
+  get_deregistration_ranking_history: outputJsonSchema(
+    GetDeregistrationHistoryOutputSchema,
   ),
   get_emission_changes: outputJsonSchema(GetEmissionChangesOutputSchema),
   get_failure_reasons: outputJsonSchema(GetFailureReasonsOutputSchema),

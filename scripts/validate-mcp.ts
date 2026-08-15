@@ -2146,6 +2146,17 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
     "DATA_API-tier series; the harness binds no data Worker, so points is empty by construction",
   ],
   [
+    "get_deregistration_ranking_history",
+    // The series reads `subnet_deregistration_daily` through readStore, and the
+    // hermetic harness binds no Postgres -- so the loader correctly returns
+    // null, the tool answers the DECLINE builder, and `points` has no row for
+    // the item shape to be checked against. The point shape IS covered: it is
+    // the route's own artifact schema by identity, and
+    // tests/subnet-deregistration-history.test.ts safeParses a populated
+    // payload -- replayed from a real production day -- through it.
+    "store-backed series; the harness binds no Postgres, so points is empty by construction",
+  ],
+  [
     "get_subnet_miner_fairness",
     // Same shape and same reason as its emission-split sibling above: the
     // series comes through the DATA_API tier over neuron_daily, the hermetic

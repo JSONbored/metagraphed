@@ -4003,6 +4003,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/deregistration-ranking/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one subnet's deregistration-rank trajectory. One subnet's trajectory toward or away from the deregistration bar (#10296). /chain/deregistration-ranking answers the pallet's pruning order AS OF ONE BLOCK; #10285's own argument is that 'a single day's rank is noise, a trend is a warning' -- a subnet owner reading rank 94 learns almost nothing, and reading '94, was 71 a month ago, and the price gap to rank 1 has halved' learns exactly what to act on. THE RANK IS NOT STORED AND MUST NOT BE. subnet_deregistration_daily persists the four MEASURED inputs (moving_price, registered_at_block, subnet_mechanism, network_immunity_period) plus the block they were pinned at, never the derived rank, so a later correction to the pallet rule reaches the whole series instead of leaving a record of the old rule's answers. The ranking is REPLAYED from those inputs on read. SO A ONE-SUBNET SERIES READS EVERY SUBNET'S ROWS: rank is RELATIVE and does not exist in one netuid's row, so each day is loaded whole, ranked, and only then narrowed -- 129 rows a day, ~23,000 at the widest window. rank is NULL while immune (an immune subnet holds no position in the prunable order and reporting one would invent a standing it does not have) with `immune` beside it to tell that from an unreadable rank; ranked_count rides with every rank because 94 means different things in a field of 100 and a field of 128; comparison_price is what the pallet compares -- a FLAT 1.0 for a Stable (SubnetMechanism 0) subnet -- published beside the raw moving_price so the substitution is visible rather than inferred. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED: pinned_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the honest denominator for any claim that a rank MOVED, because a rank that was not re-measured must not read as a rank that held steady. WHAT THE SERIES ALREADY SHOWS, replayed against production 2026-08-15 with six days written: netuid 70 sat at rank 1 on 2026-08-10 and 2026-08-11 with registered_at_block 7,787,562; on 2026-08-12 its registered_at_block is 8,825,571 -- 130 blocks before that day's pin -- its moving price is 4.0e-8 and it is immune for another 863,870 blocks. It was deregistered and re-registered, exactly as the ranking had it two days earlier, and its price has climbed back every day since. Netuid 36 inherited rank 1 and has fallen on every one of the six days. Neither fact is visible in a single day's answer. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily lane. oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day (2026-08-10) rides on every response so a caller receiving six points for a 90d window reads it as 'the series begins here' rather than '84 days were dropped'. An EMPTY series is a measurement, not an error: a subnet registered after the lane began returns one legitimately. Mainnet-only: subnet_deregistration_daily carries no network dimension. */
+        get: operations["subnetDeregistrationRankingHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/deregistrations": {
         parameters: {
             query?: never;
@@ -7883,6 +7900,51 @@ export interface components {
             unattributed_registrations: number;
             /** @description Registrations observed inside the reported window. */
             window_registrations: number;
+        };
+        DeregistrationHistoryArtifact: {
+            /** @description Present ONLY on a decline. An empty series is a measurement -- a subnet registered after the lane began returns one legitimately. */
+            degraded?: components["schemas"]["UnavailableDegraded"];
+            /** @description Independent observations -- the honest denominator for any claim that a rank MOVED. Counts distinct pinned_block values, never ranks compared for equality. */
+            distinct_observations: number | null;
+            /** @description The first day the daily lane ever wrote, so a short series reads as a start rather than a gap. */
+            first_captured_day: string;
+            netuid: number;
+            newest_day: string | null;
+            oldest_day: string | null;
+            /** @description Points emitted. NOT the number of times the inputs were read. */
+            point_count: number | null;
+            points: components["schemas"]["DeregistrationHistoryPoint"][];
+            schema_version: number;
+            window: string | null;
+        };
+        DeregistrationHistoryPoint: {
+            /** @description 0 once prunable; how far protection still reaches while immune. */
+            blocks_until_prunable: number;
+            captured_at: string | null;
+            /** @description What get_network_to_prune() actually compares: SubnetMovingPrice, except a Stable (SubnetMechanism 0) subnet substitutes a FLAT 1.0. Published beside moving_price so the substitution is visible rather than inferred. */
+            comparison_price: number;
+            day: string;
+            /** @description Inside NetworkRegisteredAt + NetworkImmunityPeriod at this block, so it cannot be pruned at all. */
+            immune: boolean;
+            immune_count: number;
+            immune_until_block: number | null;
+            /** @description The raw SubnetMovingPrice read at pinned_block. NULL is not zero -- a subnet with no price is not a subnet priced at zero, though the pallet's ValueQuery makes an ABSENT entry compare as 0. */
+            moving_price: number | null;
+            network_immunity_period: number;
+            /** @description Which netuid held rank 1 that day. */
+            next_to_deregister: number | null;
+            /** @description Rank 1's comparison_price that day. Published rather than a pre-computed gap, because the distance that matters depends on the question being asked. */
+            next_to_deregister_comparison_price: number | null;
+            /** @description The chain state this point's inputs were read at. A day that cannot say which block it came from is not served. */
+            pinned_block: number;
+            /** @description Position in the pallet's pruning order that day, 1 = next to deregister. NULL while immune: an immune subnet holds no position in the prunable order, and reporting one would invent a standing it does not have. Read `immune` to tell that from an unreadable rank. */
+            rank: number | null;
+            /** @description How many subnets were prunable that day. A rank means different things in a field of 100 and a field of 128, so the denominator rides with it. */
+            ranked_count: number;
+            registered_at_block: number;
+            /** @description True when this day carries the previous day's observation rather than a fresh read: NOT an independent sample, so a rank that looks unchanged may simply not have been re-measured. */
+            repeats_previous_observation: boolean;
+            subnet_mechanism: number;
         };
         /** @description The contract the RPC proxy honours while disabled: which methods stay allowed, which patterns stay denied, and whether rate limiting and WAF are prerequisites for enabling it. */
         DisabledProxyContract: {
@@ -41887,6 +41949,141 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetCostToParticipateArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetDeregistrationRankingHistory: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `180d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "7d" | "30d" | "90d" | "180d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "degraded": {
+                     *           "reason": "unavailable"
+                     *         },
+                     *         "distinct_observations": 1,
+                     *         "first_captured_day": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "newest_day": "example",
+                     *         "oldest_day": "example",
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "blocks_until_prunable": 5000000,
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "comparison_price": 0.5,
+                     *             "day": "2026-06-01",
+                     *             "immune": false,
+                     *             "immune_count": 1,
+                     *             "immune_until_block": 5000000,
+                     *             "moving_price": 0.5,
+                     *             "network_immunity_period": 1,
+                     *             "next_to_deregister": 1,
+                     *             "next_to_deregister_comparison_price": 0.5,
+                     *             "pinned_block": 5000000,
+                     *             "rank": 1,
+                     *             "ranked_count": 1,
+                     *             "registered_at_block": 5000000,
+                     *             "repeats_previous_observation": false,
+                     *             "subnet_mechanism": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["DeregistrationHistoryArtifact"];
                     };
                 };
             };

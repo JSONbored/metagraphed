@@ -896,6 +896,9 @@ var QUERY_PARAMETER_ENUMS = {
     "format": ["json", "csv"],
     "window": ["7d", "30d", "90d"]
   },
+  "/api/v1/subnets/{netuid}/deregistration-ranking/history": {
+    "window": ["7d", "30d", "90d", "180d"]
+  },
   "/api/v1/subnets/{netuid}/deregistrations": {
     "window": ["7d", "30d"]
   },

@@ -1926,6 +1926,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-deregistration-ranking-history",
+    "/metagraph/subnets/{netuid}/deregistration-ranking/history.json",
+    "One subnet's trajectory toward or away from the deregistration bar (#10296). /chain/deregistration-ranking answers the pallet's pruning order AS OF ONE BLOCK; #10285's own argument is that 'a single day's rank is noise, a trend is a warning' -- a subnet owner reading rank 94 learns almost nothing, and reading '94, was 71 a month ago, and the price gap to rank 1 has halved' learns exactly what to act on. THE RANK IS NOT STORED AND MUST NOT BE. subnet_deregistration_daily persists the four MEASURED inputs (moving_price, registered_at_block, subnet_mechanism, network_immunity_period) plus the block they were pinned at, never the derived rank, so a later correction to the pallet rule reaches the whole series instead of leaving a record of the old rule's answers. The ranking is REPLAYED from those inputs on read. SO A ONE-SUBNET SERIES READS EVERY SUBNET'S ROWS: rank is RELATIVE and does not exist in one netuid's row, so each day is loaded whole, ranked, and only then narrowed -- 129 rows a day, ~23,000 at the widest window. rank is NULL while immune (an immune subnet holds no position in the prunable order and reporting one would invent a standing it does not have) with `immune` beside it to tell that from an unreadable rank; ranked_count rides with every rank because 94 means different things in a field of 100 and a field of 128; comparison_price is what the pallet compares -- a FLAT 1.0 for a Stable (SubnetMechanism 0) subnet -- published beside the raw moving_price so the substitution is visible rather than inferred. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED: pinned_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the honest denominator for any claim that a rank MOVED, because a rank that was not re-measured must not read as a rank that held steady. WHAT THE SERIES ALREADY SHOWS, replayed against production 2026-08-15 with six days written: netuid 70 sat at rank 1 on 2026-08-10 and 2026-08-11 with registered_at_block 7,787,562; on 2026-08-12 its registered_at_block is 8,825,571 -- 130 blocks before that day's pin -- its moving price is 4.0e-8 and it is immune for another 863,870 blocks. It was deregistered and re-registered, exactly as the ranking had it two days earlier, and its price has climbed back every day since. Netuid 36 inherited rank 1 and has fallen on every one of the six days. Neither fact is visible in a single day's answer. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily lane. oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day (2026-08-10) rides on every response so a caller receiving six points for a 90d window reads it as 'the series begins here' rather than '84 days were dropped'. An EMPTY series is a measurement, not an error: a subnet registered after the lane began returns one legitimately. Mainnet-only: subnet_deregistration_daily carries no network dimension.",
+    "DeregistrationHistoryArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "chain-burn",
     "/metagraph/chain/burn.json",
     "Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). REGISTRATION ECONOMICS, NOT A TEAM BURN (#10482): this is what it costs to register a UID, and nothing here measures a team destroying tokens it said it would destroy. That separate concept is named `token_burn` and is carried by the entity `burn` role (schemas/entity.schema.json), which requires an `unspendable_proof`. The two share a word and nothing else. A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased.",
@@ -4125,6 +4132,22 @@ export const API_ROUTES = [
     ],
   ),
   route(
+    "subnet-deregistration-ranking-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/deregistration-ranking/history",
+    "/metagraph/subnets/{netuid}/deregistration-ranking/history.json",
+    "Fetch one subnet's deregistration-rank trajectory. One subnet's trajectory toward or away from the deregistration bar (#10296). /chain/deregistration-ranking answers the pallet's pruning order AS OF ONE BLOCK; #10285's own argument is that 'a single day's rank is noise, a trend is a warning' -- a subnet owner reading rank 94 learns almost nothing, and reading '94, was 71 a month ago, and the price gap to rank 1 has halved' learns exactly what to act on. THE RANK IS NOT STORED AND MUST NOT BE. subnet_deregistration_daily persists the four MEASURED inputs (moving_price, registered_at_block, subnet_mechanism, network_immunity_period) plus the block they were pinned at, never the derived rank, so a later correction to the pallet rule reaches the whole series instead of leaving a record of the old rule's answers. The ranking is REPLAYED from those inputs on read. SO A ONE-SUBNET SERIES READS EVERY SUBNET'S ROWS: rank is RELATIVE and does not exist in one netuid's row, so each day is loaded whole, ranked, and only then narrowed -- 129 rows a day, ~23,000 at the widest window. rank is NULL while immune (an immune subnet holds no position in the prunable order and reporting one would invent a standing it does not have) with `immune` beside it to tell that from an unreadable rank; ranked_count rides with every rank because 94 means different things in a field of 100 and a field of 128; comparison_price is what the pallet compares -- a FLAT 1.0 for a Stable (SubnetMechanism 0) subnet -- published beside the raw moving_price so the substitution is visible rather than inferred. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED: pinned_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the honest denominator for any claim that a rank MOVED, because a rank that was not re-measured must not read as a rank that held steady. WHAT THE SERIES ALREADY SHOWS, replayed against production 2026-08-15 with six days written: netuid 70 sat at rank 1 on 2026-08-10 and 2026-08-11 with registered_at_block 7,787,562; on 2026-08-12 its registered_at_block is 8,825,571 -- 130 blocks before that day's pin -- its moving price is 4.0e-8 and it is immune for another 863,870 blocks. It was deregistered and re-registered, exactly as the ranking had it two days earlier, and its price has climbed back every day since. Netuid 36 inherited rank 1 and has fallen on every one of the six days. Neither fact is visible in a single day's answer. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily lane. oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day (2026-08-10) rides on every response so a caller receiving six points for a 90d window reads it as 'the series begins here' rather than '84 days were dropped'. An EMPTY series is a measurement, not an error: a subnet registered after the lane began returns one legitimately. Mainnet-only: subnet_deregistration_daily carries no network dimension.",
+    "short",
+    ["subnets"],
+    [],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
     "chain-burn",
     "GET",
     "/api/v1/chain/burn",
@@ -5372,6 +5395,9 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // #9625: subnet_snapshots carries no network dimension, so a testnet-
   // addressed request would be served MAINNET pipeline captures.
   "/api/v1/subnets/{netuid}/emission-pipeline/history",
+  // #10296: subnet_deregistration_daily carries no network dimension either,
+  // and a testnet-addressed request would be served MAINNET rankings.
+  "/api/v1/subnets/{netuid}/deregistration-ranking/history",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",

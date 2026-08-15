@@ -229,6 +229,9 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_emission_pipeline_history: {
     operation: "subnet-emission-pipeline-history",
   },
+  get_deregistration_ranking_history: {
+    operation: "subnet-deregistration-ranking-history",
+  },
   get_subnet_holders: { operation: "subnet-holders" },
   get_chain_burn: { operation: "chain-burn" },
   list_crowdloans: { operation: "crowdloans" },

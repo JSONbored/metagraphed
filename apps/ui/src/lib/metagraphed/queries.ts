@@ -234,6 +234,8 @@ import type {
   SubnetLifecycleEntry,
   SubnetValidatorEconomics,
   SubnetValidatorEconomicsPoint,
+  SubnetDeregistrationHistory,
+  SubnetDeregistrationHistoryPoint,
   SubnetEmissionPipelineHistory,
   SubnetEmissionPipelinePoint,
   SubnetSurfaceChange,
@@ -6460,6 +6462,84 @@ function normalizeEmissionPipelineHistory(raw: unknown): SubnetEmissionPipelineH
     newest_day: firstString(d.newest_day) ?? null,
     first_captured_day: firstString(d.first_captured_day) ?? null,
     points,
+  };
+}
+
+/**
+ * One subnet's deregistration-rank trajectory (#10296).
+ *
+ * The current standing is already on this page. This is the SHAPE of it over
+ * time, which is the thing a subnet owner can act on: rank 94 says almost
+ * nothing, "94, was 71 a month ago" says a great deal.
+ *
+ * Same `point_count` / `distinct_observations` contract as the pipeline series
+ * above, and for a sharper reason here -- a rank that was not re-measured looks
+ * exactly like a rank that held steady, and the second is reassuring where the
+ * first is not.
+ */
+export const subnetDeregistrationHistoryQuery = (netuid: number, window: string) =>
+  queryOptions({
+    queryKey: k("subnet-deregistration-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/subnets/${netuid}/deregistration-ranking/history?window=${encodeURIComponent(window)}`,
+        { signal },
+      );
+      return {
+        data: normalizeDeregistrationHistory(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeDeregistrationHistory(raw: unknown): SubnetDeregistrationHistory {
+  const d = isRecord(raw) ? raw : {};
+  const points = (Array.isArray(d.points) ? d.points : [])
+    .map(normalizeDeregistrationHistoryPoint)
+    .filter((p): p is SubnetDeregistrationHistoryPoint => p !== null);
+  return {
+    netuid: firstFiniteNumber(d.netuid) ?? null,
+    window: firstString(d.window) ?? null,
+    point_count: firstFiniteNumber(d.point_count) ?? points.length,
+    // NOT defaulted to point_count -- see the pipeline normalizer above for
+    // why that fallback asserts the one thing this field exists to let a
+    // reader check.
+    distinct_observations: firstFiniteNumber(d.distinct_observations) ?? null,
+    oldest_day: firstString(d.oldest_day) ?? null,
+    newest_day: firstString(d.newest_day) ?? null,
+    first_captured_day: firstString(d.first_captured_day) ?? null,
+    points,
+  };
+}
+
+function normalizeDeregistrationHistoryPoint(
+  raw: unknown,
+): SubnetDeregistrationHistoryPoint | null {
+  if (!isRecord(raw)) return null;
+  const day = firstString(raw.day);
+  if (!day) return null;
+  return {
+    day,
+    pinned_block: firstFiniteNumber(raw.pinned_block) ?? null,
+    repeats_previous_observation:
+      typeof raw.repeats_previous_observation === "boolean"
+        ? raw.repeats_previous_observation
+        : null,
+    captured_at: firstString(raw.captured_at) ?? null,
+    // Null here is MEANINGFUL when `immune` is true -- an immune subnet holds
+    // no position -- so it is carried through rather than defaulted.
+    rank: firstFiniteNumber(raw.rank) ?? null,
+    immune: typeof raw.immune === "boolean" ? raw.immune : null,
+    blocks_until_prunable: firstFiniteNumber(raw.blocks_until_prunable) ?? null,
+    ranked_count: firstFiniteNumber(raw.ranked_count) ?? null,
+    immune_count: firstFiniteNumber(raw.immune_count) ?? null,
+    comparison_price: firstFiniteNumber(raw.comparison_price) ?? null,
+    moving_price: firstFiniteNumber(raw.moving_price) ?? null,
+    next_to_deregister: firstFiniteNumber(raw.next_to_deregister) ?? null,
+    next_to_deregister_comparison_price:
+      firstFiniteNumber(raw.next_to_deregister_comparison_price) ?? null,
   };
 }
 

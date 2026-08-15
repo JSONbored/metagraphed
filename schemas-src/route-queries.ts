@@ -92,6 +92,7 @@ import {
   LEADERBOARDS_LIMIT_MAX,
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
+  DEREGISTRATION_HISTORY_WINDOWS,
   PIPELINE_HISTORY_WINDOWS,
   SEMANTIC_LIMIT_DEFAULT,
   SEMANTIC_LIMIT_MAX,
@@ -1113,6 +1114,12 @@ export const ROUTE_QUERY_SCHEMAS = {
   "/api/v1/subnets/{netuid}/emission-pipeline/history": z.object({
     window: windowSchema(
       PIPELINE_HISTORY_WINDOWS as [string, ...string[]],
+      "30d",
+    ).optional(),
+  }),
+  "/api/v1/subnets/{netuid}/deregistration-ranking/history": z.object({
+    window: windowSchema(
+      DEREGISTRATION_HISTORY_WINDOWS as [string, ...string[]],
       "30d",
     ).optional(),
   }),
