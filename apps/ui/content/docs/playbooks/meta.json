@@ -1,6 +1,7 @@
 {
   "title": "Playbooks",
   "pages": [
+    "index",
     "evaluate-a-subnet-before-staking",
     "monitor-my-validator",
     "find-a-subnet-for-my-app",

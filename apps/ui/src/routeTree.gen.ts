@@ -45,12 +45,14 @@ import { Route as ChainEventsRouteImport } from './routes/chain.events'
 import { Route as ChainExtrinsicsRouteImport } from './routes/chain.extrinsics'
 import { Route as ChainGovernanceRouteImport } from './routes/chain.governance'
 import { Route as ChainRuntimeRouteImport } from './routes/chain.runtime'
+import { Route as DesignIndexRouteImport } from './routes/design.index'
 import { Route as DesignPrimitivesRouteImport } from './routes/design.primitives'
 import { Route as DocsSplatRouteImport } from './routes/docs.$'
 import { Route as DocsLlmsDottxtRouteImport } from './routes/docs.llms[.]txt'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
+import { Route as GraphqlIndexRouteImport } from './routes/graphql.index'
 import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
 import { Route as NewsSplatRouteImport } from './routes/news.$'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
@@ -59,6 +61,7 @@ import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
 import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
 import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
 import { Route as SudoIndexRouteImport } from './routes/sudo.index'
+import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsSs58RouteImport } from './routes/tools.ss58'
 import { Route as ValidatorsIndexRouteImport } from './routes/validators.index'
 import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
@@ -244,6 +247,11 @@ const ChainRuntimeRoute = ChainRuntimeRouteImport.update({
   path: '/runtime',
   getParentRoute: () => ChainRoute,
 } as any)
+const DesignIndexRoute = DesignIndexRouteImport.update({
+  id: '/design/',
+  path: '/design/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DesignPrimitivesRoute = DesignPrimitivesRouteImport.update({
   id: '/design/primitives',
   path: '/design/primitives',
@@ -272,6 +280,11 @@ const ExtrinsicsIndexRoute = ExtrinsicsIndexRouteImport.update({
 const ExtrinsicsHashRoute = ExtrinsicsHashRouteImport.update({
   id: '/extrinsics/$hash',
   path: '/extrinsics/$hash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraphqlIndexRoute = GraphqlIndexRouteImport.update({
+  id: '/graphql/',
+  path: '/graphql/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GraphqlExplorerRoute = GraphqlExplorerRouteImport.update({
@@ -312,6 +325,11 @@ const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
 const SudoIndexRoute = SudoIndexRouteImport.update({
   id: '/sudo/',
   path: '/sudo/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolsSs58Route = ToolsSs58RouteImport.update({
@@ -382,12 +400,15 @@ export interface FileRoutesByFullPath {
   '/apis/': typeof ApisIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/chain/': typeof ChainIndexRoute
+  '/design/': typeof DesignIndexRoute
   '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
+  '/graphql/': typeof GraphqlIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
   '/sudo/': typeof SudoIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
 }
@@ -436,12 +457,15 @@ export interface FileRoutesByTo {
   '/apis': typeof ApisIndexRoute
   '/blocks': typeof BlocksIndexRoute
   '/chain': typeof ChainIndexRoute
+  '/design': typeof DesignIndexRoute
   '/events': typeof EventsIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
+  '/graphql': typeof GraphqlIndexRoute
   '/providers': typeof ProvidersIndexRoute
   '/runtime': typeof RuntimeIndexRoute
   '/subnets': typeof SubnetsIndexRoute
   '/sudo': typeof SudoIndexRoute
+  '/tools': typeof ToolsIndexRoute
   '/validators': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
 }
@@ -493,12 +517,15 @@ export interface FileRoutesById {
   '/apis/': typeof ApisIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/chain/': typeof ChainIndexRoute
+  '/design/': typeof DesignIndexRoute
   '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
+  '/graphql/': typeof GraphqlIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
   '/sudo/': typeof SudoIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
   '/docs/raw/$': typeof DocsRawSplatRoute
 }
@@ -551,12 +578,15 @@ export interface FileRouteTypes {
     | '/apis/'
     | '/blocks/'
     | '/chain/'
+    | '/design/'
     | '/events/'
     | '/extrinsics/'
+    | '/graphql/'
     | '/providers/'
     | '/runtime/'
     | '/subnets/'
     | '/sudo/'
+    | '/tools/'
     | '/validators/'
     | '/docs/raw/$'
   fileRoutesByTo: FileRoutesByTo
@@ -605,12 +635,15 @@ export interface FileRouteTypes {
     | '/apis'
     | '/blocks'
     | '/chain'
+    | '/design'
     | '/events'
     | '/extrinsics'
+    | '/graphql'
     | '/providers'
     | '/runtime'
     | '/subnets'
     | '/sudo'
+    | '/tools'
     | '/validators'
     | '/docs/raw/$'
   id:
@@ -661,12 +694,15 @@ export interface FileRouteTypes {
     | '/apis/'
     | '/blocks/'
     | '/chain/'
+    | '/design/'
     | '/events/'
     | '/extrinsics/'
+    | '/graphql/'
     | '/providers/'
     | '/runtime/'
     | '/subnets/'
     | '/sudo/'
+    | '/tools/'
     | '/validators/'
     | '/docs/raw/$'
   fileRoutesById: FileRoutesById
@@ -706,12 +742,15 @@ export interface RootRouteChildren {
   AccountsIndexRoute: typeof AccountsIndexRoute
   AdminChangesIndexRoute: typeof AdminChangesIndexRoute
   BlocksIndexRoute: typeof BlocksIndexRoute
+  DesignIndexRoute: typeof DesignIndexRoute
   EventsIndexRoute: typeof EventsIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
+  GraphqlIndexRoute: typeof GraphqlIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
   RuntimeIndexRoute: typeof RuntimeIndexRoute
   SubnetsIndexRoute: typeof SubnetsIndexRoute
   SudoIndexRoute: typeof SudoIndexRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
   ValidatorsIndexRoute: typeof ValidatorsIndexRoute
   DocsRawSplatRoute: typeof DocsRawSplatRoute
 }
@@ -970,6 +1009,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChainRuntimeRouteImport
       parentRoute: typeof ChainRoute
     }
+    '/design/': {
+      id: '/design/'
+      path: '/design'
+      fullPath: '/design/'
+      preLoaderRoute: typeof DesignIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/design/primitives': {
       id: '/design/primitives'
       path: '/design/primitives'
@@ -1010,6 +1056,13 @@ declare module '@tanstack/react-router' {
       path: '/extrinsics/$hash'
       fullPath: '/extrinsics/$hash'
       preLoaderRoute: typeof ExtrinsicsHashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graphql/': {
+      id: '/graphql/'
+      path: '/graphql'
+      fullPath: '/graphql/'
+      preLoaderRoute: typeof GraphqlIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/graphql/explorer': {
@@ -1066,6 +1119,13 @@ declare module '@tanstack/react-router' {
       path: '/sudo'
       fullPath: '/sudo/'
       preLoaderRoute: typeof SudoIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/': {
+      id: '/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tools/ss58': {
@@ -1174,12 +1234,15 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsIndexRoute: AccountsIndexRoute,
   AdminChangesIndexRoute: AdminChangesIndexRoute,
   BlocksIndexRoute: BlocksIndexRoute,
+  DesignIndexRoute: DesignIndexRoute,
   EventsIndexRoute: EventsIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,
+  GraphqlIndexRoute: GraphqlIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
   RuntimeIndexRoute: RuntimeIndexRoute,
   SubnetsIndexRoute: SubnetsIndexRoute,
   SudoIndexRoute: SudoIndexRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
   ValidatorsIndexRoute: ValidatorsIndexRoute,
   DocsRawSplatRoute: DocsRawSplatRoute,
 }

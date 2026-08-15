@@ -1,6 +1,7 @@
 {
   "title": "Protocol",
   "pages": [
+    "index",
     "stake-weight",
     "registration-and-permits",
     "weight-setting-and-rewards",

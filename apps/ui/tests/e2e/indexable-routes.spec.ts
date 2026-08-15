@@ -207,3 +207,45 @@ test.describe("#11279 the digests are typed, and say what week they cover", () =
     expect(article).not.toHaveProperty("temporalCoverage");
   });
 });
+
+test.describe("#11283 every breadcrumb link goes somewhere", () => {
+  // buildCrumbs (components/metagraphed/breadcrumb-nav.ts) makes a link out of
+  // EVERY path segment, so a page at /a/b/c offers /a and /a/b whether or not
+  // those are routes. Measured against production: 129 of 162 intermediate
+  // prefixes answered 404 — 124 /news/sn{n} folders, /docs/protocol,
+  // /docs/playbooks, /graphql, /tools, /design. The JSON-LD BreadcrumbList
+  // linked them too, which is a claim Google validates.
+  //
+  // The property is general, so the test is: derive the prefixes from the
+  // sitemap rather than listing them, and a new nested route cannot reintroduce
+  // the hole without failing here.
+
+  test("no intermediate path segment is a dead link", async ({ request }) => {
+    const xml = await (await request.get("/sitemap.xml")).text();
+    const paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname);
+    expect(paths.length).toBeGreaterThan(100);
+
+    const prefixes = new Set<string>();
+    for (const path of paths) {
+      const parts = path.split("/").filter(Boolean);
+      let acc = "";
+      // Every ancestor, not the page itself.
+      for (let i = 0; i < parts.length - 1; i++) {
+        acc += `/${parts[i]}`;
+        prefixes.add(acc);
+      }
+    }
+    // Container segments that have children but are in no sitemap entry.
+    for (const p of ["/graphql", "/tools", "/design"]) prefixes.add(p);
+
+    const dead: string[] = [];
+    for (const prefix of [...prefixes].sort()) {
+      const response = await request.get(prefix, { maxRedirects: 0 });
+      // 200 (it is a page) or 301 (a container that sends you to the content).
+      if (response.status() !== 200 && response.status() !== 301) {
+        dead.push(`${response.status()} ${prefix}`);
+      }
+    }
+    expect(dead, `breadcrumbs link ${dead.length} dead paths`).toStrictEqual([]);
+  });
+});
