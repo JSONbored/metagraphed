@@ -50,7 +50,7 @@ import { sourceFiles } from "./validate-untyped-db-reads.ts";
  */
 // Annotated `number` rather than left as the literal so the "none left" branch
 // below stays reachable code as the ceiling falls to zero.
-export const MAX_UNTYPED_LAKEHOUSE_READS: number = 30;
+export const MAX_UNTYPED_LAKEHOUSE_READS: number = 25;
 
 /** Where a read can live. `scripts/` is excluded: it does not serve traffic. */
 const SOURCE_DIRS = ["src", "workers"];
