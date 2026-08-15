@@ -42,6 +42,11 @@ export const GithubIssueSchema = z.object({
   title: z.string().nullish(),
   pull_request: z.unknown().optional(),
   updated_at: z.string().nullish(),
+  /** `open` or `closed`. Nullish because a body we cannot read must not be
+   * assumed open -- see the alarm's acknowledgement rule (#11293). */
+  state: z.string().nullish(),
+  /** When it was closed, for the same rule. Null on an open issue. */
+  closed_at: z.string().nullish(),
 });
 
 /**

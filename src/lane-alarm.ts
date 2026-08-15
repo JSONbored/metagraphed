@@ -476,6 +476,24 @@ export interface LaneAlarmPlanInput {
   observedMaxGap: Record<string, number | null>;
   /** Lanes that already have an open alarm issue. */
   openAlarms: Record<string, LaneAlarmOpenIssue>;
+  /**
+   * When a lane's alarm was last CLOSED, in ms -- the newest close per lane.
+   *
+   * AN ACKNOWLEDGEMENT, and only a dead-letter lane needs one. Every other lane
+   * closes itself: an `ok` verdict arrives and the alarm shuts. A `*-dlq` lane
+   * has no `ok` path, so closing its issue is a human saying "these losses are
+   * handled" -- and with nothing recording that, the next tick saw a stale row
+   * and no open issue and filed a fresh one.
+   *
+   * Measured 2026-08-15: #11272 was closed at 08:32 with all three causes fixed
+   * and verified, and #11293 was opened at 08:58 naming the SAME losses, the
+   * newest of which was 07:26. The residue guard is seven days, so that is an
+   * issue every half hour for a week over a row nothing can revise.
+   *
+   * Empty or absent when GitHub could not be asked, which is the safe
+   * direction: an unknown acknowledgement suppresses nothing.
+   */
+  acknowledged?: Record<string, number>;
   nowMs: number;
   minStaleMs: number;
 }
@@ -559,6 +577,10 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     unknownRuns,
     observedMaxGap,
     openAlarms,
+    // Defaulted, and the default suppresses NOTHING. A caller that cannot read
+    // closed issues -- or one written before this existed -- gets exactly the
+    // previous behaviour rather than a silent mute.
+    acknowledged = {},
     nowMs,
     minStaleMs,
   } = input;
@@ -658,7 +680,27 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
   // Worst first, so the per-tick cap keeps the longest-running faults rather
   // than whichever lane sorts first alphabetically.
   qualified.sort((a, b) => a.since - b.since);
-  const fresh = qualified.filter((alarm) => !(alarm.lane in openAlarms));
+  const fresh = qualified
+    .filter((alarm) => !(alarm.lane in openAlarms))
+    // ALREADY ANSWERED FOR. A dead-letter lane's loss that predates the close
+    // of its last alarm has been acknowledged, and re-filing it is churn on a
+    // row nothing will ever revise.
+    //
+    // STRICTLY NEWER re-alarms, so this cannot mute a real recurrence: a loss
+    // after the close opens a fresh issue on the very next tick, which is the
+    // behaviour the alarm body promises in as many words.
+    //
+    // Scoped to dead-letter lanes alone. Every other lane can say `ok`, so a
+    // closed alarm there is either already recovered or genuinely still broken
+    // -- and suppressing the second would hide an outage somebody closed by
+    // mistake.
+    .filter((alarm) => {
+      if (!isDeadLetterLane(alarm.lane)) return true;
+      const closedAt = acknowledged[alarm.lane];
+      if (closedAt === undefined) return true;
+      const record = latest[alarm.lane];
+      return record !== undefined && record.checked_at > closedAt;
+    });
   const open = fresh.slice(0, LANE_ALARM_MAX_OPENS_PER_TICK);
 
   const close: LaneAlarmPlan["close"] = [];
@@ -909,6 +951,16 @@ export interface LaneAlarmGitHub {
    * ask" must never produce that action, and the two are indistinguishable
    * once a failure has been flattened into an empty object. */
   listOpen(): Promise<Record<string, LaneAlarmOpenIssue> | null>;
+  /**
+   * When each lane's alarm was last CLOSED, in ms.
+   *
+   * Separate from `listOpen` because the two answers have different failure
+   * postures. An unreadable OPEN list must stop the tick -- acting on it means
+   * re-raising every alarm. An unreadable CLOSED list is only an
+   * acknowledgement we do not know about, and the safe response is to alarm
+   * anyway, so this returns `{}` rather than null.
+   */
+  listAcknowledged(): Promise<Record<string, number>>;
   open(alarm: LaneAlarm, title: string, body: string): Promise<number | null>;
   /** Say something on an issue that stays open. Its own method rather than a
    * flag on `close`, because reporting a further loss and closing on recovery
@@ -933,6 +985,36 @@ export function laneAlarmGitHub(
     "content-type": "application/json",
   };
   return {
+    async listAcknowledged() {
+      // CLOSED, newest first. Only the most recent close per lane matters --
+      // an older one cannot acknowledge a loss the newer one already did.
+      const response = await fetchImpl(
+        `${GITHUB_API}/repos/${repo}/issues?state=closed&sort=updated&direction=desc&per_page=100`,
+        { headers },
+      );
+      // `{}` on every failure, deliberately, and the opposite of `listOpen`:
+      // an acknowledgement we cannot read must never suppress an alarm.
+      if (!response.ok) return {};
+      const page = GithubIssueListSchema.safeParse(await response.json());
+      if (!page.success) return {};
+      const out: Record<string, number> = {};
+      for (const row of page.data) {
+        const parsed = GithubIssueSchema.safeParse(row);
+        if (!parsed.success) continue;
+        const issue = parsed.data;
+        if (issue.pull_request) continue;
+        const title = issue.title ?? "";
+        if (!title.startsWith(LANE_ALARM_TITLE_PREFIX)) continue;
+        const lane = title.slice(LANE_ALARM_TITLE_PREFIX.length).trim();
+        if (!lane) continue;
+        const closedAt = Date.parse(issue.closed_at ?? "");
+        if (!Number.isFinite(closedAt)) continue;
+        // The NEWEST close per lane. The list is sorted, but relying on that
+        // would make this depend on a query parameter rather than on the data.
+        out[lane] = Math.max(out[lane] ?? 0, closedAt);
+      }
+      return out;
+    },
     async listOpen() {
       const response = await fetchImpl(
         `${GITHUB_API}/repos/${repo}/issues?state=open&per_page=100`,
@@ -1099,6 +1181,11 @@ export async function runLaneAlarm(
   // duplicate of every alarm still outstanding, which is the failure that makes
   // an alerting system get muted.
   const openAlarms = github ? await github.listOpen().catch(() => null) : null;
+  // AFTER the open list and never instead of it: this only ever narrows what
+  // gets filed, so a failure here costs an extra issue rather than a missed one.
+  const acknowledged = github
+    ? await github.listAcknowledged().catch(() => ({}))
+    : {};
   // Deliberately NOT read as `{}`. An unreadable issue list is
   // indistinguishable from "no alarms are open", and acting on that assumption
   // opens a duplicate of everything currently outstanding.
@@ -1118,6 +1205,7 @@ export async function runLaneAlarm(
     unknownRuns,
     observedMaxGap,
     openAlarms: openAlarms ?? {},
+    acknowledged,
     nowMs,
     minStaleMs,
   });

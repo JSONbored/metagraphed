@@ -1109,6 +1109,7 @@ describe("runLaneAlarm", () => {
   /** A GitHub double that records what it was asked to do. */
   function fakeGitHub(
     open: Record<string, LaneAlarmOpenIssue> = {},
+    acknowledged: Record<string, number> = {},
   ): LaneAlarmGitHub & {
     opened: string[];
     closed: number[];
@@ -1122,6 +1123,7 @@ describe("runLaneAlarm", () => {
       closed,
       commented,
       listOpen: async () => open,
+      listAcknowledged: async () => acknowledged,
       open: async (alarm) => {
         opened.push(alarm.lane);
         return 100 + opened.length;
@@ -1958,5 +1960,89 @@ describe("the summary a capture carries (#10809)", () => {
     );
     assert.match(summary, /is silent: /);
     assert.doesNotMatch(summary, /cadence/);
+  });
+});
+
+// Closing a dead-letter alarm re-opened it 26 minutes later (#11293).
+//
+// #11272 was closed at 08:32 on 2026-08-15 with all three causes fixed and
+// verified in production; #11293 was filed at 08:58 naming the SAME losses, the
+// newest of which was 07:26. The residue guard is seven days, so left alone
+// that is a fresh issue every half hour for a week over a row nothing can
+// revise -- and an alarm that files issues about nothing is one that gets muted.
+describe("a closed dead-letter alarm is an acknowledgement", () => {
+  const LANE = "probe-jobs-dlq";
+  const CLOSED_AT = Date.parse("2026-08-15T08:32:00Z");
+  const LOSS_AT = Date.parse("2026-08-15T07:26:50Z");
+  const NOW = Date.parse("2026-08-15T08:58:00Z");
+
+  const input = (checked_at: number, acknowledged: Record<string, number>) => ({
+    latest: {
+      [LANE]: {
+        lane: LANE,
+        verdict: "stale" as const,
+        age_ms: null,
+        detail: "2 dead-lettered message(s) on probe-jobs-dlq (netuid=108)",
+        checked_at,
+      },
+    },
+    runs: { [LANE]: { since: checked_at, ticks: 5 } },
+    unknownRuns: {},
+    observedMaxGap: { [LANE]: 60 * 60 * 1000 },
+    openAlarms: {},
+    acknowledged,
+    nowMs: NOW,
+    minStaleMs: 0,
+  });
+
+  test("A LOSS THAT PREDATES THE CLOSE DOES NOT RE-FILE", () => {
+    const plan = laneAlarmPlan(input(LOSS_AT, { [LANE]: CLOSED_AT }));
+    assert.deepEqual(
+      plan.open.map((a) => a.lane),
+      [],
+    );
+  });
+
+  test("A LOSS AFTER THE CLOSE FILES IMMEDIATELY -- this is not a mute", () => {
+    // The property that makes acknowledgement different from suppression. The
+    // alarm body promises "the next loss after it closes opens a fresh alarm",
+    // and that has to stay true on the very next tick.
+    const plan = laneAlarmPlan(input(CLOSED_AT + 1, { [LANE]: CLOSED_AT }));
+    assert.deepEqual(
+      plan.open.map((a) => a.lane),
+      [LANE],
+    );
+  });
+
+  test("no acknowledgement means today's behaviour, not silence", () => {
+    // The safe direction when GitHub could not be asked: alarm anyway.
+    assert.deepEqual(
+      laneAlarmPlan(input(LOSS_AT, {})).open.map((a) => a.lane),
+      [LANE],
+    );
+  });
+
+  test("AN ORDINARY LANE IS NEVER SUPPRESSED BY A CLOSE", () => {
+    // Every other lane can say `ok`, so a closed alarm there is either already
+    // recovered or genuinely still broken. Suppressing the second would hide an
+    // outage somebody closed by mistake -- the opposite failure, and worse.
+    const plan = laneAlarmPlan({
+      ...input(LOSS_AT, { "chain-detail": CLOSED_AT }),
+      latest: {
+        "chain-detail": {
+          lane: "chain-detail",
+          verdict: "stale" as const,
+          age_ms: 1,
+          detail: "frozen",
+          checked_at: LOSS_AT,
+        },
+      },
+      runs: { "chain-detail": { since: LOSS_AT, ticks: 5 } },
+      observedMaxGap: { "chain-detail": 60 * 60 * 1000 },
+    });
+    assert.deepEqual(
+      plan.open.map((a) => a.lane),
+      ["chain-detail"],
+    );
   });
 });
