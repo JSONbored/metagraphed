@@ -708,3 +708,67 @@ test.describe("#11319 the SEO invariants are derived, not listed", () => {
     ).toStrictEqual([]);
   });
 });
+
+test.describe("#11342 the category pages answer a query nothing else does", () => {
+  // We published 129 pages for "what is subnet 64" and nothing for the query
+  // sitting directly above it — "which Bittensor subnets do inference" — even
+  // though the registry has computed derived_categories all along.
+  //
+  // Derived from the sitemap, so a category the registry stops deriving stops
+  // being tested and one it starts deriving is covered the moment it clears the
+  // threshold.
+
+  async function categoryPaths(request: import("@playwright/test").APIRequestContext) {
+    const xml = await (await request.get("/sitemap.xml")).text();
+    const paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+      .map((m) => new URL(m[1]!).pathname)
+      .filter((p) => p.startsWith("/subnets/category/"));
+    expect(paths.length, "no category pages in the sitemap").toBeGreaterThan(3);
+    return paths;
+  }
+
+  test("every category page lists a real comparison set", async ({ request }) => {
+    // Below MIN_CATEGORY_SUBNETS a page is a near-duplicate of the one subnet
+    // it lists, which is why storage (1), search (2) and privacy (2) are not
+    // generated. A page in the sitemap must clear that bar.
+    const failures: string[] = [];
+    for (const path of await categoryPaths(request)) {
+      const html = await (await request.get(path)).text();
+      const listed = new Set([...html.matchAll(/href="\/subnets\/(\d+)"/g)].map((m) => m[1]!));
+      if (listed.size < 3) failures.push(`${path}: ${listed.size} subnets`);
+    }
+    expect(
+      failures,
+      `category pages below the comparison threshold:\n${failures.join("\n")}`,
+    ).toStrictEqual([]);
+  });
+
+  test("each says something specific, not one template with a noun swapped", async ({
+    request,
+  }) => {
+    // A family of pages differing only by a substituted word is thin by nature
+    // however many words it counts — the property that put 5,797 URLs in
+    // "Crawled – currently not indexed".
+    const descriptions = new Set<string>();
+    for (const path of await categoryPaths(request)) {
+      const html = await (await request.get(path)).text();
+      const description = /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "";
+      expect(description, `${path} has no description`).not.toBe("");
+      descriptions.add(description);
+    }
+    const paths = await categoryPaths(request);
+    expect(descriptions.size, "category descriptions are not distinct").toBe(paths.length);
+  });
+
+  test("the hub links every category it generates", async ({ request }) => {
+    // Sitemap-only is the profile that lands a URL in "Crawled – currently not
+    // indexed" (#11277). The links are derived from the same rows the sitemap
+    // is, so the two cannot disagree.
+    const html = await (await request.get("/subnets")).text();
+    const linked = new Set(
+      [...html.matchAll(/href="\/subnets\/category\/([^"]+)"/g)].map((m) => m[1]!),
+    );
+    const sitemapped = (await categoryPaths(request)).map((p) => p.split("/").pop()!);
+    expect([...sitemapped].sort()).toStrictEqual([...linked].sort());
+  });
+});

@@ -165,6 +165,22 @@ export interface Subnet {
   repo?: string;
   icon_url?: string | { light: string; dark?: string };
   [key: string]: unknown;
+  /**
+   * Registry-derived capability tags — "inference", "agents", "compute" (#11342).
+   *
+   * Distinct from `categories`, which mixes semantic tags with registry
+   * bookkeeping ("baseline-augmented", "identity-reviewed"). These are the
+   * user-facing ones and the only set worth building URLs from.
+   */
+  derived_categories?: string[];
+  /** How completely the subnet documents its interfaces, 0-100. Ours, not theirs. */
+  integration_readiness?: number;
+  /** Surfaces the operator publishes themselves, as opposed to registry-observed. */
+  official_surface_count?: number;
+  /** Surfaces that have been probed at least once. */
+  probed_surface_count?: number;
+  /** All catalogued surfaces for this subnet. */
+  surface_count?: number;
 }
 
 export interface PrimaryLinks {
