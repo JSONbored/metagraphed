@@ -535,7 +535,7 @@ describe("laneAlarmPlan", () => {
   // while the issue is open `fresh` drops the lane -- so the FIRST loss was
   // reported and every one after it was reported nowhere. These four cases are
   // the whole of when a second report is earned.
-  const DLQ = "revenue-probes-dlq";
+  const DLQ = "probe-jobs-dlq";
   /** A dead-letter lane mid-alarm: one loss recorded, its issue already open. */
   function dlqBase(over: { updatedAt?: number | null } = {}) {
     return {
@@ -614,14 +614,14 @@ describe("laneAlarmPlan", () => {
 describe("laneAlarmLossComment", () => {
   test("names the loss, and why it is a comment rather than a new issue", () => {
     const body = laneAlarmLossComment(
-      "revenue-probes-dlq",
+      "probe-jobs-dlq",
       record({
-        lane: "revenue-probes-dlq",
-        detail: "1 dead-lettered message(s) on revenue-probes-dlq (sn-51)",
+        lane: "probe-jobs-dlq",
+        detail: "1 dead-lettered message(s) on probe-jobs-dlq (sn-51)",
         checked_at: NOW,
       }),
     );
-    assert.match(body, /`revenue-probes-dlq` lost more at /);
+    assert.match(body, /`probe-jobs-dlq` lost more at /);
     assert.ok(body.includes(new Date(NOW).toISOString()));
     assert.match(body, /sn-51/);
     // The reader has to be told this is not the alarm re-firing for the same
@@ -683,10 +683,10 @@ describe("laneAlarmIssueBody", () => {
   test("a dead-letter body counts losses, drops the cadence, and promises nothing", () => {
     const body = laneAlarmIssueBody(
       alarm({
-        lane: "revenue-probes-dlq",
+        lane: "probe-jobs-dlq",
         ticks: 89,
         age_ms: null,
-        detail: "1 dead-lettered message(s) on revenue-probes-dlq (sn-51)",
+        detail: "1 dead-lettered message(s) on probe-jobs-dlq (sn-51)",
       }),
       NOW,
     );
@@ -881,13 +881,13 @@ describe("laneAlarmGitHub", () => {
       json: async () => [
         {
           number: 1,
-          title: `${LANE_ALARM_TITLE_PREFIX}revenue-probes-dlq`,
+          title: `${LANE_ALARM_TITLE_PREFIX}probe-jobs-dlq`,
           updated_at: "2026-08-15T03:28:00.000Z",
         },
       ],
     }));
     assert.deepEqual(await gh.listOpen(), {
-      "revenue-probes-dlq": {
+      "probe-jobs-dlq": {
         issue: 1,
         updatedAt: Date.parse("2026-08-15T03:28:00.000Z"),
       },
@@ -1181,18 +1181,18 @@ describe("runLaneAlarm", () => {
     const db = healthDb({
       latest: [
         {
-          lane: "revenue-probes-dlq",
+          lane: "probe-jobs-dlq",
           verdict: "stale",
           age_ms: null,
-          detail: "2 dead-lettered message(s) on revenue-probes-dlq (sn-51)",
+          detail: "2 dead-lettered message(s) on probe-jobs-dlq (sn-51)",
           checked_at: NOW,
         },
       ],
-      runs: [{ lane: "revenue-probes-dlq", since: NOW - 28 * HOUR, ticks: 4 }],
+      runs: [{ lane: "probe-jobs-dlq", since: NOW - 28 * HOUR, ticks: 4 }],
     });
     const github = fakeGitHub({
       // Last written to an hour ago; the row above landed since.
-      "revenue-probes-dlq": { issue: 55, updatedAt: NOW - HOUR },
+      "probe-jobs-dlq": { issue: 55, updatedAt: NOW - HOUR },
     });
     const seen: Array<{ errorCode?: string }> = [];
     const out = await runLaneAlarm(
@@ -1271,17 +1271,17 @@ describe("runLaneAlarm", () => {
     const db = healthDb({
       latest: [
         {
-          lane: "revenue-probes-dlq",
+          lane: "probe-jobs-dlq",
           verdict: "stale",
           age_ms: null,
           detail: "1 dead-lettered message(s)",
           checked_at: NOW,
         },
       ],
-      runs: [{ lane: "revenue-probes-dlq", since: NOW - 28 * HOUR, ticks: 4 }],
+      runs: [{ lane: "probe-jobs-dlq", since: NOW - 28 * HOUR, ticks: 4 }],
     });
     const github = fakeGitHub({
-      "revenue-probes-dlq": { issue: 55, updatedAt: NOW - HOUR },
+      "probe-jobs-dlq": { issue: 55, updatedAt: NOW - HOUR },
     });
     github.comment = async () => {
       throw new Error("502 from github");
