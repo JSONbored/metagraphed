@@ -39,6 +39,7 @@ import { z } from "zod";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { LAKEHOUSE_ROW_SCHEMAS } from "../schemas-src/lakehouse.ts";
+import { LAKEHOUSE_NAMESPACES } from "./chain-network.ts";
 import { R2SqlBodySchema } from "../schemas-src/r2-sql-envelope.ts";
 
 /** Personal/API token with R2 SQL read access (wrangler secret). */
@@ -386,7 +387,7 @@ const MaxBodyBytesSchema = z.coerce
 
 /** The body-size ceiling for this deployment, or 0 when disabled. */
 export function maxBodyBytes(env: Env | null | undefined): number {
-  const raw = env?.[R2_SQL_MAX_BODY_BYTES_ENV as keyof Env];
+  const raw = env?.R2_SQL_MAX_BODY_BYTES;
   if (raw === undefined || raw === null || String(raw).trim() === "") {
     return R2_SQL_MAX_BODY_BYTES_DEFAULT;
   }
@@ -485,12 +486,42 @@ export function catalogRowSchema(
   sql: string,
 ): { safeParse: (value: unknown) => { success: boolean } } | null {
   const kind = r2SqlQueryKind(sql);
-  const table = kind.startsWith("chain.") ? kind.slice("chain.".length) : kind;
+  const table = unqualify(kind);
   const schemas = LAKEHOUSE_ROW_SCHEMAS as Record<
     string,
     { safeParse: (value: unknown) => { success: boolean } } | undefined
   >;
   return schemas[table] ?? null;
+}
+
+/**
+ * `chain.blocks` -> `blocks`, `chain_testnet.blocks` -> `blocks`, anything
+ * else unchanged.
+ *
+ * EVERY LAKEHOUSE NAMESPACE, not just `chain`. This tested `chain.` alone, so
+ * a `chain_testnet.*` statement kept its namespace, matched no key, and every
+ * testnet read skipped row validation entirely — silently, because an
+ * unvalidated read is indistinguishable from a validated one that passed.
+ * Testnet is a served network, so that was a live hole in real responses.
+ *
+ * Testnet carries the same table NAMES written by the same decoder on the same
+ * tick, so it shares mainnet's row schemas; `LAKEHOUSE_ROW_SCHEMAS` is keyed by
+ * bare table name for exactly that reason. Derived from `LAKEHOUSE_NAMESPACES`
+ * rather than listing the prefixes again, so a third network cannot be added
+ * there and land unvalidated here — which is the shape of the bug this fixes.
+ *
+ * An unrecognised namespace is still returned whole and still resolves to no
+ * schema. That is deliberate: inventing a schema for `foo.blocks` because it
+ * ends in a name we know would validate a table this repo has no description
+ * of.
+ */
+function unqualify(kind: string): string {
+  for (const namespace of Object.values(LAKEHOUSE_NAMESPACES)) {
+    if (kind.startsWith(`${namespace}.`)) {
+      return kind.slice(namespace.length + 1);
+    }
+  }
+  return kind;
 }
 
 /**
