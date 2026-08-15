@@ -51,8 +51,10 @@
 
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "./account-events.ts";
 import {
+  type AccountSummaryRecentEvent,
   AccountSummaryGroupsSchema,
   AccountSummaryPointerSchema,
+  AccountSummaryRecentMapSchema,
   AccountSummaryRecentSchema,
 } from "../schemas-src/artifacts/account-summary-projection.ts";
 
@@ -130,8 +132,12 @@ export interface AccountSummaryProjectionRead {
    * generation carries no usable recent map for it. Null is not "no events" --
    * it means the caller must read that leg from the lakehouse, exactly as it
    * did before #575.
+   *
+   * THE PARSED TYPE, carried out of `safeParse` rather than widened back to a
+   * bag of unknowns. The rows go straight into the feed the card publishes, so
+   * the one place that knows their shape is the one that validated them.
    */
-  recent: Record<string, unknown>[] | null;
+  recent: AccountSummaryRecentEvent[] | null;
   /** Where the head probe must start when `recent` is non-null. */
   floorMs: number | null;
 }
@@ -299,7 +305,7 @@ function readRecent(
   account: string,
   pointer: { through?: string; recent_limit?: number },
   need: number,
-): { recent: Record<string, unknown>[] | null; floorMs: number | null } {
+): { recent: AccountSummaryRecentEvent[] | null; floorMs: number | null } {
   const none = { recent: null, floorMs: null };
   // Zero asks for the aggregate leg only, and `undefined` is a producer that
   // publishes no recent map. Neither is a failure worth reading further for.
@@ -313,17 +319,16 @@ function readRecent(
   const floorMs = recentFloorMs(pointer.through);
   if (floorMs === null) return none;
 
-  const map = payload["recent"];
-  if (!map || typeof map !== "object") return none;
+  // PARSED, not indexed. `.record()` is the map's own declaration -- the
+  // producer keys it by ss58 and the reader wants one of them -- so a body
+  // that is a string, a number or an array is refused here rather than being
+  // indexed into and read as "this account has no events".
+  const map = AccountSummaryRecentMapSchema.safeParse(payload["recent"]);
+  if (!map.success) return none;
   // An account absent from the map has no published events, which for an
   // account that IS in the groups means the producer wrote a partial shard.
   // Declining sends this leg to the lakehouse; it does not zero the feed.
-  const parsed = AccountSummaryRecentSchema.safeParse(
-    (map as Record<string, unknown>)[account],
-  );
+  const parsed = AccountSummaryRecentSchema.safeParse(map.data[account]);
   if (!parsed.success || !parsed.data.length) return none;
-  return {
-    recent: parsed.data as unknown as Record<string, unknown>[],
-    floorMs,
-  };
+  return { recent: parsed.data, floorMs };
 }

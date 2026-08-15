@@ -28,6 +28,13 @@
 //     reads as "this account has no events".
 import { z } from "zod";
 
+// THE TABLE'S OWN DECLARATION, extended rather than restated. A second copy of
+// this vocabulary drifts by one side gaining a column, and the narrower one
+// then accepts what it does not describe -- which `validate:schema-shape-
+// duplicates` refuses, and rightly: the reader merges these rows with rows
+// selected straight out of the same table.
+import { AccountEventsRowSchema } from "../lakehouse.ts";
+
 /**
  * `current.json` -- names the generation that is currently readable.
  *
@@ -123,27 +130,44 @@ export const AccountSummaryGroupsSchema = z.array(AccountSummaryGroupSchema);
  * on anything that is not a balance movement -- nullability here is the table's,
  * not a concession.
  */
-export const AccountSummaryRecentEventSchema = z
-  .object({
-    // The event's identity, and the reason it cannot be null: the reader
-    // de-duplicates the projection's rows against the head probe's on this
-    // pair. A null half would collapse distinct events onto one key and drop
-    // real rows from the feed.
-    block_number: z.number().int().nonnegative(),
-    event_index: z.number().int().nonnegative(),
-    extrinsic_index: z.number().int().nullable(),
-    event_kind: z.string().nullable(),
-    hotkey: z.string().nullable(),
-    coldkey: z.string().nullable(),
-    netuid: z.number().int().nullable(),
-    uid: z.number().int().nullable(),
-    amount_tao: z.number().nullable(),
-    alpha_amount: z.number().nullable(),
-    observed_at: z.number().int().nonnegative(),
+export const AccountSummaryRecentEventSchema = AccountEventsRowSchema
+  // REQUIRED and CLOSED, which is the whole difference from the table's own
+  // declaration. `AccountEventsRowSchema` is partial and open because a READ
+  // selects a projection and often an aggregate alias that is not a column at
+  // all. This is a PUBLISHED artifact: the producer writes every column of
+  // every row, so a missing one is a producer bug and an extra one is a
+  // vocabulary the reader would silently drop from half a merged feed.
+  .required()
+  .extend({
+    // The event's identity, and the reason these three cannot be null here
+    // while the table permits it: the reader de-duplicates the projection's
+    // rows against the head probe's on (block_number, event_index), and sorts
+    // the merged page on all three. A null would collapse distinct events onto
+    // one key, or sort as zero and bury a real event at the bottom of the card.
+    block_number: z.int().nonnegative(),
+    event_index: z.int().nonnegative(),
+    observed_at: z.int().nonnegative(),
   })
   .strict();
+
+/** One published event, as the reader gets it back from `safeParse`. */
+export type AccountSummaryRecentEvent = z.infer<
+  typeof AccountSummaryRecentEventSchema
+>;
 
 /** One account's published newest events, newest first. */
 export const AccountSummaryRecentSchema = z.array(
   AccountSummaryRecentEventSchema,
 );
+
+/**
+ * A shard's `recent` map, keyed by ss58.
+ *
+ * LAZY IN ITS VALUES on purpose, exactly as `accounts` is handled: a shard
+ * carries ~1,000 accounts and a request reads ONE. Declaring the values as
+ * `unknown` checks the ENVELOPE -- that this is a keyed object rather than a
+ * string, a number or an array -- and leaves the one account's array to be
+ * parsed properly by `AccountSummaryRecentSchema`. Parsing all thousand would
+ * spend the saving this whole tier exists to make.
+ */
+export const AccountSummaryRecentMapSchema = z.record(z.string(), z.unknown());
