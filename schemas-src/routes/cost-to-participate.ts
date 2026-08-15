@@ -11,6 +11,12 @@
 // #10932 exists to stop being made: a declared minimum is the floor to RUN, and
 // on a subnet where most miners earn nothing it is precisely the configuration
 // that does not win.
+import {
+  DECLARATIONS_REQUIRING_A_GPU,
+  MIN_COMPUTE_SURFACES_REGISTERED,
+  SUBNETS_IN_REGISTRY,
+  SUBNETS_WITHOUT_A_DECLARATION,
+} from "../../src/compute-declaration-figures.ts";
 import { z } from "zod";
 import {
   ComputeDeclarationEvidenceSchema,
@@ -113,10 +119,12 @@ export const SubnetCostToParticipateArtifactSchema = z
       .describe(
         "What the CHAIN charges to enter. Exact, measured, and the only hard numbers in this card.",
       ),
-    declarations_read: z.int().min(0).meta({
-      description:
-        "How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: 111 of 128 subnets register none, and a card with `declarations_read: 0` makes no claim about what running here takes.",
-    }),
+    declarations_read: z
+      .int()
+      .min(0)
+      .meta({
+        description: `How many of this subnet's registered min_compute declarations have been read. ZERO IS THE IMPORTANT VALUE: ${SUBNETS_WITHOUT_A_DECLARATION} of ${SUBNETS_IN_REGISTRY} subnets register none, and a card with \`declarations_read: 0\` makes no claim about what running here takes.`,
+      }),
     declared_compute: z
       .object({
         miner: DeclaredRoleSpecSchema.nullable(),
@@ -158,5 +166,5 @@ export const SubnetCostToParticipateArtifactSchema = z
   })
   .strict()
   .describe(
-    "What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number, not interchangeable: `entry_cost` is measured on chain and exact; `declared_compute` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; `earnings` is what miners there actually earned. NO COST PER DAY IS PUBLISHED — of the 17 registered declarations exactly one asks for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. A declared minimum is the floor to RUN, not the spec to EARN. Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.",
+    `What one subnet says it takes to participate, and what the chain charges to enter. Three kinds of number, not interchangeable: \`entry_cost\` is measured on chain and exact; \`declared_compute\` is what the subnet's own min_compute file SAYS, from a template that is filled in inconsistently; \`earnings\` is what miners there actually earned. NO COST PER DAY IS PUBLISHED — of the ${MIN_COMPUTE_SURFACES_REGISTERED} registered declarations ${DECLARATIONS_REQUIRING_A_GPU} ask for a GPU, so crossing the fleet with a rental rate priced hardware most subnets never asked for. A declared minimum is the floor to RUN, not the spec to EARN. Mirrors GET /api/v1/subnets/{netuid}/cost-to-participate.`,
   );

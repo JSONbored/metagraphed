@@ -878,7 +878,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       assert.equal(Array.isArray(body.data.declarations), true);
       assert.equal(typeof body.data.declarations_read, "number");
       // WHAT MUST NOT BE SAID, against the live response. A subnet whose
-      // min_compute file nobody has read -- 111 of 128 of them -- must publish
+      // min_compute file nobody has read -- most of them -- must publish
       // null specs rather than an empty one, because an empty spec reads as
       // "needs nothing" and a schema cannot say the difference.
       if (body.data.declarations_read === 0) {

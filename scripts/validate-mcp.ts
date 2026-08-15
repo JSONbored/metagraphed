@@ -2159,7 +2159,7 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
     "get_subnet_cost_to_participate",
     // The declaration half is DATA_API-tier and the harness binds no data
     // Worker, so `declarations` is empty by construction -- which is also this
-    // surface's correct answer for the 111 of 128 subnets whose min_compute
+    // surface's correct answer for the majority of subnets whose min_compute
     // file nobody has read, rather than a harness gap. The RESPONSE is
     // validated here (the entry-cost merge and the empty card both run), and
     // tests/cost-to-participate.test.ts safeParses a POPULATED payload through

@@ -27,7 +27,8 @@ import { FieldSourcesSchema } from "./shared.ts";
  * Whether a role needs a GPU, as the DECLARATION supports it.
  *
  * FOUR answers, because `null` is a fourth: no declaration has been read at
- * all, which is the state 111 of 128 subnets are in and must never render as
+ * all, which is the state most subnets are in (see SUBNETS_WITHOUT_A_DECLARATION
+ * in src/compute-declaration-figures.ts) and must never render as
  * "no GPU needed".
  */
 export const GPU_REQUIREMENT_STATES = [
