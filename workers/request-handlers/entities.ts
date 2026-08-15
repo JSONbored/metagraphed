@@ -511,7 +511,11 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "../../src/chain-turnover.ts";
 import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.ts";
-import { readStore, type ReadStoreDb } from "../../src/read-store.ts";
+import {
+  readStore,
+  recordsOrEmpty,
+  type ReadStoreDb,
+} from "../../src/read-store.ts";
 import { laneHealthStore } from "../../src/lane-health-store.ts";
 import {
   ALPHA_PRICING_TABLES,
@@ -1167,8 +1171,7 @@ export async function handleSubnetHyperparamsHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/hyperparameters/history.json`,
-        (data.entries as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -1218,8 +1221,7 @@ export async function handleSubnetLifecycle(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/lifecycle.json`,
-        (data.entries as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -1757,8 +1759,7 @@ export async function handleNeuronHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/neurons/${uid}/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.captured_at ?? null,
+        recordsOrEmpty(data.points)[0]?.captured_at ?? null,
       ),
     },
     "short",
@@ -1848,8 +1849,7 @@ export async function handleSubnetIdentityHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/identity-history.json`,
-        (data.entries as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -2115,8 +2115,7 @@ export async function handleChainIdentityHistory(
         "/metagraph/chain/identity-history.json",
         // Freshness = the newest change's observed_at (feed is newest-first), else
         // null when the store is cold.
-        (data.changes as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.changes)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -2533,9 +2532,7 @@ export async function handleSubnetConcentrationHistory(
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [
-      ...(data.points as unknown as Array<Record<string, unknown>>),
-    ].sort((a, b) =>
+    const points = [...recordsOrEmpty(data.points)].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -2553,8 +2550,7 @@ export async function handleSubnetConcentrationHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2594,9 +2590,7 @@ export async function handleSubnetPerformanceHistory(
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [
-      ...(data.points as unknown as Array<Record<string, unknown>>),
-    ].sort((a, b) =>
+    const points = [...recordsOrEmpty(data.points)].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -2614,8 +2608,7 @@ export async function handleSubnetPerformanceHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/performance/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2655,9 +2648,7 @@ export async function handleSubnetYieldHistory(
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [
-      ...(data.points as unknown as Array<Record<string, unknown>>),
-    ].sort((a, b) =>
+    const points = [...recordsOrEmpty(data.points)].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -2675,8 +2666,7 @@ export async function handleSubnetYieldHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/yield/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2715,9 +2705,7 @@ export async function handleSubnetEmissionSplitHistory(
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [
-      ...(data.points as unknown as Array<Record<string, unknown>>),
-    ].sort((a, b) =>
+    const points = [...recordsOrEmpty(data.points)].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -2735,8 +2723,7 @@ export async function handleSubnetEmissionSplitHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/emission-split/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2776,8 +2763,7 @@ export async function handleSubnetMinerFairness(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/miner-fairness.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -2897,8 +2883,7 @@ export async function handleSubnetOwnerCapture(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/owner-capture.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.snapshot_date ?? null,
+        recordsOrEmpty(data.points)[0]?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -4973,8 +4958,7 @@ export async function handleAccountEvents(
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/events.json`,
-        (priced.events as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(priced.events)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -5147,8 +5131,7 @@ export async function handleAccountExtrinsics(
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/extrinsics.json`,
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -5222,8 +5205,7 @@ export async function handleAccountTransfers(
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/transfers.json`,
-        (data.transfers as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.transfers)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -5510,8 +5492,7 @@ export async function handleAccountPositionHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/accounts/${ss58}/subnets/${netuid}/history.json`,
-        (data.points as unknown as Array<Record<string, unknown>>)[0]
-          ?.captured_at ?? null,
+        recordsOrEmpty(data.points)[0]?.captured_at ?? null,
       ),
     },
     "short",
@@ -5610,8 +5591,7 @@ export async function handleAccountIdentityHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/accounts/${ss58}/identity-history.json`,
-        (data.entries as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.entries)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -5693,8 +5673,7 @@ export async function handleSubnetEvents(
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/events.json`,
-        (data.events as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.events)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -6731,8 +6710,7 @@ export async function handleBlocks(
       meta: await accountMeta(
         env,
         "/metagraph/blocks.json",
-        (data.blocks as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.blocks)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -6910,9 +6888,7 @@ export async function handleBlockExtrinsics(
   // the same formatExtrinsic row shape (#5746). Cold block → empty → header-only.
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(
-        data.extrinsics as unknown as Array<Record<string, unknown>>,
-      ),
+      extrinsicsToCsvRows(recordsOrEmpty(data.extrinsics)),
       `block-${ref}-extrinsics`,
       "short",
       request,
@@ -6926,8 +6902,7 @@ export async function handleBlockExtrinsics(
       meta: await accountMeta(
         env,
         `/metagraph/blocks/${ref}/extrinsics.json`,
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     cacheProfile,
@@ -6999,8 +6974,7 @@ export async function handleBlockEvents(
       meta: await accountMeta(
         env,
         `/metagraph/blocks/${ref}/events.json`,
-        (data.events as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.events)[0]?.observed_at ?? null,
       ),
     },
     cacheProfile,
@@ -7110,9 +7084,7 @@ export async function handleExtrinsics(
     unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(
-        data.extrinsics as unknown as Array<Record<string, unknown>>,
-      ),
+      extrinsicsToCsvRows(recordsOrEmpty(data.extrinsics)),
       "extrinsics",
       "short",
       request,
@@ -7126,8 +7098,7 @@ export async function handleExtrinsics(
       meta: await accountMeta(
         env,
         "/metagraph/extrinsics.json",
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -7173,9 +7144,7 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
     unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(
-        data.extrinsics as unknown as Array<Record<string, unknown>>,
-      ),
+      extrinsicsToCsvRows(recordsOrEmpty(data.extrinsics)),
       "sudo-calls",
       "short",
       request,
@@ -7189,8 +7158,7 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
       meta: await accountMeta(
         env,
         "/metagraph/sudo.json",
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -7239,9 +7207,7 @@ export async function handleGovernanceConfigChanges(
     unmeasured(buildExtrinsicFeed([], { limit, offset, nextCursor: null }));
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(
-        data.extrinsics as unknown as Array<Record<string, unknown>>,
-      ),
+      extrinsicsToCsvRows(recordsOrEmpty(data.extrinsics)),
       "governance-config-changes",
       "short",
       request,
@@ -7255,8 +7221,7 @@ export async function handleGovernanceConfigChanges(
       meta: await accountMeta(
         env,
         "/metagraph/governance/config-changes.json",
-        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
-          ?.observed_at ?? null,
+        recordsOrEmpty(data.extrinsics)[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -7326,9 +7291,8 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
       meta: await accountMeta(
         env,
         "/metagraph/runtime.json",
-        (data.transitions as unknown as Array<Record<string, unknown>>)[
-          (data.transitions as unknown as Array<Record<string, unknown>>)
-            .length - 1
+        recordsOrEmpty(data.transitions)[
+          recordsOrEmpty(data.transitions).length - 1
         ]?.observed_at ?? null,
       ),
     },

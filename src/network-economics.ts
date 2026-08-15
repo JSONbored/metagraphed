@@ -118,10 +118,9 @@ export function economicsQueryUrl(
 interface NetworkEconomicsCtx {
   env: Env;
   readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
-  readHealthKv?: (
-    env: Env,
-    key: string,
-  ) => Promise<Record<string, unknown> | null>;
+  // Forwarded verbatim to resolveLiveHealth; declared as its producer
+  // actually returns rather than as its consumer wished (#11339).
+  readHealthKv?: (env: Env, key: string) => Promise<unknown>;
 }
 
 interface NetworkEconomicsDeps {

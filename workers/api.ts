@@ -9003,10 +9003,7 @@ async function handleRawArtifactRequest(
     data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
   ) {
     const liveSnapshot = await resolveLiveHealth({
-      readHealthKv: readHealthKv as unknown as (
-        env: Env,
-        key: string,
-      ) => Promise<Row | null>,
+      readHealthKv: readHealthKv,
       env,
     });
     data = overlayArtifactEndpoints(data, liveSnapshot) ?? data;
@@ -9607,10 +9604,7 @@ async function handleApiRequest(
       data: await loadGlobalOperationalHealth(
         {
           env,
-          readHealthKv: readHealthKv as unknown as (
-            env: Env,
-            key: string,
-          ) => Promise<Record<string, unknown> | null>,
+          readHealthKv,
         },
         { contractVersion: (e: Env) => contractVersion(e) },
       ),
@@ -10778,10 +10772,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
     // current operational status of each subnet's surfaces, not the build-time
     // "unknown" stub baked into the agent-catalog artifact.
     const liveHealth = await resolveLiveHealth({
-      readHealthKv: readHealthKv as unknown as (
-        env: Env,
-        key: string,
-      ) => Promise<Row | null>,
+      readHealthKv: readHealthKv,
       env,
     });
     const data = await askQuestion(
@@ -10857,10 +10848,7 @@ async function liveHealthOverlay(
     if (resolved === undefined) {
       resolved =
         (await resolveLiveHealth({
-          readHealthKv: readHealthKv as unknown as (
-            env: Env,
-            key: string,
-          ) => Promise<Row | null>,
+          readHealthKv: readHealthKv,
           env,
         })) || null;
     }
