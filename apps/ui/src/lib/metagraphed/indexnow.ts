@@ -46,6 +46,40 @@ export function urlForChangedPath(path: string, origin: string): string | null {
     const slug = doc[1].replace(/\/index$/, "");
     return `${origin}/docs/${slug}`.replace(/\/$/, "");
   }
+  // Weekly digests: apps/ui/content/news/sn38/2026-w25.mdx -> /news/sn38/2026-w25.
+  //
+  // #11348: 285 pages that this job never submitted. The path filter watched
+  // docs and the registry, and the digests are neither — so the one page family
+  // whose whole value is being NEW was the one family never announced. Same
+  // shape as the docs rule because they are the same kind of file.
+  const news = /^apps\/ui\/content\/news\/(.+)\.mdx$/.exec(path);
+  if (news?.[1]) {
+    const slug = news[1].replace(/\/index$/, "");
+    return `${origin}/news/${slug}`.replace(/\/$/, "");
+  }
+  // A STATIC route file: apps/ui/src/routes/subnets.with-api.tsx -> /subnets/with-api.
+  //
+  // Shipping a new route is exactly when a crawler most needs telling, and this
+  // job was blind to it — /subnets/with-api had to be submitted by hand.
+  //
+  // Static only. A param route (`subnets.category.$slug.tsx`) expands to as many
+  // URLs as there are values, which this function cannot know from a filename;
+  // those are covered by the sitemap run. Files prefixed `-` are page
+  // components, not routes, and `.test.` files are neither.
+  const route = /^apps\/ui\/src\/routes\/([^/]+)\.tsx?$/.exec(path);
+  if (
+    route?.[1] &&
+    !route[1].includes("$") &&
+    !route[1].startsWith("-") &&
+    !route[1].includes(".test")
+  ) {
+    const segments = route[1]
+      .replace(/\.index$/, "")
+      .replace(/^__root$/, "")
+      .split(".")
+      .filter((segment) => segment && segment !== "index");
+    if (segments.length > 0) return `${origin}/${segments.join("/")}`;
+  }
   // A subnet's registry record: registry/subnets/<slug>.json carries the
   // netuid in the file, not the name, so the caller resolves it — see
   // urlsForChangedPaths, which is given the netuid map.

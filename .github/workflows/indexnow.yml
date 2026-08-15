@@ -22,6 +22,15 @@ on:
     branches: [main]
     paths:
       - "apps/ui/content/docs/**"
+      # #11348: the digests were missing. 285 pages whose whole value is being
+      # NEW, and this job never announced one of them, because the filter
+      # watched docs and the registry and they are neither.
+      - "apps/ui/content/news/**"
+      # And route files, so shipping a page tells a crawler. /subnets/with-api
+      # had to be submitted by hand because nothing here saw it. Only STATIC
+      # routes resolve to a URL (see urlForChangedPath); a param route expands
+      # to as many URLs as there are values and is covered by the sitemap run.
+      - "apps/ui/src/routes/**"
       - "registry/subnets/**"
       - "registry/providers/**"
   workflow_dispatch:
