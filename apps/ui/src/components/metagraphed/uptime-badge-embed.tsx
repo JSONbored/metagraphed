@@ -11,6 +11,16 @@ import { SITE_ORIGIN } from "@/lib/metagraphed/identity";
 // value from anyone.
 //
 // The endpoint already existed; nothing pointed a subnet team at it.
+//
+// #11351: generalised from subnets to any registry entity, because the same
+// endpoint has always served /api/v1/providers/{slug}/badge.svg and no provider
+// page offered it -- 138 pages whose operators are exactly the audience #8329
+// describes, with no way to find the thing built for them.
+//
+// This is now the ONLY mechanism by which this project earns inbound links:
+// measured 2026-08-15, 0 of 115 reachable subnet READMEs mention metagraph.sh,
+// and outreach is deliberately not being done. So it has to be self-serve and
+// impossible to miss on the page an operator already visits -- their own.
 
 // The canonical public origin. A README badge links somewhere permanent, so
 // this is the production site rather than window.location.origin -- a snippet
@@ -31,13 +41,33 @@ const METRICS = [
   { id: "apis", label: "APIs", hint: "callable API surfaces" },
 ] as const;
 
-export function UptimeBadgeEmbed({ netuid, name }: { netuid: number; name?: string }) {
+/**
+ * Which registry entity the badge describes.
+ *
+ * The API and the site use the same plural segment for both, so one value
+ * drives the badge URL and the link target and they cannot drift apart.
+ */
+export type BadgeEntity = "subnets" | "providers";
+
+export function UptimeBadgeEmbed({
+  entity = "subnets",
+  id,
+  name,
+}: {
+  entity?: BadgeEntity;
+  /** netuid for a subnet, slug for a provider. */
+  id: string | number;
+  name?: string;
+}) {
   const [format, setFormat] = useState<Format>("markdown");
   const [metric, setMetric] = useState<(typeof METRICS)[number]["id"]>("uptime");
 
-  const badgeUrl = `${API_BASE}/api/v1/subnets/${netuid}/badge.svg?metric=${metric}`;
-  const linkUrl = `${SITE_ORIGIN}/subnets/${netuid}`;
-  const alt = `${name ?? `SN${netuid}`} ${metric} on Metagraphed`;
+  const segment = encodeURIComponent(String(id));
+  const badgeUrl = `${API_BASE}/api/v1/${entity}/${segment}/badge.svg?metric=${metric}`;
+  const linkUrl = `${SITE_ORIGIN}/${entity}/${segment}`;
+  // A provider has no netuid to fall back on, so the fallback is the entity's
+  // own identifier rather than a subnet-shaped label.
+  const alt = `${name ?? (entity === "subnets" ? `SN${id}` : String(id))} ${metric} on Metagraphed`;
 
   const snippet =
     format === "markdown"

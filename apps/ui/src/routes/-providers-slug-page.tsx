@@ -22,6 +22,7 @@ import {
   subnetsQuery,
   metagraphedQueryKey,
 } from "@/lib/metagraphed/queries";
+import { UptimeBadgeEmbed } from "@/components/metagraphed/uptime-badge-embed";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shouldShowProviderSlugSubtitle } from "@/lib/metagraphed/provider-hero-fields";
 import type { Endpoint, Subnet } from "@/lib/metagraphed/types";
@@ -150,6 +151,17 @@ function ProviderShell({ slug }: { slug: string }) {
           {summary?.by_layer ? <BreakdownCard title="By layer" data={summary.by_layer} /> : null}
         </aside>
       </div>
+
+      {/*
+        #11351: the same flywheel #8329 built for subnet teams, on the 138
+        provider pages that never had it. /api/v1/providers/{slug}/badge.svg has
+        always existed and nothing pointed an operator at it.
+        With outreach deliberately off the table, a self-serve badge on the page
+        an operator already visits is the only mechanism by which this project
+        earns an inbound link -- measured 2026-08-15, 0 of 115 reachable subnet
+        READMEs mention metagraph.sh.
+      */}
+      <UptimeBadgeEmbed entity="providers" id={slug} name={p.name ?? undefined} />
 
       <ApiSourceFooter
         paths={[`/api/v1/providers/${slug}`, `/api/v1/providers/${slug}/endpoints`]}
