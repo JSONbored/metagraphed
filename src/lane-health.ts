@@ -226,19 +226,80 @@ export async function loadLatestLaneHealth(
       // predicate shared by every caller, and so a row that outlives its
       // deletion is still visible to anyone querying the table directly.
       if (isRetiredLane(lane)) continue;
-      out[lane] = {
+      const record: LaneHealthRecord = {
         lane,
         verdict: normalizeVerdict(row.verdict),
         age_ms: toIntOrNull(row.age_ms),
         detail: row.detail == null ? null : String(row.detail),
         checked_at: toIntOrNull(row.checked_at) ?? 0,
       };
+      // TIES ARE REAL, AND THIS USED TO RESOLVE THEM BY ROW ORDER.
+      //
+      // The MAX above is not unique. `lane_health` has no key, recordLaneVerdict
+      // INSERTs, and its prune deletes `checked_at < ?` -- strictly less -- so
+      // two rows written at the SAME stamp both survive and both match. This
+      // loop then assigned unconditionally, so "the newest verdict" was
+      // whichever row the driver happened to yield last, which nothing orders.
+      //
+      // It is not hypothetical. Several lanes are stamped with the PRODUCER's
+      // pass time rather than the check time, so the stamp freezes while the
+      // producer is down and every later write lands on top of it -- a sync
+      // flush writing `ok` ("127 statement(s) flushed") beside a staleness
+      // watchdog writing `unknown` ("no verdict for 4597m"), same lane, same
+      // millisecond.
+      //
+      // Measured 2026-08-15 03:58Z, on the first day the lane alarm could
+      // write: it read the `ok` side of that tie for `nominator-positions` and
+      // `validator-nominator-counts` and CLOSED both issues as recovered, while
+      // /api/v1/self-health served `unknown` for the same lanes at the same
+      // millisecond. Both had been dead for 76 hours. A false recovery is the
+      // worst thing an alarm can report -- it is indistinguishable from the
+      // outage being over.
+      //
+      // So a tie resolves to the WORST verdict, never the kindest. This is the
+      // same rule migrations/neon/0006 states for the column itself -- that
+      // collapsing `unknown` into `ok` "would report an unmeasured lane as a
+      // healthy one" -- applied to the read. A genuine recovery is untouched:
+      // the producer ran, so its stamp ADVANCES and its row is the unique max.
+      // NEWER WINS; only a TIE is broken by severity. Both halves matter, and
+      // ordering by severity alone would be a different bug: it would let an
+      // older finding outrank a genuine recovery, which is the false-alarm
+      // mirror of the false-recovery above. Written against `checked_at` rather
+      // than trusting the SQL to have already reduced the set, so the reader is
+      // correct on whatever it is handed.
+      const seen = out[lane];
+      const newer = !seen || record.checked_at > seen.checked_at;
+      const worseAtTheSameInstant =
+        seen !== undefined &&
+        record.checked_at === seen.checked_at &&
+        VERDICT_SEVERITY[record.verdict] > VERDICT_SEVERITY[seen.verdict];
+      if (newer || worseAtTheSameInstant) out[lane] = record;
     }
     return out;
   } catch {
     return {};
   }
 }
+
+/**
+ * How bad each verdict is, for the one question that needs them ordered: which
+ * of two rows tied at the same `checked_at` is the lane's verdict.
+ *
+ * `Record<LaneVerdict, …>` rather than a lookup with a default, so a verdict
+ * added to LANE_VERDICTS stops this compiling until somebody decides where it
+ * sits. A default would silently rank a new verdict as the safest thing in the
+ * table, which is the direction that loses findings.
+ *
+ * `stale` above `unknown` because it is the more specific claim: a breach was
+ * measured, rather than a measurement failing to happen. Both are findings and
+ * both alarm, so the ordering between them decides only which one a reader is
+ * shown first -- whereas `ok` sitting at the bottom is the load-bearing part.
+ */
+const VERDICT_SEVERITY: Record<LaneVerdict, number> = {
+  ok: 0,
+  unknown: 1,
+  stale: 2,
+};
 
 function normalizeVerdict(value: unknown): LaneVerdict {
   // Anything the schema does not name reads as `unknown` rather than being served

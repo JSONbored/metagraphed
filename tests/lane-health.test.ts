@@ -165,6 +165,98 @@ describe("loadLatestLaneHealth", () => {
     assert.match(calls[0].sql, /MAX\(checked_at\)[\s\S]*GROUP BY lane/);
   });
 
+  // TWO ROWS CAN TIE AT THE MAX, and this used to resolve by row order.
+  //
+  // `lane_health` has no key, recordLaneVerdict INSERTs, and its prune deletes
+  // `checked_at < ?` -- strictly less -- so same-stamp rows both survive and
+  // both match the MAX. Several lanes are stamped with the PRODUCER's pass time
+  // rather than the check time, so the stamp freezes while the producer is down
+  // and later writes land on top of it: a sync flush writing `ok` beside a
+  // staleness watchdog writing `unknown`, same lane, same millisecond.
+  //
+  // Measured 2026-08-15 03:58Z: the lane alarm read the `ok` side of exactly
+  // that tie and CLOSED #11252 and #11253 as recovered, while
+  // /api/v1/self-health served `unknown` for the same lanes at the same
+  // millisecond. Both lanes had been dead 76 hours.
+  const tiedRows = (first: string, second: string) => [
+    {
+      lane: "validator-nominator-counts",
+      verdict: first,
+      age_ms: null,
+      detail:
+        first === "ok" ? "127 statement(s) flushed" : "no verdict for 4597m",
+      checked_at: NOW,
+    },
+    {
+      lane: "validator-nominator-counts",
+      verdict: second,
+      age_ms: null,
+      detail:
+        second === "ok" ? "127 statement(s) flushed" : "no verdict for 4597m",
+      checked_at: NOW,
+    },
+  ];
+
+  test("a tie resolves to the WORST verdict, whichever row comes first", async () => {
+    for (const [a, b] of [
+      ["ok", "unknown"],
+      ["unknown", "ok"],
+    ]) {
+      const { db } = fakeDb(tiedRows(a, b));
+      const latest = await loadLatestLaneHealth(db);
+      assert.equal(
+        latest["validator-nominator-counts"].verdict,
+        "unknown",
+        `order ${a},${b}: a finding must survive a tie with ok`,
+      );
+      // And it carries THAT row's detail, so the reader is not shown the
+      // reassuring half of a contradiction.
+      assert.match(
+        latest["validator-nominator-counts"].detail ?? "",
+        /no verdict for/,
+      );
+    }
+  });
+
+  test("a measured breach outranks an unmeasurable one on a tie", async () => {
+    for (const [a, b] of [
+      ["stale", "unknown"],
+      ["unknown", "stale"],
+    ]) {
+      const { db } = fakeDb(tiedRows(a, b));
+      const latest = await loadLatestLaneHealth(db);
+      assert.equal(latest["validator-nominator-counts"].verdict, "stale");
+    }
+  });
+
+  // THE PROPERTY THAT MUST NOT REGRESS, and it caught a real flaw in the first
+  // draft of this fix: ordering by severity ALONE lets an older finding outrank
+  // a genuine recovery, which is the false-ALARM mirror of the false-recovery
+  // above. A lane that really recovers is not a tie at all -- the producer ran,
+  // so its stamp advances -- and the reader now says so explicitly rather than
+  // relying on the SQL having already reduced the set.
+  test("a NEWER ok still wins outright over an older finding", async () => {
+    const { db } = fakeDb([
+      {
+        lane: "a",
+        verdict: "stale",
+        age_ms: 1,
+        detail: "behind",
+        checked_at: NOW - 1,
+      },
+      {
+        lane: "a",
+        verdict: "ok",
+        age_ms: 1,
+        detail: "recovered",
+        checked_at: NOW,
+      },
+    ]);
+    const latest = await loadLatestLaneHealth(db);
+    assert.equal(latest.a.verdict, "ok");
+    assert.equal(latest.a.checked_at, NOW);
+  });
+
   test("a verdict this build does not know reads as unknown, not as ok", async () => {
     const { db } = fakeDb([
       {
