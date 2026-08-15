@@ -8,6 +8,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "../src/account-events.ts";
+import { AccountSummaryPointerSchema } from "../schemas-src/artifacts/account-summary-projection.ts";
 import {
   ACCOUNT_SUMMARY_MAX_AGE_MS,
   ACCOUNT_SUMMARY_POINTER_KEY,
@@ -357,6 +358,85 @@ describe("loadAccountSummaryProjection", () => {
 
   test("an account present with no usable groups declines", async () => {
     const store = archive(published({ [HOT]: [] }));
+    assert.equal(
+      await loadAccountSummaryProjection(store.env, HOT, FRESH),
+      null,
+    );
+  });
+});
+
+describe("the pointer is PARSED, not indexed (metagraphed-infra#580)", () => {
+  // The producer lives in another repository, so a shape nobody has written
+  // down is a shape nothing can compare. These pin the rules the previous
+  // hand-rolled checks encoded, now that a schema carries them.
+
+  test("the shape production actually publishes is accepted", () => {
+    // Read from the live pointer on 2026-08-15. If the producer adds a field
+    // without declaring it, `.strict()` refuses here rather than letting an
+    // undeclared field reach a reader -- which is #10790's whole argument.
+    assert.equal(
+      AccountSummaryPointerSchema.safeParse({
+        schema_version: 1,
+        generation: "20260814T150712Z",
+        shard_count: 16384,
+        generated_at: "2026-08-14T15:07:12Z",
+        account_count: 812977,
+      }).success,
+      true,
+    );
+  });
+
+  test("`through` is accepted but not required", () => {
+    // Added after the first generations were published, so a pointer written
+    // before it must still read. It is the producer's own bookkeeping.
+    assert.equal(
+      AccountSummaryPointerSchema.safeParse({
+        ...pointer(),
+        through: "2026-08-14",
+      }).success,
+      true,
+    );
+  });
+
+  test("a numeric generated_at is refused, not coerced", () => {
+    // `Date.parse(String(12345))` is a valid date -- the year 12345 -- so a
+    // numeric field would read as fresh forever and the staleness bound this
+    // tier depends on would never fire.
+    assert.equal(
+      AccountSummaryPointerSchema.safeParse(pointer({ generated_at: 12345 }))
+        .success,
+      false,
+    );
+  });
+
+  test("a zero or fractional shard_count is refused", () => {
+    // The reader derives an object key from it. A bad value does not fail
+    // loudly -- it addresses an object that does not exist, which reads as
+    // "this account has no events".
+    for (const bad of [0, -1, 1.5]) {
+      assert.equal(
+        AccountSummaryPointerSchema.safeParse(pointer({ shard_count: bad }))
+          .success,
+        false,
+        `shard_count ${bad}`,
+      );
+    }
+  });
+
+  test("an undeclared field is refused", () => {
+    assert.equal(
+      AccountSummaryPointerSchema.safeParse(pointer({ surprise: 1 })).success,
+      false,
+    );
+  });
+
+  test("a pointer that fails the schema declines the tier rather than throwing", async () => {
+    // The end-to-end consequence: an unparseable pointer must be a null answer
+    // the caller can fall back from, never an exception on a serving path.
+    const store = archive({
+      ...published({ [HOT]: [group()] }),
+      [ACCOUNT_SUMMARY_POINTER_KEY]: pointer({ generated_at: 12345 }),
+    });
     assert.equal(
       await loadAccountSummaryProjection(store.env, HOT, FRESH),
       null,

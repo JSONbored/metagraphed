@@ -50,6 +50,7 @@
 // is safe by construction.
 
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "./account-events.ts";
+import { AccountSummaryPointerSchema } from "../schemas-src/artifacts/account-summary-projection.ts";
 
 /** Objects the producer writes, one per shard. Contract with
  * metagraphed-infra's `services/indexer-rs/account_summary_r2.py`. */
@@ -165,20 +166,21 @@ export async function loadAccountSummaryProjection(
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get || !account) return null;
 
-  const pointer = await readJson(bucket, ACCOUNT_SUMMARY_POINTER_KEY);
-  if (!pointer) return null;
-  if (Number(pointer["schema_version"]) !== ACCOUNT_SUMMARY_SCHEMA_VERSION) {
-    return null;
-  }
-  const shards = finite(pointer["shard_count"]);
-  const generation = pointer["generation"];
-  if (!shards || shards < 1 || typeof generation !== "string" || !generation) {
-    return null;
-  }
-  // A STRING, not whatever coerces: `Date.parse(String(12345))` is a valid date
-  // -- the year 12345 -- so a numeric field would read as fresh forever.
-  const stamp = pointer["generated_at"];
-  const generated = typeof stamp === "string" ? Date.parse(stamp) : Number.NaN;
+  // PARSED, not indexed. The producer is in another repository, so the only
+  // thing that can hold the two ends together is a written-down shape --
+  // `AccountSummaryPointerSchema` is that, and the rules it encodes (a STRING
+  // `generated_at`, a POSITIVE INTEGER `shard_count`) are the two the previous
+  // hand-rolled checks existed to enforce. See the schema's header for why each
+  // one is load-bearing.
+  const parsedPointer = AccountSummaryPointerSchema.safeParse(
+    await readJson(bucket, ACCOUNT_SUMMARY_POINTER_KEY),
+  );
+  if (!parsedPointer.success) return null;
+  const pointer = parsedPointer.data;
+  if (pointer.schema_version !== ACCOUNT_SUMMARY_SCHEMA_VERSION) return null;
+  const shards = pointer.shard_count;
+  const generation = pointer.generation;
+  const generated = Date.parse(pointer.generated_at);
   if (!Number.isFinite(generated)) return null;
   if (maxAgeMs > 0 && now() - generated > maxAgeMs) return null;
 
