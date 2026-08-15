@@ -74,6 +74,24 @@ export const TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS = missedTicksMs(
   2,
 );
 
+/**
+ * The same rule for the HOLDINGS half, which has its own producer now (#9632).
+ *
+ * SIX HOURS -- two missed ticks of the three-hourly
+ * TOP_HOLDERS_HOLDINGS_REFRESH_CRON, by the identical arithmetic one cadence
+ * down. Without it the split is invisible when it breaks: the flow leg would
+ * keep writing `generated_at` on schedule, this watchdog would keep reporting
+ * `ok`, and free_tao/delegated_tao/total_tao would quietly drift back to being
+ * a day stale -- which is precisely the state #9632 was filed about, restored
+ * with an alarm now saying it is fine.
+ *
+ * Overridable per-deployment via TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS.
+ */
+export const TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS = missedTicksMs(
+  "top_holders_holdings",
+  2,
+);
+
 export type TopHoldersStalenessReason =
   "absent" | "unreadable" | "empty" | "stale" | null;
 
@@ -83,7 +101,25 @@ export type TopHoldersStalenessReason =
  * different repairs even though the route serves the same empty page for both. */
 export type TopHoldersArtifactState =
   | { present: false; reason: "absent" | "unreadable" }
-  | { present: true; generatedAt: string | null; rowCount: number };
+  | {
+      present: true;
+      generatedAt: string | null;
+      /**
+       * When the HOLDINGS half was last written (#9632).
+       *
+       * Falls back to `generated_at` when the body does not carry its own, and
+       * that is a reading rather than a suppression: before the split the
+       * holdings columns were written by the daily lane at exactly that
+       * instant, so for such a body the two vintages are genuinely equal. The
+       * same rule topHoldersArtifactSorts applies to a body with no `sorts`.
+       *
+       * The consequence is deliberate: on the first tick after this deploys,
+       * the published artifact's holdings half really is up to 24 h old, and
+       * this leg really should fire until the first refresh lands.
+       */
+      holdingsGeneratedAt: string | null;
+      rowCount: number;
+    };
 
 export interface TopHoldersStalenessVerdict {
   stale: boolean;
@@ -93,11 +129,22 @@ export interface TopHoldersStalenessVerdict {
   threshold_ms: number;
 }
 
-/** The rule alone, testable without a bucket or a clock. */
+/** Which of the artifact's two vintages a verdict is about (#9632). One
+ * object, two writers on two cadences: the daily lakehouse scan stamps `flow`
+ * and the three-hourly store refresh stamps `holdings`. */
+export type TopHoldersVintage = "flow" | "holdings";
+
+/** The rule alone, testable without a bucket or a clock.
+ *
+ * `vintage` selects the stamp, not the rule: absent/unreadable/empty mean the
+ * same repair for either leg, because all three are properties of the ONE
+ * object both write. Only "how old is it" differs, which is the whole reason
+ * the split needs a second verdict rather than a second threshold. */
 export function evaluateTopHoldersStaleness(input: {
   artifact: TopHoldersArtifactState;
   nowMs: number;
   thresholdMs: number;
+  vintage?: TopHoldersVintage;
 }): TopHoldersStalenessVerdict {
   const { artifact, nowMs, thresholdMs } = input;
   if (!artifact.present) {
@@ -112,7 +159,11 @@ export function evaluateTopHoldersStaleness(input: {
       threshold_ms: thresholdMs,
     };
   }
-  const { generatedAt, rowCount } = artifact;
+  const { rowCount } = artifact;
+  const generatedAt =
+    input.vintage === "holdings"
+      ? artifact.holdingsGeneratedAt
+      : artifact.generatedAt;
   const at = generatedAt == null ? NaN : Date.parse(generatedAt);
   if (!Number.isFinite(at)) {
     // A body whose timestamp cannot be read is worse than a missing one: the
@@ -188,10 +239,21 @@ export async function readTopHoldersArtifactState(
   }
   const rows = readRows(body);
   if (rows === null) return { present: false, reason: "unreadable" };
-  const generatedAt = (body as { generated_at?: unknown } | null)?.generated_at;
+  const stamps = body as {
+    generated_at?: unknown;
+    holdings_generated_at?: unknown;
+  } | null;
+  const generatedAt =
+    typeof stamps?.generated_at === "string" ? stamps.generated_at : null;
   return {
     present: true,
-    generatedAt: typeof generatedAt === "string" ? generatedAt : null,
+    generatedAt,
+    // See TopHoldersArtifactState for why the fallback is a reading of an older
+    // body rather than a hole in the alarm.
+    holdingsGeneratedAt:
+      typeof stamps?.holdings_generated_at === "string"
+        ? stamps.holdings_generated_at
+        : generatedAt,
     rowCount: rows.length,
   };
 }
@@ -214,10 +276,24 @@ export async function runTopHoldersStalenessWatchdog(
   const flowThresholdMs =
     Number(env?.TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS) ||
     TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS;
+  const holdingsThresholdMs =
+    Number(env?.TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS) ||
+    TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS;
+  // ONE read, two verdicts. Both legs write the same object, so a second get
+  // would only add a window in which they could disagree about which body they
+  // judged.
+  const artifact = await readTopHoldersArtifactState(bucket);
+  const nowMs = now();
   const flow = evaluateTopHoldersStaleness({
-    artifact: await readTopHoldersArtifactState(bucket),
-    nowMs: now(),
+    artifact,
+    nowMs,
     thresholdMs: flowThresholdMs,
+  });
+  const holdings = evaluateTopHoldersStaleness({
+    artifact,
+    nowMs,
+    thresholdMs: holdingsThresholdMs,
+    vintage: "holdings",
   });
 
   if (flow.stale) {
@@ -238,27 +314,63 @@ export async function runTopHoldersStalenessWatchdog(
     }).catch(() => false);
   }
 
+  // REPORTED SEPARATELY, not folded into the leg above, because the repairs are
+  // different people's: a stale flow leg is the daily lakehouse scan, a stale
+  // holdings leg is the three-hourly store refresh or the `account_balances` /
+  // `hotkey_alpha` producer under it. Collapsing them into one alert would name
+  // the wrong lane half the time. Both firing at once is the artifact being
+  // absent, unreadable or empty, which is genuinely one fault reported twice --
+  // and that is the case where a duplicate costs nothing to read.
+  if (holdings.stale) {
+    const age =
+      holdings.age_ms === null
+        ? "age unknown"
+        : `${(holdings.age_ms / 3_600_000).toFixed(1)} h old`;
+    await record(env as never, {
+      error: new Error(
+        `top-holders holdings refresh ${holdings.reason}: free_tao, ` +
+          `delegated_tao and total_tao are ${age} (threshold ` +
+          `${(holdingsThresholdMs / 3_600_000).toFixed(1)} h) -- the ` +
+          `leaderboard still RANKS on them, so this is a wrong ordering ` +
+          `served with a 200 rather than a missing column (#9632)`,
+      ),
+      route: "watchdog:top-holders-holdings-staleness",
+      errorCode: "stale_lane",
+    }).catch(() => false);
+  }
+
   // #9330/#9340: the DURABLE record, written every tick rather than only when
   // stale. PostHog stays the notification path; it is no longer the record,
   // because a dropped `$exception` is indistinguishable from a lane that was
   // fine, and writing on every tick is also what makes "the watchdog stopped
   // running" visible at all. Never throws -- see recordLaneVerdict.
-  await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+  const store = laneHealthStore(env, deps.laneHealthDb);
+  await recordLaneVerdict(store, {
     lane: "top-holders-flow-staleness",
     verdict: flow.stale ? "stale" : "ok",
     age_ms: flow.age_ms,
     detail: flow.reason,
-    checked_at: now(),
+    checked_at: nowMs,
+  });
+  // Its OWN lane row, for the reason the alert above is its own alert: the two
+  // halves fail independently and a single row could only record one of them.
+  await recordLaneVerdict(store, {
+    lane: "top-holders-holdings-staleness",
+    verdict: holdings.stale ? "stale" : "ok",
+    age_ms: holdings.age_ms,
+    detail: holdings.reason,
+    checked_at: nowMs,
   });
 
   // `ok` describes whether the TICK ran, not whether the lane is fresh. The
-  // verdict is flat now that there is one artifact rather than two; `flow` is
-  // kept alongside it so a reader written against the two-artifact shape still
-  // finds the field it was reading.
+  // top-level spread stays the FLOW verdict, unchanged, so a reader written
+  // against the one-artifact shape finds exactly the fields it was reading;
+  // `holdings` is additive beside it.
   return {
     ok: true,
-    alerted: flow.stale,
+    alerted: flow.stale || holdings.stale,
     ...flow,
     flow,
+    holdings,
   };
 }

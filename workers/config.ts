@@ -433,14 +433,24 @@ export const PROJECTION_LANES_CRON = "11,41 * * * *";
 // ~225 TAO off on the top holder, three hours after a complete 364,568-account
 // pass had already landed in D1.
 //
-// The cadence stays daily regardless, because the legs are NOT separable as
-// written: buildTopHoldersFlowRows keeps the top-N per key across the UNION of
-// both legs' sorts, so republishing holdings alone cannot preserve the flow
-// ranking without re-running the 1.65 GB scan. Splitting them is real work and
-// is deliberately deferred: that scan is a lakehouse GROUP BY which becomes an
-// indexed query once account_events is on Neon, removing the cost that forced
-// the daily bound. Doing it now would be building machinery to throw away at
-// cutover.
+// THE FLOW HALF STAYS DAILY AND THE HOLDINGS HALF NO LONGER DOES. This comment
+// used to say the legs were "NOT separable as written", because
+// buildTopHoldersFlowRows keeps the top-N per key across the UNION of both
+// legs' sorts -- and to defer the split until account_events reached Neon and
+// made the 1.65 GB GROUP BY an indexed query. Both halves of that were
+// re-checked on 2026-08-15 and only one survived:
+//
+//   - The cutover is not close. Neon's chain_detail_account_events holds a
+//     rolling 24.2 h, a SEVENTH of the shortest window the flow legs need.
+//   - The union does not require re-running the scan. The flow leg's
+//     contribution to it is already in the published artifact, and
+//     topHoldersHoldings picks its own top-N over the FULL store tables. So a
+//     holdings refresh is not a subset of a stale set.
+//
+// Meanwhile the error compounded: ~225 TAO behind on the top holder when filed,
+// ~321 on 2026-08-09, ~792 on 2026-08-15. TOP_HOLDERS_HOLDINGS_REFRESH_CRON
+// below republishes the store-backed columns over the row set this scan already
+// produced, for 1.37 s of Neon and zero lakehouse bytes.
 //
 // 01:34 UTC puts it ~2.5 h after the
 // nominator-positions producer's nightly pass (last two writes 22:27 and
@@ -448,6 +458,35 @@ export const PROJECTION_LANES_CRON = "11,41 * * * *";
 // on the LITERAL cron string, so this must be unique here as well as matching
 // a wrangler.jsonc `triggers.crons` entry.
 export const TOP_HOLDERS_FLOW_CRON = "34 1 * * *";
+
+/**
+ * The store-backed half of that leaderboard, republished on its own cadence
+ * (#9632). See src/top-holders-holdings-refresh.ts for the lane.
+ *
+ * THREE-HOURLY, against a six-hourly producer, and the factor of two is the
+ * point rather than over-sampling. `account_balances` is declared at 21,600 s
+ * (PRODUCER_CADENCE_SECS) and lands irregularly inside it -- measured across 57
+ * gaps on 2026-08-15: 25 min minimum, 4.2 h mean, 23.5 h maximum. A consumer on
+ * the SAME period as its producer is at the mercy of the phase between them and
+ * can sit a full producer interval behind; halving the period halves that
+ * worst case. The cost that would normally argue against it is not there --
+ * 1.37 s of Neon and no lakehouse bytes, so eight ticks is ~11 s of compute a
+ * day.
+ *
+ * IT ALSO FIXES A SECOND STALENESS THE ISSUE DID NOT NAME. `delegated_tao` is
+ * priced against `hotkey_alpha`'s newest COMPLETE pass, and that producer runs
+ * daily at ~09:40 UTC while the flow lane rebuilds at 01:34 -- so the daily
+ * lane has always read YESTERDAY's pool totals, never fresher than ~15.9 h and
+ * averaging over a day. A three-hourly refresh picks each 09:40 pass up within
+ * three hours of it landing.
+ *
+ * Minute 49 is used by no other cron in this file, hourly ones included, and
+ * dispatch keys on the LITERAL string -- so it must stay unique here AND match
+ * a wrangler.jsonc `triggers.crons` entry. The 00:49 tick sits 45 minutes ahead
+ * of the flow lane's 01:34, which is harmless: that lane rewrites both halves,
+ * and this one declines rather than competing when there is nothing to merge.
+ */
+export const TOP_HOLDERS_HOLDINGS_REFRESH_CRON = "49 */3 * * *";
 
 /**
  * Daily capture of the deregistration ranking's MEASURED inputs (#10296).

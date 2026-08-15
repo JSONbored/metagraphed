@@ -697,6 +697,7 @@ import {
   CHAIN_CONCENTRATION_ROLLUP_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   TOP_HOLDERS_FLOW_CRON,
+  TOP_HOLDERS_HOLDINGS_REFRESH_CRON,
   SUBNET_DEREGISTRATION_DAILY_CRON,
   TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
   ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
@@ -832,6 +833,7 @@ import {
   runProjectionLanes,
 } from "../src/projection-lanes.ts";
 import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
+import { TOP_HOLDERS_HOLDINGS_REFRESH_LANE } from "../src/top-holders-holdings-refresh.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import type {
   ConsumeResult,
@@ -2889,6 +2891,8 @@ function cronLabel(cron: string): string {
   if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON)
     return "account-balances-staleness-watchdog";
   if (cron === TOP_HOLDERS_FLOW_CRON) return "top-holders-flow";
+  if (cron === TOP_HOLDERS_HOLDINGS_REFRESH_CRON)
+    return "top-holders-holdings-refresh";
   if (cron === SUBNET_DEREGISTRATION_DAILY_CRON)
     return "subnet-deregistration-daily";
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
@@ -3438,6 +3442,7 @@ export const API_HANDLED_CRONS: readonly string[] = [
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   SUBNET_DEREGISTRATION_DAILY_CRON,
   TOP_HOLDERS_FLOW_CRON,
+  TOP_HOLDERS_HOLDINGS_REFRESH_CRON,
   TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
   HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
   ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
@@ -3949,6 +3954,15 @@ async function dispatchScheduled(
     // ranking in place and records one exception under
     // projection:top-holders-flow rather than publishing an empty one.
     return runProjectionLane(env, TOP_HOLDERS_FLOW_LANE);
+  }
+  if (cron === TOP_HOLDERS_HOLDINGS_REFRESH_CRON) {
+    // #9632: republish free_tao/delegated_tao/total_tao over the row set the
+    // branch above already produced, three-hourly, WITHOUT touching the
+    // net_flow_* ranking or its vintage. Same runner and therefore the same
+    // all-or-nothing posture: every decline in that module leaves the published
+    // leaderboard exactly as it is, including the one that matters most --
+    // "there is no artifact yet" is the daily lane's job, never this one's.
+    return runProjectionLane(env, TOP_HOLDERS_HOLDINGS_REFRESH_LANE);
   }
   if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON) {
     // The top-holders leaderboard's alarm (#9464). Zero alerts is the correct
