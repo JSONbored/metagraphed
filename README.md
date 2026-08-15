@@ -4,7 +4,9 @@
 
 ### Every subnet, metagraphed.
 
-Bittensor didn't ship with a map, so we drew one. For every subnet: **what does it expose** (public APIs, docs, schemas), **is it healthy**, and **how do I call it** — machine-readable and agent-native from the ground up.
+**The open registry and block explorer for Bittensor.** All 128 subnets, the APIs and schemas each one publishes, whether those endpoints answered our last probe, and how to call them — as REST, GraphQL, MCP tools and CSV.
+
+Bittensor didn't ship with a map, so we drew one. Every health figure here is probe-derived on a 15-minute cycle; none of it is self-reported.
 
 [![Website](https://img.shields.io/badge/website-metagraph.sh-111?logo=cloudflare&logoColor=white)](https://metagraph.sh)
 [![MCP](https://img.shields.io/badge/MCP-api.metagraph.sh%2Fmcp-7c3aed)](https://api.metagraph.sh/mcp)
@@ -41,9 +43,44 @@ Agent-native, public, read-only, Streamable-HTTP. 200+ tools to explore the chai
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 ```
 
-> Cursor / other clients: add an MCP server with url `https://api.metagraph.sh/mcp`, transport `streamable-http`.
->
-> Tools: `search_subnets` · `list_subnets` · `find_subnets_by_capability` · `get_subnet` · `get_subnet_health` · `get_subnet_economics` · `get_subnet_trajectory` · `get_subnet_metagraph` · `list_subnet_validators` · `get_neuron` · `get_account` · `get_account_events` · `get_account_subnets` · `list_subnet_apis` · `get_api_schema` · `get_fixture` · `get_agent_catalog` · `get_best_rpc_endpoint` · `registry_summary` · `list_enrichment_targets` · `find_subnet_opportunities` · `semantic_search` · `ask` · `find_subnet_for_task` · `how_do_i_call` · `verify_integration`
+<details>
+<summary><b>Other clients</b> — Cursor, VS Code, Windsurf, Zed, ChatGPT, or anything speaking MCP</summary>
+
+Add an MCP server with url `https://api.metagraph.sh/mcp` and transport `streamable-http`. No API key, no account, read-only.
+
+```json
+{
+  "mcpServers": {
+    "metagraphed": {
+      "type": "streamable-http",
+      "url": "https://api.metagraph.sh/mcp"
+    }
+  }
+}
+```
+
+</details>
+
+**Ask it things like:**
+
+> _"Which Bittensor subnets have a public API I can call today?"_
+> _"Is SN64 healthy, and what does its OpenAPI spec look like?"_
+> _"What changed on subnet 38 last week?"_
+> _"Which validator should I look at for subnet 19, and what's their take?"_
+
+**What the tools cover:**
+
+|                     | tools                                                                                        | answers                                       |
+| :------------------ | :------------------------------------------------------------------------------------------- | :-------------------------------------------- |
+| 🔍 **Discover**     | `search_subnets` · `semantic_search` · `find_subnets_by_capability` · `find_subnet_for_task` | which subnet does the thing I need            |
+| 🩺 **Health**       | `get_subnet_health` · `get_self_health` · `list_endpoints` · `get_best_rpc_endpoint`         | is it up, and which endpoint should I hit     |
+| 🔌 **Integrate**    | `list_subnet_apis` · `get_api_schema` · `how_do_i_call` · `verify_integration`               | what do I send it, and did it work            |
+| 📈 **Economics**    | `get_subnet_economics` · `get_subnet_trajectory` · `get_subnet_yield` · `compare_subnets`    | emission, alpha, yield, and how it's trending |
+| ⛓️ **Chain**        | `get_block` · `list_extrinsics` · `get_subnet_metagraph` · `get_neuron`                      | raw chain state, chain-direct                 |
+| 👛 **Wallets**      | `get_account` · `get_account_events` · `get_account_subnets` · `get_account_portfolio`       | what one coldkey does across the network      |
+| 💬 **Grounded Q&A** | `ask`                                                                                        | a cited answer over the whole registry        |
+
+<sub>200+ tools total — the full list is in the [server card](https://api.metagraph.sh/.well-known/mcp/server-card.json), and a curated 23-tool core profile is available for context-limited agents.</sub>
 
 #### 📦 Typed client
 
