@@ -17962,24 +17962,28 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
     `https://mcp-session-hub.internal/stream?sessionId=${encodeURIComponent(rawSessionId)}`,
   );
   if (!upstream.ok) {
-    // 404 (session unknown/already terminated) or 409 (a stream is already
-    // open for this session) from the DO -- pass the status through with a
-    // client-facing message, never the DO's own internal response body.
+    // 404 (session unknown/already terminated) from the DO -- a client-facing
+    // message, never the DO's own internal response body.
+    //
+    // THE 409 ARM IS GONE with the refusal that produced it. `/stream` now
+    // answers 200 or 404 and nothing else: a second GET takes the channel over
+    // rather than being told a stream is already open, because the stream we
+    // were holding is the doubtful one and the client asking now is not. The
+    // branch (and the test that stubbed a 409 to reach it) described a state
+    // production can no longer produce.
     return jsonResponse(
       rpcError(
         null,
         RPC_INVALID_REQUEST,
-        upstream.status === 409
-          ? "A stream is already open for this session."
-          : // #8632: "call initialize again" was wrong advice -- initialize
-            // mints a session id but does NOT register it here, so following
-            // it produces this same 404 forever. The missing step is the
-            // subscription.
-            "No stream is open for this Mcp-Session-Id. A session is only " +
-              "registered by resources/subscribe -- call it (on " +
-              "metagraph://chain/stream or metagraph://subnet/{netuid}/status) " +
-              "before opening the GET stream. If the session has since expired, " +
-              "re-run initialize and subscribe again.",
+        // #8632: "call initialize again" was wrong advice -- initialize
+        // mints a session id but does NOT register it here, so following
+        // it produces this same 404 forever. The missing step is the
+        // subscription.
+        "No stream is open for this Mcp-Session-Id. A session is only " +
+          "registered by resources/subscribe -- call it (on " +
+          "metagraph://chain/stream or metagraph://subnet/{netuid}/status) " +
+          "before opening the GET stream. If the session has since expired, " +
+          "re-run initialize and subscribe again.",
       ),
       // 405, not 404, for the no-subscription case. The Streamable HTTP transport
       // names 405 as the sanctioned "this endpoint offers no SSE stream", and a
@@ -17992,9 +17996,8 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
       // and began reconnecting — which is the churn that then walked into the
       // OAuth-route 401 (see matchesMcpApiRoute in src/github-oauth.ts).
       //
-      // 409 keeps its own status: a stream IS on offer there, just already taken.
-      upstream.status === 409 ? 409 : 405,
-      upstream.status === 409 ? undefined : { allow: "POST, DELETE, OPTIONS" },
+      405,
+      { allow: "POST, DELETE, OPTIONS" },
     );
   }
   return new Response(upstream.body, {

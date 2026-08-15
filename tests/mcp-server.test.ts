@@ -1902,20 +1902,39 @@ describe("MCP transport handling", () => {
       assert.doesNotMatch(body.error.message, /call initialize again/);
     });
 
-    test("a 409 from the session hub (a stream is already open) passes through as 409", async () => {
-      const hub = fakeMcpSessionHubBinding({
-        "/stream": () => new Response(null, { status: 409 }),
-      });
-      const request = new Request(MCP_URL, {
-        method: "GET",
-        headers: { "mcp-session-id": A_SESSION_ID },
-      });
-      const response = await handleMcpRequest(request, {
-        MCP_SESSION_HUB: hub,
-      } as unknown as Env);
-      assert.equal(response.status, 409);
-      const body = (await response.json()) as Row;
-      assert.match(body.error.message, /already open/);
+    // The 409 pass-through is gone with the refusal that produced it: a second
+    // GET now TAKES OVER the channel rather than being refused, so `/stream`
+    // answers 200 or 404 and nothing else. Its test stubbed a 409 the hub can
+    // no longer return -- a state production cannot reach, asserted anyway.
+    //
+    // What replaces it is the property that actually matters and held either
+    // way: whatever the hub declines with, the client is told what to DO about
+    // it, and never handed the hub's own internal body.
+    test("any decline from the session hub is a 405 that names the missing step", async () => {
+      for (const status of [404, 409, 500]) {
+        const hub = fakeMcpSessionHubBinding({
+          "/stream": () =>
+            new Response(JSON.stringify({ error: "internal detail" }), {
+              status,
+            }),
+        });
+        const request = new Request(MCP_URL, {
+          method: "GET",
+          headers: { "mcp-session-id": A_SESSION_ID },
+        });
+        const response = await handleMcpRequest(request, {
+          MCP_SESSION_HUB: hub,
+        } as unknown as Env);
+        assert.equal(response.status, 405, `hub ${status}`);
+        assert.equal(response.headers.get("allow"), "POST, DELETE, OPTIONS");
+        const body = (await response.json()) as Row;
+        assert.match(body.error.message, /resources\/subscribe/);
+        assert.doesNotMatch(
+          body.error.message,
+          /internal detail/,
+          "the hub's own body never reaches a client",
+        );
+      }
     });
 
     // The canonical initialize-then-GET sequence ALWAYS lands here, because a
