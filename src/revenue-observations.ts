@@ -324,12 +324,44 @@ export async function sha256Hex(text: string): Promise<string> {
  * a 500 with a JSON error body must not have that body handed to an extractor,
  * which would read a field name off it and write whatever it found.
  */
+/**
+ * How this lane identifies itself to somebody else's billing API.
+ *
+ * Matches the probe family's spelling (`metagraphed-smoke-probe/0.0`,
+ * `metagraphed-subtensor-rpc-probe/0.0`) so an operator grepping their access
+ * log sees one recognisable family rather than four unrelated strings.
+ */
+export const REVENUE_PROBE_USER_AGENT = "metagraphed-revenue-probe/0.0";
+
 export async function fetchRevenuePayload(
   url: string,
   { timeoutMs = 10_000 }: { timeoutMs?: number } = {},
 ): Promise<{ payload: unknown; raw: string }> {
   const response = await fetch(url, {
-    headers: { accept: "application/json" },
+    headers: {
+      accept: "application/json",
+      // NAMED, and this is not a courtesy -- it is what makes the lane work.
+      //
+      // Workers send no User-Agent by default, and a WAF that refuses UA-less
+      // traffic answers 403. Measured 2026-08-15 against
+      // https://lium.io/api/billing/revenue-for-validators:
+      //
+      //   no User-Agent header     -> 403  (3/3)
+      //   any User-Agent           -> 200
+      //
+      // That is the whole of SN51's outage. The surface was never down: a plain
+      // curl and the live cron health prober both got 200 throughout, the
+      // prober because src/health-probe-core.ts has always sent
+      // `metagraphed-smoke-probe/0.0`. This lane was the one caller not
+      // identifying itself, so it 403'd, wrote a failure row, retried, and
+      // dead-lettered roughly hourly for 3.7 days -- while the payload it could
+      // not reach parses into 20 valid monthly observations.
+      //
+      // Same shape as every other outbound identity in this repo, so an
+      // operator reading their logs can tell who we are and rate-limit us
+      // deliberately rather than by accident.
+      "user-agent": REVENUE_PROBE_USER_AGENT,
+    },
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
