@@ -73,9 +73,19 @@
     // src/neon-write-buffer.ts makes naming them a no-op regardless; they are
     // left out so this list reads as what it is.
     //
-    // Every lane below is held to `2 * HOUR` by src/table-freshness-watchdog.ts,
-    // so a ten-minute flush is twelve ticks inside a bound that already exists.
-    "NEON_WRITE_BUFFER_LANES": "raw-capture-state,neurons,subnet-hyperparams,subnet-identity,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
+    // `raw-capture-state` was named here and is now absent for a DIFFERENT
+    // reason: its reader is its own writer. The capture tick SELECTs the
+    // watermark from Postgres to decide where to resume, so a deferred write
+    // made every tick in the flush window resume at the same height and
+    // re-capture the same blocks. See NEVER_BUFFER_LANES for the measurement.
+    //
+    // A LANE'S FRESHNESS BOUND IS NOT THE TEST. Every lane below is held to
+    // `2 * HOUR` by src/table-freshness-watchdog.ts, and a ten-minute flush
+    // sits comfortably inside that -- which is why this list looked safe. The
+    // bound answers "is the row too old for a READER", and says nothing about
+    // whether the PRODUCER reads it back. Only add a lane here once nothing
+    // decides its own next write from the row it just wrote.
+    "NEON_WRITE_BUFFER_LANES": "neurons,subnet-hyperparams,subnet-identity,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
     "METAGRAPH_CONTRACT_VERSION": "2026-07-03.2",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",

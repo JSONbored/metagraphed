@@ -181,7 +181,7 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     column: "updated_at",
     kind: "ms",
     maxAgeMs: 2 * HOUR,
-    reason: "RAW_CAPTURE_CRON every 5 min",
+    reason: "RAW_CAPTURE_CRON every minute",
   },
   // `raw_capture_state_v2` was declared here purely to satisfy the old
   // invariant -- "account for every table tests/fixtures/sqlite-schema names"

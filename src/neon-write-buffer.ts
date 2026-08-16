@@ -316,7 +316,8 @@ export function neonWriteBufferLanes(
 /**
  * Lanes that must NEVER be buffered, whatever the flag says.
  *
- * Both entries are the block explorer's live READ path, not merely writes.
+ * Every entry is a live READ path, not merely a write. Two serve the block
+ * explorer; the third is read by its OWN producer, which is worse.
  *
  * `blocks-head` is the header register above the decode seam.
  * src/blocks-cold-tier.ts routes `block_number > seam` to
@@ -347,6 +348,46 @@ export const NEVER_BUFFER_LANES: ReadonlySet<string> = new Set([
   // DETAIL. Buffering the head and not the detail would be worse than
   // buffering neither -- the explorer would list a block it cannot open.
   "chain-detail",
+  // A DIFFERENT AND SHARPER CASE: this lane's reader is its own WRITER.
+  //
+  // `raw_capture_state.last_contiguous_block` is where the capture tick
+  // resumes. `neonWatermarkRead` (src/raw-capture-sync.ts) SELECTs it straight
+  // from Postgres while this lane's write went through the buffer, so for the
+  // whole FLUSH_INTERVAL_MS the tick read back a watermark its own earlier
+  // ticks had already moved past, resumed at the same height, and re-captured
+  // the same blocks. The R2 key is derived from the block range, so those
+  // re-writes were byte-identical and nothing anywhere errored.
+  //
+  // The effective rate is therefore `maxBlocks per FLUSH INTERVAL`, not per
+  // tick -- every tick inside a window writes the same `watermark + maxBlocks`
+  // and the last one wins. MEASURED ON PRODUCTION 2026-08-16:
+  //
+  //   cron    maxBlocks   ticks per 10 min   blocks per 10 min   vs chain
+  //   */5        53              2                  53            5.3/min
+  //   */1        10             10                  10            1.0/min
+  //
+  // against a chain producing 5.0/min. So #11402 shortened the cron so ticks
+  // would finish rather than be killed partway -- correct on its own terms --
+  // and cut throughput fivefold, because the budget shrinks with the interval
+  // while the flush interval does not. Capture went from just above
+  // break-even to losing four blocks a minute, and the seam alarm (#11404)
+  // fired on a lane whose every tick reported "ok, 10 captured".
+  //
+  // src/raw-capture-sync.ts already carries this exact warning one layer up --
+  // "an earlier version nearly shipped writing Neon while still reading a
+  // store-backed store ... it would have re-captured the same blocks every
+  // tick, forever, while both stores looked healthy". Buffering re-opened that
+  // gap without touching either function, because it moved the write and left
+  // the read.
+  //
+  // It is also the cheapest lane to exempt: two rows a minute, against
+  // `blocks-head` at one every 12s, so the CU this gives back is a rounding
+  // error next to a capture lane that cannot keep up with the chain.
+  //
+  // tests/buffered-lane-read-your-writes.test.ts makes this general: it sweeps
+  // every lane's producer for a read of that lane's own table, so the next one
+  // is caught rather than remembered.
+  "raw-capture-state",
 ]);
 
 /** Whether one lane's writes go through the buffer. */

@@ -208,10 +208,18 @@ describe("retired lanes (#10222)", () => {
     // Non-vacuity, on both sides. An empty `fossils` would pass the loop while
     // proving nothing, and an empty `live` would mean the producer table had
     // been emptied rather than that the rule holds.
+    //
+    // `raw-capture-state` was in this list until it left the buffered set
+    // entirely: it is in NEVER_BUFFER_LANES now, because its producer reads
+    // the row back to decide where to resume. It is still a fossil and still
+    // retired -- an unbuffered lane records under `neon:<lane>` too, so the
+    // bare spelling has no writer either way -- and that is asserted directly
+    // in "the three lanes #10851 orphaned" above. What changed is only that
+    // this DERIVED sweep no longer reaches it, because the sweep is over
+    // buffered lanes.
     assert.deepEqual(fossils, [
       "neurons",
       "nominator-positions",
-      "raw-capture-state",
       "tao-usd-index",
       "validator-nominator-counts",
     ]);

@@ -139,9 +139,13 @@
     // src/neon-write-buffer.ts makes naming them a no-op regardless; they are
     // left out so this list reads as what it is.
     //
-    // Every lane below is held to `2 * HOUR` by src/table-freshness-watchdog.ts,
-    // so a ten-minute flush is twelve ticks inside a bound that already exists.
-    "NEON_WRITE_BUFFER_LANES": "raw-capture-state,neurons,subnet-hyperparams,subnet-identity,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
+    // A LANE'S FRESHNESS BOUND IS NOT THE TEST. Every lane below is held to
+    // `2 * HOUR` by src/table-freshness-watchdog.ts, and a ten-minute flush
+    // sits comfortably inside that -- which is why `raw-capture-state` looked
+    // safe here and was not: the bound answers "is this row too old for a
+    // READER", and says nothing about whether the PRODUCER reads it back to
+    // decide its next write. See NEVER_BUFFER_LANES for what that cost.
+    "NEON_WRITE_BUFFER_LANES": "neurons,subnet-hyperparams,subnet-identity,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
     "UNKEY_API_ID": "api_2Dv8cVjrTSiD",
     // Tier-source flags. These are READ by this Worker -- neuronsServedFromD1()
     // and its two siblings in workers/data-api.ts gate on `!== "postgres"` --

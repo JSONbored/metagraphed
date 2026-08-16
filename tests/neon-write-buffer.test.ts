@@ -450,10 +450,27 @@ describe("blocks-head can never be buffered", () => {
     );
   });
 
-  test("the never-buffer set names both explorer lanes explicitly", () => {
+  test("raw-capture-state is excluded -- its READER is its own writer", () => {
+    // The other two are the explorer's read path, where buffering costs
+    // freshness. This one is worse: the capture tick SELECTs the watermark to
+    // decide where to resume, so deferring the write made every tick in the
+    // flush window resume at the same height and re-capture the same blocks.
+    // Measured on production 2026-08-16: 10 blocks per 10-minute flush window
+    // against a chain producing 5 a minute, with every tick reporting ok.
+    assert.equal(
+      neonWriteBufferEnabled(
+        { NEON_WRITE_BUFFER_LANES: "raw-capture-state" },
+        "raw-capture-state",
+      ),
+      false,
+    );
+  });
+
+  test("the never-buffer set names all three lanes explicitly", () => {
     assert.deepEqual([...NEVER_BUFFER_LANES].sort(), [
       "blocks-head",
       "chain-detail",
+      "raw-capture-state",
     ]);
   });
 });
