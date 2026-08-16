@@ -64,12 +64,29 @@ export const GITHUB_SIGNALS_SYNC_CRON = "20 6 * * *";
 // docs link rots on a scale of weeks, not minutes. Must match a wrangler.jsonc
 // `triggers.crons` entry.
 export const LINK_STATUS_SYNC_CRON = "35 7 * * *";
-// Raw chain capture (extrinsics/events bytes -> R2), every 5 minutes. The
-// chain produces ~5 blocks/minute and a tick captures up to 150, so this
-// out-runs head by ~6x -- a backlog DRAINS rather than merely holding, which
-// is what lets the lane heal an outage instead of just surviving one. See
-// src/raw-chain-capture.ts for the no-gap guarantee itself.
-export const RAW_CAPTURE_CRON = "*/5 * * * *";
+// Raw chain capture (extrinsics/events bytes -> R2), EVERY MINUTE.
+//
+// It was */5, and the cadence is the whole reason the lane under-performed its
+// own budget. `pacedLaneBudget` derives the tick from this interval, so at */5 a
+// tick was sized to spend ~4 minutes reading -- and a Worker invocation does not
+// reliably live that long. Measured against production 2026-08-16: the watermark
+// advanced ~35 blocks per tick against a budget of 53, in exact multiples of the
+// flush chunk, which is the signature of an invocation killed partway with its
+// banked chunks kept. The lane was using 27 of its 100 RPC calls/minute: the
+// rate ceiling was never the constraint, the invocation lifetime was.
+//
+// At */1 the same derivation yields ~10 blocks over ~45 s -- comfortably inside
+// one invocation, so ticks COMPLETE instead of being truncated. The sustained
+// rate rises (7.5 -> ~10 blocks/min measured against a chain producing 5) purely
+// by not throwing away the tail of every tick, and the per-minute RPC spend is
+// unchanged because the budget is derived per minute either way.
+//
+// The paired budget tests hold at this cadence and are written against
+// `cronStepMinutes` rather than a literal, so they move with it: a tick still
+// finishes inside its interval (45 s < 60 s) and still out-runs the chain
+// (600 blocks/h against 300). See src/raw-chain-capture.ts for the no-gap
+// guarantee itself.
+export const RAW_CAPTURE_CRON = "*/1 * * * *";
 
 /**
  * metagraphed's own uptime probe (#9836).
