@@ -133,8 +133,8 @@ describe("BUDGETS", () => {
 
   it("keeps apps/ui a ratchet that can only fall", () => {
     // Named explicitly so raising it is a visible edit to this line rather
-    // than a quiet edit to a number. 101 is where #11368 left it.
-    expect(BUDGETS["apps/ui"]).toBeLessThanOrEqual(101);
+    // than a quiet edit to a number. 93 is where #11368 left it.
+    expect(BUDGETS["apps/ui"]).toBeLessThanOrEqual(93);
   });
 
   it("covers every area a cast could hide in outside tests", () => {

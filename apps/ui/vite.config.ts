@@ -278,5 +278,12 @@ export default defineConfig({
         }
       },
     },
-  } satisfies NitroPluginConfig as unknown as LovableViteTanstackOptions["nitro"],
+    // `satisfies NitroPluginConfig` is the real check and it runs first: this
+    // object is validated against nitro's own config type, `hooks` and all.
+    // The assertion only bridges to the WRAPPER's `nitro` option, which is
+    // declared as a three-key subset (preset/output/cloudflare) and does not
+    // admit `hooks` even though nitro does. One hop, not two -- `as unknown as`
+    // would have discarded the satisfies check's guarantee at the same time,
+    // so a genuinely malformed nitro config would have compiled.
+  } satisfies NitroPluginConfig as LovableViteTanstackOptions["nitro"],
 });

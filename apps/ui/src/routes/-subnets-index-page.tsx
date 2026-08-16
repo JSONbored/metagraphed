@@ -100,6 +100,7 @@ import { DomainsRollup } from "@/components/metagraphed/domains-rollup";
 import { SubnetIndexDirectory } from "@/components/metagraphed/subnet-index-directory";
 import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
 import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
+import { cancelIdle, requestIdle } from "@/lib/metagraphed/idle";
 
 // #8248: fetch every active subnet in one shot instead of cursor-paginating --
 // the whole list (129 rows) is virtualized client-side, so there is no
@@ -803,10 +804,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // actually changes — not on every keystroke/hover-driven re-render.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const ric =
-      (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
-        .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
-    const handle = ric(() => {
+    const handle = requestIdle(() => {
       for (const s of rows)
         prefetchBrandIcon(s.website, 32, {
           iconUrl: s.icon_url,
@@ -814,12 +812,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           lookup: { netuid: s.netuid },
         });
     });
-    return () => {
-      const cic =
-        (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback ??
-        window.clearTimeout;
-      cic(handle as number);
-    };
+    return () => cancelIdle(handle);
   }, [rows]);
 
   // Unified QueryBar-driven filter surface. All filter dropdowns become

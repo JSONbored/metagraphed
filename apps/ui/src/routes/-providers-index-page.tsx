@@ -48,6 +48,7 @@ import type { Provider } from "@/lib/metagraphed/types";
 import type { ProviderSortKey } from "./apis.providers";
 import { providerSortKeys } from "./apis.providers";
 import { ApisTabActions } from "./-apis-hub";
+import { cancelIdle, requestIdle } from "@/lib/metagraphed/idle";
 
 export function ProvidersPage() {
   const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
@@ -275,10 +276,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const ric =
-      (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
-        .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
-    const handle = ric(() => {
+    const handle = requestIdle(() => {
       for (const p of sorted)
         prefetchBrandIcon(p.website ?? p.homepage, 36, {
           iconUrl: p.icon_url,
@@ -286,12 +284,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
           lookup: { providerSlug: p.slug },
         });
     });
-    return () => {
-      const cic =
-        (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback ??
-        window.clearTimeout;
-      cic(handle as number);
-    };
+    return () => cancelIdle(handle);
   }, [sorted]);
 
   // Hooks must run unconditionally before the early return below.
