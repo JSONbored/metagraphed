@@ -877,7 +877,11 @@ describe("the tick reports the mechanism it measured", () => {
     return String(insert.values[3]);
   };
 
-  test("a churn subnet is reported as churn, not as withdrawal", async () => {
+  test("PURE CHURN records its verdict and does NOT page (#11386)", async () => {
+    // SN25's real shape. Churn means the announcing miners were deregistered
+    // and their UIDs reused by miners that never served -- nobody went dark and
+    // there is nobody to go looking for. Paging on it would have sent ~14
+    // Discord alerts over the week SN25's baseline took to decay.
     answer(rowsFor(25, then(flat(8, 80), [14, 256])), [
       { netuid: 25, via_reuse: 67, same_hotkey: 0 },
     ]);
@@ -888,15 +892,62 @@ describe("the tick reports the mechanism it measured", () => {
         captured = ev;
         return true;
       }) as never,
-    })) as { findings: AxonFinding[] };
+    })) as {
+      findings: AxonFinding[];
+      alerted: boolean;
+      flagged: boolean;
+      churn_only: boolean;
+    };
 
     assert.equal(result.findings[0].kind, "churn-replaced");
     assert.equal(result.findings[0].lossesViaReuse, 67);
+    assert.equal(captured, null, "pure churn must not raise an exception");
+    assert.equal(result.alerted, false);
+    // SUPPRESSING THE PAGE IS NOT SUPPRESSING THE FINDING. The durable record
+    // still carries it, with the mechanism spelled out.
+    assert.equal(result.flagged, true);
+    assert.equal(result.churn_only, true);
     assert.match(verdict(), /churn-replaced: 67 of 67/);
+  });
+
+  test("churn MIXED with a withdrawal still pages", async () => {
+    // `every` is the bar, so one non-churn finding restores the page. A real
+    // withdrawal must not be silenced by a churning neighbour on the same day.
+    answer(
+      [
+        ...rowsFor(25, then(flat(8, 80), [14, 256])),
+        ...rowsFor(101, then(flat(8, 223), [125, 256])),
+      ],
+      [
+        { netuid: 25, via_reuse: 67, same_hotkey: 0 },
+        { netuid: 101, via_reuse: 64, same_hotkey: 75 },
+      ],
+    );
+    let captured: Record<string, unknown> | null = null;
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
+    })) as {
+      alerted: boolean;
+      churn_only: boolean;
+      findings: AxonFinding[];
+    };
+
+    // Pin the MIX, or this passes on a single withdrawal finding and says
+    // nothing about churn failing to silence it.
+    assert.equal(result.findings.length, 2);
+    assert.deepEqual([...result.findings].map((f) => f.kind).sort(), [
+      "announcements-withdrawn",
+      "churn-replaced",
+    ]);
+    assert.equal(result.churn_only, false);
+    assert.equal(result.alerted, true);
     assert.match(
       String((captured as unknown as { error: Error }).error.message),
-      /fell through CHURN, not withdrawal/,
-      "the message must not claim anyone went dark",
+      /stopped publishing an axon/,
     );
   });
 

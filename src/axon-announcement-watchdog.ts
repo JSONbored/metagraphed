@@ -457,7 +457,32 @@ export async function runAxonAnnouncementWatchdog(
   const fleetWide = isFleetWide(findings);
   const detail = axonDetail(findings);
 
-  if (findings.length > 0) {
+  // CHURN RECORDS, IT DOES NOT PAGE (#11386).
+  //
+  // `churn-replaced` means the announcing miners were deregistered and their
+  // UIDs reused by miners that never served. Nobody went dark, and there is
+  // nobody to go looking for. Measured across the network, restricted to
+  // subnets with >=3 miners earning incentive, 32 of 66 (48%) have NOT ONE
+  // earner that announces -- and only ~21% of registered neurons announce a
+  // routable axon at all. A subnet whose announcing set is ground down one
+  // deregistration at a time is describing the network's ordinary state.
+  //
+  // SN25 alone would have paged twice a day for about a week on this shape,
+  // until its baseline decayed below the floor.
+  //
+  // The verdict is still WRITTEN, so it stays on /self-health and in history
+  // with the mechanism and counts inline (#11385). Suppressing the page is not
+  // suppressing the finding -- lane_health is the durable record by design
+  // (#9330/#9340), and PostHog was never it.
+  //
+  // A withdrawal, a fleet-wide flag, an unread mechanism or any MIXED set all
+  // still page: `every` is the bar, so one non-churn finding restores it.
+  const churnOnly =
+    findings.length > 0 &&
+    !fleetWide &&
+    findings.every((f) => f.kind === "churn-replaced");
+
+  if (findings.length > 0 && !churnOnly) {
     // A fleet-wide flag is reported as OUR failure and given its own error
     // code, because it sends a reader somewhere completely different: to the
     // poller, not to a subnet's operators. Collapsing the two would make an
@@ -468,25 +493,20 @@ export async function runAxonAnnouncementWatchdog(
           ? `${findings.length} subnets dropped below their axon baseline on the same day -- ` +
               `that is far more than any observed independent cluster (max 3), so read this as the ` +
               `metagraph capture failing rather than as subnets going dark: ${detail}`
-          : findings.every((f) => f.kind === "churn-replaced")
-            ? `announced axons fell through CHURN, not withdrawal: ${detail} -- the announcing ` +
-              `miners were DEREGISTERED and their UIDs reused by miners that never served. ` +
-              `Nobody went dark; the announcing set is ground down one registration at a time, ` +
-              `and it only reverses if serving starts paying on that subnet (#11369)`
-            : // ONLY ON A MEASURED WITHDRAWAL. This sentence names a cause and
-              // sends a reader to a specific subnet's operators, so it is
-              // gated on having actually counted same-hotkey stops rather
-              // than on being the last branch left.
-              findings.some((f) => f.kind === "announcements-withdrawn")
-              ? `announced axons collapsed: ${detail} -- miners that are still registered and ` +
-                `still earning stopped publishing an axon, so this is a reachability change ` +
-                `nothing else in the fleet reports (#11328)`
-              : // Turnover and unread mechanisms land here. The detail already
-                // says which, and neither is a withdrawal, so this states the
-                // drop and stops -- see the `mechanism-unknown` note on
-                // AxonFinding for why inventing the cause was worse.
-                `announced axons fell below baseline: ${detail} -- this reports the DROP only; ` +
-                `no miner was measured to have stopped announcing`,
+          : // ONLY ON A MEASURED WITHDRAWAL. This sentence names a cause and
+            // sends a reader to a specific subnet's operators, so it is gated
+            // on having actually counted same-hotkey stops rather than on
+            // being the last branch left.
+            findings.some((f) => f.kind === "announcements-withdrawn")
+            ? `announced axons collapsed: ${detail} -- miners that are still registered and ` +
+              `still earning stopped publishing an axon, so this is a reachability change ` +
+              `nothing else in the fleet reports (#11328)`
+            : // Turnover, unread mechanisms, and churn MIXED with either land
+              // here -- pure churn never reaches this call at all. The detail
+              // already says which, and none of them is a withdrawal, so this
+              // states the drop and stops.
+              `announced axons fell below baseline: ${detail} -- this reports the DROP only; ` +
+              `no miner was measured to have stopped announcing`,
       ),
       route: `watchdog:${AXON_ANNOUNCEMENT_LANE}`,
       errorCode: fleetWide
@@ -508,7 +528,11 @@ export async function runAxonAnnouncementWatchdog(
 
   return {
     ok: true,
-    alerted: findings.length > 0,
+    // WHETHER IT PAGED, which is no longer the same as whether it found
+    // something -- pure churn is recorded without an exception.
+    alerted: findings.length > 0 && !churnOnly,
+    flagged: findings.length > 0,
+    churn_only: churnOnly,
     fleet_wide: fleetWide,
     subnets_measured: bySubnet.size,
     findings,
