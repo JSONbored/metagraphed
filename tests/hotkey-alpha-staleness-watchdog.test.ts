@@ -21,7 +21,6 @@
 // place is an alarm that is quietly too low to fire, and nothing about a passing
 // tick would say so.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -43,7 +42,7 @@ import {
   runHotkeyAlphaStalenessWatchdog,
 } from "../src/hotkey-alpha-staleness-watchdog.ts";
 import { handleScheduled } from "../workers/api.ts";
-import * as workerConfig from "../workers/config.ts";
+import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;
 const HOUR = 60 * 60_000;
@@ -480,53 +479,10 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
 });
 
 describe("the cron string is unique and wired", () => {
-  test("no other cron in workers/config.ts shares the literal string", () => {
-    // Dispatch keys on the LITERAL cron string, so a duplicate silently routes
-    // this lane into another branch entirely.
-    const crons = Object.entries(workerConfig)
-      .filter(([key]) => key.endsWith("_CRON"))
-      .map(([, value]) => value);
-    const mine = workerConfig.HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON;
-    assert.equal(
-      crons.filter((cron) => cron === mine).length,
-      1,
-      `${mine} is declared by more than one lane`,
-    );
-  });
-
-  test("it stays off the */5 and */15 grids", () => {
-    // Both grids fire on every minute divisible by 5, so a watchdog sharing one
-    // contends with the raw-capture and probe lanes on the same tick.
-    const minute = Number(
-      workerConfig.HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON.split(" ")[0],
-    );
-    assert.equal(Number.isInteger(minute), true);
-    assert.notEqual(minute % 5, 0);
-  });
-
-  test("wrangler.jsonc declares the trigger", () => {
-    // A cron the Worker dispatches on but wrangler never fires is dead code —
-    // and the failure is silent, since the branch simply never runs.
-    const raw = readFileSync(
-      new URL("../wrangler.jsonc", import.meta.url),
-      "utf8",
-    )
-      .replace(/^\s*\/\/.*$/gm, "")
-      .replace(/,(\s*[}\]])/g, "$1");
-    const parsed = JSON.parse(raw) as { triggers?: { crons?: string[] } };
-    assert.ok(
-      parsed.triggers?.crons?.includes(
-        workerConfig.HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
-      ),
-    );
-  });
-
   test("handleScheduled dispatches to the watchdog and returns its summary", async () => {
     const { env, queries } = fakeDb(Date.now());
-    const result = (await handleScheduled(
-      {
-        cron: workerConfig.HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
-      } as unknown as ScheduledController,
+    const result = (await runStalenessLane(
+      "hotkey-alpha-staleness",
       env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; alerted: boolean };
@@ -536,30 +492,5 @@ describe("the cron string is unique and wired", () => {
       q.includes("FROM hotkey_alpha"),
     );
     assert.equal(reads.length, 1);
-  });
-
-  test("it does not swallow the neighbouring lane's cron", async () => {
-    // This branch is checked immediately BEFORE the account-balances watchdog,
-    // so a mistake here — a copied constant, a stray `||` — routes that lane
-    // into this one and silences it while both crons keep firing. Dispatch keys
-    // on the literal string and nothing else proves the two stay distinct.
-    const { env, queries } = fakeDb(Date.now());
-    const result = (await handleScheduled(
-      {
-        cron: workerConfig.ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
-      } as unknown as ScheduledController,
-      env as unknown as Parameters<typeof handleScheduled>[1],
-      {} as unknown as ExecutionContext,
-    )) as { ok: boolean };
-    assert.equal(result.ok, true);
-    // The neighbour read ITS table, and this lane's read never happened.
-    assert.equal(
-      queries.filter((q: string) => q.includes("FROM account_balances")).length,
-      1,
-    );
-    assert.equal(
-      queries.filter((q: string) => q.includes("FROM hotkey_alpha")).length,
-      0,
-    );
   });
 });

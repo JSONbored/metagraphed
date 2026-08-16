@@ -18,7 +18,7 @@ import {
   TOP_HOLDERS_FLOW_PROJECTION_KEY,
   topHoldersFlowRows,
 } from "../src/top-holders-flow-tier.ts";
-import { TOP_HOLDERS_STALENESS_WATCHDOG_CRON } from "../workers/config.ts";
+import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const HOUR = 3_600_000;
 const NOW = Date.parse("2026-08-05T02:00:00.000Z");
@@ -640,55 +640,10 @@ describe("runTopHoldersStalenessWatchdog", () => {
 describe("the watchdog's cron", () => {
   // Dispatch keys on the LITERAL cron string, so a duplicate would silently
   // route this lane's tick to whichever branch is checked first.
-  test("is twice hourly, off the */5 and */15 grids, and unique", async () => {
-    const config = (await import("../workers/config.ts")) as Record<
-      string,
-      unknown
-    >;
-    const others = Object.entries(config)
-      .filter(
-        ([key, value]) =>
-          key.endsWith("_CRON") &&
-          key !== "TOP_HOLDERS_STALENESS_WATCHDOG_CRON" &&
-          typeof value === "string",
-      )
-      .map(([, value]) => value);
-    assert.ok(
-      !others.includes(TOP_HOLDERS_STALENESS_WATCHDOG_CRON),
-      "cron string must be unique across workers/config.ts",
-    );
-    const minutes = TOP_HOLDERS_STALENESS_WATCHDOG_CRON.split(" ")[0]!
-      .split(",")
-      .map(Number);
-    assert.deepEqual(minutes, [22, 52]);
-    for (const minute of minutes) {
-      assert.notEqual(minute % 5, 0, "stays off the */5 raw-capture grid");
-      assert.notEqual(minute % 15, 0, "stays off the */15 probe grid");
-    }
-  });
-
-  test("wrangler.jsonc declares the trigger", async () => {
-    // A cron the Worker dispatches on but wrangler never fires is dead code,
-    // and the failure is silent: the branch simply never runs.
-    const { readFileSync } = await import("node:fs");
-    const raw = readFileSync(
-      new URL("../wrangler.jsonc", import.meta.url),
-      "utf8",
-    )
-      .replace(/^\s*\/\/.*$/gm, "")
-      .replace(/,(\s*[}\]])/g, "$1");
-    const parsed = JSON.parse(raw) as { triggers?: { crons?: string[] } };
-    assert.ok(
-      parsed.triggers?.crons?.includes(TOP_HOLDERS_STALENESS_WATCHDOG_CRON),
-      `wrangler.jsonc must fire ${TOP_HOLDERS_STALENESS_WATCHDOG_CRON}`,
-    );
-  });
-
   test("handleScheduled dispatches to the watchdog and returns its summary", async () => {
-    const { handleScheduled } = await import("../workers/api.ts");
     let read = 0;
-    const result = (await handleScheduled(
-      { cron: TOP_HOLDERS_STALENESS_WATCHDOG_CRON } as never,
+    const result = (await runStalenessLane(
+      "top-holders-flow-staleness",
       {
         METAGRAPH_ARCHIVE: {
           async get() {
@@ -718,9 +673,8 @@ describe("the watchdog's cron", () => {
   });
 
   test("an unbound bucket still reports through the cron wrapper", async () => {
-    const { handleScheduled } = await import("../workers/api.ts");
-    const result = (await handleScheduled(
-      { cron: TOP_HOLDERS_STALENESS_WATCHDOG_CRON } as never,
+    const result = (await runStalenessLane(
+      "top-holders-flow-staleness",
       {} as never,
       {} as never,
     )) as Record<string, unknown>;

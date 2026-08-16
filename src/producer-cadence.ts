@@ -70,8 +70,14 @@ export const PRODUCER_CADENCE_SECS = {
   /** The top-holders flow materialization, rebuilt daily. */
   top_holders_flow: 86_400,
   /**
-   * The top-holders WATCHDOG's own tick -- TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
-   * twice hourly.
+   * The top-holders WATCHDOG's own tick -- twice hourly.
+   *
+   * Since #10849 item 5 the cadence is `everyMinutes` on the
+   * `top-holders-flow-staleness` entry of STALENESS_WATCHDOGS (workers/api.ts),
+   * not a cron expression: the eight staleness watchdogs share one heartbeat.
+   * tests/producer-cadence.test.ts checks this number against that registry the
+   * way it checks the cron-backed lanes against workers/config.ts, so the two
+   * still cannot drift apart.
    *
    * A WATCHDOG IS THE PRODUCER OF ITS OWN VERDICT ROW, and that is the sense
    * this table is keyed in: `laneSilenceCadenceMs` asks "how often does this
@@ -189,7 +195,25 @@ export const WORKER_CRON_LANES: Readonly<
 > = {
   top_holders_flow: "TOP_HOLDERS_FLOW_CRON",
   top_holders_holdings: "TOP_HOLDERS_HOLDINGS_REFRESH_CRON",
-  top_holders_staleness_watchdog: "TOP_HOLDERS_STALENESS_WATCHDOG_CRON",
+  // `top_holders_staleness_watchdog` is deliberately NOT here any more. It no
+  // longer has a cron expression -- since #10849 item 5 it declares
+  // `everyMinutes` in STALENESS_WATCHDOGS -- so naming a constant for it would
+  // name one that does not exist. The test checks it against the registry
+  // instead, which is the same agreement against the source that now decides it.
+} as const;
+
+/**
+ * Lanes whose producer is a REGISTRY entry rather than a cron expression.
+ *
+ * Maps this table's lane key to the `lane_health.lane` name it is registered
+ * under in STALENESS_WATCHDOGS. Same purpose as WORKER_CRON_LANES above: the
+ * declared cadence has to be checked against whatever actually decides it, and
+ * for the staleness family that stopped being a cron.
+ */
+export const WORKER_REGISTRY_LANES: Readonly<
+  Partial<Record<ProducerLane, string>>
+> = {
+  top_holders_staleness_watchdog: "top-holders-flow-staleness",
 } as const;
 
 /**

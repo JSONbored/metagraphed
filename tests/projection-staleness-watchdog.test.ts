@@ -19,11 +19,9 @@ import {
   PROJECTION_LANES,
   PROJECTION_NETWORKS,
 } from "../src/projection-lanes.ts";
-import {
-  PROJECTION_LANES_CRON,
-  PROJECTION_STALENESS_WATCHDOG_CRON,
-} from "../workers/config.ts";
+import { PROJECTION_LANES_CRON } from "../workers/config.ts";
 import { projectionKey } from "../src/chain-network.ts";
+import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const HOUR = 3_600_000;
 
@@ -488,42 +486,11 @@ describe("every tick leaves a durable verdict, not just a notification", () => {
   });
 });
 
-describe("the watchdog cron", () => {
-  // Dispatch keys on the LITERAL cron string, so a duplicate silently steals
-  // the other's tick.
-  test("does not collide with the lane cron it watches", async () => {
-    const config = await import("../workers/config.ts");
-    const crons = Object.entries(config)
-      .filter(([name]) => name.endsWith("_CRON"))
-      .map(([, value]) => String(value));
-    const mine = crons.filter((c) => c === PROJECTION_STALENESS_WATCHDOG_CRON);
-    assert.equal(mine.length, 1, "the cron string must be unique in config");
-  });
-
-  test("wrangler.jsonc declares the trigger", async () => {
-    // A cron the Worker dispatches on but wrangler never fires is dead code,
-    // and the failure is silent: the branch simply never runs.
-    const { readFileSync } = await import("node:fs");
-    const raw = readFileSync(
-      new URL("../wrangler.jsonc", import.meta.url),
-      "utf8",
-    )
-      .replace(/^\s*\/\/.*$/gm, "")
-      .replace(/,(\s*[}\]])/g, "$1");
-    const parsed = JSON.parse(raw) as { triggers?: { crons?: string[] } };
-    assert.ok(
-      parsed.triggers?.crons?.includes(PROJECTION_STALENESS_WATCHDOG_CRON),
-      `wrangler.jsonc must fire ${PROJECTION_STALENESS_WATCHDOG_CRON}`,
-    );
-  });
-
-  test("handleScheduled dispatches to the watchdog and returns its summary", async () => {
-    const { handleScheduled } = await import("../workers/api.ts");
+describe("the watchdog lane, as the heartbeat runs it", () => {
+  test("the registry entry reaches the watchdog and returns its summary", async () => {
     const reads: string[] = [];
-    const result = (await handleScheduled(
-      {
-        cron: PROJECTION_STALENESS_WATCHDOG_CRON,
-      } as unknown as ScheduledController,
+    const result = (await runStalenessLane(
+      "projection-staleness",
       {
         METAGRAPH_ARCHIVE: {
           async get(key: string) {
@@ -538,7 +505,7 @@ describe("the watchdog cron", () => {
             };
           },
         },
-      } as unknown as Parameters<typeof handleScheduled>[1],
+      } as unknown,
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; stale: boolean; checked: number };
     assert.equal(result.ok, true);
@@ -551,19 +518,5 @@ describe("the watchdog cron", () => {
       PROJECTION_LANES.length * PROJECTION_NETWORKS.length,
     );
     assert.equal(result.checked, reads.length);
-  });
-
-  test("samples after a lane run has finished, not during one", () => {
-    const [watchMinutes] = PROJECTION_STALENESS_WATCHDOG_CRON.split(" ");
-    const minutes = watchMinutes!.split(",").map(Number);
-    // The lane cron is 11,41; a run takes ~5 minutes. Judging at 2,32 leaves
-    // 21 minutes of slack, so a slow run is never called stale mid-flight.
-    for (const m of minutes) {
-      const sinceLaneStart = (m - 11 + 60) % 30;
-      assert.ok(
-        sinceLaneStart >= 10,
-        `minute ${m} judges only ${sinceLaneStart} min after a lane tick begins`,
-      );
-    }
   });
 });

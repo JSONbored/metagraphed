@@ -35,7 +35,7 @@ import {
 } from "../src/neurons-staleness-watchdog.ts";
 import { FLUSH_INTERVAL_MS } from "../src/neon-write-buffer.ts";
 import { handleScheduled } from "../workers/api.ts";
-import * as workerConfig from "../workers/config.ts";
+import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;
 /** A pass that covered the network, so coverage is never the thing under test
@@ -404,13 +404,11 @@ describe("runNeuronsStalenessWatchdog", () => {
   });
 });
 
-describe("handleScheduled NEURONS_STALENESS_WATCHDOG_CRON", () => {
+describe("the neurons lane, reached through the watchdog registry", () => {
   test("dispatches to the watchdog and returns its summary", async () => {
     const { env, queries } = fakeDb(Date.now());
-    const result = (await handleScheduled(
-      {
-        cron: workerConfig.NEURONS_STALENESS_WATCHDOG_CRON,
-      } as unknown as ScheduledController,
+    const result = (await runStalenessLane(
+      "neurons-staleness",
       env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; alerted: boolean };

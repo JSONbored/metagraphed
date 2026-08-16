@@ -259,8 +259,8 @@ describe("the lane runs on an existing tick, not a new cron", () => {
       "utf8",
     );
     const branch = api.slice(
-      api.indexOf("NEURONS_STALENESS_WATCHDOG_CRON) {"),
-      api.indexOf("NEURONS_STALENESS_WATCHDOG_CRON) {") + 1400,
+      api.indexOf('name: "neurons-staleness",'),
+      api.indexOf('name: "neurons-staleness",') + 1400,
     );
     assert.match(branch, /runSubnetLifecycleLane\(/);
     assert.doesNotMatch(
@@ -278,7 +278,7 @@ describe("the lane runs on an existing tick, not a new cron", () => {
       new URL("../workers/api.ts", import.meta.url),
       "utf8",
     );
-    const i = api.indexOf("NEURONS_STALENESS_WATCHDOG_CRON) {");
+    const i = api.indexOf('name: "neurons-staleness",');
     const branch = api.slice(i, i + 1400);
     assert.ok(
       branch.indexOf("runNeuronsStalenessWatchdog") <
@@ -300,7 +300,7 @@ describe("the lane runs on an existing tick, not a new cron", () => {
       new URL("../workers/api.ts", import.meta.url),
       "utf8",
     );
-    const i = api.indexOf("NEURONS_STALENESS_WATCHDOG_CRON) {");
+    const i = api.indexOf('name: "neurons-staleness",');
     const branch = api.slice(i, i + 2000);
     assert.match(branch, /typeof ctx\?\.waitUntil === "function"/);
     assert.match(branch, /else await lifecycle/);

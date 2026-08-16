@@ -1137,22 +1137,17 @@
       // and distinct from the upgrade radar's 7,37 (dispatch keys on the
       // literal cron string).
       "9,39 * * * *",
-      // 6,21,36,51 = the neurons-staleness watchdog: alarms when the poller
-      // Container's 15-minute D1 feed stops moving.
+      // 6,21,36,51 = ONE clock for all eight staleness watchdogs (#10849 item
+      // 5). Each held a minute of its own until the grid ran out -- counting the
+      // five- and fifteen-minute step expressions, exactly one minute of sixty
+      // was unclaimed. A lane now declares a cadence in STALENESS_WATCHDOGS
+      // (workers/api.ts) instead of taking a minute here.
+      //
+      // Quarter-hourly, inherited from the neurons watchdog: the eight run at
+      // 15, 30 and 60 minutes, all of which divide into a 15-minute tick, so
+      // every cadence is reproduced exactly. An hourly clock would have turned
+      // the two 15-minute alarms into 60-minute ones.
       "6,21,36,51 * * * *",
-      // 8,38 = the nominator-positions staleness watchdog (#9273): alarms when
-      // the per-coldkey position ledger stops advancing. That lane ran with no
-      // watchdog and lost its writer entirely without anything noticing -- see
-      // NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON in workers/config.ts.
-      "8,38 * * * *",
-      // #9423: the projection lanes' staleness alarm. 21 minutes after each
-      // PROJECTION_LANES_CRON tick, so a run has finished before it is judged.
-      "2,32 * * * *",
-      // 19,49 = the validator-nominator-counts staleness watchdog (#9301): the
-      // sibling of the one above, over the other output of the same Alpha
-      // scan, and blind for the same reason -- see
-      // VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON in workers/config.ts.
-      "19,49 * * * *",
       // 26 */3 = the live-economics refresh (KV economics:current), moved off
       // the retired refresh-economics.yml schedule -- the last Actions data
       // lane. Same 3-hourly cadence; :26 because :41 is taken twice over and
@@ -1180,28 +1175,6 @@
       // syncs forward from its cursor, and the full resync its own comment
       // relies on was a GitHub Actions script nothing calls.
       "35 * * * *",
-      // 14,29,44,59 = the chain-detail staleness watchdog (#9208): alarms when
-      // the live-follow decode lane stops advancing. Its own trigger rather
-      // than a step inside the prune, so a prune failure cannot swallow the
-      // staleness verdict.
-      "14,29,44,59 * * * *",
-      // 22,52 = the top-holders staleness watchdog (#9464): the leaderboard is
-      // served from a one-shot pre-decommission artifact with no producer, and
-      // nothing reported that for three days. Records a verdict every tick and
-      // alerts on every stale one -- see TOP_HOLDERS_STALENESS_WATCHDOG_CRON in
-      // workers/config.ts.
-      "22,52 * * * *",
-      // 4,34 = the account-balances staleness watchdog (#9469): the SOURCE side
-      // of the watchdog above. That one watches the served artifact; this one
-      // watches the D1 table it is composed from, so a producer that stops is
-      // visible without waiting for the publish path to notice. See
-      // ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON in workers/config.ts.
-      "4,34 * * * *",
-      // 54 = the hotkey-alpha staleness watchdog (#9576): the same source-side
-      // alarm for the OTHER ledger the holdings columns are composed from,
-      // which shipped in #9512 without one. Hourly rather than twice-hourly,
-      // because its producer polls every 24h against account_balances' 6h. See
-      // HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON in workers/config.ts.
       // 26 = the ONE producer heartbeat for every queue-backed lane (#10715).
       // Replaces the three per-lane crons that used to sit on 17, 24 and 56 --
       // each of which only read a list and enqueued it. A new lane joins
@@ -1227,7 +1200,6 @@
       // queue-backed lane would go silent until the triggers deploy landed.
       // Appending is safe in either order.
       "17,56 * * * *",
-      "54 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

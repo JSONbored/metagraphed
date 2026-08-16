@@ -274,48 +274,28 @@ export const EMISSION_GATE_SAMPLE_INTERVAL_MS = 10 * 60 * 1000;
 // workers/config.ts (":7,37" already belongs to the upgrade radar) as well as
 // matching a wrangler.jsonc cron entry.
 export const EMISSION_DRIFT_CHECK_CRON = "9,39 * * * *";
-// The neurons LIVE lane's alarm: the poller Container feeds D1 on a
-// 15-minute tick, and its first stall (a zombie instance, 2026-08-03) ran
-// three silent hours because no watchdog reads that table. Same cadence as
-// the lane it watches; a 45-minute threshold (three missed ticks) separates
-// a routine restart from a stall. Unique string, matching a wrangler.jsonc
-// entry -- dispatch keys on the LITERAL cron string.
-export const NEURONS_STALENESS_WATCHDOG_CRON = "6,21,36,51 * * * *";
-// #9273: the nominator-positions lane's alarm. That lane had NO watchdog and
-// no writer at all -- its box-side job died with the box and the route over it
-// kept serving a frozen 153k-row export, so the gap was found by a caller
-// noticing a stale `captured_at`, not by us. Twice hourly against a six-hour
-// threshold (src/nominator-positions-staleness-watchdog.ts explains why this
-// lane's threshold is hours where the neurons lane's is minutes): the tick is
-// one MAX() read, so a cheap cadence costs nothing and bounds detection well
-// inside the threshold. Minutes 8/38 tick on none of the crons in this file
-// and stay off the */5 raw-capture and */15 probe grids -- dispatch keys on
-// the LITERAL cron string, so this must be unique here as well as matching a
-// wrangler.jsonc `triggers.crons` entry.
-export const NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON = "8,38 * * * *";
-// #9423: the projection lanes' alarm. Two lanes stopped writing on
-// 2026-08-03 and nothing noticed for 31 hours -- the read path degrades by
-// serving the previous card, so the routes kept answering 200 off numbers 44
-// hours old under a `7d` label. Twice hourly against a four-hour threshold
-// (src/projection-staleness-watchdog.ts explains the sizing): the tick is 26
-// R2 HEADs, so a cheap cadence costs nothing and bounds detection well inside
-// the threshold. Minutes 2/32 are 21 minutes after each PROJECTION_LANES_CRON
-// tick, so a run has finished before it is judged, and they tick on none of
-// the crons in this file while staying off the */5 raw-capture and */15 probe
-// grids -- dispatch keys on the LITERAL cron string, so this must be unique
-// here as well as matching a wrangler.jsonc `triggers.crons` entry.
-export const PROJECTION_STALENESS_WATCHDOG_CRON = "2,32 * * * *";
-// #9301: the validator-nominator-counts lane's alarm -- the SIBLING of the
-// watchdog above, watching the other output of the same Alpha scan. It had the
-// same gap for the same reason: its writer targeted a Postgres that went away,
-// and `nominator_count` degraded to null (or to a frozen lakehouse mirror)
-// without anything going red. Twice hourly against the same 30-hour threshold,
-// since the one producer tick writes both tables. Minutes 19/49 tick on none
-// of the crons in this file and stay off the */5 raw-capture and */15 probe
-// grids -- dispatch keys on the LITERAL cron string, so this must be unique
-// here as well as matching a wrangler.jsonc `triggers.crons` entry.
-export const VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON =
-  "19,49 * * * *";
+/**
+ * ONE clock for the eight staleness watchdogs (#10849 item 5).
+ *
+ * Each of them used to hold a minute of its own, and the grid ran out. Counted
+ * honestly -- step expressions expanded, and excluding the multiples of five
+ * every comment in this file is careful to avoid because of the five-minute
+ * raw-capture and fifteen-minute probe grids -- exactly ONE minute of sixty was
+ * unclaimed. The eight gave 19 minutes back.
+ *
+ * QUARTER-hourly, not hourly as #10849 item 5 proposes. The eight run at 15, 30
+ * and 60 minutes; all three divide into a 15-minute tick, so `lanesDue`
+ * reproduces every cadence exactly. An hourly clock would quietly turn the two
+ * 15-minute alarms into 60-minute ones, and detection latency is the only thing
+ * a staleness alarm sells -- not a trade worth making for a consolidation whose
+ * stated benefit is comprehensibility.
+ *
+ * It inherits 6,21,36,51 from the neurons watchdog, which was already the
+ * fastest of the eight and already on a quarter-hourly grid clear of the five-
+ * and fifteen-minute ones. A lane's cadence now lives in STALENESS_WATCHDOGS in
+ * workers/api.ts, not here. Must match a wrangler.jsonc cron entry.
+ */
+export const WATCHDOG_HEARTBEAT_CRON = "6,21,36,51 * * * *";
 // #9208 retention for the chain-detail hot tier. The window only has to cover
 // the gap between chain tip and the decoded seam, so everything the lakehouse
 // has already absorbed is dropped -- see src/chain-detail-prune.ts for the
@@ -325,12 +305,6 @@ export const VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON =
 // whole backlog in one D1 transaction. Minutes 12/27/42/57 tick on none of the
 // crons in this file and stay off the */5 raw-capture and */15 probe grids.
 export const CHAIN_DETAIL_PRUNE_CRON = "12,27,42,57 * * * *";
-// #9208's alarm for the same lane. Separate from the prune above, and
-// deliberately so: a prune failure must not swallow the staleness verdict, and
-// this is the ONLY signal that the lane has stopped -- a stalled chain-detail
-// lane keeps the block list live and merely starts declining drill-down, which
-// is silent in aggregate. Minutes 14/29/44/59 are likewise unused elsewhere.
-export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
 // The registry writer (#9779). Four times an hour: registry changes arrive on
 // merges, so the only cost of a slower tick is how stale surface_history is,
 // and the only cost of a faster one is GitHub API calls against a 5,000/hour
@@ -365,42 +339,6 @@ export const REGISTRY_RESYNC_CRON = "35 * * * *";
  * right now is already complete rather than being read mid-pass.
  */
 export const DAILY_SERIES_COVERAGE_CRON = "35 7,19 * * *";
-// #9464: the top-holders leaderboard's alarm. That lane had NO watchdog and no
-// producer -- `account_balances` died with the box and is not in the poller
-// Container's job set -- so the route served a one-shot pre-decommission
-// materialization for three days at 200 OK and the gap was found by a caller
-// reading `captured_at`, not by us. Twice hourly: the tick is one R2 get, so a
-// cheap cadence costs nothing and bounds detection well inside the twelve-hour
-// threshold (src/top-holders-staleness-watchdog.ts explains that sizing, and
-// why a lane with no producer reports stale on every tick). Minutes
-// 22/52 tick on none of the crons in this file and stay off the */5 raw-capture
-// and */15 probe grids -- dispatch keys on the LITERAL cron string, so this
-// must be unique here as well as matching a wrangler.jsonc `triggers.crons`
-// entry.
-export const TOP_HOLDERS_STALENESS_WATCHDOG_CRON = "22,52 * * * *";
-// #9478: the account-balances lane's alarm -- the SOURCE side of the watchdog
-// above, not a replacement for it. That one watches the served artifact; this
-// one watches the store table the artifact is supposed to be composed from, and
-// the two fail independently (a fresh table behind a stale artifact is a
-// publish problem; a stale table behind either is the producer). Twice hourly
-// against the same twelve-hour threshold, since one producer tick is what
-// refreshes it -- src/account-balances-staleness-watchdog.ts explains that
-// sizing against the poller's six-hour ACCOUNT_BALANCES_POLL_SECS. Minutes 4/34
-// tick on none of the crons in this file and stay off the */5 raw-capture and
-// */15 probe grids -- dispatch keys on the LITERAL cron string, so this must be
-// unique here as well as matching a wrangler.jsonc `triggers.crons` entry.
-export const ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON = "4,34 * * * *";
-// #9576: the same alarm for the OTHER ledger the top-holders holdings columns
-// are composed from. `hotkey_alpha` shipped in #9512 without one, so an empty
-// pool ledger was invisible -- every reader declines correctly and quietly, and
-// a correct decline looks exactly like a producer that died a month ago.
-// HOURLY rather than twice-hourly, and against a 48-hour threshold: the poller's
-// HOTKEY_ALPHA_POLL_SECS defaults to 86400 against account_balances' 21600, so a
-// finer cadence would only re-report the same 24-hour-old pass. Minute 54 ticks
-// on none of the crons in this file and stays off the */5 and */15 grids --
-// dispatch keys on the LITERAL cron string, so it must be unique here as well as
-// matching a wrangler.jsonc `triggers.crons` entry.
-export const HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON = "54 * * * *";
 /**
  * #9628: the network-wide concentration rollup.
  *
