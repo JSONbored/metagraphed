@@ -542,6 +542,7 @@ describe("buildChainAxonRemovals — derived (#10805)", () => {
     lookback_days: 30,
     excluded_uid_reuse: 1485,
     pending_confirmation: 0,
+    moved_unroutable: 0,
   };
 
   test("carries the derivation, so a consumer sees what was set aside", () => {

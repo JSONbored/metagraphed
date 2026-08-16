@@ -2595,6 +2595,7 @@
               "excluded_uid_reuse": 1,
               "lookback_days": 1,
               "method": "axon-state-diff",
+              "moved_unroutable": 1,
               "pending_confirmation": 1
             },
             "intensity_distribution": {
@@ -22418,6 +22419,12 @@
                 "const": "axon-state-diff",
                 "type": "string"
               },
+              "moved_unroutable": {
+                "description": "Of the confirmed removals, how many still announce an address nothing can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback. A running but unreachable miner, not a departed one. The MAJORITY: 166 of 271 same-hotkey losses over 38 days, and all but one of SN126's 160.",
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
               "pending_confirmation": {
                 "description": "Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket.",
                 "maximum": 9007199254740991,
@@ -22429,7 +22436,8 @@
               "method",
               "lookback_days",
               "excluded_uid_reuse",
-              "pending_confirmation"
+              "pending_confirmation",
+              "moved_unroutable"
             ],
             "type": "object"
           },
