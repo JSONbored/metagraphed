@@ -316,7 +316,9 @@ export function neonWriteBufferLanes(
 /**
  * Lanes that must NEVER be buffered, whatever the flag says.
  *
- * Both entries are the block explorer's live READ path, not merely writes.
+ * TWO REASONS APPEAR HERE. The first two entries are the block explorer's live
+ * READ path, not merely writes. The third is different and stricter: a value
+ * its own producer reads back before the buffer could have flushed.
  *
  * `blocks-head` is the header register above the decode seam.
  * src/blocks-cold-tier.ts routes `block_number > seam` to
@@ -347,6 +349,31 @@ export const NEVER_BUFFER_LANES: ReadonlySet<string> = new Set([
   // DETAIL. Buffering the head and not the detail would be worse than
   // buffering neither -- the explorer would list a block it cannot open.
   "chain-detail",
+  // READ-YOUR-OWN-WRITES, and the only lane here that needs it.
+  //
+  // `raw_capture_state.last_contiguous_block` is not consumed by a reader
+  // somewhere else -- it is where the capture lane ITSELF resumes on its very
+  // next tick, one minute later. src/raw-capture-sync.ts reads it directly
+  // from Neon (neonWatermarkRead) while the write went through this buffer, so
+  // for up to FLUSH_INTERVAL_MS the producer read back a watermark that did
+  // not include what it had just captured -- and re-captured the same range,
+  // every tick, until the flush landed.
+  //
+  // MEASURED IN PRODUCTION 2026-08-16, mainnet: ticks ran every 60s and each
+  // reported "10 captured", while the watermark advanced ~5 blocks per ~10
+  // minutes -- one flush interval, exactly. Effective throughput was ~1
+  // block/minute against a chain producing 5, so the lane lost ground all day
+  // while every signal it published said ok. It had fallen 8,621 blocks (~29h)
+  // behind, which is what stalled the lakehouse and emptied the 24h volume
+  // figure on the site.
+  //
+  // The failure is invisible from either side on its own: the buffer flushed
+  // successfully, the capture captured successfully, and only the pairing was
+  // wrong. That is precisely why this belongs in a code-level set rather than
+  // in the flag -- `raw-capture-state` was the FIRST lane named in
+  // NEON_WRITE_BUFFER_LANES, added as an obvious low-frequency write, and
+  // nothing about the write site says its reader is one minute away.
+  "raw-capture-state",
 ]);
 
 /** Whether one lane's writes go through the buffer. */

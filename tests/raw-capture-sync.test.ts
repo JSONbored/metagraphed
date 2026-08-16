@@ -32,8 +32,9 @@ import {
   RAW_CAPTURE_GENESIS_FLOOR,
   RAW_CAPTURE_LANES,
   cronStepMinutes,
+  MAX_CAPTURE_CHUNK_BLOCKS,
   pacedLaneBudget,
-  RPC_CALLS_PER_BLOCK,
+  REQUESTS_PER_CHUNK,
   RPC_REQUESTS_PER_MINUTE_LIMIT,
   runRawCaptureSync,
   TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
@@ -93,6 +94,57 @@ function runner() {
   };
 }
 
+/** One call's answer, or a whole-request HTTP failure. */
+type NodeReply =
+  { result?: unknown; error?: { message: string } } | { httpStatus: number };
+
+/**
+ * Turns a per-CALL answer into a fetch that speaks BOTH wire forms the lane
+ * uses: a single JSON-RPC request, and a BATCH array.
+ *
+ * Shared because every stub below needs both, and a stub that only understood
+ * single requests would answer a batch with one envelope -- which the client
+ * correctly refuses, so every capture assertion would fail for a reason that
+ * has nothing to do with what it is testing.
+ */
+function jsonRpcNode(
+  answer: (method: string, params: unknown[], url: string) => NodeReply,
+) {
+  return (async (url: unknown, init?: { body?: string }) => {
+    const body = JSON.parse(init?.body ?? "{}") as
+      | { method: string; params: unknown[] }
+      | { id: number; method: string; params: unknown[] }[];
+    const host = String(url);
+    const calls = Array.isArray(body) ? body : [body];
+    const replies = calls.map((call) => answer(call.method, call.params, host));
+    // A transport failure is a property of the REQUEST, so one bad call in a
+    // batch fails the whole thing -- which is what a real 503 does.
+    const failed = replies.find(
+      (reply): reply is { httpStatus: number } => "httpStatus" in reply,
+    );
+    if (failed) return { ok: false, status: failed.httpStatus } as Response;
+    if (!Array.isArray(body)) {
+      return { ok: true, json: async () => replies[0] } as unknown as Response;
+    }
+    return {
+      ok: true,
+      json: async () =>
+        body.map((call, index) => ({
+          id: call.id,
+          ...(replies[index] as object),
+        })),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+}
+
+/** `chain_getBlockHash` answers a LIST for a list, a bare value otherwise. */
+function hashList(params: unknown[], tag = ""): NodeReply {
+  const first = params[0];
+  const wanted = (Array.isArray(first) ? first : [first]) as number[];
+  const hashes = wanted.map((n) => `0x${tag}h${n}`);
+  return { result: Array.isArray(first) ? hashes : hashes[0] };
+}
+
 /**
  * A chain stub that answers per ENDPOINT, not globally (#8700).
  *
@@ -107,28 +159,23 @@ function rpcFetch(
   head: number,
   testnetHead: number = TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1,
 ) {
-  return (async (url: unknown, init?: { body?: string }) => {
-    const isTestnet = String(url).includes("test.finney");
+  return jsonRpcNode((method, params, url) => {
+    const isTestnet = url.includes("test.finney");
     const chainHead = isTestnet ? testnetHead : head;
     const tag = isTestnet ? "t" : "m";
-    const req = JSON.parse(init?.body ?? "{}") as {
-      method: string;
-      params: unknown[];
-    };
-    const reply = (result: unknown) =>
-      ({ ok: true, json: async () => ({ result }) }) as unknown as Response;
-    if (req.method === "chain_getHeader")
-      return reply({ number: `0x${chainHead.toString(16)}` });
+    if (method === "chain_getHeader")
+      return { result: { number: `0x${chainHead.toString(16)}` } };
     // Hashes are tagged per chain so a test can prove the bytes under a
     // testnet key came from the testnet endpoint.
-    if (req.method === "chain_getBlockHash")
-      return reply(`0x${tag}h${req.params[0]}`);
-    if (req.method === "chain_getBlock")
-      return reply({
-        block: { header: { parentHash: `0x${tag}p` }, extrinsics: ["0xaa"] },
-      });
-    return reply(`0x${tag}events`);
-  }) as unknown as typeof fetch;
+    if (method === "chain_getBlockHash") return hashList(params, tag);
+    if (method === "chain_getBlock")
+      return {
+        result: {
+          block: { header: { parentHash: `0x${tag}p` }, extrinsics: ["0xaa"] },
+        },
+      };
+    return { result: `0x${tag}events` };
+  });
 }
 
 function envWith(over: Record<string, unknown> = {}) {
@@ -339,36 +386,34 @@ describe("runRawCaptureSync — capture", () => {
     // Head is reachable, but block floor+1 fails -- so the tick captures the
     // floor block and stops, which is the safe partial-run path.
     const failAt = RAW_CAPTURE_GENESIS_FLOOR + 1;
-    const flaky = (async (url: unknown, init?: { body?: string }) => {
-      const isTestnet = String(url).includes("test.finney");
-      const req = JSON.parse(init?.body ?? "{}") as {
-        method: string;
-        params: unknown[];
-      };
-      const reply = (r: unknown) =>
-        ({
-          ok: true,
-          json: async () => ({ result: r }),
-        }) as unknown as Response;
+    const flaky = jsonRpcNode((method, params, url) => {
+      const isTestnet = url.includes("test.finney");
       // Endpoint-aware for the same reason rpcFetch is: the testnet lane must
       // be a no-op here so `puts.size` still counts only the mainnet batch.
-      if (req.method === "chain_getHeader")
-        return reply({
-          number: isTestnet
-            ? `0x${(TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`
-            : `0x${(RAW_CAPTURE_GENESIS_FLOOR + 5).toString(16)}`,
-        });
-      if (req.method === "chain_getBlockHash") {
-        if (req.params[0] === failAt)
-          return { ok: false, status: 503 } as Response;
-        return reply(`0xh${req.params[0]}`);
+      if (method === "chain_getHeader")
+        return {
+          result: {
+            number: isTestnet
+              ? `0x${(TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`
+              : `0x${(RAW_CAPTURE_GENESIS_FLOOR + 5).toString(16)}`,
+          },
+        };
+      if (method === "chain_getBlockHash") return hashList(params);
+      if (method === "chain_getBlock") {
+        // A per-CALL refusal, which is how a node declines a height it cannot
+        // serve. The chunk keeps its prefix and stops there -- the safe
+        // partial-run path this test is about.
+        if (params[0] === `0xh${failAt}`) {
+          return { error: { message: `state already discarded at ${failAt}` } };
+        }
+        return {
+          result: {
+            block: { header: { parentHash: "0xp" }, extrinsics: ["0xaa"] },
+          },
+        };
       }
-      if (req.method === "chain_getBlock")
-        return reply({
-          block: { header: { parentHash: "0xp" }, extrinsics: ["0xaa"] },
-        });
-      return reply("0xevents");
-    }) as unknown as typeof fetch;
+      return { result: "0xevents" };
+    });
     try {
       const result = await runRawCaptureSync(env as never, {
         sleepFn: noSleep,
@@ -610,9 +655,16 @@ describe("the testnet capture lane", () => {
     const floors = RAW_CAPTURE_LANES.map((lane) => lane.genesisFloor);
     assert.equal(new Set(floors).size, floors.length);
     // The combined per-tick budget must stay inside the platform's
-    // 1000-subrequest ceiling: 3 RPC calls per block plus one head fetch each.
+    // 1000-subrequest ceiling. COUNTED IN REQUESTS, NOT CALLS: a chunk costs
+    // REQUESTS_PER_CHUNK however many blocks it carries, plus one head fetch
+    // per lane. Counting calls here is what made this read 1,602 against a
+    // ceiling of 1,000 for a tick that actually issues 66.
     const subrequests = RAW_CAPTURE_LANES.reduce(
-      (total, lane) => total + lane.maxPerTick * RPC_CALLS_PER_BLOCK + 1,
+      (total, lane) =>
+        total +
+        Math.ceil(lane.maxPerTick / MAX_CAPTURE_CHUNK_BLOCKS) *
+          REQUESTS_PER_CHUNK +
+        1,
       0,
     );
     assert.ok(
@@ -627,15 +679,19 @@ describe("the testnet capture lane", () => {
   // however long the tick is. A paced one spends the tick, so the tick bounds
   // it -- and what has to fit the limit is the RATE.
   test("the paced rate across all lanes stays inside the measured limit", () => {
+    // MEASURED IN REQUESTS, because that is what the endpoint counts: one call
+    // per request 429'd after 103, while fifty calls per request carried 1,400
+    // through 140 requests untouched (2026-08-16). A gap between CHUNKS times
+    // the requests a chunk costs is the lane's real rate.
     for (const lane of RAW_CAPTURE_LANES) {
       assert.ok(lane.minGapMs > 0, `${lane.network} is not paced at all`);
-      const callsPerMinute =
+      const requestsPerMinute =
         (60_000 / lane.minGapMs) *
-        RPC_CALLS_PER_BLOCK *
+        REQUESTS_PER_CHUNK *
         RAW_CAPTURE_LANES.length;
       assert.ok(
-        callsPerMinute < RPC_REQUESTS_PER_MINUTE_LIMIT,
-        `${lane.network} sustains ${callsPerMinute.toFixed(0)} calls/min across ${RAW_CAPTURE_LANES.length} lanes, at or over ${RPC_REQUESTS_PER_MINUTE_LIMIT}/min`,
+        requestsPerMinute < RPC_REQUESTS_PER_MINUTE_LIMIT,
+        `${lane.network} sustains ${requestsPerMinute.toFixed(0)} requests/min across ${RAW_CAPTURE_LANES.length} lanes, at or over ${RPC_REQUESTS_PER_MINUTE_LIMIT}/min`,
       );
     }
   });
@@ -643,9 +699,15 @@ describe("the testnet capture lane", () => {
   test("a paced tick finishes inside its own interval", () => {
     // Lanes run CONCURRENTLY, so the wall time is one lane's, not the sum --
     // but it still has to leave slack for jitter and a mid-tick redeploy.
+    //
+    // The gap is between CHUNK STARTS, so the span is the chunk COUNT times
+    // the gap. Multiplying by the block count instead reads 20 minutes for a
+    // tick that spends 45 seconds -- and would push the lane back to reading
+    // one block at a time to satisfy it.
     const intervalMs = cronStepMinutes(RAW_CAPTURE_CRON) * 60_000;
     for (const lane of RAW_CAPTURE_LANES) {
-      const spendMs = lane.maxPerTick * lane.minGapMs;
+      const chunks = Math.ceil(lane.maxPerTick / MAX_CAPTURE_CHUNK_BLOCKS);
+      const spendMs = chunks * lane.minGapMs;
       assert.ok(
         spendMs < intervalMs,
         `${lane.network} would spend ${(spendMs / 60_000).toFixed(1)} min of a ${intervalMs / 60_000} min tick`,
@@ -752,27 +814,26 @@ describe("the lanes run concurrently, and stay isolated", () => {
 describe("the archive endpoints a lane reads from", () => {
   /** Answers RPC for any host, recording which hosts were asked. */
   function hostTrackingFetch(hosts: Set<string>) {
-    return (async (url: unknown, init?: { body?: string }) => {
-      hosts.add(new URL(String(url)).origin);
-      const req = JSON.parse(init?.body ?? "{}") as { method: string };
-      const reply = (result: unknown) =>
-        ({ ok: true, json: async () => ({ result }) }) as unknown as Response;
+    return jsonRpcNode((method, params, url) => {
+      hosts.add(new URL(url).origin);
       // Above BOTH lanes' genesis floors, or nextCaptureHeights yields nothing
       // and the tick fetches no blocks at all -- which looks exactly like a
       // rotation that never happened.
-      if (req.method === "chain_getHeader")
-        return reply({ number: "0x989680" });
-      if (req.method === "chain_getBlockHash") return reply("0xh1");
-      if (req.method === "chain_getBlock") {
-        return reply({
-          block: {
-            header: { number: "0x1", parentHash: "0xp" },
-            extrinsics: ["0xaa"],
+      if (method === "chain_getHeader")
+        return { result: { number: "0x989680" } };
+      if (method === "chain_getBlockHash") return hashList(params);
+      if (method === "chain_getBlock") {
+        return {
+          result: {
+            block: {
+              header: { number: "0x1", parentHash: "0xp" },
+              extrinsics: ["0xaa"],
+            },
           },
-        });
+        };
       }
-      return reply("0xevents");
-    }) as unknown as typeof fetch;
+      return { result: "0xevents" };
+    });
   }
 
   test("a pool member is ACTUALLY read, not merely resolved", async () => {
@@ -881,32 +942,33 @@ describe("the tick budget against the endpoint count", () => {
       await runRawCaptureSync(env as never, {
         ctx: CTX,
         endpointDeps: pool(n),
+        // PINNED, because the gap is now a CYCLE time: captureTick subtracts a
+        // read's own duration from it, so against a real clock the recorded
+        // sleeps come back 2999 and 3000 and this test would fail on the
+        // millisecond a fake fetch happened to take rather than on the budget.
+        now: () => 1_000,
         // The paced gap IS the budget's observable half, so recording it is
         // how this asserts the rate rather than the endpoint list.
         sleepFn: async (ms) => {
           gaps.push(ms);
         },
-        fetchImpl: (async (url: unknown, init?: { body?: string }) => {
-          hosts.add(new URL(String(url)).origin);
-          const req = JSON.parse(init?.body ?? "{}") as { method: string };
-          const reply = (result: unknown) =>
-            ({
-              ok: true,
-              json: async () => ({ result }),
-            }) as unknown as Response;
-          if (req.method === "chain_getHeader")
-            return reply({ number: "0x989680" });
-          if (req.method === "chain_getBlockHash") return reply("0xh1");
-          if (req.method === "chain_getBlock") {
-            return reply({
-              block: {
-                header: { number: "0x1", parentHash: "0xp" },
-                extrinsics: ["0xaa"],
+        fetchImpl: jsonRpcNode((method, params, url) => {
+          hosts.add(new URL(url).origin);
+          if (method === "chain_getHeader")
+            return { result: { number: "0x989680" } };
+          if (method === "chain_getBlockHash") return hashList(params);
+          if (method === "chain_getBlock") {
+            return {
+              result: {
+                block: {
+                  header: { number: "0x1", parentHash: "0xp" },
+                  extrinsics: ["0xaa"],
+                },
               },
-            });
+            };
           }
-          return reply("0xevents");
-        }) as unknown as typeof fetch,
+          return { result: "0xevents" };
+        }),
       });
     }
     // Six endpoints were genuinely read -- the rotation is live, so this is not

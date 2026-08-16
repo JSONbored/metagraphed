@@ -31,7 +31,11 @@
 // apart from the injected fetch and store, so the whole guarantee is testable
 // without a chain or a bucket.
 
-import { chainRpc } from "./chain-rpc.ts";
+import {
+  chainRpc,
+  chainRpcBatch,
+  type ChainRpcBatchCall,
+} from "./chain-rpc.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
 // DERIVED once in twox-storage-key.ts, beside the vectors that prove it.
@@ -74,60 +78,217 @@ async function rpc(
 }
 
 /**
- * One block's raw bytes. Three reads: hash at height, the block (header +
- * extrinsics), and the events blob at that hash.
+ * The most JSON-RPC calls one batch request may carry.
  *
- * Throws on anything unexpected rather than returning a partial capture — a
- * half-captured block that still advanced the watermark is precisely the gap
- * this module exists to prevent.
+ * THE NODE'S OWN NUMBER, not a guess. Over the limit it refuses the whole
+ * request -- not the excess -- with its own message, measured 2026-08-16
+ * against archive.chain.opentensor.ai:
+ *
+ *     n=50  -> 200, array of 50 results
+ *     n=51  -> {"error":{"code":-32010,"message":"The batch request was too
+ *               large","data":"Exceeded max limit of 50"}}
+ *
+ * That refusal arrives as HTTP 200 carrying a single error OBJECT where an
+ * array was asked for, which is why chainRpcBatch classifies a non-array
+ * response as a failure rather than reading it as zero results.
  */
-export async function fetchRawBlock(
-  url: string,
+export const MAX_RPC_BATCH_CALLS = 50;
+
+/** Calls one block costs inside a chunk's batch: its body, and its events. */
+export const RPC_CALLS_PER_BLOCK = 2;
+
+/**
+ * HTTP requests one chunk costs, whatever its size: the hash list, then the
+ * batch of bodies and events. The two cannot merge -- bodies and events are
+ * addressed by hash, and the hashes are what the first request returns.
+ */
+export const REQUESTS_PER_CHUNK = 2;
+
+/**
+ * Most blocks one chunk may carry, from the two numbers above.
+ *
+ * DERIVED, so it cannot drift from the batch limit it exists to respect. At 25
+ * blocks a chunk measured 0.81 MB and ~1.7 s against the live archive, which
+ * is comfortable for a Worker; the binding constraint is the node's call cap,
+ * not our memory.
+ */
+export const MAX_CAPTURE_CHUNK_BLOCKS = Math.floor(
+  MAX_RPC_BATCH_CALLS / RPC_CALLS_PER_BLOCK,
+);
+
+/** What one chunk read produced: the contiguous PREFIX, and why it ended. */
+export interface RawBlockChunk {
+  /** Captured blocks in ascending height order, contiguous from heights[0]. */
+  blocks: RawBlockCapture[];
+  /**
+   * The first height the chunk could not capture and why, or null when it
+   * captured every height it was asked for.
+   *
+   * ONE FIELD, not a `stoppedAt?`/`reason?` pair: the two are only ever set
+   * together, and a pair lets the type describe three states the code never
+   * produces -- including a stop with no reason, which reaches an operator as a
+   * decline that does not say why.
+   */
+  stopped: { at: number; reason: string } | null;
+}
+
+/**
+ * Assemble one block from its parts, or say why it cannot be.
+ *
+ * Split out because the checks are the whole no-gap guarantee at the block
+ * level -- a half-captured block that still advanced the watermark is exactly
+ * the hole this module exists to prevent -- and they must not differ between
+ * however many transports fetch the parts. Returns a message rather than
+ * throwing so the chunk reader can keep the prefix before a bad block.
+ *
+ * `hash` is a validated string, not `unknown`: the chunk reader checks every
+ * hash as it walks the list, because a null there BOUNDS the chunk (the chain
+ * has not produced that block) rather than failing it. Re-checking here would
+ * be a branch nothing can reach.
+ */
+function assembleRawBlock(
   number: number,
-  fetchImpl: typeof fetch = fetch,
-  now: () => number = Date.now,
-): Promise<RawBlockCapture> {
-  const hash = (await rpc(
-    url,
-    "chain_getBlockHash",
-    [number],
-    fetchImpl,
-  )) as string;
-  if (typeof hash !== "string" || !hash.startsWith("0x")) {
-    throw new Error(`no hash at height ${number}`);
-  }
-  const signed = (await rpc(url, "chain_getBlock", [hash], fetchImpl)) as {
+  hash: string,
+  signedRaw: unknown,
+  eventsRaw: unknown,
+  now: () => number,
+): { block: RawBlockCapture } | { error: string } {
+  const signed = signedRaw as {
     block?: { header?: { parentHash?: unknown }; extrinsics?: unknown };
   };
   const header = signed?.block?.header;
   const extrinsics = signed?.block?.extrinsics;
   if (!header || !Array.isArray(extrinsics)) {
-    throw new Error(`malformed block at height ${number}`);
+    return { error: `malformed block at height ${number}` };
   }
   if (!extrinsics.every((x): x is string => typeof x === "string")) {
-    throw new Error(`non-string extrinsic at height ${number}`);
+    return { error: `non-string extrinsic at height ${number}` };
   }
   // A pruned-state node answers null here. Recorded as null rather than "",
   // so a later decode can tell "no events" from "events unavailable".
-  const events = (await rpc(
-    url,
-    "state_getStorage",
-    [SYSTEM_EVENTS_STORAGE_KEY, hash],
-    fetchImpl,
-  )) as unknown;
-  if (events !== null && typeof events !== "string") {
-    throw new Error(`malformed events at height ${number}`);
+  if (eventsRaw !== null && typeof eventsRaw !== "string") {
+    return { error: `malformed events at height ${number}` };
   }
   const parentHash = header.parentHash;
   return {
-    block_number: number,
-    block_hash: hash,
-    parent_hash: typeof parentHash === "string" ? parentHash : "",
-    header,
-    extrinsics,
-    events,
-    captured_at: now(),
+    block: {
+      block_number: number,
+      block_hash: hash,
+      parent_hash: typeof parentHash === "string" ? parentHash : "",
+      header,
+      extrinsics,
+      events: eventsRaw,
+      captured_at: now(),
+    },
   };
+}
+
+/**
+ * A run of blocks' raw bytes in TWO HTTP requests, however many blocks.
+ *
+ * WHY TWO, NOT THREE PER BLOCK. The public archive limits a client by HTTP
+ * REQUESTS, not by JSON-RPC calls -- measured 2026-08-16 against
+ * archive.chain.opentensor.ai by replaying this lane's own call pattern:
+ *
+ *     singles: 429 after 103 requests (103 calls)
+ *     batches of 10: 1,400 calls in 140 requests, no limit, 103.7s
+ *
+ * Same allowance, 13.6x the data. The old shape spent three requests per block
+ * and so could never exceed ~33 blocks/minute however it was paced; this one
+ * spends two per CHUNK. Both requests use facilities the node already
+ * advertises: `chain_getBlockHash` takes a LIST of heights and answers a list,
+ * and the server accepts a JSON-RPC batch array.
+ *
+ * The two requests cannot merge into one: the bodies and the events blob are
+ * addressed BY HASH, and the hashes are what the first request returns.
+ *
+ * THE PREFIX RULE IS UNCHANGED. A chunk stops at the first height it cannot
+ * assemble and returns everything before it, so the caller's watermark still
+ * only ever advances across blocks that are actually durable.
+ */
+export async function fetchRawBlockChunk(
+  url: string,
+  heights: number[],
+  fetchImpl: typeof fetch = fetch,
+  now: () => number = Date.now,
+): Promise<RawBlockChunk> {
+  if (heights.length === 0) return { blocks: [], stopped: null };
+
+  // Request 1: every hash in one call.
+  const hashesRaw = await rpc(url, "chain_getBlockHash", [heights], fetchImpl);
+  // `ListOrValue` answers a list for a list, which is what we always send. A
+  // node that answers a bare value to a list request has not understood the
+  // request, and reading it as one hash for many heights would assign every
+  // block the same bytes -- wrong data, not missing data.
+  if (!Array.isArray(hashesRaw)) {
+    return {
+      blocks: [],
+      stopped: {
+        at: heights[0]!,
+        reason: `chain_getBlockHash: expected a list of ${heights.length} hashes`,
+      },
+    };
+  }
+  // Only the leading heights that actually have a hash are worth asking about;
+  // a null is the chain simply not having produced that block yet, and it
+  // bounds the chunk rather than failing it.
+  const usable: { height: number; hash: string }[] = [];
+  let stopped: { at: number; reason: string } | null = null;
+  for (const [index, height] of heights.entries()) {
+    const hash = hashesRaw[index];
+    if (typeof hash !== "string" || !hash.startsWith("0x")) {
+      stopped = { at: height, reason: `no hash at height ${height}` };
+      break;
+    }
+    usable.push({ height, hash });
+  }
+  if (usable.length === 0) return { blocks: [], stopped };
+
+  // Request 2: every body and every events blob, in one batch. Grouped by
+  // method rather than interleaved only for readability -- correlation is by
+  // id, computed below from the same ordering, never from position.
+  const calls: ChainRpcBatchCall[] = [
+    ...usable.map(({ hash }) => ({
+      method: "chain_getBlock",
+      params: [hash] as unknown[],
+    })),
+    ...usable.map(({ hash }) => ({
+      method: "state_getStorage",
+      params: [SYSTEM_EVENTS_STORAGE_KEY, hash] as unknown[],
+    })),
+  ];
+  const results = await chainRpcBatch(url, calls, { fetchImpl });
+
+  const blocks: RawBlockCapture[] = [];
+  for (const [index, { height, hash }] of usable.entries()) {
+    // TOTAL by construction: chainRpcBatch returns exactly one result per call,
+    // in the caller's order, and both indices are inside the array it was
+    // handed -- an unanswered call comes back as `{ok: false}`, not as a hole.
+    // A presence check here would be a branch nothing can reach.
+    const body = results[index]!;
+    const events = results[index + usable.length]!;
+    if (!body.ok) {
+      stopped = { at: height, reason: body.error };
+      break;
+    }
+    if (!events.ok) {
+      stopped = { at: height, reason: events.error };
+      break;
+    }
+    const assembled = assembleRawBlock(
+      height,
+      hash,
+      body.result,
+      events.result,
+      now,
+    );
+    if ("error" in assembled) {
+      stopped = { at: height, reason: assembled.error };
+      break;
+    }
+    blocks.push(assembled.block);
+  }
+  return { blocks, stopped };
 }
 
 /**
@@ -213,11 +374,11 @@ export async function captureTick(deps: {
   /**
    * The archive endpoints this tick may read from, in preference order.
    *
-   * A LIST, NOT A URL, for RELIABILITY -- not for rate. The measured limit
-   * (#9378) is per CLIENT, not per host, so reading more endpoints does not buy
-   * more throughput; see `stepGapMs` below. What the list buys is that a host
-   * which is down, or which cannot serve historical state at all, stops being a
-   * single point of failure for the whole lane.
+   * A LIST, NOT A URL, for RELIABILITY -- not for rate. What the list buys is
+   * that a host which is down, or which cannot serve historical state at all,
+   * stops being a single point of failure for the whole lane. It is
+   * deliberately NOT a throughput multiplier; see `chunkGapMs` below for the
+   * measurement that says why it does not need to be.
    *
    * THE NO-GAP GUARANTEE IS UNCHANGED, and the rotation is why it needed care:
    * a height that fails on one endpoint is retried on the OTHERS before the
@@ -237,17 +398,32 @@ export async function captureTick(deps: {
    * everything else here is chain-agnostic, because capture never decodes. */
   network?: ChainNetworkId;
   /**
-   * Minimum gap between two blocks' reads, so a tick's calls are SPREAD across
-   * it rather than fired as fast as the network allows.
+   * Minimum time between the STARTS of two chunk reads, so a tick's requests
+   * are spread across it rather than fired as fast as the network allows.
    *
    * The endpoint's limit is per MINUTE, so an unpaced tick is bounded by one
    * minute's allowance however long the tick runs -- which is what pinned the
    * testnet cap at 32 blocks (#9430). Pacing makes the tick's own span the
    * budget instead. Zero (the default) keeps the previous behaviour exactly.
+   *
+   * MEASURED FROM THE START OF THE PREVIOUS CHUNK, not slept flat after it.
+   * A fixed post-work sleep makes the real cycle `gap + latency`, so the tick
+   * overruns its interval by however long the reads took -- tolerable when a
+   * read was one small call, not when a chunk is ~1.4 s of transfer. Pacing on
+   * the cycle keeps the request RATE at exactly the budget whatever the
+   * latency, and a chunk slower than the gap simply paces itself.
    */
   minGapMs?: number;
-  /** Blocks per durable write. Smaller means less work lost to an invocation
-   * killed mid-tick, at one R2 PUT each. */
+  /**
+   * Blocks per chunk: one batched read AND one durable write.
+   *
+   * The read and the flush are the same boundary on purpose. A chunk costs two
+   * requests regardless of its size, so reading in chunks and then writing on
+   * some other rhythm would only add ways for an invocation to die holding
+   * unwritten bytes.
+   *
+   * Bounded by the node's own stated batch limit -- see MAX_RPC_BATCH_CALLS.
+   */
   flushEvery?: number;
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -258,9 +434,16 @@ export async function captureTick(deps: {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const now = deps.now ?? Date.now;
   const minGapMs = deps.minGapMs ?? 0;
-  // Default is the whole tick, so a caller that has not opted in writes once
-  // exactly as before.
-  const flushEvery = deps.flushEvery ?? Number.POSITIVE_INFINITY;
+  // CLAMPED to what the node will actually answer, whatever the caller asks.
+  // A chunk is one batch, and a batch over the node's limit is refused whole
+  // (see MAX_RPC_BATCH_CALLS) -- so an over-large `flushEvery` would not read
+  // more per request, it would read NOTHING and stall the lane at its
+  // watermark. `Infinity`, the previous "write once at the end" default,
+  // lands on the cap by the same clamp.
+  const flushEvery = Math.min(
+    Math.max(1, Math.trunc(deps.flushEvery ?? MAX_CAPTURE_CHUNK_BLOCKS)),
+    MAX_CAPTURE_CHUNK_BLOCKS,
+  );
   const sleepFn =
     deps.sleepFn ??
     ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
@@ -268,21 +451,31 @@ export async function captureTick(deps: {
   if (endpoints.length === 0) {
     throw new Error("captureTick: rpcUrls is empty; nothing to read from");
   }
-  // THE GAP IS NOT DIVIDED BY THE ENDPOINT COUNT, and briefly was.
+  // THE GAP IS NOT DIVIDED BY THE ENDPOINT COUNT, and briefly was -- but the
+  // reason given for removing it was wrong, so here is what was measured.
   //
-  // Dividing assumes the rate limit is per HOST -- rotate across N hosts, let
-  // each see `minGapMs` between its own calls, and the lane's aggregate rate is
-  // N times one host's allowance. That is a reasonable model and it is not this
-  // endpoint's. #9378 measured the limit as per CLIENT: after exhausting it on
-  // one host, a DIFFERENT host refused too, "because the first probe had
-  // already spent the budget."
+  // #9378 concluded the limit was per CLIENT: after exhausting it on one host,
+  // a DIFFERENT host refused too. Re-measured 2026-08-16 against the endpoints
+  // this lane actually reads, that does not hold. Exhausting
+  // archive.chain.opentensor.ai (429 after 79 requests) and then immediately
+  // draining lite.chain.opentensor.ai got a FULL fresh allowance -- 100
+  // requests before its own 429. The buckets are per BACKEND NODE.
   //
-  // Under a per-client limit the divisor spends one minute's allowance in a
-  // fraction of the minute and buys a 429 partway through the tick -- more
-  // hosts, same ceiling, worse pacing. So the gap between consecutive blocks is
-  // the caller's `minGapMs` whatever the rotation width, and the rotation buys
-  // FAILOVER and archive coverage rather than rate.
-  const stepGapMs = minGapMs;
+  // What made the old measurement look client-wide is that the names are not
+  // the nodes. `entrypoint-finney.opentensor.ai` is a CNAME to
+  // `lite.chain.opentensor.ai`, both resolving to 65.109.251.221, while
+  // archive answers from 65.109.254.0 -- so draining "another host" drained
+  // the same machine, and it returned 0 requests. Two of the three mainnet
+  // names in the registry are one node.
+  //
+  // THE DIVISOR STAYS OUT ANYWAY, on a better reason than a wrong ceiling:
+  // there is nothing left to buy. A chunk is two requests whatever its size,
+  // so one node's ~100 requests/minute already funds hundreds of blocks per
+  // minute against a chain producing five. Multiplying an allowance the lane
+  // cannot spend would only add a rotation that has to be right about which
+  // names share a machine -- a fact DNS is free to change under us. The
+  // rotation stays what it is: FAILOVER and archive coverage, not rate.
+  const chunkGapMs = minGapMs;
   const stored = await deps.watermark.read();
   // An unset watermark starts just below the floor, so the first tick captures
   // the floor block itself rather than skipping it.
@@ -357,49 +550,69 @@ export async function captureTick(deps: {
     return last;
   };
 
-  let pending: RawBlockCapture[] = [];
   let captured = 0;
   let watermark = lastContiguous;
   let stoppedAt: number | undefined;
   let reason: string | undefined;
-  for (const [index, height] of heights.entries()) {
+  let chunkIndex = 0;
+  // When the previous chunk's read STARTED, so the gap paces the cycle rather
+  // than being added on top of it (see `minGapMs`).
+  let previousChunkStartedAt: number | null = null;
+  for (let offset = 0; offset < heights.length; offset += flushEvery) {
+    const chunkHeights = heights.slice(offset, offset + flushEvery);
     // BEFORE the read, and never before the first: the gap belongs between two
-    // blocks' bursts, so pacing never delays a tick that captures one block.
-    if (index > 0 && stepGapMs > 0) await sleepFn(stepGapMs);
-    // Rotate, so consecutive blocks land on different hosts and each host's own
-    // call spacing stays `minGapMs`.
-    let captured1: RawBlockCapture | null = null;
+    // chunks' bursts, so pacing never delays a tick that captures one chunk.
+    if (previousChunkStartedAt !== null && chunkGapMs > 0) {
+      const remaining = chunkGapMs - (now() - previousChunkStartedAt);
+      if (remaining > 0) await sleepFn(remaining);
+    }
+    previousChunkStartedAt = now();
+
+    let chunk: RawBlockChunk | null = null;
     let lastError: unknown = null;
     for (let attempt = 0; attempt < endpoints.length; attempt += 1) {
-      const url = endpoints[(index + attempt) % endpoints.length]!;
+      const url = endpoints[(chunkIndex + attempt) % endpoints.length]!;
       try {
-        captured1 = await fetchRawBlock(url, height, fetchImpl, now);
-        break;
+        const got = await fetchRawBlockChunk(url, chunkHeights, fetchImpl, now);
+        chunk = got;
+        if (got.blocks.length > 0) break;
+        // Captured NOTHING: this host cannot serve the very next height, which
+        // is the case rotation exists for. A PARTIAL chunk is not retried --
+        // its prefix is already good, and the height it stopped at leads the
+        // next tick's first chunk, where a zero-length read rotates then.
+        //
+        // `stopped` is non-null here by construction: `chunkHeights` is a
+        // non-empty slice, and the only way to come back with no blocks from a
+        // non-empty ask is to have stopped somewhere and said why.
+        lastError = new Error(got.stopped!.reason);
       } catch (error) {
-        // NOT a gap yet: another endpoint may hold this height. Only the height
-        // that NO endpoint can serve stops the tick.
+        // NOT a gap yet: another endpoint may hold these heights. Only a chunk
+        // NO endpoint can start stops the tick.
         lastError = error;
       }
     }
-    if (captured1 === null) {
-      // Stop at the FIRST failure and keep the prefix. Continuing past it
-      // would create exactly the hole this module exists to prevent.
-      stoppedAt = height;
+    chunkIndex += 1;
+
+    if (chunk === null || chunk.blocks.length === 0) {
+      // Stop at the FIRST failure and keep what earlier chunks wrote.
+      // Continuing past it would create exactly the hole this module exists to
+      // prevent.
+      stoppedAt = chunkHeights[0];
       reason = String((lastError as Error)?.message ?? lastError);
       break;
     }
-    pending.push(captured1);
-    if (pending.length >= flushEvery) {
-      watermark = await flush(pending);
-      captured += pending.length;
-      pending = [];
+
+    // Durable FIRST, watermark after -- the ordering the guarantee rests on.
+    watermark = await flush(chunk.blocks);
+    captured += chunk.blocks.length;
+
+    // A short chunk means the run ended inside it. Its prefix is written; the
+    // height it stopped at is where the next tick resumes.
+    if (chunk.stopped !== null) {
+      stoppedAt = chunk.stopped.at;
+      reason = chunk.stopped.reason;
+      break;
     }
-  }
-  // Whatever the last chunk holds, including everything when the tick stopped
-  // early: the prefix before a failure is still good data.
-  if (pending.length > 0) {
-    watermark = await flush(pending);
-    captured += pending.length;
   }
 
   if (captured === 0) {

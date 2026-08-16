@@ -9,6 +9,7 @@
 //   * THE CEILING. A buffer that grows without bound turns a stalled flush into
 //     an outage nobody can see.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
   chunkKey,
@@ -450,10 +451,69 @@ describe("blocks-head can never be buffered", () => {
     );
   });
 
-  test("the never-buffer set names both explorer lanes explicitly", () => {
+  test("raw-capture-state is excluded -- its own producer reads it back", () => {
+    // Not a read-path lane like the other two. The capture lane reads this
+    // watermark to decide where to resume on its NEXT tick, one minute later,
+    // so a deferred write is not a stale read for somebody else -- it is the
+    // producer re-doing the work it just did, every tick, until the flush.
+    assert.equal(
+      neonWriteBufferEnabled(
+        { NEON_WRITE_BUFFER_LANES: "raw-capture-state" },
+        "raw-capture-state",
+      ),
+      false,
+    );
+  });
+
+  test("the shipped config never names a lane the code refuses", () => {
+    // THE DRIFT THIS CLASS OF BUG COMES BACK THROUGH. `raw-capture-state` was
+    // the first lane added to the flag, as an obvious low-frequency write, and
+    // nothing at the write site says its reader is one tick away. The code set
+    // makes re-adding it a no-op rather than a regression -- but a config that
+    // still NAMES it would read as though buffering were in effect, and the
+    // next person to debug this lane would start from a false premise.
+    // ALL THREE CONFIGS, because the flag is per Worker: `raw-capture-state`
+    // was declared in wrangler.jsonc, wrangler.data.jsonc AND
+    // wrangler.registry.jsonc, so a guard reading one of them would have
+    // passed while two still named it.
+    let checked = 0;
+    for (const file of [
+      "../wrangler.jsonc",
+      "../wrangler.data.jsonc",
+      "../wrangler.registry.jsonc",
+    ]) {
+      const raw = readFileSync(new URL(file, import.meta.url), "utf8")
+        .replace(/^\s*\/\/.*$/gm, "")
+        .replace(/,(\s*[}\]])/g, "$1");
+      const parsed = JSON.parse(raw) as {
+        vars?: { NEON_WRITE_BUFFER_LANES?: string };
+      };
+      const declared = (parsed.vars?.NEON_WRITE_BUFFER_LANES ?? "")
+        .split(",")
+        .map((lane) => lane.trim())
+        .filter(Boolean);
+      assert.ok(
+        declared.length > 0,
+        `${file}: premise: some lanes are buffered`,
+      );
+      checked += 1;
+      const contradictions = declared.filter((lane) =>
+        NEVER_BUFFER_LANES.has(lane),
+      );
+      assert.deepEqual(
+        contradictions,
+        [],
+        `${file} buffers ${contradictions.join(", ")}, which NEVER_BUFFER_LANES refuses`,
+      );
+    }
+    assert.equal(checked, 3, "every config that declares the flag was read");
+  });
+
+  test("the never-buffer set names every excluded lane explicitly", () => {
     assert.deepEqual([...NEVER_BUFFER_LANES].sort(), [
       "blocks-head",
       "chain-detail",
+      "raw-capture-state",
     ]);
   });
 });
