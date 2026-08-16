@@ -20,6 +20,7 @@ import {
   accountShard,
   accountSummaryShardKey,
   loadAccountSummaryProjection,
+  type AccountSummaryProjectionRead,
   recentFloorMs,
 } from "../src/account-summary-projection.ts";
 
@@ -110,10 +111,31 @@ describe("accountShard", () => {
   });
 });
 
+/**
+ * The read narrowed to the variant that FOUND the account.
+ *
+ * The reader returns a union now: a found account, a positive absence (the
+ * shard exists and does not list it), or null. Every assertion below this line
+ * is about an account the projection holds, so narrowing once here beats
+ * re-discriminating at each one -- and asserting the variant means a read that
+ * silently became an absence fails loudly instead of reading as `undefined`.
+ * Absence has its own describe block.
+ */
+async function readFound(
+  ...args: Parameters<typeof loadAccountSummaryProjection>
+): Promise<AccountSummaryProjectionRead> {
+  const got = await loadAccountSummaryProjection(...args);
+  assert.ok(
+    got && got.absent !== true,
+    "expected the projection to find this account",
+  );
+  return got;
+}
+
 describe("loadAccountSummaryProjection", () => {
   test("reads the pointer, THEN the account's shard in that generation", async () => {
     const store = archive(published({ [HOT]: [group()] }));
-    const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    const groups = await readFound(store.env, HOT, FRESH);
     assert.deepEqual(store.asked, [
       ACCOUNT_SUMMARY_POINTER_KEY,
       accountSummaryShardKey(HOT, SHARDS, GEN),
@@ -147,7 +169,7 @@ describe("loadAccountSummaryProjection", () => {
         accounts: { [HOT]: [group()] },
       },
     });
-    const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    const groups = await readFound(store.env, HOT, FRESH);
     assert.equal(groups!.groups.length, 1);
   });
 
@@ -163,7 +185,7 @@ describe("loadAccountSummaryProjection", () => {
         accounts: { [HOT]: [group({ count: 999 })] },
       },
     });
-    const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    const groups = await readFound(store.env, HOT, FRESH);
     assert.equal(
       groups!.groups[0]!.count,
       1,
@@ -200,7 +222,7 @@ describe("loadAccountSummaryProjection", () => {
       null,
     );
     assert.ok(
-      await loadAccountSummaryProjection(store.env, HOT, {
+      await readFound(store.env, HOT, {
         now: () => written + ACCOUNT_SUMMARY_MAX_AGE_MS - 1,
       }),
     );
@@ -270,6 +292,9 @@ describe("loadAccountSummaryProjection", () => {
       ),
       null,
     );
+    // An unseen account declines HERE because this generation publishes no
+    // `through`, so no bounded floor can be placed. With one it is a positive
+    // absence instead -- see "an account the projection does not list".
     const store = archive(published({ [COLD]: [group()] }));
     assert.equal(
       await loadAccountSummaryProjection(store.env, HOT, FRESH),
@@ -313,23 +338,20 @@ describe("loadAccountSummaryProjection", () => {
         ],
       }),
     );
-    assert.deepEqual(
-      await loadAccountSummaryProjection(store.env, HOT, FRESH),
-      {
-        recent: null,
-        groups: [
-          {
-            kind: "Transfer",
-            netuid: null,
-            count: 2,
-            fb: null,
-            lb: null,
-            fo: null,
-            lo: null,
-          },
-        ],
-      },
-    );
+    assert.deepEqual(await readFound(store.env, HOT, FRESH), {
+      recent: null,
+      groups: [
+        {
+          kind: "Transfer",
+          netuid: null,
+          count: 2,
+          fb: null,
+          lb: null,
+          fo: null,
+          lo: null,
+        },
+      ],
+    });
   });
 
   test("a non-object body is refused, at the pointer and at the shard", async () => {
@@ -405,7 +427,7 @@ describe("loadAccountSummaryProjection", () => {
     // off-by-one here would drop the busiest accounts the tier CAN serve.
     const atCap = [group({ count: ACCOUNT_EVENT_SUMMARY_SCAN_CAP })];
     const store = archive(published({ [HOT]: atCap }));
-    const groups = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    const groups = await readFound(store.env, HOT, FRESH);
     assert.equal(groups!.groups.length, 1);
   });
 
@@ -571,7 +593,7 @@ describe("recentFloorMs", () => {
 describe("the projection's recent map", () => {
   test("is returned with the floor the probe resumes from", async () => {
     const store = archive(withRecent({ [HOT]: [event()] }));
-    const read = await loadAccountSummaryProjection(store.env, HOT, {
+    const read = await readFound(store.env, HOT, {
       ...FRESH,
       recentLimit: 10,
     });
@@ -587,7 +609,7 @@ describe("the projection's recent map", () => {
     // own would serve nine events as though they were the newest ten, with
     // nothing on the card to say the tenth was never published.
     const store = archive(withRecent({ [HOT]: [event()] }, { limit: 9 }));
-    const read = await loadAccountSummaryProjection(store.env, HOT, {
+    const read = await readFound(store.env, HOT, {
       ...FRESH,
       recentLimit: 10,
     });
@@ -598,7 +620,7 @@ describe("the projection's recent map", () => {
   test("an equal published limit is enough", async () => {
     // The boundary the test above brackets: >= is the rule, not >.
     const store = archive(withRecent({ [HOT]: [event()] }, { limit: 10 }));
-    const read = await loadAccountSummaryProjection(store.env, HOT, {
+    const read = await readFound(store.env, HOT, {
       ...FRESH,
       recentLimit: 10,
     });
@@ -613,7 +635,7 @@ describe("the projection's recent map", () => {
     const store = archive(
       published({ [HOT]: [group()] }, { through: "2026-08-13" }),
     );
-    const read = await loadAccountSummaryProjection(store.env, HOT, {
+    const read = await readFound(store.env, HOT, {
       ...FRESH,
       recentLimit: 10,
     });
@@ -628,7 +650,7 @@ describe("the projection's recent map", () => {
     const store = archive(
       withRecent({ [HOT]: [event()] }, { over: { through: undefined } }),
     );
-    const read = await loadAccountSummaryProjection(store.env, HOT, {
+    const read = await readFound(store.env, HOT, {
       ...FRESH,
       recentLimit: 10,
     });
@@ -643,7 +665,7 @@ describe("the projection's recent map", () => {
     const store = archive(
       withRecent({ [HOT]: [event(), event({ block_number: null })] }),
     );
-    const read = await loadAccountSummaryProjection(store.env, HOT, {
+    const read = await readFound(store.env, HOT, {
       ...FRESH,
       recentLimit: 10,
     });
@@ -655,7 +677,7 @@ describe("the projection's recent map", () => {
     // otherwise have it silently dropped from every card, and the divergence
     // would only show up as a field the API stopped serving.
     const store = archive(withRecent({ [HOT]: [{ ...event(), surprise: 1 }] }));
-    const read = await loadAccountSummaryProjection(store.env, HOT, {
+    const read = await readFound(store.env, HOT, {
       ...FRESH,
       recentLimit: 10,
     });
@@ -665,7 +687,7 @@ describe("the projection's recent map", () => {
   test("an account absent from the map, or empty in it, declines", async () => {
     for (const map of [{}, { [HOT]: [] }, { [COLD]: [event()] }]) {
       const store = archive(withRecent(map));
-      const read = await loadAccountSummaryProjection(store.env, HOT, {
+      const read = await readFound(store.env, HOT, {
         ...FRESH,
         recentLimit: 10,
       });
@@ -676,7 +698,7 @@ describe("the projection's recent map", () => {
   test("a non-object recent map is refused rather than indexed", async () => {
     for (const map of ["nope", 7, null] as unknown[]) {
       const store = archive(withRecent(map as Record<string, unknown>));
-      const read = await loadAccountSummaryProjection(store.env, HOT, {
+      const read = await readFound(store.env, HOT, {
         ...FRESH,
         recentLimit: 10,
       });
@@ -688,7 +710,7 @@ describe("the projection's recent map", () => {
     // The default. Every caller before #575 wants the aggregate leg only, and
     // must not start paying to parse a list it will not use.
     const store = archive(withRecent({ [HOT]: [event()] }));
-    const read = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    const read = await readFound(store.env, HOT, FRESH);
     assert.equal(read!.recent, null);
   });
 });
@@ -717,7 +739,7 @@ describe("a published list is only served when it IS the newest N", () => {
   }
 
   const read = (store: ReturnType<typeof archive>) =>
-    loadAccountSummaryProjection(store.env, HOT, { ...FRESH, recentLimit: 10 });
+    readFound(store.env, HOT, { ...FRESH, recentLimit: 10 });
 
   test("a FULL list is served -- the walk has passed this account's events", async () => {
     assert.equal((await read(shard(500, 10)))!.recent!.rows.length, 10);
@@ -742,6 +764,59 @@ describe("a published list is only served when it IS the newest N", () => {
     assert.equal((await read(shard(10, 10)))!.recent!.rows.length, 10);
     assert.equal((await read(shard(11, 10)))!.recent!.rows.length, 10);
     assert.equal((await read(shard(5, 4)))!.recent, null);
+  });
+});
+
+/**
+ * Absence as an ANSWER, which is the whole reason the producer writes empty
+ * shards. See `empty_payload` in metagraphed-infra's account_summary_r2.py:
+ * "The reader cannot tell 'no such account' from 'this shard was never
+ * produced' when the object is absent -- and the first is an answer while the
+ * second is a decline."
+ *
+ * Before this, both collapsed to `null` and the caller ran an unbounded
+ * lifetime scan for an account proven to have no history.
+ */
+describe("an account the projection does not list", () => {
+  const THROUGH = { through: "2026-08-14" };
+  const FLOOR = Date.parse("2026-08-15T00:00:00.000Z");
+
+  test("is a positive absence carrying the floor, not a decline", async () => {
+    // The shard EXISTS and does not hold HOT, so the projection has established
+    // there is nothing at or before `through`.
+    const store = archive(published({}, THROUGH));
+    const got = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    assert.deepEqual(got, { absent: true, floorMs: FLOOR });
+  });
+
+  test("a MISSING shard stays a decline, and is never read as absence", async () => {
+    // The distinction the producer writes empty shards to make. Treating an
+    // unwritten shard as "no history" would publish an empty card for an
+    // account with a full one -- confidently wrong, the one outcome this
+    // family refuses.
+    const store = archive({
+      [ACCOUNT_SUMMARY_POINTER_KEY]: pointer(THROUGH),
+    });
+    assert.equal(
+      await loadAccountSummaryProjection(store.env, HOT, FRESH),
+      null,
+    );
+  });
+
+  test("declines when the generation cannot place the floor", async () => {
+    // No `through`, so there is nowhere to start a bounded read. A guessed
+    // floor is worse than the lakehouse scan it would replace.
+    const store = archive(published({}));
+    assert.equal(
+      await loadAccountSummaryProjection(store.env, HOT, FRESH),
+      null,
+    );
+  });
+
+  test("an account the shard DOES list is never reported absent", async () => {
+    const store = archive(published({ [HOT]: [group()] }, THROUGH));
+    const got = await loadAccountSummaryProjection(store.env, HOT, FRESH);
+    assert.equal(got!.absent, undefined);
   });
 });
 

@@ -146,9 +146,29 @@ const RPC_BUDGET_UTILISATION = 0.8;
  */
 const TICK_SPEND_FRACTION = 0.8;
 
-/** Blocks per durable write. One R2 PUT each, so this trades a few writes for
- * how much a killed invocation discards -- 25 blocks is ~2 minutes of chain. */
-const FLUSH_EVERY_BLOCKS = 25;
+/**
+ * Blocks per durable write. One R2 PUT each, so this trades a few writes for
+ * how much a killed invocation discards.
+ *
+ * THIS NUMBER IS A DEADLINE, NOT A BATCH SIZE, and 25 was past it. The chunk
+ * only becomes durable once it is FULL, so the time to the first durable write
+ * is `flushEvery * minGapMs` -- at the paced 4,500 ms that was 112 s, and an
+ * invocation that did not live that long wrote NOTHING. The trailing flush at
+ * the end of captureTick covers a clean early `break`; it does not run when the
+ * runtime kills the invocation, which is the case this bounds.
+ *
+ * Measured against production 2026-08-16, mainnet: the watermark advanced 25
+ * blocks in 21 minutes (three ticks) while the chain advanced ~105 -- one
+ * single chunk, the rest discarded. Capture was losing ~3.8 blocks/min against
+ * a chain producing 5/min, having fallen 8,409 blocks (~28 h) behind, and the
+ * lane threw nothing the whole time: no exception, `last_error` NULL,
+ * `stopped_at` NULL.
+ *
+ * At 5 the first durable write lands in ~22 s, so a tick killed at any point
+ * keeps all but its final partial chunk. The cost is ~11 PUTs per tick instead
+ * of ~2 (a full 53-block tick), which is nothing against losing the tick.
+ */
+const FLUSH_EVERY_BLOCKS = 5;
 
 /** The paced budget for ONE lane, given how many share the client allowance. */
 export function pacedLaneBudget(
