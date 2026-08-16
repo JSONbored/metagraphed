@@ -35,6 +35,8 @@ import {
   buildSubnetEvents,
 } from "./account-events.ts";
 import {
+  accountEventsHotFloorMs,
+  loadAccountEventsHotTier,
   CHAIN_EVENT_COLUMNS,
   formatChainEvent,
   type ChainEventApi,
@@ -51,6 +53,7 @@ import {
 } from "./account-summary-projection.ts";
 import {
   mergeNewestEvents,
+  type AccountFeedRow,
   type FeedKeyed,
 } from "./account-feeds-cold-tier.ts";
 import {
@@ -168,7 +171,7 @@ async function recentEventsLeg(
      */
     query: typeof r2SqlQuery;
   },
-): Promise<AccountEventsRow[] | null> {
+): Promise<AccountFeedRow[] | null> {
   const { ss58, where, limit, network, query } = options;
   if (network !== DEFAULT_CHAIN_NETWORK) return null;
   const projected = await loadAccountSummaryProjection(env, ss58, {
@@ -177,6 +180,36 @@ async function recentEventsLeg(
   if (projected === null || projected.absent === true) return null;
   const recent = projected.recent;
   if (recent === null || recent.rows.length < limit) return null;
+
+  // THE HEAD, FROM NEON WHEN THE TWO TIERS PROVABLY MEET.
+  //
+  // `chain_detail_account_events` holds the head of the chain in Neon and is
+  // indexed by account since migration 0032: measured 0.091 ms against 748 ms
+  // before it, and against seconds for the same question in R2 SQL. The
+  // projection covers everything at or before its fold edge; this store covers
+  // everything from its own floor upward. When that floor sits at or below the
+  // fold edge the two OVERLAP and together span all of time -- so the whole
+  // page is served with NO lakehouse query at all.
+  //
+  // Measured 2026-08-16: hot floor 22:27Z against a fold edge of 00:00Z, an
+  // overlap of about ninety minutes.
+  //
+  // CHECKED, NEVER ASSUMED. Both edges move on their own schedules -- the
+  // chain-detail lane prunes to a rolling window, the producer folds on its own
+  // cadence -- so a gap is possible and a page built across one would be
+  // silently missing every event in it. `accountEventsHotFloorMs` derives the
+  // floor from the store rather than pinning it, and anything but a proven
+  // overlap falls through to the bounded R2 SQL probe below, which is slower
+  // and correct.
+  const hotFloorMs = await accountEventsHotFloorMs(env);
+  if (hotFloorMs !== null && hotFloorMs <= recent.floorMs) {
+    const hot = await loadAccountEventsHotTier(env, ss58, limit);
+    // A hot-tier failure is not a decline: it means this leg could not be
+    // served from Neon, and the R2 SQL probe below answers the same question.
+    if (hot !== null) {
+      return mergeNewestEvents<AccountFeedRow>(recent.rows, hot, limit);
+    }
+  }
 
   const head = await query<AccountEventsRow>(
     env,
@@ -210,7 +243,7 @@ async function recentEventsLeg(
   // `mergeNewestEvents` is generic over the shape both halves share, so the
   // compiler still checks that these two really do describe the same rows --
   // the job that the `as unknown as` this replaced was destroying.
-  return mergeNewestEvents<AccountEventsRow>(recent.rows, head, limit);
+  return mergeNewestEvents<AccountFeedRow>(recent.rows, head, limit);
 }
 
 export async function loadAccountEventsColdTier(

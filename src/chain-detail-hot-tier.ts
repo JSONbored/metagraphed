@@ -184,6 +184,74 @@ async function resolveHotRef(
 }
 
 /** Every extrinsic in one covered block, in read order. */
+/**
+ * The oldest `observed_at` this store still holds, or null when it holds
+ * nothing / cannot be read.
+ *
+ * THE SEAM, DERIVED FROM THE STORE'S OWN FLOOR rather than pinned. The
+ * chain-detail lane prunes to a rolling window, so how far back this tier
+ * reaches is a property of the data at this instant -- a constant here would be
+ * a claim about a window someone else tunes, and it would be wrong in the
+ * direction that matters: too low, and a caller serves a page missing every
+ * event below a floor this store never had.
+ *
+ * `MIN(observed_at)` is a single descent of the index 0017 added for exactly
+ * this shape, so it costs a planner walk rather than a scan.
+ */
+export async function accountEventsHotFloorMs(
+  env: unknown,
+): Promise<number | null> {
+  const rows = await query(
+    env,
+    "SELECT MIN(observed_at) AS floor_ms FROM chain_detail_account_events",
+    [],
+  );
+  if (rows === null || rows.length === 0) return null;
+  return safeBlockNumber(rows[0]?.floor_ms);
+}
+
+/**
+ * One account's newest events from the hot store, newest first.
+ *
+ * THE READ THIS TABLE HAD NO INDEX FOR until migration 0032. It is written by
+ * the chain-detail lane and holds the head of the chain -- measured 2026-08-16,
+ * 931,486 rows spanning 2026-08-15T22:27Z to the head -- and it was indexed for
+ * the two questions the BLOCK routes ask and neither question the ACCOUNT
+ * routes ask. So the account family read past a populated, sub-millisecond
+ * store straight into the lakehouse, where R2 SQL costs seconds per query
+ * almost regardless of what it scans.
+ *
+ * Measured before and after that migration, on an account with nothing in the
+ * window -- the common case, because the quieter the account the more rows the
+ * old plan read to prove there were none:
+ *
+ *   before  748.769 ms, 24,185 buffers, "Rows Removed by Filter: 932266"
+ *   after     0.091 ms,      7 buffers, BitmapOr over the two new indexes
+ *
+ * THE SAME DISJUNCTION the lakehouse leg uses, deliberately: `hotkey = X OR
+ * coldkey = X` stands in for data-api's two-scan merge, and the two tiers
+ * answering the same question differently is the class of bug that makes a feed
+ * change shape depending on how old it is.
+ *
+ * Returns null when the store is unbound or the query fails, never a partial
+ * page: the caller falls through to the lakehouse, which is slower and whole.
+ */
+export async function loadAccountEventsHotTier(
+  env: unknown,
+  ss58: string,
+  limit: number,
+): Promise<Row[] | null> {
+  const need = safeBlockNumber(limit);
+  if (need === null || need <= 0) return null;
+  return query(
+    env,
+    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
+      "WHERE hotkey = ? OR coldkey = ? " +
+      "ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ?",
+    [ss58, ss58, need],
+  );
+}
+
 export async function loadBlockExtrinsicsHotTier(
   env: unknown,
   ref: string,

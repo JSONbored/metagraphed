@@ -4,6 +4,17 @@
 // stand in for data-api's two-scan hotkey/coldkey read.
 import assert from "node:assert/strict";
 import { afterAll, beforeAll, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { loadAccountEventsHotTier } from "../src/chain-detail-hot-tier.ts";
+
+// The Neon head leg reads `chain_detail_account_events` through
+// src/read-store.ts, which builds `new Client(...)` itself -- so the module is
+// the seam. See tests/helpers/pg-mock.ts for why the controller is built inside
+// vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 import {
   loadAccountEventsColdTier,
   loadBlockChainEventsColdTier,
@@ -767,47 +778,49 @@ describe("loadBlockChainEventsColdTier", () => {
  * Measured 2026-08-16: `/events?limit=5` took 6.0s with its scan already
  * floored to five days, against 174ms for the card, which issues no query.
  */
-describe("loadAccountEventsColdTier -- the projection's recent map", () => {
-  const THROUGH = "2026-08-14";
-  const FOLD_FLOOR = Date.parse("2026-08-15T00:00:00.000Z");
-  const FIRST_OBSERVED = 1_700_000_000_010;
+// Shared by the two describes below: the projection leg and the Neon head leg
+// answer the same route and must be measured against one fixture.
+const THROUGH = "2026-08-14";
+const FOLD_FLOOR = Date.parse("2026-08-15T00:00:00.000Z");
+const FIRST_OBSERVED = 1_700_000_000_010;
 
-  /** A published row, in the producer's shape. */
-  const recentRow = (block: number, index = 0) => ({
-    block_number: block,
-    event_index: index,
-    extrinsic_index: 1,
-    event_kind: "NeuronRegistered",
-    hotkey: ADDR,
-    coldkey: null,
-    netuid: 105,
-    uid: 242,
-    amount_tao: null,
-    alpha_amount: null,
-    observed_at: 1_700_000_000_000 + block,
+/** A published row, in the producer's shape. */
+const recentRow = (block: number, index = 0) => ({
+  block_number: block,
+  event_index: index,
+  extrinsic_index: 1,
+  event_kind: "NeuronRegistered",
+  hotkey: ADDR,
+  coldkey: null,
+  netuid: 105,
+  uid: 242,
+  amount_tao: null,
+  alpha_amount: null,
+  observed_at: 1_700_000_000_000 + block,
+});
+
+/** An archive publishing `recent` for this account, as production now does. */
+const withRecent = (rows: unknown[], recentLimit = 10) =>
+  accountSummaryArchive({
+    accounts: {
+      [ADDR]: [
+        {
+          kind: "NeuronRegistered",
+          netuid: 105,
+          count: rows.length,
+          fb: 10,
+          lb: 90,
+          fo: FIRST_OBSERVED,
+          lo: FIRST_OBSERVED,
+        },
+      ],
+    },
+    recent: { [ADDR]: rows },
+    pointer: { recent_limit: recentLimit, recent_from: "2026-07-16" },
+    through: THROUGH,
   });
 
-  /** An archive publishing `recent` for this account, as production now does. */
-  const withRecent = (rows: unknown[], recentLimit = 10) =>
-    accountSummaryArchive({
-      accounts: {
-        [ADDR]: [
-          {
-            kind: "NeuronRegistered",
-            netuid: 105,
-            count: rows.length,
-            fb: 10,
-            lb: 90,
-            fo: FIRST_OBSERVED,
-            lo: FIRST_OBSERVED,
-          },
-        ],
-      },
-      recent: { [ADDR]: rows },
-      pointer: { recent_limit: recentLimit, recent_from: "2026-07-16" },
-      through: THROUGH,
-    });
-
+describe("loadAccountEventsColdTier -- the projection's recent map", () => {
   test("SERVES THE PAGE IN ONE QUERY, not a walk", async () => {
     const q = sqlFetch([]);
     const data = await loadAccountEventsColdTier(
@@ -974,5 +987,177 @@ describe("loadAccountEventsColdTier -- the projection's recent map", () => {
       "testnet",
     );
     assert.equal(asked, 0);
+  });
+});
+
+/**
+ * The head served from NEON instead of R2 SQL, when the two tiers provably meet.
+ *
+ * `chain_detail_account_events` holds the head of the chain in Neon -- measured
+ * 2026-08-16, 931,486 rows from 2026-08-15T22:27Z to the head -- and was
+ * indexed for the two questions the BLOCK routes ask and neither question the
+ * ACCOUNT routes ask. Migration 0032 added the two it needed:
+ *
+ *   before  748.769 ms, 24,185 buffers, "Rows Removed by Filter: 932266"
+ *   after     0.091 ms,      7 buffers, BitmapOr over the new indexes
+ *
+ * The projection covers everything at or before its fold edge; this store
+ * covers everything from its own floor up. When the floor sits at or below the
+ * edge they OVERLAP and the page needs no lakehouse query at all.
+ */
+describe("loadAccountEventsColdTier -- the Neon head", () => {
+  const FOLD_FLOOR = Date.parse("2026-08-15T00:00:00.000Z");
+
+  /** A store answering the floor probe and the per-account read. */
+  function store(floorMs: number | null, rows: Record<string, unknown>[]) {
+    const seen: string[] = [];
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    // `onQuery` is handed the RECORDED query, not a bare string -- see
+    // tests/helpers/pg-mock.ts. Reading `.text` is what lets this answer the
+    // floor probe and the per-account read differently from one double.
+    pg.control.onQuery = ({ text }) => {
+      seen.push(text);
+      pg.control.rows = text.includes("MIN(observed_at)")
+        ? floorMs === null
+          ? [{ floor_ms: null }]
+          : [{ floor_ms: floorMs }]
+        : rows;
+    };
+    return { seen, env: pgMockEnv() };
+  }
+
+  const hotRow = (block: number) => ({
+    block_number: block,
+    event_index: 0,
+    extrinsic_index: 1,
+    event_kind: "NeuronRegistered",
+    hotkey: ADDR,
+    coldkey: null,
+    netuid: 105,
+    uid: 242,
+    // A STRING, as pg hands back a numeric -- the generated row type says
+    // `amount_tao: string | null`. If the merge leaked that into the payload,
+    // the same field would change type depending on which tier answered.
+    amount_tao: "12.5",
+    alpha_amount: null,
+    observed_at: 1_700_000_000_000 + block,
+  });
+
+  test("NO LAKEHOUSE QUERY AT ALL when the tiers overlap", async () => {
+    const q = sqlFetch([]);
+    const { env } = store(FOLD_FLOOR - 90 * 60_000, [hotRow(999)]);
+    const data = await loadAccountEventsColdTier(
+      {
+        ...TOKEN,
+        ...env,
+        ...withRecent([recentRow(90), recentRow(80)]),
+      } as never,
+      ADDR,
+      { limit: 2 },
+    );
+    assert.ok(data);
+    assert.equal(q.length, 0, `expected no R2 SQL, got:\n${q.join("\n")}`);
+    assert.equal(data.events[0]!.block_number, 999, "the Neon row must lead");
+  });
+
+  test("A NUMERIC STRING from pg is coerced, not leaked", async () => {
+    // pg returns numerics as strings; the lakehouse returns numbers. The
+    // formatter normalises both, and this pins it -- a feed whose `amount_tao`
+    // is a string on recent events and a number on old ones is a contract that
+    // changes with age.
+    sqlFetch([]);
+    const { env } = store(FOLD_FLOOR - 90 * 60_000, [hotRow(999)]);
+    const data = await loadAccountEventsColdTier(
+      { ...TOKEN, ...env, ...withRecent([recentRow(90)]) } as never,
+      ADDR,
+      { limit: 1 },
+    );
+    assert.equal(typeof data!.events[0]!.amount_tao, "number");
+    assert.equal(data!.events[0]!.amount_tao, 12.5);
+  });
+
+  test("A GAP BETWEEN THE TIERS falls back to the bounded R2 SQL probe", async () => {
+    // Both edges move on their own schedules -- the chain-detail lane prunes to
+    // a rolling window, the producer folds on its own cadence -- so a gap is
+    // possible, and a page built across one is silently missing every event in
+    // it. The floor is DERIVED from the store, never assumed.
+    const q = sqlFetch([]);
+    const { env } = store(FOLD_FLOOR + 60 * 60_000, [hotRow(999)]);
+    await loadAccountEventsColdTier(
+      {
+        ...TOKEN,
+        ...env,
+        ...withRecent([recentRow(90), recentRow(80)]),
+      } as never,
+      ADDR,
+      { limit: 2 },
+    );
+    assert.equal(q.length, 1, "expected the R2 SQL probe");
+    assert.match(q[0]!, new RegExp(`observed_at >= ${FOLD_FLOOR}`));
+  });
+
+  test("A FAILING ACCOUNT READ falls back, even with a good floor", async () => {
+    // The floor probe and the per-account read are two queries and either can
+    // fail alone. A null page here means "not served from Neon", never "this
+    // account has no events" -- so the R2 SQL probe still answers.
+    const q = sqlFetch([]);
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = ({ text }) => {
+      if (text.includes("MIN(observed_at)")) {
+        pg.control.rows = [{ floor_ms: FOLD_FLOOR - 90 * 60_000 }];
+        return;
+      }
+      pg.control.failNext = new Error("store down");
+    };
+    const data = await loadAccountEventsColdTier(
+      {
+        ...TOKEN,
+        ...pgMockEnv(),
+        ...withRecent([recentRow(90), recentRow(80)]),
+      } as never,
+      ADDR,
+      { limit: 2 },
+    );
+    assert.ok(data, "the R2 SQL probe still answers");
+    assert.equal(q.length, 1, "expected the R2 SQL probe");
+  });
+
+  test("A NON-POSITIVE LIMIT reads nothing at all", async () => {
+    // `loadAccountEventsHotTier` is EXPORTED, so "the one caller already
+    // validated it" is a property of today's code and not of the function. A
+    // zero limit must issue no query rather than emitting `LIMIT 0`.
+    pg.control.queries.length = 0;
+    pg.control.onQuery = null;
+    for (const bad of [0, -1, Number.NaN]) {
+      assert.equal(
+        await loadAccountEventsHotTier(pgMockEnv(), ADDR, bad),
+        null,
+      );
+    }
+    assert.equal(pg.control.queries.length, 0, "an unusable limit queried");
+  });
+
+  test("AN UNREADABLE STORE falls back rather than declining", async () => {
+    // A hot-tier failure means this leg could not be served from Neon, not that
+    // the account has no events.
+    const q = sqlFetch([]);
+    const { env } = store(null, []);
+    const data = await loadAccountEventsColdTier(
+      {
+        ...TOKEN,
+        ...env,
+        ...withRecent([recentRow(90), recentRow(80)]),
+      } as never,
+      ADDR,
+      { limit: 2 },
+    );
+    assert.ok(data);
+    assert.equal(q.length, 1, "expected the R2 SQL probe");
   });
 });
