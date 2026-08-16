@@ -58,6 +58,7 @@ import {
   AccountSummaryRecentSchema,
 } from "../schemas-src/artifacts/account-summary-projection.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
 /** Objects the producer writes, one per shard. Contract with
  * metagraphed-infra's `services/indexer-rs/account_summary_r2.py`. */
@@ -478,4 +479,48 @@ function readRecent(
   // and the rest fall back exactly as they do today.
   if (parsed.data.length < Math.min(published, lifetimeEvents)) return none;
   return { recent: { rows: parsed.data, floorMs } };
+}
+
+/**
+ * The earliest millisecond this account can have an event, or null.
+ *
+ * THE ONE BOUND THAT COMPOSES WITH ANYTHING. The account routes carry cursors,
+ * offsets and half a dozen optional filters between them, and a windowed read
+ * has to agree with all of them. A pure lower bound does not: it removes rows
+ * that cannot exist, whatever else is being asked, so every caller can push it
+ * into its own `where` and change nothing else.
+ *
+ * Sound for BOTH answers the projection gives:
+ *
+ *   ABSENT  the producer writes every shard, so absence from a shard that
+ *           exists proves there is nothing at or before `through`.
+ *   PRESENT the groups are a LIFETIME aggregate -- the read declines anything
+ *           over the scan cap rather than publishing a windowed subtotal -- so
+ *           nothing exists before `min(fo)`. Post-fold events sit above
+ *           `foldFloorMs`, which is itself above `min(fo)`, so the single floor
+ *           still covers the whole history.
+ *
+ * MAINNET ONLY. The projection describes the default network, so flooring
+ * another chain's feed with it would bound that feed against the wrong history
+ * -- a wrong answer, where the unbounded walk is merely a slow right one.
+ *
+ * `recentLimit: 0` on purpose: callers of this want the FLOOR, not the
+ * published rows, and asking for rows would read a map it then throws away.
+ *
+ * AN OPTIMISATION OVER A CORRECT READ, never a precondition for one. Every
+ * caller must behave identically when this returns null, which is what makes it
+ * safe to add to a route without re-arguing that route's correctness.
+ */
+export async function accountHistoryFloorMs(
+  env: R2SqlEnv | null | undefined,
+  account: string,
+  network?: ChainNetworkId,
+): Promise<number | null> {
+  if (network !== undefined && network !== DEFAULT_CHAIN_NETWORK) return null;
+  const projected = await loadAccountSummaryProjection(env, account, {
+    recentLimit: 0,
+  });
+  if (projected === null) return null;
+  if (projected.absent === true) return projected.floorMs;
+  return projected.span?.firstMs ?? null;
 }

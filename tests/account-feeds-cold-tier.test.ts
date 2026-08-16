@@ -31,6 +31,7 @@ import {
   loadValidatorNominatorsColdTier,
 } from "../src/account-feeds-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
@@ -1039,5 +1040,113 @@ describe("loadAccountPrometheusColdTier", () => {
       await loadAccountPrometheusColdTier(TOKEN as never, ADDR),
       null,
     );
+  });
+});
+
+/**
+ * The projection floor, applied to the three feeds that walked with none.
+ *
+ * Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC: `/counterparties` 15.1s,
+ * `/transfers` 12.6s. `counterpartyScan` asks for COUNTERPARTIES_SCAN_CAP
+ * (5,000) rows, so its two probes essentially never fill and every request
+ * reached the unbounded third read of an ~894M-row table.
+ */
+describe("the account feeds -- the projection floor", () => {
+  const FIRST = 1_699_999_000_000;
+  const OTHER_FIRST = 1_699_990_000_000;
+
+  /** One folded group, as the producer publishes it. */
+  const group = (fo: number) => [
+    { kind: "Transfer", netuid: null, count: 1, fb: 10, lb: 10, fo, lo: fo },
+  ];
+
+  test("TRANSFERS floor at the account's earliest folded event", async () => {
+    const q = sqlFetch([transferRow(10)]);
+    await loadAccountTransfersColdTier(
+      {
+        ...TOKEN,
+        ...accountSummaryArchive({ accounts: { [ADDR]: group(FIRST) } }),
+      } as never,
+      ADDR,
+      { limit: 5 },
+    );
+    assert.ok(q.length > 0, "premise: a read was issued");
+    assert.ok(
+      q.every((sql) => sql.includes(`observed_at >= ${FIRST}`)),
+      `unfloored: ${q.find((sql) => !sql.includes(`observed_at >= ${FIRST}`))?.slice(0, 140)}`,
+    );
+  });
+
+  test("COUNTERPARTIES floor, including the read that never widens", async () => {
+    const q = sqlFetch([transferRow(10)]);
+    await loadAccountCounterpartiesColdTier(
+      {
+        ...TOKEN,
+        ...accountSummaryArchive({ accounts: { [ADDR]: group(FIRST) } }),
+      } as never,
+      ADDR,
+      { limit: 5 },
+    );
+    assert.ok(q.length > 0, "premise: a read was issued");
+    assert.ok(
+      q.every((sql) => sql.includes(`observed_at >= ${FIRST}`)),
+      `unfloored: ${q.find((sql) => !sql.includes(`observed_at >= ${FIRST}`))?.slice(0, 140)}`,
+    );
+  });
+
+  test("a RELATIONSHIP floors at the EARLIER of the two accounts", async () => {
+    // A relationship row needs only ONE side to exist. Flooring at the later
+    // account's first event would silently drop everything the earlier one did
+    // before it -- and a counterparty feed missing its oldest half looks
+    // exactly like a quiet relationship, which is the worst kind of wrong.
+    const q = sqlFetch([transferRow(10)]);
+    await loadCounterpartyRelationshipColdTier(
+      {
+        ...TOKEN,
+        ...accountSummaryArchive({
+          accounts: { [ADDR]: group(FIRST), [OTHER]: group(OTHER_FIRST) },
+        }),
+      } as never,
+      ADDR,
+      OTHER,
+      { limit: 5 },
+    );
+    assert.ok(q.length > 0, "premise: a read was issued");
+    assert.ok(
+      q.every((sql) => sql.includes(`observed_at >= ${OTHER_FIRST}`)),
+      `must floor at the EARLIER account: ${q[0]?.slice(0, 140)}`,
+    );
+  });
+
+  test("a RELATIONSHIP with ONE unknown side takes no floor at all", async () => {
+    // A floor derived from one known side is a bound on the wrong account: the
+    // unknown one may have history below it. Slower and right beats faster and
+    // short.
+    const q = sqlFetch([transferRow(10)]);
+    await loadCounterpartyRelationshipColdTier(
+      {
+        ...TOKEN,
+        ...accountSummaryArchive({ accounts: { [ADDR]: group(FIRST) } }),
+      } as never,
+      ADDR,
+      OTHER,
+      { limit: 5 },
+    );
+    assert.ok(q.length > 0, "premise: a read was issued");
+    assert.ok(
+      q.every((sql) => !sql.includes(`observed_at >= ${FIRST}`)),
+      "one known side must not floor the pair",
+    );
+  });
+
+  test("NO projection leaves every feed exactly as it was", async () => {
+    // The floor is an optimization over a correct read, never a precondition
+    // for one: with no artifact bound these must behave as before.
+    const q = sqlFetch([transferRow(10)]);
+    const data = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
+      limit: 5,
+    });
+    assert.ok(data);
+    assert.ok(q.every((sql) => !sql.includes(`observed_at >= ${FIRST}`)));
   });
 });

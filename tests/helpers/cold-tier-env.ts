@@ -1,3 +1,4 @@
+import { accountShard } from "../../src/account-summary-projection.ts";
 import { visibleInWindow } from "./scan-window.ts";
 // Transport doubles for the readers that answer now that the Postgres tier is
 // gone (#10190).
@@ -50,7 +51,14 @@ export interface ArchiveDouble {
  * Pass a function to vary by key (a network-scoped projection reads
  * `<key>` on mainnet and `testnet/<key>` off it), or `null` for a bucket that
  * holds nothing -- which is how a reader's decline path is reached.
+ *
+ * OVERLOADED rather than one union parameter. `unknown | ((key: string) => T)`
+ * IS `unknown` -- the union absorbs the signature -- so every caller passing a
+ * function got an implicitly-`any` parameter and no inference at all. The
+ * overloads restore it without changing a single call site.
  */
+export function archiveEnv(body: (key: string) => unknown): ArchiveDouble;
+export function archiveEnv(body: unknown): ArchiveDouble;
 export function archiveEnv(
   body: unknown | ((key: string) => unknown | null),
 ): ArchiveDouble {
@@ -144,4 +152,69 @@ export function forbiddenDataApi() {
       },
     },
   };
+}
+
+/**
+ * An archive publishing ONE account-summary generation.
+ *
+ * Extracted when the second consumer appeared. The first
+ * (`events-cold-tier.test.ts`) hand-rolled the shard key by re-implementing
+ * FNV-1a inline -- a copy of `accountShard` that shares no code with the
+ * function under test, so a hash change would have moved the reader and the
+ * fixture together and every floor assertion would still have passed while
+ * production read the wrong shard. It imports the real one now.
+ *
+ * KEYED BY ACCOUNT because the pair floor needs two. Each value is that
+ * account's shard row, or `null` for an account the producer folded and found
+ * nothing for -- the ABSENT case, and the stronger floor: the producer writes
+ * every shard, so absence proves there is nothing at or before `through`.
+ * Two accounts generally hash to two different shards, and both are served.
+ *
+ * An account NOT LISTED gets no shard object at all, which is the third
+ * answer: the producer has not published this shard, so the reader cannot
+ * conclude anything and must fall back to its unbounded read.
+ */
+export function accountSummaryArchive(input: {
+  accounts: Record<string, unknown>;
+  through?: string;
+  generation?: string;
+  shards?: number;
+  generatedAt?: string;
+}): ArchiveDouble {
+  const {
+    accounts,
+    through = "2026-08-14",
+    generation = "20260815T000000Z",
+    shards = 16384,
+    generatedAt = new Date().toISOString(),
+  } = input;
+  const pointerKey = "metagraph/projections/account-summary/current.json";
+  const prefix = `metagraph/projections/account-summary/${generation}/`;
+  /** shard index -> the accounts landing in it, so a collision serves both. */
+  const byShard = new Map<number, Record<string, unknown>>();
+  for (const [account, entry] of Object.entries(accounts)) {
+    const shard = accountShard(account, shards);
+    const bucket = byShard.get(shard) ?? {};
+    if (entry !== null) bucket[account] = entry;
+    byShard.set(shard, bucket);
+  }
+  return archiveEnv((key) => {
+    if (key === pointerKey) {
+      return {
+        schema_version: 1,
+        generation,
+        shard_count: shards,
+        generated_at: generatedAt,
+        account_count: Object.keys(accounts).length,
+        through,
+      };
+    }
+    if (key.startsWith(prefix) && key.endsWith(".json")) {
+      const shard = Number(key.slice(prefix.length, -".json".length));
+      const bucket = byShard.get(shard);
+      if (bucket === undefined) return null;
+      return { schema_version: 1, shard_count: shards, accounts: bucket };
+    }
+    return null;
+  });
 }

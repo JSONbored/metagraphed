@@ -5,6 +5,7 @@
 // than publishing a total that is quietly too small.
 import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
+import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // One store since #10179: the stake leg reads `neurons` through
@@ -459,5 +460,62 @@ describe("latestStakeEventAt", () => {
   test("a failed read is null, never a manufactured contradiction", async () => {
     failingFetch();
     assert.equal(await latestStakeEventAt(TOKEN as never, COLDKEY), null);
+  });
+
+  // THE TEST scripts/validate-r2-sql-scan-bounds.ts NAMES in RUNTIME_BOUNDED.
+  //
+  // That gate reads source text, and this floor is applied through a ternary
+  // -- `floorMs === null ? "" : ...` -- which no static reader can evaluate.
+  // The exemption there is therefore a POINTER TO THIS ASSERTION rather than a
+  // judgement that the scan is cheap, and the pointer is only worth anything
+  // while these two tests exist. A stale-key check in the gate fails if the
+  // entry outlives the finding; this is the other half.
+  //
+  // Why it matters: `MAX(observed_at)` over a scattered `coldkey` reads the
+  // account's whole history, and it fires precisely for accounts holding NO
+  // delegated positions -- so before the floor, the cheapest possible answer
+  // paid the most expensive read.
+  test("FLOORS the MAX(observed_at) scan at the projection's own bound", async () => {
+    const FIRST = 1_786_629_372_000;
+    const queries = routedFetch([], [{ latest: 1_785_700_000_000 }]);
+    await latestStakeEventAt(
+      {
+        ...TOKEN,
+        ...accountSummaryArchive({
+          accounts: {
+            [COLDKEY]: [
+              {
+                kind: "StakeAdded",
+                netuid: 18,
+                count: 1,
+                fb: 8_836_052,
+                lb: 8_836_052,
+                fo: FIRST,
+                lo: FIRST,
+              },
+            ],
+          },
+        }),
+      } as never,
+      COLDKEY,
+    );
+    assert.equal(queries.length, 1, "premise: the scan was issued");
+    assert.ok(
+      queries[0]!.includes(`observed_at >= ${FIRST}`),
+      `unfloored: ${queries[0]}`,
+    );
+  });
+
+  test("an unfloorable account still gets its answer, unbounded", async () => {
+    // The floor is an optimization over a correct read, never a precondition
+    // for one. With no projection published the query must still be issued --
+    // a reader that declined here would turn a slow answer into no answer.
+    const queries = routedFetch([], [{ latest: 1_785_700_000_000 }]);
+    assert.equal(
+      await latestStakeEventAt(TOKEN as never, COLDKEY),
+      1_785_700_000_000,
+    );
+    assert.equal(queries.length, 1);
+    assert.ok(!queries[0]!.includes("observed_at >="));
   });
 });

@@ -258,6 +258,31 @@ export async function loadBlockExtrinsicsColdTier(
 }
 
 /** One account's extrinsics, newest first. */
+/**
+ * DELIBERATELY NOT FLOORED by the account-summary projection, unlike every
+ * other account-scoped read in this family.
+ *
+ * The floor those use is `min(fo)` over an account's groups in
+ * `chain.account_events`. This reads `chain.extrinsics` on `signer`, and the
+ * projection makes NO claim about that table. Using it here would assert that
+ * an account cannot have signed an extrinsic before its first account_event,
+ * and that is not a fact anyone has established: it holds only if every signed
+ * extrinsic produces an event naming its signer, which fee-free and root calls
+ * do not.
+ *
+ * The cost of being wrong is silent -- the oldest extrinsics simply vanish from
+ * the feed, and a short page looks exactly like a quiet account. That is the
+ * failure this whole family has been correcting all week, so it is not one to
+ * introduce for a latency win.
+ *
+ * SO THIS READ IS STILL UNBOUNDED, and knowingly. Bounding it needs either a
+ * signer-keyed projection or a measured proof that the event floor covers
+ * signers; both are their own change. `validate:r2-sql-scan-bounds` does not
+ * flag it today because `signer` is absent from its SCATTERED list -- left
+ * alone here rather than added, because adding it without a bound would force a
+ * false `UNBOUNDED_BY_DESIGN` exemption, and an exemption that misdescribes why
+ * is worse than a gap that is written down.
+ */
 export async function loadAccountExtrinsicsColdTier(
   env: R2SqlEnv | null | undefined,
   ss58: string,

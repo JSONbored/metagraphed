@@ -101,7 +101,10 @@ import { storeAll } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { windowedFloorRead, windowedRowRead } from "./account-events-window.ts";
-import { loadAccountSummaryProjection } from "./account-summary-projection.ts";
+import {
+  accountHistoryFloorMs,
+  loadAccountSummaryProjection,
+} from "./account-summary-projection.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
@@ -197,6 +200,14 @@ export async function loadAccountTransfersColdTier(
     return null;
   }
   const where = ["event_kind = 'Transfer'"];
+  // The projection's lower bound, pushed in beside the direction predicate.
+  // This feed walked with no floor at all: the two probes cover 8 days, and an
+  // account whose newest transfer is older than that reached the unbounded
+  // third read.
+  const transferFloorMs = await accountHistoryFloorMs(env, ss58);
+  if (transferFloorMs !== null) {
+    where.push(`observed_at >= ${Math.trunc(transferFloorMs)}`);
+  }
   // data-api's exact direction semantics: sent matches the from side (hotkey),
   // received the to side (coldkey), and "all"/omitted reads both -- the single
   // OR standing in for its two-scan merge (see the module header).
@@ -810,9 +821,36 @@ type CounterpartyScanRow = Pick<
   | "observed_at"
 >;
 
+/**
+ * The floor for a PAIR of accounts: the earlier of the two, or null.
+ *
+ * A relationship row needs only ONE side to exist, so the bound has to be the
+ * MINIMUM. Flooring at the later account's first event would silently drop
+ * everything the earlier one did before it -- and a counterparty feed missing
+ * its oldest half looks exactly like a quiet relationship.
+ *
+ * NULL IF EITHER IS UNKNOWN, for the same reason. A floor derived from one
+ * known side alone would be a bound on the wrong account: the unknown one may
+ * have history below it.
+ */
+async function pairHistoryFloorMs(
+  env: R2SqlEnv | null | undefined,
+  a: string,
+  b: string,
+): Promise<number | null> {
+  const [first, second] = await Promise.all([
+    accountHistoryFloorMs(env, a),
+    accountHistoryFloorMs(env, b),
+  ]);
+  if (first === null || second === null) return null;
+  return Math.min(first, second);
+}
+
 async function counterpartyScan(
   env: R2SqlEnv | null | undefined,
   predicate: string,
+  /** The projection's lower bound, or null when it could not supply one. */
+  floorMs: number | null,
 ): Promise<CounterpartyScanRow[] | null> {
   // BOUNDED (#11131), same reasoning as the transfer feed: the predicate pins
   // hotkey/coldkey, which file statistics cannot prune on. The cap is a row
@@ -824,7 +862,14 @@ async function counterpartyScan(
   return windowedRowRead<CounterpartyScanRow>(env, {
     table: "chain.account_events",
     columns: `hotkey, coldkey, amount_tao, block_number, event_index, observed_at`,
-    where: ["event_kind = 'Transfer'", predicate],
+    where:
+      floorMs === null
+        ? ["event_kind = 'Transfer'", predicate]
+        : [
+            "event_kind = 'Transfer'",
+            predicate,
+            `observed_at >= ${Math.trunc(floorMs)}`,
+          ],
     order: ` ${FEED_ORDER}`,
     need: COUNTERPARTIES_SCAN_CAP,
   });
@@ -842,9 +887,12 @@ export async function loadAccountCounterpartiesColdTier(
 ): Promise<ReturnType<typeof buildCounterparties> | null> {
   const addr = safeSs58Literal(ss58);
   if (addr === null) return null;
+  // `need` here is COUNTERPARTIES_SCAN_CAP (5,000), so the walk's two probes
+  // essentially never fill and every request reached its unbounded third read.
   const rows = await counterpartyScan(
     env,
     `(hotkey = '${addr}' OR coldkey = '${addr}')`,
+    await accountHistoryFloorMs(env, ss58),
   );
   if (rows === null) return null;
   return buildCounterparties(rows, ss58, { limit: query.limit });
@@ -889,6 +937,11 @@ export async function loadCounterpartyRelationshipColdTier(
     env,
     `((hotkey = '${addr}' AND coldkey = '${other}') OR ` +
       `(hotkey = '${other}' AND coldkey = '${addr}'))`,
+    // THE PAIR'S floor is the EARLIER of the two, and null if either is
+    // unknown: a relationship row needs only ONE side to exist, so flooring at
+    // the later account's first event would drop everything the earlier one did
+    // before it.
+    await pairHistoryFloorMs(env, ss58, counterparty),
   );
   if (rows === null) return null;
   const relationship = buildCounterpartyRelationship(rows, ss58, counterparty, {

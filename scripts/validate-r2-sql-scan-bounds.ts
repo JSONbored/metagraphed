@@ -54,16 +54,59 @@ const PRUNABLE = [
  * outlives the thing it was guessing about. These are small tables where a full
  * scan is genuinely cheaper than the index-shaped alternative.
  */
+/**
+ * KEYED BY FILE AND TABLE, because keying by file alone exempts reads nobody
+ * measured.
+ *
+ * Both entries below name a small table. The exemption used to be `file ->
+ * reason`, so `src/nominator-positions-cold-tier.ts`'s note about
+ * `chain.nominator_positions` (~123k rows, 1.67 MB) also covered that same
+ * file's `SELECT MAX(observed_at) FROM chain.account_events WHERE coldkey = X`
+ * -- an unbounded scan of an 894M-row table, exempted by a sentence about a
+ * different table 7,000x smaller. Naming the table is what makes the measured
+ * reason apply to the read it was actually measured against.
+ */
 export const UNBOUNDED_BY_DESIGN: Readonly<Record<string, string>> = {
-  "src/account-identity-cold-tier.ts":
+  "src/account-identity-cold-tier.ts|chain.account_identity":
     "chain.account_identity is ~515 rows; a full scan measured 0.08 MB",
-  "src/nominator-positions-cold-tier.ts":
+  "src/nominator-positions-cold-tier.ts|chain.nominator_positions":
     "chain.nominator_positions is ~123k rows; a full scan measured 1.67 MB",
+};
+
+/** The lakehouse table a query reads, for scoping an exemption to it. */
+export function tableOf(query: string): string | null {
+  return (
+    /FROM\s+((?:chain|chain_testnet)\.[a-z_]+)/i
+      .exec(query)?.[1]
+      ?.toLowerCase() ?? null
+  );
+}
+
+/**
+ * Reads whose bound is real but CONDITIONAL, each naming the test that proves
+ * the emitted SQL carries it.
+ *
+ * Distinct from UNBOUNDED_BY_DESIGN, which says "this scan is cheap", and from
+ * INTERPOLATED_PREDICATES, which covers a WHERE this gate cannot read at all.
+ * These are reads whose predicate IS in the source and is applied only when a
+ * bound is available -- `floorMs === null ? "" : \` AND observed_at >= ...\``.
+ * A static gate cannot evaluate that ternary, and treating it as unbounded
+ * would push the author toward emitting a fake always-true bound purely to
+ * satisfy the check, which buys nothing and hides the real question.
+ *
+ * Keyed by file AND table for the same reason UNBOUNDED_BY_DESIGN is: an
+ * exemption that covers a whole file covers reads nobody looked at.
+ */
+export const RUNTIME_BOUNDED: Readonly<Record<string, string>> = {
+  "src/nominator-positions-cold-tier.ts|chain.account_events":
+    "tests/nominator-positions-cold-tier.test.ts asserts latestStakeEventAt emits the projection floor",
 };
 
 export interface Finding {
   file: string;
   query: string;
+  /** The lakehouse table read, so an exemption can be scoped to it. */
+  table: string | null;
   /** The predicate is interpolated, so this gate cannot read it from source. */
   unreadable?: boolean;
 }
@@ -125,8 +168,23 @@ export function findUnbounded(file: string, source: string): Finding[] {
   const buildsScattered = SCATTERED.some((c) =>
     new RegExp(`\\b${c}\\b\\s*(=|IN|LIKE)`, "i").test(source),
   );
-  const call =
-    /r2SqlQuery(?:<[^>]*>)?\(\s*\w+,\s*(`(?:[^`\\]|\\.)*`(?:\s*\+\s*`(?:[^`\\]|\\.)*`)*)/gs;
+  // ANY STRING LITERAL, not just a backtick one. The pattern accepted only
+  // template literals, so a query assembled as
+  //
+  //     "SELECT MAX(observed_at) ... FROM chain.account_events" +
+  //       ` WHERE coldkey = '${coldkey}'`
+  //
+  // matched NOTHING and the call was never examined -- which is how
+  // nominator-positions-cold-tier's unbounded scan of an 894M-row table sat
+  // outside a gate whose entire job is finding it. A double-quoted first
+  // segment is an ordinary way to write SQL that starts with a constant, and
+  // the gate must not depend on which quote a reader reached for.
+  const STRING =
+    "(?:`(?:[^`\\\\]|\\\\.)*`|\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*')";
+  const call = new RegExp(
+    `r2SqlQuery(?:<[^>]*>)?\\(\\s*\\w+,\\s*(${STRING}(?:\\s*\\+\\s*${STRING})*)`,
+    "gs",
+  );
   for (const match of source.matchAll(call)) {
     const query = (match[1] ?? "").replace(/\s+/g, " ");
     // A first pass at this used a 300-char window and reported 62 findings,
@@ -140,13 +198,34 @@ export function findUnbounded(file: string, source: string): Finding[] {
     // not the same as safe.
     if (!scattered && buildsScattered && /WHERE\s*\$\{/.test(query)) {
       if (INTERPOLATED_PREDICATES[file]) continue;
-      out.push({ file, query: query.slice(0, 160), unreadable: true });
+      out.push({
+        file,
+        table: tableOf(query),
+        query: query.slice(0, 160),
+        unreadable: true,
+      });
       continue;
     }
     if (!scattered) continue;
-    if (PRUNABLE.some((c) => new RegExp(`\\b${c}\\b`, "i").test(query)))
+    // A PRUNABLE COLUMN IN A PREDICATE, not merely somewhere in the query.
+    //
+    // This was bare presence, so `SELECT MAX(observed_at) ... WHERE coldkey =
+    // X` counted as bounded on the strength of its SELECT list while carrying
+    // no bound at all. That exact read is in nominator-positions-cold-tier and
+    // fires for every account holding no delegated positions -- the cheapest
+    // answer paying the most expensive scan, invisible to the gate meant to
+    // catch it.
+    //
+    // A comparison operator is what makes it a bound: `observed_at >= N`,
+    // `BETWEEN`, `IN`. Naming the column in a projection, an alias or an ORDER
+    // BY prunes nothing.
+    if (
+      PRUNABLE.some((c) =>
+        new RegExp(`\\b${c}\\b\\s*(>=|>|<=|<|=|BETWEEN|IN)`, "i").test(query),
+      )
+    )
       continue;
-    out.push({ file, query: query.slice(0, 160) });
+    out.push({ file, table: tableOf(query), query: query.slice(0, 160) });
   }
   return out;
 }
@@ -162,13 +241,17 @@ function main(): void {
     );
   }
 
-  const unexpected = findings.filter((f) => !UNBOUNDED_BY_DESIGN[f.file]);
+  const exemptKey = (f: Finding) => `${f.file}|${f.table ?? ""}`;
+  const unexpected = findings.filter(
+    (f) => !UNBOUNDED_BY_DESIGN[exemptKey(f)] && !RUNTIME_BOUNDED[exemptKey(f)],
+  );
   const staleInterpolated = Object.keys(INTERPOLATED_PREDICATES).filter(
     (file) => !readdirSync(dir).some((name) => `src/${name}` === file),
   );
-  const stale = Object.keys(UNBOUNDED_BY_DESIGN).filter(
-    (file) => !findings.some((f) => f.file === file),
-  );
+  const stale = [
+    ...Object.keys(UNBOUNDED_BY_DESIGN),
+    ...Object.keys(RUNTIME_BOUNDED),
+  ].filter((key) => !findings.some((f) => exemptKey(f) === key));
 
   const problems: string[] = [];
   if (unexpected.length) {

@@ -22,7 +22,9 @@ import {
   loadAccountSummaryProjection,
   type AccountSummaryProjectionRead,
   recentFloorMs,
+  accountHistoryFloorMs,
 } from "../src/account-summary-projection.ts";
+import { DEFAULT_CHAIN_NETWORK } from "../src/chain-network.ts";
 
 const HOT = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 const COLD = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
@@ -936,6 +938,91 @@ describe("AccountSummaryRecentEventSchema", () => {
     assert.deepEqual(
       Object.keys(AccountSummaryRecentEventSchema.shape).sort(),
       [...ACCOUNT_EVENTS_COLUMNS].sort(),
+    );
+  });
+});
+
+/**
+ * The one bound every account route can push into its own `where`.
+ *
+ * Kept as a named helper rather than four copies of `loadAccountSummaryProjection(...)
+ * ?.span?.firstMs`: the two projection answers floor DIFFERENTLY -- present at
+ * `min(fo)`, absent at the generation edge -- and a caller that reached for
+ * `span` alone would silently take no floor on exactly the accounts whose
+ * unbounded walk is most expensive.
+ */
+describe("accountHistoryFloorMs", () => {
+  /** A pointer stamped now, so the freshness check is not a clock race. */
+  const nowIso = () => new Date().toISOString();
+
+  test("a PRESENT account floors at its earliest folded event", async () => {
+    const store = archive(
+      published(
+        {
+          [HOT]: [
+            { ...group(), fo: 5_000 },
+            { ...group(), fo: 1_000 },
+          ],
+        },
+        { through: "2026-08-13", generated_at: nowIso() },
+      ),
+    );
+    assert.equal(await accountHistoryFloorMs(store.env, HOT), 1_000);
+  });
+
+  test("an ABSENT account floors at the generation's edge", async () => {
+    // The producer writes every shard, so absence from a shard that EXISTS
+    // proves there is nothing at or before `through` -- a strictly stronger
+    // bound than any present account gets.
+    const store = archive(
+      published({}, { through: "2026-08-13", generated_at: nowIso() }),
+    );
+    assert.equal(
+      await accountHistoryFloorMs(store.env, HOT),
+      Date.parse("2026-08-14T00:00:00.000Z"),
+    );
+  });
+
+  test("a pointer with NO `through` yields no floor, not a guessed one", async () => {
+    // `span` declines without a fold edge, and this must decline with it: a
+    // floor invented here would bound a feed below rows that exist.
+    const store = archive(
+      published({ [HOT]: [group()] }, { generated_at: nowIso() }),
+    );
+    assert.equal(await accountHistoryFloorMs(store.env, HOT), null);
+  });
+
+  test("NO projection is null, not a throw", async () => {
+    assert.equal(await accountHistoryFloorMs(archive({}).env, HOT), null);
+  });
+
+  test("A NON-DEFAULT NETWORK READS NOTHING AT ALL", async () => {
+    // The projection describes mainnet. Flooring another chain's feed with it
+    // would bound that feed against the wrong history -- a WRONG answer, where
+    // the unbounded walk is merely a slow right one. Asserted on `asked` and
+    // not just the return value: a null that came from reading the mainnet
+    // pointer and discarding it would pass a return-value check while still
+    // paying for the read.
+    const store = archive(
+      published({ [HOT]: [group()] }, { generated_at: nowIso() }),
+    );
+    assert.equal(await accountHistoryFloorMs(store.env, HOT, "testnet"), null);
+    assert.deepEqual(store.asked, []);
+  });
+
+  test("the DEFAULT network passed explicitly still floors", async () => {
+    // `undefined` and "finney" are the same request; only the third value
+    // declines. A guard written as `network !== undefined` alone would refuse
+    // a caller that names its own default.
+    const store = archive(
+      published(
+        { [HOT]: [{ ...group(), fo: 4_242 }] },
+        { through: "2026-08-13", generated_at: nowIso() },
+      ),
+    );
+    assert.equal(
+      await accountHistoryFloorMs(store.env, HOT, DEFAULT_CHAIN_NETWORK),
+      4_242,
     );
   });
 });
