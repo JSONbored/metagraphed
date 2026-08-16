@@ -521,6 +521,66 @@ function snapshotStamp(rows: Row[]): {
   };
 }
 
+/**
+ * Does serving correlate with earning on this subnet? (#11371)
+ *
+ * On roughly half the subnets that pay miners at all, NOT ONE miner earning
+ * incentive publishes a routable endpoint. Measured against `neuron_daily`
+ * 2026-08-16: of 65 subnets with >=3 earning miners, 31 had zero announcing
+ * earners; of the 48 with >=10, 22 did. That is a standing property of the
+ * network, and until now every axon-shaped surface here implied otherwise by
+ * publishing an `axon` column with no context.
+ *
+ * ## Routable, not merely announced
+ *
+ * `axon_routable` and not `axon != null`: #11376 measured 347 of 6,532
+ * announced axons (5.3%) sitting in ranges nobody can route to, 246 of them
+ * earning incentive. "Announces something" and "can be reached" are different
+ * claims, and this registry exists to make the stronger one.
+ *
+ * ## Burn is stated, never silently folded in
+ *
+ * Burn UIDs earn incentive and are not miners, so counting them would dilute
+ * exactly the share this exists to report. `is_burn_uid` is emitted only when
+ * the caller resolved a burn hotkey from chain state, so it is not always
+ * knowable -- and the answer differs depending on whether it was. Rather than
+ * publish two different meanings under one name, `burn_excluded` says which
+ * one this is.
+ */
+export function axonEarningSummary(neurons: readonly Row[]): Row | null {
+  // NO ROWS, NO CLAIM. An empty set is not "this subnet pays nobody" -- it is
+  // also what a DECLINED cold tier looks like, because graphql's
+  // subnet_metagraph falls back to `buildSubnetMetagraph([], netuid)` when the
+  // tier says no. Publishing `earning_miners: 0` there would be a measurement
+  // of a subnet nothing was read for: the confident-zero failure the sibling
+  // `total_neuron_count` comment is also about. Absent says "not answered";
+  // zero would say "answered, and the answer is none".
+  if (neurons.length === 0) return null;
+  // Present only when the caller resolved a burn hotkey; `undefined` on every
+  // row otherwise. Checking one row is enough -- formatNeuron emits it for all
+  // of them or none.
+  const burnKnown = neurons.some((n) => n.is_burn_uid !== undefined);
+  const earners = neurons.filter(
+    (n) =>
+      typeof n.incentive === "number" &&
+      n.incentive > 0 &&
+      !(burnKnown && n.is_burn_uid === true),
+  );
+  const announcing = earners.filter((n) => n.axon_routable === true);
+  const total = earners.reduce((sum, n) => sum + Number(n.incentive), 0);
+  const announced = announcing.reduce((sum, n) => sum + Number(n.incentive), 0);
+  return {
+    earning_miners: earners.length,
+    announcing_earners: announcing.length,
+    // Null, not 0, when nothing earns: a subnet paying no miners has no share
+    // to report, and 0 would read as "pays miners, none reachable" -- the
+    // opposite of an empty set and the exact confusion this surface exists to
+    // remove.
+    incentive_share_to_announcers: total > 0 ? announced / total : null,
+    burn_excluded: burnKnown,
+  };
+}
+
 export function buildSubnetMetagraph(
   rows: Row[],
   netuid: unknown,
@@ -538,12 +598,19 @@ export function buildSubnetMetagraph(
   const neurons = rows
     .map((row) => formatNeuron(row, undefined, immunityPeriod, burnHotkey))
     .filter((n): n is Row => Boolean(n));
+  const axonEarning = axonEarningSummary(neurons);
   return {
     schema_version: 1,
     netuid,
     neuron_count: neurons.length,
     captured_at,
     block_number,
+    // Computed HERE, over every row, and deliberately not in selectNeuronRows.
+    // It describes the subnet, not the response: a `?limit=10` on a 256-neuron
+    // subnet must not report ten earning miners. selectNeuronRows spreads the
+    // payload it narrows, so this rides through unchanged -- which is the
+    // behaviour wanted, and is pinned by a test that narrows and re-reads it.
+    ...(axonEarning ? { axon_earning: axonEarning } : {}),
     neurons,
   };
 }

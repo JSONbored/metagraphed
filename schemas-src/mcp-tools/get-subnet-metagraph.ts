@@ -3,7 +3,7 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { NeuronSchema } from "../routes/subnet-metagraph.ts";
+import { AxonEarningSchema, NeuronSchema } from "../routes/subnet-metagraph.ts";
 import {
   NEURON_SORT_FIELD_NAMES,
   NEURON_SORT_NULLS_LAST_NOTE,
@@ -129,6 +129,12 @@ export const GetSubnetMetagraphOutputSchema = z
       ),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
+    // The route's own schema, not a copy (#11371). Unlike neuron_count above,
+    // this describes the SUBNET and is unaffected by `hotkeys`/`active`/
+    // `min_incentive`/`limit` -- a filtered call still reports the subnet's
+    // earning and announcing figures, which is what makes them comparable
+    // across calls that paged differently.
+    axon_earning: AxonEarningSchema.optional(),
     // Typed from the route's own NeuronSchema (#9797), PARTIAL because this
     // tool advertises `fields`: a caller who projects the row must still
     // satisfy the schema the tool publishes, which is the contract #9884

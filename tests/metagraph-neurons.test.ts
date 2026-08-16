@@ -4,6 +4,7 @@ import {
   formatNeuron as formatNeuronRaw,
   computeImmunityWindow,
   buildSubnetMetagraph as buildSubnetMetagraphRaw,
+  selectNeuronRows as selectNeuronRowsRaw,
   buildSubnetValidators as buildSubnetValidatorsRaw,
   buildGlobalValidators as buildGlobalValidatorsRaw,
   buildNeuronDetail as buildNeuronDetailRaw,
@@ -54,6 +55,13 @@ function formatNeuron(
     immunityPeriod,
   ) as unknown as Row;
 }
+function selectNeuronRows(
+  data: Row,
+  selection: Parameters<typeof selectNeuronRowsRaw>[1],
+): Row {
+  return selectNeuronRowsRaw(data, selection);
+}
+
 function buildSubnetMetagraph(
   rows: unknown,
   netuid: unknown,
@@ -2692,5 +2700,111 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
     );
     assert.equal(data.total_stake_tao, 0); // valued at zero...
     // ...and NOT treated as a missing price.
+  });
+});
+
+// #11371: whether the miners a subnet PAYS are the miners that can be REACHED.
+// On roughly half the subnets that pay miners at all, not one earner publishes
+// a routable endpoint, and every axon-shaped surface here used to imply
+// otherwise.
+describe("axonEarningSummary", () => {
+  const miner = (
+    uid: number,
+    incentive: number | null,
+    axon: string | null,
+  ) => ({ uid, hotkey: `hk${uid}`, incentive, axon });
+
+  test("counts earners, and only the ROUTABLE ones as announcing", () => {
+    // 1.2.3.4 is routable; 10.x and 127.x are announced and unreachable, and
+    // so is 203.0.113.x -- RFC 5737 documentation space, which is exactly the
+    // kind of address that looks announced and reaches nobody. The distinction
+    // is the point: "announces something" is a weaker claim than "can be
+    // reached", and 5.3% of announced axons network-wide fail it.
+    const data = buildSubnetMetagraph(
+      [
+        miner(0, 0.5, "1.2.3.4:8091"),
+        miner(1, 0.3, "10.0.0.1:8091"),
+        miner(2, 0.2, "127.0.0.1:8091"),
+        miner(3, 0, "8.8.8.8:8091"),
+        miner(4, null, "8.8.4.4:8091"),
+      ],
+      7,
+    );
+    assert.deepEqual(data.axon_earning, {
+      earning_miners: 3,
+      announcing_earners: 1,
+      incentive_share_to_announcers: 0.5,
+      burn_excluded: false,
+    });
+  });
+
+  test("a subnet paying no miners reports NULL, not a zero share", () => {
+    // 0 would read as "pays miners, none reachable" -- the opposite of an
+    // empty set, and exactly the confusion this surface exists to remove.
+    const data = buildSubnetMetagraph(
+      [miner(0, 0, "1.2.3.4:8091"), miner(1, null, null)],
+      7,
+    );
+    assert.equal(data.axon_earning.earning_miners, 0);
+    assert.equal(data.axon_earning.incentive_share_to_announcers, null);
+  });
+
+  test("EXCLUDES the burn UID when the caller resolved a burn hotkey", () => {
+    // Burn earns incentive and is not a miner, so counting it dilutes the very
+    // share this reports.
+    const rows = [
+      miner(0, 0.6, null), // the burn sink
+      miner(1, 0.4, "1.2.3.4:8091"),
+    ];
+    const withBurn = buildSubnetMetagraph(rows, 7, { burnHotkey: "hk0" });
+    assert.deepEqual(withBurn.axon_earning, {
+      earning_miners: 1,
+      announcing_earners: 1,
+      incentive_share_to_announcers: 1,
+      burn_excluded: true,
+    });
+  });
+
+  test("says so when burn could NOT be excluded, rather than quietly folding it in", () => {
+    // Same rows, no burn hotkey resolved: the figures now include burn, and
+    // `burn_excluded: false` is what tells a reader which answer they have.
+    const rows = [miner(0, 0.6, null), miner(1, 0.4, "1.2.3.4:8091")];
+    const unknown = buildSubnetMetagraph(rows, 7);
+    assert.equal(unknown.axon_earning.burn_excluded, false);
+    assert.equal(unknown.axon_earning.earning_miners, 2);
+    // The share is dragged down by burn, which is why the flag matters.
+    assert.equal(unknown.axon_earning.incentive_share_to_announcers, 0.4);
+  });
+
+  test("DESCRIBES THE SUBNET, NOT THE PAGE — narrowing must not rewrite it", () => {
+    // The trap: `?limit=1` on a subnet with three earners must not report one
+    // earning miner. selectNeuronRows rewrites neuron_count on purpose and
+    // must leave this alone.
+    const data = buildSubnetMetagraph(
+      [
+        miner(0, 0.5, "1.2.3.4:8091"),
+        miner(1, 0.3, "10.0.0.1:8091"),
+        miner(2, 0.2, "8.8.8.8:8091"),
+      ],
+      7,
+    );
+    const narrowed = selectNeuronRows(data, { limit: 1 });
+    assert.equal(narrowed.neuron_count, 1, "the page did narrow");
+    assert.equal(narrowed.total_neuron_count, 3);
+    assert.deepEqual(
+      narrowed.axon_earning,
+      data.axon_earning,
+      "the subnet's figures are unchanged by paging",
+    );
+    assert.equal(narrowed.axon_earning.earning_miners, 3);
+  });
+
+  test("NO ROWS, NO CLAIM — the block is absent, not a row of zeroes", () => {
+    // `buildSubnetMetagraph([], netuid)` is also graphql's fallback when the
+    // cold tier DECLINES, so zeroes here would publish a measurement of a
+    // subnet nothing was read for. Absent says "not answered"; zero would say
+    // "answered, and the answer is none".
+    const data = buildSubnetMetagraph([], 7);
+    assert.equal("axon_earning" in data, false);
   });
 });

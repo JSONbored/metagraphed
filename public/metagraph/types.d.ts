@@ -11980,6 +11980,16 @@ export interface components {
             schema_version: number;
         };
         SubnetMetagraphArtifact: {
+            axon_earning?: {
+                /** @description How many of `earning_miners` publish an axon that points somewhere ROUTABLE. Stricter than 'announces an axon': an address in a private, loopback or reserved range is announced and unreachable, which is 5.3% of announced axons network-wide. Compare against `earning_miners` to read whether being reachable has anything to do with being paid on this subnet -- on roughly half of the subnets that pay miners at all, this is zero. */
+                announcing_earners: number;
+                /** @description Whether the burn UID was identified and removed from the figures above. Burn earns incentive and is not a miner, so including it dilutes the share. It can only be excluded when the burn hotkey was resolvable from chain state for this request; when false, the figures include burn and should be read as an upper bound on `earning_miners` and a lower bound on the share. */
+                burn_excluded: boolean;
+                /** @description How many neurons earn a non-zero incentive. Incentive is the miner signal (validators are paid dividends), so this is the count of miners this subnet actually pays. Excludes the burn UID when `burn_excluded` is true. */
+                earning_miners: number;
+                /** @description The fraction of this subnet's miner incentive that reaches miners publishing a routable endpoint, 0..1. NULL when no neuron earns incentive -- a subnet paying no miners has no share to report, which is a different answer from 0 ('pays miners, none reachable'). Incentive normalizes to 1.0 within a subnet, so this is a within-subnet proportion and is NOT comparable across subnets as a magnitude. */
+                incentive_share_to_announcers: number | null;
+            };
             block_number?: number | null;
             captured_at?: string | null;
             netuid: number;
@@ -45202,6 +45212,12 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "axon_earning": {
+                     *           "announcing_earners": 1,
+                     *           "burn_excluded": false,
+                     *           "earning_miners": 1,
+                     *           "incentive_share_to_announcers": 0.5
+                     *         },
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "netuid": 7,
