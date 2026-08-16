@@ -2854,7 +2854,7 @@ export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 // from wrangler.jsonc so they are bounded today, but a label built from input
 // is the shape #9001 removed elsewhere, and a name survives a schedule change
 // where "0 * * * *" does not.
-function cronLabel(cron: string): string {
+export function cronLabel(cron: string): string {
   // Membership, not equality: the heartbeat runs on more than one expression
   // (see LANE_HEARTBEAT_CRONS), and every one of them is the same lane for
   // reporting purposes -- a per-expression label would split one lane's cron
@@ -2897,8 +2897,26 @@ function cronLabel(cron: string): string {
   if (cron === SUBNET_DEREGISTRATION_DAILY_CRON)
     return "subnet-deregistration-daily";
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
-  // Every unmatched cron falls through to the health prober, matching dispatch.
-  return "health-prober";
+  // FOUND BY THE SWEEP, not by reading: webhook-dispatch had a dispatch
+  // branch and no label branch, so every one of its ticks has been filed
+  // under `health-prober` since it shipped.
+  if (cron === WEBHOOK_DISPATCH_CRON) return "webhook-dispatch";
+  // A BRANCH, mirroring dispatch. #10815 made `dispatchScheduled` explicit --
+  // `if (cron === HEALTH_PROBER_CRON)` with an `unknown cron` decline after it
+  // -- and left this function on the old fall-through, so the two disagreed
+  // about the same tick: dispatch reported `{ok: false, reason: "unknown
+  // cron"}` while the usage record called it a health-prober run.
+  if (cron === HEALTH_PROBER_CRON) return "health-prober";
+  // NAMED AS UNKNOWN, not as somebody else's lane. An expression no branch
+  // matched is an orphaned schedule -- a typo, or a handler that was deleted --
+  // and labelling it `health-prober` filed the one event that would reveal it
+  // under a lane that is working fine. A reader chasing "why did health-prober
+  // fail?" is then looking at the wrong lane, which is the same
+  // name-a-cause-you-did-not-measure failure the dispatch side already fixed.
+  //
+  // tests/api-crons-have-handlers.test.ts makes an undeclared expression hard to
+  // reach at all; this is what it looks like when one gets there anyway.
+  return "unknown-cron";
 }
 
 /**
