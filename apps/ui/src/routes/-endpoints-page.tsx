@@ -602,8 +602,10 @@ function EndpointsTable() {
   const expandedId = search.endpoint || null;
   const toggleExpanded = (id: string) =>
     navigate({
-      search: (prev: Record<string, unknown>) =>
-        ({ ...prev, endpoint: prev.endpoint === id ? "" : id }) as never,
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        endpoint: prev.endpoint === id ? "" : id,
+      }),
       resetScroll: false,
       replace: true,
     });
@@ -624,15 +626,14 @@ function EndpointsTable() {
     if (next.has(id)) next.delete(id);
     else if (next.size < COMPARE_MAX) next.add(id);
     navigate({
-      search: (prev: Record<string, unknown>) =>
-        ({ ...prev, compare: Array.from(next).join(",") }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, compare: Array.from(next).join(",") }),
       resetScroll: false,
       replace: true,
     });
   };
   const clearCompare = () =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, compare: "" }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, compare: "" }),
       resetScroll: false,
       replace: true,
     });
@@ -653,8 +654,11 @@ function EndpointsTable() {
         ].includes(k),
       ) && patch.page == null;
     navigate({
-      search: (prev: Record<string, unknown>) =>
-        ({ ...prev, ...patch, ...(resetsPage ? { page: 1 } : {}) }) as never,
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        ...patch,
+        ...(resetsPage ? { page: 1 } : {}),
+      }),
       // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
       resetScroll: false,
       replace: true,
@@ -803,7 +807,7 @@ function EndpointsTable() {
   // callable-only default (true).
   const resetAll = () =>
     navigate({
-      search: { pageSize: search.pageSize, view: search.view } as never,
+      search: { pageSize: search.pageSize, view: search.view },
       replace: true,
     });
 

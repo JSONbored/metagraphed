@@ -119,22 +119,15 @@ describe("areaOf", () => {
 });
 
 describe("BUDGETS", () => {
-  it("holds every SWEPT area at zero", () => {
+  it("holds EVERY area at zero", () => {
     // Not a restatement of the constant: all five were driven to zero by
     // #11339/#11361/#11368, and a nonzero entry here is a silent regression
     // budget -- the thing this gate exists to prevent. If an area ever needs
     // a ratchet again, this is the test that makes reintroducing one a
     // deliberate edit rather than a quiet one.
     for (const [area, budget] of Object.entries(BUDGETS)) {
-      if (area === "apps/ui") continue; // the live ratchet, see BUDGETS
       expect(budget, `${area} has a nonzero budget`).toBe(0);
     }
-  });
-
-  it("keeps apps/ui a ratchet that can only fall", () => {
-    // Named explicitly so raising it is a visible edit to this line rather
-    // than a quiet edit to a number. 83 is where #11368 left it.
-    expect(BUDGETS["apps/ui"]).toBeLessThanOrEqual(83);
   });
 
   it("covers every area a cast could hide in outside tests", () => {

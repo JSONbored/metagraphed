@@ -1760,6 +1760,42 @@ function firstString(...values: unknown[]): string | undefined {
   return values.find((value): value is string => typeof value === "string");
 }
 
+/**
+ * The distribution block, normalized like every other field beside it.
+ *
+ * `isRecord(x) ? (x as unknown as ChainAlphaVolumeDistribution) : null` proved
+ * only that the value was an object and then claimed eight required numbers
+ * about it. Every one of those is rendered into a percentile chart, so a
+ * missing `p90` from a partial upstream response reached the axis as
+ * `undefined` rather than the null this function was built to return.
+ */
+function normalizeChainAlphaVolumeDistribution(raw: unknown): ChainAlphaVolumeDistribution | null {
+  if (!isRecord(raw)) return null;
+  const count = firstFiniteNumber(raw.count);
+  const mean = firstFiniteNumber(raw.mean);
+  const min = firstFiniteNumber(raw.min);
+  const p25 = firstFiniteNumber(raw.p25);
+  const median = firstFiniteNumber(raw.median);
+  const p75 = firstFiniteNumber(raw.p75);
+  const p90 = firstFiniteNumber(raw.p90);
+  const max = firstFiniteNumber(raw.max);
+  // All or nothing: a half-populated distribution plots a chart with gaps that
+  // read as real zeroes.
+  if (
+    count === undefined ||
+    mean === undefined ||
+    min === undefined ||
+    p25 === undefined ||
+    median === undefined ||
+    p75 === undefined ||
+    p90 === undefined ||
+    max === undefined
+  ) {
+    return null;
+  }
+  return { count, mean, min, p25, median, p75, p90, max };
+}
+
 function firstFiniteNumber(...values: unknown[]): number | undefined {
   return values.find(
     (value): value is number => typeof value === "number" && Number.isFinite(value),
@@ -5184,9 +5220,7 @@ export function normalizeChainAlphaVolume(raw: unknown): ChainAlphaVolume {
     observed_at: firstString(d.observed_at) ?? null,
     subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
     network: normalizeChainAlphaVolumeNetwork(d.network),
-    volume_distribution: isRecord(d.volume_distribution)
-      ? (d.volume_distribution as unknown as ChainAlphaVolumeDistribution)
-      : null,
+    volume_distribution: normalizeChainAlphaVolumeDistribution(d.volume_distribution),
     subnets: Array.isArray(d.subnets) ? (d.subnets as SubnetAlphaVolume[]) : [],
   };
 }

@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { GapsPage } from "./-gaps-page";
 
 export const STATUS_OPTIONS = ["all", "open", "in-review", "resolved", "wont-fix"] as const;
@@ -27,17 +26,17 @@ export const MISSING_KINDS = [
 export const SORT_OPTIONS = ["priority", "netuid", "updated"] as const;
 
 const searchSchema = z.object({
-  status: fallback(z.enum(STATUS_OPTIONS), "all").default("all"),
-  target: fallback(z.enum(TARGET_OPTIONS), "all").default("all"),
-  missing: fallback(z.string(), "").default(""), // comma-separated
-  q: fallback(z.string(), "").default(""),
-  sort: fallback(z.enum(SORT_OPTIONS), "priority").default("priority"),
+  status: z.enum(STATUS_OPTIONS).catch("all").default("all"),
+  target: z.enum(TARGET_OPTIONS).catch("all").default("all"),
+  missing: z.string().catch("").default(""), // comma-separated
+  q: z.string().catch("").default(""),
+  sort: z.enum(SORT_OPTIONS).catch("priority").default("priority"),
 });
 
 export type ContributeSearch = z.infer<typeof searchSchema>;
 
 export const Route = createFileRoute("/contribute")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: { middlewares: [stripDefaultSearchParams(searchSchema)] },
   head: () => ({
     meta: [

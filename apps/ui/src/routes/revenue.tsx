@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { RevenuePage } from "./-revenue-page";
 import { COVERAGE_SORT_FIELDS } from "@/lib/metagraphed/coverage-leaderboard-model";
 
@@ -16,12 +15,12 @@ import { COVERAGE_SORT_FIELDS } from "@/lib/metagraphed/coverage-leaderboard-mod
 // was measured but whose emission failed to price sorts to the BOTTOM of a
 // table it legitimately belongs in — ranked last on a column it cannot answer.
 const revenueSearchSchema = z.object({
-  sort: fallback(z.enum(COVERAGE_SORT_FIELDS), "revenue_usd").default("revenue_usd"),
-  dir: fallback(z.enum(["asc", "desc"]), "desc").default("desc"),
+  sort: z.enum(COVERAGE_SORT_FIELDS).catch("revenue_usd").default("revenue_usd"),
+  dir: z.enum(["asc", "desc"]).catch("desc").default("desc"),
   // Empty means every tier, which is the default: the counts beside each tier
   // are how a reader learns the headline-eligible set is two subnets wide, and
   // defaulting to a filtered view would hide exactly that.
-  provenance: fallback(z.string(), "").default(""),
+  provenance: z.string().catch("").default(""),
 });
 
 export type RevenueSearch = z.infer<typeof revenueSearchSchema>;
@@ -30,7 +29,7 @@ const DESCRIPTION =
   "What every Bittensor subnet earns from outside the network, against the TAO the network emits to it. Only chain-verified and probe-derived readings reach the ratio; subnets with no observable external revenue are listed separately rather than ranked as zero.";
 
 export const Route = createFileRoute("/revenue")({
-  validateSearch: zodValidator(revenueSearchSchema),
+  validateSearch: revenueSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(revenueSearchSchema)] },
   head: () => ({
     meta: [

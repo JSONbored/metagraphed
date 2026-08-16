@@ -67,12 +67,8 @@ export function HealthPage() {
   // #1117: push a refresh on each registry publish, on top of the poll interval.
   useRegistryEvents();
 
-  // `search.view` is cast here because `fallback().default()` (zod-adapter,
-  // pinned to zod v3 types) loses its literal-union output type under this
-  // repo's zod v4 — a pre-existing gap shared by every other route's search
-  // schema, just not one any of them happens to index a Record with.
   const activeSectionId =
-    VIEW_SECTION_ID[search.view as HealthView] ?? (search.status !== "all" ? "incidents" : null);
+    VIEW_SECTION_ID[search.view] ?? (search.status !== "all" ? "incidents" : null);
   const sectionRing = (id: string) =>
     activeSectionId === id ? "ring-1 ring-accent/40 rounded-xl" : undefined;
 
@@ -596,7 +592,7 @@ function Incidents({ interval }: { interval: number | false }) {
   const filter = search.status;
   const setFilter = (next: StateFilter) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, status: next }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, status: next }),
       resetScroll: false,
     });
   const [showAll, setShowAll] = useState(false);

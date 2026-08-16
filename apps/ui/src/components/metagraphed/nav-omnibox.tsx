@@ -342,14 +342,14 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     if (debounced) pushRecent(debounced);
     setOpen(false);
     if (item.kind === "action") {
-      navigate({ to: "/subnets", search: { q: debounced } as never });
+      navigate({ to: "/subnets", search: { q: debounced } });
       return;
     }
     if (item.kind === "nav") {
       navigate({
-        to: item.to as never,
-        params: (item.params ?? {}) as never,
-        search: (item.search ?? {}) as never,
+        to: item.to,
+        params: item.params ?? {},
+        search: item.search ?? {},
       });
       return;
     }

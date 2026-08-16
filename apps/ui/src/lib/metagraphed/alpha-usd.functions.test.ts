@@ -103,7 +103,7 @@ describe("USD coverage on a series", () => {
 
   test("a missing or malformed payload renders TAO only", () => {
     for (const bad of [null, undefined, 42, "x", []]) {
-      const c = alphaUsdCoverage(bad as never);
+      const c = alphaUsdCoverage(bad);
       expect(c.available).toBe(false);
       expect(c.caption).toBeNull();
       expect(c.unavailableLabel).toBe("USD unavailable");
@@ -129,7 +129,7 @@ describe("USD coverage on a series", () => {
     // A garbled count must not produce "USD covers -1 of 90 points".
     for (const bad of [-1, Number.NaN, "many", null]) {
       const c = alphaUsdCoverage({
-        priced_candle_count: bad as never,
+        priced_candle_count: bad,
         candle_count: 90,
       });
       expect(c.available).toBe(false);

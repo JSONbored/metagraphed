@@ -37,7 +37,17 @@ type NeuronTableVariant = "miner" | "validator";
 // has no `featured` member, so it can't be added here without a type error;
 // neuron-table.test.ts also asserts this set never contains "featured" at
 // runtime as a second line of defense if that type is ever loosened.
-export const NUMERIC_FIELDS = new Set<SortField>([
+/**
+ * The columns this table sorts numerically.
+ *
+ * Constructed as `Set<SortField>` so the membership list below stays checked
+ * against the column union, but EXPOSED as `ReadonlySet<string>` because the
+ * field being asked about arrives from the URL and is a string until something
+ * proves otherwise. Typing the query side as `SortField` did not make the
+ * lookup safer -- it just meant callers asserted, including the test whose
+ * entire job is asking whether "featured" is in here.
+ */
+export const NUMERIC_FIELDS: ReadonlySet<string> = new Set<SortField>([
   "uid",
   "stake_tao",
   "emission_tao",

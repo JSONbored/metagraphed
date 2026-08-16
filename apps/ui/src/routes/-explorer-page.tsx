@@ -128,7 +128,7 @@ function PreviewHeader({
       <h3 className="mg-type-label uppercase text-ink-muted">{title}</h3>
       <Link
         to={to}
-        search={search as never}
+        search={search}
         className="mg-type-data text-ink-muted transition-colors hover:text-accent hover:underline"
       >
         View all →

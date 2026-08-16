@@ -1,7 +1,6 @@
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { tableSearchSchema } from "@/lib/metagraphed/url-state";
 import { SubnetsPage } from "./-subnets-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
@@ -14,12 +13,12 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
 export type SubnetsSearch = z.infer<typeof subnetsSearchSchema>;
 
 export const subnetsSearchSchema = tableSearchSchema.extend({
-  section: fallback(z.enum(["registry", "rankings"]), "registry").default("registry"),
-  window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
+  section: z.enum(["registry", "rankings"]).catch("registry").default("registry"),
+  window: z.enum(["7d", "30d"]).catch("7d").default("7d"),
 });
 
 export const Route = createFileRoute("/subnets/")({
-  validateSearch: zodValidator(subnetsSearchSchema),
+  validateSearch: subnetsSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(subnetsSearchSchema)] },
   head: () => ({
     meta: hubMeta("/subnets"),

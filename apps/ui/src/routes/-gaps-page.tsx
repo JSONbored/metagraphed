@@ -380,12 +380,11 @@ function MissingKindsAtAGlance() {
                   else next.add(k);
                   const wasEmpty = activeMissing.size === 0;
                   navigate({
-                    search: (prev: Record<string, unknown>) =>
-                      ({
-                        ...prev,
-                        missing: Array.from(next).join(","),
-                        ...(wasEmpty ? { status: "open", sort: "priority" } : {}),
-                      }) as never,
+                    search: (prev: Record<string, unknown>) => ({
+                      ...prev,
+                      missing: Array.from(next).join(","),
+                      ...(wasEmpty ? { status: "open", sort: "priority" } : {}),
+                    }),
                     replace: true,
                   });
                   focusOpenGaps();
@@ -436,7 +435,7 @@ function MissingKindsAtAGlance() {
             type="button"
             onClick={() =>
               navigate({
-                search: (prev: Record<string, unknown>) => ({ ...prev, missing: "" }) as never,
+                search: (prev: Record<string, unknown>) => ({ ...prev, missing: "" }),
                 replace: true,
               })
             }
@@ -472,7 +471,7 @@ function OpenGapsSection() {
 
   const setSearch = (patch: Partial<typeof search>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
       resetScroll: false,
       replace: true,
@@ -567,7 +566,7 @@ function OpenGapsSection() {
       />
       <ResetFiltersButton
         active={hasFilters}
-        onReset={() => navigate({ search: {} as never, replace: true })}
+        onReset={() => navigate({ search: {}, replace: true })}
       />
       <span className="ml-auto mg-type-data-sm text-ink-muted">
         {sorted.length} of {rows.length}

@@ -49,7 +49,7 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
           const heavy = share >= 20;
           const filterByAuthor = () =>
             navigate({
-              search: (prev: Record<string, unknown>) => ({ ...prev, author, offset: 0 }) as never,
+              search: (prev: Record<string, unknown>) => ({ ...prev, author, offset: 0 }),
               resetScroll: false,
             });
           return (

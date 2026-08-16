@@ -339,12 +339,10 @@ function Cell({ cell }: { cell: Cell }) {
               </Link>
               <Link
                 to="/apis/endpoints"
-                search={
-                  {
-                    provider: cell.provider,
-                    category: KIND_TO_CATEGORY[cell.kind] ?? "all",
-                  } as never
-                }
+                search={{
+                  provider: cell.provider,
+                  category: KIND_TO_CATEGORY[cell.kind] ?? "all",
+                }}
                 className="sm:ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                 aria-label={`Open endpoints filtered to ${cell.provider} ${cell.kind}`}
               >
@@ -359,7 +357,7 @@ function Cell({ cell }: { cell: Cell }) {
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: n }}
-                        search={{ tab: "endpoints" } as never}
+                        search={{ tab: "endpoints" }}
                         hash="endpoints"
                         className="inline-flex h-6 items-center rounded border border-border bg-paper px-2 mg-type-data-sm text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                         aria-label={`Jump to subnet ${n} endpoints`}
@@ -381,7 +379,7 @@ function Cell({ cell }: { cell: Cell }) {
                     <TooltipTrigger asChild>
                       <Link
                         to="/apis/endpoints"
-                        search={{ q: p } as never}
+                        search={{ q: p }}
                         hash={`pool-${p}`}
                         className="inline-flex h-6 max-w-[16ch] items-center truncate rounded border border-border bg-paper px-2 mg-type-data-sm text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                         aria-label={`Scroll to pool ${p} in endpoints`}

@@ -73,14 +73,17 @@ export function RevenuePage() {
     [rows, search.sort, search.dir, search.provenance],
   );
 
-  const onSort = (field: string) =>
+  // `field` is the route's own sort union, not `string`, and `prev` is
+  // inferred. Both used to be widened by hand, which meant the reducer
+  // returned an object the route's search schema would have rejected -- and
+  // nothing checked it, because the route's search types did not resolve.
+  const onSort = (field: CoverageSortField) =>
     navigate({
-      search: (prev: { sort?: string; dir?: "asc" | "desc" }) =>
-        ({
-          ...prev,
-          sort: field,
-          dir: prev.sort === field && prev.dir === "desc" ? "asc" : "desc",
-        }) as never,
+      search: (prev) => ({
+        ...prev,
+        sort: field,
+        dir: prev.sort === field && prev.dir === "desc" ? "asc" : "desc",
+      }),
     });
 
   if (q.isError) {
@@ -116,7 +119,7 @@ export function RevenuePage() {
         <span className="mg-type-caption text-ink-muted">Provenance</span>
         <button
           type="button"
-          onClick={() => navigate({ search: (p) => ({ ...p, provenance: "" }) as never })}
+          onClick={() => navigate({ search: (p) => ({ ...p, provenance: "" }) })}
           className={`rounded-full border px-3 py-1 mg-type-caption ${
             search.provenance ? "border-border/80 text-ink-muted" : "border-accent text-ink-strong"
           }`}
@@ -129,7 +132,7 @@ export function RevenuePage() {
             type="button"
             onClick={() =>
               navigate({
-                search: (p) => ({ ...p, provenance: option.value }) as never,
+                search: (p) => ({ ...p, provenance: option.value }),
               })
             }
             className={`rounded-full border px-3 py-1 mg-type-caption ${

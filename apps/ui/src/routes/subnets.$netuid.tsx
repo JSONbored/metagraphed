@@ -22,18 +22,36 @@ export type SearchParams = {
   uid?: number;
   ev_kind?: string;
   window?: "7d" | "30d" | "90d";
+  /**
+   * Peer netuid for SubnetCompareDrawer.
+   *
+   * It was missing, and `validateSearch` REPLACES the search object rather
+   * than patching it -- so every key not listed here is dropped. The drawer
+   * writes `?compare=`, this function discarded it on the very next parse, and
+   * the comparison the drawer's own doc comment calls "shareable and survives
+   * page reloads" did neither.
+   */
+  compare?: number;
 };
 
 export const Route = createFileRoute("/subnets/$netuid")({
   validateSearch: (s: Record<string, unknown>): SearchParams => {
     const uidNum = Number(s.uid);
     const win = s.window;
+    // Number() coerces the string a URL always delivers, and NaN falls through
+    // to undefined -- so `?compare=7` and a programmatic `compare: 7` both
+    // land as 7, which is what the drawer reads back.
+    const compareNum = Number(s.compare);
     return {
       tab: typeof s.tab === "string" ? s.tab : undefined,
       sev: typeof s.sev === "string" ? s.sev : undefined,
       uid: Number.isInteger(uidNum) && uidNum >= 0 ? uidNum : undefined,
       ev_kind: typeof s.ev_kind === "string" && s.ev_kind ? s.ev_kind : undefined,
       window: win === "7d" || win === "30d" || win === "90d" ? win : undefined,
+      compare:
+        s.compare != null && Number.isInteger(compareNum) && compareNum >= 0
+          ? compareNum
+          : undefined,
     };
   },
   parseParams: ({ netuid }) => {

@@ -106,7 +106,21 @@ export function resetAnalytics(): void {
   }
 }
 
+/**
+ * The debug hook, DECLARED rather than asserted onto `window`.
+ *
+ * A module augmentation is what TypeScript provides for exactly this, and it
+ * has a property the assertion did not: the declaration is visible to anyone
+ * who types `window.__mgPaletteAnalytics` in this codebase, so the hook is
+ * discoverable instead of being a string that only appears here.
+ */
+declare global {
+  interface Window {
+    /** Dev-only: dump the palette's usage counters from the console. */
+    __mgPaletteAnalytics?: () => PaletteAnalytics;
+  }
+}
+
 if (typeof window !== "undefined") {
-  (window as unknown as { __mgPaletteAnalytics?: () => PaletteAnalytics }).__mgPaletteAnalytics =
-    getAnalytics;
+  window.__mgPaletteAnalytics = getAnalytics;
 }

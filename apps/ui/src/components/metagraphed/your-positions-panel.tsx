@@ -19,6 +19,7 @@ import { shortHash } from "@/lib/metagraphed/blocks";
 import { statPhase } from "@/lib/metagraphed/stat-phase";
 import { exitTotals, quotePhase, type PositionQuoteState } from "@/lib/metagraphed/position-totals";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
+import { readKey, readNumber, readString } from "@/lib/metagraphed/read-key";
 
 /** One row of the portfolio, unified across the hotkey-owned and delegated feeds. */
 export interface UnifiedPosition {
@@ -39,9 +40,18 @@ export interface UnifiedPosition {
 
 /** #5243: fold the two position feeds into one spot-sorted list, deriving each
  *  alpha holding from the per-subnet price so an exit quote can be requested. */
+/**
+ * `object` and not `Record<string, unknown>`, because that is what the callers
+ * hold. Both position lists arrive as typed interface arrays, and an interface
+ * has no implicit index signature -- so the previous signature obliged every
+ * caller to assert its way in, which is what
+ * `as unknown as Record<string, unknown>[]` was doing one line up from here.
+ * Nothing about the body wanted a record: every field is read through a
+ * `typeof` guard already.
+ */
 export function buildUnifiedPositions(
-  ownedPositions: ReadonlyArray<Record<string, unknown>>,
-  delegatedPositions: ReadonlyArray<Record<string, unknown>>,
+  ownedPositions: ReadonlyArray<object>,
+  delegatedPositions: ReadonlyArray<object>,
   priceByNetuid: ReadonlyMap<number, number>,
 ): UnifiedPosition[] {
   const derive = (netuid: number, spotTao: number) => {
@@ -49,27 +59,28 @@ export function buildUnifiedPositions(
     return netuid === 0 || !price || price <= 0 ? null : spotTao / price;
   };
   const owned = ownedPositions.map((p, i) => {
-    const netuid = Number(p.netuid);
-    const spotTao = typeof p.stake_tao === "number" ? p.stake_tao : 0;
+    const netuid = Number(readKey(p, "netuid"));
+    const spotTao = readNumber(p, "stake_tao") ?? 0;
     return {
-      key: `owned-${netuid}-${p.uid ?? i}`,
+      key: `owned-${netuid}-${readKey(p, "uid") ?? i}`,
       source: "owned" as const,
       netuid,
-      hotkey: typeof p.hotkey === "string" ? p.hotkey : null,
+      hotkey: readString(p, "hotkey") ?? null,
       spotTao,
-      yield: typeof p.yield === "number" ? p.yield : null,
+      yield: readNumber(p, "yield") ?? null,
       alpha: derive(netuid, spotTao),
       isRoot: netuid === 0,
     };
   });
   const delegated = delegatedPositions.map((p, i) => {
-    const netuid = Number(p.netuid);
-    const spotTao = typeof p.stake_tao === "number" ? p.stake_tao : 0;
+    const netuid = Number(readKey(p, "netuid"));
+    const spotTao = readNumber(p, "stake_tao") ?? 0;
+    const hotkey = readString(p, "hotkey") ?? null;
     return {
-      key: `deleg-${typeof p.hotkey === "string" ? p.hotkey : i}-${netuid}`,
+      key: `deleg-${hotkey ?? i}-${netuid}`,
       source: "delegated" as const,
       netuid,
-      hotkey: typeof p.hotkey === "string" ? p.hotkey : null,
+      hotkey,
       spotTao,
       yield: null,
       alpha: derive(netuid, spotTao),
@@ -97,11 +108,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
 
   const positions = useMemo(
     () =>
-      buildUnifiedPositions(
-        (portfolio.positions ?? []) as Record<string, unknown>[],
-        (nominator.positions ?? []) as unknown as Record<string, unknown>[],
-        priceByNetuid,
-      ),
+      buildUnifiedPositions(portfolio.positions ?? [], nominator.positions ?? [], priceByNetuid),
     [portfolio, nominator, priceByNetuid],
   );
 

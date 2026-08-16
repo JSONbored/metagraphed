@@ -71,7 +71,7 @@ export function SurfacesPage() {
   const onReset = () =>
     navigate({
       // Keep page size and view on reset so the chosen layout survives.
-      search: { limit: search.limit, view: search.view } as never,
+      search: { limit: search.limit, view: search.view },
       replace: true,
     });
   const viewMode: "table" | "grid" = search.view === "grid" ? "grid" : "table";
@@ -96,7 +96,7 @@ export function SurfacesPage() {
             options={["table", "grid"]}
             onChange={(v) =>
               navigate({
-                search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
+                search: (prev: Record<string, unknown>) => ({ ...prev, view: v }),
                 replace: true,
               })
             }
@@ -225,20 +225,19 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }),
       // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
       resetScroll: false,
     });
 
   const onSort = (field: string) =>
     navigate({
-      search: (prev: { sort?: string; order?: "asc" | "desc" }) =>
-        ({
-          ...prev,
-          sort: field,
-          order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
-          cursor: "",
-        }) as never,
+      search: (prev: { sort?: string; order?: "asc" | "desc" }) => ({
+        ...prev,
+        sort: field,
+        order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
+        cursor: "",
+      }),
     });
 
   const filtered = all.filter((s) => matchesSurfaceFilters(s, search));

@@ -9,7 +9,7 @@ export const Route = createFileRoute("/sudo/")({
   beforeLoad: ({ search }) => {
     throw redirect({
       to: "/chain/governance",
-      search: { ...(search as Record<string, unknown>), view: "sudo" } as never,
+      search: { ...(search as Record<string, unknown>), view: "sudo" },
       replace: true,
       // 301, not the 307 default: this route is permanently retired. A
       // temporary redirect tells a search engine to keep the old URL and

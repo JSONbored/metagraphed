@@ -39,8 +39,8 @@
 //
 // `BUDGETS` is per area (a path prefix) and each entry may only fall. A PR that
 // adds one fails, and a PR that removes one without lowering the budget ALSO
-// fails, so every number tracks reality rather than intent. Five of the six
-// areas are at zero; apps/ui ratchets down toward it.
+// fails, so every number tracks reality rather than intent. All six areas are
+// at zero, which is the point: the budget exists to keep them there.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -55,20 +55,20 @@ import { repoRoot } from "./lib.ts";
  * regression in any of them is a plain failure rather than a number to
  * negotiate.
  *
- * `apps/ui` is the RATCHET. It was invisible to this gate until #11368,
+ * `apps/ui` reached zero too. It was invisible to this gate until #11368,
  * because the file walk filtered on `.endsWith(".ts")` and every route and
  * component in that workspace is `.tsx` -- so the area carrying the most
- * assertions in the repo was the one area never counted. Most of what is left
- * there is two third-party shapes: TanStack Router's typed search/params
- * generics, and @polkadot/api's codecs on a runtime with no augmentation
- * package. Those want per-library helpers rather than a sweep, so the count
- * falls in batches and the ceiling falls with it.
+ * assertions in the repo was the one area never counted. It entered as a
+ * ratchet at 101 and came down 101 -> 83 -> 4 -> 0, the last drop when the
+ * root cause of ~64 of them turned out to be a single dependency: a
+ * zod-v3-typed router adapter under zod 4, which made every route's search
+ * type resolve to `{}`.
  *
- * A ratchet and not an exemption, deliberately: `scripts` spent #11368 falling
- * 54 -> 21 -> 15 -> 6 -> 0 exactly this way. A declared exemption list stops
- * being read the moment it is longer than a screen (see
- * validate-untyped-db-reads.ts's note) and then hides exactly what it names.
- * A number cannot hide anything.
+ * The ratchet is the mechanism to reach for when an area cannot go to zero in
+ * one change -- `scripts` fell 54 -> 21 -> 15 -> 6 -> 0 the same way. A
+ * declared exemption list stops being read the moment it is longer than a
+ * screen (see validate-untyped-db-reads.ts's note) and then hides exactly what
+ * it names. A number cannot hide anything.
  *
  * `tests` is NOT scanned, and that is a judgement rather than an oversight: a
  * unit process cannot construct a `KVNamespace`, `Hyperdrive`,
@@ -83,7 +83,7 @@ export const BUDGETS: Readonly<Record<string, number>> = {
   "schemas-src": 0,
   packages: 0,
   scripts: 0,
-  "apps/ui": 83,
+  "apps/ui": 0,
 };
 
 const SCANNED_DIRS = Object.keys(BUDGETS);

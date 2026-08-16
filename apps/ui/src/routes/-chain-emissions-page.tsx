@@ -31,7 +31,7 @@ function EmissionsBody() {
 
   const setSearch = (patch: Partial<EmissionTableSearch>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       resetScroll: false,
     });
 
