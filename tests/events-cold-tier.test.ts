@@ -75,6 +75,136 @@ afterAll(() => {
   vi.useRealTimers();
 });
 
+/**
+ * The floor the account-summary projection already knows, applied to the feed
+ * route the summary's own 503 message names as the fallback.
+ *
+ * Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC: `/events?limit=5` took 26.7s
+ * against 8.1s for the card, because this read consulted no projection at all
+ * and walked to the beginning of time.
+ */
+describe("loadAccountEventsColdTier -- the projection floor", () => {
+  const FLOOR = Date.parse("2026-08-15T00:00:00.000Z");
+  const FIRST = 1_786_629_372_000;
+
+  /** An archive publishing one generation; `entry` is this account's shard row. */
+  function archive(entry: unknown, { through = "2026-08-14" } = {}) {
+    const GEN = "20260815T000000Z";
+    const SHARDS = 16384;
+    let h = 0x811c9dc5;
+    for (const b of new TextEncoder().encode(ADDR)) {
+      h ^= b;
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    const shardKey = `metagraph/projections/account-summary/${GEN}/${h % SHARDS}.json`;
+    return {
+      METAGRAPH_ARCHIVE: {
+        get: async (key: string) => {
+          if (key === "metagraph/projections/account-summary/current.json") {
+            return {
+              json: async () => ({
+                schema_version: 1,
+                generation: GEN,
+                shard_count: SHARDS,
+                generated_at: new Date().toISOString(),
+                account_count: 1,
+                through,
+              }),
+            };
+          }
+          if (key === shardKey) {
+            return {
+              json: async () => ({
+                schema_version: 1,
+                shard_count: SHARDS,
+                accounts: entry === null ? {} : { [ADDR]: entry },
+              }),
+            };
+          }
+          return null;
+        },
+      },
+    };
+  }
+
+  test("a PRESENT account floors at its earliest folded event", async () => {
+    const q = sqlFetch([eventRow(10, 0)]);
+    await loadAccountEventsColdTier(
+      {
+        ...TOKEN,
+        ...archive([
+          {
+            kind: "NeuronRegistered",
+            netuid: 105,
+            count: 1,
+            fb: 8_836_052,
+            lb: 8_836_052,
+            fo: FIRST,
+            lo: FIRST,
+          },
+        ]),
+      } as never,
+      ADDR,
+      { limit: 5 },
+    );
+    assert.ok(q.length > 0, "premise: a read was issued");
+    assert.ok(
+      q.every((sql) => sql.includes(`observed_at >= ${FIRST}`)),
+      `unfloored read: ${q.find((sql) => !sql.includes(`observed_at >= ${FIRST}`))?.slice(0, 120)}`,
+    );
+  });
+
+  test("an ABSENT account floors at the generation's edge", async () => {
+    // The producer writes every shard, so absence PROVES there is nothing at or
+    // before `through` -- the strongest floor available.
+    const q = sqlFetch([eventRow(10, 0)]);
+    await loadAccountEventsColdTier(
+      { ...TOKEN, ...archive(null) } as never,
+      ADDR,
+      { limit: 5 },
+    );
+    assert.ok(q.length > 0, "premise: a read was issued");
+    assert.ok(
+      q.every((sql) => sql.includes(`observed_at >= ${FLOOR}`)),
+      "an absent account must bound to the generation edge",
+    );
+  });
+
+  test("NO projection means the walk is unchanged", async () => {
+    // The floor is an optimization over a correct read, never a precondition
+    // for one: with no artifact bound, this must behave exactly as before.
+    const q = sqlFetch([eventRow(10, 0)]);
+    const data = await loadAccountEventsColdTier(TOKEN as never, ADDR, {
+      limit: 5,
+    });
+    assert.ok(data);
+    assert.ok(q.every((sql) => !sql.includes("observed_at >= 1786")));
+  });
+
+  test("a NON-DEFAULT network reads no projection at all", async () => {
+    // The projection describes mainnet, so flooring a testnet feed with it
+    // would bound a feed against another chain's history.
+    let asked = 0;
+    const bucket = {
+      METAGRAPH_ARCHIVE: {
+        get: async () => {
+          asked += 1;
+          return null;
+        },
+      },
+    };
+    const q = sqlFetch([eventRow(10, 0)]);
+    await loadAccountEventsColdTier(
+      { ...TOKEN, ...bucket } as never,
+      ADDR,
+      { limit: 5 },
+      "testnet",
+    );
+    assert.equal(asked, 0, "no projection read for another chain");
+    assert.ok(q.length > 0);
+  });
+});
+
 describe("loadAccountEventsColdTier", () => {
   test("reads both key sides with one disjunction, newest first", async () => {
     const q = sqlFetch([eventRow(10, 1), eventRow(10, 0)]);

@@ -40,7 +40,12 @@ import {
   type ChainEventApi,
 } from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { type ChainNetworkId, chainTable } from "./chain-network.ts";
+import {
+  type ChainNetworkId,
+  chainTable,
+  DEFAULT_CHAIN_NETWORK,
+} from "./chain-network.ts";
+import { loadAccountSummaryProjection } from "./account-summary-projection.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -125,6 +130,41 @@ export async function loadAccountEventsColdTier(
       `(observed_at, block_number, event_index) < ` +
         `(${cursor[0]}, ${cursor[1]}, ${cursor[2]})`,
     );
+  }
+
+  // THE SAME FLOOR THE SUMMARY CARD USES (#11410/#11411), on the route the
+  // summary's own 503 told callers to fall back to -- which made the documented
+  // fallback the slowest read of the three. Measured 2026-08-16 on
+  // 5EEmaGFE...5oM3qDSC: 26.7s for `?limit=5`, against 8.1s for the card the
+  // projection now bounds.
+  //
+  // ONE LOWER BOUND, and it holds for BOTH projection answers:
+  //   - ABSENT: the producer writes every shard, so absence from a shard that
+  //     exists proves there is nothing at or before `through`.
+  //   - PRESENT: the groups are a lifetime aggregate, so nothing exists before
+  //     `firstMs`. Post-fold events sit above `foldFloorMs`, which is itself
+  //     above `firstMs` -- so the single floor covers the whole history.
+  //
+  // A LOWER BOUND ONLY, deliberately. The summary can split its read in two
+  // because it answers one shape; this route carries cursors, an offset and
+  // three optional filters, and a second window would have to compose with all
+  // of them. A floor composes with anything: it removes rows that cannot exist,
+  // whatever else is being asked.
+  //
+  // MAINNET ONLY. The projection is written for the default network, so reading
+  // it for another chain would floor a feed against the wrong history. Other
+  // networks keep the unbounded walk -- correct, just not faster.
+  if (network === undefined || network === DEFAULT_CHAIN_NETWORK) {
+    const projected = await loadAccountSummaryProjection(env, ss58, {
+      // The aggregate leg only: this route wants the FLOOR, not the published
+      // rows, and asking for rows would read a map it then throws away.
+      recentLimit: 0,
+    });
+    const floorMs =
+      projected?.absent === true
+        ? projected.floorMs
+        : (projected?.span?.firstMs ?? null);
+    if (floorMs !== null) where.push(`observed_at >= ${Math.trunc(floorMs)}`);
   }
 
   // Cursor pages never carry an offset, mirroring data-api.
