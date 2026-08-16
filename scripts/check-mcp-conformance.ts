@@ -46,6 +46,7 @@ import {
   projectableFieldFrom,
   projectionArgumentFor,
 } from "./mcp-tool-arguments.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 const ENDPOINT =
   process.env.MCP_CONFORMANCE_ENDPOINT || "https://api.metagraph.sh/mcp";
@@ -139,7 +140,7 @@ function ajv() {
   });
   // Same cast as scripts/check-response-conformance.ts: ajv-formats' CJS
   // default export has no call signature under this module resolution.
-  (addFormats as unknown as (a: unknown) => void)(instance);
+  addAjvFormats(instance);
   return instance;
 }
 

@@ -10,12 +10,12 @@ import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import { API_ROUTES } from "../src/contracts.ts";
 import { readJson, repoRoot } from "./lib.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop
 // resolution (no named-export alternative exists, unlike Ajv2020 above) --
 // cast to its real callable signature rather than fight the interop.
-const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
@@ -26,7 +26,7 @@ const ajv = new Ajv2020({
   strict: false,
   validateFormats: true,
 });
-addFormats(ajv);
+addAjvFormats(ajv);
 
 // Register the OpenAPI components block ONCE under an absolute id (mirroring
 // validate-schemas.ts), instead of re-inlining all ~198 schemas into every

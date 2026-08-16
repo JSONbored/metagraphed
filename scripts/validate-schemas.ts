@@ -19,12 +19,12 @@ import {
 } from "../src/artifact-storage.ts";
 import { DEFAULT_SS58_PREFIX, decodeSs58 } from "../src/ss58.ts";
 import { createComponentValidatorCompiler } from "./lib/component-validator.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop
 // resolution -- cast to its real callable signature rather than fight the
 // interop. Mirrors validate-openapi-examples.ts.
-const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 // Schemas + registry/artifact documents are read for validation only, never
 // trusted for control flow. Mirrors the readJson/readArtifactJson precedent
@@ -38,7 +38,7 @@ const ajv = new Ajv2020({
   strict: false,
   validateFormats: true,
 });
-addFormats(ajv);
+addAjvFormats(ajv);
 
 const providerSchema = await readJson(
   path.join(repoRoot, "schemas/provider.schema.json"),

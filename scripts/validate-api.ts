@@ -23,6 +23,7 @@ import { blockEmissionForIssuance } from "../src/block-emission.ts";
 import { taoToRao } from "../src/emission-decomposition.ts";
 import {} from "../workers/request-params.ts";
 import { apiEnv } from "./lib/worker-env.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 // OpenAPI document + Worker response bodies are dynamic JSON read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -117,10 +118,7 @@ const ajv = new Ajv2020({
   strict: false,
   validateFormats: true,
 });
-// ajv-formats has no named export to sidestep the NodeNext/esModuleInterop
-// resolution -- cast to its real callable signature. Mirrors validate-schemas.ts.
-const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
-addFormats(ajv);
+addAjvFormats(ajv);
 
 const fixtureDetail = {
   schema_version: 1,
