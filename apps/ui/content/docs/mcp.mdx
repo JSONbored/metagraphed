@@ -22,10 +22,15 @@ https://api.metagraph.sh/mcp/core   streamable HTTP — core profile, 23 tools
 | Pick it when         | context is cheap (subagents, offline tooling) | context is model context — most agents |
 
 <Callout title="A context diet, not an authorization boundary">
-  A session connected to `/mcp/core` can still `tools/call` every one of the 240 tools. When a thin
-  session needs more, `get_more_tools` pages additional tool definitions in on demand, and `ask`
-  answers whole questions without any further tools at all — a core session is never stranded.
+  A session connected to `/mcp/core` can still `tools/call` every one of the 240 tools — listing
+  filters, calls don't. When a thin session needs one the core profile never listed, it calls it by
+  name, and `ask` answers whole questions without any further tools at all — a core session is never
+  stranded.
 </Callout>
+
+`get_more_tools` is not part of that: it reports a capability this server lacks. Call it when nothing
+in the catalogue does what you need, and describe the goal in `context` — it records the gap and
+returns an acknowledgement, not data or additional tools.
 
 ## Authentication
 
