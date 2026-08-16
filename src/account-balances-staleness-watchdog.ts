@@ -207,7 +207,16 @@ export const ACCOUNT_BALANCES_EXPECTED_ACCOUNTS = 366_700;
  */
 export const ACCOUNT_BALANCES_COVERAGE_FLOOR_RATIO = 0.8;
 
-/** The floor the rule compares against, ~244,800 rows. */
+/**
+ * The floor the rule compares against: 293,360 rows.
+ *
+ * DERIVED -- never restate it from memory. This read "~244,800" until
+ * 2026-08-16, which is 0.8 x 306,000, the floor from before #11197 re-pinned
+ * the expectation to 366,700. It UNDERSTATES the real floor by 48,560, so a
+ * pass landing in that band reads as comfortably above the floor to anyone
+ * reading the comment while the code calls it `partial` -- the opposite
+ * direction to the sibling lanes' error, and the harder one to notice.
+ */
 export const ACCOUNT_BALANCES_COVERAGE_FLOOR_ROWS = Math.round(
   ACCOUNT_BALANCES_EXPECTED_ACCOUNTS * ACCOUNT_BALANCES_COVERAGE_FLOOR_RATIO,
 );
