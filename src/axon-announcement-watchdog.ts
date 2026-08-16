@@ -56,6 +56,11 @@
 
 import { readStore, type StoreEnv } from "./read-store.ts";
 import { ROUTABLE_AXON_SQL } from "./axon-routable.ts";
+import {
+  AXON_CHANGE_PREDICATE_SQL,
+  AXON_TRANSITION_SEQ_SQL,
+  AXON_TRANSITION_WINDOW_SQL,
+} from "./axon-reachability-changes.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
@@ -395,20 +400,21 @@ export async function loadAxonLossMechanisms(
   if (!db?.query || ids.length === 0) return out;
   try {
     const rows = (await db.query(
-      "WITH seq AS (SELECT netuid, uid, snapshot_date, hotkey, axon, " +
-        `(${ROUTABLE_AXON_SQL}) AS has_axon, ` +
-        `LAG(${ROUTABLE_AXON_SQL}) OVER w AS prev_has, ` +
-        "LAG(hotkey) OVER w AS prev_hotkey, LAG(axon) OVER w AS prev_axon " +
-        "FROM neuron_daily " +
+      // ONE DEFINITION, shared with the derived /axon-removals family (#10805).
+      // The alarm and the API must not be able to disagree about what a
+      // withdrawal is -- that disagreement is the failure this lane keeps
+      // producing (#11370, #11392). `AXON_CHANGE_PREDICATE_SQL` is the loss of
+      // REACHABILITY, and the kinds line up with the ones the routes serve.
+      `WITH seq AS (${AXON_TRANSITION_SEQ_SQL} ` +
         `WHERE snapshot_date >= ? AND netuid IN (${ids.map(() => "?").join(",")}) ` +
-        "WINDOW w AS (PARTITION BY netuid, uid ORDER BY snapshot_date)) " +
+        `${AXON_TRANSITION_WINDOW_SQL}) ` +
         "SELECT netuid, " +
-        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey IS DISTINCT FROM prev_hotkey) AS via_reuse, " +
-        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS same_hotkey, " +
-        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey " +
+        `COUNT(*) FILTER (WHERE ${AXON_CHANGE_PREDICATE_SQL} AND hotkey IS DISTINCT FROM prev_hotkey) AS via_reuse, ` +
+        `COUNT(*) FILTER (WHERE ${AXON_CHANGE_PREDICATE_SQL} AND hotkey = prev_hotkey) AS same_hotkey, ` +
+        `COUNT(*) FILTER (WHERE ${AXON_CHANGE_PREDICATE_SQL} AND hotkey = prev_hotkey ` +
         "AND axon IS NOT NULL AND axon <> '') AS moved_unroutable, " +
         "COUNT(DISTINCT split_part(prev_axon, ':', 1)) FILTER " +
-        "(WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS distinct_ips " +
+        `(WHERE ${AXON_CHANGE_PREDICATE_SQL} AND hotkey = prev_hotkey) AS distinct_ips ` +
         "FROM seq GROUP BY netuid",
       [sinceDate, ...ids],
     )) as Record<string, unknown>[];
