@@ -943,18 +943,39 @@ describe("loadAccountEventsColdTier -- the projection's recent map", () => {
     }
   });
 
-  test("DECLINES when the caller wants more rows than the list holds", async () => {
-    // A short list is indistinguishable from a short account, so asking for
-    // more than it holds cannot be answered from it.
+  test("A SHORT BUT COMPLETE LIST IS SERVED, not treated as insufficient", async () => {
+    // The bug the first version of this shipped. `readRecent` returns a list
+    // only when the pointer publishes at least `limit` per account AND the list
+    // is complete for this account -- so two rows for an account with two
+    // lifetime events IS the answer to `?limit=5`, not a short page.
     //
-    // ASSERTED ON THE BOUND, NOT THE QUERY COUNT. Since #11431 the walk clamps
-    // to the projection's floor and can also finish in one query, so counting
-    // them no longer tells the two tiers apart. The bound does: the hot probe
-    // starts at the generation's fold edge, the walk at this account's own
-    // first observed event.
+    // Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC, whose whole history is two
+    // events: a `rows.length < limit` check read that as "not enough" and
+    // walked the lakehouse anyway, 13.4s. It rejected exactly the quiet
+    // accounts the hot tier is cheapest for, which is most of them.
+    const q = sqlFetch([]);
+    const data = await loadAccountEventsColdTier(
+      { ...TOKEN, ...withRecent([recentRow(90), recentRow(80)]) } as never,
+      ADDR,
+      { limit: 5 },
+    );
+    assert.ok(data);
+    assert.equal(data.events.length, 2, "both published events are served");
+    assert.equal(q.length, 1, `expected one head probe:\n${q.join("\n")}`);
+    assert.match(q[0]!, new RegExp(`observed_at >= ${FOLD_FLOOR}`));
+  });
+
+  test("DECLINES when the POINTER publishes fewer than the limit asks", async () => {
+    // The real insufficiency, and the only one the artifact can express: a
+    // generation publishing ten per account cannot answer a request for twenty,
+    // because the eleventh through twentieth were never written. That is a fact
+    // about the producer, not about the account.
     const q = sqlFetch([]);
     await loadAccountEventsColdTier(
-      { ...TOKEN, ...withRecent([recentRow(90), recentRow(80)]) } as never,
+      {
+        ...TOKEN,
+        ...withRecent([recentRow(90), recentRow(80)], 2),
+      } as never,
       ADDR,
       { limit: 5 },
     );
