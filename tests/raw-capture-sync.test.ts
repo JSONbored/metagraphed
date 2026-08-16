@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { mirrorRawCaptureStateToNeon } from "../src/capture-state-neon-write.ts";
 
 // The watermark's store is Postgres now (#10179): both halves of it --
 // neonWatermark's read and mirrorRawCaptureStateToNeon's write -- build their
@@ -473,6 +474,46 @@ describe("watermarkRead", () => {
     ).run("testnet", 99, 7);
     assert.equal(await watermarkRead(runner() as never, "mainnet")(), 42);
     assert.equal(await watermarkRead(runner() as never, "testnet")(), 99);
+  });
+
+  // THE MONOTONIC GUARANTEE, executed rather than pattern-matched.
+  //
+  // Run against the real engine on purpose: the guard is a CASE inside the
+  // upsert, and a test that greps the statement text proves the string exists,
+  // not that the database honours it. Formatting alone would satisfy a regex.
+  test("a late, LOWER write cannot rewind the watermark", async () => {
+    // Measured in production 2026-08-16, minutes after #11406 removed the
+    // buffer that had been serialising these writes: the lane drained a steady
+    // 395 blocks/min for eight ticks, then jumped BACKWARDS ~2,795 blocks in
+    // one tick (5,683 behind -> 8,478 behind). A tick reads the watermark once
+    // at its start and writes once per chunk, so a tick that overruns the
+    // one-minute cron overlaps the next one and its late, lower writes clobber
+    // the newer tick's progress. Idempotent R2 keys meant no corruption -- just
+    // the lane spending its whole budget re-reading what it already had.
+    // Driven through the PRODUCTION writer, not a copy of its SQL: a test that
+    // re-types the statement proves SQLite honours the statement in the test,
+    // which is true no matter what mirrorRawCaptureStateToNeon actually sends.
+    const { env } = envWith();
+    const write = (block: number, at: number) =>
+      mirrorRawCaptureStateToNeon(env as never, CTX, "mainnet", block, at, {
+        laneHealthDb: null,
+      });
+    await write(8_850_529, 100);
+    // The overlapping tick, finishing late with the height it started from.
+    await write(8_847_734, 200);
+    assert.equal(
+      await watermarkRead(runner() as never, "mainnet")(),
+      8_850_529,
+      "the higher, already-durable height must survive the stale writer",
+    );
+    // ...and a genuinely NEW height still advances it, or the guard would have
+    // frozen the lane instead of protecting it.
+    await write(8_851_000, 300);
+    assert.equal(
+      await watermarkRead(runner() as never, "mainnet")(),
+      8_851_000,
+      "forward progress is unaffected",
+    );
   });
 
   // A value that is not a number is not a watermark of zero: the capture

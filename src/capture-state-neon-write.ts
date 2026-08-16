@@ -180,10 +180,54 @@ export async function mirrorRawCaptureStateToNeon(
     now,
     () =>
       sql.unsafe(
+        // MONOTONIC, by GREATEST -- a watermark that can move backwards is not
+        // a watermark.
+        //
+        // It means "every block at or below this height is durably in R2", so a
+        // write claiming LESS than the stored value is not new information, it
+        // is a stale writer reporting where it started. Taking the max is always
+        // safe: the larger value was itself only written after its own bytes
+        // were durable, so keeping it never claims a block that is missing.
+        //
+        // MEASURED IN PRODUCTION 2026-08-16, minutes after #11406 removed the
+        // buffer that had been serialising these writes. The lane drained a
+        // steady 395 blocks/min for eight ticks and then jumped BACKWARDS ~2,795
+        // blocks in one tick, losing seven ticks of work:
+        //
+        //     12:09  5683 behind
+        //     12:10  8478 behind   <-- regressed
+        //     12:11  8083 behind
+        //
+        // A tick reads the watermark once at its start and writes once per
+        // chunk, so a tick that overruns the one-minute cron overlaps the next
+        // one and its late, lower writes clobber the newer tick's progress. The
+        // no-gap guarantee survived that -- going backwards only re-captures
+        // blocks already durable, and the R2 keys are idempotent -- but the lane
+        // spends its budget re-reading what it already has.
+        //
+        // Same shape as the COALESCE guards on blocks_head above: an upsert
+        // whose job is to carry forward what an out-of-order write would erase.
+        // A deliberate rewind (say, after finding corruption) is a hand-written
+        // statement, not this lane's path.
+        //
+        // A CASE, not GREATEST, and not MAX. This text runs verbatim against
+        // BOTH engines -- Postgres in production, SQLite in the fixture that
+        // executes it -- which is the property this module's header is about.
+        // `GREATEST` is Postgres-only; `MAX(a, b)` is the scalar form in SQLite
+        // but an aggregate in Postgres, so each would pass on one engine and
+        // fail on the other. CASE is the portable spelling of the same thing.
+        //
+        // `updated_at` still takes the new value even when the block does not:
+        // it records that the lane wrote, which is what the freshness watchdog
+        // on this table asks. The monotonic claim is about the HEIGHT.
         `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
          VALUES (?, ?, ?)
          ON CONFLICT(network) DO UPDATE SET
-           last_contiguous_block = excluded.last_contiguous_block,
+           last_contiguous_block = CASE
+             WHEN excluded.last_contiguous_block > raw_capture_state.last_contiguous_block
+             THEN excluded.last_contiguous_block
+             ELSE raw_capture_state.last_contiguous_block
+           END,
            updated_at = excluded.updated_at`,
         [network, lastContiguousBlock, updatedAt],
       ),
