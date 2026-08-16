@@ -3742,6 +3742,10 @@
       "ChainServingArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "intensity_distribution": {
               "count": 2,
               "max": 15,
@@ -4296,6 +4300,10 @@
       "ChainWeightsArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "intensity_distribution": {
               "count": 2,
               "max": 15,
@@ -4363,6 +4371,10 @@
       "ChainWeightSettersArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "distinct_setters": 2,
             "observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
@@ -12265,6 +12277,10 @@
       "SubnetRegistrationsArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "distinct_registrants": 1,
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
@@ -12450,6 +12466,10 @@
           "data": {
             "announcements": 1,
             "announcements_per_server": 0.5,
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "distinct_servers": 1,
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
@@ -12525,6 +12545,10 @@
       "SubnetStakeMovesArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "distinct_movers": 1,
             "movements": 1,
             "movements_per_mover": 0.5,
@@ -12606,6 +12630,10 @@
       "SubnetStakeTransfersArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "distinct_senders": 2,
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
@@ -13185,6 +13213,10 @@
       "SubnetWeightsArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "distinct_setters": 1,
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
@@ -13223,6 +13255,10 @@
       "SubnetWeightSettersArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "distinct_setters": 1,
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
@@ -25202,38 +25238,45 @@
             "description": "Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard."
           },
           "network": {
-            "additionalProperties": false,
-            "description": "Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts.",
-            "properties": {
-              "announcements": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "announcements_per_exporter": {
-                "anyOf": [
-                  {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts.",
+                "properties": {
+                  "announcements": {
+                    "maximum": 9007199254740991,
                     "minimum": 0,
-                    "type": "number"
+                    "type": "integer"
                   },
-                  {
-                    "type": "null"
+                  "announcements_per_exporter": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Null when distinct_exporters is 0 (no defined intensity without exporters)."
+                  },
+                  "distinct_exporters": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
                   }
+                },
+                "required": [
+                  "distinct_exporters",
+                  "announcements",
+                  "announcements_per_exporter"
                 ],
-                "description": "Null when distinct_exporters is 0 (no defined intensity without exporters)."
+                "type": "object"
               },
-              "distinct_exporters": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "distinct_exporters",
-              "announcements",
-              "announcements_per_exporter"
-            ],
-            "type": "object"
+            ]
           },
           "observed_at": {
             "anyOf": [
@@ -25251,9 +25294,16 @@
             "type": "integer"
           },
           "subnet_count": {
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "subnets": {
             "items": {
@@ -25838,6 +25888,16 @@
         "additionalProperties": false,
         "description": "Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope.",
         "properties": {
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "intensity_distribution": {
             "anyOf": [
               {
@@ -25850,38 +25910,45 @@
             "description": "Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard."
           },
           "network": {
-            "additionalProperties": false,
-            "description": "Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined.",
-            "properties": {
-              "announcements": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "announcements_per_server": {
-                "anyOf": [
-                  {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined.",
+                "properties": {
+                  "announcements": {
+                    "maximum": 9007199254740991,
                     "minimum": 0,
-                    "type": "number"
+                    "type": "integer"
                   },
-                  {
-                    "type": "null"
+                  "announcements_per_server": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Null when distinct_servers is 0 (no defined intensity without servers)."
+                  },
+                  "distinct_servers": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
                   }
+                },
+                "required": [
+                  "distinct_servers",
+                  "announcements",
+                  "announcements_per_server"
                 ],
-                "description": "Null when distinct_servers is 0 (no defined intensity without servers)."
+                "type": "object"
               },
-              "distinct_servers": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "distinct_servers",
-              "announcements",
-              "announcements_per_server"
-            ],
-            "type": "object"
+            ]
           },
           "observed_at": {
             "anyOf": [
@@ -25899,9 +25966,16 @@
             "type": "integer"
           },
           "subnet_count": {
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "subnets": {
             "items": {
@@ -27331,6 +27405,16 @@
         "additionalProperties": false,
         "description": "Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights.",
         "properties": {
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "intensity_distribution": {
             "anyOf": [
               {
@@ -27343,38 +27427,45 @@
             "description": "Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window."
           },
           "network": {
-            "additionalProperties": false,
-            "description": "Network-wide weight-setting rollup: every subnet that set weights in the window, combined.",
-            "properties": {
-              "distinct_setters": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "sets_per_setter": {
-                "anyOf": [
-                  {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "description": "Network-wide weight-setting rollup: every subnet that set weights in the window, combined.",
+                "properties": {
+                  "distinct_setters": {
+                    "maximum": 9007199254740991,
                     "minimum": 0,
-                    "type": "number"
+                    "type": "integer"
                   },
-                  {
-                    "type": "null"
+                  "sets_per_setter": {
+                    "anyOf": [
+                      {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Null when distinct_setters is 0 (no defined intensity without setters)."
+                  },
+                  "weight_sets": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
                   }
+                },
+                "required": [
+                  "distinct_setters",
+                  "weight_sets",
+                  "sets_per_setter"
                 ],
-                "description": "Null when distinct_setters is 0 (no defined intensity without setters)."
+                "type": "object"
               },
-              "weight_sets": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "distinct_setters",
-              "weight_sets",
-              "sets_per_setter"
-            ],
-            "type": "object"
+            ]
           },
           "observed_at": {
             "anyOf": [
@@ -27392,9 +27483,16 @@
             "type": "integer"
           },
           "subnet_count": {
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "subnets": {
             "items": {
@@ -27467,10 +27565,27 @@
       "ChainWeightSettersArtifact": {
         "additionalProperties": false,
         "properties": {
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinct_setters": {
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "observed_at": {
             "anyOf": [
@@ -27488,9 +27603,16 @@
             "type": "integer"
           },
           "setter_count": {
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "setters": {
             "items": {
@@ -27583,9 +27705,16 @@
             "type": "array"
           },
           "weight_sets": {
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "window": {
             "anyOf": [
@@ -57378,6 +57507,16 @@
       "SubnetRegistrationsArtifact": {
         "additionalProperties": false,
         "properties": {
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinct_registrants": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -57959,6 +58098,16 @@
               }
             ]
           },
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinct_servers": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -58076,6 +58225,16 @@
       "SubnetStakeMovesArtifact": {
         "additionalProperties": false,
         "properties": {
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinct_movers": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -58239,6 +58398,16 @@
         "additionalProperties": false,
         "description": "Per-subnet stake-transfer activity (#5717) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers.",
         "properties": {
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinct_senders": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -60306,6 +60475,16 @@
       "SubnetWeightsArtifact": {
         "additionalProperties": false,
         "properties": {
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinct_setters": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -60377,6 +60556,16 @@
         "additionalProperties": false,
         "description": "Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters.",
         "properties": {
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinct_setters": {
             "maximum": 9007199254740991,
             "minimum": 0,

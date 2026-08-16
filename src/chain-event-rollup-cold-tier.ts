@@ -31,7 +31,7 @@
 // unmeasurable one. NeuronDeregistered and AxonInfoRemoved have zero rows in
 // both account_events and chain_events, and PrometheusServed exists only in
 // chain_events with its hotkey inside the args JSON. See the survey on #9146.
-import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import { isR2SqlConfigured, r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
@@ -156,6 +156,21 @@ export function safeColumnAlias(value: unknown): string | null {
  * Null rather than 0: a failed count and a measured zero read identically once
  * they are both `0`, and this one has a fallback the caller can take instead.
  */
+/**
+ * A read that was asked and did not deliver: `gap` where a lakehouse is
+ * configured, `miss` where none is.
+ *
+ * The split is `src/account-summary-card.ts`'s, in its own words: a deployment
+ * with NO lakehouse (a self-hoster, CI) has no rows to be wrong about, so its
+ * empty payload is correct and always was. Where one IS configured the rows
+ * exist, and publishing zeros is a claim about them that nothing measured.
+ */
+function rollupDecline(
+  env: Parameters<R2SqlReader>[0],
+): { kind: "gap" } | { kind: "miss" } {
+  return isR2SqlConfigured(env) ? { kind: "gap" } : { kind: "miss" };
+}
+
 function toRowCount(value: unknown): number | null {
   const n = Math.trunc(Number(value));
   return Number.isSafeInteger(n) && n >= 0 ? n : null;
@@ -216,8 +231,53 @@ export interface ChainEventRollup {
 export const ROLLUP_POPULATION_CAP = 1000;
 
 /**
- * Every part of one rollup, or null to leave the caller's empty payload
- * standing.
+ * What a rollup read has to say, which is FOUR different things that used to be
+ * one bare `null` (#11417).
+ *
+ * ## Why the bare null could not stay
+ *
+ * The two readers below decline for six distinct reasons and answered every one
+ * of them with `null`. Their callers spell that `?? emptyPayload`, so a
+ * fifteen-second lakehouse TIMEOUT and a genuinely quiet week produced the same
+ * bytes: a card of zeros with nothing to say which had happened. Seven published
+ * reads were measured sitting AT `QUERY_TIMEOUT_MS` on 2026-08-16 -- these
+ * declines are routine, not exotic.
+ *
+ * The sharpest evidence that `null` was too narrow is in this file's own
+ * history: the `rows.length === 0` branch below declines EXPRESSLY so that zeros
+ * are not "published ... as measured silence", and the caller then published
+ * exactly those zeros one frame later. The intent was right and the channel
+ * could not carry it.
+ *
+ * ## The four
+ *
+ * - `answer` -- rows, and the caller builds its card.
+ * - `empty` -- the read SUCCEEDED and the window holds nothing. A MEASUREMENT:
+ *   the caller's zeros are correct and must carry no marker.
+ * - `gap` -- a configured lakehouse could not answer. A DECLINE: in that
+ *   deployment the rows exist, so zeros are a lie about them and the caller owes
+ *   a `degraded` marker with NULL counts.
+ * - `miss` -- nothing to ask: no lakehouse configured (a self-hoster, CI), or a
+ *   spec/window this reader cannot use. The caller's zeros are correct.
+ *
+ * `empty` and `miss` produce the same BYTES and are still not the same fact --
+ * one is a measurement and the other is an absence of one. Kept apart because
+ * collapsing them is what made `gap` indistinguishable in the first place, and
+ * because a future caller may reasonably want to say "no events in this window"
+ * only when it actually looked.
+ *
+ * NOT `gap` for an empty window, which is the tempting simplification: marking a
+ * successful read of a quiet week as a failure is the same category error
+ * pointing the other way.
+ */
+export type ChainEventRollupOutcome<T> =
+  | { kind: "answer"; rollup: T }
+  | { kind: "empty" }
+  | { kind: "gap" }
+  | { kind: "miss" };
+
+/**
+ * Every part of one rollup, or a decline that says which kind it is.
  *
  * Null on a miss of EITHER PAYLOAD half rather than a partial answer: serving
  * the per-subnet rows without the network distinct would report a
@@ -247,7 +307,7 @@ export async function loadChainEventRollup(
      */
     query?: R2SqlReader;
   },
-): Promise<ChainEventRollup | null> {
+): Promise<ChainEventRollupOutcome<ChainEventRollup>> {
   const kind = safeEventKind(spec.eventKind);
   const countField = safeColumnAlias(spec.countField);
   const distinctField = safeColumnAlias(spec.distinctField);
@@ -258,11 +318,15 @@ export async function loadChainEventRollup(
       ? spec.distinctColumn
       : null;
   // Every interpolated identifier is guarded, not just the quoted value.
-  if (!kind || !countField || !distinctField || !distinctColumn) return null;
-  if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
+  // A spec or a window this reader cannot use is not a lakehouse fault -- there
+  // is nothing to ask, so the caller's empty is correct and unmarked.
+  if (!kind || !countField || !distinctField || !distinctColumn) {
+    return { kind: "miss" };
+  }
+  if (!Number.isFinite(windowDays) || windowDays <= 0) return { kind: "miss" };
 
   const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
-  if (!Number.isSafeInteger(cutoff) || cutoff < 0) return null;
+  if (!Number.isSafeInteger(cutoff) || cutoff < 0) return { kind: "miss" };
 
   const where = `WHERE event_kind = '${kind}' AND observed_at >= ${cutoff}`;
   /**
@@ -385,21 +449,27 @@ export async function loadChainEventRollup(
     ),
   ]);
 
-  if (!rows || !networkRows) return null;
+  // The engine was ASKED and did not deliver either payload half. On a
+  // configured lakehouse those rows exist, so this is a gap; with no lakehouse
+  // bound at all there was never anything to read.
+  if (!rows || !networkRows) return rollupDecline(env);
   const networkDistinct = networkRows[0];
-  if (!networkDistinct) return null;
+  // A COUNT query always returns a row, so no row means the engine answered
+  // something this reader does not understand -- it answered, so it is a gap.
+  if (!networkDistinct) return rollupDecline(env);
   // NOT a decline. The two above are the payload; this one only sharpens a
   // count that has a usable fallback, so a miss here leaves the builder to fall
   // back to the page length rather than blanking a card that is otherwise fine.
   const subnetCount = toRowCount(subnetRows?.[0]?.subnet_count);
 
-  // A window the frozen table no longer reaches. Declining keeps the caller's
-  // empty payload rather than publishing zeros that read as measured silence:
-  // the events that wrote these rows stopped when the box did, so this window
-  // will eventually cover none of them.
-  if (rows.length === 0) return null;
+  // A window holding no events. The read SUCCEEDED, so this is a measurement
+  // and not a decline -- `empty`, never `gap`. This branch used to return the
+  // same `null` as a failed query expressly to stop zeros being "published as
+  // measured silence", and the caller published them anyway; saying which kind
+  // of nothing this is, is the whole repair.
+  if (rows.length === 0) return { kind: "empty" };
 
-  return { rows, networkDistinct, subnetCount };
+  return { kind: "answer", rollup: { rows, networkDistinct, subnetCount } };
 }
 
 /** The per-identity leaderboard, plus the ungrouped totals it is a share of. */
@@ -452,7 +522,7 @@ export async function loadChainEventIdentityRollup(
     netuid?: number;
     query?: R2SqlReader;
   },
-): Promise<ChainEventIdentityRollup | null> {
+): Promise<ChainEventRollupOutcome<ChainEventIdentityRollup>> {
   const kind = safeEventKind(spec.eventKind);
   const countField = safeColumnAlias(spec.countField);
   const distinctField = safeColumnAlias(spec.distinctField);
@@ -460,11 +530,13 @@ export async function loadChainEventIdentityRollup(
     spec.distinctColumn === "hotkey" || spec.distinctColumn === "uid"
       ? spec.distinctColumn
       : null;
-  if (!kind || !countField || !distinctField || !identity) return null;
-  if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
+  if (!kind || !countField || !distinctField || !identity) {
+    return { kind: "miss" };
+  }
+  if (!Number.isFinite(windowDays) || windowDays <= 0) return { kind: "miss" };
 
   const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
-  if (!Number.isSafeInteger(cutoff) || cutoff < 0) return null;
+  if (!Number.isSafeInteger(cutoff) || cutoff < 0) return { kind: "miss" };
   const cap =
     Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 200;
 
@@ -473,7 +545,7 @@ export async function loadChainEventIdentityRollup(
   let subnetFilter = "";
   if (netuid !== undefined) {
     const safe = safeBlockNumber(netuid);
-    if (safe === null) return null;
+    if (safe === null) return { kind: "miss" };
     subnetFilter = ` AND netuid = ${safe}`;
   }
 
@@ -519,17 +591,21 @@ export async function loadChainEventIdentityRollup(
     ),
   ]);
 
-  if (!rows || !totalsRows || !distinctRows) return null;
+  if (!rows || !totalsRows || !distinctRows) return rollupDecline(env);
   const totals = totalsRows[0];
   const distinct = distinctRows[0];
-  if (!totals || !distinct) return null;
-  if (rows.length === 0) return null;
+  if (!totals || !distinct) return rollupDecline(env);
+  // A measured quiet window, not a failure -- see ChainEventRollupOutcome.
+  if (rows.length === 0) return { kind: "empty" };
 
   // The distinct count rides back inside `totals` so the shape callers and
   // the builder already read is unchanged -- only where the number comes from
   // is different.
   return {
-    rows,
-    totals: { ...totals, [distinctField]: distinct[distinctField] },
+    kind: "answer",
+    rollup: {
+      rows,
+      totals: { ...totals, [distinctField]: distinct[distinctField] },
+    },
   };
 }

@@ -189,7 +189,10 @@ export const ChainPrometheusArtifactSchema = z
     schema_version: z.int(),
     window: z.enum(["7d", "30d"]).nullable(),
     observed_at: z.string().nullable(),
-    subnet_count: z.int().min(0),
+    // NULL only on a decline (#11417): after a failed read nothing is known
+    // about how many subnets the window covers, and a 0 there is the confident
+    // zero that made a timeout indistinguishable from a quiet week.
+    subnet_count: z.int().min(0).nullable(),
     network: z
       .object({
         distinct_exporters: z.int().min(0),
@@ -205,7 +208,9 @@ export const ChainPrometheusArtifactSchema = z
       .strict()
       .describe(
         "Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts.",
-      ),
+      )
+      // NULL only on a decline, for the same reason -- see chain-event-card-decline.ts.
+      .nullable(),
     intensity_distribution: IntensityDistributionSchema.nullable().describe(
       "Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard.",
     ),
@@ -280,7 +285,10 @@ export const ChainServingArtifactSchema = z
     schema_version: z.int(),
     window: z.enum(["7d", "30d"]).nullable(),
     observed_at: z.string().nullable(),
-    subnet_count: z.int().min(0),
+    // NULL only on a decline (#11417): after a failed read nothing is known
+    // about how many subnets the window covers, and a 0 there is the confident
+    // zero that made a timeout indistinguishable from a quiet week.
+    subnet_count: z.int().min(0).nullable(),
     network: z
       .object({
         distinct_servers: z.int().min(0),
@@ -296,7 +304,9 @@ export const ChainServingArtifactSchema = z
       .strict()
       .describe(
         "Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined.",
-      ),
+      )
+      // NULL only on a decline, for the same reason -- see chain-event-card-decline.ts.
+      .nullable(),
     intensity_distribution: IntensityDistributionSchema.nullable().describe(
       "Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard.",
     ),
@@ -313,6 +323,8 @@ export const ChainServingArtifactSchema = z
           "One subnet's axon-serving activity in the window, ranked by announcements.",
         ),
     ),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict()
   .describe(
@@ -415,7 +427,10 @@ export const ChainWeightsArtifactSchema = z
     schema_version: z.int(),
     window: z.enum(["7d", "30d"]).nullable(),
     observed_at: z.string().nullable(),
-    subnet_count: z.int().min(0),
+    // NULL only on a decline (#11417): after a failed read nothing is known
+    // about how many subnets the window covers, and a 0 there is the confident
+    // zero that made a timeout indistinguishable from a quiet week.
+    subnet_count: z.int().min(0).nullable(),
     network: z
       .object({
         distinct_setters: z.int().min(0),
@@ -431,7 +446,9 @@ export const ChainWeightsArtifactSchema = z
       .strict()
       .describe(
         "Network-wide weight-setting rollup: every subnet that set weights in the window, combined.",
-      ),
+      )
+      // NULL only on a decline, for the same reason -- see chain-event-card-decline.ts.
+      .nullable(),
     intensity_distribution: IntensityDistributionSchema.nullable().describe(
       "Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window.",
     ),
@@ -448,6 +465,8 @@ export const ChainWeightsArtifactSchema = z
           "One subnet's weight-setting activity in the window, ranked by weight_sets.",
         ),
     ),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict()
   .describe(

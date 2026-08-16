@@ -7007,16 +7007,15 @@ export interface components {
             degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
             intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
-            /** @description Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 announcements: number;
                 /** @description Null when distinct_exporters is 0 (no defined intensity without exporters). */
                 announcements_per_exporter: number | null;
                 distinct_exporters: number;
-            };
+            } | null;
             observed_at: string | null;
             schema_version: number;
-            subnet_count: number;
+            subnet_count: number | null;
             subnets: {
                 announcements: number;
                 announcements_per_exporter: number | null;
@@ -7126,18 +7125,18 @@ export interface components {
         };
         /** @description Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope. */
         ChainServingArtifact: {
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
             intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
-            /** @description Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined. */
             network: {
                 announcements: number;
                 /** @description Null when distinct_servers is 0 (no defined intensity without servers). */
                 announcements_per_server: number | null;
                 distinct_servers: number;
-            };
+            } | null;
             observed_at: string | null;
             schema_version: number;
-            subnet_count: number;
+            subnet_count: number | null;
             subnets: {
                 announcements: number;
                 announcements_per_server: number | null;
@@ -7386,18 +7385,18 @@ export interface components {
         ChainU64: number;
         /** @description Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights. */
         ChainWeightsArtifact: {
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window. */
             intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
-            /** @description Network-wide weight-setting rollup: every subnet that set weights in the window, combined. */
             network: {
                 distinct_setters: number;
                 /** @description Null when distinct_setters is 0 (no defined intensity without setters). */
                 sets_per_setter: number | null;
                 weight_sets: number;
-            };
+            } | null;
             observed_at: string | null;
             schema_version: number;
-            subnet_count: number;
+            subnet_count: number | null;
             subnets: {
                 distinct_setters: number;
                 netuid: number;
@@ -7407,10 +7406,11 @@ export interface components {
             window: ("7d" | "30d") | null;
         };
         ChainWeightSettersArtifact: {
-            distinct_setters: number;
+            degraded?: components["schemas"]["DegradedInfo"] | null;
+            distinct_setters: number | null;
             observed_at: string | null;
             schema_version: number;
-            setter_count: number;
+            setter_count: number | null;
             setters: {
                 first_set_at: string | null;
                 hotkey: string | null;
@@ -7421,7 +7421,7 @@ export interface components {
                 uid: number | null;
                 weight_sets: number;
             }[];
-            weight_sets: number;
+            weight_sets: number | null;
             window: ("7d" | "30d") | null;
         };
         /** @description Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield. */
@@ -12711,6 +12711,7 @@ export interface components {
             schema_version: number;
         };
         SubnetRegistrationsArtifact: {
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_registrants: number;
             netuid: number;
             observed_at: string | null;
@@ -12829,6 +12830,7 @@ export interface components {
         SubnetServingArtifact: {
             announcements: number;
             announcements_per_server: number | null;
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_servers: number;
             netuid: number;
             observed_at: string | null;
@@ -12847,6 +12849,7 @@ export interface components {
             window: ("7d" | "30d" | "90d") | null;
         };
         SubnetStakeMovesArtifact: {
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_movers: number;
             movements: number;
             movements_per_mover: number | null;
@@ -12878,6 +12881,7 @@ export interface components {
         };
         /** @description Per-subnet stake-transfer activity (#5717) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers. */
         SubnetStakeTransfersArtifact: {
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_senders: number;
             netuid: number;
             observed_at: string | null;
@@ -13238,6 +13242,7 @@ export interface components {
             window_days: number;
         };
         SubnetWeightsArtifact: {
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_setters: number;
             netuid: number;
             observed_at: string | null;
@@ -13248,6 +13253,7 @@ export interface components {
         };
         /** @description Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters. */
         SubnetWeightSettersArtifact: {
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_setters: number;
             netuid: number;
             observed_at: string | null;
@@ -28648,6 +28654,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "intensity_distribution": {
                      *           "count": 2,
                      *           "max": 15,
@@ -29938,6 +29948,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "intensity_distribution": {
                      *           "count": 2,
                      *           "max": 15,
@@ -30082,6 +30096,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_setters": 2,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
@@ -47823,6 +47841,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_registrants": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -48096,6 +48118,10 @@ export interface operations {
                      *       "data": {
                      *         "announcements": 1,
                      *         "announcements_per_server": 0.5,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_servers": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -48319,6 +48345,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_movers": 1,
                      *         "movements": 1,
                      *         "movements_per_mover": 0.5,
@@ -48547,6 +48577,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_senders": 2,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -50165,6 +50199,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_setters": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -50276,6 +50314,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_setters": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",

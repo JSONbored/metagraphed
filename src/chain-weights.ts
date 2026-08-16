@@ -3,6 +3,7 @@
 // kind-filtered sibling of chain-transfers / chain-stake-flow. Pure shaping + a thin store loader; the
 // Worker adds the envelope. See the schema/contracts for the full response contract.
 
+import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
 import { roundDp, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 
@@ -119,10 +120,15 @@ export interface ChainWeightsResult {
   schema_version: 1;
   window: string | null;
   observed_at: string | null;
-  subnet_count: number;
-  network: ChainWeightsNetwork;
+  /** NULL only on a decline -- see ChainEventCardDecline. */
+  subnet_count: number | null;
+  /** NULL only on a decline: after a failed read nothing is known about
+   * the network block, and zeros there are the confident zero #11417 names. */
+  network: ChainWeightsNetwork | null;
   intensity_distribution: IntensityDistribution | null;
   subnets: ChainWeightsSubnet[];
+  /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape the network-wide weight-setting scorecard from the per-subnet account_events aggregate.

@@ -34,6 +34,23 @@ export interface EventStreamDegraded {
 }
 
 /**
+ * The reason a read that COULD NOT BE MADE carries (#11417).
+ *
+ * DIFFERENT IN KIND from the two constants below, and the difference is the
+ * whole reason it lives beside them. Those name a PERMANENT property of the
+ * data -- a stream nothing curates, an event the runtime never emits -- so the
+ * zero they mark is the true and final answer and is published as `0`. This one
+ * marks a zero that is not an answer at all: the tier was asked and could not
+ * reply, so the counts beside it are NULL rather than zero, because nothing is
+ * known about them.
+ *
+ * Spelled once because the same word is the whole contract on eight declining
+ * routes and in `UnavailableDegradedSchema`, and three modules had written the
+ * bare literal.
+ */
+export const DEGRADED_UNAVAILABLE = "unavailable";
+
+/**
  * The chain emits `PrometheusServed` and our `account_events` curation drops
  * it: 18,041 events in the complete stream, 0 in the projection every
  * prometheus route reads. A CURATION gap, not a chain fact -- the fix is

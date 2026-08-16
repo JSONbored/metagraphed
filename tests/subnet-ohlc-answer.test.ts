@@ -11,7 +11,8 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 
 import { answerSubnetOhlc } from "../src/subnet-ohlc-answer.ts";
-import { MAX_CANDLES, OHLC_DEGRADED_UNAVAILABLE } from "../src/subnet-ohlc.ts";
+import { MAX_CANDLES } from "../src/subnet-ohlc.ts";
+import { DEGRADED_UNAVAILABLE } from "../src/uncurated-event-streams.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import type { Row } from "./row-type.ts";
 
@@ -59,7 +60,7 @@ describe("a failed read and an idle subnet stop looking identical", () => {
   test("a configured lakehouse that fails publishes a DECLINE", async () => {
     refuse();
     const { data, generatedAt } = await answerSubnetOhlc(CONFIGURED, 64, QUERY);
-    assert.deepEqual(data.degraded, { reason: OHLC_DEGRADED_UNAVAILABLE });
+    assert.deepEqual(data.degraded, { reason: DEGRADED_UNAVAILABLE });
     // NULL, not 0. Nothing is known about how many candles the window holds,
     // and a 0 asserts the subnet has never traded.
     assert.equal(data.candle_count, null);

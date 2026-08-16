@@ -127,8 +127,11 @@ export interface ChainPrometheusResult {
   schema_version: 1;
   window: string | null;
   observed_at: string | null;
-  subnet_count: number;
-  network: ChainPrometheusNetwork;
+  /** NULL only on a decline -- see ChainEventCardDecline. */
+  subnet_count: number | null;
+  /** NULL only on a decline: after a failed read nothing is known about
+   * the network block, and zeros there are the confident zero #11417 names. */
+  network: ChainPrometheusNetwork | null;
   intensity_distribution: IntensityDistribution | null;
   subnets: ChainPrometheusSubnet[];
   /** Present only on the empty answer — see the `empty` literal below. */

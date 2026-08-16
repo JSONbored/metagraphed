@@ -30,6 +30,7 @@ import {
   CHAIN_PROMETHEUS_ROLLUP,
   loadChainEventRollup,
 } from "./chain-event-rollup-cold-tier.ts";
+import { declineChainEventCard } from "./chain-event-card-decline.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
@@ -59,11 +60,16 @@ export async function loadChainPrometheusColdTier(
     windowDays: ANALYTICS_WINDOW_DAYS[label],
     query,
   });
-  if (!rollup) return null;
-  return buildChainPrometheus(rollup.rows, {
+  // A configured lakehouse that could not answer. `empty` and `miss` both keep
+  // the caller's zeros -- one is a measured quiet window, the other a
+  // deployment with no lakehouse -- and only this branch is a claim nobody
+  // measured. See ChainEventRollupOutcome.
+  if (rollup.kind === "gap") return declineChainEventCard(label);
+  if (rollup.kind !== "answer") return null;
+  return buildChainPrometheus(rollup.rollup.rows, {
     window: label,
     limit: rowLimit,
-    networkDistinct: rollup.networkDistinct,
-    subnetCount: rollup.subnetCount,
+    networkDistinct: rollup.rollup.networkDistinct,
+    subnetCount: rollup.rollup.subnetCount,
   });
 }

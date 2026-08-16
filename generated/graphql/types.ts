@@ -1491,11 +1491,10 @@ export type ChainPrometheus = {
   degraded?: Maybe<DegradedInfo>;
   /** Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
   intensity_distribution?: Maybe<IntensityDistribution>;
-  /** Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts. */
-  network: ChainPrometheusNetwork;
+  network?: Maybe<ChainPrometheusNetwork>;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
-  subnet_count: Scalars['Int']['output'];
+  subnet_count?: Maybe<Scalars['Int']['output']>;
   subnets: Array<ChainPrometheusSubnet>;
   window?: Maybe<Scalars['String']['output']>;
 };
@@ -1567,13 +1566,13 @@ export type ChainRevenueCoverage = {
 /** Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope. */
 export type ChainServing = {
   __typename?: 'ChainServing';
+  degraded?: Maybe<DegradedInfo>;
   /** Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
   intensity_distribution?: Maybe<IntensityDistribution>;
-  /** Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined. */
-  network: ChainServingNetwork;
+  network?: Maybe<ChainServingNetwork>;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
-  subnet_count: Scalars['Int']['output'];
+  subnet_count?: Maybe<Scalars['Int']['output']>;
   subnets: Array<ChainServingSubnet>;
   window?: Maybe<Scalars['String']['output']>;
 };
@@ -1889,25 +1888,26 @@ export type ChainWeightSetter = {
 
 export type ChainWeightSetters = {
   __typename?: 'ChainWeightSetters';
-  distinct_setters: Scalars['Int']['output'];
+  degraded?: Maybe<DegradedInfo>;
+  distinct_setters?: Maybe<Scalars['Int']['output']>;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
-  setter_count: Scalars['Int']['output'];
+  setter_count?: Maybe<Scalars['Int']['output']>;
   setters: Array<ChainWeightSetter>;
-  weight_sets: Scalars['Int']['output'];
+  weight_sets?: Maybe<Scalars['Int']['output']>;
   window?: Maybe<Scalars['String']['output']>;
 };
 
 /** Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights. */
 export type ChainWeights = {
   __typename?: 'ChainWeights';
+  degraded?: Maybe<DegradedInfo>;
   /** Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window. */
   intensity_distribution?: Maybe<IntensityDistribution>;
-  /** Network-wide weight-setting rollup: every subnet that set weights in the window, combined. */
-  network: ChainWeightsNetwork;
+  network?: Maybe<ChainWeightsNetwork>;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
-  subnet_count: Scalars['Int']['output'];
+  subnet_count?: Maybe<Scalars['Int']['output']>;
   subnets: Array<ChainWeightsSubnet>;
   window?: Maybe<Scalars['String']['output']>;
 };
@@ -7467,6 +7467,7 @@ export type SubnetRecycled = {
 
 export type SubnetRegistrations = {
   __typename?: 'SubnetRegistrations';
+  degraded?: Maybe<DegradedInfo>;
   distinct_registrants: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -7511,6 +7512,7 @@ export type SubnetServing = {
   __typename?: 'SubnetServing';
   announcements: Scalars['Int']['output'];
   announcements_per_server?: Maybe<Scalars['Float']['output']>;
+  degraded?: Maybe<DegradedInfo>;
   distinct_servers: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -7533,6 +7535,7 @@ export type SubnetStakeFlow = {
 
 export type SubnetStakeMoves = {
   __typename?: 'SubnetStakeMoves';
+  degraded?: Maybe<DegradedInfo>;
   distinct_movers: Scalars['Int']['output'];
   movements: Scalars['Int']['output'];
   movements_per_mover?: Maybe<Scalars['Float']['output']>;
@@ -7564,6 +7567,7 @@ export type SubnetStakeQuote = {
 /** Per-subnet stake-transfer activity (#5717) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers. */
 export type SubnetStakeTransfers = {
   __typename?: 'SubnetStakeTransfers';
+  degraded?: Maybe<DegradedInfo>;
   distinct_senders: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -7848,6 +7852,7 @@ export type SubnetWeightSetter = {
 /** Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters. */
 export type SubnetWeightSetters = {
   __typename?: 'SubnetWeightSetters';
+  degraded?: Maybe<DegradedInfo>;
   distinct_setters: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -7863,6 +7868,7 @@ export type SubnetWeightSetters = {
 
 export type SubnetWeights = {
   __typename?: 'SubnetWeights';
+  degraded?: Maybe<DegradedInfo>;
   distinct_setters: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -10538,10 +10544,10 @@ export type ChainPerformanceResolvers<ContextType = GqlContext, ParentType exten
 export type ChainPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainPrometheus'] = ResolversParentTypes['ChainPrometheus']> = ResolversObject<{
   degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
-  network?: Resolver<ResolversTypes['ChainPrometheusNetwork'], ParentType, ContextType>;
+  network?: Resolver<Maybe<ResolversTypes['ChainPrometheusNetwork']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainPrometheusSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
@@ -10594,11 +10600,12 @@ export type ChainRevenueCoverageResolvers<ContextType = GqlContext, ParentType e
 }>;
 
 export type ChainServingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainServing'] = ResolversParentTypes['ChainServing']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
-  network?: Resolver<ResolversTypes['ChainServingNetwork'], ParentType, ContextType>;
+  network?: Resolver<Maybe<ResolversTypes['ChainServingNetwork']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainServingSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
@@ -10836,21 +10843,23 @@ export type ChainWeightSetterResolvers<ContextType = GqlContext, ParentType exte
 }>;
 
 export type ChainWeightSettersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainWeightSetters'] = ResolversParentTypes['ChainWeightSetters']> = ResolversObject<{
-  distinct_setters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  distinct_setters?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  setter_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  setter_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   setters?: Resolver<Array<ResolversTypes['ChainWeightSetter']>, ParentType, ContextType>;
-  weight_sets?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  weight_sets?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type ChainWeightsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainWeights'] = ResolversParentTypes['ChainWeights']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
-  network?: Resolver<ResolversTypes['ChainWeightsNetwork'], ParentType, ContextType>;
+  network?: Resolver<Maybe<ResolversTypes['ChainWeightsNetwork']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainWeightsSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
@@ -13949,6 +13958,7 @@ export type SubnetRecycledResolvers<ContextType = GqlContext, ParentType extends
 }>;
 
 export type SubnetRegistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetRegistrations'] = ResolversParentTypes['SubnetRegistrations']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_registrants?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -13984,6 +13994,7 @@ export type SubnetRevenueCardResolvers<ContextType = GqlContext, ParentType exte
 export type SubnetServingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetServing'] = ResolversParentTypes['SubnetServing']> = ResolversObject<{
   announcements?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   announcements_per_server?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_servers?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -14003,6 +14014,7 @@ export type SubnetStakeFlowResolvers<ContextType = GqlContext, ParentType extend
 }>;
 
 export type SubnetStakeMovesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetStakeMoves'] = ResolversParentTypes['SubnetStakeMoves']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_movers?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   movements?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   movements_per_mover?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -14028,6 +14040,7 @@ export type SubnetStakeQuoteResolvers<ContextType = GqlContext, ParentType exten
 }>;
 
 export type SubnetStakeTransfersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetStakeTransfers'] = ResolversParentTypes['SubnetStakeTransfers']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_senders?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -14238,6 +14251,7 @@ export type SubnetWeightSetterResolvers<ContextType = GqlContext, ParentType ext
 }>;
 
 export type SubnetWeightSettersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetWeightSetters'] = ResolversParentTypes['SubnetWeightSetters']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_setters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -14252,6 +14266,7 @@ export type SubnetWeightSettersResolvers<ContextType = GqlContext, ParentType ex
 }>;
 
 export type SubnetWeightsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetWeights'] = ResolversParentTypes['SubnetWeights']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_setters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;

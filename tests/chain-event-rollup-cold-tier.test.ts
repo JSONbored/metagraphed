@@ -28,6 +28,23 @@ import {
   safeColumnAlias,
   safeEventKind,
 } from "../src/chain-event-rollup-cold-tier.ts";
+import type { ChainEventRollupOutcome } from "../src/chain-event-rollup-cold-tier.ts";
+
+/**
+ * The rollup of a successful read.
+ *
+ * A narrowing helper rather than a cast: `kind` is what separates an answer
+ * from a decline since #11417, so a test reaching straight for `.rows` would be
+ * asserting against a shape the reader never promised.
+ */
+function answered<T>(outcome: ChainEventRollupOutcome<T>): T {
+  // `assert.fail` returns `never`, so this NARROWS the union -- no cast, and a
+  // decline fails the test loudly rather than reading through as undefined.
+  if (outcome.kind !== "answer") {
+    assert.fail(`expected an answer, got ${outcome.kind}`);
+  }
+  return outcome.rollup;
+}
 
 const NOW = 1_785_000_000_000;
 
@@ -76,6 +93,15 @@ function fakeEngine(
   };
 }
 
+/**
+ * A deployment WITH a lakehouse.
+ *
+ * Load-bearing since #11417: `gap` and `miss` are told apart by whether one is
+ * configured, so a suite running against an empty env would drive every decline
+ * down the `miss` branch and never exercise the one that marks a payload.
+ */
+const CONFIGURED = { R2_SQL_TOKEN: "cfut_test" };
+
 const load = (
   overrides: Parameters<typeof fakeEngine>[0] = {},
   options: Record<string, unknown> = {},
@@ -83,7 +109,7 @@ const load = (
   const engine = fakeEngine(overrides);
   return {
     engine,
-    result: loadChainEventRollup({} as never, CHAIN_SERVING_ROLLUP, {
+    result: loadChainEventRollup(CONFIGURED as never, CHAIN_SERVING_ROLLUP, {
       windowDays: 7,
       now: NOW,
       query: engine.query,
@@ -154,7 +180,7 @@ describe("the event kind that reaches SQL", () => {
       },
       { windowDays: 7, now: NOW, query: engine.query } as never,
     );
-    assert.equal(result, null);
+    assert.deepEqual(result, { kind: "miss" });
     assert.deepEqual(engine.seen, [], "an unknown column must not reach SQL");
   });
 
@@ -167,7 +193,7 @@ describe("the event kind that reaches SQL", () => {
       { ...CHAIN_SERVING_ROLLUP, countField: "announcements, (SELECT 1)" },
       { windowDays: 7, now: NOW, query: engine.query } as never,
     ).then((result) => {
-      assert.equal(result, null);
+      assert.deepEqual(result, { kind: "miss" });
       assert.deepEqual(engine.seen, [], "a refused alias must not reach SQL");
     });
   });
@@ -185,25 +211,44 @@ describe("the event kind that reaches SQL", () => {
 
 describe("what the rollup refuses to publish", () => {
   test("a failed per-subnet query declines", async () => {
-    assert.equal(await load({ rows: null }).result, null);
+    assert.deepEqual(await load({ rows: null }).result, { kind: "gap" });
   });
 
   test("a failed NETWORK query declines, rather than reporting zero servers", async () => {
     // The sharp one. Per-subnet rows plus a missing network block would render
     // real activity next to "0 distinct servers" — a contradiction that reads
     // as measured, not as a failure.
-    assert.equal(await load({ network: null }).result, null);
+    assert.deepEqual(await load({ network: null }).result, { kind: "gap" });
   });
 
   test("an empty network result declines", async () => {
-    assert.equal(await load({ network: [] }).result, null);
+    assert.deepEqual(await load({ network: [] }).result, { kind: "gap" });
   });
 
-  test("a window the frozen table no longer reaches declines", async () => {
-    // These events stopped when the box did. Once the window passes them,
-    // publishing zeros would read as "no subnet served anything" rather than
-    // "we have no data for this range".
-    assert.equal(await load({ rows: [] }).result, null);
+  test("a window with no rows is EMPTY, which is a measurement and not a gap", async () => {
+    // #11417. This used to return the same bare `null` as a failed query,
+    // expressly so zeros would not be "published as measured silence" -- and the
+    // caller published them anyway, because `null` could not say which kind of
+    // nothing it was. `empty` is a successful read of a quiet window, so the
+    // caller's zeros are CORRECT here and must carry no marker; calling it a
+    // gap would be the same category error pointing the other way.
+    assert.deepEqual(await load({ rows: [] }).result, { kind: "empty" });
+  });
+
+  test("the SAME failure with no lakehouse configured is a miss, not a gap", async () => {
+    // The other half of the split, and why `gap` cannot simply be the default:
+    // a self-hoster or a CI run has no rows to be wrong about, so its empty
+    // payload is correct and marking it would report a fault that does not
+    // exist in that deployment.
+    const engine = fakeEngine({ rows: null });
+    assert.deepEqual(
+      await loadChainEventRollup({} as never, CHAIN_SERVING_ROLLUP, {
+        windowDays: 7,
+        now: NOW,
+        query: engine.query,
+      } as never),
+      { kind: "miss" },
+    );
   });
 
   test("a spec whose event kind cannot be interpolated declines without querying", async () => {
@@ -216,7 +261,7 @@ describe("what the rollup refuses to publish", () => {
       { ...CHAIN_SERVING_ROLLUP, eventKind: "Axon'; DROP--" },
       { windowDays: 7, now: NOW, query: engine.query } as never,
     );
-    assert.equal(result, null);
+    assert.deepEqual(result, { kind: "miss" });
     assert.deepEqual(engine.seen, [], "a refused kind must not reach SQL");
   });
 
@@ -248,14 +293,18 @@ describe("what the rollup refuses to publish", () => {
 
   test("a clock that cannot produce a valid cutoff declines without querying", async () => {
     const { engine, result } = load({}, { now: 0 });
-    assert.equal(await result, null);
+    assert.deepEqual(await result, { kind: "miss" });
     assert.deepEqual(engine.seen, [], "no query may run without a cutoff");
   });
 
   test("a non-positive window declines without querying", async () => {
     for (const windowDays of [0, -7, Number.NaN]) {
       const { engine, result } = load({}, { windowDays });
-      assert.equal(await result, null, `windowDays=${windowDays}`);
+      assert.deepEqual(
+        await result,
+        { kind: "miss" },
+        `windowDays=${windowDays}`,
+      );
       assert.deepEqual(engine.seen, []);
     }
   });
@@ -444,8 +493,7 @@ describe("what it hands back", () => {
       rows: [{ netuid: 7, announcements: 9, distinct_servers: 4 }],
       network: [{ distinct_servers: 4, newest_observed: NOW - 5 }],
     });
-    const rollup = await result;
-    assert.ok(rollup);
+    const rollup = answered(await result);
     assert.deepEqual(rollup.rows, [
       { netuid: 7, announcements: 9, distinct_servers: 4 },
     ]);
@@ -466,8 +514,7 @@ describe("what it hands back", () => {
       rows: [{ netuid: 7, announcements: 9, distinct_servers: 4 }],
       subnets: [{ subnet_count: 12 }],
     });
-    const rollup = await result;
-    assert.ok(rollup);
+    const rollup = answered(await result);
     assert.equal(rollup.rows.length, 1);
     assert.equal(rollup.subnetCount, 12);
   });
@@ -524,8 +571,7 @@ describe("what it hands back", () => {
     // already has an honest fallback. Blanking the card over it would trade a
     // slightly-wrong count for no card at all.
     const { result } = load({ subnets: null });
-    const rollup = await result;
-    assert.ok(rollup, "the card still answers");
+    const rollup = answered(await result);
     assert.equal(rollup.subnetCount, null);
   });
 });

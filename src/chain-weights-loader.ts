@@ -22,6 +22,7 @@ import {
   CHAIN_WEIGHTS_ROLLUP,
   loadChainEventRollup,
 } from "./chain-event-rollup-cold-tier.ts";
+import { declineChainEventCard } from "./chain-event-card-decline.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
@@ -49,14 +50,19 @@ export async function loadChainWeightsColdTier(
     windowDays: (ANALYTICS_WINDOW_DAYS as Record<string, number>)[window] ?? 7,
     query,
   });
-  if (!rollup) return null;
+  // A configured lakehouse that could not answer. `empty` and `miss` both keep
+  // the caller's zeros -- one is a measured quiet window, the other a
+  // deployment with no lakehouse -- and only this branch is a claim nobody
+  // measured. See ChainEventRollupOutcome.
+  if (rollup.kind === "gap") return declineChainEventCard(window);
+  if (rollup.kind !== "answer") return null;
   // No cast. The sibling serving loader records why: `as unknown as
   // Parameters<...>` is what let a window/limit mismatch typecheck there, and
   // it would have hidden a mistyped `subnetCount` here just as well.
-  return buildChainWeights(rollup.rows, {
+  return buildChainWeights(rollup.rollup.rows, {
     window,
     limit,
-    networkDistinct: rollup.networkDistinct,
-    subnetCount: rollup.subnetCount,
+    networkDistinct: rollup.rollup.networkDistinct,
+    subnetCount: rollup.rollup.subnetCount,
   });
 }

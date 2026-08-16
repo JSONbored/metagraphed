@@ -1,3 +1,7 @@
+import {
+  DEGRADED_UNAVAILABLE,
+  type EventStreamDegraded,
+} from "./uncurated-event-streams.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import { roundBelowOne } from "./lib/stats.ts";
 // Network-wide weight-setter leaderboard: across EVERY subnet over a 7d/30d window, the
@@ -85,10 +89,15 @@ export interface ChainWeightSettersResult {
   schema_version: 1;
   window: string | null;
   observed_at: string | null;
-  distinct_setters: number;
-  weight_sets: number;
-  setter_count: number;
+  /** NULL only on a decline -- nothing was read, so nothing is known. */
+  distinct_setters: number | null;
+  /** NULL only on a decline -- nothing was read, so nothing is known. */
+  weight_sets: number | null;
+  /** NULL only on a decline -- nothing was read, so nothing is known. */
+  setter_count: number | null;
   setters: ChainWeightSetter[];
+  /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape the network-wide leaderboard from the per-setter aggregate rows plus the network-wide
@@ -138,5 +147,28 @@ export function buildChainWeightSetters(
     weight_sets: totalSets,
     setter_count: setters.length,
     setters,
+  };
+}
+
+/**
+ * The decline payload: a configured lakehouse that could not answer (#11417).
+ *
+ * Counts are NULL rather than 0 because a failed read learns nothing about
+ * them, and `setters` stays an empty array so a consumer mapping it does not
+ * have to branch -- `degraded` is what says the array is not a measurement.
+ */
+export function declineChainWeightSetters(
+  /** REQUIRED and nullable -- see declineChainEventCard for why. */
+  window: string | null,
+): ChainWeightSettersResult {
+  return {
+    schema_version: 1,
+    window,
+    observed_at: null,
+    distinct_setters: null,
+    weight_sets: null,
+    setter_count: null,
+    setters: [],
+    degraded: { reason: DEGRADED_UNAVAILABLE },
   };
 }

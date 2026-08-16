@@ -38,6 +38,7 @@
 // which had explicitly excluded OHLC candlesticks) to cover this feature.
 
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./alpha-volume.ts";
+import { DEGRADED_UNAVAILABLE } from "./uncurated-event-streams.ts";
 import { round9OrZero } from "./lib/rao.ts";
 
 export { STAKE_ADDED_KIND, STAKE_REMOVED_KIND };
@@ -227,13 +228,6 @@ export function buildSubnetOhlcFromBuckets(
 }
 
 /**
- * The reason a declined series carries. Same vocabulary
- * `/health/failure-reasons` already publishes for the same condition: an EMPTY
- * window is a measurement, a FAILED read is not.
- */
-export const OHLC_DEGRADED_UNAVAILABLE = "unavailable";
-
-/**
  * A decline, for a series that could not be read at all (#10312).
  *
  * WHY THIS EXISTS. The three surfaces over this route each fell back to
@@ -264,7 +258,7 @@ export function declineSubnetOhlc(
     // the key set does not change between an answer and a decline.
     window_truncated: false,
     root_excluded: false,
-    degraded: { reason: OHLC_DEGRADED_UNAVAILABLE },
+    degraded: { reason: DEGRADED_UNAVAILABLE },
   };
 }
 

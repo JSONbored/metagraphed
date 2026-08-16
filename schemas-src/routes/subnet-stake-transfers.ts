@@ -4,6 +4,7 @@
 // cross-checked against the hand-edited SubnetStakeTransfersArtifact
 // component it replaces.
 import { z } from "zod";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 export const SubnetStakeTransfersArtifactSchema = z
   .object({
@@ -14,6 +15,8 @@ export const SubnetStakeTransfersArtifactSchema = z
     distinct_senders: z.int().min(0),
     transfers: z.int().min(0),
     transfers_per_sender: z.number().min(0).nullable(),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict()
   .describe(

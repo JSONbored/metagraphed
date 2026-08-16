@@ -1282,6 +1282,15 @@ type SubnetRegistrations {
   distinct_registrants: Int!
   registrations: Int!
   registrations_per_registrant: Float
+  degraded: DegradedInfo
+}
+
+"""
+A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.
+"""
+type DegradedInfo {
+  reason: String!
+  detail: String
 }
 
 """
@@ -1434,14 +1443,6 @@ type DeregistrationDerivation {
   is_lower_bound: Boolean!
 }
 
-"""
-A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.
-"""
-type DegradedInfo {
-  reason: String!
-  detail: String
-}
-
 type SubnetServing {
   schema_version: Int!
   netuid: Int!
@@ -1450,6 +1451,7 @@ type SubnetServing {
   distinct_servers: Int!
   announcements: Int!
   announcements_per_server: Float
+  degraded: DegradedInfo
 }
 
 """
@@ -2371,6 +2373,7 @@ type SubnetWeights {
   distinct_setters: Int!
   weight_sets: Int!
   sets_per_setter: Float
+  degraded: DegradedInfo
 }
 
 type SubnetStakeMoves {
@@ -2381,6 +2384,7 @@ type SubnetStakeMoves {
   distinct_movers: Int!
   movements: Int!
   movements_per_mover: Float
+  degraded: DegradedInfo
 }
 
 """
@@ -2394,6 +2398,7 @@ type SubnetStakeTransfers {
   distinct_senders: Int!
   transfers: Int!
   transfers_per_sender: Float
+  degraded: DegradedInfo
 }
 
 """
@@ -2489,6 +2494,7 @@ type SubnetWeightSetters {
   overdue_tempo_multiple: Int!
   overdue_setter_count: Int!
   setters: [SubnetWeightSetter!]!
+  degraded: DegradedInfo
 }
 
 """
@@ -7394,18 +7400,15 @@ type ChainWeights {
   schema_version: Int!
   window: String
   observed_at: String
-  subnet_count: Int!
-
-  """
-  Network-wide weight-setting rollup: every subnet that set weights in the window, combined.
-  """
-  network: ChainWeightsNetwork!
+  subnet_count: Int
+  network: ChainWeightsNetwork
 
   """
   Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window.
   """
   intensity_distribution: IntensityDistribution
   subnets: [ChainWeightsSubnet!]!
+  degraded: DegradedInfo
 }
 
 """
@@ -7452,18 +7455,15 @@ type ChainServing {
   schema_version: Int!
   window: String
   observed_at: String
-  subnet_count: Int!
-
-  """
-  Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined.
-  """
-  network: ChainServingNetwork!
+  subnet_count: Int
+  network: ChainServingNetwork
 
   """
   Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard.
   """
   intensity_distribution: IntensityDistribution
   subnets: [ChainServingSubnet!]!
+  degraded: DegradedInfo
 }
 
 """
@@ -7516,12 +7516,8 @@ type ChainPrometheus {
   schema_version: Int!
   window: String
   observed_at: String
-  subnet_count: Int!
-
-  """
-  Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts.
-  """
-  network: ChainPrometheusNetwork!
+  subnet_count: Int
+  network: ChainPrometheusNetwork
 
   """
   Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard.
@@ -7780,10 +7776,11 @@ type ChainWeightSetters {
   schema_version: Int!
   window: String
   observed_at: String
-  distinct_setters: Int!
-  weight_sets: Int!
-  setter_count: Int!
+  distinct_setters: Int
+  weight_sets: Int
+  setter_count: Int
   setters: [ChainWeightSetter!]!
+  degraded: DegradedInfo
 }
 
 """
