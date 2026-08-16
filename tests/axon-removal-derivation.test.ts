@@ -182,6 +182,40 @@ describe("deriveAxonRemovals", () => {
     assert.equal(removals[0]!.removed_on, "2026-08-02");
   });
 
+  test("a NON-NUMERIC netuid or uid is unusable — `null` is not the test", () => {
+    // `Number(null)` is 0, which IS an integer, so a null netuid silently
+    // becomes subnet 0 rather than being refused. The rejection needs a value
+    // that does not coerce, and coverage is what showed the earlier fixture
+    // never reached this branch at all.
+    const { removals } = deriveAxonRemovals(
+      [
+        {
+          netuid: "abc",
+          uid: 1,
+          snapshot_date: "2026-08-01",
+          hotkey: "h",
+          axon: "1.1.1.1:1",
+        },
+        {
+          netuid: 25,
+          uid: "xyz",
+          snapshot_date: "2026-08-02",
+          hotkey: "h",
+          axon: null,
+        },
+        {
+          netuid: 1.5,
+          uid: 1,
+          snapshot_date: "2026-08-03",
+          hotkey: "h",
+          axon: null,
+        },
+      ],
+      opts,
+    );
+    assert.deepEqual(removals, []);
+  });
+
   test("refuses rows it cannot place, rather than inventing a slot", () => {
     const { removals } = deriveAxonRemovals(
       [
@@ -251,5 +285,56 @@ describe("deriveAxonRemovals", () => {
       assert.equal(derivation.lookback_days, 30);
       assert.equal(derivation.excluded_uid_reuse, 0);
     }
+  });
+});
+
+describe("deriveAxonRemovals — the shapes a row can arrive in", () => {
+  test("a NON-STRING hotkey is unusable, not coerced", () => {
+    // `hotkey` is the identity the UID-reuse test turns on, so coercing a
+    // number to "123" would let two different occupants compare equal.
+    const { removals } = deriveAxonRemovals(
+      [
+        {
+          netuid: 25,
+          uid: 1,
+          snapshot_date: "2026-08-01",
+          hotkey: 123,
+          axon: "1.2.3.4:1",
+        },
+        {
+          netuid: 25,
+          uid: 1,
+          snapshot_date: "2026-08-02",
+          hotkey: 123,
+          axon: null,
+        },
+        {
+          netuid: 25,
+          uid: 1,
+          snapshot_date: "2026-08-03",
+          hotkey: 123,
+          axon: null,
+        },
+      ],
+      opts,
+    );
+    assert.deepEqual(removals, []);
+  });
+
+  test("two observations of one slot on the SAME DAY do not reorder unstably", () => {
+    // A duplicate snapshot_date is not expected from `neuron_daily`, but the
+    // sort must be total anyway: an unstable comparator would make the
+    // derivation's answer depend on the pull's order, which another test
+    // asserts it does not.
+    const rows = [
+      day("2026-08-01", { axon: "1.2.3.4:8091" }),
+      day("2026-08-02", { axon: null }),
+      day("2026-08-02", { axon: null }),
+      day("2026-08-03", { axon: null }),
+    ];
+    const forward = deriveAxonRemovals(rows, opts);
+    const reversed = deriveAxonRemovals([...rows].reverse(), opts);
+    assert.deepEqual(reversed.removals, forward.removals);
+    assert.equal(forward.removals.length, 1);
   });
 });

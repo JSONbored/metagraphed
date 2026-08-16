@@ -250,3 +250,142 @@ describe("accountAxonRemovalRows", () => {
     assert.equal(accountAxonRemovalRows(null, "hkA"), null);
   });
 });
+
+describe("loadAxonRemovals — aggregation paths", () => {
+  test("TWO REMOVALS ON ONE SUBNET widen the account's first/last window", async () => {
+    // The multi-removal path: one hotkey tearing down two slots on the same
+    // subnet is one row with removals: 2, and a window spanning both. Until
+    // this test every fixture had at most one removal per (account, subnet),
+    // so the branch that merges into an existing bucket never ran.
+    const out = (await loadAxonRemovals(
+      {},
+      {
+        query: async () => [
+          ...removalSeries(7, 1, "hkA"),
+          // a later teardown by the same hotkey on the same subnet
+          day("2026-08-05", {
+            netuid: 7,
+            uid: 2,
+            hotkey: "hkA",
+            axon: "1.2.3.4:1",
+          }),
+          day("2026-08-06", { netuid: 7, uid: 2, hotkey: "hkA", axon: null }),
+          day("2026-08-07", { netuid: 7, uid: 2, hotkey: "hkA", axon: null }),
+        ],
+      },
+    ))!;
+    assert.deepEqual(accountAxonRemovalRows(out, "hkA"), [
+      {
+        netuid: 7,
+        removals: 2,
+        first_observed: "2026-08-02",
+        last_observed: "2026-08-06",
+      },
+    ]);
+  });
+
+  test("an EARLIER removal widens first_observed backwards", async () => {
+    // The other half of the window update. The previous test only ever moved
+    // `last` forward, so the `< first` comparison never ran.
+    const out = (await loadAxonRemovals(
+      {},
+      {
+        query: async () => [
+          // uid 2 removes on the 6th...
+          day("2026-08-05", {
+            netuid: 7,
+            uid: 2,
+            hotkey: "hkA",
+            axon: "1.2.3.4:1",
+          }),
+          day("2026-08-06", { netuid: 7, uid: 2, hotkey: "hkA", axon: null }),
+          day("2026-08-07", { netuid: 7, uid: 2, hotkey: "hkA", axon: null }),
+          // ...and uid 1 removed EARLIER, on the 2nd. Newest-first ordering
+          // means this arrives second.
+          ...removalSeries(7, 1, "hkA"),
+        ],
+      },
+    ))!;
+    assert.deepEqual(accountAxonRemovalRows(out, "hkA"), [
+      {
+        netuid: 7,
+        removals: 2,
+        first_observed: "2026-08-02",
+        last_observed: "2026-08-06",
+      },
+    ]);
+  });
+
+  test("subnets with EQUAL removal counts tie-break by netuid, not insertion order", async () => {
+    // Otherwise the leaderboard's order depends on which subnet the SQL
+    // happened to return first, and two identical datasets could rank
+    // differently.
+    const out = (await loadAxonRemovals(
+      {},
+      {
+        query: async () => [
+          ...removalSeries(9, 1, "hkA"),
+          ...removalSeries(3, 1, "hkB"),
+        ],
+      },
+    ))!;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [3, 9],
+    );
+  });
+});
+
+describe("accountAxonRemovalRows — order independence", () => {
+  /** A rollup built by hand, so the ordering `loadAxonRemovals` guarantees is
+   *  not the thing under test. */
+  const rollupOf = (
+    removals: Array<{
+      netuid: number;
+      uid: number;
+      hotkey: string;
+      removed_on: string;
+    }>,
+  ) => ({
+    subnets: [],
+    network: { distinct_removers: 0, newest_observed: null },
+    derivation: {
+      method: "axon-state-diff",
+      lookback_days: 30,
+      excluded_uid_reuse: 0,
+      pending_confirmation: 0,
+    },
+    removals: removals.map((r) => ({ ...r, previous_axon: "1.2.3.4:8091" })),
+  });
+
+  test("widens the window in BOTH directions, whatever order rows arrive in", () => {
+    // `loadAxonRemovals` emits newest-first, so in production the window only
+    // ever widens backwards. This function does not require that, and both
+    // comparisons are here because a caller holding a rollup from anywhere
+    // else must still get the true first and last.
+    const ascending = accountAxonRemovalRows(
+      rollupOf([
+        { netuid: 7, uid: 1, hotkey: "hkA", removed_on: "2026-08-02" },
+        { netuid: 7, uid: 2, hotkey: "hkA", removed_on: "2026-08-09" },
+      ]),
+      "hkA",
+    );
+    const descending = accountAxonRemovalRows(
+      rollupOf([
+        { netuid: 7, uid: 2, hotkey: "hkA", removed_on: "2026-08-09" },
+        { netuid: 7, uid: 1, hotkey: "hkA", removed_on: "2026-08-02" },
+      ]),
+      "hkA",
+    );
+    const expected = [
+      {
+        netuid: 7,
+        removals: 2,
+        first_observed: "2026-08-02",
+        last_observed: "2026-08-09",
+      },
+    ];
+    assert.deepEqual(ascending, expected, "ascending input");
+    assert.deepEqual(descending, expected, "descending input");
+  });
+});
