@@ -138,7 +138,61 @@ export interface ContainerLaneStatus {
     status?: string | null;
     detail?: string | null;
     phase?: string | null;
+    failures?: Record<string, unknown> | null;
   } | null;
+}
+
+/**
+ * How long a quoted producer message may be.
+ *
+ * The real one that prompted this carried a 700-character pyarrow traceback in
+ * a sibling key. A `$exception` nobody can read at a glance is a `$exception`
+ * nobody reads, and the full text is in the status object either way -- this
+ * names the fault, it does not replace the artifact.
+ */
+export const LANE_DETAIL_MAX = 200;
+
+/**
+ * The producer's own words for why a lane failed, or null when it gave none.
+ *
+ * FAILURES FIRST, and this is the whole point. On 2026-08-16 the
+ * account-summary lane published `ok: false, phase: "complete", failures: {
+ * _lane: "ArrowInvalid: Schema at index 1 was different: ..." }` and this
+ * watchdog recorded `lane failed: complete` -- it fell through `detail`
+ * (absent) to `phase`, which names the step that FINISHED rather than the
+ * reason it failed. An alarm that reports the phase of a failure says less than
+ * one that stays silent, because it reads like an answer.
+ *
+ * EVERY entry, joined, not just the first: the map is per-step, so a pass that
+ * failed three ways has three things worth knowing and picking one would be an
+ * arbitrary choice presented as a summary.
+ *
+ * NON-STRING VALUES ARE SKIPPED rather than stringified. This repo does not own
+ * the producers, and `[object Object]` in an alarm is worse than the key's
+ * absence -- it looks like a message and carries none.
+ */
+export function laneFailureDetail(body: {
+  detail?: string | null;
+  phase?: string | null;
+  status?: string | null;
+  failures?: Record<string, unknown> | null;
+}): string | null {
+  const failures = body.failures;
+  if (failures && typeof failures === "object") {
+    const said = Object.entries(failures)
+      .filter(([, value]) => typeof value === "string" && value.trim() !== "")
+      .map(([step, value]) => `${step}: ${clip(String(value))}`);
+    if (said.length > 0) return said.join("; ");
+  }
+  return body.detail ?? body.phase ?? body.status ?? null;
+}
+
+/** One producer message, on one line, bounded. */
+function clip(text: string): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length <= LANE_DETAIL_MAX
+    ? flat
+    : `${flat.slice(0, LANE_DETAIL_MAX - 1)}\u2026`;
 }
 
 /** Hours, to one decimal, for a message a human reads at 3am. */
@@ -195,7 +249,7 @@ export function evaluateContainerLanes(input: {
       body.ok === false ||
       (typeof body.status === "string" && body.status !== "ok");
     if (declaredFailure) {
-      const said = body.detail ?? body.phase ?? body.status ?? null;
+      const said = laneFailureDetail(body);
       return {
         lane,
         verdict: "stale",

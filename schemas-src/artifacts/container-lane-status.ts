@@ -50,4 +50,22 @@ export const ContainerLaneStatusSchema = z.object({
   status: z.string().nullable().optional().catch(null),
   detail: z.string().nullable().optional().catch(null),
   phase: z.string().nullable().optional().catch(null),
+  /**
+   * The producer's own per-step failures, `{ step: message }`.
+   *
+   * ADDED AFTER THE WATCHDOG'S FIRST REAL CATCH. On 2026-08-16T16:30:40Z the
+   * account-summary lane published `ok: false, phase: "complete", failures:
+   * { _lane: "ArrowInvalid: Schema at index 1 was different: ..." }` and the
+   * durable record read `lane failed: complete` -- the reader fell through
+   * `detail` (absent) to `phase`, which names the step that finished rather
+   * than the reason it failed. An alarm that reports the phase of a failure
+   * says less than one that stays silent, because it reads like an answer.
+   *
+   * `unknown` VALUES, not `z.string()`: three of the five producers write this
+   * key and this repo owns none of them, so a step that records a structured
+   * failure rather than a string must not invalidate the whole status and take
+   * the other four lanes' verdicts down with it. The reader takes what it can
+   * render and ignores the rest.
+   */
+  failures: z.record(z.string(), z.unknown()).nullable().optional().catch(null),
 });
