@@ -711,10 +711,13 @@ describe("captureTick — reading across several endpoints", () => {
     assert.equal(result.captured, 2);
   });
 
-  test("the per-block sleep is the per-host gap DIVIDED by the host count", async () => {
-    // Each host still sees `minGapMs` between its own calls; the wall gap
-    // between consecutive blocks is that over N. Getting this wrong is how a
-    // widened lane would silently exceed the limit it was measured against.
+  test("the per-block gap does NOT shrink as endpoints are added", async () => {
+    // The premise correction. Dividing the gap by the rotation width assumes a
+    // PER-HOST limit; #9378 measured this endpoint as per CLIENT -- after
+    // exhausting it on one host, a different host refused too. Under that model
+    // a divisor spends one minute's allowance in a fraction of the minute and
+    // buys a 429 partway through the tick: more hosts, same ceiling, worse
+    // pacing. The rotation is failover, not rate.
     const slept: number[] = [];
     const { store } = memoryStore();
     const { watermark } = memoryWatermark(99);
@@ -733,8 +736,8 @@ describe("captureTick — reading across several endpoints", () => {
     });
     assert.deepEqual(
       slept,
-      [300, 300],
-      "900 / 3 hosts, and never before the first",
+      [900, 900],
+      "the caller's gap, unscaled, and never before the first block",
     );
   });
 

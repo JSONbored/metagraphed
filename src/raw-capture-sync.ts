@@ -39,6 +39,8 @@ import {
   type CaptureEndpointDeps,
 } from "./raw-capture-endpoints.ts";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
+import { recordLaneVerdict } from "./lane-health.ts";
+import { laneHealthStore } from "./lane-health-store.ts";
 
 /** Kill switch, matching CHAIN_HEAD_POLL_ENABLED's convention on the head
  * poller: absent or anything but "true" means this lane does not run. */
@@ -189,19 +191,31 @@ const FLUSH_EVERY_BLOCKS = 5;
  * than with a constant nobody re-derived when a second archive endpoint was
  * curated into the registry.
  *
- * `laneCount` still DIVIDES: mainnet and testnet run concurrently, and where
- * they share a host they share its allowance. `hostCount` MULTIPLIES, for the
- * opposite reason. Both are measured at tick time now, not compiled in.
+ * `laneCount` DIVIDES: mainnet and testnet run concurrently and share one
+ * client allowance.
+ *
+ * `hostCount` DOES NOT MULTIPLY, and briefly did. Adding endpoints looks like
+ * it should buy proportional throughput, and it does not: #9378 measured this
+ * limit as PER CLIENT, not per host -- "probing test.chain.opentensor.ai
+ * straight afterwards stopped after 4 blocks, because the first probe had
+ * already spent the budget." Reading more hosts spends ONE allowance faster,
+ * so a multiplier here does not raise the ceiling, it front-loads the minute
+ * and buys a 429 partway through the tick.
+ *
+ * There is deliberately NO host parameter, and a test pins the budget against
+ * the endpoint count so one cannot be reintroduced silently. The rotation is
+ * still worth having -- it is FAILOVER (a height one host cannot serve is
+ * retried on the others) and archive-depth coverage -- but those are
+ * reliability properties, not rate. Keeping the two apart in the type is what
+ * stops the next reader re-deriving the same wrong conclusion from the same
+ * reasonable intuition.
  */
 export function pacedLaneBudget(
   laneCount: number,
   cronMinutes: number,
   limitPerMinute: number = RPC_REQUESTS_PER_MINUTE_LIMIT,
-  hostCount = 1,
 ): { maxBlocks: number; minGapMs: number } {
-  const hosts = Math.max(1, Math.trunc(hostCount));
-  const callsPerMinute =
-    (limitPerMinute * RPC_BUDGET_UTILISATION * hosts) / laneCount;
+  const callsPerMinute = (limitPerMinute * RPC_BUDGET_UTILISATION) / laneCount;
   const blocksPerMinute = callsPerMinute / RPC_CALLS_PER_BLOCK;
   return {
     // Lanes run CONCURRENTLY, so each gets the whole spendable interval rather
@@ -539,11 +553,14 @@ async function runLane(
     // The per-host limit is what was measured, so the budget scales with the
     // hosts this tick actually has -- derived here rather than compiled in,
     // because the pool's membership changes without a deploy.
+    // NOT widened by `rpcUrls.length`. See pacedLaneBudget: the measured limit
+    // is per CLIENT, so more hosts spend one allowance faster rather than
+    // buying more of it. The rotation is failover and archive coverage; the
+    // rate is what it always was.
     const budget = pacedLaneBudget(
       RAW_CAPTURE_LANES.length,
       cronStepMinutes(RAW_CAPTURE_CRON),
       RPC_REQUESTS_PER_MINUTE_LIMIT,
-      rpcUrls.length,
     );
     const result = await captureTick({
       rpcUrls,
@@ -571,6 +588,37 @@ async function runLane(
         `[raw-capture-sync] ${lane.network} stopped at ${result.stoppedAt}: ${result.reason} (watermark ${result.watermark}, behind ${result.behind})`,
       );
     }
+    // THE TICK'S OWN THROUGHPUT, DURABLY.
+    //
+    // Everything above was a `console.warn`, which is why "is this lane gaining
+    // or losing?" could only be answered by polling `raw_capture_state` by hand
+    // across an hour and differencing it. The lane already KNOWS: `captured` is
+    // what this tick landed and `behind` is what remains. Throwing both away
+    // each tick is what let it lose ~3.8 blocks/min for 28 hours while every
+    // watchdog read a watermark that was, technically, advancing.
+    //
+    // `age_ms` is deliberately null: this is not a staleness verdict (the seam
+    // watchdog's rule 6 owns that question against the chain head). This is the
+    // RATE, so a reader can tell a lane that is behind-and-closing from one
+    // that is behind-and-widening -- two states an absolute lag cannot separate,
+    // and the difference between "wait" and "page someone".
+    //
+    // Never throws; recordLaneVerdict swallows its own failures.
+    await recordLaneVerdict(laneHealthStore(env), {
+      lane: `raw-capture:${lane.network}`,
+      // `ok` means the tick RAN and landed what it could. A short tick is not a
+      // fault -- the next one resumes at the same height -- so the verdict
+      // tracks whether the lane is keeping pace, not whether it stopped early.
+      verdict: result.captured > 0 ? "ok" : "stale",
+      age_ms: null,
+      detail:
+        `${result.captured} captured, ${result.behind} behind, ` +
+        `${rpcUrls.length} endpoint(s)` +
+        (result.stoppedAt === undefined
+          ? ""
+          : `, stopped at ${result.stoppedAt}: ${result.reason}`),
+      checked_at: now(),
+    });
     return { network: lane.network, ok: true, ...result, result };
   } catch (error) {
     const message = String((error as Error)?.message ?? error);
