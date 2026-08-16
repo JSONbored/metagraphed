@@ -61,6 +61,7 @@
 // lanes' names on one fault and send whoever reads it to the wrong producer.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { laneVerdictDetail } from "./lane-verdict-detail.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -344,7 +345,11 @@ export async function runHotkeyAlphaStalenessWatchdog(
       lane: "hotkey-alpha-staleness",
       verdict: verdict.stale ? "stale" : "ok",
       age_ms: verdict.age_ms,
-      detail: verdict.reason ?? null,
+      detail: laneVerdictDetail(verdict.reason, {
+        covered: verdict.covered_rows,
+        total: verdict.total_rows,
+        floor: verdict.coverage_floor_rows,
+      }),
       checked_at: now(),
     });
     // `ok` describes whether the TICK ran, not whether the lane is fresh.

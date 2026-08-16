@@ -44,6 +44,7 @@
 // ~5.4M store rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { laneVerdictDetail } from "./lane-verdict-detail.ts";
 import { passWindowMs } from "./producer-cadence.ts";
 import { countOrZero, numberOrNull, readStore } from "./read-store.ts";
 import type { ValidatorNominatorCounts } from "../generated/db/types.ts";
@@ -367,7 +368,11 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
       lane: "validator-nominator-counts-staleness",
       verdict: verdict.stale ? "stale" : "ok",
       age_ms: verdict.age_ms,
-      detail: verdict.reason ?? null,
+      detail: laneVerdictDetail(verdict.reason, {
+        covered: verdict.covered_rows,
+        total: verdict.total_rows,
+        floor: verdict.coverage_floor_rows,
+      }),
       checked_at: now(),
     });
     // `ok` describes whether the TICK ran, not whether the lane is fresh.
