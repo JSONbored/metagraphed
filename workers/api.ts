@@ -292,6 +292,11 @@ import {
   resolveGlobalIncidentsForFeed,
   withEdgeCache,
 } from "./request-handlers/analytics.ts";
+import {
+  ACCOUNT_EDGE_CACHE_LABEL,
+  accountCacheStamp,
+  accountEdgeCacheEligible,
+} from "./account-edge-cache.ts";
 import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
 import {
   handleSubnetMetagraph,
@@ -6052,9 +6057,61 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
  */
 export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
   const before = degradedSnapshot();
-  const response = await dispatchRequest(request, env, ctx);
+  const response = await dispatchCached(request, env, ctx);
   labelDegradedResponse(response, before);
   return response;
+}
+
+/**
+ * `dispatchRequest`, with the account family behind the edge cache (#11017's
+ * own docstring names the gap: "lakehouse-backed and billed per byte scanned,
+ * no edge cache").
+ *
+ * HERE, for the reason the two gates above it are here. The rate limiter and
+ * the degraded label both sit at this dispatch point rather than at ~40 call
+ * sites, and a cache placed per-handler is the version of this that the 42nd
+ * handler forgets -- `request-handlers/entities.ts` has 41 cold-tier call sites
+ * and reaches `withEdgeCache` from none of them.
+ *
+ * INSIDE the cache, not outside it. The limiter runs within `dispatchRequest`,
+ * so a cache HIT skips it -- deliberately. The limiter exists to bound
+ * lakehouse bytes, and a hit reads none; the enumeration traffic it was written
+ * for walks distinct addresses, which miss by construction and still meet it.
+ *
+ * The stamp is the decode watermark rather than the health cron's `last_run_at`
+ * that every analytics route uses, which is what `withEdgeCache`'s
+ * `resolveCacheStamp` hook was declared for -- until now no call site passed
+ * one. These routes read the lakehouse, which changes when decode publishes and
+ * at no other time, so the health cron's clock would be a stamp for a different
+ * producer entirely: it would evict answers that had not changed and, worse,
+ * hold answers across a decode publish that had.
+ */
+async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
+  const url = new URL(request.url);
+  // The RESOLVED path, so `/api/v1/accounts/…` and `/finney/api/v1/accounts/…`
+  // reach one entry instead of computing the same body under two keys.
+  const { network, url: resolved } = resolveNetworkPrefix(url);
+  const eligible = accountEdgeCacheEligible({
+    method: request.method,
+    isDefaultNetwork: network.isDefault,
+    addressShaped: ACCOUNT_SS58_SEGMENT_PATH_PATTERN.test(resolved.pathname),
+    storeBacked: isMainnetOnlyApiPath(resolved.pathname),
+    search: resolved.searchParams,
+  });
+  if (!eligible) return dispatchRequest(request, env, ctx);
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    ACCOUNT_EDGE_CACHE_LABEL,
+    // Takes the argument on purpose: `withEdgeCache` only folds HEAD into the
+    // GET key when the builder accepts the normalized request, and a builder
+    // closing over the original HEAD would seed the GET entry with an empty
+    // body for every later caller.
+    (cacheRequest) => dispatchRequest(cacheRequest, env, ctx),
+    `${resolved.pathname}${resolved.search}`,
+    accountCacheStamp,
+  );
 }
 
 async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
