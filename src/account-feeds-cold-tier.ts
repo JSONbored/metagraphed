@@ -111,6 +111,7 @@ import {
   accountHistoryFloorMs,
   loadAccountSummaryProjection,
 } from "./account-summary-projection.ts";
+import { loadAccountEventsAboveFloorHotTier } from "./chain-detail-hot-tier.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import { offsetBeyondEmulationCap } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
@@ -1158,9 +1159,24 @@ async function headProbe(
     floorMs: number;
     limit: number;
     published: readonly Record<string, unknown>[];
+    /** The account, for the hot store's own indexed predicate. */
+    ss58: string;
   },
 ): Promise<Record<string, unknown>[] | null> {
-  const { query, where, floorMs, limit, published } = options;
+  const { query, where, floorMs, limit, published, ss58 } = options;
+  // NEON FIRST, when it provably covers this floor. Measured on the card
+  // 2026-08-16 via `Server-Timing`: the two post-fold R2 SQL probes were
+  // 3,210ms of a 3,695ms request -- 87% -- against 143ms for two Neon queries
+  // over the same window. They were not badly bounded; they asked the wrong
+  // store. See `loadAccountEventsAboveFloorHotTier` for the overlap argument.
+  const hot = await loadAccountEventsAboveFloorHotTier(
+    env,
+    ss58,
+    floorMs,
+    limit,
+  );
+  if (hot !== null) return mergeNewestEvents(published, hot, limit);
+
   const head = await query(
     env,
     `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} ` +
@@ -1192,6 +1208,47 @@ async function headProbe(
  * guessing one would either double-count or leave a hole; serving the groups
  * alone is what this did before and is at worst stale, never wrong-by-overlap.
  */
+/**
+ * Rows to (kind, netuid) groups, in the shape the SQL aggregate returns.
+ *
+ * The column names are the SQL's own aliases -- `kind`, `count`, `fb`, `lb`,
+ * `fo`, `lo` -- because the caller concatenates these onto the projection's
+ * published groups and `foldSummaryGroups` reads them by those names. Two
+ * producers of one shape is exactly where a rename goes wrong, so this mirrors
+ * the SELECT list above it rather than inventing a parallel vocabulary.
+ */
+function foldRowsToGroups(
+  rows: readonly Record<string, unknown>[],
+): Record<string, unknown>[] {
+  const groups = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const kind = row.event_kind;
+    const netuid = row.netuid ?? null;
+    const key = `${String(kind)}\u0000${String(netuid)}`;
+    const block = Number(row.block_number ?? 0);
+    const observed = Number(row.observed_at ?? 0);
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        kind,
+        netuid,
+        count: 1,
+        fb: block,
+        lb: block,
+        fo: observed,
+        lo: observed,
+      });
+      continue;
+    }
+    existing.count = Number(existing.count) + 1;
+    existing.fb = Math.min(Number(existing.fb), block);
+    existing.lb = Math.max(Number(existing.lb), block);
+    existing.fo = Math.min(Number(existing.fo), observed);
+    existing.lo = Math.max(Number(existing.lo), observed);
+  }
+  return [...groups.values()];
+}
+
 async function postFoldGroups(
   env: R2SqlEnv | null | undefined,
   options: {
@@ -1199,10 +1256,39 @@ async function postFoldGroups(
     scan: (bound: string) => string;
     published: Record<string, unknown>[];
     span: { foldFloorMs: number } | null;
+    /** The account, for the hot store's own indexed predicate. */
+    ss58: string;
   },
 ): Promise<Record<string, unknown>[] | null> {
-  const { query, scan, published, span } = options;
+  const { query, scan, published, span, ss58 } = options;
   if (span === null) return published;
+
+  // NEON FIRST, folded here. This aggregate reads the SAME post-fold window the
+  // head probe does, so when the hot store provably covers it the groups can be
+  // built from rows it already holds -- and `Server-Timing` on the live card
+  // (2026-08-16) put these two R2 SQL probes at 3,210ms of a 3,695ms request,
+  // ~1.6s each, against 143ms for two Neon queries over the same window.
+  //
+  // GROUPED IN JS, not in SQL, and that is not a shortcut: the aggregate is
+  // count/min/max per (kind, netuid) over at most `ACCOUNT_EVENT_SUMMARY_SCAN_CAP`
+  // rows of ONE account's recent activity. Postgres would do it faster in
+  // absolute terms and the round trip dwarfs either.
+  //
+  // A FULL PAGE MEANS THE CAP WAS REACHED, which is exactly the case the SQL
+  // version signals with `scan_capped` -- and a windowed subtotal presented as a
+  // lifetime aggregate is the self-contradicting card this whole function
+  // exists to fix. So a hot read that fills its limit falls through to the SQL
+  // path rather than publishing a total it cannot vouch for.
+  const hot = await loadAccountEventsAboveFloorHotTier(
+    env,
+    ss58,
+    span.foldFloorMs,
+    ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+  );
+  if (hot !== null && hot.length < ACCOUNT_EVENT_SUMMARY_SCAN_CAP) {
+    return [...published, ...foldRowsToGroups(hot)];
+  }
+
   const bound = ` AND observed_at >= ${Math.trunc(span.foldFloorMs)}`;
   const above = await query(
     env,
@@ -1394,6 +1480,7 @@ export async function loadAccountSummaryColdTier(
             scan,
             published: found.groups,
             span: found.span,
+            ss58,
           })
         : windowedFloorRead<Record<string, unknown>[]>(env, {
             query,
@@ -1444,6 +1531,7 @@ export async function loadAccountSummaryColdTier(
           floorMs: absentFloor,
           limit,
           published: [],
+          ss58,
         })
       : found?.recent
         ? headProbe(env, {
@@ -1452,6 +1540,7 @@ export async function loadAccountSummaryColdTier(
             floorMs: found.recent.floorMs,
             limit,
             published: found.recent.rows,
+            ss58,
           })
         : found?.span
           ? spanProbe(env, {

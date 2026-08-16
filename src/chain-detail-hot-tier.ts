@@ -236,6 +236,59 @@ export async function accountEventsHotFloorMs(
  * Returns null when the store is unbound or the query fails, never a partial
  * page: the caller falls through to the lakehouse, which is slower and whole.
  */
+/**
+ * This account's events at or above `floorMs`, from the hot store -- or null
+ * when the store cannot prove it covers that floor.
+ *
+ * THE PRIMITIVE EVERY POST-FOLD PROBE WANTS, extracted rather than repeated.
+ * `/events` had this logic inline; the summary card, the transfer feed and the
+ * counterparty scan all ask the same question of the same window, and three
+ * copies of an overlap check is three chances for one of them to be subtly
+ * wrong about the direction of a comparison.
+ *
+ * ## Why this is worth the extraction, measured
+ *
+ * `Server-Timing` on the account card, 2026-08-16, after the projection and the
+ * hot tier were already in place:
+ *
+ *   r2;dur=87;desc="2 calls"      the projection: pointer + shard
+ *   neon;dur=143;desc="2 calls"   the hot tier
+ *   r2sql;dur=3210;desc="2 calls" the post-fold probes
+ *
+ * R2 SQL is ~1.6s PER QUERY and 87% of that request, almost regardless of what
+ * it scans -- and both of those queries ask only "what happened after the fold
+ * edge", which is the window this store holds. Nothing bounded them better;
+ * they simply asked the wrong store.
+ *
+ * ## The overlap, checked and never assumed
+ *
+ * The caller's `floorMs` is where the projection stops. This store starts at
+ * its own `MIN(observed_at)`, which the chain-detail lane's prune moves. They
+ * cover all of time together ONLY while the store's floor sits at or below the
+ * caller's -- measured that day at 22:27Z against a fold edge of 00:00Z, about
+ * ninety minutes of overlap. A page built across a gap is silently missing
+ * every event in it, so anything short of a proven overlap returns null and the
+ * caller keeps the R2 SQL probe it had.
+ *
+ * BOTH READS AT ONCE: neither the floor nor the page depends on the other's
+ * result, and issuing a page read that gets discarded when the check fails
+ * costs one indexed query (0.091 ms measured) against halving the wall clock of
+ * the path that succeeds.
+ */
+export async function loadAccountEventsAboveFloorHotTier(
+  env: unknown,
+  ss58: string,
+  floorMs: number,
+  limit: number,
+): Promise<Row[] | null> {
+  const [hotFloorMs, rows] = await Promise.all([
+    accountEventsHotFloorMs(env),
+    loadAccountEventsHotTier(env, ss58, limit),
+  ]);
+  if (hotFloorMs === null || hotFloorMs > floorMs) return null;
+  return rows;
+}
+
 export async function loadAccountEventsHotTier(
   env: unknown,
   ss58: string,

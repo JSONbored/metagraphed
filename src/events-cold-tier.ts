@@ -35,8 +35,7 @@ import {
   buildSubnetEvents,
 } from "./account-events.ts";
 import {
-  accountEventsHotFloorMs,
-  loadAccountEventsHotTier,
+  loadAccountEventsAboveFloorHotTier,
   CHAIN_EVENT_COLUMNS,
   formatChainEvent,
   type ChainEventApi,
@@ -195,49 +194,19 @@ async function recentEventsLeg(
   // the hot tier is cheapest for, which is most of them.
   if (recent === null) return null;
 
-  // THE HEAD, FROM NEON WHEN THE TWO TIERS PROVABLY MEET.
-  //
-  // `chain_detail_account_events` holds the head of the chain in Neon and is
-  // indexed by account since migration 0032: measured 0.091 ms against 748 ms
-  // before it, and against seconds for the same question in R2 SQL. The
-  // projection covers everything at or before its fold edge; this store covers
-  // everything from its own floor upward. When that floor sits at or below the
-  // fold edge the two OVERLAP and together span all of time -- so the whole
-  // page is served with NO lakehouse query at all.
-  //
-  // Measured 2026-08-16: hot floor 22:27Z against a fold edge of 00:00Z, an
-  // overlap of about ninety minutes.
-  //
-  // CHECKED, NEVER ASSUMED. Both edges move on their own schedules -- the
-  // chain-detail lane prunes to a rolling window, the producer folds on its own
-  // cadence -- so a gap is possible and a page built across one would be
-  // silently missing every event in it. `accountEventsHotFloorMs` derives the
-  // floor from the store rather than pinning it, and anything but a proven
-  // overlap falls through to the bounded R2 SQL probe below, which is slower
-  // and correct.
-  // BOTH NEON READS AT ONCE. The floor probe answers "does this store reach
-  // below the fold edge" and the page read answers "what does it hold for this
-  // account" -- neither input depends on the other's result, so issuing them in
-  // sequence spent two round trips where one wall-clock wait would do. The
-  // overlap is still CHECKED before the rows are used; running the read early
-  // costs one query that gets discarded when the check fails, against halving
-  // the latency of the path that succeeds.
-  //
-  // Not memoized, deliberately. A cached floor is only wrong when the prune has
-  // moved above the fold edge inside the TTL -- rare, small, and silent, which
-  // is the combination that makes a bug survive. Parallelism buys the same
-  // latency with none of that.
-  const [hotFloorMs, hot] = await Promise.all([
-    accountEventsHotFloorMs(env),
-    loadAccountEventsHotTier(env, ss58, limit),
-  ]);
-  if (hotFloorMs !== null && hotFloorMs <= recent.floorMs) {
-    // A hot-tier failure is not a decline: it means this leg could not be
-    // served from Neon, and the R2 SQL probe below answers the same question.
-    if (hot !== null) {
-      return mergeNewestEvents<AccountFeedRow>(recent.rows, hot, limit);
-    }
-  }
+  // THE HEAD, FROM NEON WHEN THE TWO TIERS PROVABLY MEET -- see
+  // `loadAccountEventsAboveFloorHotTier` for the overlap argument and the
+  // measurement that motivates it. A null answer means the store could not
+  // prove it covers the projection's floor, or could not be read; either way
+  // the bounded R2 SQL probe below answers the same question, slower.
+  const hot = await loadAccountEventsAboveFloorHotTier(
+    env,
+    ss58,
+    recent.floorMs,
+    limit,
+  );
+  if (hot !== null)
+    return mergeNewestEvents<AccountFeedRow>(recent.rows, hot, limit);
 
   const head = await query<AccountEventsRow>(
     env,
