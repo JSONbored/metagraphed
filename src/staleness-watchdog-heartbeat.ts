@@ -119,8 +119,10 @@ export async function runDueStalenessWatchdogs<E>(
   deps: StalenessWatchdogTickDeps = {},
 ): Promise<StalenessWatchdogTick> {
   const now = deps.now ?? Date.now;
-  const registered = Array.isArray(lanes) ? lanes : [];
-  const due = lanesDue(registered, deps.lastRunMs ?? {}, now());
+  // No Array.isArray guard: `lanes` is a typed module constant, not a store
+  // read, so the non-array case is one the type system already rules out. A
+  // guard for it would be an unreachable branch dressed as safety.
+  const due = lanesDue(lanes, deps.lastRunMs ?? {}, now());
 
   const ran: StalenessWatchdogOutcome[] = [];
   for (const lane of due) {
@@ -144,6 +146,6 @@ export async function runDueStalenessWatchdogs<E>(
     // slowest lane wants.
     ok: ran.every((outcome) => outcome.ok),
     ran,
-    skipped: registered.length - ran.length,
+    skipped: lanes.length - ran.length,
   };
 }
