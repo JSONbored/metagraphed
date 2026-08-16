@@ -16,6 +16,7 @@
 
 import type { ApiPromise } from "@polkadot/api";
 import type { SubmittableExtrinsic } from "@polkadot/api/types";
+import type { Codec } from "@polkadot/types-codec/types";
 import type {
   AddStakeLimitParams,
   RemoveStakeLimitParams,
@@ -68,11 +69,23 @@ export async function getApi(endpoint: string = DEFAULT_RPC_ENDPOINT): Promise<A
 // declaration-merging package, so ApiPromise's generic `consts`/`query` proxy
 // types resolve to the base `Codec` rather than a pallet-specific interface --
 // a real gap in the ecosystem's type coverage for this chain, not something
-// fixable from this repo. `.toBigInt()` is a standard method every numeric
-// SCALE codec (u64/u128/Compact<...>) implements; these two narrow, local
-// interfaces name only the one method/field each call site actually uses,
-// rather than reaching for a blanket `any` that would silently swallow a
-// genuine shape mismatch elsewhere in the same expression.
+// fixable from this repo.
+//
+// What IS fixable is how that gap is crossed. This file used to assert the
+// whole `ApiPromise` into a hand-written `SubtensorQueryApi` naming five
+// storage entries, once per call site. That restated the pallet surface in
+// TypeScript and then trusted the restatement: a renamed or removed entry
+// still compiled, and `undefined()` is a TypeError inside a wallet flow, at
+// the point a user has already signed off on an amount. Worse, `.toNumber()`
+// was claimed on the RESULT -- so a storage entry whose type changed from u16
+// to something without `toNumber` also compiled.
+//
+// `api.query` carries a real index signature, so every entry below reads with
+// no assertion at all and comes back as `Codec`, which is the truth. The
+// codec is then narrowed by a PREDICATE whose body actually performs the
+// check -- `"toNumber" in value && typeof value.toNumber === "function"` --
+// so the claim and the check are the same statement. A shape that does not
+// match raises a named error instead of a bare TypeError.
 interface BigIntCodec {
   toBigInt(): bigint;
 }
@@ -82,6 +95,52 @@ interface AccountInfoCodec {
 interface NumberCodec {
   toNumber(): number;
 }
+
+function isNumberCodec(value: Codec): value is Codec & NumberCodec {
+  return "toNumber" in value && typeof value.toNumber === "function";
+}
+
+function isBigIntCodec(value: Codec): value is Codec & BigIntCodec {
+  return "toBigInt" in value && typeof value.toBigInt === "function";
+}
+
+function isAccountInfoCodec(value: Codec): value is Codec & AccountInfoCodec {
+  if (!("data" in value)) return false;
+  const data = value.data;
+  if (typeof data !== "object" || data === null || !("free" in data)) return false;
+  const free = data.free;
+  return (
+    typeof free === "object" &&
+    free !== null &&
+    "toBigInt" in free &&
+    typeof free.toBigInt === "function"
+  );
+}
+
+/** One `subtensorModule` storage entry, read through @polkadot/api's own index
+ *  signature and returned as the number it is -- or a named failure. */
+async function subtensorNumber(
+  api: ApiPromise,
+  entry: string,
+  ...args: unknown[]
+): Promise<number> {
+  const read = api.query.subtensorModule[entry];
+  if (typeof read !== "function") {
+    throw new Error(
+      `subtensorModule.${entry} is not a storage entry on this runtime -- the ` +
+        `pallet's surface changed, or the metadata did not load.`,
+    );
+  }
+  const raw = await read(...args);
+  if (!isNumberCodec(raw)) {
+    throw new Error(
+      `subtensorModule.${entry} returned a codec with no toNumber(); its ` +
+        `on-chain type is no longer numeric.`,
+    );
+  }
+  return raw.toNumber();
+}
+
 // LastRateLimitedBlock is StorageMap<Identity, RateLimitKey<AccountId>, u64> --
 // a single generic map keyed by an enum whose exact shape subtensor's own
 // on-chain metadata supplies at connection time (RateLimitKey isn't a
@@ -90,17 +149,6 @@ interface NumberCodec {
 // (2026-07-15) that passing the enum as a plain `{ VariantName: value }`
 // object -- the same shape @polkadot/api accepts for any enum-typed query
 // argument once the runtime metadata describes it -- resolves correctly.
-interface SubtensorQueryApi {
-  query: {
-    subtensorModule: {
-      maxDelegateTake(): Promise<NumberCodec>;
-      minDelegateTake(): Promise<NumberCodec>;
-      txDelegateTakeRateLimit(): Promise<NumberCodec>;
-      delegates(hotkey: string): Promise<NumberCodec>;
-      lastRateLimitedBlock(key: { LastTxBlockDelegateTake: string }): Promise<NumberCodec>;
-    };
-  };
-}
 
 /**
  * The network's live minimum stake floor (rao), read from the pallet's own
@@ -111,13 +159,19 @@ interface SubtensorQueryApi {
  * a valid one -- querying the real value has no such drift risk.
  */
 export async function getMinStake(api: ApiPromise): Promise<Rao> {
-  const raw = api.consts.subtensorModule.initialMinStake as unknown as BigIntCodec;
+  const raw = api.consts.subtensorModule.initialMinStake;
+  if (!isBigIntCodec(raw)) {
+    throw new Error("subtensorModule.initialMinStake is not a numeric constant");
+  }
   return asRao(raw.toBigInt());
 }
 
 /** The coldkey's spendable free balance (rao) -- for validateStakeInputs' availableBalanceRao. */
 export async function getFreeBalance(api: ApiPromise, coldkeySs58: string): Promise<Rao> {
-  const account = (await api.query.system.account(coldkeySs58)) as unknown as AccountInfoCodec;
+  const account = await api.query.system.account(coldkeySs58);
+  if (!isAccountInfoCodec(account)) {
+    throw new Error("system.account did not return an AccountInfo with a free balance");
+  }
   return asRao(account.data.free.toBigInt());
 }
 
@@ -148,20 +202,15 @@ export async function getCurrentBlock(api: ApiPromise): Promise<number> {
  * getMinStake, since governance could change any of these post-genesis.
  */
 export async function getMaxDelegateTake(api: ApiPromise): Promise<number> {
-  const raw = await (api as unknown as SubtensorQueryApi).query.subtensorModule.maxDelegateTake();
-  return raw.toNumber();
+  return subtensorNumber(api, "maxDelegateTake");
 }
 
 export async function getMinDelegateTake(api: ApiPromise): Promise<number> {
-  const raw = await (api as unknown as SubtensorQueryApi).query.subtensorModule.minDelegateTake();
-  return raw.toNumber();
+  return subtensorNumber(api, "minDelegateTake");
 }
 
 export async function getTxDelegateTakeRateLimit(api: ApiPromise): Promise<number> {
-  const raw = await (
-    api as unknown as SubtensorQueryApi
-  ).query.subtensorModule.txDelegateTakeRateLimit();
-  return raw.toNumber();
+  return subtensorNumber(api, "txDelegateTakeRateLimit");
 }
 
 /**
@@ -179,8 +228,7 @@ export async function getTxDelegateTakeRateLimit(api: ApiPromise): Promise<numbe
  * UX-only over-caution, not a fund-safety gap.
  */
 export async function getCurrentTakeParts(api: ApiPromise, hotkey: string): Promise<number> {
-  const raw = await (api as unknown as SubtensorQueryApi).query.subtensorModule.delegates(hotkey);
-  return raw.toNumber();
+  return subtensorNumber(api, "delegates", hotkey);
 }
 
 /**
@@ -191,10 +239,9 @@ export async function getCurrentTakeParts(api: ApiPromise, hotkey: string): Prom
  * isDelegateTakeRateLimited's own "never limited" sentinel.
  */
 export async function getLastTxBlockDelegateTake(api: ApiPromise, hotkey: string): Promise<number> {
-  const raw = await (
-    api as unknown as SubtensorQueryApi
-  ).query.subtensorModule.lastRateLimitedBlock({ LastTxBlockDelegateTake: hotkey });
-  return raw.toNumber();
+  return subtensorNumber(api, "lastRateLimitedBlock", {
+    LastTxBlockDelegateTake: hotkey,
+  });
 }
 
 /**

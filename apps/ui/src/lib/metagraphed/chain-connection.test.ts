@@ -12,6 +12,7 @@ import {
   buildExtrinsic,
   getNextNonce,
   getCurrentBlock,
+  getFreeBalance,
   getMaxDelegateTake,
   getMinDelegateTake,
   getTxDelegateTakeRateLimit,
@@ -196,6 +197,41 @@ describe("live delegate-take bounds/rate-limit queries", () => {
     } as unknown as ApiPromise;
     return { api, delegates, lastRateLimitedBlock };
   }
+
+  // These three pin what the old `api as unknown as SubtensorQueryApi` could
+  // not: the assertion named five storage entries and claimed `.toNumber()` on
+  // every result, so a renamed entry or a retyped codec compiled fine and blew
+  // up as a bare TypeError inside a wallet flow -- after the user had already
+  // signed off on an amount.
+
+  it("names the entry when the pallet no longer has it, instead of TypeError", async () => {
+    const api = { query: { subtensorModule: {} } } as unknown as ApiPromise;
+    await expect(getMaxDelegateTake(api)).rejects.toThrow(/maxDelegateTake is not a storage entry/);
+  });
+
+  it("names the entry when its codec stops being numeric", async () => {
+    // A u16 that became a struct, an Option, a Bytes -- anything without
+    // toNumber(). The old code called it regardless.
+    const api = {
+      query: {
+        subtensorModule: {
+          minDelegateTake: vi.fn(async () => ({ toHuman: () => "0" })),
+        },
+      },
+    } as unknown as ApiPromise;
+    await expect(getMinDelegateTake(api)).rejects.toThrow(
+      /minDelegateTake returned a codec with no toNumber/,
+    );
+  });
+
+  it("rejects a system.account with no free balance rather than reading undefined", async () => {
+    const api = {
+      query: { system: { account: vi.fn(async () => ({ nonce: 1 })) } },
+    } as unknown as ApiPromise;
+    await expect(getFreeBalance(api, "5Coldkey")).rejects.toThrow(
+      /AccountInfo with a free balance/,
+    );
+  });
 
   it("getMaxDelegateTake returns the live-confirmed 18% bound (11796 parts)", async () => {
     const { api } = makeQueryApi({ maxDelegateTake: 11_796 });

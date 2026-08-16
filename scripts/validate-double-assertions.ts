@@ -37,11 +37,12 @@
 //
 // ## The ratchet
 //
-// `BUDGETS` is per top-level directory and each entry may only fall. A PR that
+// `BUDGETS` is per area (a path prefix) and each entry may only fall. A PR that
 // adds one fails, and a PR that removes one without lowering the budget ALSO
-// fails, so every number tracks reality rather than intent. All five areas are
-// at zero, which is the point: the budget exists to keep them there.
-import { readFileSync, readdirSync, statSync } from "node:fs";
+// fails, so every number tracks reality rather than intent. Five of the six
+// areas are at zero; apps/ui ratchets down toward it.
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { repoRoot } from "./lib.ts";
@@ -49,17 +50,25 @@ import { repoRoot } from "./lib.ts";
 /**
  * The budget per area, which may only fall.
  *
- * `src`, `workers`, `schemas-src` and `packages` are at ZERO and stay there:
- * #11339 and #11361 drove them there, and a regression in any of them is a
- * plain failure rather than a number to negotiate.
+ * `src`, `workers`, `schemas-src`, `packages` and `scripts` are at ZERO and
+ * stay there: #11339 and #11361 drove the first two, #11368 the rest. A
+ * regression in any of them is a plain failure rather than a number to
+ * negotiate.
  *
- * `scripts` is a RATCHET at its current real count. The remaining sites are
- * mostly third-party shapes -- ajv's plugin interop, GraphQL's type unions, a
- * Durable Object's state -- where the fix is a per-library helper rather than a
- * sweep, so a ceiling that only falls beats pretending the number is zero or
- * exempting the directory entirely. An exemption list stops being read the
- * moment it is longer than a screen (see validate-untyped-db-reads.ts's note);
- * a number cannot hide anything.
+ * `apps/ui` is the RATCHET. It was invisible to this gate until #11368,
+ * because the file walk filtered on `.endsWith(".ts")` and every route and
+ * component in that workspace is `.tsx` -- so the area carrying the most
+ * assertions in the repo was the one area never counted. Most of what is left
+ * there is two third-party shapes: TanStack Router's typed search/params
+ * generics, and @polkadot/api's codecs on a runtime with no augmentation
+ * package. Those want per-library helpers rather than a sweep, so the count
+ * falls in batches and the ceiling falls with it.
+ *
+ * A ratchet and not an exemption, deliberately: `scripts` spent #11368 falling
+ * 54 -> 21 -> 15 -> 6 -> 0 exactly this way. A declared exemption list stops
+ * being read the moment it is longer than a screen (see
+ * validate-untyped-db-reads.ts's note) and then hides exactly what it names.
+ * A number cannot hide anything.
  *
  * `tests` is NOT scanned, and that is a judgement rather than an oversight: a
  * unit process cannot construct a `KVNamespace`, `Hyperdrive`,
@@ -74,6 +83,7 @@ export const BUDGETS: Readonly<Record<string, number>> = {
   "schemas-src": 0,
   packages: 0,
   scripts: 0,
+  "apps/ui": 101,
 };
 
 const SCANNED_DIRS = Object.keys(BUDGETS);
@@ -121,32 +131,49 @@ export function findDoubleAssertions(
   return found;
 }
 
-function walkTypeScript(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(dir)) {
-    const full = path.join(dir, entry);
-    if (statSync(full).isDirectory()) {
-      out.push(...walkTypeScript(full));
-    } else if (
-      entry.endsWith(".ts") &&
-      !entry.endsWith(".test.ts") &&
-      !entry.endsWith(".d.ts")
-    ) {
-      out.push(full);
-    }
-  }
-  return out;
+/** A test, by filename or by the directory it lives in. Not scanned -- see the
+ *  header. `.unit.ts` under a tests/ tree counts: apps/ui/tests/e2e names its
+ *  harness files that way, and they are tests whatever they are called. */
+function isTestFile(file: string): boolean {
+  return (
+    /\.(test|spec)\.tsx?$/.test(file) ||
+    /(^|\/)(tests|__tests__|e2e)\//.test(file)
+  );
+}
+
+/**
+ * The TypeScript files git actually tracks under `dir`.
+ *
+ * `git ls-files` rather than a directory walk, for two reasons that bit when
+ * apps/ui was added. It carries `.tsx`, which the old walk silently skipped --
+ * every route and component in the UI workspace was invisible to this gate
+ * because the filter said `.endsWith(".ts")`. And it respects .gitignore, so
+ * build output (apps/ui/.output, dist, .vinxi, .tanstack) is excluded because
+ * it is untracked, not because a hardcoded list happened to name it. A skip
+ * list is one more thing that rots quietly; git already knows the answer.
+ */
+function trackedTypeScript(dir: string): string[] {
+  const listed = execFileSync("git", ["ls-files", "-z", "--", dir], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024 * 64,
+  });
+  return listed
+    .split("\0")
+    .filter(
+      (file) =>
+        /\.tsx?$/.test(file) && !file.endsWith(".d.ts") && !isTestFile(file),
+    );
 }
 
 export function scanRepository(): DoubleAssertion[] {
   const found: DoubleAssertion[] = [];
   for (const dir of SCANNED_DIRS) {
-    const root = path.join(repoRoot, dir);
-    for (const file of walkTypeScript(root)) {
+    for (const file of trackedTypeScript(dir)) {
       found.push(
         ...findDoubleAssertions(
-          path.relative(repoRoot, file),
-          readFileSync(file, "utf8"),
+          file,
+          readFileSync(path.join(repoRoot, file), "utf8"),
         ),
       );
     }
@@ -154,25 +181,41 @@ export function scanRepository(): DoubleAssertion[] {
   return found;
 }
 
-/** Which budget a finding counts against -- its top-level directory. */
-export function areaOf(file: string): string {
-  return file.split("/")[0] ?? file;
+/**
+ * Which budget a finding counts against: the LONGEST configured key that is a
+ * path prefix of it.
+ *
+ * Longest and not first, because `apps/ui` is nested. A plain top-level split
+ * would file every UI finding under `apps`, and if `apps` and `apps/ui` were
+ * ever both configured the shorter one would silently absorb the longer one's
+ * budget.
+ */
+export function areaOf(file: string, areas: readonly string[]): string {
+  let best = "";
+  for (const area of areas) {
+    if (
+      (file === area || file.startsWith(`${area}/`)) &&
+      area.length > best.length
+    ) {
+      best = area;
+    }
+  }
+  return best || (file.split("/")[0] ?? file);
 }
 
 function main(): void {
   const found = scanRepository();
-  const counts = new Map<string, number>(
-    Object.keys(BUDGETS).map((area) => [area, 0]),
-  );
+  const areas = Object.keys(BUDGETS);
+  const counts = new Map<string, number>(areas.map((area) => [area, 0]));
   for (const cast of found) {
-    const area = areaOf(cast.file);
+    const area = areaOf(cast.file, areas);
     counts.set(area, (counts.get(area) ?? 0) + 1);
   }
   const errors: string[] = [];
   for (const [area, budget] of Object.entries(BUDGETS)) {
     const n = counts.get(area) ?? 0;
     if (n > budget) {
-      for (const cast of found.filter((c) => areaOf(c.file) === area)) {
+      for (const cast of found.filter((c) => areaOf(c.file, areas) === area)) {
         console.error(
           `${cast.file}:${cast.line}  [${cast.kind}]  ${cast.text}`,
         );
