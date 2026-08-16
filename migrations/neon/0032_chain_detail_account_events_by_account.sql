@@ -1,0 +1,70 @@
+-- The hot tier for the account feeds could not be read BY ACCOUNT.
+--
+-- `chain_detail_account_events` is written by the chain-detail lane and holds
+-- the head of the chain in Neon -- measured 2026-08-16, 931,486 rows spanning
+-- blocks 8,853,005..8,859,140, which is 2026-08-15T22:27Z to the head. It is
+-- indexed for the two questions the block routes ask (by `block_number`, by
+-- `observed_at`) and for neither question the ACCOUNT routes ask.
+--
+-- So the account family reads past a populated, sub-millisecond store straight
+-- into the lakehouse, where R2 SQL costs seconds per query almost regardless of
+-- what it scans. Measured the same day on `/accounts/{ss58}`: the card 12.4s,
+-- `/events?limit=5` 6.0s with its scan already floored, against 0.196s for
+-- `/blocks/{ref}`, which reads this same store through an index it does have.
+--
+-- ## What the planner actually did
+--
+-- EXPLAIN ANALYZE, production, an account with no rows in the hot window --
+-- which is the COMMON case, not the corner:
+--
+--     Limit (actual time=748.742..748.743 rows=0)
+--       -> Incremental Sort
+--            -> Index Scan Backward using idx_..._observed
+--                 Filter: ((hotkey = '5Gsb...') OR (coldkey = '5Gsb...'))
+--                 Rows Removed by Filter: 932266
+--     Execution Time: 748.769 ms
+--
+-- It walks the whole table backward through the `observed_at` index and throws
+-- away every row. The quieter the account, the more it reads to prove there is
+-- nothing -- so the cheapest answer pays the most expensive scan, which is the
+-- same shape #11425 fixed on the lakehouse side.
+--
+-- ## Two indexes, not one composite
+--
+-- The predicate is `hotkey = X OR coldkey = X`, and no single btree serves a
+-- disjunction over two columns. Two indexes let the planner take each side and
+-- combine them with a BitmapOr, which is the shape this query has had since it
+-- was written -- the same `(hotkey OR coldkey)` the lakehouse readers use,
+-- standing in for data-api's two-scan merge.
+--
+-- `observed_at DESC` as the second column, because every one of these reads is
+-- newest-first with a LIMIT. With it the index answers the ORDER BY as well as
+-- the filter and the scan stops at `limit` rows; without it the planner sorts
+-- the account's whole history to return five rows.
+--
+-- NULLS LAST matches the ORDER BY the readers emit. `coldkey` is null on every
+-- hotkey-scoped event and `hotkey` is null on `WeightsSet`, so both columns are
+-- genuinely sparse and the null placement is not academic.
+--
+-- ## Size
+--
+-- The table is pruned to a rolling window (see chain-detail-prune.ts), so these
+-- do not grow without bound. Against the 92 MB / 41 MB / 40 MB indexes 0017
+-- added on the same three tables, two more on the smallest of them is the same
+-- order of cost for a route family that currently pays 748 ms per request.
+--
+-- ## CONCURRENTLY: not in a transaction
+--
+-- As 0011, 0012 and 0017. Apply statement by statement; a failed build leaves
+-- an INVALID index to drop before retrying (`SELECT indexrelid::regclass FROM
+-- pg_index WHERE NOT indisvalid`). Every statement is IF NOT EXISTS, so a
+-- half-applied run is re-runnable -- which is what pays for having no rollback.
+-- neon:no-transaction
+
+-- 1. The hotkey side of the disjunction.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_chain_detail_account_events_hotkey_observed
+  ON chain_detail_account_events (hotkey, observed_at DESC NULLS LAST);
+
+-- 2. The coldkey side. Same shape; the planner BitmapOrs the two.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_chain_detail_account_events_coldkey_observed
+  ON chain_detail_account_events (coldkey, observed_at DESC NULLS LAST);

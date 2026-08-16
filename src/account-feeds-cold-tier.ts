@@ -1075,6 +1075,25 @@ export interface FeedKeyed {
   event_index?: unknown;
 }
 
+/**
+ * A row from ANY of the three producers that can answer an account feed, in the
+ * shape the page builder consumes.
+ *
+ * THREE PRODUCERS, ONE FEED. The projection publishes
+ * `AccountSummaryRecentEvent`, Neon's `chain_detail_account_events` yields
+ * `ChainDetailAccountEvents`, and the lakehouse yields `AccountEventsRow`. They
+ * describe the same events and differ in what each storage layer can promise --
+ * pg hands back numerics as strings, the lakehouse as numbers, the artifact as
+ * whatever it published -- which is exactly why `formatAccountEvent` coerces
+ * every one of them on the way out.
+ *
+ * NAMED rather than written inline as `Record<string, unknown>` at each call.
+ * The untyped-read ratchet counts that spelling in a generic position and is
+ * right to: a merge that says "any object" reads identically to a read that
+ * forgot its row type, and the two need to stay distinguishable.
+ */
+export type AccountFeedRow = FeedKeyed & Record<string, unknown>;
+
 function feedKey(row: FeedKeyed): [number, number, number] {
   return [
     Number(row.observed_at ?? 0),
