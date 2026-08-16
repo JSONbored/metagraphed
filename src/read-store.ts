@@ -35,6 +35,7 @@
 // answer, which is the failure mode this whole migration keeps having to
 // design against.
 import { Client } from "pg";
+import { timed, TIMING_NEON } from "./request-timing.ts";
 import { toPositionalPlaceholders } from "./pg-sql.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
@@ -310,7 +311,9 @@ export function pgReadStore(
   connectionString: string,
   deps: ReadStoreDeps = {},
 ): ReadStoreDb {
-  const run = async (text: string, values: unknown[]) => {
+  const run = async (text: string, values: unknown[]) =>
+    timed(TIMING_NEON, () => runOnce(text, values));
+  const runOnce = async (text: string, values: unknown[]) => {
     const client =
       deps.clientFactory?.(connectionString) ??
       new Client({ connectionString });
