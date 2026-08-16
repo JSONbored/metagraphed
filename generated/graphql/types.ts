@@ -2062,6 +2062,8 @@ export type CompareValidatorsArtifactValidatorsSubnetContext = {
   __typename?: 'CompareValidatorsArtifactValidatorsSubnetContext';
   active: Scalars['Boolean']['output'];
   axon?: Maybe<Scalars['String']['output']>;
+  /** Whether `axon` points somewhere on the public internet; null when there is no axon. Carried wherever `axon` is, because an unqualified endpoint implies reachability it may not have -- 5.3% of announced axons network-wide sit in RFC 5737, RFC 1918, loopback or 0.0.0.0/8 (#11373). Normally null here: not serving is the usual state for a validator. */
+  axon_routable?: Maybe<Scalars['Boolean']['output']>;
   coldkey?: Maybe<Scalars['String']['output']>;
   consensus?: Maybe<Scalars['Float']['output']>;
   dividends?: Maybe<Scalars['Float']['output']>;
@@ -3155,6 +3157,8 @@ export type NeuronHistoryPoint = {
   active: Scalars['Boolean']['output'];
   /** The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
   axon?: Maybe<Scalars['String']['output']>;
+  /** Whether `axon` points somewhere on the public internet. FALSE means the neuron announced an address nobody can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback, or 0.0.0.0/8 -- which is NOT the same as not announcing, and is why this is a separate field rather than a null axon. Measured 2026-08-16: 5.3% of announced axons are unroutable and 246 of those miners earn incentive; on SN33, 247 of 251 announcements are 192.0.2.1 and take 99.82% of the subnet's incentive while the four routable ones earn nothing (#11373). Null when `axon` itself is null, because 'not announcing' has no routability to report. */
+  axon_routable?: Maybe<Scalars['Boolean']['output']>;
   block_number?: Maybe<Scalars['Int']['output']>;
   captured_at?: Maybe<Scalars['String']['output']>;
   coldkey?: Maybe<Scalars['String']['output']>;
@@ -3192,6 +3196,8 @@ export type NeuronState = {
   active: Scalars['Boolean']['output'];
   /** The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
   axon?: Maybe<Scalars['String']['output']>;
+  /** Whether `axon` points somewhere on the public internet. FALSE means the neuron announced an address nobody can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback, or 0.0.0.0/8 -- which is NOT the same as not announcing, and is why this is a separate field rather than a null axon. Measured 2026-08-16: 5.3% of announced axons are unroutable and 246 of those miners earn incentive; on SN33, 247 of 251 announcements are 192.0.2.1 and take 99.82% of the subnet's incentive while the four routable ones earn nothing (#11373). Null when `axon` itself is null, because 'not announcing' has no routability to report. */
+  axon_routable?: Maybe<Scalars['Boolean']['output']>;
   coldkey?: Maybe<Scalars['String']['output']>;
   consensus?: Maybe<Scalars['Float']['output']>;
   dividends?: Maybe<Scalars['Float']['output']>;
@@ -8295,6 +8301,8 @@ export type ValidatorSubnet = {
   __typename?: 'ValidatorSubnet';
   active?: Maybe<Scalars['Boolean']['output']>;
   axon?: Maybe<Scalars['String']['output']>;
+  /** Whether `axon` points somewhere on the public internet; null when there is no axon. Carried wherever `axon` is, because an unqualified endpoint implies reachability it may not have -- 5.3% of announced axons network-wide sit in RFC 5737, RFC 1918, loopback or 0.0.0.0/8 (#11373). Normally null here: not serving is the usual state for a validator. */
+  axon_routable?: Maybe<Scalars['Boolean']['output']>;
   coldkey?: Maybe<Scalars['String']['output']>;
   consensus?: Maybe<Scalars['Float']['output']>;
   dividends?: Maybe<Scalars['Float']['output']>;
@@ -10956,6 +10964,7 @@ export type CompareValidatorsArtifactValidatorsColdkeyIdentityResolvers<ContextT
 export type CompareValidatorsArtifactValidatorsSubnetContextResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CompareValidatorsArtifactValidatorsSubnetContext'] = ResolversParentTypes['CompareValidatorsArtifactValidatorsSubnetContext']> = ResolversObject<{
   active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   axon?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  axon_routable?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   consensus?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   dividends?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -11855,6 +11864,7 @@ export type NeuronHistoryResolvers<ContextType = GqlContext, ParentType extends 
 export type NeuronHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NeuronHistoryPoint'] = ResolversParentTypes['NeuronHistoryPoint']> = ResolversObject<{
   active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   axon?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  axon_routable?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -11882,6 +11892,7 @@ export type NeuronHistoryPointResolvers<ContextType = GqlContext, ParentType ext
 export type NeuronStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NeuronState'] = ResolversParentTypes['NeuronState']> = ResolversObject<{
   active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   axon?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  axon_routable?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   consensus?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   dividends?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -14558,6 +14569,7 @@ export type ValidatorSetCompositionResolvers<ContextType = GqlContext, ParentTyp
 export type ValidatorSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorSubnet'] = ResolversParentTypes['ValidatorSubnet']> = ResolversObject<{
   active?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   axon?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  axon_routable?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   consensus?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   dividends?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;

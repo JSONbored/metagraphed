@@ -44,6 +44,12 @@ export const ValidatorDetailSubnetSchema = z
     registered_at_block: z.int().min(0).nullable(),
     is_immunity_period: z.boolean(),
     axon: z.string().nullable(),
+    axon_routable: z
+      .boolean()
+      .nullable()
+      .describe(
+        "Whether `axon` points somewhere on the public internet; null when there is no axon. Carried wherever `axon` is, because an unqualified endpoint implies reachability it may not have -- 5.3% of announced axons network-wide sit in RFC 5737, RFC 1918, loopback or 0.0.0.0/8 (#11373). Normally null here: not serving is the usual state for a validator.",
+      ),
     take: z.number().nullable(),
   })
   .strict();

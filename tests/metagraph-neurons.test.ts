@@ -169,6 +169,69 @@ const MOVERS_CSV_HEADER =
 const GLOBAL_VALIDATOR_CSV_HEADER =
   "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,nominator_count,apy_estimate,apy_estimate_eligible_subnet_count,realized_return_1d,realized_return_1w,realized_return_1m,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
 
+describe("axon_routable (#11373)", () => {
+  // `axon IS NOT NULL` is not "reachable". Measured 2026-08-16: 5.3% of
+  // announced axons point at ranges nobody can route to, and 246 of those
+  // miners earn incentive. SN33 announces `192.0.2.1` on 247 of 251 UIDs and
+  // those miners take 99.82% of its incentive.
+
+  test("a routable endpoint is reported routable", () => {
+    const n = formatNeuron({ ...ROW, axon: "152.53.149.254:8091" });
+    assert.equal(n?.axon, "152.53.149.254:8091");
+    assert.equal(n?.axon_routable, true);
+  });
+
+  test("the SN33 placeholder is announced but NOT routable", () => {
+    // The distinction the field exists for: it announced something, and that
+    // something is unreachable. Collapsing this into a null axon would lose it.
+    const n = formatNeuron({ ...ROW, axon: "192.0.2.1:8091" });
+    assert.equal(n?.axon, "192.0.2.1:8091");
+    assert.equal(n?.axon_routable, false);
+  });
+
+  test("private, loopback and unspecified ranges are not routable", () => {
+    for (const axon of [
+      "10.0.0.5:8091",
+      "192.168.1.1:8091",
+      "172.16.0.1:8091",
+      "127.0.0.1:8091",
+      "0.0.0.0:0",
+      "198.51.100.7:8091",
+      "203.0.113.9:8091",
+    ]) {
+      assert.equal(
+        formatNeuron({ ...ROW, axon })?.axon_routable,
+        false,
+        `${axon} must not be routable`,
+      );
+    }
+  });
+
+  test("no axon means NULL routability, never false", () => {
+    // False would claim the neuron announced something unreachable. It
+    // announced nothing, which is a different fact and the normal state for a
+    // validator.
+    const n = formatNeuron({ ...ROW, axon: null });
+    assert.equal(n?.axon, null);
+    assert.equal(n?.axon_routable, null);
+  });
+
+  test("the 172.16-31 boundary is exact in both directions", () => {
+    assert.equal(
+      formatNeuron({ ...ROW, axon: "172.31.255.254:8091" })?.axon_routable,
+      false,
+    );
+    assert.equal(
+      formatNeuron({ ...ROW, axon: "172.32.0.1:8091" })?.axon_routable,
+      true,
+    );
+    assert.equal(
+      formatNeuron({ ...ROW, axon: "172.15.0.1:8091" })?.axon_routable,
+      true,
+    );
+  });
+});
+
 describe("metagraph-neurons builders", () => {
   test("formatNeuron coerces 0/1 INTEGER flags to real booleans", () => {
     const n = formatNeuron(ROW);

@@ -11,6 +11,7 @@ import {
   loadIdentityByColdkeyMap,
 } from "./account-identity.ts";
 import { NeuronSchema } from "../schemas-src/routes/subnet-metagraph.ts";
+import { isRoutableAxon } from "./axon-routable.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
   parseFieldsParam,
@@ -470,6 +471,12 @@ export function formatNeuron(
         : nonNegativeInt(row.registered_at_block),
     is_immunity_period: toBooleanFlag(row.is_immunity_period),
     axon: row.axon ?? null,
+    // DERIVED, not stored: routability is a property of the value, so computing
+    // it beside the axon it describes keeps the two consistent and needs no
+    // column. Null when there is no axon -- "not announcing" has no
+    // routability to report, and false would claim it announced something
+    // unreachable (#11373).
+    axon_routable: row.axon == null ? null : isRoutableAxon(row.axon),
     // Global per-hotkey (SubtensorModule::Delegates), not per (netuid, uid) --
     // null means no Delegates entry at capture time (#2548).
     take: row.take == null ? null : round(finiteCellOrNull(row.take)),

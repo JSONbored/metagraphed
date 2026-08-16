@@ -24,8 +24,6 @@ import {
   evaluateSubnetAxons,
   groupAxonDays,
   isFleetWide,
-  isRoutableAxon,
-  ROUTABLE_AXON_SQL,
   classifyAxonMechanism,
   loadAxonLossMechanisms,
   isoDaysAgo,
@@ -34,6 +32,7 @@ import {
   type AxonDay,
   type AxonFinding,
 } from "../src/axon-announcement-watchdog.ts";
+import { isRoutableAxon, ROUTABLE_AXON_SQL } from "../src/axon-routable.ts";
 
 /** Days at a uniform width, oldest first. */
 const flat = (n: number, withAxon: number, neurons = 256): AxonDay[] =>
