@@ -95,8 +95,43 @@ describe("raw_capture_state", () => {
     });
     const { text, values } = calls[0]!;
     assert.ok(text.includes("ON CONFLICT(network) DO UPDATE"));
-    assert.ok(text.includes("last_contiguous_block = excluded"));
+    // The height is carried through a monotonic CASE rather than assigned
+    // straight from `excluded` -- see the test below for why.
+    assert.ok(text.includes("last_contiguous_block = CASE"));
+    assert.ok(text.includes("THEN excluded.last_contiguous_block"));
     assert.deepEqual(values, ["mainnet", 4321, 999]);
+  });
+
+  test("the watermark is MONOTONIC -- a late, lower write cannot rewind it", async () => {
+    // Measured in production 2026-08-16, minutes after #11406 removed the
+    // buffer that had been serialising these writes: the lane drained a steady
+    // 395 blocks/min for eight ticks, then jumped BACKWARDS ~2,795 blocks in
+    // one tick (5,683 behind -> 8,478 behind), losing seven ticks of work. A
+    // tick reads the watermark once at its start and writes once per chunk, so
+    // a tick that overruns the one-minute cron overlaps the next and its late,
+    // lower writes clobber the newer tick's progress.
+    //
+    // Asserted on the STATEMENT rather than by running two writes, because the
+    // guard lives in the SQL and this suite's sql double records text.
+    const { sql, calls } = recordingSql();
+    await mirrorRawCaptureStateToNeon(env, ctx, "mainnet", 4321, 999, {
+      sql,
+      laneHealthDb: null,
+    });
+    const { text } = calls[0]!;
+    assert.match(
+      text,
+      /WHEN excluded\.last_contiguous_block > raw_capture_state\.last_contiguous_block/,
+      "an out-of-order write must not lower the height",
+    );
+    assert.ok(
+      !/GREATEST/i.test(text),
+      "GREATEST is Postgres-only; this text also runs against the SQLite fixture",
+    );
+    assert.ok(
+      !/\bMAX\s*\(/i.test(text),
+      "MAX(a, b) is scalar in SQLite but an aggregate in Postgres",
+    );
   });
 
   test("enabled but unbound is a verdict, not silence", async () => {
