@@ -1693,14 +1693,13 @@ import {
 } from "./subnet-lifecycle-read.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
 import {
-  buildSubnetOhlc,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   MAX_CANDLES,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
-import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
+import { answerSubnetOhlc } from "./subnet-ohlc-answer.ts";
 import { GET_SUBNET_OHLC_CANDLE_DEFAULT } from "../schemas-src/mcp-tools/get-subnet-volume-ohlc.ts";
 import { computeStakeQuote, type StakeQuote } from "./stake-quote.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
@@ -9541,20 +9540,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `limit must be at most ${MAX_CANDLES}.`,
         );
       }
+      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so that arm
+      // resolved to null before it could touch DATA_API.
+      // The SAME shared answer REST's handleSubnetOhlc uses, so the two
+      // surfaces cannot disagree about a subnet's candles -- including about
+      // what a FAILED read publishes, which is what they used to disagree
+      // about by each keeping their own fallback (#10312).
       return (
-        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-        // resolved to null before it could touch DATA_API.
-        // The SAME lakehouse reader REST's handleSubnetOhlc falls to, so the
-        // two surfaces cannot disagree about a subnet's candles.
-        (
-          await loadSubnetOhlcColdTier(ctx.env, netuid, {
-            interval,
-            days,
-            limit,
-          })
-        )?.data ?? buildSubnetOhlc([], netuid, { interval, limit })
-      );
+        await answerSubnetOhlc(ctx.env, netuid, { interval, days, limit })
+      ).data;
     },
   },
   {

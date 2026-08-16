@@ -4,6 +4,7 @@
 // hand-edited SubnetOhlcArtifact/SubnetOhlcCandle components it replaces.
 import { z } from "zod";
 import { EpochMillisSchema } from "../shared.ts";
+import { UnavailableDegradedSchema } from "./event-stream-honesty.ts";
 import { SERIES_USD_UNAVAILABLE } from "../../src/alpha-usd-history.ts";
 
 const SubnetOhlcCandleSchema = z
@@ -53,14 +54,27 @@ export const SubnetOhlcArtifactSchema = z
     candle_count: z
       .int()
       .min(0)
+      .nullable()
       .describe(
-        "How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page.",
+        "How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. A FLOOR rather than a total when `window_truncated` is true, and NULL when the series could not be read at all -- see `degraded`.",
+      ),
+    window_truncated: z
+      .boolean()
+      .describe(
+        "True when the window holds MORE candles than one read can carry, so `candle_count` is a floor rather than the total. The exact total is not published because it is not obtainable at this tier's cost: the aggregate that would count it is rejected as `scan budget exceeded` on any window wide enough to need it.",
       ),
     root_excluded: z
       .boolean()
       .describe(
         "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted.",
       ),
+    // The lakehouse query behind this route was measured at 7.3s-24.4s against
+    // a 15s timeout (2026-08-16), so a failed read is a routine event here, not
+    // an exotic one -- and it used to be published as `candles: []` with
+    // `candle_count: 0`, which reads as a subnet that has never traded.
+    degraded: UnavailableDegradedSchema.optional().describe(
+      "Present ONLY on a decline. An empty `candles` WITHOUT this block is a measurement -- either a genuinely untraded window, or root. With it, `candle_count` is null and nothing about the series is known.",
+    ),
     usd_available_from: EpochMillisSchema.nullable()
       .optional()
       .describe(

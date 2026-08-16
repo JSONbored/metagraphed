@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { loadSubnetOhlcColdTier } from "../src/subnet-ohlc-cold-tier.ts";
+import type { SubnetOhlcColdTierResult } from "../src/subnet-ohlc-cold-tier.ts";
 import {
   MAX_CANDLES,
   MAX_OHLC_WINDOW_DAYS,
@@ -47,6 +48,18 @@ function sqlFetch(rows: unknown[]) {
     } as unknown as Response;
   }) as unknown as typeof fetch;
   return queries;
+}
+
+/**
+ * The answer, or a failed assertion naming what came back instead.
+ *
+ * A narrowing helper rather than a cast: `kind` is what separates a series
+ * from a decline, so a test that reached for `.data` without checking it would
+ * be asserting against a shape the reader never promised.
+ */
+function answerOf(result: SubnetOhlcColdTierResult) {
+  assert.equal(result.kind, "answer", `expected an answer, got ${result.kind}`);
+  return result as Extract<SubnetOhlcColdTierResult, { kind: "answer" }>;
 }
 
 function noFetch() {
@@ -91,13 +104,16 @@ describe("loadSubnetOhlcColdTier", () => {
       /ORDER BY observed_at DESC, block_number DESC, event_index DESC/,
     );
     assert.match(sql, /GROUP BY bucket_start/);
-    // Newest-first + the assembler's own cap, applied before the wire.
+    // Newest-first + the assembler's own cap, applied before the wire -- plus
+    // the ONE extra row that tells the reader whether the window held more
+    // than the cap. Asserted as an exact tail so `LIMIT 2000` cannot satisfy a
+    // loose match for `LIMIT 2001`.
     assert.match(
       sql,
-      new RegExp(`ORDER BY bucket_start DESC LIMIT ${MAX_CANDLES}`),
+      new RegExp(`ORDER BY bucket_start DESC LIMIT ${MAX_CANDLES + 1}$`),
     );
 
-    const data = result!.data as Row;
+    const data = answerOf(result).data as Row;
     assert.equal(data.netuid, 7);
     assert.equal(data.interval, "1h");
     assert.equal(data.root_excluded, false);
@@ -115,7 +131,7 @@ describe("loadSubnetOhlcColdTier", () => {
       },
     ]);
     assert.equal(
-      result!.generatedAt,
+      answerOf(result).generatedAt,
       new Date(BUCKET + 900_000).toISOString(),
       "generatedAt is the newest trade instant, as on the Postgres tier",
     );
@@ -144,20 +160,20 @@ describe("loadSubnetOhlcColdTier", () => {
       interval: "1h",
       days: 1,
     });
-    assert.deepEqual((result!.data as Row).candles, []);
-    assert.equal(result!.generatedAt, null);
+    assert.deepEqual((answerOf(result).data as Row).candles, []);
+    assert.equal(answerOf(result).generatedAt, null);
   });
 
   test("declines an unusable netuid, and root, without touching the engine", async () => {
     const calls = noFetch();
     for (const netuid of [null, "abc", -1, 1.5, 0]) {
-      assert.equal(
+      assert.deepEqual(
         await loadSubnetOhlcColdTier(TOKEN, netuid, {
           interval: "1h",
           days: 1,
         }),
-        null,
-        `netuid ${String(netuid)} must decline`,
+        { kind: "miss" },
+        `netuid ${String(netuid)} must miss`,
       );
     }
     assert.deepEqual(calls, [], "no query is issued for a declined read");
@@ -167,30 +183,51 @@ describe("loadSubnetOhlcColdTier", () => {
     const calls = noFetch();
     // interval: absent, non-string, and a well-formed unknown value.
     for (const interval of [undefined, 5, "5m"]) {
-      assert.equal(
+      assert.deepEqual(
         await loadSubnetOhlcColdTier(TOKEN, 7, { interval, days: 1 }),
-        null,
-        `interval ${String(interval)} must decline`,
+        { kind: "miss" },
+        `interval ${String(interval)} must miss`,
       );
     }
     // days: absent, below the floor, above the ceiling.
     for (const days of [undefined, 0, MAX_OHLC_WINDOW_DAYS + 1]) {
-      assert.equal(
+      assert.deepEqual(
         await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days }),
-        null,
-        `days ${String(days)} must decline`,
+        { kind: "miss" },
+        `days ${String(days)} must miss`,
       );
     }
     assert.deepEqual(calls, []);
   });
 
-  test("a failed query declines, leaving the caller's empty in place", async () => {
+  // THE DISTINCTION THIS TIER USED TO COLLAPSE (#10312). A configured lakehouse
+  // that could not answer is a GAP: the rows exist in that deployment, so an
+  // empty series is a lie about them. It used to return the same bare `null` as
+  // "no lakehouse here", and every caller turned that into `candle_count: 0`.
+  test("a failed query on a CONFIGURED lakehouse is a gap, not an empty", async () => {
     globalThis.fetch = (async () => {
       throw new Error("down");
     }) as unknown as typeof fetch;
-    assert.equal(
+    assert.deepEqual(
       await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 30 }),
-      null,
+      { kind: "gap" },
+    );
+  });
+
+  // The other half, and why `gap` cannot simply be the default: a self-hoster
+  // or a CI run has no lakehouse at all, there is no chain history to read, and
+  // the caller's empty series is the correct answer -- exactly as
+  // account-summary-card.ts reserves `miss` for the same deployment.
+  test("the same failure with NO lakehouse configured is a miss", async () => {
+    globalThis.fetch = (async () => {
+      throw new Error("down");
+    }) as unknown as typeof fetch;
+    assert.deepEqual(
+      await loadSubnetOhlcColdTier({} as unknown as Env, 7, {
+        interval: "1h",
+        days: 30,
+      }),
+      { kind: "miss" },
     );
   });
 
@@ -210,9 +247,9 @@ describe("loadSubnetOhlcColdTier", () => {
       "event_count",
     ]) {
       sqlFetch([bucketRow(), bucketRow({ [field]: "nope" })]);
-      assert.equal(
+      assert.deepEqual(
         await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 30 }),
-        null,
+        { kind: "gap" },
         `an unreadable ${field} must decline`,
       );
     }
@@ -237,8 +274,11 @@ describe("loadSubnetOhlcColdTier", () => {
       interval: "1h",
       days: 30,
     });
-    assert.equal(result!.generatedAt, new Date(BUCKET + 99).toISOString());
-    assert.equal((result!.data as Row).candles.length, 6);
+    assert.equal(
+      answerOf(result).generatedAt,
+      new Date(BUCKET + 99).toISOString(),
+    );
+    assert.equal((answerOf(result).data as Row).candles.length, 6);
   });
 
   test("no readable instant anywhere yields a null generatedAt, not an epoch", async () => {
@@ -247,7 +287,75 @@ describe("loadSubnetOhlcColdTier", () => {
       interval: "1h",
       days: 30,
     });
-    assert.equal(result!.generatedAt, null);
-    assert.equal((result!.data as Row).candles.length, 1);
+    assert.equal(answerOf(result).generatedAt, null);
+    assert.equal((answerOf(result).data as Row).candles.length, 1);
+  });
+  // ## The window count that was reporting the cap (#10312)
+  //
+  // Measured against the live lakehouse 2026-08-16: SN64 answered
+  // `candle_count: 2000` at ?days=90 AND at ?days=365. Two windows of
+  // different widths cannot hold the same number of buckets -- that 2000 was
+  // MAX_CANDLES showing through a field documented as the window's total.
+  test("reading CAP+1 rows marks the window truncated and still pages at CAP", async () => {
+    const rows = Array.from({ length: MAX_CANDLES + 1 }, (_, i) =>
+      bucketRow({ bucket_start: BUCKET - i * HOUR_MS }),
+    );
+    sqlFetch(rows);
+    const data = answerOf(
+      await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 365 }),
+    ).data as Row;
+    assert.equal(data.window_truncated, true);
+    // The surplus row is DROPPED, so the published page is exactly the cap --
+    // the over-fetch buys the signal without widening the response.
+    assert.equal(data.candle_count, MAX_CANDLES);
+    assert.equal((data.candles as unknown[]).length, MAX_CANDLES);
+  });
+
+  test("exactly CAP rows is NOT truncated -- the boundary the extra row exists to draw", async () => {
+    // Non-vacuity, and the whole reason for CAP+1 rather than CAP: a window
+    // holding precisely MAX_CANDLES buckets is complete, and reporting it as
+    // truncated would be the same overstatement in the other direction.
+    const rows = Array.from({ length: MAX_CANDLES }, (_, i) =>
+      bucketRow({ bucket_start: BUCKET - i * HOUR_MS }),
+    );
+    sqlFetch(rows);
+    const data = answerOf(
+      await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 365 }),
+    ).data as Row;
+    assert.equal(data.window_truncated, false);
+    assert.equal(data.candle_count, MAX_CANDLES);
+  });
+
+  test("an ordinary window reports window_truncated false", async () => {
+    sqlFetch([bucketRow()]);
+    const data = answerOf(
+      await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 30 }),
+    ).data as Row;
+    assert.equal(data.window_truncated, false);
+    assert.equal(data.candle_count, 1);
+  });
+
+  test("the dropped surplus row is the OLDEST, so the recent end survives", async () => {
+    // Rows arrive newest-first, so slicing from the front keeps the recent end
+    // -- the same end the assembler's own cap keeps. Slicing the wrong side
+    // would silently hand back the oldest candles of the window.
+    const rows = Array.from({ length: MAX_CANDLES + 1 }, (_, i) =>
+      bucketRow({ bucket_start: BUCKET - i * HOUR_MS }),
+    );
+    sqlFetch(rows);
+    const data = answerOf(
+      await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 365 }),
+    ).data as Row;
+    const candles = data.candles as { bucket_start: number }[];
+    assert.equal(
+      candles[candles.length - 1]!.bucket_start,
+      BUCKET,
+      "the newest bucket must be present",
+    );
+    assert.equal(
+      candles.some((c) => c.bucket_start === BUCKET - MAX_CANDLES * HOUR_MS),
+      false,
+      "the oldest, surplus bucket must be the one dropped",
+    );
   });
 });

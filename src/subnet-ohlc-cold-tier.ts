@@ -58,7 +58,7 @@ import {
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
 } from "./subnet-ohlc.ts";
-import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import { isR2SqlConfigured, r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 
 /** Same day length the REST/MCP callers and data-api use, so every tier
@@ -86,36 +86,58 @@ export interface SubnetOhlcQuery {
 }
 
 /**
+ * What this tier has to say about a request, which is three different things
+ * that used to be one `null` (#10312).
+ *
+ * `miss` means there is nothing to ask -- no lakehouse configured (a
+ * self-hoster, CI), or an input this tier cannot use. The caller's
+ * schema-stable empty is CORRECT there and always was.
+ *
+ * `gap` means a configured lakehouse was asked and could not answer. The rows
+ * exist in that deployment, so an empty series is a lie about them, and the
+ * caller must decline rather than publish a zero.
+ *
+ * The distinction is `account-summary-card.ts`'s, for the same reason and in
+ * the same words; this route is the one that never drew it.
+ */
+export type SubnetOhlcColdTierResult =
+  | {
+      kind: "answer";
+      data: Record<string, unknown>;
+      generatedAt: string | null;
+    }
+  | { kind: "gap" }
+  | { kind: "miss" };
+
+/**
  * GET /api/v1/subnets/{netuid}/ohlc -- OHLCV candles for one subnet's alpha
  * price, in data-api's own `{ data, generatedAt }` wrapper.
  *
- * Returns null when the lakehouse cannot answer, so the caller keeps its
- * schema-stable empty-candles fallback. Netuid 0 declines for the same reason
- * it has no candles at all: there is no AMM to query, and the caller's empty
- * already carries the correct root_excluded shape.
+ * Netuid 0 is a `miss` for the same reason it has no candles at all: there is
+ * no AMM to query, and the caller's empty already carries the correct
+ * root_excluded shape.
  */
 export async function loadSubnetOhlcColdTier(
   env: R2SqlEnv | null | undefined,
   netuid: unknown,
   query: SubnetOhlcQuery = {},
-): Promise<{
-  data: Record<string, unknown>;
-  generatedAt: string | null;
-} | null> {
+): Promise<SubnetOhlcColdTierResult> {
   const subnet = safeBlockNumber(netuid);
-  if (subnet === null || subnet === 0) return null;
+  if (subnet === null || subnet === 0) return { kind: "miss" };
 
   const interval = query.interval ?? null;
   if (
     typeof interval !== "string" ||
     !Object.hasOwn(OHLC_INTERVALS, interval)
   ) {
-    return null;
+    return { kind: "miss" };
   }
   const intervalMs = OHLC_INTERVALS[interval];
 
   const days = safeBlockNumber(query.days);
-  if (days === null || days < 1 || days > MAX_OHLC_WINDOW_DAYS) return null;
+  if (days === null || days < 1 || days > MAX_OHLC_WINDOW_DAYS) {
+    return { kind: "miss" };
+  }
   const cutoff = Date.now() - days * DAY_MS;
 
   // Every literal below is an integer this function parsed or a module
@@ -150,13 +172,35 @@ export async function loadSubnetOhlcColdTier(
       // the most recent MAX_CANDLES, drop the oldest tail); doing it in the
       // engine means the body is bounded before it crosses the wire, and the
       // assembler's ascending re-sort restores chart order.
-      `ORDER BY bucket_start DESC LIMIT ${MAX_CANDLES}`,
+      //
+      // CAP + 1, and that one extra row is the whole truncation signal -- the
+      // same trick `account-feeds-cold-tier.ts` uses to retire a separate cap
+      // probe. Reading MAX_CANDLES rows cannot distinguish "the window holds
+      // exactly the cap" from "the window holds far more and you are seeing
+      // the cap", which is how `candle_count` came to report 2000 for a
+      // 90-day AND a 365-day window. One extra row separates them without a
+      // second query -- and a second query is not available anyway: the
+      // aggregate that would count the window is rejected outright at this
+      // scale (`40015: scan budget exceeded`, measured 2026-08-16).
+      //
+      // The extra row is DROPPED below, so the published page is unchanged.
+      `ORDER BY bucket_start DESC LIMIT ${MAX_CANDLES + 1}`,
   );
-  if (rows === null) return null;
+  // A configured lakehouse that could not answer is a GAP; no lakehouse at all
+  // is a MISS. Same rows, different deployments, and only one of them makes an
+  // empty series the correct answer.
+  if (rows === null) {
+    return isR2SqlConfigured(env) ? { kind: "gap" } : { kind: "miss" };
+  }
+
+  // Newest-first, so the surplus row is the OLDEST -- slice from the front to
+  // keep the recent end, which is the same end the assembler's cap keeps.
+  const windowTruncated = rows.length > MAX_CANDLES;
+  const page = windowTruncated ? rows.slice(0, MAX_CANDLES) : rows;
 
   const buckets = new Map<number, OhlcBucket>();
   let latest: number | null = null;
-  for (const row of rows) {
+  for (const row of page) {
     const bucketStart = finite(row.bucket_start);
     const open = finite(row.open_price);
     const close = finite(row.close_price);
@@ -180,7 +224,9 @@ export async function loadSubnetOhlcColdTier(
       volumeTao === null ||
       eventCount === null
     ) {
-      return null;
+      // The engine ANSWERED, so this is not a missing lakehouse -- it is a
+      // lakehouse we could not read. A gap either way.
+      return { kind: "gap" };
     }
     buckets.set(bucketStart, {
       open,
@@ -202,9 +248,11 @@ export async function loadSubnetOhlcColdTier(
   }
 
   return {
+    kind: "answer",
     data: buildSubnetOhlcFromBuckets(buckets, subnet, {
       interval,
       limit: query.limit,
+      windowTruncated,
     }),
     // data-api derives generatedAt from the newest observed_at it read; the
     // capped window is the same set of rows the candles came from, so the
