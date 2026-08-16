@@ -43,6 +43,7 @@ import { SortHeader, ariaSort, SearchInput } from "@/components/metagraphed/tabl
 import { TableColGroup } from "@jsonbored/ui-kit";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
+import { readKey } from "@/lib/metagraphed/read-key";
 
 // #8251: one request for the FULL directory (~1,014 validators live; the API
 // cap was raised 100 -> 2000 in the same change) — the table body is
@@ -169,8 +170,7 @@ function ValidatorsDirectory({
         (!search.watched || watchlist.isWatched(v.hotkey)),
     );
     const sorted = sortBy(filtered, sort, order, (row, key) => {
-      const rec = row as unknown as Record<string, unknown>;
-      return rec[key];
+      return readKey(row, key);
     });
     if (watchlist.count === 0) return sorted;
     const watched: GlobalValidator[] = [];

@@ -6,6 +6,7 @@ import {
   classifyRpcProbe,
   contentMismatch,
   FINNEY_GENESIS_HASH,
+  isProbeSurface,
   isUnsafePublicUrl,
   mapLimit,
   nodeWebSocketConnector,
@@ -2099,5 +2100,45 @@ describe("withProbeDeadline (metagraphed#9769)", () => {
       globalThis.clearTimeout = original;
     }
     assert.equal(cleared, true);
+  });
+});
+
+describe("isProbeSurface", () => {
+  const probeable = {
+    id: "s1",
+    kind: "rest",
+    url: "https://example.test/health",
+    probe: { method: "GET" },
+  };
+
+  test("accepts a row carrying the three fields the probe needs", () => {
+    assert.equal(isProbeSurface(probeable), true);
+  });
+
+  test("rejects a row with no url — the field the probe fetches", () => {
+    // The reason this is a check and not an assertion: `fetch(undefined)`
+    // inside a bounded concurrency pool is a crash, and a url that arrived as
+    // something other than a string probes as a FAILURE, so the surface would
+    // be published as down rather than as unprobeable.
+    const { url: _url, ...noUrl } = probeable;
+    assert.equal(isProbeSurface(noUrl), false);
+    assert.equal(isProbeSurface({ ...probeable, url: 42 }), false);
+  });
+
+  test("rejects a row whose kind is missing or not a string", () => {
+    // `kind` selects the RPC path over the HTTP one; the wrong branch is not a
+    // probe of the same surface.
+    const { kind: _kind, ...noKind } = probeable;
+    assert.equal(isProbeSurface(noKind), false);
+    assert.equal(isProbeSurface({ ...probeable, kind: ["rest"] }), false);
+  });
+
+  test("rejects a row whose probe config is missing, null, or not an object", () => {
+    // null is the case worth naming: `typeof null === "object"`, so a check
+    // that stopped at typeof would accept it and then read `.method` off it.
+    const { probe: _probe, ...noProbe } = probeable;
+    assert.equal(isProbeSurface(noProbe), false);
+    assert.equal(isProbeSurface({ ...probeable, probe: null }), false);
+    assert.equal(isProbeSurface({ ...probeable, probe: "GET" }), false);
   });
 });

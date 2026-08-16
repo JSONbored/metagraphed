@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { diffSubnets } from "../scripts/changelog.ts";
+import { diffSubnets, subnetsOf } from "../scripts/changelog.ts";
 
 describe("diffSubnets", () => {
   test("classifies added and removed subnets by netuid", () => {
@@ -49,5 +49,74 @@ describe("diffSubnets", () => {
       removed: [],
       renamed: [],
     });
+  });
+});
+
+describe("diffSubnets identifies its own input", () => {
+  test("keeps identifiable rows whole, extra fields and all", () => {
+    assert.deepEqual(
+      diffSubnets([], [{ netuid: 1, name: "Apex", slug: "apex", extra: true }]),
+      {
+        added: [{ netuid: 1, name: "Apex", slug: "apex" }],
+        removed: [],
+        renamed: [],
+      },
+    );
+  });
+
+  test("DROPS rows with no netuid, which is what the diff keys on", () => {
+    // Two rows missing `netuid` would both key the Map under `undefined`, so
+    // the second overwrites the first and one arbitrary subnet stands in for
+    // both. Checked, they never reach the Map -- and no cast was needed to
+    // write this test, which is the point of narrowing inside diffSubnets
+    // rather than at its callers.
+    assert.deepEqual(
+      diffSubnets(
+        [],
+        [
+          { name: "One", slug: "one" },
+          { name: "Two", slug: "two" },
+        ],
+      ),
+      { added: [], removed: [], renamed: [] },
+    );
+  });
+
+  test("drops a row whose netuid is a STRING, not just a missing one", () => {
+    // "7" and 7 are different Map keys, so a stringified netuid would report
+    // the same subnet as both added and removed on every publish.
+    assert.deepEqual(
+      diffSubnets(
+        [{ netuid: 7, name: "A", slug: "a" }],
+        [{ netuid: "7", name: "A", slug: "a" }],
+      ),
+      {
+        added: [],
+        removed: [{ netuid: 7, name: "A", slug: "a" }],
+        renamed: [],
+      },
+    );
+  });
+
+  test("drops a row missing name or slug", () => {
+    assert.deepEqual(diffSubnets([], [{ netuid: 1, slug: "a" }]), {
+      added: [],
+      removed: [],
+      renamed: [],
+    });
+    assert.deepEqual(diffSubnets([], [{ netuid: 1, name: "A" }]), {
+      added: [],
+      removed: [],
+      renamed: [],
+    });
+  });
+
+  test("subnetsOf reads the `subnets` list, or nothing at all", () => {
+    assert.deepEqual(subnetsOf({ subnets: [{ netuid: 1 }] }), [{ netuid: 1 }]);
+    assert.deepEqual(subnetsOf(null), []);
+    assert.deepEqual(subnetsOf(undefined), []);
+    // A previous publish whose artifact predates the key, or holds junk there.
+    assert.deepEqual(subnetsOf({}), []);
+    assert.deepEqual(subnetsOf({ subnets: "not-a-list" }), []);
   });
 });

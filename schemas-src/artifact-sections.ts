@@ -83,5 +83,10 @@ export function sectionsOf(schema: {
         "would publish a parameter with nothing to select",
     );
   }
-  return sections as unknown as readonly [string, ...string[]];
+  // Destructured, not asserted. `z.enum` wants a NON-EMPTY tuple, and the
+  // guard above already proves it -- but a cast is how that proof used to
+  // reach the type, which also switched off checking of the element type
+  // (#11339). Pulling the head out narrows it with no assertion at all.
+  const [first, ...rest] = sections;
+  return [first, ...rest];
 }

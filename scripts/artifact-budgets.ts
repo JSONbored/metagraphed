@@ -83,7 +83,7 @@ export const ARTIFACT_SIZE_BUDGETS: ArtifactBudget[] = [
 
 const DEFAULT_BUDGET = budget("*", 250_000, 1_000_000);
 
-interface ArtifactSize {
+export interface ArtifactSize {
   path: string;
   size_bytes: number;
 }

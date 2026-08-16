@@ -100,6 +100,8 @@ import { DomainsRollup } from "@/components/metagraphed/domains-rollup";
 import { SubnetIndexDirectory } from "@/components/metagraphed/subnet-index-directory";
 import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
 import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
+import { cancelIdle, requestIdle } from "@/lib/metagraphed/idle";
+import { readKey, readNumber } from "@/lib/metagraphed/read-key";
 
 // #8248: fetch every active subnet in one shot instead of cursor-paginating --
 // the whole list (129 rows) is virtualized client-side, so there is no
@@ -803,10 +805,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // actually changes — not on every keystroke/hover-driven re-render.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const ric =
-      (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
-        .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
-    const handle = ric(() => {
+    const handle = requestIdle(() => {
       for (const s of rows)
         prefetchBrandIcon(s.website, 32, {
           iconUrl: s.icon_url,
@@ -814,12 +813,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           lookup: { netuid: s.netuid },
         });
     });
-    return () => {
-      const cic =
-        (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback ??
-        window.clearTimeout;
-      cic(handle as number);
-    };
+    return () => cancelIdle(handle);
   }, [rows]);
 
   // Unified QueryBar-driven filter surface. All filter dropdowns become
@@ -2138,9 +2132,9 @@ function EmissionCell({ share }: { share?: number }) {
 
 function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; density?: Density }) {
   const count = subnet.surfaces_count ?? 0;
-  const rec = subnet as unknown as Record<string, unknown>;
-  const num = (k: string) => (typeof rec[k] === "number" ? (rec[k] as number) : 0);
-  const byKind = (rec.surfaces_by_kind ?? rec.surface_kinds) as Record<string, number> | undefined;
+  const num = (k: string) => readNumber(subnet, k) ?? 0;
+  const byKind = (readKey(subnet, "surfaces_by_kind") ?? readKey(subnet, "surface_kinds")) as
+    Record<string, number> | undefined;
   // Prefer a real per-kind breakdown if the list API ever exposes one; otherwise
   // show the surface-trust composition (official / registry-observed / other) —
   // the list API always carries these counts, so the bar is a meaningful

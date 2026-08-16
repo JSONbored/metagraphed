@@ -36,6 +36,7 @@ import {
   type Severity,
 } from "@/components/metagraphed/subnet-filter-context";
 import type { Endpoint, RpcPool, Surface } from "@/lib/metagraphed/types";
+import { readString } from "@/lib/metagraphed/read-key";
 
 type Seg = "endpoints" | "surfaces" | "schemas";
 
@@ -529,9 +530,7 @@ function SurfacesView({
   }
   const rows = filter.isAll
     ? allRows
-    : allRows.filter((s) =>
-        filter.isActive(((s as unknown as { health?: string }).health ?? "unknown") as Severity),
-      );
+    : allRows.filter((s) => filter.isActive((readString(s, "health") ?? "unknown") as Severity));
   const hidden = allRows.length - rows.length;
   if (allRows.length === 0) {
     return (

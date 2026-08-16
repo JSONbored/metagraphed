@@ -7,7 +7,6 @@
 //   npm run validate:surface -- registry/subnets/<slug>.json
 //   npm run validate:surface          # validates every subnet file
 import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
-import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import {
   classifyNativeName,
@@ -18,12 +17,12 @@ import {
   repoRoot,
 } from "./lib.ts";
 import { RPC_POOL_KIND_VALUES } from "../schemas-src/query-params.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop
 // resolution -- cast to its real callable signature rather than fight the
 // interop. Mirrors validate-openapi-examples.ts.
-const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 // Subnet registry documents are read for schema/convention validation only,
 // never trusted for control flow. Mirrors the readJson/readArtifactJson
@@ -32,7 +31,7 @@ const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 type Row = Record<string, any>;
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
-addFormats(ajv);
+addAjvFormats(ajv);
 const schema = await readJson(
   path.join(repoRoot, "schemas/subnet-manifest.schema.json"),
 );

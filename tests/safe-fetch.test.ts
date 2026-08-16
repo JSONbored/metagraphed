@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test, vi } from "vitest";
 import { createPinnedLookup, safeFetch } from "../scripts/lib.ts";
+import type { LookupAddress } from "node:dns";
 import type { Row } from "./row-type.ts";
 
 // IP-literal URLs so isUnsafeResolvedUrl never needs DNS: 1.1.1.1 / 8.8.8.8 are
@@ -152,42 +153,51 @@ describe("safeFetch SSRF guard", () => {
 describe("createPinnedLookup", () => {
   const PINNED = "93.184.216.34";
 
+  // The callback parameters are inferred from `LookupFunction`, so these
+  // assertions are checked against the contract Node and undici actually call
+  // this with. They used to be asserted into place, which meant the test
+  // agreed with itself: it declared `address?: string` where the contract says
+  // `string | LookupAddress[]`, and the `{ all: true }` case below would have
+  // type-checked just as happily against the single-answer shape.
+  type Capture = {
+    err: NodeJS.ErrnoException | null;
+    address: string | LookupAddress[];
+    family?: number;
+  };
+
   test("resolves the pinned host to the vetted address (single + all forms)", () => {
     const lookup = createPinnedLookup("example.test", PINNED, 4);
 
     // Node's single-answer form: callback(err, address, family).
-    let single: Row | undefined;
-    lookup("example.test", {}, ((
-      err: Error | null,
-      address?: string,
-      family?: number,
-    ) => {
+    let single: Capture | undefined;
+    lookup("example.test", {}, (err, address, family) => {
       single = { err, address, family };
-    }) as unknown as Parameters<typeof lookup>[2]);
+    });
     assert.equal(single!.err, null);
     assert.equal(single!.address, PINNED);
     assert.equal(single!.family, 4);
 
     // The `{ all: true }` form must return an address array. Hostname matching is
     // normalized, so an upper-cased request for the same host still resolves.
-    let all: Row | undefined;
-    lookup("EXAMPLE.TEST", { all: true }, ((
-      err: Error | null,
-      addresses?: Row[],
-    ) => {
-      all = { err, addresses };
-    }) as unknown as Parameters<typeof lookup>[2]);
+    let all: Capture | undefined;
+    lookup("EXAMPLE.TEST", { all: true }, (err, address) => {
+      all = { err, address };
+    });
     assert.equal(all!.err, null);
-    assert.deepEqual(all!.addresses, [{ address: PINNED, family: 4 }]);
+    assert.deepEqual(all!.address, [{ address: PINNED, family: 4 }]);
   });
 
   test("rejects a connect-time lookup for any other (rebound) host", () => {
     const lookup = createPinnedLookup("example.test", PINNED, 4);
-    let captured: Error | null | undefined;
-    lookup("evil.test", { all: true }, ((err: Error | null) => {
-      captured = err;
-    }) as unknown as Parameters<typeof lookup>[2]);
-    assert.ok(captured instanceof Error);
-    assert.match(captured!.message, /unpinned host/);
+    let captured: Capture | undefined;
+    lookup("evil.test", { all: true }, (err, address) => {
+      captured = { err, address };
+    });
+    assert.ok(captured!.err instanceof Error);
+    assert.match(captured!.err!.message, /unpinned host/);
+    // Refused, so there is no answer -- and the empty array is what says so.
+    // Passing an address here would hand a caller that ignored the error a
+    // route to the very host the pin exists to refuse.
+    assert.deepEqual(captured!.address, []);
   });
 });

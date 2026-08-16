@@ -48,6 +48,22 @@ export const TREASURY_REVIEW_STATES = [
 export const TreasuryReviewStateSchema = z.enum(TREASURY_REVIEW_STATES);
 
 /**
+ * The states a maintainer may promote INTO.
+ *
+ * `candidate` is what the extractor writes; promoting something back to it
+ * would be undoing a review rather than making one. Derived here rather than
+ * filtered at the call site so the exclusion travels with the vocabulary it
+ * excludes from -- a fourth state added above lands in this set automatically,
+ * which is the behaviour you want, and `.options` still prints the list for a
+ * usage message.
+ */
+export const PromotableTreasuryReviewStateSchema =
+  TreasuryReviewStateSchema.exclude(["candidate"]);
+export type PromotableTreasuryReviewState = z.infer<
+  typeof PromotableTreasuryReviewStateSchema
+>;
+
+/**
  * The citation. `read_at_sha` is required and that is the whole point: a branch
  * moves under a claim, so the evidence for a finding is the commit that was
  * HEAD when it was read. A reading without one cannot be constructed.

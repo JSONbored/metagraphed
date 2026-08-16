@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "./lib.ts";
+import { apiEnv } from "./lib/worker-env.ts";
 
 // Live handler responses are read for assertion purposes only, never trusted
 // for control flow. Mirrors the readJson/readArtifactJson precedent in lib.ts.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
-const env = createLocalArtifactEnv() as unknown as Env;
+const env = apiEnv(createLocalArtifactEnv());
 
 const head = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets", { method: "HEAD" }),
@@ -86,7 +87,7 @@ assert.equal(await cached.text(), "", "304 should not return a body");
 
 const r2Fallback = await handleRequest(
   new Request("https://metagraph.sh/api/v1/changelog"),
-  {
+  apiEnv({
     ASSETS: {
       async fetch() {
         return new Response("not found", { status: 404 });
@@ -113,7 +114,7 @@ const r2Fallback = await handleRequest(
         };
       },
     },
-  } as unknown as Env,
+  }),
   {},
 );
 assert.equal(
@@ -209,7 +210,7 @@ for (const unsafeUrl of [
           params: [],
         }),
       }),
-      {
+      apiEnv({
         ...env,
         METAGRAPH_ENABLE_RPC_PROXY: "true",
         ASSETS: {
@@ -231,7 +232,7 @@ for (const unsafeUrl of [
             };
           },
         },
-      } as unknown as Env,
+      }),
       {},
     );
     assert.equal(
@@ -294,7 +295,7 @@ try {
       },
     ],
   };
-  const proxyEnv = {
+  const proxyEnv = apiEnv({
     ...env,
     METAGRAPH_ENABLE_RPC_PROXY: "true",
     ASSETS: {
@@ -316,7 +317,7 @@ try {
         };
       },
     },
-  } as unknown as Env;
+  });
   const proxied = await handleRequest(
     new Request("https://metagraph.sh/rpc/v1/finney", {
       method: "POST",

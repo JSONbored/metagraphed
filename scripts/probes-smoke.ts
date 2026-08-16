@@ -19,6 +19,7 @@ import {
 import {
   mapLimit,
   nodeWebSocketConnector,
+  isProbeSurface,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
   type ProbeSurface,
@@ -31,10 +32,27 @@ const contractVersion = CONTRACT_VERSION;
 const subnets: Row[] = await loadSubnets();
 const providers: Row[] = await loadProviders();
 const allSurfaces: Row[] = flattenSurfaces(subnets);
-const surfaces = allSurfaces.filter(
+const enabledSurfaces = allSurfaces.filter(
   (surface) =>
     (surface.probe as Row | undefined)?.enabled && surface.public_safe,
 );
+// Checked, not asserted. validate:surface already requires `url` and `kind` on
+// every surface, so a row failing here means something upstream broke -- and
+// the failure mode without the check is worse than a crash: an undefined url
+// probes as a failure, so the surface would be reported DOWN rather than
+// unprobeable, and its subnet's health would fall for a reason no one could
+// see in the artifact.
+const unprobeable = enabledSurfaces.filter(
+  (surface) => !isProbeSurface(surface),
+);
+if (unprobeable.length > 0) {
+  throw new Error(
+    `${unprobeable.length} probe-enabled surface(s) are missing a string ` +
+      `kind or url and cannot be probed: ` +
+      `${unprobeable.map((surface) => String(surface.id)).join(", ")}`,
+  );
+}
+const surfaces = enabledSurfaces.filter(isProbeSurface);
 const startedAt = Date.now();
 const priorHistory = await loadPriorHistory();
 
@@ -84,11 +102,8 @@ const probeOptions = {
   connect: nodeWebSocketConnector(),
 };
 
-async function probeSurface(surface: Row): Promise<Row> {
-  const base = await coreProbeSurface(
-    surface as unknown as ProbeSurface,
-    probeOptions,
-  );
+async function probeSurface(surface: Row & ProbeSurface): Promise<Row> {
+  const base = await coreProbeSurface(surface, probeOptions);
   const history: Row[] = priorHistory.get(surface.id as string) || [];
   const lastOk =
     base.status === "ok"

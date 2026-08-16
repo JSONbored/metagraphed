@@ -15,12 +15,7 @@
 
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import {
-  buildChangelog,
-  type ArtifactEntry,
-  type CoverageSnapshot,
-  type SubnetEntry,
-} from "./changelog.ts";
+import { buildChangelog, subnetsOf, type ArtifactEntry } from "./changelog.ts";
 import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.ts";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 
@@ -122,17 +117,12 @@ async function main(): Promise<void> {
     contractVersion: placeholder.contract_version,
     generatedAt: placeholder.generated_at,
     currentArtifacts: manifestDigests(stagedManifest),
-    currentCoverage: (currentCoverage || {}) as unknown as CoverageSnapshot,
-    currentSubnets: {
-      subnets: (currentSubnets?.subnets as SubnetEntry[] | undefined) || [],
-    },
+    currentCoverage: currentCoverage || {},
+    currentSubnets: { subnets: subnetsOf(currentSubnets) },
     previousArtifacts: manifestDigests(previousManifest),
-    previousCoverage: (previousCoverage ||
-      null) as unknown as CoverageSnapshot | null,
+    previousCoverage: previousCoverage || null,
     previousSubnets: previousSubnets
-      ? {
-          subnets: (previousSubnets.subnets as SubnetEntry[] | undefined) || [],
-        }
+      ? { subnets: subnetsOf(previousSubnets) }
       : null,
   });
   const summary = changelog.summary as Row;

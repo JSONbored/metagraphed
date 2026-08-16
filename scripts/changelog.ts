@@ -16,6 +16,12 @@ export interface ArtifactEntry {
   [key: string]: unknown;
 }
 
+/**
+ * A subnet, as the diff identifies one. Unlike coverage, these fields are NOT
+ * ceremony: `netuid` is the Map key the entire diff turns on, and `name` is
+ * what a rename is detected from. See `subnetEntries` for why they are checked
+ * rather than declared.
+ */
 export interface SubnetEntry {
   netuid: number;
   name: string;
@@ -23,13 +29,54 @@ export interface SubnetEntry {
   [key: string]: unknown;
 }
 
-export interface CoverageSnapshot {
-  candidate_count: number;
-  curated_overlay_count: number;
-  native_only_count: number;
-  surface_count: number;
-  [key: string]: unknown;
+/**
+ * The identifiable subnets in a list, dropping the rest.
+ *
+ * Callers hold `Record<string, unknown>` rows -- one from this build, one
+ * parsed from the previous publish's JSON -- and used to assert them into
+ * `SubnetEntry[]` wholesale. An entry missing `netuid` then keys
+ * `previousByNetuid` under `undefined`, so every other unidentifiable entry
+ * collides with it and the diff reports one arbitrary subnet renamed from and
+ * to whatever those rows happened to hold.
+ *
+ * Dropping rather than throwing is deliberate: the previous side of this diff
+ * is a document some earlier deploy wrote, and one unreadable historical row
+ * should cost that row, not the publish.
+ */
+function subnetEntries(rows: readonly Row[]): SubnetEntry[] {
+  const entries: SubnetEntry[] = [];
+  for (const row of rows) {
+    const { netuid, name, slug } = row;
+    if (
+      typeof netuid === "number" &&
+      typeof name === "string" &&
+      typeof slug === "string"
+    ) {
+      entries.push({ ...row, netuid, name, slug });
+    }
+  }
+  return entries;
 }
+
+/** The `subnets` list out of a subnets artifact, or nothing. Extraction only --
+ *  `diffSubnets` does the identifying. */
+export function subnetsOf(artifact: Row | null | undefined): readonly Row[] {
+  const subnets = artifact?.subnets;
+  return Array.isArray(subnets) ? subnets : [];
+}
+
+/**
+ * A coverage artifact, as loosely as this module actually reads one.
+ *
+ * This used to declare the four counts as required numbers, and every one of
+ * the four call sites had to assert its way past that -- including
+ * `(currentCoverage || {}) as unknown as CoverageSnapshot` in
+ * build-changelog.ts, which claimed four required numbers about `{}`. Nothing
+ * needed the declaration: `delta` below takes `unknown` and checks, which is
+ * the right thing to do with a document a PREVIOUS publish wrote. So the
+ * checking stays and the claim goes.
+ */
+export type CoverageSnapshot = Row;
 
 export function buildChangelog({
   contractVersion,
@@ -44,11 +91,17 @@ export function buildChangelog({
   contractVersion: unknown;
   currentArtifacts: ArtifactEntry[];
   currentCoverage: CoverageSnapshot;
-  currentSubnets: { subnets?: SubnetEntry[] };
+  // `subnets` is REQUIRED, and that is the whole reason this compiles honestly.
+  // With it optional the property is a "weak type" match, and TypeScript does
+  // not check a source index signature against an optional target property --
+  // so a bare `Record<string, unknown>` read straight from JSON satisfied this
+  // parameter with no cast and no complaint, and `subnets` was trusted as
+  // SubnetEntry[] the whole way down. Callers go through `subnetEntriesOf`.
+  currentSubnets: { subnets: readonly Row[] };
   generatedAt: unknown;
   previousArtifacts?: ArtifactEntry[] | null;
   previousCoverage?: CoverageSnapshot | null;
-  previousSubnets?: { subnets?: SubnetEntry[] } | null;
+  previousSubnets?: { subnets: readonly Row[] } | null;
 }): Row {
   const previousArtifactList = previousArtifacts || [];
   const previousMap = new Map(
@@ -71,7 +124,7 @@ export function buildChangelog({
   // A null subnet baseline means "no previous publish to diff against" (the
   // build, pre-publish) → empty, NOT everything-added.
   const subnetChanges = previousSubnets
-    ? diffSubnets(previousSubnets.subnets || [], currentSubnets.subnets || [])
+    ? diffSubnets(previousSubnets.subnets, currentSubnets.subnets)
     : { added: [], removed: [], renamed: [] };
   const coverageDelta = previousCoverage
     ? {
@@ -123,9 +176,16 @@ export function buildChangelog({
 }
 
 export function diffSubnets(
-  previousSubnets: SubnetEntry[],
-  currentSubnets: SubnetEntry[],
+  previousRows: readonly Row[],
+  currentRows: readonly Row[],
 ): { added: Row[]; removed: Row[]; renamed: Row[] } {
+  // Identified here rather than by the caller, so there is no version of this
+  // that skips the check. The parameters are deliberately `Row[]`: both sides
+  // are read from JSON some publish wrote, and a signature promising
+  // SubnetEntry[] only moved the assertion up one frame -- which is exactly
+  // where it used to live.
+  const previousSubnets = subnetEntries(previousRows);
+  const currentSubnets = subnetEntries(currentRows);
   const previousByNetuid = new Map(
     previousSubnets.map((subnet) => [subnet.netuid, subnet]),
   );
@@ -165,12 +225,10 @@ function delta(
   before: unknown,
   after: unknown,
 ): { before: number; after: number; delta: number } | null {
-  if (!Number.isFinite(before) || !Number.isFinite(after)) {
-    return null;
-  }
-  return {
-    before: before as number,
-    after: after as number,
-    delta: (after as number) - (before as number),
-  };
+  // `typeof` first so the narrowing is real. Number.isFinite does not widen a
+  // guard into a type, which is why the three assertions below it existed --
+  // and it accepts only actual numbers, so this rejects exactly what it did.
+  if (typeof before !== "number" || typeof after !== "number") return null;
+  if (!Number.isFinite(before) || !Number.isFinite(after)) return null;
+  return { before, after, delta: after - before };
 }

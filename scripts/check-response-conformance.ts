@@ -16,10 +16,10 @@
 // build-time tests never see the difference.
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import { API_ROUTES } from "../src/contracts.ts";
 import { apiRouteUrl } from "./smoke-live-api.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 const BASE = process.env.CONFORMANCE_API_BASE || "https://api.metagraph.sh";
 const SPEC_PATH =
@@ -47,21 +47,18 @@ export function buildValidator(
   spec: Record<string, unknown>,
   routePath: string,
 ): Validator | null {
-  const ajv = new (
-    Ajv2020 as unknown as new (o: unknown) => {
-      addSchema: (s: unknown, k: string) => void;
-      compile: (s: unknown) => {
-        (body: unknown): boolean;
-        errors?: { instancePath?: string; message?: string }[] | null;
-      };
-    }
-  )(
+  // The NAMED export, like the five sibling validators use. The default
+  // import resolves to the module object rather than the constructor, which is
+  // why this had to restate Ajv's whole API as a hand-written `new (o: unknown)
+  // => { addSchema; compile }` and assert the class into it -- a shape that
+  // could not notice ajv changing under it (#11339).
+  const ajv = new Ajv2020(
     // allErrors: a route can violate its schema in more than one place, and
     // stopping at the first turns one bug into a queue of them -- /api/v1/rpc/pools
     // had two, and fixing #9138 is what "revealed" #9142.
     { strict: false, allErrors: true, validateFormats: false },
   );
-  (addFormats as unknown as (a: unknown) => void)(ajv);
+  addAjvFormats(ajv);
   ajv.addSchema(spec, "openapi.json");
 
   const paths = spec.paths as Record<string, Record<string, unknown>>;

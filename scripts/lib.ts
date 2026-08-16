@@ -25,7 +25,7 @@ import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash, type BinaryLike } from "node:crypto";
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { isIP, type LookupFunction } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Agent } from "undici";
@@ -1638,18 +1638,17 @@ export function createPinnedLookup(
   hostname: string,
   address: string,
   family: number,
-) {
-  return (
-    requestedHostname: string,
-    options: { all?: boolean } | undefined,
-    callback: (
-      err: Error | null,
-      address?: string | { address: string; family: number }[],
-      family?: number,
-    ) => void,
-  ): void => {
+): LookupFunction {
+  return (requestedHostname, options, callback): void => {
     if (normalizeHostname(requestedHostname) !== hostname) {
-      callback(new Error("safeFetch attempted to resolve an unpinned host"));
+      // `[]` rather than a fabricated address. Every consumer checks the error
+      // argument first and never reads this one, and "resolved nothing" is the
+      // truthful thing to say -- Node's LookupFunction declares the parameter
+      // required, so the choice is between an empty result and a lie.
+      callback(
+        new Error("safeFetch attempted to resolve an unpinned host"),
+        [],
+      );
       return;
     }
     if (options?.all) {
@@ -1666,7 +1665,7 @@ function createPinnedAddressDispatcher(
   family: number,
 ): Agent {
   return new Agent({
-    connect: { lookup: createPinnedLookup(hostname, address, family) as never },
+    connect: { lookup: createPinnedLookup(hostname, address, family) },
   });
 }
 

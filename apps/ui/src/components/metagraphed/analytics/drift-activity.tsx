@@ -6,6 +6,7 @@ import { classNames } from "@/lib/metagraphed/format";
 import { TimeAgo } from "@jsonbored/ui-kit";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
 import { Panel } from "@/components/metagraphed/primitives";
+import { readNumber } from "@/lib/metagraphed/read-key";
 
 interface Props {
   schemas: SchemaInfo[];
@@ -304,10 +305,9 @@ function weight(s: SchemaInfo): number {
 }
 
 function numericField(s: SchemaInfo, keys: string[]): number | null {
-  const rec = s as unknown as Record<string, unknown>;
   for (const k of keys) {
-    const v = rec[k];
-    if (typeof v === "number" && Number.isFinite(v)) return v;
+    const v = readNumber(s, k);
+    if (v !== undefined) return v;
   }
   return null;
 }

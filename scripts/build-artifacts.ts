@@ -109,12 +109,7 @@ import {
   SCHEMA_CAPTURE_CADENCE_HOURS,
   SCHEMA_INDEX_R2_KEY,
 } from "../src/schema-snapshots-sync.ts";
-import {
-  buildChangelog,
-  type ArtifactEntry,
-  type CoverageSnapshot,
-  type SubnetEntry,
-} from "./changelog.ts";
+import { buildChangelog, subnetsOf, type ArtifactEntry } from "./changelog.ts";
 import {
   buildSurfaceAliasArtifact,
   SURFACE_ALIASES_RELATIVE_PATH,
@@ -2946,14 +2941,18 @@ const currentArtifactDigests = await collectArtifactDigests({
 // by scripts/build-changelog.ts at publish time against the previous R2 publish.
 const changelogArtifact: Row = buildChangelog({
   contractVersion,
-  currentArtifacts: currentArtifactDigests as unknown as ArtifactEntry[],
-  currentCoverage: coverage as unknown as CoverageSnapshot,
-  currentSubnets: { subnets: subnetIndex as unknown as SubnetEntry[] },
+  currentArtifacts: currentArtifactDigests,
+  currentCoverage: coverage,
+  currentSubnets: { subnets: subnetIndex },
   generatedAt,
-  previousArtifacts: previousArtifactDigests as unknown as ArtifactEntry[],
-  previousCoverage:
-    previousCoverageArtifact as unknown as CoverageSnapshot | null,
-  previousSubnets: previousSubnetsArtifact,
+  previousArtifacts: previousArtifactDigests,
+  previousCoverage: previousCoverageArtifact,
+  // Read from git, so its shape is a contract with an older deploy -- checked,
+  // not trusted. At build time this is null and the changelog is the empty
+  // placeholder; the real diff happens in build-changelog.ts at publish time.
+  previousSubnets: previousSubnetsArtifact
+    ? { subnets: subnetsOf(previousSubnetsArtifact) }
+    : null,
 });
 await writeJson(artifactFile("changelog.json"), changelogArtifact);
 // Registry-wide summary (R2-tier): homepage/leaderboard stats in one call —
@@ -3092,9 +3091,7 @@ const artifactSizes = await collectArtifactSizes({
 const reviewArtifactSizes = artifactSizes.filter(
   (artifact) => artifact.storage_tier !== "r2",
 );
-const artifactBudgets = evaluateArtifactBudgets(
-  artifactSizes as unknown as Parameters<typeof evaluateArtifactBudgets>[0],
-);
+const artifactBudgets = evaluateArtifactBudgets(artifactSizes);
 await writeJson(artifactFile("build-summary.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -5815,7 +5812,7 @@ async function collectPreviousPublicArtifactDigests({
 }: {
   publicRoot: string;
   r2Root: string;
-}): Promise<Row[]> {
+}): Promise<ArtifactEntry[]> {
   const committedArtifacts = await collectCommittedPublicArtifactDigests();
   if (committedArtifacts) {
     return committedArtifacts;
@@ -5827,7 +5824,9 @@ async function collectPreviousPublicArtifactDigests({
   });
 }
 
-async function collectCommittedPublicArtifactDigests(): Promise<Row[] | null> {
+async function collectCommittedPublicArtifactDigests(): Promise<
+  ArtifactEntry[] | null
+> {
   const publicPrefix = "public/metagraph/";
   const output = await gitOutput([
     "ls-tree",
@@ -5898,7 +5897,7 @@ async function gitBuffer(args: string[]): Promise<Buffer | null> {
       encoding: "buffer",
       maxBuffer: 1024 * 1024 * 50,
     });
-    return stdout as unknown as Buffer;
+    return stdout;
   } catch (error) {
     // git missing (ENOENT) or a "path not in HEAD"/bad-revision error (exit 128,
     // e.g. an R2-only artifact with no committed baseline). execFileAsync exposes
@@ -5922,8 +5921,8 @@ async function collectArtifactDigests({
   previousManifest?: Row | null;
   publicRoot: string;
   r2Root: string;
-}): Promise<Row[]> {
-  const files: Row[] = [];
+}): Promise<ArtifactEntry[]> {
+  const files: ArtifactEntry[] = [];
   await collectArtifactFiles(
     { includeR2Root, publicRoot, r2Root },
     async (filePath, root) => {
@@ -5976,14 +5975,28 @@ async function readOptionalJson(filePath: string): Promise<Row | null> {
   }
 }
 
+/**
+ * One artifact as the size pass measures it. A `type` and not an `interface`
+ * ON PURPOSE: an interface has no implicit index signature, so it would not be
+ * assignable to the `Row[]` the tier-counting helpers below take, and naming
+ * the shape would cost an assertion at each of them -- which is roughly how
+ * the one this replaces came to exist.
+ */
+type ArtifactSizeEntry = {
+  path: string;
+  sha256: string;
+  size_bytes: number;
+  storage_tier: string;
+};
+
 async function collectArtifactSizes({
   publicRoot,
   r2Root,
 }: {
   publicRoot: string;
   r2Root: string;
-}): Promise<Row[]> {
-  const files: Row[] = [];
+}): Promise<ArtifactSizeEntry[]> {
+  const files: ArtifactSizeEntry[] = [];
   await collectArtifactFiles({ publicRoot, r2Root }, async (filePath, root) => {
     if (!filePath.endsWith(".json")) {
       return;

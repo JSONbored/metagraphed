@@ -27,6 +27,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Resvg } from "@resvg/resvg-js";
+import type { ReactNode } from "react";
 import satori from "satori";
 import { html } from "satori-html";
 import { glyphsForMarkup, renderCardMarkup } from "../src/lib/og-image.ts";
@@ -158,7 +159,13 @@ for (const [name, variant] of Object.entries(VARIANTS)) {
     loadFont("Inter", 400, glyphs),
   ]);
 
-  const svg = await satori(html(markup) as never, {
+  // satori-html returns satori's own `VNode`; satori's published signature says
+  // `ReactNode` because React is its reference renderer. Same runtime object,
+  // two packages that do not declare each other -- stated once, narrowly.
+  // `as ReactNode` and not `as never`: the latter also accepted `undefined`,
+  // which is what a renderCardMarkup returning nothing would have handed over.
+  // Mirrors scripts/refresh-og-image.ts, which renders the same card in CI.
+  const svg = await satori(html(markup) as ReactNode, {
     width: 1200,
     height: 630,
     fonts: [

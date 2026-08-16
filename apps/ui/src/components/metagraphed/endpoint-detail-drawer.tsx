@@ -37,11 +37,12 @@ export function EndpointDetailDrawer({
   // Filter: state (down/warn/other), and pool membership (this endpoint's pool).
   const [stateFilter, setStateFilter] = useState<"all" | "down" | "warn" | "other">("all");
   const [poolOnly, setPoolOnly] = useState(false);
-  const endpointPoolId = String(
-    (endpoint as unknown as { pool_id?: string; pool?: string }).pool_id ??
-      (endpoint as unknown as { pool_id?: string; pool?: string }).pool ??
-      "",
-  );
+  // No assertion needed for either: `pool` is on the Endpoint contract, and
+  // `pool_id` -- which is not -- arrives through its index signature as
+  // `unknown`, which `String()` accepts. The old cast restated both as
+  // optional strings, so it was claiming a contract field that does not exist
+  // rather than reading one that might.
+  const endpointPoolId = String(endpoint.pool_id ?? endpoint.pool ?? "");
 
   const rows = useMemo(() => {
     let list = allRows;

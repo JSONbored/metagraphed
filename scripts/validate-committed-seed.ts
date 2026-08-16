@@ -23,7 +23,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormatsPlugin from "ajv-formats";
 import { API_ROUTES } from "../src/contracts.ts";
 import { handleRequest } from "../workers/api.ts";
 import {
@@ -31,12 +30,13 @@ import {
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.ts";
+import { apiEnv } from "./lib/worker-env.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop
 // resolution -- cast to its real callable signature rather than fight the
 // interop. Mirrors validate-openapi-examples.ts.
-const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 // The OpenAPI document + generated route table are read for schema validation
 // only, never trusted for control flow. Mirrors the readJson/readArtifactJson
@@ -79,7 +79,7 @@ export async function runCommittedSeedGate({
     strict: false,
     validateFormats: true,
   });
-  addFormats(ajv);
+  addAjvFormats(ajv);
 
   const routes = committedSeedRoutes();
   const errors: string[] = [];
@@ -89,7 +89,7 @@ export async function runCommittedSeedGate({
     try {
       response = await handleRequest(
         new Request(`https://metagraph.sh${route.path}`),
-        env as unknown as Env,
+        apiEnv(env),
         {},
       );
     } catch (error) {

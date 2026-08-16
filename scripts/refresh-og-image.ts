@@ -32,6 +32,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Resvg } from "@resvg/resvg-js";
+import type { ReactNode } from "react";
 import satori from "satori";
 import { html } from "satori-html";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
@@ -103,7 +104,14 @@ async function renderCard(statParts: string[] | null): Promise<Buffer> {
     loadGoogleFont("Space Grotesk", 700),
     loadGoogleFont("Space Grotesk", 500),
   ]);
-  const svg = await satori(html(renderMarkup(statParts)) as never, {
+  // satori-html returns satori's own `VNode`; satori's published signature
+  // says `ReactNode` because React is its reference renderer. Both describe
+  // the same runtime object -- satori walks `{ type, props }` and never
+  // touches a React internal -- but neither package declares the other, so the
+  // relationship is stated once, here. `as ReactNode` and not `as never`: the
+  // latter accepts every value there is, including the `undefined` that a
+  // renderMarkup returning nothing would hand over.
+  const svg = await satori(html(renderMarkup(statParts)) as ReactNode, {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     fonts: [

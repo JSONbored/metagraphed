@@ -9,16 +9,16 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormatsPlugin from "ajv-formats";
 import { handleRequest } from "../workers/api.ts";
 import { EMBED_MODEL } from "../src/ai-search.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.ts";
+import { apiEnv } from "./lib/worker-env.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop
 // resolution -- cast to its real callable signature rather than fight the
 // interop. Mirrors validate-openapi-examples.ts.
-const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 // Live handler responses/env stubs are read/built dynamically for assertion
 // purposes only, never trusted for control flow. Mirrors the
@@ -27,7 +27,7 @@ const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 type Row = Record<string, any>;
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
-addFormats(ajv);
+addAjvFormats(ajv);
 const semanticSchema = ajv.compile(
   await readJson(path.join(repoRoot, "schemas/ai/semantic-search.schema.json")),
 );
@@ -39,7 +39,7 @@ const SEMANTIC_URL = "https://api.metagraph.sh/api/v1/search/semantic";
 const ASK_URL = "https://api.metagraph.sh/api/v1/ask";
 
 function get(url: string, env: Row) {
-  return handleRequest(new Request(url), env as unknown as Env, {});
+  return handleRequest(new Request(url), apiEnv(env), {});
 }
 function post(
   url: string,
@@ -53,7 +53,7 @@ function post(
       headers: { "content-type": "application/json", ...headers },
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
-    env as unknown as Env,
+    apiEnv(env),
     {},
   );
 }

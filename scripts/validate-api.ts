@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
-import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import {
   API_ROUTES,
@@ -22,6 +21,8 @@ import { buildAccountIdentity } from "../src/account-identity.ts";
 import { blockEmissionForIssuance } from "../src/block-emission.ts";
 import { taoToRao } from "../src/emission-decomposition.ts";
 import {} from "../workers/request-params.ts";
+import { apiEnv } from "./lib/worker-env.ts";
+import { addAjvFormats } from "./lib/ajv-formats.ts";
 
 // OpenAPI document + Worker response bodies are dynamic JSON read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -116,10 +117,7 @@ const ajv = new Ajv2020({
   strict: false,
   validateFormats: true,
 });
-// ajv-formats has no named export to sidestep the NodeNext/esModuleInterop
-// resolution -- cast to its real callable signature. Mirrors validate-schemas.ts.
-const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
-addFormats(ajv);
+addAjvFormats(ajv);
 
 const fixtureDetail = {
   schema_version: 1,
@@ -3027,7 +3025,7 @@ for (const [route, assertion, options = {}] of checks) {
             body: JSON.stringify(options.body),
           },
     ),
-    env as unknown as Env,
+    apiEnv(env),
     {},
   );
   assert.equal(
@@ -3231,7 +3229,7 @@ for (const [route, assertion, options = {}] of checks) {
     });
     const response = await handleRequest(
       new Request(`https://metagraph.sh${route}`),
-      forwardingEnv as unknown as Env,
+      apiEnv(forwardingEnv),
       {},
     );
     assert.equal(response.status, 200, `${flag} ${route}: expected 200`);
@@ -3313,7 +3311,7 @@ for (const [route, assertion, options = {}] of checks) {
     });
     await handleRequest(
       new Request(`https://metagraph.sh${route}`),
-      sweptEnv as unknown as Env,
+      apiEnv(sweptEnv),
       {},
     );
     assert.equal(
@@ -3335,7 +3333,7 @@ const paginated = await handleRequest(
   new Request(
     "https://metagraph.sh/api/v1/subnets?limit=2&sort=netuid&order=desc",
   ),
-  env as unknown as Env,
+  apiEnv(env),
   {},
 );
 const paginatedBody = (await paginated.json()) as Row;
@@ -3358,7 +3356,7 @@ for (const route of [
 ]) {
   const response = await handleRequest(
     new Request(`https://metagraph.sh${route}`),
-    env as unknown as Env,
+    apiEnv(env),
     {},
   );
   assert.equal(response.status, 400, `${route}: expected invalid query`);
@@ -3371,7 +3369,7 @@ for (const route of [
 
 const etagSource = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets/7"),
-  env as unknown as Env,
+  apiEnv(env),
   {},
 );
 const cached = await handleRequest(
@@ -3380,14 +3378,14 @@ const cached = await handleRequest(
       "if-none-match": etagSource.headers.get("etag")!,
     },
   }),
-  env as unknown as Env,
+  apiEnv(env),
   {},
 );
 assert.equal(cached.status, 304, "matching ETag should return 304");
 
 const missing = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets/9999"),
-  env as unknown as Env,
+  apiEnv(env),
   {},
 );
 assert.equal(missing.status, 404, "missing subnet should return 404");
@@ -3399,7 +3397,7 @@ assert.equal(
 
 const proxy = await handleRequest(
   new Request("https://metagraph.sh/rpc/v1/finney", { method: "POST" }),
-  env as unknown as Env,
+  apiEnv(env),
   {},
 );
 assert.equal(proxy.status, 501, "RPC proxy should be disabled by default");
@@ -3414,10 +3412,10 @@ const blockedRpc = await handleRequest(
       params: [],
     }),
   }),
-  {
+  apiEnv({
     ...env,
     METAGRAPH_ENABLE_RPC_PROXY: "true",
-  } as unknown as Env,
+  }),
   {},
 );
 assert.equal(
@@ -3434,7 +3432,7 @@ const verifyMissing = await handleRequest(
   new Request(
     "https://metagraph.sh/api/v1/surfaces/zzz-not-a-real-surface/verify",
   ),
-  env as unknown as Env,
+  apiEnv(env),
   {},
 );
 assert.equal(
@@ -3450,7 +3448,7 @@ assert.equal(
 
 const r2Fallback = await handleRequest(
   new Request("https://metagraph.sh/api/v1/changelog"),
-  {
+  apiEnv({
     ASSETS: {
       async fetch() {
         return new Response("not found", { status: 404 });
@@ -3477,7 +3475,7 @@ const r2Fallback = await handleRequest(
         };
       },
     },
-  } as unknown as Env,
+  }),
   {},
 );
 assert.equal(

@@ -333,6 +333,30 @@ export interface ProbeSurface {
   probe: ProbeSurfaceProbeConfig;
 }
 
+/**
+ * Is this registry row actually probeable?
+ *
+ * `kind` and `url` are the two fields the probe cannot work without -- `kind`
+ * selects the RPC path over the HTTP one, `url` is what gets fetched -- and
+ * `probe` carries the method and timeout. Everything else on `ProbeSurface` is
+ * `unknown` and rides along.
+ *
+ * A predicate rather than an assertion because the callers hold
+ * `Record<string, unknown>` read from the registry: asserting one in claims
+ * `url: string` about a row that may not have the key, and `fetch(undefined)`
+ * is not a probe result, it is a crash inside a bounded concurrency pool.
+ */
+export function isProbeSurface(
+  row: Record<string, unknown>,
+): row is Record<string, unknown> & ProbeSurface {
+  return (
+    typeof row.kind === "string" &&
+    typeof row.url === "string" &&
+    typeof row.probe === "object" &&
+    row.probe !== null
+  );
+}
+
 export function classifyProbe(
   probe: HttpProbeResult,
   surface: ProbeSurface,
