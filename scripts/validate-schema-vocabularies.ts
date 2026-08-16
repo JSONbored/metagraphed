@@ -302,15 +302,44 @@ const [{ API_QUERY_COLLECTIONS }, mcpShared] = await Promise.all([
   import("../src/contracts.ts"),
   import("../schemas-src/mcp-tools/shared.ts"),
 ]);
-const collections = API_QUERY_COLLECTIONS as Record<
-  string,
-  { sort_fields?: readonly string[] }
->;
-const mirrors = mcpShared as unknown as Record<string, readonly string[]>;
+// A module namespace assigns to `Record<string, unknown>` on its own -- what
+// it does NOT do is assign to `Record<string, readonly string[]>`, which is
+// what the old assertion claimed about every export in both modules. That
+// claim is also the thing this script exists to doubt: it reads these to find
+// out whether an export is still a vocabulary, having asserted that it is.
+const collections: Record<string, unknown> = API_QUERY_COLLECTIONS;
+const mirrors: Record<string, unknown> = mcpShared;
+
+/**
+ * A vocabulary, checked rather than assumed.
+ *
+ * `Array.isArray` alone was the whole check, and it leaves the elements `any`:
+ * an enum that had picked up a number, or a nested array, would be sorted and
+ * joined into the comparison string without complaint, and the drift report
+ * would print it as though it were a name. Both sides of every comparison
+ * below now come through here, so a malformed vocabulary is reported as
+ * malformed instead of being compared.
+ */
+function stringVocabulary(value: unknown): readonly string[] | null {
+  if (!Array.isArray(value)) return null;
+  const out: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") return null;
+    out.push(entry);
+  }
+  return out;
+}
+
+/** `sort_fields` off one API_QUERY_COLLECTIONS entry, or null if the entry or
+ *  the field is gone. */
+function sortFieldsOf(collection: unknown): readonly string[] | null {
+  if (typeof collection !== "object" || collection === null) return null;
+  return stringVocabulary((collection as Record<string, unknown>).sort_fields);
+}
 
 for (const [name, collection] of Object.entries(MIRRORED_VOCABULARIES)) {
-  const mirrored = mirrors[name];
-  if (!Array.isArray(mirrored)) {
+  const mirrored = stringVocabulary(mirrors[name]);
+  if (mirrored === null) {
     errors.push(
       `${name} is declared as a mirror of API_QUERY_COLLECTIONS["${collection}"].sort_fields ` +
         `but schemas-src/mcp-tools/shared.ts no longer exports it — delete the entry above, ` +
@@ -318,8 +347,8 @@ for (const [name, collection] of Object.entries(MIRRORED_VOCABULARIES)) {
     );
     continue;
   }
-  const source = collections[collection]?.sort_fields;
-  if (!Array.isArray(source)) {
+  const source = sortFieldsOf(collections[collection]);
+  if (source === null) {
     errors.push(
       `${name} mirrors API_QUERY_COLLECTIONS["${collection}"], which no longer declares sort_fields.`,
     );
@@ -399,13 +428,16 @@ const JSON_SCHEMA_MIRRORS: Array<{
  * validate:unreferenced-exports counted 898 against its 880 ceiling (#10292).
  * The table above stays the declaration; this is only how it is loaded.
  */
-const MIRROR_MODULE_LOADERS: Record<string, () => Promise<unknown>> = {
+const MIRROR_MODULE_LOADERS: Record<
+  string,
+  () => Promise<Record<string, unknown>>
+> = {
   "../schemas-src/shared.ts": () => import("../schemas-src/shared.ts"),
   "../schemas-src/routes/subnet-detail.ts": () =>
     import("../schemas-src/routes/subnet-detail.ts"),
 };
 
-const mirrorModules = new Map<string, Record<string, readonly string[]>>();
+const mirrorModules = new Map<string, Record<string, unknown>>();
 for (const { module } of JSON_SCHEMA_MIRRORS) {
   if (mirrorModules.has(module)) continue;
   const load = MIRROR_MODULE_LOADERS[module];
@@ -417,10 +449,7 @@ for (const { module } of JSON_SCHEMA_MIRRORS) {
         `MIRROR_MODULE_LOADERS -- add one, with a literal import specifier.`,
     );
   }
-  mirrorModules.set(
-    module,
-    (await load()) as unknown as Record<string, readonly string[]>,
-  );
+  mirrorModules.set(module, await load());
 }
 
 for (const { schemaFile, pointer, module, zodExport } of JSON_SCHEMA_MIRRORS) {
@@ -432,22 +461,26 @@ for (const { schemaFile, pointer, module, zodExport } of JSON_SCHEMA_MIRRORS) {
   for (const key of pointer) {
     node = (node as Record<string, unknown> | null)?.[key];
   }
-  const zodValues = schemaSrcShared[zodExport];
-  if (!Array.isArray(node)) {
+  const zodValues = stringVocabulary(schemaSrcShared[zodExport]);
+  const schemaValues = stringVocabulary(node);
+  if (schemaValues === null) {
     errors.push(
-      `${schemaFile} no longer has an enum at ${pointer.join(".")} — ` +
-        `update JSON_SCHEMA_MIRRORS, or restore the enum.`,
+      `${schemaFile} has no list-of-strings enum at ${pointer.join(".")} — ` +
+        `it is either gone (update JSON_SCHEMA_MIRRORS, or restore it) or it ` +
+        `has picked up a non-string entry, which is not a vocabulary and ` +
+        `cannot be compared against one.`,
     );
     continue;
   }
-  if (!Array.isArray(zodValues)) {
+  if (zodValues === null) {
     errors.push(
-      `schemas-src/shared.ts no longer exports ${zodExport}, which mirrors ` +
-        `${schemaFile}#${pointer.join(".")}.`,
+      `${zodExport} is not a list of strings, but it mirrors ` +
+        `${schemaFile}#${pointer.join(".")} — it is either no longer exported ` +
+        `from ${module}, or no longer a vocabulary.`,
     );
     continue;
   }
-  const fromSchema = [...(node as string[])].sort().join(",");
+  const fromSchema = [...schemaValues].sort().join(",");
   const fromZod = [...zodValues].sort().join(",");
   if (fromSchema !== fromZod) {
     errors.push(

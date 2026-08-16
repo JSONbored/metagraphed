@@ -73,7 +73,7 @@ export const BUDGETS: Readonly<Record<string, number>> = {
   workers: 0,
   "schemas-src": 0,
   packages: 0,
-  scripts: 15,
+  scripts: 6,
 };
 
 const SCANNED_DIRS = Object.keys(BUDGETS);

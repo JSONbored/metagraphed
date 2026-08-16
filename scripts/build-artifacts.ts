@@ -109,12 +109,7 @@ import {
   SCHEMA_CAPTURE_CADENCE_HOURS,
   SCHEMA_INDEX_R2_KEY,
 } from "../src/schema-snapshots-sync.ts";
-import {
-  buildChangelog,
-  type ArtifactEntry,
-  type CoverageSnapshot,
-  type SubnetEntry,
-} from "./changelog.ts";
+import { buildChangelog, subnetsOf, type ArtifactEntry } from "./changelog.ts";
 import {
   buildSurfaceAliasArtifact,
   SURFACE_ALIASES_RELATIVE_PATH,
@@ -2946,14 +2941,18 @@ const currentArtifactDigests = await collectArtifactDigests({
 // by scripts/build-changelog.ts at publish time against the previous R2 publish.
 const changelogArtifact: Row = buildChangelog({
   contractVersion,
-  currentArtifacts: currentArtifactDigests as unknown as ArtifactEntry[],
-  currentCoverage: coverage as unknown as CoverageSnapshot,
-  currentSubnets: { subnets: subnetIndex as unknown as SubnetEntry[] },
+  currentArtifacts: currentArtifactDigests,
+  currentCoverage: coverage,
+  currentSubnets: { subnets: subnetIndex },
   generatedAt,
-  previousArtifacts: previousArtifactDigests as unknown as ArtifactEntry[],
-  previousCoverage:
-    previousCoverageArtifact as unknown as CoverageSnapshot | null,
-  previousSubnets: previousSubnetsArtifact,
+  previousArtifacts: previousArtifactDigests,
+  previousCoverage: previousCoverageArtifact,
+  // Read from git, so its shape is a contract with an older deploy -- checked,
+  // not trusted. At build time this is null and the changelog is the empty
+  // placeholder; the real diff happens in build-changelog.ts at publish time.
+  previousSubnets: previousSubnetsArtifact
+    ? { subnets: subnetsOf(previousSubnetsArtifact) }
+    : null,
 });
 await writeJson(artifactFile("changelog.json"), changelogArtifact);
 // Registry-wide summary (R2-tier): homepage/leaderboard stats in one call —
@@ -5815,7 +5814,7 @@ async function collectPreviousPublicArtifactDigests({
 }: {
   publicRoot: string;
   r2Root: string;
-}): Promise<Row[]> {
+}): Promise<ArtifactEntry[]> {
   const committedArtifacts = await collectCommittedPublicArtifactDigests();
   if (committedArtifacts) {
     return committedArtifacts;
@@ -5827,7 +5826,9 @@ async function collectPreviousPublicArtifactDigests({
   });
 }
 
-async function collectCommittedPublicArtifactDigests(): Promise<Row[] | null> {
+async function collectCommittedPublicArtifactDigests(): Promise<
+  ArtifactEntry[] | null
+> {
   const publicPrefix = "public/metagraph/";
   const output = await gitOutput([
     "ls-tree",
@@ -5922,8 +5923,8 @@ async function collectArtifactDigests({
   previousManifest?: Row | null;
   publicRoot: string;
   r2Root: string;
-}): Promise<Row[]> {
-  const files: Row[] = [];
+}): Promise<ArtifactEntry[]> {
+  const files: ArtifactEntry[] = [];
   await collectArtifactFiles(
     { includeR2Root, publicRoot, r2Root },
     async (filePath, root) => {
