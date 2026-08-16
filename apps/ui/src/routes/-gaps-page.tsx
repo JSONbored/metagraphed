@@ -42,6 +42,7 @@ import { classNames } from "@/lib/metagraphed/format";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
 import type { CurationLevel, Gap, Subnet } from "@/lib/metagraphed/types";
 import { MISSING_KINDS, STATUS_OPTIONS, TARGET_OPTIONS, SORT_OPTIONS } from "./contribute";
+import { readKey, readString } from "@/lib/metagraphed/read-key";
 
 // #8304: gap rows rendered before the explicit expander. Module scope so it
 // is initialised before the component that reads it, not after (a `const`
@@ -718,22 +719,22 @@ function GapRow({
 
   // Surface any source/evidence links already on the gap row. Falls back to
   // the subnet's #evidence deep link so users always have somewhere to go.
-  const rec = gap as unknown as Record<string, unknown>;
   const rawSources: Array<{ label: string; href: string }> = [];
   for (const key of ["evidence_url", "source_url", "docs_url", "url"]) {
-    const v = rec[key];
-    if (typeof v === "string" && v.startsWith("http")) {
+    const v = readString(gap, key);
+    if (v?.startsWith("http")) {
       rawSources.push({ label: key.replace("_url", ""), href: v });
     }
   }
-  const evidence = rec.evidence;
+  const evidence = readKey(gap, "evidence");
   if (Array.isArray(evidence)) {
-    for (const e of evidence) {
-      const u = (e as Record<string, unknown>)?.url;
-      if (typeof u === "string" && u.startsWith("http")) {
+    for (const entry of evidence) {
+      if (typeof entry !== "object" || entry === null) continue;
+      const url = readString(entry, "url");
+      if (url?.startsWith("http")) {
         rawSources.push({
-          label: String((e as Record<string, unknown>)?.source ?? "evidence"),
-          href: u,
+          label: readString(entry, "source") ?? "evidence",
+          href: url,
         });
       }
     }

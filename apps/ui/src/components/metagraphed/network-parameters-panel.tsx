@@ -9,6 +9,7 @@ import {
 import { networkParametersQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { NetworkParameters } from "@/lib/metagraphed/types";
+import { readKey } from "@/lib/metagraphed/read-key";
 
 type ParameterKind = "percent" | "tao" | "count" | "raw";
 
@@ -66,7 +67,6 @@ export interface ParameterGroup {
 }
 
 export function buildParameterGroups(parameters: NetworkParameters): ParameterGroup[] {
-  const raw = parameters as unknown as Record<string, unknown>;
   const consumed = new Set<string>(["queried_at"]);
   const groups: ParameterGroup[] = PARAMETER_GROUPS.map((group) => ({
     label: group.label,
@@ -78,12 +78,12 @@ export function buildParameterGroups(parameters: NetworkParameters): ParameterGr
         label: meta.label,
         hint: meta.hint,
         kind: meta.kind,
-        value: raw[key] ?? null,
+        value: readKey(parameters, key) ?? null,
       };
     }),
   }));
 
-  const leftoverKeys = Object.keys(raw).filter((key) => !consumed.has(key));
+  const leftoverKeys = Object.keys(parameters).filter((key) => !consumed.has(key));
   if (leftoverKeys.length > 0) {
     groups.push({
       label: "Other",
@@ -91,7 +91,7 @@ export function buildParameterGroups(parameters: NetworkParameters): ParameterGr
         key,
         label: key,
         kind: "raw" as const,
-        value: raw[key] ?? null,
+        value: readKey(parameters, key) ?? null,
       })),
     });
   }

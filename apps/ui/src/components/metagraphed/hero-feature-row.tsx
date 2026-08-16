@@ -14,6 +14,7 @@ import {
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { ChainActivity, Subnet } from "@/lib/metagraphed/types";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { readNumber, readString } from "@/lib/metagraphed/read-key";
 
 /**
  * The UTC calendar-day string (YYYY-MM-DD) "today" means for this card,
@@ -292,14 +293,10 @@ function pickFeatured(subnets: Subnet[], n: number): Subnet[] {
   // participant count as a rough popularity proxy. Skip root (netuid 0).
   const app = subnets.filter((s) => s.netuid > 0);
   const score = (s: Subnet) => {
-    const c = (s as unknown as { curation?: string }).curation ?? "";
+    const c = readString(s, "curation") ?? "";
     const curationRank =
       c === "adapter" ? 4 : c === "native" ? 3 : c === "verified" ? 3 : c === "pilot" ? 2 : 1;
-    const size = Number(
-      (s as unknown as { participants?: number }).participants ??
-        (s as unknown as { neuron_count?: number }).neuron_count ??
-        0,
-    );
+    const size = Number(readNumber(s, "participants") ?? readNumber(s, "neuron_count") ?? 0);
     return curationRank * 1e6 + size;
   };
   return [...app].sort((a, b) => score(b) - score(a)).slice(0, n);

@@ -101,6 +101,7 @@ import { SubnetIndexDirectory } from "@/components/metagraphed/subnet-index-dire
 import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
 import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
 import { cancelIdle, requestIdle } from "@/lib/metagraphed/idle";
+import { readKey, readNumber } from "@/lib/metagraphed/read-key";
 
 // #8248: fetch every active subnet in one shot instead of cursor-paginating --
 // the whole list (129 rows) is virtualized client-side, so there is no
@@ -2131,9 +2132,9 @@ function EmissionCell({ share }: { share?: number }) {
 
 function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; density?: Density }) {
   const count = subnet.surfaces_count ?? 0;
-  const rec = subnet as unknown as Record<string, unknown>;
-  const num = (k: string) => (typeof rec[k] === "number" ? (rec[k] as number) : 0);
-  const byKind = (rec.surfaces_by_kind ?? rec.surface_kinds) as Record<string, number> | undefined;
+  const num = (k: string) => readNumber(subnet, k) ?? 0;
+  const byKind = (readKey(subnet, "surfaces_by_kind") ?? readKey(subnet, "surface_kinds")) as
+    Record<string, number> | undefined;
   // Prefer a real per-kind breakdown if the list API ever exposes one; otherwise
   // show the surface-trust composition (official / registry-observed / other) —
   // the list API always carries these counts, so the bar is a meaningful

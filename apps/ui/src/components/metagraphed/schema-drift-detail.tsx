@@ -15,6 +15,7 @@ import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-
 import { useCopy } from "@/hooks/use-copy";
 import { formatFreshness, formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
+import { readKey, readString } from "@/lib/metagraphed/read-key";
 
 interface Props {
   schema: SchemaInfo | null;
@@ -156,23 +157,20 @@ function EvidenceSection({
   copied: boolean;
   onCopy: (v: string) => void;
 }) {
-  const rec = schema as unknown as Record<string, unknown>;
   const links: Array<{ label: string; href: string }> = [];
   for (const key of ["url", "snapshot_url", "prev_snapshot_url", "artifact_path"]) {
-    const v = rec[key];
-    if (typeof v === "string" && v.length > 0) {
+    const v = readString(schema, key);
+    if (v !== undefined && v.length > 0) {
       links.push({ label: key.replace(/_/g, " "), href: v });
     }
   }
-  const evidence = rec.evidence;
+  const evidence = readKey(schema, "evidence");
   if (Array.isArray(evidence)) {
-    for (const e of evidence) {
-      const u = (e as Record<string, unknown>)?.url;
-      if (typeof u === "string" && u.startsWith("http")) {
-        links.push({
-          label: String((e as Record<string, unknown>)?.source ?? "evidence"),
-          href: u,
-        });
+    for (const entry of evidence) {
+      if (typeof entry !== "object" || entry === null) continue;
+      const url = readString(entry, "url");
+      if (url?.startsWith("http")) {
+        links.push({ label: readString(entry, "source") ?? "evidence", href: url });
       }
     }
   }
