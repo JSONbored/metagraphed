@@ -13,10 +13,20 @@
 // with a plausible-looking blank. What was missing is the other half: someone
 // asking how long that has been going on.
 //
+// AND THE OPPOSITE SHAPE, which the age check cannot see (#11406's aftermath).
+// A lane that runs on time and computes ZERO rows overwrites the good artifact
+// with an empty one, so `generated_at` never ages and this watchdog reported
+// `ok` every 30 minutes for a day while the site's 24h on-chain volume showed
+// an em-dash. The all-or-nothing contract only covers a FAILED query (`null`);
+// an empty answer (`[]`) is stored, and of the thirteen lanes only
+// computeBlocksSummary declines to store it. So freshness is not coverage, and
+// `evaluateProjectionStaleness` now reads `row_count` as well as the timestamp.
+//
 // Same shape as src/nominator-positions-staleness-watchdog.ts deliberately --
 // a pure rule, a summary rather than a throw, and one exception event per
 // stale tick. Zero alerts is the correct steady state.
 
+import { ProjectionArtifactEnvelopeSchema } from "../schemas-src/artifacts/projection-envelope.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { DEFAULT_CHAIN_NETWORK, projectionKey } from "./chain-network.ts";
 import { PROJECTION_LANES, PROJECTION_NETWORKS } from "./projection-lanes.ts";
@@ -123,9 +133,11 @@ export interface ProjectionStalenessEntry {
    * runProjectionLanes uses, so an alert and a run summary name one thing. */
   lane: string;
   stale: boolean;
-  reason: "absent" | "unreadable" | "stale" | null;
+  reason: "absent" | "unreadable" | "stale" | "empty" | null;
   age_ms: number | null;
   generated_at: string | null;
+  /** Rows the lane last computed, or null when the artifact does not say. */
+  row_count: number | null;
 }
 
 export interface ProjectionStalenessVerdict {
@@ -138,12 +150,18 @@ export interface ProjectionStalenessVerdict {
 
 /** The rule alone, testable without a bucket or a clock. */
 export function evaluateProjectionStaleness(input: {
-  artifacts: { lane: string; generatedAt: string | null | undefined }[];
+  artifacts: {
+    lane: string;
+    generatedAt: string | null | undefined;
+    /** `row_count` from the artifact body; absent/unreadable => null. */
+    rowCount?: number | null;
+  }[];
   nowMs: number;
   thresholdMs: number;
 }): ProjectionStalenessVerdict {
   const { artifacts, nowMs, thresholdMs } = input;
-  const entries = artifacts.map(({ lane, generatedAt }) => {
+  const entries = artifacts.map(({ lane, generatedAt, rowCount }) => {
+    const rows = typeof rowCount === "number" ? rowCount : null;
     if (generatedAt == null) {
       // An artifact that is not there at all is a stall of infinite age, not a
       // quiet lane: every lane in the registry is supposed to have written on
@@ -154,6 +172,7 @@ export function evaluateProjectionStaleness(input: {
         reason: "absent" as const,
         age_ms: null,
         generated_at: null,
+        row_count: rows,
       };
     }
     const at = Date.parse(generatedAt);
@@ -166,15 +185,62 @@ export function evaluateProjectionStaleness(input: {
         reason: "unreadable" as const,
         age_ms: null,
         generated_at: generatedAt,
+        row_count: rows,
       };
     }
     const age = nowMs - at;
+    if (age > thresholdMs) {
+      return {
+        lane,
+        stale: true,
+        reason: "stale" as const,
+        age_ms: age,
+        generated_at: generatedAt,
+        row_count: rows,
+      };
+    }
+    // FRESH BUT EMPTY -- the failure this watchdog could not see.
+    //
+    // The module header says it exists because two lanes "stopped writing".
+    // This is the opposite shape and the age check cannot reach it: the lane
+    // runs on time, computes zero rows, and overwrites a good artifact with an
+    // empty one, so `generated_at` stays minutes old forever while every route
+    // over the card serves its zeroed floor.
+    //
+    // MEASURED 2026-08-16: `metagraph/projections/chain-alpha-volume.json` read
+    // `{generated_at: "…11:46:31Z", row_count: 0, windows: {24h: {rows: []}}}`
+    // -- minutes old -- because its rolling 24h window queried a lakehouse
+    // whose newest data was ~29h back, so no row it could return existed. The
+    // site's 24h on-chain volume showed an em-dash for a day and this watchdog
+    // reported `ok` every 30 minutes throughout.
+    //
+    // ONLY AN EXPLICIT ZERO, never a missing field: an artifact that does not
+    // report `row_count` is not making a claim about its own coverage, and
+    // treating silence as zero would fire this on every lane whose envelope
+    // predates the field.
+    //
+    // These lanes are rolling-window aggregates over a chain producing a block
+    // every 12s, so zero rows in the window is not a quiet period -- it means
+    // the window and the data no longer overlap. A lane that CAN legitimately
+    // be empty should be exempted by name, with the reason written down, rather
+    // than by weakening this into a rule that cannot fire.
+    if (rows === 0) {
+      return {
+        lane,
+        stale: true,
+        reason: "empty" as const,
+        age_ms: age,
+        generated_at: generatedAt,
+        row_count: 0,
+      };
+    }
     return {
       lane,
-      stale: age > thresholdMs,
-      reason: age > thresholdMs ? ("stale" as const) : null,
+      stale: false,
+      reason: null,
       age_ms: age,
       generated_at: generatedAt,
+      row_count: rows,
     };
   });
   const staleLanes = entries.filter((e) => e.stale).map((e) => e.lane);
@@ -232,21 +298,37 @@ export async function runProjectionStalenessWatchdog(
     Number(env?.PROJECTION_STALENESS_THRESHOLD_MS) ||
     PROJECTION_STALENESS_THRESHOLD_MS;
 
-  const artifacts: { lane: string; generatedAt: string | null }[] = [];
+  const artifacts: {
+    lane: string;
+    generatedAt: string | null;
+    rowCount: number | null;
+  }[] = [];
   for (const { lane, key } of watchedLanes()) {
     let generatedAt: string | null;
+    let rowCount: number | null;
     try {
       const object = await bucket.get(key);
       const body = object ? ((await object.json()) as unknown) : null;
-      const value = (body as { generated_at?: unknown } | null)?.generated_at;
-      generatedAt = typeof value === "string" ? value : null;
+      // PARSED, not cast (#11194's rule, one boundary further out). The cast
+      // this replaces typed the access without checking a byte of it, and these
+      // bodies come out of R2 written by whatever deploy was live at the time.
+      // Both fields come off ONE parse of the SAME body, so the count and the
+      // timestamp can never describe two different objects, and a malformed
+      // field lands as null through the schema's own `.catch` rather than
+      // through a typeof check restated at each read site.
+      const envelope = ProjectionArtifactEnvelopeSchema.safeParse(body);
+      generatedAt = envelope.success
+        ? (envelope.data.generated_at ?? null)
+        : null;
+      rowCount = envelope.success ? (envelope.data.row_count ?? null) : null;
     } catch {
       // An unreadable object is reported as absent rather than skipped: a
       // watchdog that quietly drops what it could not read is a watchdog that
       // reports healthy on exactly the lanes worth worrying about.
       generatedAt = null;
+      rowCount = null;
     }
-    artifacts.push({ lane, generatedAt });
+    artifacts.push({ lane, generatedAt, rowCount });
   }
 
   const verdict = evaluateProjectionStaleness({
@@ -260,14 +342,14 @@ export async function runProjectionStalenessWatchdog(
     // for one dead cron is the failure mode where an alarm stops being read.
     const detail = verdict.entries
       .filter((entry) => entry.stale)
-      .map(
-        (entry) =>
-          `${entry.lane} (${
-            entry.age_ms === null
-              ? entry.reason
-              : `${(entry.age_ms / 3_600_000).toFixed(1)} h old`
-          })`,
-      )
+      .map((entry) => {
+        // An EMPTY lane is fresh, so reporting its age would say "0.2 h old"
+        // about the one entry whose age is not the problem. Each reason states
+        // the fact that made it stale.
+        if (entry.reason === "empty") return `${entry.lane} (fresh, 0 rows)`;
+        if (entry.age_ms === null) return `${entry.lane} (${entry.reason})`;
+        return `${entry.lane} (${(entry.age_ms / 3_600_000).toFixed(1)} h old)`;
+      })
       .join(", ");
     await record(env, {
       error: new Error(
@@ -275,7 +357,7 @@ export async function runProjectionStalenessWatchdog(
           thresholdMs / 3_600_000
         ).toFixed(
           1,
-        )} h, ${PROJECTION_STALENESS_MISSED_TICKS} missed ticks of ${PROJECTION_LANES_CRON}) -- the routes over these are answering from a card nothing is refreshing`,
+        )} h, ${PROJECTION_STALENESS_MISSED_TICKS} missed ticks of ${PROJECTION_LANES_CRON}) -- the routes over these are answering from a card that is either not being refreshed or is being refreshed with nothing`,
       ),
       route: "watchdog:projection-staleness",
       errorCode: "stale_lane",

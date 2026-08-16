@@ -34,6 +34,12 @@ import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
 import { missedTicksMs, type ProducerLane } from "./producer-cadence.ts";
+// DERIVED, not quoted. This read "RAW_CAPTURE_CRON every 5 min" until #11402
+// moved the lane to */1 and left the prose behind -- the drift
+// project-derived-floors-go-stale-in-prose is about. Reading the cadence from
+// the cron itself means the sentence cannot outlive the schedule it describes.
+import { RAW_CAPTURE_CRON } from "../workers/config.ts";
+import { cronStepMinutes } from "./raw-capture-sync.ts";
 
 /** This watchdog's own lane. */
 export const TABLE_FRESHNESS_LANE = "table-freshness";
@@ -181,7 +187,7 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     column: "updated_at",
     kind: "ms",
     maxAgeMs: 2 * HOUR,
-    reason: "RAW_CAPTURE_CRON every 5 min",
+    reason: `RAW_CAPTURE_CRON every ${cronStepMinutes(RAW_CAPTURE_CRON)} min`,
   },
   // `raw_capture_state_v2` was declared here purely to satisfy the old
   // invariant -- "account for every table tests/fixtures/sqlite-schema names"

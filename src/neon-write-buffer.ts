@@ -51,7 +51,12 @@
 // lets the ordering and chunking guarantees be asserted directly instead of
 // inferred from a mock.
 
-import { z } from "zod";
+import {
+  BufferedStatementSchema,
+  type BufferedStatement,
+} from "../schemas-src/internal-wire.ts";
+export { BufferedStatementSchema };
+export type { BufferedStatement };
 import {
   createPgSql,
   type HyperdriveLike,
@@ -93,31 +98,14 @@ export type NeonWriteEnv = StoreEnv &
 
 type NeonWriteBufferEnv = NeonWriteEnv;
 
-/**
- * One buffered statement, exactly as the lane would have executed it.
- *
- * A ZOD SCHEMA rather than a hand-written type guard, because this shape
- * crosses a trust boundary: the Durable Object parses it from a request body,
- * and the flush parses it back out of durable storage written by a possibly
- * older deploy. Both are places where "looks about right" is not good enough,
- * and a hand-rolled check drifts from the type it is supposed to enforce the
- * moment a field is added.
- *
- * `.strict()` on purpose -- an unknown key means the writer and the reader
- * disagree about the format, which is worth failing on rather than ignoring.
- */
-export const BufferedStatementSchema = z
-  .object({
-    /** The lane that produced it, so the flush can attribute a verdict. */
-    lane: z.string().min(1),
-    text: z.string().min(1),
-    // Deliberately NOT z.array(z.unknown()).nonempty(): a parameterless
-    // DELETE is an ordinary statement here, and rejecting it would drop it.
-    values: z.array(z.unknown()),
-  })
-  .strict();
-
-export type BufferedStatement = z.infer<typeof BufferedStatementSchema>;
+// THE SCHEMA LIVES IN schemas-src (#11194's rule). It was declared here, which
+// put it outside `no-passthrough`, `schema-shape-duplicates` and
+// `schema-opacity` -- the gates that keep a declared vocabulary honest. It is
+// one of our Durable Objects' wire AND storage shapes, so it sits with the
+// other hub shapes in internal-wire.ts.
+//
+// IMPORTED THEN RE-EXPORTED, not `export ... from`: a bare re-export does not
+// bind the name locally, and decodeStatement below parses with it.
 
 /**
  * Durable Object storage caps a single value at 128 KiB.
@@ -373,6 +361,23 @@ export const NEVER_BUFFER_LANES: ReadonlySet<string> = new Set([
   // in the flag -- `raw-capture-state` was the FIRST lane named in
   // NEON_WRITE_BUFFER_LANES, added as an obvious low-frequency write, and
   // nothing about the write site says its reader is one minute away.
+  //
+  // THE HAZARD IS CURSOR TABLES: a single row whose value is a POSITION that a
+  // later pass resumes from. That is the property to check before adding a lane
+  // to the flag, and it is not the same as "something reads this table" -- every
+  // buffered table is read by a route. The question is whether the read's result
+  // decides the next WRITE. `tao_usd_index` is the instructive contrast: also
+  // buffered, also read constantly, but append-only on (block_number,
+  // observed_at) with ON CONFLICT DO NOTHING, so its producer never consults it
+  // and a deferred write costs a stale chart rather than repeated work.
+  //
+  // Deliberately a sentence and not a gate. A derived sweep was attempted and
+  // abandoned: "imports the lane's writer AND selects the lane's table" reports
+  // eight offenders, all of them workers/data-api.ts, which is both the producer
+  // entry point and the serving layer -- so the import edge cannot separate a
+  // cursor read from a route read, and shipping it would have required an
+  // eight-entry suppression list on day one. `raw-capture-state` is the only
+  // cursor table in the buffered set today.
   "raw-capture-state",
 ]);
 

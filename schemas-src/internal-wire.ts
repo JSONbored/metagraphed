@@ -433,3 +433,66 @@ export const QuotaSpendResponseSchema = z
   })
   .catchall(z.unknown());
 export type QuotaSpendResponse = z.infer<typeof QuotaSpendResponseSchema>;
+
+/**
+ * One buffered statement, exactly as the lane would have executed it.
+ *
+ * MOVED HERE from src/neon-write-buffer.ts, which is where it was declared and
+ * therefore where it escaped `no-passthrough`, `schema-shape-duplicates` and
+ * `schema-opacity` -- the three gates this file's header exists to keep it
+ * inside. It belongs with the other hub shapes on this module's own rule (who
+ * wrote the bytes): NeonWriteBufferHub is one of our Durable Objects, and this
+ * is both its request body and its storage value.
+ *
+ * A SCHEMA rather than a hand-written type guard, because this shape crosses a
+ * trust boundary twice: the Durable Object parses it from a request body, and
+ * the flush parses it back out of durable storage written by a possibly OLDER
+ * deploy. Both are places where "looks about right" is not good enough, and a
+ * hand-rolled check drifts from the type it is meant to enforce the moment a
+ * field is added.
+ *
+ * `.strict()` on purpose, and permitted here for the reason the header gives:
+ * these bytes are OURS. An unknown key means the writer and the reader disagree
+ * about the format, which is worth failing on rather than ignoring -- the
+ * opposite of the foreign-wire rule, where an added field is routine.
+ */
+export const BufferedStatementSchema = z
+  .object({
+    /** The lane that produced it, so the flush can attribute a verdict. */
+    lane: z.string().min(1),
+    text: z.string().min(1),
+    // Deliberately NOT z.array(z.unknown()).nonempty(): a parameterless
+    // DELETE is an ordinary statement here, and rejecting it would drop it.
+    values: z.array(z.unknown()),
+  })
+  .strict();
+
+export type BufferedStatement = z.infer<typeof BufferedStatementSchema>;
+
+/**
+ * Our own `/graphql` endpoint's response, as the MCP `query_graphql` tool reads
+ * it back over HTTP.
+ *
+ * MOVED HERE from src/mcp-server.ts, and the move is not cosmetic: declared
+ * there, it carried `.passthrough()` -- an open object that survived only
+ * because `validate-no-passthrough` cannot see outside schemas-src. The
+ * passthrough is DROPPED rather than justified, because nothing depended on it.
+ * The one reader takes `payload.data` and `payload.errors` and nothing else, so
+ * Zod's default (strip what is not declared) leaves its behaviour identical --
+ * the same argument foreign-wire.ts's header makes for its own shapes.
+ *
+ * INTERNAL rather than foreign by this module's rule: the bytes come from our
+ * data-api Worker, so a drift here is a bug we can fix.
+ *
+ * Deliberately LOOSER than the tool's own output schema. `data` is legitimately
+ * `null` on a failed query, and the error entries are only ever summarized into
+ * one line, never re-published -- so neither is narrowed here. `.catch` keeps a
+ * malformed envelope from throwing inside a path whose whole job is reporting
+ * that something has already gone wrong.
+ */
+export const GraphqlResponsePayloadSchema = z
+  .object({
+    data: z.unknown().optional(),
+    errors: z.array(z.unknown()).catch([]).optional(),
+  })
+  .catch({});

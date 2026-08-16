@@ -20,7 +20,7 @@ import {
   PROJECTION_NETWORKS,
 } from "../src/projection-lanes.ts";
 import { PROJECTION_LANES_CRON } from "../workers/config.ts";
-import { projectionKey } from "../src/chain-network.ts";
+import { DEFAULT_CHAIN_NETWORK, projectionKey } from "../src/chain-network.ts";
 import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const HOUR = 3_600_000;
@@ -114,6 +114,86 @@ describe("evaluateProjectionStaleness", () => {
   });
 });
 
+/**
+ * The OTHER shape: a lane that runs on time and computes nothing.
+ *
+ * The age check cannot see it -- `generated_at` is minutes old on every tick
+ * -- so this went unreported for a day while the site served an em-dash.
+ */
+describe("evaluateProjectionStaleness -- fresh but empty", () => {
+  const FRESH = "2026-08-16T11:46:31.923Z";
+  const NOW = Date.parse("2026-08-16T12:00:00.000Z");
+
+  test("catches the real chain-alpha-volume artifact, verbatim", () => {
+    // Read out of R2 on 2026-08-16 while /api/v1/chain/alpha-volume was
+    // answering total_volume_tao: 0 with observed_at: null. Minutes old, and
+    // empty because its rolling 24h window queried a lakehouse whose newest
+    // data was ~29h back -- the raw-capture stall #11406 fixed.
+    const verdict = evaluateProjectionStaleness({
+      artifacts: [
+        { lane: "chain-alpha-volume", generatedAt: FRESH, rowCount: 0 },
+      ],
+      nowMs: NOW,
+      thresholdMs: PROJECTION_STALENESS_THRESHOLD_MS,
+    });
+    assert.equal(verdict.stale, true, "the watchdog reported ok for a day");
+    assert.deepEqual(verdict.stale_lanes, ["chain-alpha-volume"]);
+    const entry = verdict.entries[0]!;
+    assert.equal(entry.reason, "empty");
+    assert.equal(entry.row_count, 0);
+    assert.ok(
+      (entry.age_ms ?? 0) < PROJECTION_STALENESS_THRESHOLD_MS,
+      "premise: it is FRESH -- the age rule could never have caught this",
+    );
+  });
+
+  test("a lane with rows is healthy, so the rule is not vacuous", () => {
+    const verdict = evaluateProjectionStaleness({
+      artifacts: [
+        { lane: "chain-alpha-volume", generatedAt: FRESH, rowCount: 128 },
+      ],
+      nowMs: NOW,
+      thresholdMs: PROJECTION_STALENESS_THRESHOLD_MS,
+    });
+    assert.equal(verdict.stale, false);
+    assert.equal(verdict.entries[0]!.reason, null);
+    assert.equal(verdict.entries[0]!.row_count, 128);
+  });
+
+  test("a MISSING row_count is not read as zero", () => {
+    // Silence is not a claim. An envelope that predates the field would
+    // otherwise fire this on every lane at once, which is how a new alarm gets
+    // muted on the day it ships.
+    const verdict = evaluateProjectionStaleness({
+      artifacts: [{ lane: "chain-fees", generatedAt: FRESH }],
+      nowMs: NOW,
+      thresholdMs: PROJECTION_STALENESS_THRESHOLD_MS,
+    });
+    assert.equal(verdict.stale, false);
+    assert.equal(verdict.entries[0]!.reason, null);
+    assert.equal(verdict.entries[0]!.row_count, null);
+  });
+
+  test("an OLD and empty lane still reports its AGE, not its emptiness", () => {
+    // Both are true; the age is the bigger fact, and reporting "0 rows" for a
+    // lane nothing has written in two days would name the wrong problem.
+    const verdict = evaluateProjectionStaleness({
+      artifacts: [
+        {
+          lane: "chain-stake-moves",
+          generatedAt: "2026-08-14T09:13:53.426Z",
+          rowCount: 0,
+        },
+      ],
+      nowMs: NOW,
+      thresholdMs: PROJECTION_STALENESS_THRESHOLD_MS,
+    });
+    assert.equal(verdict.stale, true);
+    assert.equal(verdict.entries[0]!.reason, "stale");
+    assert.equal(verdict.entries[0]!.row_count, 0, "still reported, not lost");
+  });
+});
+
 describe("runProjectionStalenessWatchdog", () => {
   /** A bucket whose objects carry the given ages, keyed by artifact key. */
   function bucketWith(ages: Record<string, string | null>, fail = false) {
@@ -144,6 +224,98 @@ describe("runProjectionStalenessWatchdog", () => {
     }
     return out;
   }
+
+  /** Like bucketWith, but every object also carries a `row_count`. */
+  function bucketWithRows(
+    ages: Record<string, string>,
+    rows: Record<string, number>,
+  ) {
+    return {
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          const generated = ages[key];
+          if (generated === undefined) return null;
+          return {
+            async json() {
+              return {
+                schema_version: 1,
+                generated_at: generated,
+                ...(key in rows ? { row_count: rows[key] } : {}),
+              };
+            },
+          };
+        },
+      },
+    } as unknown as Record<string, unknown>;
+  }
+
+  test("reads row_count off the SAME body and names the empty lane", async () => {
+    // The wiring, not the rule: the runner has to pull `row_count` out of the
+    // artifact it already parsed for `generated_at`, or the rule above is
+    // exercised by tests alone and never by production.
+    const now = Date.parse("2026-08-16T12:00:00.000Z");
+    const ages = allFresh(12, now);
+    const emptyKey = projectionKey(
+      PROJECTION_LANES.find((l) => l.name === "chain-alpha-volume")!
+        .artifactKey,
+      DEFAULT_CHAIN_NETWORK,
+    );
+    const messages: string[] = [];
+    const result = (await runProjectionStalenessWatchdog(
+      bucketWithRows(ages, { [emptyKey]: 0 }),
+      {
+        now: () => now,
+        recordException: (async (_env: unknown, ev: { error?: unknown }) => {
+          messages.push(String((ev.error as Error)?.message));
+          return true;
+        }) as never,
+        laneHealthDb: null,
+      },
+    )) as { stale?: boolean; stale_lanes?: string[] };
+    assert.equal(result.stale, true, "a fresh, empty lane is not healthy");
+    assert.deepEqual(result.stale_lanes, ["chain-alpha-volume"]);
+    assert.equal(messages.length, 1, "one event, naming the lane");
+    assert.match(
+      messages[0]!,
+      /chain-alpha-volume \(fresh, 0 rows\)/,
+      "the detail must not report an AGE for the one entry whose age is fine",
+    );
+  });
+
+  test("a body with NO generated_at is absent, not silently fresh", async () => {
+    // The artifact exists and parses, but carries no timestamp. Reading that
+    // as anything other than "absent" would let a lane whose writer stopped
+    // stamping its output sit in the fleet looking healthy forever -- the
+    // schema's per-field `.catch` deliberately keeps the OBJECT parseable so
+    // this stays a verdict rather than a thrown read.
+    const now = Date.parse("2026-08-16T12:00:00.000Z");
+    const ages = allFresh(12, now);
+    const untimed = projectionKey(
+      PROJECTION_LANES.find((l) => l.name === "chain-fees")!.artifactKey,
+      DEFAULT_CHAIN_NETWORK,
+    );
+    const bucket = {
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          if (ages[key] === undefined) return null;
+          return {
+            async json() {
+              return key === untimed
+                ? { schema_version: 1, row_count: 12 }
+                : { schema_version: 1, generated_at: ages[key] };
+            },
+          };
+        },
+      },
+    } as unknown as Record<string, unknown>;
+    const result = (await runProjectionStalenessWatchdog(bucket, {
+      now: () => now,
+      recordException: (async () => true) as never,
+      laneHealthDb: null,
+    })) as { stale?: boolean; stale_lanes?: string[] };
+    assert.equal(result.stale, true);
+    assert.deepEqual(result.stale_lanes, ["chain-fees"]);
+  });
 
   test("a healthy fleet records nothing at all", async () => {
     const now = Date.parse("2026-08-04T17:00:00.000Z");
