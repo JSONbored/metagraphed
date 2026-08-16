@@ -33,26 +33,33 @@ if (!existsSync(harPath)) {
   );
 }
 
-// #9079: the WHOLE block is deferred, not deleted. Since #8928 this suite
-// runs against the production Worker instead of the Vite dev server, and BOTH
-// cases fail there -- the never-visited route with net::ERR_FAILED (the very
-// browser network-error page the SW exists to prevent), and the
-// previously-visited route intermittently too. It is not a missing asset:
-// /offline.html, /sw.js and /apis/schemas all serve 200 from the built Worker,
-// and the SW registers. The offline navigation path itself behaves differently
-// under real-Worker serving.
+// #9079 asked which of two things this was: a real production defect, or a
+// `wrangler dev` asset-serving artifact. It was the first, and the block is
+// live again because the cause is fixed rather than because the assertions
+// were loosened.
 //
-// This spec was always dev-server-coupled -- its own header below records that
-// production behaviour was "verified separately" BY HAND and never gated. So
-// #8928 did not break it; it revealed that the production path was never
-// actually covered.
+// Measured against DEPLOYED production (metagraph.sh), 2026-08-16, which is
+// the distinction the issue said had to be made first:
 //
-// Left as fixme rather than "fixed" because the two candidate causes must be
-// distinguished against a DEPLOYED preview first: either the offline fallback
-// is genuinely broken in production (#8384's promise not kept, a user-facing
-// bug), or this is a wrangler-dev asset-serving artifact. Editing the SW or
-// the assertions now would paper over the first case.
-test.describe.fixme("#8384 offline PWA shell", () => {
+//   GET /offline.html                  -> 307, location: /offline
+//   cache.add("/offline.html")         -> { status: 200, redirected: TRUE,
+//                                           url: "https://metagraph.sh/offline" }
+//
+// Cloudflare Workers Assets strips the `.html` extension. `cache.add` follows
+// the redirect and succeeds, so the precache looked healthy -- but it stored a
+// response flagged `redirected`. A navigation request has redirect mode
+// "manual", and answering one from `respondWith` with a redirected response is
+// a network error. That is the `net::ERR_FAILED` this issue opened on: not a
+// missing asset, and not the SW failing to register, but the fallback response
+// itself being unusable for the only kind of request that needs it.
+//
+// It passed under `npm run dev` because Vite serves `public/offline.html` as a
+// file -- no extension stripping, no redirect. The production path had never
+// worked; #8928 running the suite against the real Worker is what exposed it.
+//
+// The fix is in public/sw.js's `precacheOfflineShell`: re-wrap the body so the
+// flag is cleared before `cache.put`. This block gates it from here on.
+test.describe("#8384 offline PWA shell", () => {
   test("a previously-visited route reopens from the service worker's cache while offline, instead of a browser network-error page", async ({
     page,
     context,
