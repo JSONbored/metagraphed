@@ -180,6 +180,7 @@ describe("the fleet-wide guard", () => {
     kind: "announcements-withdrawn",
     lossesViaReuse: null,
     lossesSameHotkey: null,
+    lossesDistinctIps: null,
   });
 
   test("three subnets is the observed independent maximum, so not fleet-wide", () => {
@@ -653,6 +654,7 @@ describe("mechanism — WHAT happened, not just how much (#11369)", () => {
       kind: "churn-replaced",
       lossesViaReuse: 67,
       lossesSameHotkey: 0,
+      lossesDistinctIps: null,
     };
     const detail = axonDetail([churn]);
     assert.match(detail, /SN25 14\/80 axons/);
@@ -674,6 +676,7 @@ describe("mechanism — WHAT happened, not just how much (#11369)", () => {
       kind: "announcements-withdrawn",
       lossesViaReuse: 64,
       lossesSameHotkey: 75,
+      lossesDistinctIps: null,
     };
     assert.match(axonDetail([withdrawn]), /75 miner\(s\) stopped announcing/);
   });
@@ -691,8 +694,8 @@ describe("loadAxonLossMechanisms", () => {
     pg.control.answers.push({
       match: /FROM seq/,
       rows: [
-        { netuid: 25, via_reuse: 67, same_hotkey: 0 },
-        { netuid: 101, via_reuse: 64, same_hotkey: 75 },
+        { netuid: 25, via_reuse: 67, same_hotkey: 0, distinct_ips: 0 },
+        { netuid: 101, via_reuse: 64, same_hotkey: 75, distinct_ips: 1 },
       ],
     });
     const out = await loadAxonLossMechanisms(
@@ -700,18 +703,24 @@ describe("loadAxonLossMechanisms", () => {
       [25, 101],
       "2026-08-08",
     );
-    assert.deepEqual(out[25], { viaReuse: 67, sameHotkey: 0 });
-    assert.deepEqual(out[101], { viaReuse: 64, sameHotkey: 75 });
+    assert.deepEqual(out[25], { viaReuse: 67, sameHotkey: 0, distinctIps: 0 });
+    assert.deepEqual(out[101], {
+      viaReuse: 64,
+      sameHotkey: 75,
+      distinctIps: 1,
+    });
   });
 
   test("int8 counts arrive as STRINGS and are still counted", async () => {
     // Same Postgres shape as the main read: COUNT(*) is int8.
     pg.control.answers.push({
       match: /FROM seq/,
-      rows: [{ netuid: 25, via_reuse: "67", same_hotkey: "0" }],
+      rows: [
+        { netuid: 25, via_reuse: "67", same_hotkey: "0", distinct_ips: "0" },
+      ],
     });
     const out = await loadAxonLossMechanisms(pgLaneDb(), [25], "2026-08-08");
-    assert.deepEqual(out[25], { viaReuse: 67, sameHotkey: 0 });
+    assert.deepEqual(out[25], { viaReuse: 67, sameHotkey: 0, distinctIps: 0 });
   });
 
   test("no netuids asks nothing at all", async () => {
@@ -758,6 +767,7 @@ describe("mechanism — the defensive edges", () => {
       kind: "churn-replaced",
       lossesViaReuse: null,
       lossesSameHotkey: null,
+      lossesDistinctIps: null,
     };
     assert.match(axonDetail([half]), /churn-replaced: 0 of 0 losses/);
   });
@@ -786,9 +796,9 @@ describe("mechanism — the defensive edges", () => {
     pg.control.answers.push({
       match: /FROM seq/,
       rows: [
-        { netuid: "nope", via_reuse: 1, same_hotkey: 0 },
-        { netuid: 25, via_reuse: "x", same_hotkey: 0 },
-        { netuid: 26, via_reuse: 4, same_hotkey: 1 },
+        { netuid: "nope", via_reuse: 1, same_hotkey: 0, distinct_ips: 1 },
+        { netuid: 25, via_reuse: "x", same_hotkey: 0, distinct_ips: 1 },
+        { netuid: 26, via_reuse: 4, same_hotkey: 1, distinct_ips: 1 },
       ],
     });
     const out = await loadAxonLossMechanisms(
@@ -919,5 +929,112 @@ describe("the tick reports the mechanism it measured", () => {
     })) as { findings: AxonFinding[] };
     assert.equal(result.findings[0].kind, "subnet-turned-over");
     assert.match(verdict(), /the subnet turned over/);
+  });
+});
+
+describe("IP concentration — one host, or the subnet", () => {
+  // SN101's 2026-08-11 event read as "75 of 256 miners went dark" -- 29% of the
+  // metagraph, and subnet-shaped. All 75 announced from 152.53.149.254 across
+  // four coldkeys, so it was one operator's host. Verified against production
+  // 2026-08-16: the same query returns same_hotkey 75, distinct_ips 1.
+  const withdrawal = (ips: number | null): AxonFinding => ({
+    netuid: 101,
+    date: "2026-08-16",
+    withAxon: 125,
+    baseline: 223,
+    ratio: 0.56,
+    neurons: 256,
+    neuronBaseline: 256,
+    kind: "announcements-withdrawn",
+    lossesViaReuse: 64,
+    lossesSameHotkey: 75,
+    lossesDistinctIps: ips,
+  });
+
+  test("one address says it is a host, not the subnet", () => {
+    const detail = axonDetail([withdrawal(1)]);
+    assert.match(detail, /75 miner\(s\) stopped announcing/);
+    assert.match(detail, /ALL FROM ONE ADDRESS/);
+    assert.match(detail, /one host rather than the subnet/);
+  });
+
+  test("many addresses reads as a genuine subnet-wide change", () => {
+    const detail = axonDetail([withdrawal(63)]);
+    assert.match(detail, /75 miner\(s\) stopped announcing from 63 addresses/);
+    assert.doesNotMatch(detail, /ONE ADDRESS/);
+  });
+
+  test("unmeasured says nothing rather than implying one host", () => {
+    // Null is "we did not count", and must not read as concentration.
+    const detail = axonDetail([withdrawal(null)]);
+    assert.match(detail, /75 miner\(s\) stopped announcing\)/);
+    assert.doesNotMatch(detail, /address/);
+  });
+
+  test("churn findings do not claim an address count", () => {
+    // Churn losses are deregistrations; the outgoing miner's address is not
+    // the story, and printing it would imply a host failed.
+    const churn: AxonFinding = {
+      ...withdrawal(1),
+      netuid: 25,
+      kind: "churn-replaced",
+      lossesViaReuse: 67,
+      lossesSameHotkey: 0,
+    };
+    const detail = axonDetail([churn]);
+    assert.match(detail, /churn-replaced: 67 of 67/);
+    assert.doesNotMatch(detail, /ONE ADDRESS/);
+  });
+
+  test("the read carries distinct_ips through, and null when unreadable", async () => {
+    pg.control.queries.length = 0;
+    pg.control.answers.length = 0;
+    pg.control.answers.push({
+      match: /FROM seq/,
+      rows: [
+        { netuid: 101, via_reuse: 65, same_hotkey: 75, distinct_ips: 1 },
+        { netuid: 9, via_reuse: 1, same_hotkey: 2, distinct_ips: "nope" },
+      ],
+    });
+    const out = await loadAxonLossMechanisms(
+      pgLaneDb(),
+      [101, 9],
+      "2026-08-08",
+    );
+    assert.equal(out[101].distinctIps, 1);
+    assert.equal(
+      out[9].distinctIps,
+      null,
+      "unreadable is null, never 0 -- 'no addresses' is a different claim",
+    );
+  });
+
+  test("the tick reports the concentration end to end", async () => {
+    pg.control.queries.length = 0;
+    pg.control.answers.length = 0;
+    pg.control.answers.push({
+      match: /FROM seq/,
+      rows: [{ netuid: 101, via_reuse: 0, same_hotkey: 75, distinct_ips: 1 }],
+    });
+    pg.control.answers.push({
+      match: /FROM neuron_daily/,
+      rows: then(flat(8, 223), [125, 256]).map((d) => ({
+        netuid: 101,
+        date: d.date,
+        with_axon: d.withAxon,
+        neurons: d.neurons,
+      })),
+    });
+    pg.control.answers.push({ match: /.*/, rows: [] });
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async () => true) as never,
+    })) as { findings: AxonFinding[] };
+    assert.equal(result.findings[0].kind, "announcements-withdrawn");
+    assert.equal(result.findings[0].lossesDistinctIps, 1);
+    const insert = pg.control.queries.find((q) =>
+      q.text.includes("INSERT INTO lane_health"),
+    );
+    assert.match(String(insert?.values[3]), /ALL FROM ONE ADDRESS/);
   });
 });
