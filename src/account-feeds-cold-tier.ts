@@ -53,6 +53,7 @@ import {
 import {
   ACCOUNT_STAKE_MOVES_WINDOWS,
   buildAccountStakeMoves,
+  declineAccountStakeMoves,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
   STAKE_MOVED_EVENT_KIND,
 } from "./account-stake-moves.ts";
@@ -99,7 +100,12 @@ import {
 } from "./validator-nominators.ts";
 import { storeAll } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
+import {
+  isR2SqlConfigured,
+  r2SqlQuery,
+  safeBlockNumber,
+  safeSs58Literal,
+} from "./r2-sql.ts";
 import { windowedFloorRead, windowedRowRead } from "./account-events-window.ts";
 import {
   accountHistoryFloorMs,
@@ -376,7 +382,25 @@ export async function loadAccountStakeMovesColdTier(
       `AND event_kind = '${STAKE_MOVED_EVENT_KIND}' ` +
       `AND observed_at >= ${cutoff} GROUP BY netuid`,
   );
-  if (rows === null) return null;
+  // A CONFIGURED lakehouse that could not answer is a decline, not an empty
+  // card (#11424). This route was measured at 15,429ms -- i.e. AT the 15s
+  // `QUERY_TIMEOUT_MS` -- on 2026-08-16, so the failed read is routine, and a
+  // bare `null` here reached the caller's `?? emptyCard` as "this account has
+  // never moved stake". The same distinction `loadAccountSummaryColdTier`
+  // draws below in this same file, which this reader never picked up.
+  //
+  // With NO lakehouse bound (a self-hoster, CI) the null stands: there is no
+  // chain history to read, so the caller's empty card is correct.
+  if (rows === null) {
+    return isR2SqlConfigured(env)
+      ? {
+          data: declineAccountStakeMoves(ss58, label),
+          // No read, so no reading instant -- never `new Date()`, which would
+          // date an empty card to now.
+          generatedAt: null,
+        }
+      : null;
+  }
   return {
     data: buildAccountStakeMoves(rows, ss58, {
       window: label,

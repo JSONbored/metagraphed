@@ -5670,6 +5670,11 @@ type BlockDetail {
   Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve.
   """
   next_block_number: Int
+
+  """
+  Present ONLY on a decline. A null \`block\` WITHOUT this is a CONFIRMED ABSENCE -- the store was read and holds no such block, which is a measurement. With it, the read failed and nothing is known about whether the block exists.
+  """
+  degraded: DegradedInfo
 }
 
 """
@@ -6547,11 +6552,12 @@ type AccountStakeMoves {
   schema_version: Int!
   address: String!
   window: String
-  total_movements: Int!
-  subnet_count: Int!
+  total_movements: Int
+  subnet_count: Int
   concentration: Float
   dominant_netuid: Int
   subnets: [AccountStakeMoveSubnet!]!
+  degraded: DegradedInfo
 }
 
 """
@@ -6604,6 +6610,10 @@ type AccountEntities {
   schema_version: Int!
   ss58: String!
   labels: [AccountEntityLabel!]!
+
+  """
+  How many ownership ties were READ. A FLOOR rather than a total when \`degraded\` is present: this card composes the economics artifact with the transfer stream, and only the transfer half can decline -- so every tie counted here was measured, there are simply more that could not be read.
+  """
   ownership_tie_count: Int!
   ownership_ties: [AccountOwnershipTie!]!
 
@@ -6611,6 +6621,11 @@ type AccountEntities {
   When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An \`owns\` tie is never fresher than this stamp.
   """
   owners_observed_at: String
+
+  """
+  Present ONLY when the TRANSFER half declined. A PARTIAL degradation, unlike the other declining routes: the ownership ties beside it are still measured, which is why the counts stay real rather than going null.
+  """
+  degraded: DegradedInfo
 }
 
 """

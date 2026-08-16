@@ -5322,6 +5322,8 @@ export interface components {
         };
         /** @description One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities. */
         AccountEntitiesArtifact: {
+            /** @description Present ONLY when the TRANSFER half declined. A PARTIAL degradation, unlike the other declining routes: the ownership ties beside it are still measured, which is why the counts stay real rather than going null. */
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             labels: {
                 category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other" | "payment-collector" | "treasury" | "burn" | "multisig") | null;
                 name?: string | null;
@@ -5331,6 +5333,7 @@ export interface components {
             }[];
             /** @description When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp. */
             owners_observed_at: string | null;
+            /** @description How many ownership ties were READ. A FLOOR rather than a total when `degraded` is present: this card composes the economics artifact with the transfer stream, and only the transfer half can decline -- so every tie counted here was measured, there are simply more that could not be read. */
             ownership_tie_count: number;
             ownership_ties: {
                 block_number?: number | null;
@@ -5707,9 +5710,10 @@ export interface components {
         AccountStakeMovesArtifact: {
             address: string;
             concentration: number | null;
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             dominant_netuid: number | null;
             schema_version: number;
-            subnet_count: number;
+            subnet_count: number | null;
             subnets: {
                 first_moved_at: string | null;
                 last_moved_at: string | null;
@@ -5718,7 +5722,7 @@ export interface components {
                 /** @description Alpha price (TAO) on the UTC day of this subnet's most recent move; null when that day has no snapshot yet or there was no move. */
                 price_tao_at_last_move: number | null;
             }[];
-            total_movements: number;
+            total_movements: number | null;
             window: ("7d" | "30d" | "90d") | null;
         };
         /** @description One account's live cross-subnet registration footprint (the neurons snapshot), backing account_subnets. The lightweight sibling of AccountPortfolio -- registration facts only, no economics rollup. */
@@ -6295,6 +6299,8 @@ export interface components {
                 parent_hash: string | null;
                 spec_version: number | null;
             } | null;
+            /** @description Present ONLY on a decline. A null `block` WITHOUT this is a CONFIRMED ABSENCE -- the store was read and holds no such block, which is a measurement. With it, the read failed and nothing is known about whether the block exists. */
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve. */
             next_block_number: number | null;
             /** @description Nearest STORED lower block height for chain-walk nav (detail only); null at the start of the retained window or when the ref didn't resolve. */
@@ -14865,6 +14871,10 @@ export interface operations {
                      *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "spec_version": 1
                      *         },
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "next_block_number": 5000000,
                      *         "prev_block_number": 5000000,
                      *         "ref": "example",
@@ -20982,6 +20992,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "labels": [
                      *           {}
                      *         ],
@@ -22752,6 +22766,10 @@ export interface operations {
                      *       "data": {
                      *         "address": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *         "concentration": 1,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "dominant_netuid": 1,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
@@ -24442,6 +24460,10 @@ export interface operations {
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
                      *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "spec_version": 1
+                     *         },
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
                      *         },
                      *         "next_block_number": 5000000,
                      *         "prev_block_number": 5000000,

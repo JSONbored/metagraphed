@@ -22,7 +22,7 @@
 //   - ~1-2s per query, so every caller must sit behind the existing edge
 //     cache. See src/r2-sql.ts's header for the measurements.
 
-import { buildBlock, buildBlockFeed } from "./blocks.ts";
+import { buildBlock, buildBlockFeed, declineBlock } from "./blocks.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { type ChainNetworkId, chainTable } from "./chain-network.ts";
@@ -33,6 +33,7 @@ import {
   safeBlockNumber,
   safeHexLiteral,
   safeSs58Literal,
+  isR2SqlConfigured,
 } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import { recordOrNull } from "./read-store.ts";
@@ -289,7 +290,16 @@ export async function loadBlockFromR2Sql(
     env,
     `SELECT ${BLOCK_COLUMNS} FROM ${chainTable("blocks", network)} WHERE ${predicate} LIMIT 1`,
   );
-  if (rows === null) return null;
+  // A CONFIGURED lakehouse that could not answer is a decline, not "no such
+  // block" (#11424). This route was measured at 15,085ms -- AT the 15s
+  // `QUERY_TIMEOUT_MS` -- on 2026-08-16, and the bare null reached the caller
+  // as the same payload a confirmed absence produces, which is the one
+  // distinction the comment below already insists on. With NO lakehouse bound
+  // the null stands: there is nothing to read and the caller's own floor is
+  // correct.
+  if (rows === null) {
+    return isR2SqlConfigured(env) ? declineBlock(ref) : null;
+  }
   // A confirmed absence is an ANSWER: buildBlock(undefined, ref) is the same
   // "no such block" payload the Postgres tier produces, and returning it here
   // (rather than null) stops the caller re-deriving it.

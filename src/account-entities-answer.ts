@@ -36,7 +36,9 @@ import {
   type SubnetOwnerSnapshot,
 } from "./entity-labels.ts";
 import { readArtifact } from "../workers/storage.ts";
+import { isR2SqlConfigured } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { DEGRADED_UNAVAILABLE } from "./uncurated-event-streams.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { ArtifactEnv } from "../workers/storage.ts";
 import {
@@ -104,7 +106,7 @@ export async function answerAccountEntities(
   // Routing it through `entities()` added a `??` arm that cannot fire -- the
   // builder's own output always parses -- and an unreachable fallback is a
   // branch no test can honestly cover (#11339).
-  return withOwnedTies(
+  const floor = withOwnedTies(
     {
       schema_version: 1,
       ss58: coldkey,
@@ -116,6 +118,29 @@ export async function answerAccountEntities(
     coldkey,
     ownerSnapshot,
   );
+
+  // A PARTIAL decline, and the only one on this route (#11430).
+  //
+  // This card is composed from two independent sources and only one of them is
+  // the lakehouse: the ownership ties come from the economics artifact, which
+  // is readable whether or not the transfer stream is. So reaching here on a
+  // CONFIGURED deployment means the transfer half declined -- measured at
+  // 15,182ms, i.e. AT `QUERY_TIMEOUT_MS`, on 2026-08-16 -- while the ownership
+  // half above may have answered perfectly.
+  //
+  // The marker therefore rides a payload whose counts STAY REAL.
+  // `withOwnedTies` recomputes `ownership_tie_count` from the ties it merged,
+  // so it is a FLOOR -- every tie in it was measured, there are simply more
+  // that could not be read. Nulling it would throw away correct data and
+  // assert that nothing is known, which is false and worse than the confident
+  // zero it replaces. Same relationship `candle_count` has to
+  // `window_truncated` in #11414.
+  //
+  // Unconfigured (a self-hoster, CI) is not a fault: there is no transfer
+  // stream to have failed, so the floor stands unmarked.
+  return isR2SqlConfigured(env)
+    ? { ...floor, degraded: { reason: DEGRADED_UNAVAILABLE } }
+    : floor;
 }
 
 /** A tier's answer, parsed into the payload it claims to be -- or null. */

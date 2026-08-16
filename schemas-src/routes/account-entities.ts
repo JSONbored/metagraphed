@@ -22,6 +22,7 @@
 // (same cosmetic finding batch 4's account-summary.ts made for the
 // identical field).
 import { z } from "zod";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 import { EntityCategorySchema } from "../shared.ts";
 
 /**
@@ -53,7 +54,12 @@ export const AccountEntitiesArtifactSchema = z
     schema_version: z.int(),
     ss58: z.string(),
     labels: z.array(EntityLabelSchema),
-    ownership_tie_count: z.int().min(0),
+    ownership_tie_count: z
+      .int()
+      .min(0)
+      .describe(
+        "How many ownership ties were READ. A FLOOR rather than a total when `degraded` is present: this card composes the economics artifact with the transfer stream, and only the transfer half can decline -- so every tie counted here was measured, there are simply more that could not be read.",
+      ),
     ownership_ties: z.array(
       z
         .object({
@@ -72,6 +78,11 @@ export const AccountEntitiesArtifactSchema = z
       .nullable()
       .describe(
         'When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp.',
+      ),
+    degraded: EventStreamDegradedSchema.nullable()
+      .optional()
+      .describe(
+        "Present ONLY when the TRANSFER half declined. A PARTIAL degradation, unlike the other declining routes: the ownership ties beside it are still measured, which is why the counts stay real rather than going null.",
       ),
   })
   .strict()

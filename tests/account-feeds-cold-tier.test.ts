@@ -388,18 +388,28 @@ describe("loadAccountStakeMovesColdTier", () => {
     assert.equal(res!.generatedAt, null);
   });
 
-  test("declines a bad address without querying; a failed query yields null", async () => {
+  test("declines a bad address without querying", async () => {
     const q = sqlFetch([MOVE_ROW]);
     assert.equal(
       await loadAccountStakeMovesColdTier(TOKEN as never, "junk", {}),
       null,
     );
     assert.equal(q.length, 0);
+  });
+
+  test("a failed query on a CONFIGURED lakehouse is MARKED, not a null", async () => {
+    // #11424. It used to return the same bare null as an unusable address, and
+    // the caller spelled that `?? emptyCard` -- so a 15-second timeout (this
+    // route was measured AT `QUERY_TIMEOUT_MS` on 2026-08-16) published
+    // `total_movements: 0`, which reads as "this account has never moved
+    // stake".
     failingFetch();
-    assert.equal(
-      await loadAccountStakeMovesColdTier(TOKEN as never, ADDR, {}),
-      null,
-    );
+    const out = await loadAccountStakeMovesColdTier(TOKEN as never, ADDR, {});
+    assert.ok(out, "a decline still answers");
+    assert.deepEqual(out.data.degraded, { reason: "unavailable" });
+    assert.equal(out.data.total_movements, null);
+    assert.equal(out.data.subnet_count, null);
+    assert.equal(out.generatedAt, null);
   });
 });
 

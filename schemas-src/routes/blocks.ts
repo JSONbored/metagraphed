@@ -8,6 +8,7 @@
 // in this same batch (verified via repo-wide $ref grep), so the hand-edited
 // Block component key becomes fully orphaned.
 import { z } from "zod";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 export const BlockSchema = z
   .object({
@@ -59,6 +60,11 @@ export const BlockDetailArtifactSchema = z
       .nullable()
       .describe(
         "Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve.",
+      ),
+    degraded: EventStreamDegradedSchema.nullable()
+      .optional()
+      .describe(
+        "Present ONLY on a decline. A null `block` WITHOUT this is a CONFIRMED ABSENCE -- the store was read and holds no such block, which is a measurement. With it, the read failed and nothing is known about whether the block exists.",
       ),
   })
   .strict();

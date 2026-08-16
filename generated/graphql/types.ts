@@ -181,9 +181,12 @@ export type AccountDeregistrations = {
 /** One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities. */
 export type AccountEntities = {
   __typename?: 'AccountEntities';
+  /** Present ONLY when the TRANSFER half declined. A PARTIAL degradation, unlike the other declining routes: the ownership ties beside it are still measured, which is why the counts stay real rather than going null. */
+  degraded?: Maybe<DegradedInfo>;
   labels: Array<AccountEntityLabel>;
   /** When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp. */
   owners_observed_at?: Maybe<Scalars['String']['output']>;
+  /** How many ownership ties were READ. A FLOOR rather than a total when `degraded` is present: this card composes the economics artifact with the transfer stream, and only the transfer half can decline -- so every tie counted here was measured, there are simply more that could not be read. */
   ownership_tie_count: Scalars['Int']['output'];
   ownership_ties: Array<AccountOwnershipTie>;
   schema_version: Scalars['Int']['output'];
@@ -615,11 +618,12 @@ export type AccountStakeMoves = {
   __typename?: 'AccountStakeMoves';
   address: Scalars['String']['output'];
   concentration?: Maybe<Scalars['Float']['output']>;
+  degraded?: Maybe<DegradedInfo>;
   dominant_netuid?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
-  subnet_count: Scalars['Int']['output'];
+  subnet_count?: Maybe<Scalars['Int']['output']>;
   subnets: Array<AccountStakeMoveSubnet>;
-  total_movements: Scalars['Int']['output'];
+  total_movements?: Maybe<Scalars['Int']['output']>;
   window?: Maybe<Scalars['String']['output']>;
 };
 
@@ -797,6 +801,8 @@ export type BlockChainEventsArtifactEvents = {
 export type BlockDetail = {
   __typename?: 'BlockDetail';
   block?: Maybe<Block>;
+  /** Present ONLY on a decline. A null `block` WITHOUT this is a CONFIRMED ABSENCE -- the store was read and holds no such block, which is a measurement. With it, the read failed and nothing is known about whether the block exists. */
+  degraded?: Maybe<DegradedInfo>;
   /** Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve. */
   next_block_number?: Maybe<Scalars['Int']['output']>;
   /** Nearest STORED lower block height for chain-walk nav (detail only); null at the start of the retained window or when the ref didn't resolve. */
@@ -9522,6 +9528,7 @@ export type AccountDeregistrationsResolvers<ContextType = GqlContext, ParentType
 }>;
 
 export type AccountEntitiesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountEntities'] = ResolversParentTypes['AccountEntities']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   labels?: Resolver<Array<ResolversTypes['AccountEntityLabel']>, ParentType, ContextType>;
   owners_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   ownership_tie_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9873,11 +9880,12 @@ export type AccountStakeMoveSubnetResolvers<ContextType = GqlContext, ParentType
 export type AccountStakeMovesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountStakeMoves'] = ResolversParentTypes['AccountStakeMoves']> = ResolversObject<{
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   concentration?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   dominant_netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['AccountStakeMoveSubnet']>, ParentType, ContextType>;
-  total_movements?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  total_movements?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
@@ -10020,6 +10028,7 @@ export type BlockChainEventsArtifactEventsResolvers<ContextType = GqlContext, Pa
 
 export type BlockDetailResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockDetail'] = ResolversParentTypes['BlockDetail']> = ResolversObject<{
   block?: Resolver<Maybe<ResolversTypes['Block']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   next_block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   prev_block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   ref?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
