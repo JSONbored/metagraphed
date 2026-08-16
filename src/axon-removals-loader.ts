@@ -1,0 +1,154 @@
+// Reading the axon-removal derivation out of `neuron_daily` (#10805).
+//
+// ## Why the work is split the way it is
+//
+// The rules that decide what counts as a removal live in ONE place --
+// src/axon-removal-derivation.ts -- and this module does not restate them.
+// That matters more than it looks: the rules are the whole feed. Subtracting
+// UID reuse is the difference between 94 removals and 1,584, and requiring a
+// second absent reading is the difference between a teardown and a missed
+// poll. Two implementations of that, one in SQL and one in TypeScript, is two
+// answers waiting to disagree -- and I had exactly that disagreement while
+// building this (19 vs 14), from measuring with one rule and implementing
+// another.
+//
+// So SQL does only what SQL is for: narrowing. It finds the slots that had ANY
+// non-null -> null transition in the window and returns those slots' day
+// series. Everything else -- the hotkey test, the confirmation test, the
+// pending accounting -- happens in the derivation module, on rows it already
+// has tests for.
+//
+// ## The narrowing is what makes this affordable
+//
+// The window holds ~936,000 neuron-days network-wide, which no Worker should
+// pull. Slots that dropped an axon at all are ~1,584 over 30 days, so their
+// series is ~49,000 rows -- measured, not estimated: 47,616 rows for the six
+// subnets used to verify the derivation. The expensive predicate runs in
+// Postgres against the index; the cheap logic runs where it is tested.
+import {
+  deriveAxonRemovals,
+  type DerivedAxonRemovals,
+  type NeuronAxonDayRow,
+} from "./axon-removal-derivation.ts";
+import { readStore } from "./read-store.ts";
+
+/** Days of `neuron_daily` to pull. The widest window any route offers. */
+export const AXON_REMOVALS_LOOKBACK_DAYS = 30;
+
+/** One subnet's rollup, in the shape `buildChainAxonRemovals` already takes. */
+export interface AxonRemovalSubnetRow {
+  netuid: number;
+  distinct_removers: number;
+  removals: number;
+}
+
+export interface AxonRemovalsRollup {
+  subnets: AxonRemovalSubnetRow[];
+  /** Distinct hotkeys that removed an axon anywhere, and the newest removal. */
+  network: { distinct_removers: number; newest_observed: string | null };
+  derivation: DerivedAxonRemovals["derivation"];
+  removals: DerivedAxonRemovals["removals"];
+}
+
+/**
+ * The day series for every slot that dropped an axon in the window.
+ *
+ * The inner query is the narrowing: `lag(axon)` over each slot finds the
+ * transitions, and the outer query returns those slots WHOLE, because the
+ * derivation needs the readings on either side to tell a teardown from a
+ * missed poll.
+ */
+const CANDIDATE_SLOTS_SQL =
+  "WITH windowed AS (" +
+  "  SELECT netuid, uid, snapshot_date, hotkey, axon," +
+  "         lag(axon) OVER (PARTITION BY netuid, uid ORDER BY snapshot_date) AS prev_axon" +
+  "  FROM neuron_daily WHERE snapshot_date >= ?" +
+  "), dropped AS (" +
+  "  SELECT DISTINCT netuid, uid FROM windowed" +
+  "  WHERE prev_axon IS NOT NULL AND prev_axon <> ''" +
+  "    AND (axon IS NULL OR axon = '')" +
+  ")" +
+  " SELECT w.netuid, w.uid, w.snapshot_date, w.hotkey, w.axon" +
+  " FROM windowed w JOIN dropped d ON d.netuid = w.netuid AND d.uid = w.uid" +
+  " ORDER BY w.netuid, w.uid, w.snapshot_date";
+
+export interface AxonRemovalsLoadDeps {
+  /** Injectable for tests; production reads Neon through `readStore`. */
+  query?: (sql: string, params: unknown[]) => Promise<unknown>;
+  now?: () => number;
+}
+
+/** `YYYY-MM-DD`, `days` before `nowMs`. */
+export function isoDaysAgo(nowMs: number, days: number): string {
+  return new Date(nowMs - days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * Derived removals, rolled up per subnet.
+ *
+ * Returns null when there is no store to read -- the caller keeps its existing
+ * schema-stable empty rather than turning an unbound binding into "no removals
+ * happened", which is the confident-zero this whole family is trying to stop
+ * publishing.
+ */
+export async function loadAxonRemovals(
+  env: unknown,
+  deps: AxonRemovalsLoadDeps = {},
+): Promise<AxonRemovalsRollup | null> {
+  const now = deps.now ?? Date.now;
+  let rows: unknown;
+  if (deps.query) {
+    rows = await deps.query(CANDIDATE_SLOTS_SQL, [
+      isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS),
+    ]);
+  } else {
+    const db = readStore(env, ["neuron_daily"]);
+    if (!db) return null;
+    rows = await db.query(CANDIDATE_SLOTS_SQL, [
+      isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS),
+    ]);
+  }
+
+  const derived = deriveAxonRemovals(rows as NeuronAxonDayRow[] | null, {
+    lookbackDays: AXON_REMOVALS_LOOKBACK_DAYS,
+  });
+
+  // Per subnet: how many removals, and how many DISTINCT hotkeys did them.
+  // Distinct removers is the honest denominator -- one operator tearing down
+  // forty miners is one actor, and the builder's removals_per_remover is what
+  // says so.
+  const perNetuid = new Map<
+    number,
+    { removals: number; hotkeys: Set<string> }
+  >();
+  const networkHotkeys = new Set<string>();
+  let newest: string | null = null;
+  for (const removal of derived.removals) {
+    const bucket = perNetuid.get(removal.netuid) ?? {
+      removals: 0,
+      hotkeys: new Set<string>(),
+    };
+    bucket.removals += 1;
+    bucket.hotkeys.add(removal.hotkey);
+    perNetuid.set(removal.netuid, bucket);
+    networkHotkeys.add(removal.hotkey);
+    if (newest === null || removal.removed_on > newest)
+      newest = removal.removed_on;
+  }
+
+  return {
+    subnets: [...perNetuid]
+      .map(([netuid, bucket]) => ({
+        netuid,
+        distinct_removers: bucket.hotkeys.size,
+        removals: bucket.removals,
+      }))
+      .sort((a, b) => b.removals - a.removals || a.netuid - b.netuid),
+    network: {
+      distinct_removers: networkHotkeys.size,
+      newest_observed: newest,
+    },
+    derivation: derived.derivation,
+    removals: derived.removals,
+  };
+}
