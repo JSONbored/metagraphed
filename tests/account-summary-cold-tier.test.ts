@@ -885,6 +885,104 @@ describe("the projection short-circuits the FEED leg too (#11222)", () => {
   });
 
   /**
+   * GROUPS BUT NO RECENT MAP -- which is every account in production today.
+   *
+   * The probe above needs metagraphed-infra#575's published event map. Measured
+   * 2026-08-16, no generation carries one: the live pointer publishes no
+   * `recent_limit`, and shard 12350 of generation 20260815T062657Z held 43
+   * accounts, all groups-only. So `readRecent` declined for EVERY account and
+   * the feed fell through to the unbounded lifetime scan -- which is the 15s
+   * abort behind the 503 the account page was serving.
+   *
+   * The groups alone bound it: they are a LIFETIME aggregate, so every folded
+   * event sits inside [fo, lo], and `through` says where the fold stops.
+   */
+  describe("an account with groups but no published recent map", () => {
+    test("bounds BOTH reads instead of scanning all of history", async () => {
+      const engine = fakeEngine({ recent: [] });
+      // `archive(null)` publishes no recent_limit and no recent map -- the
+      // production shape, verbatim.
+      const cold = await loadAccountSummaryColdTier(archive(null), SS58, {
+        query: engine.query as never,
+      });
+      assert.equal(cold.declined, undefined);
+      const feed = engine.seen.filter((s) => !s.includes("GROUP BY"));
+      assert.equal(feed.length, 2, "above the fold, then the folded remainder");
+      // The live half starts exactly where the fold stops.
+      assert.match(feed[0]!, new RegExp(`observed_at >= ${FLOOR}\\b`));
+      // The folded half is bounded on BOTH sides by the groups' own columns.
+      assert.match(feed[1]!, new RegExp(`observed_at >= ${AGG.fo}\\b`));
+      assert.match(feed[1]!, new RegExp(`observed_at <= ${AGG.lo}\\b`));
+      // The defect coming back would be a read with no lower bound at all.
+      for (const sql of feed) {
+        assert.match(
+          sql,
+          /observed_at >= /,
+          `unbounded read: ${sql.slice(0, 90)}`,
+        );
+      }
+    });
+
+    test("either bounded read FAILING declines -- never a half feed", async () => {
+      // Both halves are load-bearing: serving the live half alone would publish
+      // a feed silently missing everything the fold covers, and serving the
+      // folded half alone would freeze it at the last complete day. A null from
+      // the engine is a decline, exactly as the unbounded walk's was.
+      const first = fakeEngine({ recent: null });
+      const coldFirst = await loadAccountSummaryColdTier(archive(null), SS58, {
+        query: first.query as never,
+      });
+      assert.ok(
+        coldFirst.declined?.some((r) => r.startsWith("recent-span:")),
+        "the first probe's failure must be reported as a decline",
+      );
+
+      // The SECOND read failing is the harder case: the first one succeeded, so
+      // there are rows in hand that a careless implementation would serve.
+      let call = 0;
+      const flaky = async (
+        env: unknown,
+        sql: string,
+        deps?: { onError?: (detail: string) => void },
+      ) => {
+        if (sql.includes("GROUP BY")) return good.query(env, sql, deps);
+        call += 1;
+        if (call === 1) return good.query(env, sql, deps);
+        deps?.onError?.("r2 sql: HTTP 500 (stubbed failure)");
+        return null;
+      };
+      const good = fakeEngine({ recent: [event()] });
+      const coldSecond = await loadAccountSummaryColdTier(archive(null), SS58, {
+        query: flaky as never,
+      });
+      assert.ok(
+        coldSecond.declined?.some((r) => r.startsWith("recent-span:")),
+        "a failed folded read must not serve the live half alone",
+      );
+    });
+
+    test("a full page above the fold needs no second read", async () => {
+      // Those rows ARE the newest, so the folded half cannot contribute one.
+      const engine = fakeEngine({
+        // ABOVE the fold floor, or the first probe's own predicate filters
+        // them out and there is nothing to short-circuit on.
+        recent: Array.from({ length: ACCOUNT_SUMMARY_RECENT_LIMIT }, (_, i) =>
+          event({
+            block_number: 8_800_000 + i,
+            event_index: i,
+            observed_at: FLOOR + 60_000 + i,
+          }),
+        ),
+      });
+      await loadAccountSummaryColdTier(archive(null), SS58, {
+        query: engine.query as never,
+      });
+      const feed = engine.seen.filter((s) => !s.includes("GROUP BY"));
+      assert.equal(feed.length, 1, "the second query must not be issued");
+    });
+  });
+
+  /**
    * The account the projection has NEVER seen -- every account registered since
    * the last generation, and the case that used to be the slowest thing here.
    *
@@ -1011,9 +1109,11 @@ describe("the projection short-circuits the FEED leg too (#11222)", () => {
     );
   });
 
-  test("no published recent list falls back to the walk, unchanged", async () => {
-    // Every generation before metagraphed-infra#575 lands here, and the route
-    // must behave exactly as it did -- the aggregate leg still short-circuits.
+  test("no published recent list still bounds, on the GROUPS instead", async () => {
+    // This asserted the unbounded walk until the span bound existed, because
+    // without a published list there was nothing for a floor to MEET. The
+    // groups supply that edge themselves, so the fallback is now bounded --
+    // which matters, since every generation in production lands here.
     const engine = fakeEngine();
     const cold = await loadAccountSummaryColdTier(archive(null), SS58, {
       query: engine.query as never,
@@ -1021,14 +1121,19 @@ describe("the projection short-circuits the FEED leg too (#11222)", () => {
     assert.equal(cold.declined, undefined);
     const feed = engine.seen.filter((s) => !s.includes("GROUP BY"));
     assert.ok(feed.length >= 1);
-    assert.equal(
-      feed.some((s) => s.includes(`observed_at >= ${FLOOR}`)),
-      false,
-      "no floor is placed without a published list to meet it",
-    );
+    for (const sql of feed) {
+      assert.match(
+        sql,
+        /observed_at >= /,
+        `the walk is back: ${sql.slice(0, 90)}`,
+      );
+    }
   });
 
-  test("a published limit under the caller's need falls back too", async () => {
+  test("a published limit under the caller's need falls back to the span", async () => {
+    // The recent map is still refused -- serving a list shorter than the caller
+    // asked for would publish a feed missing its tail -- but the fallback is
+    // the bounded span read rather than the walk.
     const engine = fakeEngine();
     const cold = await loadAccountSummaryColdTier(
       archive([event()], { limit: ACCOUNT_SUMMARY_RECENT_LIMIT - 1 }),
@@ -1037,10 +1142,10 @@ describe("the projection short-circuits the FEED leg too (#11222)", () => {
     );
     assert.equal(cold.declined, undefined);
     const feed = engine.seen.filter((s) => !s.includes("GROUP BY"));
-    assert.equal(
-      feed.some((s) => s.includes(`observed_at >= ${FLOOR}`)),
-      false,
-    );
+    assert.ok(feed.length >= 1);
+    for (const sql of feed) {
+      assert.match(sql, /observed_at >= /);
+    }
   });
 });
 

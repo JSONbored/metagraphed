@@ -132,6 +132,107 @@ async function readFound(
   return got;
 }
 
+/**
+ * The span the GROUPS prove, which is the bound that works today.
+ *
+ * `recent` needs metagraphed-infra#575's published event map, and no generation
+ * carries one: measured 2026-08-16 the live pointer publishes no `recent_limit`
+ * and shard 12350 of generation 20260815T062657Z held 43 accounts, every one of
+ * them groups-only. So the feed leg declined for EVERY account and fell to an
+ * unbounded lifetime scan -- the 15s abort behind the 503 on /accounts/{ss58}.
+ */
+describe("the span the groups prove", () => {
+  test("brackets every folded event, and says where the fold stops", async () => {
+    const store = archive(
+      published(
+        {
+          // THREE groups, deliberately unordered: the middle one moves both
+          // ends outward and the last moves neither, so the running min/max
+          // are exercised in both directions. Two ordered groups would leave
+          // half of each comparison untaken.
+          [HOT]: [
+            { ...group(), fo: 5_000, lo: 3_000 },
+            { ...group(), kind: "Transfer", fo: 1_000, lo: 9_000 },
+            { ...group(), kind: "StakeAdded", fo: 7_000, lo: 8_000 },
+          ],
+        },
+        { through: "2026-08-13" },
+      ),
+    );
+    const found = await readFound(store.env, HOT, FRESH);
+    assert.deepEqual(found.span, {
+      // The EARLIEST first-observed and the LATEST last-observed across every
+      // group -- one group's window alone would not contain the other's rows.
+      firstMs: 1_000,
+      lastMs: 9_000,
+      // Midnight after the last complete day folded, so the bounded range and
+      // the live probe MEET rather than overlapping or leaving a gap.
+      foldFloorMs: Date.parse("2026-08-14T00:00:00.000Z"),
+    });
+  });
+
+  test("one null fo or lo declines the whole span", async () => {
+    // A partial bound is not a bound: the caller would have to invent the
+    // missing edge, which drops rows off one end of the feed.
+    for (const bad of [{ fo: null }, { lo: null }]) {
+      const store = archive(
+        published(
+          {
+            [HOT]: [
+              { ...group(), fo: 1_000, lo: 2_000 },
+              { ...group(), ...bad },
+            ],
+          },
+          { through: "2026-08-13" },
+        ),
+      );
+      const found = await readFound(store.env, HOT, FRESH);
+      assert.equal(found.span, null, JSON.stringify(bad));
+    }
+  });
+
+  test("no `through` means no fold edge, so no span", async () => {
+    const store = archive(
+      published({ [HOT]: [{ ...group(), fo: 1_000, lo: 2_000 }] }),
+    );
+    assert.equal((await readFound(store.env, HOT, FRESH)).span, null);
+  });
+
+  test("the production shape -- groups only, no recent map -- still bounds", async () => {
+    // Read verbatim out of R2 on 2026-08-16: one group, no `recent` map on the
+    // shard and no `recent_limit` on the pointer. Before this, exactly this
+    // payload sent the feed to an unbounded scan.
+    const store = archive(
+      published(
+        {
+          [HOT]: [
+            {
+              kind: "NeuronRegistered",
+              netuid: 105,
+              count: 1,
+              fb: 8836052,
+              lb: 8836052,
+              fo: 1786629372000,
+              lo: 1786629372000,
+            },
+          ],
+        },
+        { through: "2026-08-14" },
+      ),
+    );
+    const found = await readFound(store.env, HOT, {
+      ...FRESH,
+      recentLimit: 25,
+    });
+    assert.equal(found.recent, null, "premise: no recent map is published");
+    assert.deepEqual(found.span, {
+      firstMs: 1786629372000,
+      lastMs: 1786629372000,
+      foldFloorMs: Date.parse("2026-08-15T00:00:00.000Z"),
+    });
+  });
+});
+
 describe("loadAccountSummaryProjection", () => {
   test("reads the pointer, THEN the account's shard in that generation", async () => {
     const store = archive(published({ [HOT]: [group()] }));
@@ -155,6 +256,9 @@ describe("loadAccountSummaryProjection", () => {
       // No `recentLimit` asked for, so the feed leg is not read at all -- the
       // aggregate leg is what every caller before #575 wanted and still gets.
       recent: null,
+      // No `through` on this pointer, so there is no fold edge to bound
+      // against and the span declines rather than guessing one.
+      span: null,
     });
   });
 
@@ -340,6 +444,8 @@ describe("loadAccountSummaryProjection", () => {
     );
     assert.deepEqual(await readFound(store.env, HOT, FRESH), {
       recent: null,
+      // Null `fo`/`lo` make the range a guess, so there is no span to offer.
+      span: null,
       groups: [
         {
           kind: "Transfer",
