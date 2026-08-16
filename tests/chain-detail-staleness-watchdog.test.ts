@@ -27,6 +27,7 @@ import {
 } from "../src/chain-detail-staleness-watchdog.ts";
 import { handleScheduled } from "../workers/api.ts";
 import * as workerConfig from "../workers/config.ts";
+import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;
 const HEAD = 8_762_600;
@@ -241,30 +242,10 @@ describe("runChainDetailStalenessWatchdog", () => {
 });
 
 describe("the cron wiring", () => {
-  test("both #9208 crons are unique strings across the whole config", () => {
-    const crons = Object.entries(workerConfig)
-      .filter(([name]) => name.endsWith("_CRON"))
-      .map(([, value]) => value);
-    assert.equal(
-      new Set(crons).size,
-      crons.length,
-      "dispatch keys on the LITERAL cron string, so a duplicate routes one " +
-        "lane into another lane's branch",
-    );
-    assert.ok(crons.includes(workerConfig.CHAIN_DETAIL_PRUNE_CRON));
-    assert.ok(
-      crons.includes(workerConfig.CHAIN_DETAIL_STALENESS_WATCHDOG_CRON),
-    );
-    assert.notEqual(
-      workerConfig.CHAIN_DETAIL_PRUNE_CRON,
-      workerConfig.CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
-    );
-  });
-
   test("the watchdog cron reaches the watchdog, and reports its verdict", async () => {
     const { env } = fakeDb(Date.now() - 1_000);
-    const result = (await handleScheduled(
-      { cron: workerConfig.CHAIN_DETAIL_STALENESS_WATCHDOG_CRON } as never,
+    const result = (await runStalenessLane(
+      "chain-detail-staleness",
       env as never,
       {} as never,
     )) as Record<string, unknown>;

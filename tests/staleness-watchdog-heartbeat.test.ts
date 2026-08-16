@@ -63,6 +63,18 @@ describe("runDueStalenessWatchdogs", () => {
     assert.equal(ranAt.hr!.length, 1, "a 60-minute lane runs 1x an hour");
   });
 
+  test("each lane's own summary is carried, not dropped at the boundary", async () => {
+    // Eight crons used to return eight verdicts. Consolidating the trigger must
+    // not cost the report that detail, or the tidier grid is paid for in
+    // observability.
+    const tick = await runDueStalenessWatchdogs(
+      [lane("a", 15, async () => ({ alerted: false, age_ms: 42 }))],
+      "env",
+      { lastRunMs: {}, now: () => 1_000_000 },
+    );
+    assert.deepEqual(tick.ran[0]!.summary, { alerted: false, age_ms: 42 });
+  });
+
   test("a lane that is not due is skipped, and counted as skipped", async () => {
     const calls: string[] = [];
     const now = 10 * 60 * MINUTE;

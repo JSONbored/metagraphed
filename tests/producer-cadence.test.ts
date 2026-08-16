@@ -39,6 +39,7 @@ import { VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS } from "../src/validator-nomi
 import { TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS } from "../src/top-holders-staleness-watchdog.ts";
 import {
   WORKER_CRON_LANES,
+  WORKER_REGISTRY_LANES,
   cronIntervalSecs,
 } from "../src/producer-cadence.ts";
 import * as CONFIG from "../workers/config.ts";
@@ -254,8 +255,28 @@ describe("a worker lane's declared cadence matches the cron it runs on", () => {
     assert.deepEqual(Object.keys(WORKER_CRON_LANES).sort(), [
       "top_holders_flow",
       "top_holders_holdings",
-      "top_holders_staleness_watchdog",
     ]);
+  });
+
+  // The staleness watchdog's cadence stopped being a cron in #10849 item 5, so
+  // the agreement is now checked against the registry that replaced it. Losing
+  // this check rather than moving it is how a declared floor goes stale in
+  // prose: the number stays, the thing it was measured against disappears.
+  test("a REGISTRY-backed lane's declared seconds are its everyMinutes", async () => {
+    const { STALENESS_WATCHDOGS } = await import("../workers/api.ts");
+    for (const [lane, laneName] of Object.entries(WORKER_REGISTRY_LANES)) {
+      const entry = STALENESS_WATCHDOGS.find((l) => l.name === laneName);
+      assert.ok(
+        entry,
+        `${lane} names the registry lane "${laneName}", which STALENESS_WATCHDOGS does not declare`,
+      );
+      assert.equal(
+        entry.everyMinutes * 60,
+        PRODUCER_CADENCE_SECS[lane as keyof typeof PRODUCER_CADENCE_SECS],
+        `${lane} declares ${PRODUCER_CADENCE_SECS[lane as keyof typeof PRODUCER_CADENCE_SECS]}s ` +
+          `but "${laneName}" runs every ${entry.everyMinutes}m`,
+      );
+    }
   });
 });
 

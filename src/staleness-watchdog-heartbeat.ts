@@ -80,6 +80,13 @@ export interface StalenessWatchdogLane<E> extends ScheduledLane {
 export interface StalenessWatchdogOutcome {
   lane: string;
   ok: boolean;
+  /**
+   * What the watchdog itself returned. Carried rather than dropped so the
+   * heartbeat's report says as much as the eight separate cron returns did --
+   * otherwise consolidating the trigger would quietly cost every lane its
+   * verdict detail at the dispatch boundary.
+   */
+  summary?: Record<string, unknown>;
   /** The thrown message, when it threw. Absent on success. */
   error?: string;
 }
@@ -118,8 +125,8 @@ export async function runDueStalenessWatchdogs<E>(
   const ran: StalenessWatchdogOutcome[] = [];
   for (const lane of due) {
     try {
-      await lane.run(env);
-      ran.push({ lane: lane.name, ok: true });
+      const summary = await lane.run(env);
+      ran.push({ lane: lane.name, ok: true, summary });
     } catch (error) {
       // Recorded and stepped over. The next lane still runs, and this one's
       // frozen `checked_at` is what raises the alarm -- see the header.

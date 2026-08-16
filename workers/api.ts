@@ -178,6 +178,10 @@ import {
   type ScheduledLane,
 } from "../src/lane-scheduler.ts";
 import {
+  runDueStalenessWatchdogs,
+  type StalenessWatchdogLane,
+} from "../src/staleness-watchdog-heartbeat.ts";
+import {
   handleDeadLetterBatch,
   isDeadLetterQueue,
 } from "../src/dead-letter.ts";
@@ -696,22 +700,15 @@ import {
   EMISSION_GATE_SAMPLE_CRON,
   EMISSION_GATE_SAMPLE_INTERVAL_MS,
   EMISSION_DRIFT_CHECK_CRON,
-  NEURONS_STALENESS_WATCHDOG_CRON,
-  NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
-  PROJECTION_STALENESS_WATCHDOG_CRON,
-  VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
+  WATCHDOG_HEARTBEAT_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
   DAILY_SERIES_COVERAGE_CRON,
   REGISTRY_RESYNC_CRON,
   REGISTRY_SYNC_CRON,
   CHAIN_CONCENTRATION_ROLLUP_CRON,
-  CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   TOP_HOLDERS_FLOW_CRON,
   TOP_HOLDERS_HOLDINGS_REFRESH_CRON,
   SUBNET_DEREGISTRATION_DAILY_CRON,
-  TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
-  ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
-  HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
@@ -2863,6 +2860,11 @@ function cronLabel(cron: string): string {
   // reporting purposes -- a per-expression label would split one lane's cron
   // outcomes across three series.
   if (LANE_HEARTBEAT_CRONS.includes(cron)) return "lane-heartbeat";
+  // The eight staleness watchdogs report under ONE label, the same way the
+  // producer heartbeat does: they share a tick, and a per-lane cron label would
+  // now be a label for a cron that no longer exists. Each lane still records its
+  // own lane_health verdict, which is where per-lane outcomes are read.
+  if (cron === WATCHDOG_HEARTBEAT_CRON) return "staleness-watchdogs";
   if (cron === HEALTH_PRUNE_CRON) return "health-prune";
   if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
   if (cron === GITHUB_SIGNALS_SYNC_CRON) return "github-signals-sync";
@@ -2883,28 +2885,12 @@ function cronLabel(cron: string): string {
   if (cron === PROJECTION_LANES_CRON) return "projection-lanes";
   if (cron === EMISSION_GATE_SAMPLE_CRON) return "emission-gate-sample";
   if (cron === EMISSION_DRIFT_CHECK_CRON) return "emission-drift-check";
-  if (cron === NEURONS_STALENESS_WATCHDOG_CRON)
-    return "neurons-staleness-watchdog";
-  if (cron === NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON)
-    return "nominator-positions-staleness-watchdog";
-  if (cron === PROJECTION_STALENESS_WATCHDOG_CRON)
-    return "projection-staleness-watchdog";
-  if (cron === VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON)
-    return "validator-nominator-counts-staleness-watchdog";
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
   if (cron === REGISTRY_SYNC_CRON) return "registry-sync";
   if (cron === REGISTRY_RESYNC_CRON) return "registry-resync";
   if (cron === DAILY_SERIES_COVERAGE_CRON) return "daily-series-coverage";
   if (cron === CHAIN_CONCENTRATION_ROLLUP_CRON)
     return "chain-concentration-rollup";
-  if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
-    return "chain-detail-staleness-watchdog";
-  if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON)
-    return "top-holders-staleness-watchdog";
-  if (cron === HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON)
-    return "hotkey-alpha-staleness-watchdog";
-  if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON)
-    return "account-balances-staleness-watchdog";
   if (cron === TOP_HOLDERS_FLOW_CRON) return "top-holders-flow";
   if (cron === TOP_HOLDERS_HOLDINGS_REFRESH_CRON)
     return "top-holders-holdings-refresh";
@@ -3373,6 +3359,108 @@ export const LANE_PRODUCERS: ReadonlyArray<
   },
 ];
 
+/**
+ * The staleness watchdogs, which declare a cadence instead of taking a minute.
+ *
+ * The sibling of LANE_PRODUCERS above, for the family that ALARMS rather than
+ * enqueues, and the same trade: eight cron expressions became one heartbeat
+ * (#10849 item 5). `everyMinutes` is now the single source for how often each
+ * runs -- it replaces the cron expression that src/producer-cadence.ts used to
+ * read the silence bound out of, so the two can no longer drift apart.
+ *
+ * `name` MUST equal the lane's own `lane_health.lane` value. That row's
+ * `checked_at` is what gates the cadence, and each of these stamps it at the
+ * moment it runs -- checked per module, and not a property of `lane_health`
+ * generally. A typo here reads as never-run, so the lane runs every tick: loud,
+ * which is the right way round for a mistake in a table of alarms.
+ *
+ * The env is `{ env, ctx }` rather than a bare Env because the neurons lane
+ * carries a second write that needs a waitUntil. Nothing else here does.
+ */
+export const STALENESS_WATCHDOGS: ReadonlyArray<
+  StalenessWatchdogLane<{ env: Env; ctx?: ExecutionContext }>
+> = [
+  {
+    // The poller Container feeds D1 on a 15-minute tick, and the lane's first
+    // stall (a zombie instance, 2026-08-03) ran three silent hours because
+    // nothing read that table. Same cadence as the lane it watches.
+    name: "neurons-staleness",
+    everyMinutes: 15,
+    run: async ({ env, ctx }) => {
+      // #10262 rides this lane rather than taking a cron of its own: it needs
+      // exactly what the watchdog already reads. Guarded, and deliberately
+      // AFTER the watchdog -- the alarm is the load-bearing half, so a
+      // lifecycle write that throws must not cost the estate its staleness
+      // verdict.
+      const staleness = await runNeuronsStalenessWatchdog(env);
+      const lifecycle = runSubnetLifecycleLane(env, { ctx }).catch(
+        () => undefined,
+      );
+      // waitUntil where there is one, AWAIT where there is not. A bare `{}` ctx
+      // reaches here from callers that have none to give, and calling
+      // `ctx.waitUntil` on it throws -- which would take the staleness alarm
+      // down with it, the outcome the guard above exists to prevent.
+      if (typeof ctx?.waitUntil === "function") ctx.waitUntil(lifecycle);
+      else await lifecycle;
+      return staleness;
+    },
+  },
+  {
+    // #9208. The ONLY signal that the chain-detail lane has stopped: a stalled
+    // lane keeps the block list live and merely starts declining drill-down,
+    // which is silent in aggregate.
+    name: "chain-detail-staleness",
+    everyMinutes: 15,
+    run: ({ env }) => runChainDetailStalenessWatchdog(env),
+  },
+  {
+    // #9423. Two lanes stopped writing on 2026-08-03 and nothing noticed for 31
+    // hours -- the read path degrades by serving the previous card, so routes
+    // kept answering 200 off numbers 44 hours old under a `7d` label.
+    name: "projection-staleness",
+    everyMinutes: 30,
+    run: ({ env }) => runProjectionStalenessWatchdog(env),
+  },
+  {
+    // #9273. That lane had no watchdog and no writer at all, and the gap was
+    // found by a caller noticing a stale `captured_at` rather than by us.
+    name: "nominator-positions-staleness",
+    everyMinutes: 30,
+    run: ({ env }) => runNominatorPositionsStalenessWatchdog(env),
+  },
+  {
+    // #9301. The sibling of the lane above, over the other output of the same
+    // Alpha scan: one producer tick writes both tables.
+    name: "validator-nominator-counts-staleness",
+    everyMinutes: 30,
+    run: ({ env }) => runValidatorNominatorCountsStalenessWatchdog(env),
+  },
+  {
+    // #9478. The SOURCE side of the top-holders watchdog rather than a
+    // replacement: that one watches the served artifact, this one the store
+    // table it is composed from, and the two fail independently.
+    name: "account-balances-staleness",
+    everyMinutes: 30,
+    run: ({ env }) => runAccountBalancesStalenessWatchdog(env),
+  },
+  {
+    // #9464. Named for the FLOW row because this module writes two verdicts
+    // (`top-holders-flow-staleness` and `top-holders-holdings-staleness`) on
+    // every run, so either is a true last-run stamp and the gate needs one.
+    name: "top-holders-flow-staleness",
+    everyMinutes: 30,
+    run: ({ env }) => runTopHoldersStalenessWatchdog(env),
+  },
+  {
+    // #9576. HOURLY, not twice-hourly: the poller's HOTKEY_ALPHA_POLL_SECS
+    // defaults to 86400, so a finer cadence would only re-report the same
+    // 24-hour-old pass.
+    name: "hotkey-alpha-staleness",
+    everyMinutes: 60,
+    run: ({ env }) => runHotkeyAlphaStalenessWatchdog(env),
+  },
+];
+
 export async function handleScheduled(
   controller: ScheduledController,
   env: Env,
@@ -3455,6 +3543,7 @@ export const API_HANDLED_CRONS: readonly string[] = [
   HEALTH_PRUNE_CRON,
   EMBEDDING_SYNC_CRON,
   ...LANE_HEARTBEAT_CRONS,
+  WATCHDOG_HEARTBEAT_CRON,
   SUBNET_BURN_CAPTURE_CRON,
   RAW_CAPTURE_CRON,
   GITHUB_SIGNALS_SYNC_CRON,
@@ -3470,22 +3559,14 @@ export const API_HANDLED_CRONS: readonly string[] = [
   FRESHNESS_WATCHDOG_CRON,
   EMISSION_GATE_SAMPLE_CRON,
   LANE_ALARM_CRON,
-  NEURONS_STALENESS_WATCHDOG_CRON,
-  PROJECTION_STALENESS_WATCHDOG_CRON,
-  NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
-  VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   REGISTRY_SYNC_CRON,
   REGISTRY_RESYNC_CRON,
   DAILY_SERIES_COVERAGE_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
   CHAIN_CONCENTRATION_ROLLUP_CRON,
-  CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   SUBNET_DEREGISTRATION_DAILY_CRON,
   TOP_HOLDERS_FLOW_CRON,
   TOP_HOLDERS_HOLDINGS_REFRESH_CRON,
-  TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
-  HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
-  ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
   EMISSION_DRIFT_CHECK_CRON,
 ];
@@ -3562,6 +3643,28 @@ async function dispatchScheduled(
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === WATCHDOG_HEARTBEAT_CRON) {
+    // ONE clock for the eight staleness watchdogs (#10849 item 5). Each used to
+    // hold a minute of its own, and the grid ran out -- counted with the step
+    // expressions expanded, exactly ONE minute of sixty was unclaimed.
+    //
+    // Quarter-hourly, so `lanesDue` reproduces all three cadences (15/30/60)
+    // exactly rather than approximately. See WATCHDOG_HEARTBEAT_CRON.
+    //
+    // A FAILED READ RUNS EVERYTHING, the same polarity as the producer
+    // heartbeat below: loadLatestLaneHealth returns `{}` on any error, every
+    // lane then reads as never-run, and all eight run. The opposite would let
+    // one failed query silently stop every alarm in the estate.
+    return runDueStalenessWatchdogs(
+      STALENESS_WATCHDOGS,
+      { env, ctx },
+      {
+        lastRunMs: lastRunFromLaneHealth(
+          await loadLatestLaneHealth(laneHealthStore(env)),
+        ),
+      },
+    );
   }
   if (LANE_HEARTBEAT_CRONS.includes(cron)) {
     // ONE clock for every queue-backed lane (#10715). Each producer reads a
@@ -3830,60 +3933,6 @@ async function dispatchScheduled(
     // correct verdict on every tick and reach nobody (#9330/#9340).
     return runLaneAlarm(env);
   }
-  if (cron === NEURONS_STALENESS_WATCHDOG_CRON) {
-    // The neurons live lane's alarm. Zero alerts is the correct steady state;
-    // a stale verdict records one exception under
-    // watchdog:neurons-staleness, which is the project's alert channel.
-    // #10262 rides this tick rather than taking a cron of its own. It needs
-    // exactly what this watchdog already reads -- the netuid set at `neurons`'
-    // newest stamp, and whether that pass cleared the coverage floor -- so a
-    // separate trigger would re-read the same pass on a different schedule and
-    // add a 35th cron expression to the 34 that #10226 exists to collapse.
-    //
-    // Guarded, and deliberately AFTER the watchdog: the alarm is the load-
-    // bearing half. A lifecycle write that throws must not cost the estate its
-    // neurons staleness verdict, so its failure is swallowed here and recorded
-    // in its own lane_health row.
-    const staleness = await runNeuronsStalenessWatchdog(env);
-    const lifecycle = runSubnetLifecycleLane(env, { ctx }).catch(
-      () => undefined,
-    );
-    // waitUntil where there is one, AWAIT where there is not. A bare `{}` ctx
-    // reaches here from callers that have none to give, and calling
-    // `ctx.waitUntil` on it throws -- which would take the staleness alarm down
-    // with it, the precise outcome the guard above exists to prevent. Awaiting
-    // is the safe fallback rather than dropping the promise, because a floating
-    // promise in an isolate that is about to end is work silently not done.
-    if (typeof ctx?.waitUntil === "function") ctx.waitUntil(lifecycle);
-    else await lifecycle;
-    return staleness;
-  }
-  if (cron === PROJECTION_STALENESS_WATCHDOG_CRON) {
-    // The projection lanes' alarm (#9423). Zero alerts is the correct steady
-    // state; a stale verdict records ONE exception naming every stale lane
-    // under watchdog:projection-staleness. An ABSENT artifact alerts too --
-    // every registered lane is meant to have written on the last tick, and a
-    // route over a missing card serves its zeroed floor as though measured.
-    return runProjectionStalenessWatchdog(env);
-  }
-  if (cron === NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON) {
-    // The nominator-positions lane's alarm (#9273). Zero alerts is the correct
-    // steady state; a stale verdict records one exception under
-    // watchdog:nominator-positions-staleness, the project's alert channel. An
-    // EMPTY table alerts too -- until the revived lane posts, every positions
-    // read is still answering from the frozen lakehouse export.
-    return runNominatorPositionsStalenessWatchdog(env);
-  }
-  if (cron === VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON) {
-    // The validator-nominator-counts lane's alarm (#9301) -- the sibling of
-    // the watchdog above, over the other output of the same Alpha scan. Zero
-    // alerts is the correct steady state; a stale verdict records one
-    // exception under watchdog:validator-nominator-counts-staleness, the
-    // project's alert channel. An EMPTY table alerts too -- until the
-    // re-enabled lane posts, every nominator_count is still coming from the
-    // frozen lakehouse mirror or serving null outright.
-    return runValidatorNominatorCountsStalenessWatchdog(env);
-  }
   if (cron === REGISTRY_SYNC_CRON) {
     // #9779: the registry had NO writer. Its only sync path was a pair of
     // scripts invoked from GitHub Actions that no workflow calls, and
@@ -3960,12 +4009,6 @@ async function dispatchScheduled(
       }
     }
   }
-  if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON) {
-    // The chain-detail live lane's alarm. Zero alerts is the correct steady
-    // state; a stale verdict records one exception under
-    // watchdog:chain-detail-staleness, the project's alert channel.
-    return runChainDetailStalenessWatchdog(env);
-  }
   if (cron === SUBNET_DEREGISTRATION_DAILY_CRON) {
     // #10296: one row per subnet per day of what the deregistration ranking is
     // computed FROM. It stores the four MEASURED inputs, never the derived
@@ -4022,40 +4065,6 @@ async function dispatchScheduled(
     // leaderboard exactly as it is, including the one that matters most --
     // "there is no artifact yet" is the daily lane's job, never this one's.
     return runProjectionLane(env, TOP_HOLDERS_HOLDINGS_REFRESH_LANE);
-  }
-  if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON) {
-    // The top-holders leaderboard's alarm (#9464). Zero alerts is the correct
-    // steady state and is NOT the current one: the lane has no producer, so it
-    // records one exception under watchdog:top-holders-staleness on every tick
-    // and will until the artifact gets a writer or the route is withdrawn
-    // (#9475 removed the special case that kept this quiet). An ABSENT,
-    // UNREADABLE or EMPTY artifact alerts too -- that is the condition where
-    // the route silently answers 200 with an empty leaderboard.
-    return runTopHoldersStalenessWatchdog(env);
-  }
-  if (cron === HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON) {
-    // The pool ledger's alarm (#9576) -- the twin of the watchdog above, for
-    // the OTHER table the holdings columns are composed from. `hotkey_alpha`
-    // shipped in #9512 without one, and the cost is that its readers all
-    // decline QUIETLY: /accounts/top-holders falls back to the frozen
-    // 2026-08-02 materialization and /subnets/{netuid}/holders answers
-    // pool_totals_unproven, both of which are correct and both of which look
-    // identical to a producer that died. An EMPTY table alerts, because that is
-    // the state the lane has been in since the sink landed.
-    return runHotkeyAlphaStalenessWatchdog(env);
-  }
-  if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON) {
-    // The account-balances lane's alarm (#9478) -- the SOURCE side of the
-    // watchdog above rather than a replacement for it: that one asks whether
-    // the served artifact is readable and current, this one asks whether the
-    // store table it is composed from is being written at all -- and, since
-    // #9530, whether each pass COVERS the network rather than merely arriving
-    // recently. Zero alerts is the correct steady state; a stale verdict
-    // records one exception under watchdog:account-balances-staleness, the
-    // project's alert channel. An
-    // EMPTY table alerts too -- until the revived lane posts, every top-holders
-    // read is still answering from the frozen 2026-08-02 materialization.
-    return runAccountBalancesStalenessWatchdog(env);
   }
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) {
     // The live-economics refresh, formerly the 3-hourly Actions schedule and

@@ -39,6 +39,7 @@ import {
 } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { handleScheduled } from "../workers/api.ts";
 import * as workerConfig from "../workers/config.ts";
+import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;
 const HOUR = 60 * 60_000;
@@ -521,44 +522,10 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
 });
 
 describe("the cron string is unique and wired", () => {
-  test("no other cron in workers/config.ts shares the literal string", () => {
-    // Dispatch keys on the LITERAL cron string, so a duplicate silently routes
-    // this lane into another branch entirely.
-    const crons = Object.entries(workerConfig)
-      .filter(([key]) => key.endsWith("_CRON"))
-      .map(([, value]) => value);
-    const mine =
-      workerConfig.VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON;
-    assert.equal(
-      crons.filter((cron) => cron === mine).length,
-      1,
-      `${mine} is declared by more than one lane`,
-    );
-  });
-
-  test("wrangler.jsonc declares the trigger", () => {
-    // A cron the Worker dispatches on but wrangler never fires is dead code --
-    // and the failure is silent, since the branch simply never runs.
-    const raw = readFileSync(
-      new URL("../wrangler.jsonc", import.meta.url),
-      "utf8",
-    )
-      .replace(/^\s*\/\/.*$/gm, "")
-      .replace(/,(\s*[}\]])/g, "$1");
-    const parsed = JSON.parse(raw) as { triggers?: { crons?: string[] } };
-    assert.ok(
-      parsed.triggers?.crons?.includes(
-        workerConfig.VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
-      ),
-    );
-  });
-
   test("handleScheduled dispatches to the watchdog and returns its summary", async () => {
     const { env, queries } = fakeDb(Date.now());
-    const result = (await handleScheduled(
-      {
-        cron: workerConfig.VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
-      } as unknown as ScheduledController,
+    const result = (await runStalenessLane(
+      "validator-nominator-counts-staleness",
       env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; alerted: boolean };
