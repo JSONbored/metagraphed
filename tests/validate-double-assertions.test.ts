@@ -99,12 +99,14 @@ describe("areaOf", () => {
 });
 
 describe("BUDGETS", () => {
-  it("holds the four swept areas at zero", () => {
-    // Not a restatement of the constant: these four were driven to zero by
-    // #11339/#11361/#11368 and a nonzero entry here is a silent regression
-    // budget, which is the thing this gate exists to prevent.
-    for (const area of ["src", "workers", "schemas-src", "packages"]) {
-      expect(BUDGETS[area]).toBe(0);
+  it("holds EVERY area at zero", () => {
+    // Not a restatement of the constant: all five were driven to zero by
+    // #11339/#11361/#11368, and a nonzero entry here is a silent regression
+    // budget -- the thing this gate exists to prevent. If an area ever needs
+    // a ratchet again, this is the test that makes reintroducing one a
+    // deliberate edit rather than a quiet one.
+    for (const [area, budget] of Object.entries(BUDGETS)) {
+      expect(budget, `${area} has a nonzero budget`).toBe(0);
     }
   });
 

@@ -39,8 +39,8 @@
 //
 // `BUDGETS` is per top-level directory and each entry may only fall. A PR that
 // adds one fails, and a PR that removes one without lowering the budget ALSO
-// fails, so every number tracks reality rather than intent. Four of the five
-// areas are at zero; `scripts` ratchets down from where #11368 left it.
+// fails, so every number tracks reality rather than intent. All five areas are
+// at zero, which is the point: the budget exists to keep them there.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
@@ -73,7 +73,7 @@ export const BUDGETS: Readonly<Record<string, number>> = {
   workers: 0,
   "schemas-src": 0,
   packages: 0,
-  scripts: 6,
+  scripts: 0,
 };
 
 const SCANNED_DIRS = Object.keys(BUDGETS);

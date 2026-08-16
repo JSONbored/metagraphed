@@ -46,13 +46,18 @@
 // #10246 was: same question, same second, two different totals.
 //
 // Scheduled out of band like its MCP sibling, never in CI: it needs production.
-import { buildSchema } from "graphql";
+import {
+  buildSchema,
+  getNamedType,
+  isEnumType,
+  isObjectType,
+  isScalarType,
+} from "graphql";
 import type {
   GraphQLArgument,
   GraphQLField,
+  GraphQLFieldMap,
   GraphQLNamedType,
-  GraphQLObjectType,
-  GraphQLOutputType,
   GraphQLSchema,
 } from "graphql";
 import { SDL } from "../generated/graphql/schema.ts";
@@ -168,24 +173,23 @@ export interface ConformanceReport {
   findings: Finding[];
 }
 
-function namedTypeOf(type: GraphQLOutputType): GraphQLNamedType {
-  let current = type as Row;
-  while (current.ofType) current = current.ofType;
-  return current as unknown as GraphQLNamedType;
-}
+// These three were hand-rolled against `constructor.name` and an `ofType`
+// walk, which is graphql-js's own unwrapping reimplemented through `Row` and
+// then asserted back. The library exports all of it, and its versions are
+// type PREDICATES -- so the narrowing is real and the assertions go with it.
+// Reading a class name also breaks silently under any bundler that mangles
+// names, and this script is the one that runs against production.
 
 function isLeaf(type: GraphQLNamedType): boolean {
-  const kind = (type as Row).constructor?.name ?? "";
-  return kind === "GraphQLScalarType" || kind === "GraphQLEnumType";
+  return isScalarType(type) || isEnumType(type);
 }
 
-function objectFieldsOf(type: GraphQLNamedType): Row | null {
-  const getFields = (type as Row).getFields;
-  if (typeof getFields !== "function") return null;
-  // Unions and interfaces need inline fragments to select through; the fields
-  // this sweep is after are all on plain object types.
-  if ((type as Row).constructor?.name !== "GraphQLObjectType") return null;
-  return (type as GraphQLObjectType).getFields() as unknown as Row;
+/** Unions and interfaces need inline fragments to select through; the fields
+ *  this sweep is after are all on plain object types. */
+function objectFieldsOf(
+  type: GraphQLNamedType,
+): GraphQLFieldMap<unknown, unknown> | null {
+  return isObjectType(type) ? type.getFields() : null;
 }
 
 /**
@@ -201,12 +205,9 @@ function selectionFor(type: GraphQLNamedType, depth: number): string {
   if (!fields) return "";
   const leaves: string[] = [];
   const branches: string[] = [];
-  for (const field of Object.values(fields) as GraphQLField<
-    unknown,
-    unknown
-  >[]) {
+  for (const field of Object.values(fields)) {
     if (field.args.some((arg) => String(arg.type).endsWith("!"))) continue;
-    const named = namedTypeOf(field.type);
+    const named = getNamedType(field.type);
     if (isLeaf(named)) {
       if (leaves.length < MAX_FIELDS_PER_LEVEL) leaves.push(field.name);
       continue;
@@ -252,7 +253,7 @@ export function planFor(
     supplied.push(`${arg.name}: ${argumentLiteral(value)}`);
   }
   const args = supplied.length > 0 ? `(${supplied.join(", ")})` : "";
-  const selection = selectionFor(namedTypeOf(field.type), 1);
+  const selection = selectionFor(getNamedType(field.type), 1);
   return {
     field: field.name,
     query: `{ ${field.name}${args} ${selection} }`,
@@ -260,7 +261,7 @@ export function planFor(
     // surface's own complexity budget. That refusal is this sweep's query
     // being too big, not the field being broken, and reporting it as a
     // finding would be reporting our own probe.
-    narrowQuery: `{ ${field.name}${args} ${selectionFor(namedTypeOf(field.type), MAX_DEPTH)} }`,
+    narrowQuery: `{ ${field.name}${args} ${selectionFor(getNamedType(field.type), MAX_DEPTH)} }`,
     mirrors: mirroredRoute(field.description),
   };
 }

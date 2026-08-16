@@ -34,7 +34,12 @@ export const ALPHA_PRICE_HISTORY_LOOKBACK_DAYS = 40;
 
 /** The `pg` surface this needs, so a test can hand in a fake. */
 export interface PgLike {
-  connect(): Promise<void>;
+  /** `Promise<unknown>`, because a real `pg.Client.connect()` resolves to the
+   *  client and this module awaits it for the side effect. Declaring
+   *  `Promise<void>` did not make anything safer -- it made `pg.Client` fail
+   *  to match, and the assertion that papered over it also stopped the
+   *  compiler checking `query` and `end` at the same call. */
+  connect(): Promise<unknown>;
   end(): Promise<void>;
   query(text: string): Promise<{ rows?: unknown[] } | undefined>;
 }
@@ -98,7 +103,7 @@ export function alphaPriceHistoryQuery(
 export async function loadAlphaPriceHistoryByNetuid(
   env: AlphaPriceHistoryEnv = process.env,
   clientFactory: (connectionString: string) => PgLike = (connectionString) =>
-    new pg.Client({ connectionString }) as unknown as PgLike,
+    new pg.Client({ connectionString }),
 ): Promise<ReturnType<typeof indexAlphaPriceHistoryByNetuid> | null> {
   const connectionString = env.DATABASE_URL;
   // No connection string is the ordinary local/PR case: bake with null change

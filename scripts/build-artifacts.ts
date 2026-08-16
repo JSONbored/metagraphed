@@ -3091,9 +3091,7 @@ const artifactSizes = await collectArtifactSizes({
 const reviewArtifactSizes = artifactSizes.filter(
   (artifact) => artifact.storage_tier !== "r2",
 );
-const artifactBudgets = evaluateArtifactBudgets(
-  artifactSizes as unknown as Parameters<typeof evaluateArtifactBudgets>[0],
-);
+const artifactBudgets = evaluateArtifactBudgets(artifactSizes);
 await writeJson(artifactFile("build-summary.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -5899,7 +5897,7 @@ async function gitBuffer(args: string[]): Promise<Buffer | null> {
       encoding: "buffer",
       maxBuffer: 1024 * 1024 * 50,
     });
-    return stdout as unknown as Buffer;
+    return stdout;
   } catch (error) {
     // git missing (ENOENT) or a "path not in HEAD"/bad-revision error (exit 128,
     // e.g. an R2-only artifact with no committed baseline). execFileAsync exposes
@@ -5977,14 +5975,28 @@ async function readOptionalJson(filePath: string): Promise<Row | null> {
   }
 }
 
+/**
+ * One artifact as the size pass measures it. A `type` and not an `interface`
+ * ON PURPOSE: an interface has no implicit index signature, so it would not be
+ * assignable to the `Row[]` the tier-counting helpers below take, and naming
+ * the shape would cost an assertion at each of them -- which is roughly how
+ * the one this replaces came to exist.
+ */
+type ArtifactSizeEntry = {
+  path: string;
+  sha256: string;
+  size_bytes: number;
+  storage_tier: string;
+};
+
 async function collectArtifactSizes({
   publicRoot,
   r2Root,
 }: {
   publicRoot: string;
   r2Root: string;
-}): Promise<Row[]> {
-  const files: Row[] = [];
+}): Promise<ArtifactSizeEntry[]> {
+  const files: ArtifactSizeEntry[] = [];
   await collectArtifactFiles({ publicRoot, r2Root }, async (filePath, root) => {
     if (!filePath.endsWith(".json")) {
       return;
