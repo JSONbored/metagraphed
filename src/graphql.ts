@@ -498,14 +498,13 @@ import { loadCurationList } from "./curation-mcp.ts";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import {
-  buildSubnetOhlc,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_CANDLES,
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
-import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
+import { answerSubnetOhlc } from "./subnet-ohlc-answer.ts";
 import { answerSubnetEvents } from "./subnet-events-answer.ts";
 import {
   answerChainIdentityHistory,
@@ -4823,36 +4822,30 @@ const rootValue = {
     params.set("days", String(daysParam));
     params.set("limit", String(limitParam));
     // The tier serves this route inside a { data, generatedAt } envelope (same
-    // as subnet_volume above, unlike the flat cards), so unwrap it before
-    // falling back. Reading the envelope as the payload made `candles` always
-    // undefined, so this resolver answered with an empty series even when the
-    // tier had returned a full one.
-    const data =
+    // as subnet_volume above, unlike the flat cards), so unwrap it. Reading the
+    // envelope as the payload made `candles` always undefined, so this resolver
+    // answered with an empty series even when the tier had returned a full one.
+    const { data } =
       // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
+      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so that arm
       // resolved to null before it could touch DATA_API.
-      // The SAME lakehouse reader REST's handleSubnetOhlc and MCP's
-      // get_subnet_ohlc fall to, so the three surfaces cannot disagree about a
-      // subnet's candles.
-      (
-        await loadSubnetOhlcColdTier(context.env, netuid, {
-          interval: intervalParam,
-          days: daysParam,
-          limit: limitParam,
-        })
-      )?.data ??
-      buildSubnetOhlc([], netuid, {
+      // The SAME shared answer REST's handleSubnetOhlc and MCP's
+      // get_subnet_ohlc use, so the three surfaces cannot disagree about a
+      // subnet's candles -- nor about what a FAILED read publishes (#10312).
+      await answerSubnetOhlc(context.env, netuid, {
         interval: intervalParam,
+        days: daysParam,
         limit: limitParam,
       });
-    return {
-      schema_version: data.schema_version ?? 1,
-      netuid: data.netuid ?? netuid,
-      interval: data.interval ?? intervalParam,
-      candles: data.candles ?? [],
-      candle_count: data.candle_count ?? 0,
-      root_excluded: data.root_excluded ?? false,
-    };
+    // RETURNED WHOLE, like every sibling resolver that reads a shared builder.
+    // This used to hand-project all six fields with a `?? fallback` each, and
+    // that projection was not a safety net -- it was the defect: `candle_count:
+    // data.candle_count ?? 0` would have coerced a decline's null straight back
+    // to the confident zero the decline exists to stop publishing, so this
+    // surface would have kept the bug after the other two were fixed. Every
+    // field the SDL marks non-null is set unconditionally by both builders, so
+    // there was nothing for the fallbacks to catch.
+    return data;
   },
 
   async subnet_validator_economics_history(

@@ -139,7 +139,17 @@ export function buildSubnetOhlcFromBuckets(
   {
     interval = OHLC_INTERVAL_DEFAULT,
     limit,
-  }: { interval?: unknown; limit?: number } = {},
+    windowTruncated = false,
+  }: {
+    interval?: unknown;
+    limit?: number;
+    /**
+     * True when the WINDOW held more buckets than the tier could read, so
+     * `candle_count` is a floor rather than the total. See `window_truncated`
+     * on the payload below.
+     */
+    windowTruncated?: boolean;
+  } = {},
 ): Row {
   const normalizedInterval = normalizeInterval(interval);
   if (netuid === 0) {
@@ -149,6 +159,9 @@ export function buildSubnetOhlcFromBuckets(
       interval: normalizedInterval,
       candles: [],
       candle_count: 0,
+      // Root's zero is MEASURED -- there is no AMM, so the window genuinely
+      // holds nothing and no cap was reached to hide anything behind.
+      window_truncated: false,
       root_excluded: true,
     };
   }
@@ -191,8 +204,67 @@ export function buildSubnetOhlcFromBuckets(
     // `limit` still needs the denominator it narrowed against -- the same
     // reason #10249 made subnet_count stop tracking `?limit=`, and the same
     // convention /chain/deregistrations already publishes.
+    //
+    // A FLOOR, not a total, whenever `window_truncated` is set -- see below.
     candle_count: bucketStarts.length,
+    // Whether the window held MORE than the tier could read (#10312).
+    //
+    // Measured 2026-08-16 against the live lakehouse: SN64 reports exactly
+    // 2000 candles at ?days=90 AND at ?days=365. Two windows of different
+    // widths cannot hold an identical number of buckets -- that 2000 is
+    // MAX_CANDLES showing through, and at 1h buckets the cap binds from ~83
+    // days, i.e. inside the DEFAULT window. `candle_count` was documented as
+    // what the window holds and was silently reporting the cap instead.
+    //
+    // Published rather than fixed, because the true total is not obtainable at
+    // this tier's cost: `COUNT(*) OVER ()` parses at 7 days and is REJECTED at
+    // 90 with `40015: scan budget exceeded ... unbounded window without
+    // PARTITION BY`, so it would pass every test and fail at the default
+    // window. A flag the caller can read beats a number we cannot compute.
+    window_truncated: windowTruncated,
     root_excluded: false,
+  };
+}
+
+/**
+ * The reason a declined series carries. Same vocabulary
+ * `/health/failure-reasons` already publishes for the same condition: an EMPTY
+ * window is a measurement, a FAILED read is not.
+ */
+export const OHLC_DEGRADED_UNAVAILABLE = "unavailable";
+
+/**
+ * A decline, for a series that could not be read at all (#10312).
+ *
+ * WHY THIS EXISTS. The three surfaces over this route each fell back to
+ * `buildSubnetOhlc([], netuid)` when the tier returned null, which publishes
+ * `candles: []` with `candle_count: 0` and nothing to say it is not a
+ * measurement. Measured 2026-08-16: the lakehouse query behind this route runs
+ * 7.3s-24.4s against the Worker's 15s `QUERY_TIMEOUT_MS`, so the decline is a
+ * coin flip rather than a rare event -- and a subnet that trades every hour was
+ * answering "no trades, ever" in 15 seconds.
+ *
+ * `candle_count` is NULL here and 0 for root, and the difference is the whole
+ * point: root's zero is known, this one is unknown. That is the rule the eight
+ * declining siblings already follow (`point_count`, `holder_count`,
+ * `nominator_count`, ...); the two that keep a 0 are the permanent curation
+ * gaps in `uncurated-event-streams.ts`, where 0 IS the measurement.
+ */
+export function declineSubnetOhlc(
+  netuid: number,
+  { interval = OHLC_INTERVAL_DEFAULT }: { interval?: unknown } = {},
+): Row {
+  return {
+    schema_version: 1,
+    netuid,
+    interval: normalizeInterval(interval),
+    candles: [],
+    candle_count: null,
+    // Nothing was read, so nothing was capped. Stated rather than omitted so
+    // the key set does not change between an answer and a decline.
+    window_truncated: false,
+    root_excluded: false,
+    degraded: { reason: OHLC_DEGRADED_UNAVAILABLE },
   };
 }
 

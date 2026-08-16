@@ -415,11 +415,7 @@ import {
 } from "../../src/stake-flow.ts";
 import { buildAlphaVolume } from "../../src/alpha-volume.ts";
 import { loadSubnetAlphaVolumeFromArtifact } from "../../src/subnet-alpha-volume-artifact.ts";
-import {
-  buildSubnetOhlc,
-  normalizeInterval,
-  OHLC_INTERVALS,
-} from "../../src/subnet-ohlc.ts";
+import { normalizeInterval, OHLC_INTERVALS } from "../../src/subnet-ohlc.ts";
 import {
   loadTaoUsdAtInstants,
   loadTaoUsdBuckets,
@@ -427,7 +423,7 @@ import {
   taoUsdBucketMap,
   withAlphaUsdCandles,
 } from "../../src/alpha-usd-history.ts";
-import { loadSubnetOhlcColdTier } from "../../src/subnet-ohlc-cold-tier.ts";
+import { answerSubnetOhlc } from "../../src/subnet-ohlc-answer.ts";
 import {
   resolveLiveEconomics,
   subnetEconomicsRow,
@@ -4405,29 +4401,22 @@ export async function handleSubnetOhlc(
   const interval = routeValue<string>(url, "interval");
   const daysResult = routeValue<number>(url, "days");
   const candleLimit = pageLimit(url);
-  const {
-    data,
-    generatedAt,
-  } = // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
-    // and is absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-    // before it could touch DATA_API.
-
-    // Lakehouse cold tier (src/subnet-ohlc-cold-tier.ts): the SAME
-    // StakeAdded/StakeRemoved trades, bucketed in SQL instead of in a row
-    // loop, ending in the SAME candle assembler. ?days= is finally load-
-    // bearing here -- on the Postgres tier it only ever travelled as part of
-    // the forwarded URL.
-    (await loadSubnetOhlcColdTier(env, netuid, {
-      interval,
-      days: daysResult,
-      limit: candleLimit,
-    })) ?? {
-      data: buildSubnetOhlc([], Number(netuid), {
-        interval,
-        limit: candleLimit,
-      }),
-      generatedAt: null,
-    };
+  // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every
+  // config (#10228) and is absent from FORWARDABLE_TIER_FLAGS, so that arm
+  // resolved to null before it could touch DATA_API.
+  //
+  // Lakehouse cold tier, through the shared answer (src/subnet-ohlc-answer.ts):
+  // the SAME StakeAdded/StakeRemoved trades, bucketed in SQL instead of in a
+  // row loop, ending in the SAME candle assembler. ?days= is finally
+  // load-bearing here -- on the Postgres tier it only ever travelled as part of
+  // the forwarded URL. The fallback lives in that module rather than here so
+  // this surface, MCP and GraphQL cannot disagree about what a failed read
+  // publishes (#10312).
+  const { data, generatedAt } = await answerSubnetOhlc(env, Number(netuid), {
+    interval,
+    days: daysResult,
+    limit: candleLimit,
+  });
   // USD per candle (#10382). Overlaid HERE, after the tier resolves, so the
   // Postgres tier, the lakehouse cold tier and the empty fallback all gain it
   // from one place -- and so the shared candle assembler, which GraphQL and MCP

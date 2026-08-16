@@ -7054,9 +7054,11 @@ export type SubnetMoversNetwork = {
 /** One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope. */
 export type SubnetOhlc = {
   __typename?: 'SubnetOhlc';
-  /** How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. */
-  candle_count: Scalars['Int']['output'];
+  /** How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. A FLOOR rather than a total when `window_truncated` is true, and NULL when the series could not be read at all -- see `degraded`. */
+  candle_count?: Maybe<Scalars['Int']['output']>;
   candles: Array<SubnetOhlcCandle>;
+  /** Present ONLY on a decline. An empty `candles` WITHOUT this block is a measurement -- either a genuinely untraded window, or root. With it, `candle_count` is null and nothing about the series is known. */
+  degraded?: Maybe<UnavailableDegraded>;
   /** Every _usd field is RECONSTRUCTED -- the product of a measured alpha price and a measured TAO/USD index, which is our arithmetic and not a chain read. */
   field_sources_usd?: Maybe<AlphaUsdFieldSource>;
   /** The resolved bucket interval (1h/1d). */
@@ -7072,6 +7074,8 @@ export type SubnetOhlc = {
   usd_available_from_iso?: Maybe<Scalars['String']['output']>;
   /** Why NO candle could be priced, or null. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero; `read_failed` means the index could not be queried at all, which is not a claim about the index. A partially-priced series leaves this null and explains itself through usd_available_from. */
   usd_unavailable?: Maybe<Scalars['String']['output']>;
+  /** True when the window holds MORE candles than one read can carry, so `candle_count` is a floor rather than the total. The exact total is not published because it is not obtainable at this tier's cost: the aggregate that would count it is rejected as `scan budget exceeded` on any window wide enough to need it. */
+  window_truncated: Scalars['Boolean']['output'];
 };
 
 export type SubnetOhlcCandle = {
@@ -13616,8 +13620,9 @@ export type SubnetMoversNetworkResolvers<ContextType = GqlContext, ParentType ex
 }>;
 
 export type SubnetOhlcResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOhlc'] = ResolversParentTypes['SubnetOhlc']> = ResolversObject<{
-  candle_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  candle_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   candles?: Resolver<Array<ResolversTypes['SubnetOhlcCandle']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['UnavailableDegraded']>, ParentType, ContextType>;
   field_sources_usd?: Resolver<Maybe<ResolversTypes['AlphaUsdFieldSource']>, ParentType, ContextType>;
   interval?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -13627,6 +13632,7 @@ export type SubnetOhlcResolvers<ContextType = GqlContext, ParentType extends Res
   usd_available_from?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   usd_available_from_iso?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   usd_unavailable?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  window_truncated?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 }>;
 
 export type SubnetOhlcCandleResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOhlcCandle'] = ResolversParentTypes['SubnetOhlcCandle']> = ResolversObject<{

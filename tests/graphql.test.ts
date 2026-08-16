@@ -11514,6 +11514,49 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.equal(body.data.subnet_ohlc.root_excluded, false);
   });
 
+  // #10312. The other half of the decline, and the one that was wrong: a
+  // CONFIGURED lakehouse that could not answer. That used to reach this
+  // resolver's hand-projection and come out as `candle_count: 0` -- the same
+  // payload a subnet that has never traded gets -- while the query behind it
+  // was measured at 7.3s-24.4s against a 15s timeout, so it happened routinely.
+  test("subnet_ohlc marks a CONFIGURED lakehouse failure instead of answering zero", async () => {
+    await withOhlcFetchStub(
+      async () => {
+        throw new Error("lakehouse down");
+      },
+      async () => {
+        const env = { R2_SQL_TOKEN: "cfut_test" };
+        const { status, body } = await gql(
+          "{ subnet_ohlc(netuid: 7) { candles { bucket_start } candle_count window_truncated root_excluded degraded { reason } } }",
+          env as unknown as Env,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const o = body.data.subnet_ohlc;
+        assert.deepEqual(o.candles, []);
+        // NULL, not 0 -- nothing is known about the window.
+        assert.equal(o.candle_count, null);
+        assert.deepEqual(o.degraded, { reason: "unavailable" });
+        assert.equal(o.window_truncated, false);
+        assert.equal(o.root_excluded, false);
+      },
+    );
+  });
+
+  // The contrast, on this surface: an unconfigured lakehouse is the
+  // self-hosted/CI deployment where an empty series is CORRECT, so it must not
+  // acquire a marker just because it also returns no candles.
+  test("subnet_ohlc leaves an unconfigured lakehouse unmarked", async () => {
+    const { status, body } = await gql(
+      "{ subnet_ohlc(netuid: 7) { candle_count degraded { reason } } }",
+      {} as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_ohlc.candle_count, 0);
+    assert.equal(body.data.subnet_ohlc.degraded, null);
+  });
+
   test("subnet_ohlc rejects an unsupported interval", async () => {
     const { body } = await gql(
       '{ subnet_ohlc(netuid: 5, interval: "5m") { interval } }',

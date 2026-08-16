@@ -12159,8 +12159,8 @@ export interface components {
         };
         /** @description One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope. */
         SubnetOhlcArtifact: {
-            /** @description How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. */
-            candle_count: number;
+            /** @description How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. A FLOOR rather than a total when `window_truncated` is true, and NULL when the series could not be read at all -- see `degraded`. */
+            candle_count: number | null;
             candles: {
                 /** @description Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int. */
                 bucket_start: components["schemas"]["EpochMillis"];
@@ -12181,6 +12181,8 @@ export interface components {
                 volume_tao: number;
                 volume_usd?: number | null;
             }[];
+            /** @description Present ONLY on a decline. An empty `candles` WITHOUT this block is a measurement -- either a genuinely untraded window, or root. With it, `candle_count` is null and nothing about the series is known. */
+            degraded?: components["schemas"]["UnavailableDegraded"];
             /** @description Every _usd field is RECONSTRUCTED -- the product of a measured alpha price and a measured TAO/USD index, which is our arithmetic and not a chain read. */
             field_sources_usd?: {
                 /** @constant */
@@ -12203,6 +12205,8 @@ export interface components {
             usd_available_from_iso?: string | null;
             /** @description Why NO candle could be priced, or null. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero; `read_failed` means the index could not be queried at all, which is not a claim about the index. A partially-priced series leaves this null and explains itself through usd_available_from. */
             usd_unavailable?: ("no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price" | "read_failed") | null;
+            /** @description True when the window holds MORE candles than one read can carry, so `candle_count` is a floor rather than the total. The exact total is not published because it is not obtainable at this tier's cost: the aggregate that would count it is rejected as `scan budget exceeded` on any window wide enough to need it. */
+            window_truncated: boolean;
         };
         SubnetOverviewArtifact: {
             compute_requirements?: {
@@ -45999,6 +46003,9 @@ export interface operations {
                      *             "volume_tao": 0.5
                      *           }
                      *         ],
+                     *         "degraded": {
+                     *           "reason": "unavailable"
+                     *         },
                      *         "field_sources_usd": {
                      *           "kind": "reconstructed",
                      *           "storage": null
@@ -46010,7 +46017,8 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "usd_available_from": 1,
                      *         "usd_available_from_iso": "2026-06-01T00:00:00.000Z",
-                     *         "usd_unavailable": "no_index_reading"
+                     *         "usd_unavailable": "no_index_reading",
+                     *         "window_truncated": false
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

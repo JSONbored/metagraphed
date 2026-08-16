@@ -4,6 +4,8 @@ import { afterEach, describe, test } from "vitest";
 import {
   buildSubnetOhlc,
   buildSubnetOhlcFromBuckets,
+  declineSubnetOhlc,
+  OHLC_DEGRADED_UNAVAILABLE,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   MAX_CANDLES,
@@ -459,7 +461,7 @@ describe("buildSubnetOhlc — MAX_CANDLES cap", () => {
 });
 
 describe("buildSubnetOhlc — output shape", () => {
-  test("top-level shape carries schema_version, netuid, interval, candles, candle_count, root_excluded", () => {
+  test("top-level shape carries schema_version, netuid, interval, candles, candle_count, window_truncated, root_excluded", () => {
     const data = buildSubnetOhlc([trade(STAKE_ADDED_KIND, 1, 1, BASE)], 12, {
       interval: "1d",
     });
@@ -470,6 +472,7 @@ describe("buildSubnetOhlc — output shape", () => {
       "netuid",
       "root_excluded",
       "schema_version",
+      "window_truncated",
     ]);
     assert.equal(data.netuid, 12);
     assert.equal(data.interval, "1d");
@@ -500,7 +503,45 @@ describe("buildSubnetOhlc — output shape", () => {
     const data = buildSubnetOhlc([], 0, { interval: "1d" });
     assert.equal(data.root_excluded, true);
     assert.deepEqual(data.candles, []);
+    // ZERO, not null, and the difference is the point: root has no AMM, so the
+    // window genuinely holds nothing. A decline publishes null because nothing
+    // is KNOWN -- see declineSubnetOhlc below.
     assert.equal(data.candle_count, 0);
+    assert.equal(data.window_truncated, false);
+  });
+
+  // #10312. The route's three surfaces each answered a FAILED read with
+  // `candles: [], candle_count: 0` -- the same payload an idle subnet gets --
+  // while the lakehouse query behind them runs 7.3s-24.4s against a 15s
+  // timeout, so the decline is routine rather than exotic.
+  test("a decline is null-counted and marked, where an empty window is neither", () => {
+    const declined = declineSubnetOhlc(12, { interval: "1d" });
+    assert.equal(declined.candle_count, null);
+    assert.deepEqual(declined.degraded, { reason: OHLC_DEGRADED_UNAVAILABLE });
+    assert.deepEqual(declined.candles, []);
+    assert.equal(declined.root_excluded, false);
+    assert.equal(declined.window_truncated, false);
+
+    // The contrast that makes the marker mean anything: a real window with no
+    // trades carries the SAME empty array and NO degraded block.
+    const quiet = buildSubnetOhlc([], 12, { interval: "1d" });
+    assert.deepEqual(quiet.candles, []);
+    assert.equal(quiet.candle_count, 0);
+    assert.equal("degraded" in quiet, false);
+  });
+
+  test("a decline keeps the key set an answer has, plus the marker", () => {
+    // A caller destructuring the payload must not have to branch on which keys
+    // exist -- only on whether `degraded` is there.
+    const answered = Object.keys(
+      buildSubnetOhlc([trade(STAKE_ADDED_KIND, 1, 1, BASE)], 12),
+    ).sort();
+    const declined = Object.keys(declineSubnetOhlc(12)).sort();
+    assert.deepEqual(
+      declined,
+      [...answered, "degraded"].sort(),
+      "a decline adds `degraded` and drops nothing",
+    );
   });
 
   test("each candle carries exactly the documented fields", () => {
