@@ -93,6 +93,21 @@ export const NeuronSchema = z
           "while miner rows on the same table carry a value. There is no alternate " +
           "carrier: AxonServed stores only [netuid, hotkey] (#9541).",
       ),
+    axon_routable: z
+      .boolean()
+      .nullable()
+      .optional()
+      .describe(
+        "Whether `axon` points somewhere on the public internet. FALSE means the " +
+          "neuron announced an address nobody can reach -- RFC 5737 documentation " +
+          "space, RFC 1918 private space, loopback, or 0.0.0.0/8 -- which is NOT the " +
+          "same as not announcing, and is why this is a separate field rather than a " +
+          "null axon. Measured 2026-08-16: 5.3% of announced axons are unroutable and " +
+          "246 of those miners earn incentive; on SN33, 247 of 251 announcements are " +
+          "192.0.2.1 and take 99.82% of the subnet's incentive while the four routable " +
+          "ones earn nothing (#11373). Null when `axon` itself is null, because " +
+          "'not announcing' has no routability to report.",
+      ),
     // Only present on SubnetValidatorsArtifact rows (a real Set is always
     // passed there); omitted (not false) on metagraph/neuron-detail rows.
     featured: z.boolean().optional(),

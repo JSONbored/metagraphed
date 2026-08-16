@@ -1899,6 +1899,11 @@ type CompareValidatorsArtifactValidatorsSubnetContext {
   registered_at_block: Int
   is_immunity_period: Boolean!
   axon: String
+
+  """
+  Whether \`axon\` points somewhere on the public internet; null when there is no axon. Carried wherever \`axon\` is, because an unqualified endpoint implies reachability it may not have -- 5.3% of announced axons network-wide sit in RFC 5737, RFC 1918, loopback or 0.0.0.0/8 (#11373). Normally null here: not serving is the usual state for a validator.
+  """
+  axon_routable: Boolean
   take: Float
 }
 
@@ -2234,6 +2239,11 @@ type NeuronState {
   The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541).
   """
   axon: String
+
+  """
+  Whether \`axon\` points somewhere on the public internet. FALSE means the neuron announced an address nobody can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback, or 0.0.0.0/8 -- which is NOT the same as not announcing, and is why this is a separate field rather than a null axon. Measured 2026-08-16: 5.3% of announced axons are unroutable and 246 of those miners earn incentive; on SN33, 247 of 251 announcements are 192.0.2.1 and take 99.82% of the subnet's incentive while the four routable ones earn nothing (#11373). Null when \`axon\` itself is null, because 'not announcing' has no routability to report.
+  """
+  axon_routable: Boolean
   featured: Boolean
 
   """
@@ -4041,6 +4051,11 @@ type NeuronHistoryPoint {
   The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541).
   """
   axon: String
+
+  """
+  Whether \`axon\` points somewhere on the public internet. FALSE means the neuron announced an address nobody can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback, or 0.0.0.0/8 -- which is NOT the same as not announcing, and is why this is a separate field rather than a null axon. Measured 2026-08-16: 5.3% of announced axons are unroutable and 246 of those miners earn incentive; on SN33, 247 of 251 announcements are 192.0.2.1 and take 99.82% of the subnet's incentive while the four routable ones earn nothing (#11373). Null when \`axon\` itself is null, because 'not announcing' has no routability to report.
+  """
+  axon_routable: Boolean
   featured: Boolean
 
   """
@@ -5938,6 +5953,11 @@ type ValidatorSubnet {
   registered_at_block: Int
   is_immunity_period: Boolean
   axon: String
+
+  """
+  Whether \`axon\` points somewhere on the public internet; null when there is no axon. Carried wherever \`axon\` is, because an unqualified endpoint implies reachability it may not have -- 5.3% of announced axons network-wide sit in RFC 5737, RFC 1918, loopback or 0.0.0.0/8 (#11373). Normally null here: not serving is the usual state for a validator.
+  """
+  axon_routable: Boolean
   take: Float
 }
 
