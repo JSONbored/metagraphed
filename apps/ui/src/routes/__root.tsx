@@ -31,6 +31,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         // health-tokens.ts/og-image.ts.
         // eslint-disable-next-line no-restricted-syntax -- see comment above
         { name: "theme-color", content: "#0B1F1A" },
+        // talent.app domain-ownership verification for metagraph.sh (Metagraphed
+        // listed there as a project). It lives in the root route rather than in
+        // server.ts's SEO_DEFAULT_TAGS because that injection path is
+        // HTMLRewriter-only -- absent under `vite dev` (Node) -- and a
+        // verification token must be present wherever the site is served, not
+        // only on workerd. Emitted site-wide; the homepage is what talent.app
+        // fetches.
+        {
+          name: "talentapp:project_verification",
+          content:
+            "171a1b6c33acbfa216c340c922339cc6bf4f50f44d4c9300d03e4cb5339e1a1be7f961f957cf0499eb33ecbd05cebe77a94259cc187f77d140281791e649747a",
+        },
       ],
       links: [
         { rel: "stylesheet", href: appCss },
