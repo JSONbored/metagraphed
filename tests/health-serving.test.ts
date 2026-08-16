@@ -385,6 +385,62 @@ describe("overlayRpcPoolEligibility", () => {
     );
   });
 
+  test("refreshes archive_support, so the two overlays cannot contradict each other", () => {
+    // Measured on production 2026-08-16: `opentensor-archive-rpc` and
+    // `onfinality-finney-rpc` reported archive_support TRUE on
+    // /api/v1/rpc/endpoints (probed 07:45) and FALSE on /api/v1/rpc/pools in
+    // the same minute -- same endpoints, same prober row, two overlays, one of
+    // which dropped the field and served the day-old build value.
+    const stale = {
+      id: "finney-rpc",
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "archive",
+          url: "https://archive",
+          status: "ok",
+          archive_support: false,
+        },
+      ],
+    };
+    const live = {
+      endpoints: [
+        { id: "archive", status: "ok", latency_ms: 100, archive_support: true },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    const row = out.endpoints[0];
+    assert.equal(row.archive_support, true);
+    // NOT cosmetic: score is recomputed from this row, and endpoint-score gives
+    // archive-support +15. A stale `false` deducted it from exactly the
+    // endpoints an archive consumer should rank first.
+    assert.ok(
+      row.score_reasons.some((r: Row) => r.reason === "archive-support"),
+      "the refreshed row must earn the archive-support bonus",
+    );
+  });
+
+  test("a missing live observation keeps the build's archive_support", () => {
+    // The probe omits the field entirely on a transport error. Reading that
+    // absence as "not an archive" would demote a real archive node on one bad
+    // sweep -- the same reason latency_ms falls back rather than nulling.
+    const stale = {
+      id: "finney-rpc",
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "archive",
+          url: "https://archive",
+          status: "ok",
+          archive_support: true,
+        },
+      ],
+    };
+    const live = { endpoints: [{ id: "archive", status: "ok" }] };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    assert.equal(out.endpoints[0].archive_support, true);
+  });
+
   test("a dead endpoint never outranks a healthy one", () => {
     // The live shape: a decommissioned host (metagraphed-infra#225, Cloudflare 1033)
     // held a stale latency sample worth +16 and outranked four `ok` endpoints on 0.

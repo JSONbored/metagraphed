@@ -211,7 +211,25 @@ export interface CaptureResult {
  * the next tick resumes from the same place.
  */
 export async function captureTick(deps: {
-  rpcUrl: string;
+  /**
+   * The archive endpoints this tick may read from, in preference order.
+   *
+   * A LIST, NOT A URL, because the binding constraint on this lane is a
+   * PER-HOST rate limit (~100 requests per client per minute, measured in
+   * #9378), and one host was the whole budget. Blocks rotate across the list,
+   * so each host sees the same per-host rate it saw before while the lane's
+   * aggregate rate multiplies by the number of hosts.
+   *
+   * THE NO-GAP GUARANTEE IS UNCHANGED, and the rotation is why it needed care:
+   * a height that fails on one endpoint is retried on the OTHERS before the
+   * tick gives up, and the tick still stops at the first height NO endpoint
+   * could serve. So a single flaky host degrades throughput instead of pinning
+   * the watermark, and nothing is ever skipped.
+   *
+   * Must be non-empty; a caller with one endpoint passes a one-element list,
+   * which behaves exactly as the single-URL form did.
+   */
+  rpcUrls: readonly string[];
   store: RawCaptureStore;
   watermark: WatermarkStore;
   genesisFloor: number;
@@ -247,6 +265,15 @@ export async function captureTick(deps: {
   const sleepFn =
     deps.sleepFn ??
     ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const endpoints = deps.rpcUrls;
+  if (endpoints.length === 0) {
+    throw new Error("captureTick: rpcUrls is empty; nothing to read from");
+  }
+  // The gap the CALLER computed is per host. Rotating across N hosts means the
+  // wall gap between consecutive blocks is that divided by N -- each host still
+  // sees `minGapMs` between its own calls, which is the rate the measured limit
+  // applies to, while the lane's aggregate rate is N times what one host allowed.
+  const stepGapMs = Math.ceil(minGapMs / endpoints.length);
   const stored = await deps.watermark.read();
   // An unset watermark starts just below the floor, so the first tick captures
   // the floor block itself rather than skipping it.
@@ -255,12 +282,33 @@ export async function captureTick(deps: {
       ? stored
       : deps.genesisFloor - 1;
 
-  const headRaw = (await rpc(
-    deps.rpcUrl,
-    "chain_getHeader",
-    [],
-    fetchImpl,
-  )) as { number?: unknown };
+  // The head comes from whichever endpoint answers FIRST, not from a fixed one:
+  // a tick must not be lost because the preferred host is down when every other
+  // host could have served the whole run.
+  let headRaw: { number?: unknown } | null = null;
+  let headError: unknown = null;
+  for (const url of endpoints) {
+    try {
+      headRaw = (await rpc(url, "chain_getHeader", [], fetchImpl)) as {
+        number?: unknown;
+      };
+      break;
+    } catch (error) {
+      headError = error;
+    }
+  }
+  if (headRaw === null) {
+    const detail = String((headError as Error)?.message ?? headError);
+    // One endpoint's failure IS the lane's failure, and its message is already
+    // the whole story -- rewrapping it would only bury the cause a caller
+    // greps for. The "no endpoint answered" framing is a claim about a SET, so
+    // it is only made when there was one.
+    throw new Error(
+      endpoints.length > 1
+        ? `chain_getHeader: no endpoint answered (${detail})`
+        : detail,
+    );
+  }
   const headHex = headRaw?.number;
   if (typeof headHex !== "string" || !/^0x[0-9a-fA-F]+$/.test(headHex)) {
     throw new Error("chain_getHeader: unusable head number");
@@ -308,16 +356,30 @@ export async function captureTick(deps: {
   for (const [index, height] of heights.entries()) {
     // BEFORE the read, and never before the first: the gap belongs between two
     // blocks' bursts, so pacing never delays a tick that captures one block.
-    if (index > 0 && minGapMs > 0) await sleepFn(minGapMs);
-    try {
-      pending.push(await fetchRawBlock(deps.rpcUrl, height, fetchImpl, now));
-    } catch (error) {
+    if (index > 0 && stepGapMs > 0) await sleepFn(stepGapMs);
+    // Rotate, so consecutive blocks land on different hosts and each host's own
+    // call spacing stays `minGapMs`.
+    let captured1: RawBlockCapture | null = null;
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < endpoints.length; attempt += 1) {
+      const url = endpoints[(index + attempt) % endpoints.length]!;
+      try {
+        captured1 = await fetchRawBlock(url, height, fetchImpl, now);
+        break;
+      } catch (error) {
+        // NOT a gap yet: another endpoint may hold this height. Only the height
+        // that NO endpoint can serve stops the tick.
+        lastError = error;
+      }
+    }
+    if (captured1 === null) {
       // Stop at the FIRST failure and keep the prefix. Continuing past it
       // would create exactly the hole this module exists to prevent.
       stoppedAt = height;
-      reason = String((error as Error)?.message ?? error);
+      reason = String((lastError as Error)?.message ?? lastError);
       break;
     }
+    pending.push(captured1);
     if (pending.length >= flushEvery) {
       watermark = await flush(pending);
       captured += pending.length;

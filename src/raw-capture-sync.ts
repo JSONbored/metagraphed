@@ -33,6 +33,12 @@ import {
   DEFAULT_CHAIN_NETWORK,
 } from "./chain-network.ts";
 import type { StoreEnv } from "./read-store.ts";
+import {
+  captureEndpointList,
+  resolveCaptureEndpoints,
+  type CaptureEndpointDeps,
+} from "./raw-capture-endpoints.ts";
+import { readArtifact, readHealthKv } from "../workers/storage.ts";
 
 /** Kill switch, matching CHAIN_HEAD_POLL_ENABLED's convention on the head
  * poller: absent or anything but "true" means this lane does not run. */
@@ -170,13 +176,32 @@ const TICK_SPEND_FRACTION = 0.8;
  */
 const FLUSH_EVERY_BLOCKS = 5;
 
-/** The paced budget for ONE lane, given how many share the client allowance. */
+/**
+ * The paced budget for ONE lane, given how many share the client allowance and
+ * how many HOSTS the lane spreads across.
+ *
+ * THE LIMIT IS PER HOST, which is what `hostCount` expresses. #9378 measured it
+ * per CLIENT against one host and the lane has read from one host ever since,
+ * so the budget and the endpoint were the same number. They are not the same
+ * thing: two archive hosts serve two allowances, and `captureTick` rotates
+ * across them so each still sees `minGapMs` between its own calls. The
+ * aggregate rate therefore scales with the hosts actually available rather
+ * than with a constant nobody re-derived when a second archive endpoint was
+ * curated into the registry.
+ *
+ * `laneCount` still DIVIDES: mainnet and testnet run concurrently, and where
+ * they share a host they share its allowance. `hostCount` MULTIPLIES, for the
+ * opposite reason. Both are measured at tick time now, not compiled in.
+ */
 export function pacedLaneBudget(
   laneCount: number,
   cronMinutes: number,
   limitPerMinute: number = RPC_REQUESTS_PER_MINUTE_LIMIT,
+  hostCount = 1,
 ): { maxBlocks: number; minGapMs: number } {
-  const callsPerMinute = (limitPerMinute * RPC_BUDGET_UTILISATION) / laneCount;
+  const hosts = Math.max(1, Math.trunc(hostCount));
+  const callsPerMinute =
+    (limitPerMinute * RPC_BUDGET_UTILISATION * hosts) / laneCount;
   const blocksPerMinute = callsPerMinute / RPC_CALLS_PER_BLOCK;
   return {
     // Lanes run CONCURRENTLY, so each gets the whole spendable interval rather
@@ -376,6 +401,16 @@ export async function runRawCaptureSync(
     /** Needed to reach Neon: createPgSql returns the pooled connection through
      * waitUntil, so without one the mirror is skipped rather than leaking. */
     ctx?: WaitUntilLike;
+    /**
+     * How the lane discovers the archive endpoints it may read from.
+     *
+     * DEFAULTED, NOT OPTIONAL-AND-UNSET. An injectable that nothing injects in
+     * production is a feature that never runs, so the real readers are the
+     * default and a test overrides them. `resolveCaptureEndpoints` already
+     * treats every unreadable shape as "no pool", so wiring the live readers
+     * here cannot make a tick fail -- it can only widen the rotation.
+     */
+    endpointDeps?: CaptureEndpointDeps;
   } = {},
 ): Promise<RawCaptureSyncResult> {
   const now = deps.now ?? Date.now;
@@ -442,6 +477,12 @@ export async function runRawCaptureSync(
         waitUntil: deps.ctx,
         fetchImpl: deps.fetchImpl,
         sleepFn: deps.sleepFn,
+        endpointDeps: deps.endpointDeps ?? {
+          readArtifact: (e, path) =>
+            readArtifact(e as Parameters<typeof readArtifact>[0], path),
+          readHealthKv: (e, key) =>
+            readHealthKv(e as Parameters<typeof readHealthKv>[0], key),
+        },
       }),
     ),
   );
@@ -481,19 +522,40 @@ async function runLane(
     fetchImpl?: typeof fetch;
     sleepFn?: (ms: number) => Promise<void>;
     waitUntil?: WaitUntilLike;
+    endpointDeps?: CaptureEndpointDeps;
   },
 ): Promise<RawCaptureLaneResult> {
   const { env, store, now, capture } = ctx;
   try {
+    const configured =
+      (env[lane.rpcUrlEnv] as string | undefined) || lane.defaultRpcUrl;
+    // The registry's archive-capable members for this network, behind the
+    // configured host. Empty when the pool cannot answer, which degrades to
+    // exactly the single-endpoint lane this was before.
+    const fromPool = ctx.endpointDeps
+      ? await resolveCaptureEndpoints(env, lane.network, ctx.endpointDeps)
+      : [];
+    const rpcUrls = captureEndpointList(configured, fromPool);
+    // The per-host limit is what was measured, so the budget scales with the
+    // hosts this tick actually has -- derived here rather than compiled in,
+    // because the pool's membership changes without a deploy.
+    const budget = pacedLaneBudget(
+      RAW_CAPTURE_LANES.length,
+      cronStepMinutes(RAW_CAPTURE_CRON),
+      RPC_REQUESTS_PER_MINUTE_LIMIT,
+      rpcUrls.length,
+    );
     const result = await captureTick({
-      rpcUrl: (env[lane.rpcUrlEnv] as string | undefined) || lane.defaultRpcUrl,
+      rpcUrls,
       store,
       // THE TABLE IS THE WATERMARK, so this store is the whole write path.
       watermark: neonWatermark(ctx.env, ctx.waitUntil, lane.network, now),
       genesisFloor: lane.genesisFloor,
-      maxPerTick: lane.maxPerTick,
+      // The lane's table values are the ONE-HOST budget, kept as the floor this
+      // can never fall below; `budget` widens them when the pool offers more.
+      maxPerTick: Math.max(lane.maxPerTick, budget.maxBlocks),
       network: lane.network,
-      minGapMs: lane.minGapMs,
+      minGapMs: Math.min(lane.minGapMs, budget.minGapMs),
       flushEvery: lane.flushEvery,
       fetchImpl: ctx.fetchImpl,
       sleepFn: ctx.sleepFn,

@@ -412,6 +412,26 @@ export function overlayRpcPoolEligibility(
             status: normalizeProbeStatus(live.status),
             latency_ms: live.latency_ms ?? endpoint.latency_ms,
             latest_block: live.latest_block ?? endpoint.latest_block ?? null,
+            // The sibling overlay (overlayRpcEndpointHealth) has carried this
+            // since it was added; this one did not, and the two are fed by the
+            // SAME prober row. So /api/v1/rpc/endpoints and
+            // /api/v1/rpc/pools disagreed about the same endpoint, from the
+            // same probe, in the same minute -- measured 2026-08-16:
+            // `opentensor-archive-rpc` and `onfinality-finney-rpc` reported
+            // archive_support TRUE on /endpoints (probed 07:45) and FALSE on
+            // /pools, whose build-time value was a day old.
+            //
+            // IT IS NOT COSMETIC. `score` is recomputed further down from this
+            // very row, and endpoint-score.ts gives `archive-support` +15 --
+            // so a stale `false` silently deducted 15 points from exactly the
+            // endpoints an archive-shaped consumer should rank FIRST, and left
+            // the archive pool with no HTTP members to select at all.
+            //
+            // `?? endpoint.archive_support` for the same reason latency_ms
+            // falls back: the probe omits the field entirely on a transport
+            // error, and a missing observation must not be read as "not an
+            // archive" when the build measured one.
+            archive_support: live.archive_support ?? endpoint.archive_support,
             health_source: LIVE_CRON_PROBER,
             health_stale: false,
             // 30-day observed behaviour, computed once per prober run (#9357).
