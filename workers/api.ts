@@ -299,6 +299,10 @@ import {
 } from "./account-edge-cache.ts";
 import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
 import {
+  serverTimingHeader,
+  withRequestTiming,
+} from "../src/request-timing.ts";
+import {
   handleSubnetMetagraph,
   handleNeuron,
   handleSubnetHyperparams,
@@ -6056,10 +6060,31 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
  * unforgettable rather than 40 more places to remember.
  */
 export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
-  const before = degradedSnapshot();
-  const response = await dispatchCached(request, env, ctx);
-  labelDegradedResponse(response, before);
-  return response;
+  return withRequestTiming(async () => {
+    const before = degradedSnapshot();
+    const response = await dispatchCached(request, env, ctx);
+    labelDegradedResponse(response, before);
+    // WHERE THE MILLISECONDS WENT, as the standard header a browser's devtools
+    // panel already renders. Set here for the same reason the degraded label is
+    // -- one point every route passes -- and built from marks collected at the
+    // three storage boundaries rather than by instrumenting handlers, so a
+    // route written next year is covered without its author doing anything.
+    //
+    // IN PLACE, swallowing an immutable-headers throw, exactly as
+    // `labelDegradedResponse` documents. The one response class with immutable
+    // headers is a body read back out of the edge cache, whose timings belong
+    // to the request that STORED it -- losing the header there is correct,
+    // because this request spent none of that time.
+    const timing = serverTimingHeader();
+    if (timing !== null) {
+      try {
+        response.headers.set("server-timing", timing);
+      } catch {
+        // A cached body; see above.
+      }
+    }
+    return response;
+  });
 }
 
 /**

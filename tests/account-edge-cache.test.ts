@@ -343,3 +343,54 @@ describe("the account edge cache", () => {
     assert.equal(cache.putKeys.length, 1, "the HEAD stored its own entry");
   });
 });
+
+/**
+ * `Server-Timing`, from the three storage boundaries.
+ *
+ * The header exists because optimising these routes meant guessing: the same
+ * request measured 1.8s and 8.8s twenty minutes apart, and a route nobody had
+ * touched moved 0.196s -> 4.65s in the same window because the shared Neon
+ * compute was contended. Nothing said which layer a millisecond belonged to.
+ */
+describe("server-timing", () => {
+  test("NAMES THE BOUNDARY THAT SPENT THE TIME", async () => {
+    const cache = mockCaches();
+    cache.install();
+    countLakehouse();
+    const res = await get(EVENTS, envAt(8_800_000));
+    const timing = res.headers.get("server-timing");
+    assert.ok(timing, "no server-timing header at all");
+    // The lakehouse leg ran, so it must be named -- and named with a count,
+    // which is what makes `r2sql;desc="0 calls"` unrepresentable rather than
+    // ambiguous: a boundary that did not run simply is not there.
+    assert.match(timing, /r2sql;dur=\d+;desc="\d+ calls?"/, timing);
+    assert.match(timing, /r2;dur=\d+;desc="\d+ calls?"/, timing);
+  });
+
+  test("A ROUTE THAT TOUCHES NO STORE emits nothing", async () => {
+    // ~40 routes read no store at all. An empty header on those is noise.
+    const cache = mockCaches();
+    cache.install();
+    countLakehouse();
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/networks"),
+      envAt(8_800_000),
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("server-timing"), null);
+  });
+
+  test("IT IS EXPOSED, or a browser cannot read it", async () => {
+    // The UI is served from metagraph.sh and calls api.metagraph.sh, so an
+    // unexposed timing header is a timing header nobody uses.
+    const cache = mockCaches();
+    cache.install();
+    countLakehouse();
+    const res = await get(EVENTS, envAt(8_800_000));
+    assert.match(
+      res.headers.get("access-control-expose-headers") ?? "",
+      /\bserver-timing\b/,
+    );
+  });
+});

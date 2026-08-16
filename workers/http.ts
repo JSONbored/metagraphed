@@ -57,6 +57,13 @@ const EXPOSED_RESPONSE_HEADERS = [
   // initialize, must be readable by a browser-based MCP client to send back
   // on subsequent requests.
   "mcp-session-id",
+  // Where the request's milliseconds went, per storage boundary. EXPOSED for
+  // the same reason `x-metagraph-degraded` is: the UI is served from
+  // metagraph.sh and calls api.metagraph.sh, so without this a browser cannot
+  // read it at all -- and a timing header the page cannot see is a timing
+  // header nobody uses. `Timing-Allow-Origin` governs the Performance API's
+  // own view; this governs `fetch`'s.
+  "server-timing",
 ];
 
 // Pre-joined value, for builders that emit plain header objects (the MCP server).

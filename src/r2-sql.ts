@@ -39,6 +39,7 @@ import { z } from "zod";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { LAKEHOUSE_ROW_SCHEMAS } from "../schemas-src/lakehouse.ts";
+import { timed, TIMING_R2_SQL } from "./request-timing.ts";
 import { LAKEHOUSE_NAMESPACES } from "./chain-network.ts";
 import { R2SqlBodySchema } from "../schemas-src/r2-sql-envelope.ts";
 import type { R2SqlMetrics } from "../schemas-src/r2-sql-envelope.ts";
@@ -700,6 +701,16 @@ export type R2SqlReader = (
 ) => Promise<Record<string, unknown>[] | null>;
 
 export async function r2SqlQuery<Row = Record<string, unknown>>(
+  env: R2SqlEnv | null | undefined,
+  sql: string,
+  deps: R2SqlDeps = {},
+): Promise<Row[] | null> {
+  return timed(TIMING_R2_SQL, () => r2SqlQueryOnce<Row>(env, sql, deps));
+}
+
+/** The query itself. Split from the timed wrapper above so the boundary is
+ * measured in ONE place rather than at each of this function's ~20 returns. */
+async function r2SqlQueryOnce<Row = Record<string, unknown>>(
   env: R2SqlEnv | null | undefined,
   sql: string,
   deps: R2SqlDeps = {},

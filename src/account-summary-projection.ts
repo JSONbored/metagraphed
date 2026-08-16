@@ -60,6 +60,7 @@ import {
 import type { R2SqlEnv } from "./r2-sql.ts";
 import { z } from "zod";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import { timed, TIMING_R2 } from "./request-timing.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
 /** Objects the producer writes, one per shard. Contract with
@@ -209,6 +210,13 @@ interface ArtifactBucket {
 }
 
 async function readJson(
+  bucket: ArtifactBucket,
+  key: string,
+): Promise<Record<string, unknown> | null> {
+  return timed(TIMING_R2, () => readJsonOnce(bucket, key));
+}
+
+async function readJsonOnce(
   bucket: ArtifactBucket,
   key: string,
 ): Promise<Record<string, unknown> | null> {
