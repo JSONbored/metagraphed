@@ -27,6 +27,7 @@
 // healthy check is still legible.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { laneVerdictDetail } from "./lane-verdict-detail.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore, safeIntOrNull } from "./read-store.ts";
@@ -193,7 +194,9 @@ export async function runChainDetailStalenessWatchdog(
       lane: "chain-detail-staleness",
       verdict: verdict.stale ? "stale" : "ok",
       age_ms: verdict.age_ms,
-      detail: verdict.reason ?? null,
+      detail: laneVerdictDetail(verdict.reason, {
+        head_block: verdict.head_block,
+      }),
       checked_at: now(),
     });
     // `ok` describes whether the TICK ran, not whether the lane is fresh.

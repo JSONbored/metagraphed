@@ -300,7 +300,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   });
 
   test("a recent but half-scanned keyspace alerts, naming both counts", async () => {
-    const { env } = fakeDb(NOW - HOUR, 11_800, 24_121);
+    const { env, queries, binds } = fakeDb(NOW - HOUR, 11_800, 24_121);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
     const result = await runNominatorPositionsStalenessWatchdog(env, {
@@ -313,6 +313,18 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
     assert.equal(result.covered_coldkeys, 11_800);
+    // THE DURABLE RECORD CARRIES THE COUNTS (#11384). It published the bare
+    // word `partial` until 2026-08-16, so `/self-health` could not distinguish
+    // a 22-coldkey drift from a scan that died halfway -- while the exception
+    // built ten lines below had all three numbers.
+    const laneWrite = queries.findIndex((q) =>
+      q.includes("INSERT INTO lane_health"),
+    );
+    assert.ok(laneWrite >= 0, "the tick records a verdict");
+    assert.equal(
+      binds[laneWrite]![3],
+      `partial (covered=11800, total=24121, floor=${NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS})`,
+    );
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0]!.errorCode, "stale_lane");
     const message = String(recorded[0]!.error?.message);

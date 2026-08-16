@@ -53,6 +53,7 @@
 // ~6M store rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { laneVerdictDetail } from "./lane-verdict-detail.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -175,7 +176,14 @@ export const NOMINATOR_POSITIONS_EXPECTED_COLDKEYS = 21_263;
 /**
  * How much of that a single pass must cover before it counts as complete.
  *
- * EIGHTY PERCENT (~18,934 coldkeys), the ratio the three sibling lanes use.
+ * EIGHTY PERCENT (17,010 coldkeys), the ratio the three sibling lanes use.
+ *
+ * THAT NUMBER IS DERIVED, SO DO NOT RESTATE IT FROM MEMORY. It read "~18,934"
+ * here until 2026-08-16 -- 0.8 x 23,668, the expectation from a PREVIOUS
+ * re-pin. Against 18,934 the live coverage of 16,988 reads as a 10% shortfall,
+ * which looks exactly like a scan that died mid-walk and sends a reader hunting
+ * for one. Against the real floor it is 22 coldkeys, 0.13%, and the answer is
+ * to re-measure the expectation. That misreading cost a full triage cycle.
  *
  * The drift here runs the same direction as validator_nominator_counts and NOT
  * the same as account_balances, because this counts coldkeys holding a position
@@ -189,7 +197,15 @@ export const NOMINATOR_POSITIONS_EXPECTED_COLDKEYS = 21_263;
  */
 export const NOMINATOR_POSITIONS_COVERAGE_FLOOR_RATIO = 0.8;
 
-/** The floor the rule compares against, ~18,934 coldkeys. */
+/**
+ * The floor the rule compares against: 17,010 coldkeys.
+ *
+ * Live coverage was 16,988 on 2026-08-16, so this lane is ~22 coldkeys under
+ * and reports `partial` every tick. That is the re-measure case this module's
+ * own guidance describes, not a truncated pass -- #11384 tracks replacing the
+ * pinned expectation with a floor derived from the lane's own trailing history,
+ * once the counts this PR publishes have accumulated enough of one.
+ */
 export const NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS = Math.round(
   NOMINATOR_POSITIONS_EXPECTED_COLDKEYS *
     NOMINATOR_POSITIONS_COVERAGE_FLOOR_RATIO,
@@ -434,7 +450,11 @@ export async function runNominatorPositionsStalenessWatchdog(
       lane: "nominator-positions-staleness",
       verdict: verdict.stale ? "stale" : "ok",
       age_ms: verdict.age_ms,
-      detail: verdict.reason ?? null,
+      detail: laneVerdictDetail(verdict.reason, {
+        covered: verdict.covered_coldkeys,
+        total: verdict.total_coldkeys,
+        floor: verdict.coverage_floor_coldkeys,
+      }),
       checked_at: now(),
     });
     // `ok` describes whether the TICK ran, not whether the lane is fresh.

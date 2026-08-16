@@ -43,6 +43,7 @@
 // so ~2.9M store rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { laneVerdictDetail } from "./lane-verdict-detail.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import {
   FLUSH_INTERVAL_MS,
@@ -361,7 +362,11 @@ export async function runNeuronsStalenessWatchdog(
       lane: "neurons-staleness",
       verdict: verdict.stale ? "stale" : "ok",
       age_ms: verdict.age_ms,
-      detail: verdict.reason ?? null,
+      detail: laneVerdictDetail(verdict.reason, {
+        covered: verdict.covered_netuids,
+        total: verdict.total_netuids,
+        floor: verdict.coverage_floor_netuids,
+      }),
       checked_at: now(),
     });
     // `ok` describes whether the TICK ran, not whether the lane is fresh.

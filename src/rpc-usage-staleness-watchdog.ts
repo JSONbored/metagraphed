@@ -23,6 +23,7 @@
 // one of those looks identical from the reading end -- a healthy route over
 // data that has stopped advancing.
 import { laneHealthStore } from "./lane-health-store.ts";
+import { laneVerdictDetail } from "./lane-verdict-detail.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import {
@@ -177,7 +178,7 @@ export async function runRpcUsageStalenessWatchdog(
     lane: "rpc-usage-staleness",
     verdict: verdict.stale ? "stale" : "ok",
     age_ms: verdict.age_ms,
-    detail: verdict.reason ?? null,
+    detail: laneVerdictDetail(verdict.reason),
     checked_at: now(),
   });
   // `ok` describes whether the TICK ran, not whether the lane is fresh.
