@@ -90,7 +90,11 @@ describe("evaluateSubnetAxons — the real incidents", () => {
     const series = then(flat(8, 223), [129, 256]);
     const f = evaluateSubnetAxons(101, series);
     assert.ok(f, "SN101's drop is a finding");
-    assert.equal(f.kind, "announcements-withdrawn");
+    // The evaluator counts axons and cannot see why any went away, so it says
+    // `mechanism-unknown` and the per-UID read moves it (#11381). SN101 IS the
+    // #11328 withdrawal case -- see the mechanism tests below, where a real
+    // same-hotkey count earns that label.
+    assert.equal(f.kind, "mechanism-unknown");
     assert.equal(f.withAxon, 129);
     assert.equal(f.baseline, 223);
     assert.ok(f.ratio < 0.6);
@@ -103,7 +107,7 @@ describe("evaluateSubnetAxons — the real incidents", () => {
     const f = evaluateSubnetAxons(25, series);
     assert.ok(f, "SN25's decline is caught against baseline");
     assert.equal(f.withAxon, 21);
-    assert.equal(f.kind, "announcements-withdrawn");
+    assert.equal(f.kind, "mechanism-unknown");
   });
 
   test("the first 26% step alone is NOT flagged", () => {
@@ -169,7 +173,7 @@ describe("evaluateSubnetAxons — what it refuses to measure", () => {
     ];
     const f = evaluateSubnetAxons(9, series);
     assert.ok(f);
-    assert.equal(f.kind, "announcements-withdrawn");
+    assert.equal(f.kind, "mechanism-unknown");
   });
 });
 
@@ -353,7 +357,7 @@ describe("the defensive fallbacks, each exercised", () => {
     assert.equal(f.neuronBaseline, 0);
     assert.equal(
       f.kind,
-      "announcements-withdrawn",
+      "mechanism-unknown",
       "an unmeasurable neuron baseline cannot assert the subnet turned over",
     );
   });
@@ -911,15 +915,84 @@ describe("the tick reports the mechanism it measured", () => {
     );
   });
 
-  test("an unmeasured mechanism leaves the default and the plain detail", async () => {
-    // The mechanism read returns nothing: the finding stands, unlabelled.
+  test("an unmeasured mechanism says SO — it does not borrow the withdrawal claim", async () => {
+    // #11381: this used to assert `announcements-withdrawn`, which is the bug.
+    // `loadAxonLossMechanisms` returns {} on any failure, so an unreadable
+    // mechanism published "miners that are still registered and still earning
+    // stopped publishing an axon" as fact. On the two subnets flagged
+    // 2026-08-15 that was inverted -- 67 and 43 losses via UID reuse, zero
+    // same-hotkey stops.
     answer(rowsFor(25, then(flat(8, 80), [14, 256])), []);
     const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
       now: () => Date.parse("2026-08-16T00:00:00Z"),
       recordException: (async () => true) as never,
     })) as { findings: AxonFinding[] };
-    assert.equal(result.findings[0].kind, "announcements-withdrawn");
+    assert.equal(result.findings[0].kind, "mechanism-unknown");
     assert.equal(result.findings[0].lossesViaReuse, null);
+    // And the detail names the gap rather than printing a bare ratio, which is
+    // what made a failed read indistinguishable from a measured withdrawal.
+    assert.match(verdict(), /mechanism unmeasured/);
+  });
+
+  test("the WITHDRAWAL claim is earned by a measured same-hotkey stop, never defaulted to", async () => {
+    // The #11328 sentence -- "miners that are still registered and still
+    // earning stopped publishing an axon" -- used to be the last branch left,
+    // so an unreadable mechanism inherited it. It is gated on a measured
+    // withdrawal now (#11381).
+    answer(rowsFor(25, then(flat(8, 80), [14, 256])), [
+      { netuid: 25, via_reuse: 1, same_hotkey: 40 },
+    ]);
+    let captured: Record<string, unknown> | null = null;
+    await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
+    });
+    assert.match(
+      String((captured as unknown as { error: Error }).error.message),
+      /still registered and still earning stopped publishing an axon/,
+    );
+  });
+
+  test("an UNMEASURED mechanism gets a message that refuses to say why", async () => {
+    // The exact inversion #11381 reports: on 2026-08-15 production published
+    // the withdrawal sentence for two subnets whose losses were 100% UID
+    // reuse. The message must now say how many went away and decline to say
+    // why.
+    answer(rowsFor(25, then(flat(8, 80), [14, 256])), []);
+    let captured: Record<string, unknown> | null = null;
+    await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
+    });
+    const message = String(
+      (captured as unknown as { error: Error }).error.message,
+    );
+    assert.match(message, /the mechanism was NOT established/);
+    assert.doesNotMatch(
+      message,
+      /stopped publishing an axon/,
+      "an alarm may escalate on uncertainty; it may not invent the finding",
+    );
+  });
+
+  test("a mechanism read that explains NOTHING takes the same exit", async () => {
+    // Different fact, same claim: the read succeeded, reported 0 and 0, and
+    // therefore accounted for none of the losses. Reporting a mechanism here
+    // would be inventing one.
+    answer(rowsFor(25, then(flat(8, 80), [14, 256])), [
+      { netuid: 25, via_reuse: 0, same_hotkey: 0 },
+    ]);
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async () => true) as never,
+    })) as { findings: AxonFinding[] };
+    assert.equal(result.findings[0].kind, "mechanism-unknown");
   });
 
   test("turnover is never reclassified as churn", async () => {
