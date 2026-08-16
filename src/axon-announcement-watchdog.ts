@@ -56,6 +56,13 @@
 
 import { readStore, type StoreEnv } from "./read-store.ts";
 import { ROUTABLE_AXON_SQL } from "./axon-routable.ts";
+import {
+  AXON_LOSS_SQL,
+  AXON_MOVED_SQL,
+  AXON_SAME_HOTKEY_SQL,
+  AXON_VIA_REUSE_SQL,
+  axonSequenceSql,
+} from "./axon-transition.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
@@ -356,6 +363,13 @@ export function classifyAxonMechanism(
 /**
  * Split each subnet's axon losses by mechanism, over the same window.
  *
+ * The transition itself comes from src/axon-transition.ts, shared with the
+ * removal feeds, so the alarm and the API cannot come to disagree about what a
+ * loss is (#11394). What is NOT shared is the confirmation rule: the feeds hold
+ * a loss back until a later reading confirms it, which is right for an archive
+ * and wrong here, because the day that triggered this alarm has no later
+ * reading yet and would go permanently unexplained.
+ *
  * ONLY FOR SUBNETS ALREADY FLAGGED. The per-UID comparison is the expensive
  * read here -- 256 rows per subnet per day rather than one -- and on a typical
  * day the flag list is one to three subnets, so scoping it to those keeps the
@@ -394,21 +408,14 @@ export async function loadAxonLossMechanisms(
   const ids = (netuids ?? []).filter((n) => Number.isSafeInteger(n) && n >= 0);
   if (!db?.query || ids.length === 0) return out;
   try {
+    const sameHotkeyLoss = `${AXON_LOSS_SQL} AND ${AXON_SAME_HOTKEY_SQL}`;
     const rows = (await db.query(
-      "WITH seq AS (SELECT netuid, uid, snapshot_date, hotkey, axon, " +
-        `(${ROUTABLE_AXON_SQL}) AS has_axon, ` +
-        `LAG(${ROUTABLE_AXON_SQL}) OVER w AS prev_has, ` +
-        "LAG(hotkey) OVER w AS prev_hotkey, LAG(axon) OVER w AS prev_axon " +
-        "FROM neuron_daily " +
-        `WHERE snapshot_date >= ? AND netuid IN (${ids.map(() => "?").join(",")}) ` +
-        "WINDOW w AS (PARTITION BY netuid, uid ORDER BY snapshot_date)) " +
+      `WITH seq AS (${axonSequenceSql(`netuid IN (${ids.map(() => "?").join(",")})`)}) ` +
         "SELECT netuid, " +
-        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey IS DISTINCT FROM prev_hotkey) AS via_reuse, " +
-        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS same_hotkey, " +
-        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey " +
-        "AND axon IS NOT NULL AND axon <> '') AS moved_unroutable, " +
-        "COUNT(DISTINCT split_part(prev_axon, ':', 1)) FILTER " +
-        "(WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS distinct_ips " +
+        `COUNT(*) FILTER (WHERE ${AXON_LOSS_SQL} AND ${AXON_VIA_REUSE_SQL}) AS via_reuse, ` +
+        `COUNT(*) FILTER (WHERE ${sameHotkeyLoss}) AS same_hotkey, ` +
+        `COUNT(*) FILTER (WHERE ${sameHotkeyLoss} AND ${AXON_MOVED_SQL}) AS moved_unroutable, ` +
+        `COUNT(DISTINCT prev_address) FILTER (WHERE ${sameHotkeyLoss}) AS distinct_ips ` +
         "FROM seq GROUP BY netuid",
       [sinceDate, ...ids],
     )) as Record<string, unknown>[];

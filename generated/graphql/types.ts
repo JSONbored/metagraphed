@@ -1082,7 +1082,7 @@ export type ChainAxonRemovalsDerivation = {
   /** Days of `neuron_daily` the derivation had available. A removal older than this is outside the window, not absent. */
   lookback_days: Scalars['Int']['output'];
   method: Scalars['String']['output'];
-  /** Of the confirmed removals, how many still announce an address nothing can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback. A running but unreachable miner, not a departed one. The MAJORITY: 166 of 271 same-hotkey losses over 38 days, and all but one of SN126's 160. */
+  /** Of the confirmed removals, how many still announce an address nothing can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback. A running but unreachable miner, not a departed one. The MAJORITY: 130 of 224 confirmed removals over 30 days, measured 2026-08-16. Understated before that date: the narrowing query fetched only slots whose axon column went null, so a miner that merely moved was never read, and 79 of the 130 were missing. */
   moved_unroutable: Scalars['Int']['output'];
   /** Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket. */
   pending_confirmation: Scalars['Int']['output'];

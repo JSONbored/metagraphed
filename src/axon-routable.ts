@@ -37,13 +37,20 @@ export const UNROUTABLE_AXON_PATTERN =
 export const UNROUTABLE_AXON_V6_PATTERN =
   "^(::$|::1$|[fF][cCdD]|[fF][eE][89aAbB])";
 
-/** SQL fragment: the axon is present AND points somewhere routable.
+/**
+ * SQL fragment: everything before the LAST colon of `column`.
  *
- * `left(axon, length(axon) - strpos(reverse(axon), ':'))` is "everything before
- * the LAST colon" -- the same address/port split `splitAxon` does, so an IPv6
- * announcement is not read as its first hex group. */
-export const AXON_ADDRESS_SQL =
-  "left(axon, length(axon) - strpos(reverse(axon), ':'))";
+ * The same address/port split `splitAxon` does, so an IPv6 announcement is not
+ * read as its first hex group. Parameterised by column because the transition
+ * readers need it over a lagged value too (`src/axon-transition.ts`), and a
+ * second spelling of the split is how one of them comes to disagree.
+ */
+export function axonAddressSql(column: string): string {
+  return `left(${column}, length(${column}) - strpos(reverse(${column}), ':'))`;
+}
+
+/** The address half of an announced `axon`, the column every reader starts at. */
+export const AXON_ADDRESS_SQL = axonAddressSql("axon");
 export const ROUTABLE_AXON_SQL =
   `axon IS NOT NULL AND axon <> '' AND ${AXON_ADDRESS_SQL} <> '' AND ` +
   `CASE WHEN ${AXON_ADDRESS_SQL} LIKE '%:%' ` +
