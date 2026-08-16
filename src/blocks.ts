@@ -4,6 +4,10 @@
 // Taostats. This module holds the load contract, the row→API shaping, and the
 // retention prune. Pure + exported for tests; the Worker runs the D1 I/O.
 import {
+  DEGRADED_UNAVAILABLE,
+  type EventStreamDegraded,
+} from "./uncurated-event-streams.ts";
+import {
   BLOCK_PAGINATION,
   clampLimit,
   clampOffset,
@@ -93,6 +97,13 @@ export interface BlockDetail {
   block: BlockApi | null;
   prev_block_number: number | null;
   next_block_number: number | null;
+  /**
+   * Present ONLY on a decline. `block: null` WITHOUT it is a CONFIRMED
+   * ABSENCE -- the lakehouse was read and has no such block -- which is a
+   * measurement and the answer a caller wants. With it, the read failed and
+   * nothing is known about whether the block exists.
+   */
+  degraded?: EventStreamDegraded;
 }
 
 // Per-block detail artifact. `block` is null when the ref didn't resolve (cold
@@ -319,4 +330,32 @@ export async function loadBlock(
     next = nbr[0]?.next ?? null;
   }
   return buildBlock(rows[0], ref, { prev, next });
+}
+
+/**
+ * The decline payload: a configured lakehouse that could not answer (#11424).
+ *
+ * `/blocks/{ref}` was measured at 15,085ms -- AT the 15s `QUERY_TIMEOUT_MS` --
+ * on 2026-08-16, and `loadBlockFromR2Sql` already draws half this distinction:
+ * it returns `buildBlock(undefined, ref)` for a confirmed absence, with the
+ * comment "A confirmed absence is an ANSWER", and a bare `null` for a failed
+ * read. The caller turned that null back into the same "no such block" payload,
+ * so the two collapsed again one frame later.
+ */
+export function declineBlock(
+  /**
+   * REQUIRED and a string: the only caller has already parsed the ref out of
+   * the path before it reaches a query, so `ref?: unknown` would add a
+   * `?? null` branch standing in for a case that does not exist.
+   */
+  ref: string,
+): BlockDetail {
+  return {
+    schema_version: 1,
+    ref,
+    block: null,
+    prev_block_number: null,
+    next_block_number: null,
+    degraded: { reason: DEGRADED_UNAVAILABLE },
+  };
 }

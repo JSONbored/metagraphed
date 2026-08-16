@@ -334,13 +334,21 @@ describe("loadBlockFromR2Sql", () => {
     assert.equal(queries.length, 0);
   });
 
-  test("a failed query yields null, not a false absence", async () => {
+  test("a failed query is MARKED, so it is not a false absence", async () => {
+    // This test's intent was always right and its assertion could not carry it
+    // (#11424): `null` was returned precisely so a failed read would not be
+    // "mistaken for 'no such block'", and the caller then rebuilt exactly that
+    // payload from the null. The distinction now rides on the payload itself,
+    // where a consumer can see it.
     globalThis.fetch = (async () => {
       throw new Error("down");
     }) as unknown as typeof fetch;
-    assert.equal(
-      await loadBlockFromR2Sql(mockEnv(TOKEN), "10"),
-      null,
+    const out = await loadBlockFromR2Sql(mockEnv(TOKEN), "10");
+    assert.ok(out, "a decline still answers");
+    assert.equal(out.block, null);
+    assert.deepEqual(
+      out.degraded,
+      { reason: "unavailable" },
       "must not be mistaken for 'no such block'",
     );
   });

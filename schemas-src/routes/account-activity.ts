@@ -100,8 +100,10 @@ export const AccountStakeMovesArtifactSchema = z
     schema_version: z.int(),
     address: z.string(),
     window: z.enum(WINDOW_ENUM).nullable(),
-    total_movements: z.int().min(0),
-    subnet_count: z.int().min(0),
+    // NULL only on a decline (#11424): a failed read learns nothing about how
+    // many moves this account made, and a 0 reads as a measured 'never moved'.
+    total_movements: z.int().min(0).nullable(),
+    subnet_count: z.int().min(0).nullable(),
     concentration: z.number().nullable(),
     dominant_netuid: z.int().min(0).nullable(),
     subnets: z.array(
@@ -123,6 +125,8 @@ export const AccountStakeMovesArtifactSchema = z
           "One subnet's slice of an account's stake-movement footprint over the window.",
         ),
     ),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type AccountStakeMovesArtifact = z.infer<

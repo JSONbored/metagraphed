@@ -1,4 +1,8 @@
 import { roundBelowOne } from "./lib/stats.ts";
+import {
+  DEGRADED_UNAVAILABLE,
+  type EventStreamDegraded,
+} from "./uncurated-event-streams.ts";
 // Per-account stake-movement (re-delegation) footprint: which subnets one account
 // (coldkey) moved stake out of over a recent window, broken down per subnet and
 // rolled up into a movement scorecard. Pure shaping (buildAccountStakeMoves) + a
@@ -88,11 +92,14 @@ export interface AccountStakeMovesResult {
   schema_version: 1;
   address: string;
   window: string | null;
-  total_movements: number;
-  subnet_count: number;
+  /** NULL only on a decline -- nothing was read, so nothing is known. */
+  total_movements: number | null;
+  subnet_count: number | null;
   concentration: number | null;
   dominant_netuid: number | null;
   subnets: AccountStakeMoveSubnet[];
+  /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+  degraded?: EventStreamDegraded;
 }
 
 export function buildAccountStakeMoves(
@@ -265,4 +272,29 @@ async function loadAlphaPricesForLastMoves(
     map.set(`${row.netuid}:${row.snapshot_date}`, price);
   }
   return map;
+}
+
+/**
+ * The decline payload: a configured lakehouse that could not answer (#11424).
+ *
+ * `total_movements: 0` beside `subnets: []` is a statement that this account
+ * has never moved stake, and after a failed read nobody knows that -- so both
+ * counts go NULL. `concentration` and `dominant_netuid` were already nullable
+ * for the same reason (undefined over an empty set), so they need no widening.
+ */
+export function declineAccountStakeMoves(
+  address: string,
+  window: string | null,
+): AccountStakeMovesResult {
+  return {
+    schema_version: 1,
+    address,
+    window,
+    total_movements: null,
+    subnet_count: null,
+    concentration: null,
+    dominant_netuid: null,
+    subnets: [],
+    degraded: { reason: DEGRADED_UNAVAILABLE },
+  };
 }
