@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
-import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import {
   API_ROUTES,

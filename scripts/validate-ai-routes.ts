@@ -9,7 +9,6 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormatsPlugin from "ajv-formats";
 import { handleRequest } from "../workers/api.ts";
 import { EMBED_MODEL } from "../src/ai-search.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.ts";

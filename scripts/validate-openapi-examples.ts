@@ -6,7 +6,6 @@
 // stay present + schema-correct, and surfaces any schema construct the sampler
 // mishandles.
 import { Ajv2020, type Schema, type ValidateFunction } from "ajv/dist/2020.js";
-import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import { API_ROUTES } from "../src/contracts.ts";
 import { readJson, repoRoot } from "./lib.ts";

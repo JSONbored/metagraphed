@@ -7,7 +7,6 @@
 //   npm run validate:surface -- registry/subnets/<slug>.json
 //   npm run validate:surface          # validates every subnet file
 import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
-import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import {
   classifyNativeName,

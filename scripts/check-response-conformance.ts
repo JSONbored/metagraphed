@@ -17,7 +17,6 @@
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import { API_ROUTES } from "../src/contracts.ts";
 import { apiRouteUrl } from "./smoke-live-api.ts";
 import { addAjvFormats } from "./lib/ajv-formats.ts";

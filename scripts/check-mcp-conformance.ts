@@ -32,7 +32,6 @@
 // flag never fails. "The response does not match the schema we publish" needs
 // no judgement to confirm, so it is an error rather than a flag.
 import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 
 // Live MCP JSON-RPC payloads, read for reporting. Same `Row` precedent as
 // scripts/mcp-smoke-sweep.ts and scripts/lib.ts: an unexpected shape is what
