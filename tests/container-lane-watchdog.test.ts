@@ -10,7 +10,9 @@ import {
   CONTAINER_LANE_THRESHOLD_MS,
   CONTAINER_MISSED_PASSES,
   CONTAINER_PASS_INTERVAL_MS,
+  LANE_DETAIL_MAX,
   evaluateContainerLanes,
+  laneFailureDetail,
   runContainerLaneWatchdog,
 } from "../src/container-lane-watchdog.ts";
 
@@ -406,5 +408,91 @@ describe("runContainerLaneWatchdog", () => {
     assert.equal(result.ok, true);
     assert.equal(result.stale, false, "unreadable is unknown, not an alarm");
     assert.equal(spy.rows.length, 5, "and every lane still gets a row");
+  });
+});
+
+/**
+ * The detail a `stale` verdict carries, after the watchdog's first real catch.
+ *
+ * 2026-08-16T16:30:40Z, production: the account-summary lane published
+ * `ok: false, phase: "complete", failures: { _lane: "ArrowInvalid: ..." }` and
+ * `lane_health` recorded `lane failed: complete`. The reader fell through
+ * `detail` (absent) to `phase`, which names the step that FINISHED rather than
+ * the reason it failed.
+ */
+describe("laneFailureDetail", () => {
+  test("QUOTES THE FAILURE, not the phase that finished", () => {
+    assert.equal(
+      laneFailureDetail({
+        phase: "complete",
+        failures: { _lane: "ArrowInvalid: Schema at index 1 was different" },
+      }),
+      "_lane: ArrowInvalid: Schema at index 1 was different",
+    );
+  });
+
+  test("EVERY step that failed, not an arbitrary one", () => {
+    // The map is per-step, so a pass that failed three ways has three things
+    // worth knowing, and picking one would be an arbitrary choice presented as
+    // a summary.
+    assert.equal(
+      laneFailureDetail({ failures: { a: "first broke", b: "second broke" } }),
+      "a: first broke; b: second broke",
+    );
+  });
+
+  test("a long message is FLATTENED AND BOUNDED", () => {
+    // The real one carried a 700-character pyarrow traceback. A `$exception`
+    // nobody can read at a glance is a `$exception` nobody reads, and the full
+    // text is in the status object either way.
+    const said = laneFailureDetail({
+      failures: { _where: `line one\n  line two ${"x".repeat(500)}` },
+    });
+    assert.ok(said!.length <= LANE_DETAIL_MAX + "_where: ".length, said!);
+    assert.ok(!said!.includes("\n"), "a newline in an alarm line");
+    assert.ok(said!.endsWith("\u2026"), said!.slice(-20));
+  });
+
+  test("a NON-STRING value is skipped rather than stringified", () => {
+    // `[object Object]` in an alarm is worse than the key's absence: it looks
+    // like a message and carries none. This repo owns none of the producers.
+    assert.equal(
+      laneFailureDetail({ detail: "the real one", failures: { a: { b: 1 } } }),
+      "the real one",
+    );
+  });
+
+  test("an EMPTY failures map falls through, it does not report nothing", () => {
+    // Every successful pass publishes `failures: {}`, so treating the key's
+    // presence as the signal would silence the fallback for the lanes that
+    // report most carefully.
+    assert.equal(laneFailureDetail({ failures: {}, detail: "d" }), "d");
+    assert.equal(laneFailureDetail({ failures: {}, phase: "p" }), "p");
+    assert.equal(laneFailureDetail({ failures: null }), null);
+  });
+
+  test("the RUNNER carries it into the verdict", () => {
+    // The unit above is the rule; this is the property that matters -- the
+    // durable record is what an operator reads at 3am.
+    const verdict = evaluateContainerLanes({
+      statuses: [
+        {
+          lane: "container:account-summary",
+          body: {
+            checked_at: "2026-08-16T16:30:40Z",
+            ok: false,
+            phase: "complete",
+            failures: { _lane: "ArrowInvalid: Schema at index 1" },
+          },
+        },
+      ],
+      nowMs: Date.parse("2026-08-16T16:31:00Z"),
+      thresholdMs: CONTAINER_LANE_THRESHOLD_MS,
+    });
+    assert.equal(verdict.stale, true);
+    assert.equal(
+      verdict.entries[0]!.detail,
+      "lane failed: _lane: ArrowInvalid: Schema at index 1",
+    );
   });
 });
