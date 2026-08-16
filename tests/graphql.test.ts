@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { markedChainEventsPayload } from "../src/chain-events-degraded.ts";
 import { MIN_INCIDENT_SAMPLES } from "../src/health-serving.ts";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
@@ -6769,12 +6770,22 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     });
   });
 
-  test("surfaces a missing DATA_API binding as a GraphQL error", async () => {
+  test("a missing DATA_API binding answers with the MARKED empty, as REST and MCP do", async () => {
+    // WAS "surfaces a missing DATA_API binding as a GraphQL error" (#11423).
+    // That was never a cross-surface contract -- it was this surface diverging
+    // from the other two. REST's proxy falls to `degradedChainEventsPayload`
+    // (workers/api.ts) and MCP's `degradedDataApiRead` reads the same map;
+    // only GraphQL rethrew. Measured live 2026-08-16 on
+    // /subnets/64/lease/history: MCP answered a marked empty while GraphQL
+    // returned a 503, at the same instant.
     const { body } = await gql(
-      "{ subnet_ownership_history(netuid: 7) { count } }",
+      "{ subnet_ownership_history(netuid: 7) { count degraded { reason } } }",
     );
-    assert.ok(body.errors?.length);
-    assert.equal(body.data, null);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_ownership_history.count, 0);
+    assert.deepEqual(body.data.subnet_ownership_history.degraded, {
+      reason: "tier_unavailable",
+    });
   });
 
   // #9146's cold-tier lane. The SubnetOwnerChanged stream is in the lakehouse
@@ -6895,7 +6906,14 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     // erroring -- the right observation with the wrong conclusion, since the
     // reader now makes exactly those reads and the lock maps in the same pass.
     // Its own case is below.
-    test("lease_history keeps its error — no reader covers it", async () => {
+    test("lease_history answers the marked empty when no COLD-TIER reader covers it", async () => {
+      // WAS "lease_history keeps its error — no reader covers it" (#11423).
+      // "No reader" meant no COLD-TIER reader, which is still true here: the
+      // lakehouse leg is inconclusive, so `coldTierChainEventsPayload`
+      // declines. What does not follow is the error -- the DEGRADED map covers
+      // this path (SUBNET_LEASE_HISTORY is one of its six), and REST and MCP
+      // have always served it from there. This is the operation the latency
+      // sweep reports as the one that "did not answer".
       await withLakehouse(OWNERSHIP_ROWS, async () => {
         const env = {
           ...TOKEN_ENV,
@@ -6904,11 +6922,15 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
           },
         };
         const { body } = await gql(
-          "{ subnet_lease_history(netuid: 7) { count } }",
+          "{ subnet_lease_history(netuid: 7) { count lease_events { event_kind } degraded { reason } } }",
           env as unknown as Env,
         );
-        assert.ok(body.errors?.length, "lease_history should still error");
-        assert.equal(body.data, null);
+        assert.equal(body.errors, undefined, "lease_history must answer");
+        const out = body.data.subnet_lease_history;
+        assert.equal(out.count, 0);
+        assert.deepEqual(out.lease_events, []);
+        // The marker is what keeps this from being the confident empty.
+        assert.deepEqual(out.degraded, { reason: "tier_unavailable" });
       });
     });
   });
@@ -6917,19 +6939,23 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     // #9319: conviction now has a SECOND tier behind DATA_API -- a live chain
     // read. "DATA_API is down" is no longer sufficient for this field to fail,
     // so the chain has to be unreachable too, or this asserts against finney
-    // over the network. GraphQL's deliberate contract is unchanged: when
-    // NOTHING can answer, it errors rather than null-degrading.
+    // over the network. When NOTHING can answer, GraphQL now publishes the
+    // same MARKED empty REST and MCP do rather than erroring (#11423) -- the
+    // marker is what distinguishes it from a measured zero.
     const env = { DATA_API: dataApi(new Response("err", { status: 502 })) };
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (() =>
       Promise.reject(new Error("no network in tests"))) as typeof fetch;
     try {
       const { body } = await gql(
-        "{ subnet_conviction(netuid: 7) { count } }",
+        "{ subnet_conviction(netuid: 7) { count degraded { reason } } }",
         env as unknown as Env,
       );
-      assert.ok(body.errors?.length);
-      assert.equal(body.data, null);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.subnet_conviction.count, 0);
+      assert.deepEqual(body.data.subnet_conviction.degraded, {
+        reason: "tier_unavailable",
+      });
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -6964,7 +6990,11 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     }
   });
 
-  test("surfaces a DATA_API fetch failure as a GraphQL error", async () => {
+  test("a DATA_API fetch failure answers the MARKED empty, on every surface alike", async () => {
+    // WAS "surfaces a DATA_API fetch failure as a GraphQL error" (#11423). A
+    // thrown binding and a non-ok status are the same thing to a caller, and
+    // both now land on the shared degraded map -- the one REST's proxy and
+    // MCP's `degradedDataApiRead` already read.
     const env = {
       DATA_API: {
         fetch: async () => {
@@ -6973,11 +7003,25 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       },
     };
     const { body } = await gql(
-      "{ subnet_lease_history(netuid: 9) { count } }",
+      "{ subnet_lease_history(netuid: 9) { count degraded { reason } } }",
       env as unknown as Env,
     );
-    assert.ok(body.errors?.length);
-    assert.equal(body.data, null);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_lease_history.count, 0);
+    assert.deepEqual(body.data.subnet_lease_history.degraded, {
+      reason: "tier_unavailable",
+    });
+  });
+
+  test("an UNMAPPED proxied path still errors, so the map cannot silently grow", async () => {
+    // The guard the degraded map's own header asks for, and the reason the
+    // change above is safe: a seventh proxied route added without a map entry
+    // must fail loudly rather than serve an empty that satisfies no schema.
+    // Asserted at the map, because the router admits only mapped paths.
+    assert.equal(
+      markedChainEventsPayload("/api/v1/chain-events/not-a-route"),
+      null,
+    );
   });
 
   test("FIELD_COMPLEXITY weights all three like their sibling Postgres-tier fields", () => {

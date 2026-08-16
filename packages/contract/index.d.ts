@@ -10924,6 +10924,8 @@ export interface components {
         /** @description Live per-subnet conviction leaderboard -- who currently holds the most rolled conviction, rolled forward from a periodically-captured snapshot using the current live-queried unlock_rate/maturity_rate. Mirrors GET /api/v1/subnets/{netuid}/conviction. */
         SubnetConvictionArtifact: {
             count: number;
+            /** @description Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement. */
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -11972,6 +11974,8 @@ export interface components {
         /** @description Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had, decoded from the account_events stream. Mirrors GET /api/v1/subnets/{netuid}/lease/history. */
         SubnetLeaseHistoryArtifact: {
             count: number;
+            /** @description Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement. */
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             event_kinds: string[];
             event_pallet: string;
             lease_events: {
@@ -12446,6 +12450,8 @@ export interface components {
         /** @description Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history. */
         SubnetOwnershipHistoryArtifact: {
             count: number;
+            /** @description Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement. */
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description The chain_events method the authoritative records are decoded from. */
             event_method: string;
             /** @description The chain_events pallet the authoritative records are decoded from. */
@@ -42181,6 +42187,10 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "count": 1,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -45244,6 +45254,10 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "count": 1,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "event_kinds": [
                      *           "example"
                      *         ],
@@ -46794,6 +46808,10 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "count": 1,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "event_method": "GET",
                      *         "event_pallet": "example",
                      *         "netuid": 7,

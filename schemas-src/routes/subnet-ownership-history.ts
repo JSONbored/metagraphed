@@ -5,6 +5,7 @@
 // SubnetOwnershipChange components it replaces. No query params (verified:
 // the DATA_API route reads only the netuid path segment).
 import { z } from "zod";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 // objectItems-equivalent looseness: no field required at the item level,
 // matching the hand-written original exactly.
@@ -62,6 +63,11 @@ export const SubnetOwnershipHistoryArtifactSchema = z
       .optional()
       .describe(
         "The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read.",
+      ),
+    degraded: EventStreamDegradedSchema.nullable()
+      .optional()
+      .describe(
+        "Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement.",
       ),
   })
   .strict()

@@ -8,6 +8,7 @@
 // params (verified: handleSubnetLease doesn't even accept a `url` argument;
 // the lease/history DATA_API route reads only the netuid path segment).
 import { z } from "zod";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 const SubnetLeaseSchema = z
@@ -66,6 +67,11 @@ export const SubnetLeaseHistoryArtifactSchema = z
     event_kinds: z.array(z.string()),
     count: z.int().min(0),
     lease_events: z.array(SubnetLeaseEventSchema),
+    degraded: EventStreamDegradedSchema.nullable()
+      .optional()
+      .describe(
+        "Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement.",
+      ),
   })
   .strict()
   .describe(

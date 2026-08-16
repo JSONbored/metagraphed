@@ -514,7 +514,10 @@ import { answerAccountEntities } from "./account-entities-answer.ts";
 import { loadValidatorNominatorsColdTier } from "./account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
 import { loadAccountPositionsFromStore } from "./nominator-positions-hot-tier.ts";
-import { coldTierChainEventsPayload } from "./chain-events-degraded.ts";
+import {
+  coldTierChainEventsPayload,
+  markedChainEventsPayloadOrThrow,
+} from "./chain-events-degraded.ts";
 import { subnetOwnershipHistoryNode } from "./subnet-ownership-answer.ts";
 import { SUBNET_CONVICTION_FIELD_SOURCES } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
@@ -1642,7 +1645,25 @@ async function fetchAllEventsTier(
     // resolver a `{ data, source }` object that structurally satisfies Row and
     // would therefore fail at runtime rather than at the type level (#9319).
     if (cold) return cold.data;
-    throw err;
+    // THE DEGRADED EMPTY REST AND MCP ALREADY SERVE (#11423).
+    //
+    // Without this, GraphQL was the only surface that ERRORED where the other
+    // two answered. Measured live 2026-08-16 on `/subnets/64/lease/history`:
+    // MCP returned `count: 0, lease_events: [], degraded: {reason:
+    // "tier_unavailable"}` while `subnet_lease_history` returned `data: null`
+    // with a 503 error -- same route, same instant, two contracts. It is the
+    // one operation the latency sweep reports as "did not answer".
+    //
+    // The resolvers were written expecting this: `subnet_lease_history` ends
+    // `?? empty` and the other two spell `data?.field ?? default` throughout.
+    // Those fallbacks were unreachable, because a throw here never lets a null
+    // reach them.
+    //
+    // `markedChainEventsPayload` is the same map the REST proxy and MCP read,
+    // so all THREE surfaces now answer one route the same way. A path the map
+    // does not cover keeps the original error, which is what stops a seventh
+    // proxied route silently acquiring an empty that satisfies no schema.
+    return markedChainEventsPayloadOrThrow(pathname, err);
   }
 }
 
@@ -9333,6 +9354,7 @@ const rootValue = {
       king: data?.king ?? null,
       count: data?.count ?? 0,
       leaderboard: Array.isArray(data?.leaderboard) ? data.leaderboard : [],
+      degraded: data?.degraded ?? null,
     };
   },
 
@@ -9372,6 +9394,11 @@ const rootValue = {
       netuid,
       count: data.count ?? 0,
       lease_events: Array.isArray(data.lease_events) ? data.lease_events : [],
+      // FORWARDED, not dropped (#11423). The tier's marked empty says the read
+      // could not be made, and a projection that kept everything except the
+      // marker would restate on this surface the confident zero the marker
+      // exists to prevent.
+      degraded: data.degraded ?? null,
     };
   },
 

@@ -9329,6 +9329,10 @@
         "value": {
           "data": {
             "count": 1,
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "field_sources": {
               "example": {
                 "kind": "measured",
@@ -10703,6 +10707,10 @@
         "value": {
           "data": {
             "count": 1,
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "event_kinds": [
               "example"
             ],
@@ -11481,6 +11489,10 @@
         "value": {
           "data": {
             "count": 1,
+            "degraded": {
+              "detail": "example",
+              "reason": "example"
+            },
             "event_method": "GET",
             "event_pallet": "example",
             "netuid": 7,
@@ -46812,6 +46824,17 @@
             "minimum": 0,
             "type": "integer"
           },
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement."
+          },
           "field_sources": {
             "additionalProperties": {
               "additionalProperties": false,
@@ -53395,6 +53418,17 @@
             "minimum": 0,
             "type": "integer"
           },
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement."
+          },
           "event_kinds": {
             "items": {
               "type": "string"
@@ -55925,6 +55959,17 @@
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "degraded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement."
           },
           "event_method": {
             "description": "The chain_events method the authoritative records are decoded from.",

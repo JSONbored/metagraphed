@@ -98,6 +98,54 @@ function statsWindowBlocks(url: URL): number {
 }
 
 /**
+ * The reason a proxied route's degraded empty carries.
+ *
+ * DECLARED HERE rather than in `src/mcp-server.ts`, where it used to live, so
+ * that GraphQL can use it too (#11423). GraphQL could not import it from there
+ * -- `mcp-server.ts` imports `handleGraphQLRequest` from `graphql.ts`, so the
+ * dependency only goes one way -- and that import barrier is a large part of
+ * why the third surface never got the marked empty the other two serve.
+ */
+export const TIER_UNAVAILABLE_REASON = "tier_unavailable";
+
+/**
+ * The degraded empty for a proxied route, MARKED.
+ *
+ * The unmarked map below plus #9120's in-band marker, which every surface needs
+ * for the same reason MCP documented: a tool result has no headers to put it
+ * in, and neither does a GraphQL field.
+ */
+export function markedChainEventsPayload(pathname: string): Row | null {
+  const payload = degradedChainEventsPayload(new URL(`https://d${pathname}`));
+  return payload
+    ? { ...payload, degraded: { reason: TIER_UNAVAILABLE_REASON } }
+    : null;
+}
+
+/**
+ * The marked empty for a proxied route, or the original failure rethrown.
+ *
+ * The decision a failing tier reader has to make, expressed once: a path the
+ * map covers answers with the marked empty, and a path it does not keeps the
+ * error that brought it here. Living here rather than at the call site is what
+ * makes BOTH arms directly testable -- inside a `catch` in `graphql.ts` the
+ * rethrow is unreachable, because every caller there passes a literal path the
+ * map covers.
+ *
+ * The rethrow is the guard the map's own header asks for: a seventh proxied
+ * route added without a map entry must fail loudly rather than return null,
+ * which each resolver spells `?? empty` -- an UNMARKED empty, silently.
+ */
+export function markedChainEventsPayloadOrThrow(
+  pathname: string,
+  err: unknown,
+): Row {
+  const payload = markedChainEventsPayload(pathname);
+  if (!payload) throw err;
+  return payload;
+}
+
+/**
  * The schema-stable empty for whichever proxied route this URL names, or null
  * when the path is not one of the six.
  *
