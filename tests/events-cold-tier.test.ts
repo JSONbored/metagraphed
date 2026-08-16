@@ -11,6 +11,7 @@ import {
   loadSubnetEventsColdTier,
 } from "../src/events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { encodeCursor } from "../src/cursor.ts";
 import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import { OFFSET_EMULATION_CAP } from "../src/r2-sql-blocks.ts";
@@ -750,5 +751,228 @@ describe("loadBlockChainEventsColdTier", () => {
     sqlFetch([]);
     const data = await loadBlockChainEventsColdTier(TOKEN as never, "8500000");
     assert.deepEqual(data, { block_number: 8_500_000, count: 0, events: [] });
+  });
+});
+
+/**
+ * `/events` served from the projection instead of the walk.
+ *
+ * metagraphed-infra#575 publishes each account's newest N events as COMPLETE
+ * rows, and generation 20260816T173020Z is the first to carry them
+ * (`recent_limit: 10`, 814,072 accounts). `readRecent` had exactly one
+ * consumer -- the summary card -- so a request for the newest five events
+ * walked the lakehouse while the newest ten sat in an object the same page load
+ * had already fetched.
+ *
+ * Measured 2026-08-16: `/events?limit=5` took 6.0s with its scan already
+ * floored to five days, against 174ms for the card, which issues no query.
+ */
+describe("loadAccountEventsColdTier -- the projection's recent map", () => {
+  const THROUGH = "2026-08-14";
+  const FOLD_FLOOR = Date.parse("2026-08-15T00:00:00.000Z");
+  const FIRST_OBSERVED = 1_700_000_000_010;
+
+  /** A published row, in the producer's shape. */
+  const recentRow = (block: number, index = 0) => ({
+    block_number: block,
+    event_index: index,
+    extrinsic_index: 1,
+    event_kind: "NeuronRegistered",
+    hotkey: ADDR,
+    coldkey: null,
+    netuid: 105,
+    uid: 242,
+    amount_tao: null,
+    alpha_amount: null,
+    observed_at: 1_700_000_000_000 + block,
+  });
+
+  /** An archive publishing `recent` for this account, as production now does. */
+  const withRecent = (rows: unknown[], recentLimit = 10) =>
+    accountSummaryArchive({
+      accounts: {
+        [ADDR]: [
+          {
+            kind: "NeuronRegistered",
+            netuid: 105,
+            count: rows.length,
+            fb: 10,
+            lb: 90,
+            fo: FIRST_OBSERVED,
+            lo: FIRST_OBSERVED,
+          },
+        ],
+      },
+      recent: { [ADDR]: rows },
+      pointer: { recent_limit: recentLimit, recent_from: "2026-07-16" },
+      through: THROUGH,
+    });
+
+  test("SERVES THE PAGE IN ONE QUERY, not a walk", async () => {
+    const q = sqlFetch([]);
+    const data = await loadAccountEventsColdTier(
+      {
+        ...TOKEN,
+        ...withRecent([recentRow(90), recentRow(80), recentRow(70)]),
+      } as never,
+      ADDR,
+      { limit: 3 },
+    );
+    assert.ok(data);
+    assert.equal(data.events.length, 3);
+    assert.equal(q.length, 1, `expected one head probe, got:\n${q.join("\n")}`);
+    assert.match(q[0]!, new RegExp(`observed_at >= ${FOLD_FLOOR}`));
+  });
+
+  test("THE PAGE IS BYTE-IDENTICAL to the walk's", async () => {
+    // The property that makes this safe to switch on. A hot page that differed
+    // would also hand back a different cursor, and page 2 always goes to the
+    // walk -- so a divergence here skips or repeats rows on the next page.
+    const rows = [recentRow(90), recentRow(80), recentRow(70)];
+    sqlFetch([]);
+    const hot = await loadAccountEventsColdTier(
+      { ...TOKEN, ...withRecent(rows) } as never,
+      ADDR,
+      { limit: 3 },
+    );
+    sqlFetch(rows);
+    const cold = await loadAccountEventsColdTier(TOKEN as never, ADDR, {
+      limit: 3,
+    });
+    assert.deepEqual(hot, cold);
+  });
+
+  test("THE HEAD PROBE WINS -- a post-fold event is not missed", async () => {
+    // The projection describes events at or before its fold edge. Anything
+    // newer is missing from it, which is why the probe is not optional.
+    const fresh = recentRow(999);
+    const q = sqlFetch([fresh]);
+    const data = await loadAccountEventsColdTier(
+      { ...TOKEN, ...withRecent([recentRow(90), recentRow(80)]) } as never,
+      ADDR,
+      { limit: 2 },
+    );
+    assert.ok(data);
+    assert.equal(q.length, 1);
+    assert.equal(data.events[0]!.block_number, 999, "the newest row must lead");
+  });
+
+  test("A FAILED PROBE FALLS THROUGH to the walk, never serves a partial", async () => {
+    // The missing rows would be the NEWEST -- the top of the feed -- and the
+    // payload carries nothing that could say they were dropped.
+    let call = 0;
+    globalThis.fetch = (async () => {
+      call += 1;
+      if (call === 1) throw new Error("probe down");
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows: [] } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const data = await loadAccountEventsColdTier(
+      { ...TOKEN, ...withRecent([recentRow(90), recentRow(80)]) } as never,
+      ADDR,
+      { limit: 2 },
+    );
+    assert.ok(data, "the walk still answers");
+    assert.ok(call > 1, "it fell through rather than declining");
+  });
+
+  test("A ROW THE CATALOG REFUSES declines the route, on BOTH tiers", async () => {
+    // Neither half of this merge is validated here, and that is deliberate:
+    // the published half is parsed by `AccountSummaryRecentSchema` inside
+    // `readRecent`, and the probe half by `r2SqlQuery`, which derives the
+    // catalog schema from the table named in the SQL. A second `safeParse` in
+    // the leg was the first version of this and was duplicated validation.
+    //
+    // The end-to-end contract is what matters: a row the catalog refuses makes
+    // the probe null, the hot leg falls through, and the walk -- reading the
+    // same table through the same guard -- declines too. The route answers
+    // null, which the caller turns into a decline. It never serves the row.
+    const q = sqlFetch([{ ...recentRow(999), block_number: "not a number" }]);
+    const data = await loadAccountEventsColdTier(
+      { ...TOKEN, ...withRecent([recentRow(90), recentRow(80)]) } as never,
+      ADDR,
+      { limit: 2 },
+    );
+    assert.equal(data, null, "a malformed row must never be served");
+    assert.ok(
+      q.length > 1,
+      `expected a fall-through to the walk, got:\n${q.join("\n")}`,
+    );
+  });
+
+  test("DECLINES on every narrowing the published list cannot express", async () => {
+    // The list is the newest N UNFILTERED. The newest N matching a filter are
+    // not a subset of it: an account whose ten newest are all one kind has none
+    // of another in the list while having plenty in the chain.
+    const rows = [recentRow(90), recentRow(80), recentRow(70)];
+    for (const [label, extra] of [
+      ["kind", { kind: "Transfer" }],
+      ["netuid", { netuid: 7 }],
+      ["blockStart", { blockStart: 10 }],
+      ["blockEnd", { blockEnd: 99 }],
+      ["offset", { offset: 1 }],
+      ["cursor", { cursor: encodeCursor([1, 2, 3]) }],
+    ] as [string, Record<string, unknown>][]) {
+      const q = sqlFetch(rows);
+      await loadAccountEventsColdTier(
+        { ...TOKEN, ...withRecent(rows) } as never,
+        ADDR,
+        { limit: 2, ...extra },
+      );
+      assert.ok(q.length >= 1, `${label}: no read at all`);
+      assert.ok(
+        !q.every((sql) => sql.includes(`observed_at >= ${FOLD_FLOOR}`)),
+        `${label} was served from the projection`,
+      );
+    }
+  });
+
+  test("DECLINES when the caller wants more rows than the list holds", async () => {
+    // A short list is indistinguishable from a short account, so asking for
+    // more than it holds cannot be answered from it.
+    //
+    // ASSERTED ON THE BOUND, NOT THE QUERY COUNT. Since #11431 the walk clamps
+    // to the projection's floor and can also finish in one query, so counting
+    // them no longer tells the two tiers apart. The bound does: the hot probe
+    // starts at the generation's fold edge, the walk at this account's own
+    // first observed event.
+    const q = sqlFetch([]);
+    await loadAccountEventsColdTier(
+      { ...TOKEN, ...withRecent([recentRow(90), recentRow(80)]) } as never,
+      ADDR,
+      { limit: 5 },
+    );
+    assert.ok(q.length >= 1, "premise: a read was issued");
+    assert.ok(
+      q.every((sql) => !sql.includes(`observed_at >= ${FOLD_FLOOR}`)),
+      `served from the projection: ${q[0]}`,
+    );
+    assert.ok(
+      q.some((sql) => sql.includes(`observed_at >= ${FIRST_OBSERVED}`)),
+      `the walk must floor at the account's own span: ${q[0]}`,
+    );
+  });
+
+  test("A NON-DEFAULT NETWORK reads no projection at all", async () => {
+    let asked = 0;
+    const bucket = {
+      METAGRAPH_ARCHIVE: {
+        get: async () => {
+          asked += 1;
+          return null;
+        },
+      },
+    };
+    sqlFetch([]);
+    await loadAccountEventsColdTier(
+      { ...TOKEN, ...bucket } as never,
+      ADDR,
+      { limit: 2 },
+      "testnet",
+    );
+    assert.equal(asked, 0);
   });
 });

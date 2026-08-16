@@ -606,11 +606,22 @@ describe("the pointer is PARSED, not indexed (metagraphed-infra#580)", () => {
     }
   });
 
-  test("an undeclared field is refused", () => {
-    assert.equal(
-      AccountSummaryPointerSchema.safeParse(pointer({ surprise: 1 })).success,
-      false,
+  test("an undeclared field is STRIPPED, not refused", () => {
+    // THIS ASSERTION USED TO READ `false`, and it pinned the assumption that
+    // caused an outage. On 2026-08-16T17:30Z the producer -- which lives in
+    // another repository and deploys on its own schedule -- published
+    // `recent_from`, and `.strict()` rejected the whole pointer over it. Every
+    // account lost its projection silently; see the dedicated describe block at
+    // the end of this file for the full account.
+    //
+    // The field is dropped rather than carried onward, which is the difference
+    // from `.passthrough()` (banned by the no-passthrough gate) and the reason
+    // nothing undeclared can reach a caller.
+    const parsed = AccountSummaryPointerSchema.safeParse(
+      pointer({ surprise: 1 }),
     );
+    assert.equal(parsed.success, true);
+    assert.ok(parsed.data && !("surprise" in parsed.data));
   });
 
   test("a pointer that fails the schema declines the tier rather than throwing", async () => {
@@ -951,10 +962,10 @@ describe("AccountSummaryRecentEventSchema", () => {
  * `span` alone would silently take no floor on exactly the accounts whose
  * unbounded walk is most expensive.
  */
-describe("accountHistoryFloorMs", () => {
-  /** A pointer stamped now, so the freshness check is not a clock race. */
-  const nowIso = () => new Date().toISOString();
+/** A pointer stamped now, so a freshness check is not a clock race. */
+const nowIso = () => new Date().toISOString();
 
+describe("accountHistoryFloorMs", () => {
   test("a PRESENT account floors at its earliest folded event", async () => {
     const store = archive(
       published(
@@ -1024,5 +1035,94 @@ describe("accountHistoryFloorMs", () => {
       await accountHistoryFloorMs(store.env, HOT, DEFAULT_CHAIN_NETWORK),
       4_242,
     );
+  });
+});
+
+/**
+ * The pointer must survive a producer that publishes MORE than this declares.
+ *
+ * 2026-08-16T17:30Z, production: the account-summary lane recovered after two
+ * days out (metagraphed-infra#599, #601) and its first generation published a
+ * field this schema did not declare. `.strict()` rejected the whole pointer
+ * over it -- not the field, the POINTER -- so `loadAccountSummaryProjection`
+ * returned null for every account. The card lost its projection, `readRecent`
+ * never ran, and `accountHistoryFloorMs` returned null, which made every scan
+ * floor #11425 had just added INERT. `/events?limit=5` went back to 21s.
+ *
+ * Nothing failed. Every route quietly took its slow path.
+ */
+describe("the pointer, against a producer that deploys independently", () => {
+  /** The exact bytes production published at 2026-08-16T17:30:20Z. */
+  const LIVE = {
+    schema_version: 1,
+    generation: "20260816T173020Z",
+    shard_count: 16384,
+    generated_at: "2026-08-16T17:30:20Z",
+    account_count: 814072,
+    recent_limit: 10,
+    recent_from: "2026-07-16",
+    through: "2026-08-15",
+  };
+
+  test("THE LIVE POINTER PARSES", () => {
+    const parsed = AccountSummaryPointerSchema.safeParse(LIVE);
+    assert.ok(parsed.success, JSON.stringify(parsed.error?.issues));
+    assert.equal(parsed.data.recent_limit, 10);
+    assert.equal(parsed.data.recent_from, "2026-07-16");
+  });
+
+  test("A FIELD THIS SCHEMA HAS NEVER SEEN is stripped, not fatal", () => {
+    // The next `recent_from`. The producer is in another repository and ships
+    // on its own schedule, so this WILL happen again -- and the cost of being
+    // wrong is total and silent, where the cost of stripping is that one
+    // unknown field is ignored.
+    const parsed = AccountSummaryPointerSchema.safeParse({
+      ...LIVE,
+      some_field_added_next_quarter: { nested: true },
+    });
+    assert.ok(parsed.success, JSON.stringify(parsed.error?.issues));
+    assert.equal(parsed.data.generation, "20260816T173020Z");
+    assert.ok(
+      !("some_field_added_next_quarter" in parsed.data),
+      "stripped, not carried onward -- this is not passthrough",
+    );
+  });
+
+  test("A DECLARED FIELD IS STILL VALIDATED EXACTLY AS STRICTLY", () => {
+    // Dropping `.strict()` loosens what the object may CONTAIN, never what a
+    // declared field may BE. A producer that starts writing a string count is
+    // still refused.
+    for (const bad of [
+      { ...LIVE, shard_count: "16384" },
+      { ...LIVE, shard_count: 0 },
+      { ...LIVE, generation: "" },
+      { ...LIVE, recent_limit: 0 },
+      { ...LIVE, account_count: -1 },
+    ]) {
+      assert.equal(
+        AccountSummaryPointerSchema.safeParse(bad).success,
+        false,
+        JSON.stringify(bad).slice(0, 90),
+      );
+    }
+  });
+
+  test("THE WHOLE READ SURVIVES an unknown pointer field, end to end", async () => {
+    // The unit above is the rule; this is the property that broke. A pointer
+    // that parses but a read that still declines would be the same outage.
+    const store = archive(
+      published(
+        { [HOT]: [group()] },
+        {
+          through: "2026-08-13",
+          generated_at: nowIso(),
+          recent_from: "2026-07-16",
+          a_field_from_the_future: 1,
+        },
+      ),
+    );
+    const found = await readFound(store.env, HOT, FRESH);
+    assert.equal(found.groups.length, 1);
+    assert.ok(found.span, "the floor every account route depends on");
   });
 });

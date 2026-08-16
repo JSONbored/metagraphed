@@ -45,34 +45,84 @@ import { AccountEventsRowSchema } from "../lakehouse.ts";
  * not consult it; declaring it here is what stops it being an undeclared field
  * on a published object, which is the defect #9831 was filed about.
  */
-export const AccountSummaryPointerSchema = z
-  .object({
-    schema_version: z.number().int(),
-    generation: z.string().min(1),
-    shard_count: z.number().int().positive(),
-    generated_at: z.string().min(1),
-    account_count: z.number().int().nonnegative(),
-    through: z.string().min(1).optional(),
-    /**
-     * How many events per account the shards carry in their `recent` map
-     * (metagraphed-infra#575), when they carry one at all.
-     *
-     * THE LIMIT TRAVELS WITH THE DATA. `ACCOUNT_SUMMARY_RECENT_LIMIT` lives in
-     * this repository and the producer lives in another, so a reader that
-     * assumed the published N matched its own would serve a short feed the
-     * moment the two diverged -- and no CI here could see it. Declaring the N
-     * actually written lets the reader DECLINE when the artifact carries fewer
-     * than it needs, exactly as `shard_count` already travels rather than being
-     * agreed by convention.
-     *
-     * OPTIONAL, because every generation published before #575 lacks it, and
-     * those pointers are still valid to read for their aggregate leg. Absent
-     * means "no recent map" -- not "some unknown number" -- so the reader falls
-     * back to the lakehouse for that leg alone.
-     */
-    recent_limit: z.number().int().positive().optional(),
-  })
-  .strict();
+export const AccountSummaryPointerSchema = z.object({
+  schema_version: z.number().int(),
+  generation: z.string().min(1),
+  shard_count: z.number().int().positive(),
+  generated_at: z.string().min(1),
+  account_count: z.number().int().nonnegative(),
+  through: z.string().min(1).optional(),
+  /**
+   * How many events per account the shards carry in their `recent` map
+   * (metagraphed-infra#575), when they carry one at all.
+   *
+   * THE LIMIT TRAVELS WITH THE DATA. `ACCOUNT_SUMMARY_RECENT_LIMIT` lives in
+   * this repository and the producer lives in another, so a reader that
+   * assumed the published N matched its own would serve a short feed the
+   * moment the two diverged -- and no CI here could see it. Declaring the N
+   * actually written lets the reader DECLINE when the artifact carries fewer
+   * than it needs, exactly as `shard_count` already travels rather than being
+   * agreed by convention.
+   *
+   * OPTIONAL, because every generation published before #575 lacks it, and
+   * those pointers are still valid to read for their aggregate leg. Absent
+   * means "no recent map" -- not "some unknown number" -- so the reader falls
+   * back to the lakehouse for that leg alone.
+   */
+  recent_limit: z.number().int().positive().optional(),
+  /**
+   * The earliest day the recent lists cover, as the producer states it.
+   *
+   * DECLARED BECAUSE IT IS PUBLISHED, which is #9831's rule -- but it was
+   * declared LATE, and the cost is the whole reason `.strict()` is gone from
+   * this object. See below.
+   *
+   * The producer seeds the lists by walking history backward, so at any
+   * moment they describe a suffix of time; this names where that suffix
+   * starts. The reader does not consult it -- `readRecent` settles
+   * completeness per account against the groups' lifetime count, which is
+   * exact where a global watermark is conservative.
+   */
+  recent_from: z.string().min(1).optional(),
+});
+
+/**
+ * WHY THIS ONE OBJECT IS NOT `.strict()`, unlike everything around it.
+ *
+ * It was, and on 2026-08-16T17:30Z that took the entire account family's hot
+ * tier down in production, silently. The account-summary lane recovered after
+ * two days out (metagraphed-infra#599, #601) and its first generation published
+ * a field this schema did not declare:
+ *
+ *   {"generation":"20260816T173020Z", ... ,"recent_limit":10,
+ *    "recent_from":"2026-07-16","through":"2026-08-15"}
+ *
+ * `.strict()` rejected the whole pointer over `recent_from`. Not the field --
+ * the POINTER. `loadAccountSummaryProjection` returned null for every account,
+ * so the card lost its projection, `readRecent` never ran, and
+ * `accountHistoryFloorMs` returned null -- which made every scan floor #11425
+ * had just added INERT. Measured: `/events?limit=5` back to 21s. Nothing
+ * failed; every route quietly took its slow path.
+ *
+ * THE PRODUCER IS IN ANOTHER REPOSITORY AND DEPLOYS INDEPENDENTLY. That is the
+ * whole argument, and it is the same one `container-lane-status.ts` makes for
+ * the five status objects. Weigh the two failure modes:
+ *
+ *   strict + a field the producer ADDED  -> total, silent loss of the hot tier
+ *                                           for every account. Happened.
+ *   strip  + a field the producer TYPO'D -> that one field reads as absent, the
+ *                                           reader declines that leg alone and
+ *                                           falls back. Slow, and correct.
+ *
+ * The second is strictly better, and this reader is built for it: every
+ * optional field's absence already means "fall back to the lakehouse", so
+ * stripping degrades along a path that is tested rather than into a hole.
+ *
+ * NOT `.passthrough()`, which the no-passthrough gate bans and which would be
+ * the wrong tool anyway: zod's default STRIPS what it does not describe rather
+ * than carrying it onward, so nothing undeclared reaches a caller. The
+ * declared fields are validated exactly as strictly as before.
+ */
 
 /**
  * One group row inside a shard: an account's events of one kind on one subnet.

@@ -40,8 +40,19 @@ import {
   type ChainEventApi,
 } from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { type ChainNetworkId, chainTable } from "./chain-network.ts";
-import { accountHistoryFloorMs } from "./account-summary-projection.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  chainTable,
+} from "./chain-network.ts";
+import {
+  accountHistoryFloorMs,
+  loadAccountSummaryProjection,
+} from "./account-summary-projection.ts";
+import {
+  mergeNewestEvents,
+  type FeedKeyed,
+} from "./account-feeds-cold-tier.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -86,6 +97,122 @@ export interface AccountEventsQuery {
  * when the lakehouse cannot answer faithfully, so the caller keeps its
  * existing fallback.
  */
+/**
+ * The account's newest events, served from the projection instead of the walk.
+ *
+ * THE HOT TIER THIS FAMILY ALREADY HAD AND DID NOT USE. metagraphed-infra#575
+ * publishes each account's newest N events as COMPLETE ROWS -- block_number,
+ * event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao,
+ * alpha_amount, observed_at -- and generation 20260816T173020Z is the first to
+ * carry them (`recent_limit: 10`, `recent_from: 2026-07-16`, 814,072 accounts).
+ * `readRecent` had exactly ONE consumer: the summary card. A request for the
+ * newest five events walked the lakehouse while the newest ten sat in a 63 KB
+ * object the same page load had already fetched.
+ *
+ * ## Why this is a latency fix and the bounds were a cost fix
+ *
+ * R2 SQL costs seconds per query almost regardless of what it scans -- measured
+ * 2026-08-16, `/events?limit=5` on 5EEmaGFE...5oM3qDSC took 6.0s AFTER its scan
+ * was floored to five days, while the card answered in 174ms because it issues
+ * no query at all. #11425 and #11431 cut bytes and query count, which is real
+ * money; neither can get under the per-query floor. Not querying does.
+ *
+ * ONE PROBE REMAINS, and it is not optional: the projection describes events at
+ * or before its fold edge, so anything newer is missing from it. `floorMs` is
+ * where the producer stopped, so a single bounded read covers exactly the gap
+ * -- against the walk's two-to-three reads over the account's whole span.
+ *
+ * ## What makes serving it EXACT rather than approximately right
+ *
+ * `readRecent` only returns a list when that list IS the newest
+ * `min(published, lifetime)` events -- it declines a short one rather than
+ * handing back a truncated page. So the first `limit` of it are the newest
+ * `limit` overall, and `mergeNewestEvents` re-sorts them with the head probe on
+ * the feed's own three-part key. The page is byte-identical to the walk's,
+ * which is what lets the caller's cursor stay unchanged.
+ *
+ * ## Every reason this DECLINES, and why each has to
+ *
+ *   any filter      `kind`, `netuid`, `blockStart`, `blockEnd`. The published
+ *                   list is the newest N UNFILTERED; the newest N matching a
+ *                   filter are not a subset of it -- an account whose ten
+ *                   newest are all one kind has none of another in the list
+ *                   while having plenty in the chain. Filtering here would
+ *                   answer "none" with total confidence.
+ *   a cursor        the list is page 1 by construction. A seek token asks for
+ *                   rows below a point the projection may not reach.
+ *   an offset       same argument: `offset` skips into a region the list does
+ *                   not describe.
+ *   limit > rows    the list holds `min(recent_limit, lifetime)` rows. Asking
+ *                   for more than it holds cannot be answered from it, because
+ *                   a short list here is indistinguishable from a short account.
+ *   another network the projection is mainnet's.
+ *
+ * A decline costs one R2 GET of an object the card has usually warmed, and
+ * falls through to exactly the walk that ran before this existed.
+ */
+async function recentEventsLeg(
+  env: R2SqlEnv | null | undefined,
+  options: {
+    ss58: string;
+    where: readonly string[];
+    limit: number;
+    network: ChainNetworkId;
+    /**
+     * The generic reader, not `R2SqlReader`. `r2SqlQuery` derives the catalog
+     * schema from the table named in the SQL and refuses any row that violates
+     * it, so naming the row type here is "validated, then named" -- which is
+     * what `validate:untyped-db-reads` sits at a ceiling of zero to require.
+     * `R2SqlReader` erases that to `Record<string, unknown>` and would count
+     * against it.
+     */
+    query: typeof r2SqlQuery;
+  },
+): Promise<AccountEventsRow[] | null> {
+  const { ss58, where, limit, network, query } = options;
+  if (network !== DEFAULT_CHAIN_NETWORK) return null;
+  const projected = await loadAccountSummaryProjection(env, ss58, {
+    recentLimit: limit,
+  });
+  if (projected === null || projected.absent === true) return null;
+  const recent = projected.recent;
+  if (recent === null || recent.rows.length < limit) return null;
+
+  const head = await query<AccountEventsRow>(
+    env,
+    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
+      `WHERE ${where.join(" AND ")} ` +
+      `AND observed_at >= ${Math.trunc(recent.floorMs)}` +
+      ` ORDER BY observed_at DESC, block_number DESC, event_index DESC` +
+      ` LIMIT ${limit}`,
+  );
+  // A FAILED PROBE FAILS THE LEG rather than serving the published half alone.
+  // The missing rows would be the NEWEST ones -- the top of the feed -- and the
+  // payload carries nothing that could say they were dropped. Returning null
+  // falls through to the walk, which is slower and complete.
+  if (head === null) return null;
+
+  // BOTH HALVES ARE ALREADY VALIDATED, each by the reader that owns it, and
+  // neither is cast into place:
+  //
+  //   published  `AccountSummaryRecentSchema` inside `readRecent` -- required
+  //              and `.strict()`, because a published artifact writes whole
+  //              rows and a missing column there is a producer bug
+  //   probe      `r2SqlQuery` itself, which derives the catalog schema from the
+  //              table named in the SQL and refuses any row that violates it
+  //              (src/r2-sql.ts) -- returning null, which is the branch above
+  //
+  // A second `safeParse` here was the first version of this, and it was
+  // DUPLICATED VALIDATION: the same rows checked twice against the same
+  // generated schema, with a second decline path to keep in step with the
+  // first. One owner per boundary.
+  //
+  // `mergeNewestEvents` is generic over the shape both halves share, so the
+  // compiler still checks that these two really do describe the same rows --
+  // the job that the `as unknown as` this replaced was destroying.
+  return mergeNewestEvents<AccountEventsRow>(recent.rows, head, limit);
+}
+
 export async function loadAccountEventsColdTier(
   env: R2SqlEnv | null | undefined,
   ss58: string,
@@ -155,6 +282,32 @@ export async function loadAccountEventsColdTier(
 
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
+
+  // THE HOT TIER FIRST, when the request is one the projection can answer
+  // exactly -- see `recentEventsLeg` for every reason it declines. Placed after
+  // `where` is assembled so the head probe carries the identical predicate, and
+  // gated on the absence of every narrowing the published list cannot express.
+  if (
+    cursor === null &&
+    paged === 0 &&
+    query.kind == null &&
+    query.netuid == null &&
+    query.blockStart == null &&
+    query.blockEnd == null
+  ) {
+    const hot = await recentEventsLeg(env, {
+      ss58,
+      where,
+      limit,
+      network: network ?? DEFAULT_CHAIN_NETWORK,
+      query: r2SqlQuery,
+    });
+    // `paged` is 0 here by the guard above -- the hot tier only ever serves an
+    // unpaged first page -- and passing it explicitly keeps that visible at the
+    // call site rather than relying on the reader to re-derive it.
+    if (hot !== null) return pageOf(hot, ss58, limit, offset, 0);
+  }
+
   const rows = await windowedRowRead<AccountEventsRow>(env, {
     table: chainTable("account_events", network),
     columns: EVENT_COLUMNS,
@@ -168,7 +321,26 @@ export async function loadAccountEventsColdTier(
     floorMs,
   });
   if (rows === null) return null;
+  return pageOf(rows, ss58, limit, offset, paged);
+}
 
+/**
+ * One page and its seek token, from rows either tier produced.
+ *
+ * SHARED SO THE TWO TIERS CANNOT DIVERGE. The cursor is built from the last row
+ * of the page, so a hot-tier page that paginated differently from the walk's
+ * would hand the caller a token that skips or repeats rows on page 2 -- and
+ * page 2 always goes to the walk, because a cursor makes the request
+ * hot-tier-ineligible. The rows are identical by construction; this makes the
+ * token identical by construction too.
+ */
+function pageOf<Row extends FeedKeyed & Record<string, unknown>>(
+  rows: Row[],
+  ss58: string,
+  limit: number,
+  offset: number,
+  paged: number,
+): ReturnType<typeof buildAccountEvents> {
   const page = paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
   const nextCursor = last

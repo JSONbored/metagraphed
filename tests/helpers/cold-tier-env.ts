@@ -176,6 +176,17 @@ export function forbiddenDataApi() {
  */
 export function accountSummaryArchive(input: {
   accounts: Record<string, unknown>;
+  /**
+   * The producer's newest-N event map, keyed by account (infra#575).
+   *
+   * SEPARATE FROM `accounts` because it is separate in the artifact: a
+   * generation can carry groups and no map at all, which is what every
+   * generation before 20260816T173020Z did, and the reader has to decline that
+   * case rather than read an empty list as "no events".
+   */
+  recent?: Record<string, unknown>;
+  /** Extra pointer fields -- `recent_limit`, `recent_from`. */
+  pointer?: Record<string, unknown>;
   through?: string;
   generation?: string;
   shards?: number;
@@ -183,6 +194,8 @@ export function accountSummaryArchive(input: {
 }): ArchiveDouble {
   const {
     accounts,
+    recent = null,
+    pointer = {},
     through = "2026-08-14",
     generation = "20260815T000000Z",
     shards = 16384,
@@ -198,6 +211,14 @@ export function accountSummaryArchive(input: {
     if (entry !== null) bucket[account] = entry;
     byShard.set(shard, bucket);
   }
+  /** The same split for the recent map, which rides in the same shard object. */
+  const recentByShard = new Map<number, Record<string, unknown>>();
+  for (const [account, rows] of Object.entries(recent ?? {})) {
+    const shard = accountShard(account, shards);
+    const bucket = recentByShard.get(shard) ?? {};
+    bucket[account] = rows;
+    recentByShard.set(shard, bucket);
+  }
   return archiveEnv((key) => {
     if (key === pointerKey) {
       return {
@@ -207,13 +228,22 @@ export function accountSummaryArchive(input: {
         generated_at: generatedAt,
         account_count: Object.keys(accounts).length,
         through,
+        ...pointer,
       };
     }
     if (key.startsWith(prefix) && key.endsWith(".json")) {
       const shard = Number(key.slice(prefix.length, -".json".length));
       const bucket = byShard.get(shard);
       if (bucket === undefined) return null;
-      return { schema_version: 1, shard_count: shards, accounts: bucket };
+      return {
+        schema_version: 1,
+        shard_count: shards,
+        accounts: bucket,
+        // Omitted entirely when the fixture declares none, matching a
+        // pre-#575 generation -- an empty object would be a DIFFERENT claim
+        // ("folded, nothing recent") from the absence the reader must decline.
+        ...(recent === null ? {} : { recent: recentByShard.get(shard) ?? {} }),
+      };
     }
     return null;
   });
