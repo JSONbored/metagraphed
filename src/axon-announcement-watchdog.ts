@@ -147,6 +147,19 @@ export interface AxonFinding {
   lossesViaReuse: number | null;
   /** Axon losses where the same hotkey stopped announcing. Null until measured. */
   lossesSameHotkey: number | null;
+  /**
+   * Distinct IPs the withdrawn axons were announcing from. Null until measured.
+   *
+   * THE DIAGNOSTIC THAT NAMES THE BLAST RADIUS. SN101's 2026-08-11 event read
+   * as "75 of 256 miners went dark" -- 29% of the metagraph, and subnet-shaped.
+   * All 75 were announcing from ONE address (152.53.149.254, four coldkeys), so
+   * it was a single operator's host, not the subnet changing behaviour.
+   *
+   * 1 means one host or one operator, and probably nobody has noticed. N means
+   * a genuine subnet-wide change. They ask for completely different responses,
+   * and the count is the cheapest thing that separates them.
+   */
+  lossesDistinctIps: number | null;
 }
 
 /** Median of a list, on a copy — the caller's array is never reordered. */
@@ -206,6 +219,7 @@ export function evaluateSubnetAxons(
     // "zero" -- see classifyAxonMechanism.
     lossesViaReuse: null,
     lossesSameHotkey: null,
+    lossesDistinctIps: null,
   };
 }
 
@@ -239,7 +253,12 @@ export function axonDetail(findings: readonly AxonFinding[]): string {
           : f.kind === "churn-replaced"
             ? `, churn-replaced: ${f.lossesViaReuse ?? 0} of ${(f.lossesViaReuse ?? 0) + (f.lossesSameHotkey ?? 0)} losses were deregistrations`
             : f.lossesSameHotkey !== null
-              ? `, ${f.lossesSameHotkey} miner(s) stopped announcing`
+              ? `, ${f.lossesSameHotkey} miner(s) stopped announcing` +
+                (f.lossesDistinctIps === null
+                  ? ""
+                  : f.lossesDistinctIps === 1
+                    ? " -- ALL FROM ONE ADDRESS, so this is one host rather than the subnet"
+                    : ` from ${f.lossesDistinctIps} addresses`)
               : "") +
         ")",
     )
@@ -295,8 +314,16 @@ export async function loadAxonLossMechanisms(
     | undefined,
   netuids: readonly number[],
   sinceDate: string,
-): Promise<Record<number, { viaReuse: number; sameHotkey: number }>> {
-  const out: Record<number, { viaReuse: number; sameHotkey: number }> = {};
+): Promise<
+  Record<
+    number,
+    { viaReuse: number; sameHotkey: number; distinctIps: number | null }
+  >
+> {
+  const out: Record<
+    number,
+    { viaReuse: number; sameHotkey: number; distinctIps: number | null }
+  > = {};
   const ids = (netuids ?? []).filter((n) => Number.isSafeInteger(n) && n >= 0);
   if (!db?.query || ids.length === 0) return out;
   try {
@@ -304,12 +331,15 @@ export async function loadAxonLossMechanisms(
       "WITH seq AS (SELECT netuid, uid, snapshot_date, hotkey, " +
         "(axon IS NOT NULL) AS has_axon, " +
         "LAG(axon IS NOT NULL) OVER w AS prev_has, " +
-        "LAG(hotkey) OVER w AS prev_hotkey FROM neuron_daily " +
+        "LAG(hotkey) OVER w AS prev_hotkey, LAG(axon) OVER w AS prev_axon " +
+        "FROM neuron_daily " +
         `WHERE snapshot_date >= ? AND netuid IN (${ids.map(() => "?").join(",")}) ` +
         "WINDOW w AS (PARTITION BY netuid, uid ORDER BY snapshot_date)) " +
         "SELECT netuid, " +
         "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey IS DISTINCT FROM prev_hotkey) AS via_reuse, " +
-        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS same_hotkey " +
+        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS same_hotkey, " +
+        "COUNT(DISTINCT split_part(prev_axon, ':', 1)) FILTER " +
+        "(WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS distinct_ips " +
         "FROM seq GROUP BY netuid",
       [sinceDate, ...ids],
     )) as Record<string, unknown>[];
@@ -317,9 +347,16 @@ export async function loadAxonLossMechanisms(
       const netuid = Number(row?.netuid);
       const viaReuse = Number(row?.via_reuse ?? 0);
       const sameHotkey = Number(row?.same_hotkey ?? 0);
+      const ips = Number(row?.distinct_ips);
       if (!Number.isFinite(netuid)) continue;
       if (!Number.isFinite(viaReuse) || !Number.isFinite(sameHotkey)) continue;
-      out[netuid] = { viaReuse, sameHotkey };
+      out[netuid] = {
+        viaReuse,
+        sameHotkey,
+        // Null rather than 0 when unreadable: "no addresses" and "we did not
+        // count the addresses" are different, and only one of them is a fact.
+        distinctIps: Number.isFinite(ips) ? ips : null,
+      };
     }
   } catch {
     // Unmeasured, not zero. The caller keeps each finding's default kind.
@@ -383,6 +420,7 @@ export async function runAxonAnnouncementWatchdog(
     if (!counts) continue;
     finding.lossesViaReuse = counts.viaReuse;
     finding.lossesSameHotkey = counts.sameHotkey;
+    finding.lossesDistinctIps = counts.distinctIps;
     // Turnover is decided by the neuron count and is not up for revision here:
     // a subnet that emptied is not "churn" at any ratio.
     if (finding.kind !== "subnet-turned-over") {
