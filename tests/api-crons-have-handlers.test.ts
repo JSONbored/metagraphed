@@ -14,8 +14,8 @@ import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, test } from "vitest";
-import { API_HANDLED_CRONS } from "../workers/api.ts";
-import { HEALTH_PROBER_CRON } from "../workers/config.ts";
+import { API_HANDLED_CRONS, cronLabel } from "../workers/api.ts";
+import { HEALTH_PROBER_CRON, HEALTH_PRUNE_CRON } from "../workers/config.ts";
 import { stripJsonComments } from "../scripts/lib.ts";
 
 const CONFIG = "wrangler.jsonc";
@@ -218,5 +218,53 @@ describe("wrangler.jsonc crons and their handlers", () => {
       `these are in API_HANDLED_CRONS but no branch dispatches on them, so they ` +
         `would fire and do nothing:\n${unbranched.join("\n")}`,
     );
+  });
+});
+
+describe("the usage label agrees with dispatch about what ran", () => {
+  // #10815 made `dispatchScheduled` explicit -- a branch for HEALTH_PROBER_CRON
+  // and an `unknown cron` decline after it -- and left `cronLabel` on the old
+  // fall-through. The two then disagreed about the same tick: dispatch reported
+  // `{ok: false, reason: "unknown cron"}` while the usage record called it a
+  // health-prober run. The label is the only one of the two a reader browsing
+  // usage data ever sees.
+  test("every declared cron has a label of its own", () => {
+    // DERIVED from the config, so a cron added tomorrow with no label branch
+    // fails here rather than being filed under someone else's lane. This is the
+    // same both-directions argument as the handler tests above, for the half
+    // that reporting depends on.
+    const unlabelled = declaredCrons(CONFIG).filter(
+      (cron) => cronLabel(cron) === "unknown-cron",
+    );
+    assert.deepEqual(
+      unlabelled,
+      [],
+      `these declared crons fall through to "unknown-cron", so their ticks are ` +
+        `recorded under no lane: ${unlabelled.join(", ")}`,
+    );
+  });
+
+  test("the health prober is labelled by its own branch, not by falling through", () => {
+    assert.equal(cronLabel(HEALTH_PROBER_CRON), "health-prober");
+  });
+
+  test("an ORPHANED expression is named unknown, not health-prober", () => {
+    // The regression. `*/15 * * * *` used to BE the fall-through, so a typo'd or
+    // retired expression was both dispatched to and reported as the prober.
+    // Dispatch stopped doing that; this is the reporting half.
+    for (const orphan of ["44 4 * * *", "*/9 * * * *", "not-a-cron"]) {
+      assert.equal(
+        cronLabel(orphan),
+        "unknown-cron",
+        `${orphan} matches no branch and must not borrow a working lane's name`,
+      );
+    }
+  });
+
+  test("a real lane is still labelled, so the above is not vacuous", () => {
+    // Guards the guard: if `cronLabel` returned "unknown-cron" for everything,
+    // the orphan test would pass while the sweep above failed -- but a reader
+    // seeing only this file should be able to tell the two apart.
+    assert.equal(cronLabel(HEALTH_PRUNE_CRON), "health-prune");
   });
 });
