@@ -43,7 +43,7 @@
 // state_call and storage reads. See that constant for the full reasoning.
 import { selectWssUpstreams, type PoolsArtifact } from "./wss-lb-select.ts";
 import { MAX_RPC_BODY_BYTES, WSS_DENIED_RPC_PREFIXES } from "./config.ts";
-import { WssPoolsResponseSchema } from "../schemas-src/internal-wire.ts";
+import { RpcPoolsReadSchema } from "../schemas-src/internal-wire.ts";
 import {
   recordExceptionEvent,
   recordUsageEvent,
@@ -216,7 +216,7 @@ export async function loadPools(
     // all satisfied it, and an error page arrived here as a pool-less artifact
     // the caller could not tell from "no pools are eligible right now". One of
     // those is a 503 the operator should see; the other is normal.
-    const parsed = WssPoolsResponseSchema.safeParse(await res.json());
+    const parsed = RpcPoolsReadSchema.safeParse(await res.json());
     if (!parsed.success) return null;
     return "data" in parsed.data ? parsed.data.data : parsed.data;
   } catch {

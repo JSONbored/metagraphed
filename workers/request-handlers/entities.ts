@@ -17,6 +17,7 @@
 // straight from the src/* leaf modules + config. api.ts imports the
 // handlers back and dispatches them from the router.
 
+import { resolveObservedThrough } from "../../src/lakehouse-observed-through.ts";
 import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
 import { loadSubnetWeightsColdTier } from "../../src/subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "../../src/subnet-event-card-loader.ts";
@@ -4529,12 +4530,39 @@ async function accountMeta(
   artifactPath: string,
   generatedAt: unknown,
 ) {
+  // CONCURRENT, not two awaits in an object literal. Object properties evaluate
+  // in order, so `await a, await b` there is SERIAL -- it would add the
+  // horizon's latency to every one of the 50 responses this builder serves
+  // rather than overlapping it with a read that was already happening. Neither
+  // depends on the other.
+  //
+  // `observed_through` is HERE, AND NOT IN EACH PAYLOAD, because the horizon is
+  // a property of the tier that answered rather than of the account asked
+  // about -- the same reasoning that puts `stale_contract` on the shared meta.
+  // One stamp reaches every response this builder serves; fifty payload fields
+  // would be the same fact restated until two of them disagreed.
+  //
+  // It is what separates "this ss58 has no activity" from "coverage has not
+  // reached it yet". Both are a 200 with zeros, deliberately -- an ss58 is a
+  // valid identity whether or not it has ever acted, and inferring not-found
+  // from zeros would 404 real accounts -- so the distinction has to be
+  // published beside the zeros rather than encoded as an error.
+  //
+  // ALWAYS PRESENT, null included. Omitting it when unreadable would make "this
+  // tier publishes no horizon" and "the horizon could not be read this tick"
+  // the same absence, which is the exact conflation being fixed. Neither read
+  // can reject: both resolve null on every failure.
+  const [observedThrough, published] = await Promise.all([
+    resolveObservedThrough(env),
+    publishedAt(env),
+  ]);
   return {
     artifact_path: artifactPath,
     cache: "short",
     contract_version: contractVersion(env),
     generated_at: generatedAt,
-    published_at: await publishedAt(env),
+    observed_through: observedThrough,
+    published_at: published,
     source: "chain-events",
   };
 }

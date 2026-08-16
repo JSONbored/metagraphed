@@ -146,6 +146,28 @@ export interface AccountSummaryProjectionRead {
    * validated them.
    */
   recent: { rows: AccountSummaryRecentEvent[]; floorMs: number } | null;
+  /** Never set on a read that FOUND the account. The discriminant against
+   * `AccountSummaryProjectionAbsent`, so a caller cannot confuse "here are the
+   * account's groups" with "this account has no history before `floorMs`". */
+  absent?: false;
+}
+
+/**
+ * The projection was readable and does NOT list this account.
+ *
+ * That is a MEASUREMENT, not a miss: the producer writes every shard, so an
+ * account missing from a shard that exists had no events at or before the
+ * generation's `through`. Everything it has ever done therefore sits at or
+ * after `floorMs`, which turns a lifetime scan into one bounded read.
+ *
+ * There are no `groups` because there are none to publish — the caller reads
+ * the bounded window instead, and that read is COMPLETE rather than partial,
+ * which is what separates this from the `null` decline beside it.
+ */
+export interface AccountSummaryProjectionAbsent {
+  absent: true;
+  /** First millisecond the projection does not describe. */
+  floorMs: number;
 }
 
 /** The R2 key holding this account's groups, within a generation. */
@@ -213,7 +235,9 @@ export async function loadAccountSummaryProjection(
      */
     recentLimit?: number;
   } = {},
-): Promise<AccountSummaryProjectionRead | null> {
+): Promise<
+  AccountSummaryProjectionRead | AccountSummaryProjectionAbsent | null
+> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get || !account) return null;
@@ -243,6 +267,34 @@ export async function loadAccountSummaryProjection(
   if (!payload) return null;
   const accounts = payload["accounts"];
   if (!accounts || typeof accounts !== "object") return null;
+
+  // POSITIVE ABSENCE IS AN ANSWER, and throwing it away is what made a new
+  // account the SLOWEST thing this route serves.
+  //
+  // The producer writes EVERY shard, empty ones included, precisely so this
+  // distinction can be drawn -- see `empty_payload`'s docstring in
+  // metagraphed-infra's account_summary_r2.py: "The reader cannot tell 'no such
+  // account' from 'this shard was never produced' when the object is absent --
+  // and the first is an answer while the second is a decline."
+  //
+  // The shard is present and does not list this account, so the projection has
+  // POSITIVELY ESTABLISHED that the account had no events at or before
+  // `through`. Returning a bare null here spent that fact: the caller could not
+  // tell it from an unreadable pointer, so it fell back to an unbounded
+  // lifetime scan of `chain.account_events` for an account whose entire history
+  // is known to sit inside a window a few days wide.
+  //
+  // Measured on production 2026-08-16: an account registered 2026-08-15T13:53 --
+  // one day past the generation's `through` -- took the unbounded path and the
+  // route answered `503 account_summary_unavailable` after aborting at the 15s
+  // ceiling, on an account with exactly ONE event.
+  //
+  // The bound still has to be placeable, so a generation with no usable
+  // `through` declines exactly as before rather than guessing a floor.
+  if ((accounts as Record<string, unknown>)[account] === undefined) {
+    const floorMs = recentFloorMs(pointer.through);
+    return floorMs === null ? null : { absent: true, floorMs };
+  }
   // PARSED PER-ACCOUNT, not per-shard. The envelope is checked structurally
   // above because a shard carries ~1,000 accounts and a request reads one of
   // them -- validating the whole object would spend the saving this tier

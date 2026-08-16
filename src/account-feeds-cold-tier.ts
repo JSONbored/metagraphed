@@ -1142,32 +1142,61 @@ export async function loadAccountSummaryColdTier(
     recentLimit: limit,
   });
 
+  // THE ACCOUNT THE PROJECTION HAS NEVER SEEN, which is every account newer
+  // than the last generation -- and the case that used to be the worst one.
+  //
+  // An absent account is not a miss (see AccountSummaryProjectionAbsent): the
+  // producer writes every shard, so absence from a shard that exists PROVES
+  // there are no events at or before `through`. Both legs therefore bound to
+  // `[floorMs, now)` and stay COMPLETE -- there is nothing below the floor to
+  // miss -- instead of opening the whole table for a scattered filter.
+  //
+  // This is the read the 503 came from: one event, an unbounded lifetime scan,
+  // aborted at the 15s ceiling.
+  const absentFloor = projected?.absent === true ? projected.floorMs : null;
+  const absentBound =
+    absentFloor === null
+      ? ""
+      : ` AND observed_at >= ${Math.trunc(absentFloor)}`;
+  /** The projection when it FOUND the account, narrowed once so neither leg has
+   * to re-discriminate the union. */
+  const found = projected && projected.absent !== true ? projected : null;
+
   const [groupRows, recentRows] = await Promise.all([
-    projected
-      ? Promise.resolve(projected.groups)
-      : windowedFloorRead<Record<string, unknown>[]>(env, {
-          query,
-          attempt: (bound, run) =>
-            run(
-              env,
-              `WITH scan AS (${scan(bound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
-                `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
-                `min(observed_at) AS fo, max(observed_at) AS lo ` +
-                `FROM scan GROUP BY event_kind, netuid`,
-              { onError: track("summary-groups") },
-            ),
-          // `sum(count)` over the groups is the rows the CTE saw, which is exactly
-          // the number the retired cap probe returned.
-          //
-          // No `?? 0`: `count(*)` always yields a value, so the nullish half is a
-          // branch no test can reach -- the same reading the `scanned` line below
-          // already applies. An absent count would make the sum NaN, `NaN > CAP` is
-          // false, and the read falls back to the unbounded query it would have
-          // issued anyway, so nothing is lost by not guarding it.
-          satisfied: (rows) =>
-            rows.reduce((n, row) => n + Number(row.count), 0) >
-            ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
-        }),
+    absentFloor !== null
+      ? query(
+          env,
+          `WITH scan AS (${scan(absentBound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
+            `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
+            `min(observed_at) AS fo, max(observed_at) AS lo ` +
+            `FROM scan GROUP BY event_kind, netuid`,
+          { onError: track("summary-groups-bounded") },
+        )
+      : found
+        ? Promise.resolve(found.groups)
+        : windowedFloorRead<Record<string, unknown>[]>(env, {
+            query,
+            attempt: (bound, run) =>
+              run(
+                env,
+                `WITH scan AS (${scan(bound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
+                  `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
+                  `min(observed_at) AS fo, max(observed_at) AS lo ` +
+                  `FROM scan GROUP BY event_kind, netuid`,
+                { onError: track("summary-groups") },
+              ),
+            // `sum(count)` over the groups is the rows the CTE saw, which is exactly
+            // the number the retired cap probe returned.
+            //
+            // No `?? 0`: `count(*)` always yields a value, so the nullish half is a
+            // branch no test can reach -- the same reading the `scanned` line below
+            // already applies. An absent count would make the sum NaN, `NaN > CAP` is
+            // false, and the read falls back to the unbounded query it would have
+            // issued anyway, so nothing is lost by not guarding it.
+            satisfied: (rows) =>
+              rows.reduce((n, row) => n + Number(row.count), 0) >
+              ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+          }),
     // THE FEED LEG, and the read that actually times this route out
     // (#11222). `windowedRowRead` probes `now-2d` then `now-8d` and then reads
     // the WHOLE remainder -- and 95.8% of accounts are past both probes, so
@@ -1180,22 +1209,37 @@ export async function loadAccountSummaryColdTier(
     // yet. The two halves meet at the edge of the last complete day rather
     // than overlapping or leaving a gap -- see `recentFloorMs` for why that
     // edge is `through` and emphatically not `generated_at`.
-    projected?.recent
+    //
+    // An ABSENT account takes the same bounded probe with NOTHING published to
+    // merge onto: the projection proved there is nothing below the floor, so
+    // the probe alone is the complete feed. Leaving this case on
+    // `windowedRowRead` would have bounded the aggregate leg and left the feed
+    // leg scanning the whole table -- fixing the cheaper half of the request
+    // and keeping the timeout.
+    absentFloor !== null
       ? headProbe(env, {
-          query: (e, sql) => query(e, sql, { onError: track("recent-head") }),
+          query: (e, sql) => query(e, sql, { onError: track("recent-absent") }),
           where,
-          floorMs: projected.recent.floorMs,
+          floorMs: absentFloor,
           limit,
-          published: projected.recent.rows,
+          published: [],
         })
-      : windowedRowRead<AccountEventsRow>(env, {
-          query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
-          table: "chain.account_events",
-          columns: EVENT_COLUMNS,
-          where: [where],
-          order: ` ${FEED_ORDER}`,
-          need: limit,
-        }),
+      : found?.recent
+        ? headProbe(env, {
+            query: (e, sql) => query(e, sql, { onError: track("recent-head") }),
+            where,
+            floorMs: found.recent.floorMs,
+            limit,
+            published: found.recent.rows,
+          })
+        : windowedRowRead<AccountEventsRow>(env, {
+            query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
+            table: "chain.account_events",
+            columns: EVENT_COLUMNS,
+            where: [where],
+            order: ` ${FEED_ORDER}`,
+            need: limit,
+          }),
   ]);
 
   // Either half missing is a decline: a card mixing measured aggregates with a

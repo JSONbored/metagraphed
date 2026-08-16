@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { archiveEnv } from "./helpers/cold-tier-env.ts";
-import { afterEach, describe, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The analytics store is Postgres now (#10179), reached through
@@ -28,6 +28,8 @@ import {
 } from "../workers/request-handlers/entities.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
+import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
+import { resetObservedThroughCache } from "../src/lakehouse-observed-through.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 // Edge-cache coverage for the store-backed analytics routes (audit #6). These four
@@ -255,6 +257,18 @@ const globalWithCaches = globalThis as unknown as { caches: Row | undefined };
 let originalCaches: Row | undefined;
 afterEach(() => {
   globalWithCaches.caches = originalCaches;
+});
+
+// This file COUNTS artifact reads, so it has to own every memo that can hide
+// one. The decode watermark is module-level and reset only between test FILES,
+// so whichever test in this file resolved it first paid its R2 GET and the rest
+// read a warm memo -- making an absolute read count depend on test ORDER rather
+// than on the behaviour under test. Resetting per test makes the counts mean
+// what they say. (Found when `observed_through` started stamping the tier's
+// horizon on every account_events-derived response, which resolves it.)
+beforeEach(() => {
+  resetDecodeWatermarkCache();
+  resetObservedThroughCache();
 });
 
 describe("analytics edge cache", () => {
@@ -602,7 +616,12 @@ describe("analytics edge cache", () => {
     await Promise.resolve();
     assert.equal(first.status, 200);
     const callsAfterMiss = archive.keys.length;
-    assert.equal(callsAfterMiss, 1);
+    // TWO: the stake-flow artifact, and the decode watermark behind
+    // `observed_through` -- this route is account_events-derived, so its meta
+    // states how far that tier has observed. Pinned exactly rather than
+    // loosened, so a THIRD read still fails here; the beforeEach above is what
+    // makes the number independent of test order.
+    assert.equal(callsAfterMiss, 2);
 
     // Explicit ?window=30d is the canonical form — must be a cache HIT (no DATA_API).
     const hit = await handleRequest(

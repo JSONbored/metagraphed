@@ -738,3 +738,100 @@ describe("the lanes run concurrently, and stay isolated", () => {
     assert.equal((result.lanes ?? []).length, RAW_CAPTURE_LANES.length);
   });
 });
+
+/**
+ * The pool widens the rotation — and the wiring that makes it do so.
+ *
+ * The measured ceiling on this lane is a PER-HOST rate limit, so one host was
+ * the whole budget and the lane fell 8,409 blocks (~28 h) behind on 2026-08-16.
+ * The endpoint lookup is DEFAULTED rather than injected in production, because
+ * an injectable nothing injects is a feature that never runs — these prove it
+ * reaches captureTick, and that a pool which cannot answer degrades to exactly
+ * the single-endpoint lane this was before.
+ */
+describe("the archive endpoints a lane reads from", () => {
+  /** Answers RPC for any host, recording which hosts were asked. */
+  function hostTrackingFetch(hosts: Set<string>) {
+    return (async (url: unknown, init?: { body?: string }) => {
+      hosts.add(new URL(String(url)).origin);
+      const req = JSON.parse(init?.body ?? "{}") as { method: string };
+      const reply = (result: unknown) =>
+        ({ ok: true, json: async () => ({ result }) }) as unknown as Response;
+      // Above BOTH lanes' genesis floors, or nextCaptureHeights yields nothing
+      // and the tick fetches no blocks at all -- which looks exactly like a
+      // rotation that never happened.
+      if (req.method === "chain_getHeader")
+        return reply({ number: "0x989680" });
+      if (req.method === "chain_getBlockHash") return reply("0xh1");
+      if (req.method === "chain_getBlock") {
+        return reply({
+          block: {
+            header: { number: "0x1", parentHash: "0xp" },
+            extrinsics: ["0xaa"],
+          },
+        });
+      }
+      return reply("0xevents");
+    }) as unknown as typeof fetch;
+  }
+
+  test("a pool member is ACTUALLY read, not merely resolved", async () => {
+    const hosts = new Set<string>();
+    const { env } = envWith();
+    await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
+      ctx: CTX,
+      fetchImpl: hostTrackingFetch(hosts),
+      endpointDeps: {
+        readArtifact: async () => ({
+          ok: true,
+          data: {
+            pools: [
+              {
+                id: "finney-rpc",
+                endpoints: [
+                  {
+                    id: "second",
+                    url: "https://second-archive.example",
+                    kind: "subtensor-rpc",
+                    auth_required: false,
+                    public_safe: true,
+                    pool_eligible: true,
+                    archive_support: true,
+                    status: "ok",
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      },
+    });
+    assert.ok(
+      hosts.has("https://second-archive.example"),
+      `the pool member was never read; hosts asked: ${[...hosts].join(", ")}`,
+    );
+  });
+
+  test("a pool that cannot answer leaves the configured host doing the work", async () => {
+    // The degrade path, which is what runs whenever R2 is unreachable. It must
+    // be the lane exactly as it was, never a tick that reads nothing.
+    const hosts = new Set<string>();
+    const { env } = envWith();
+    const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
+      ctx: CTX,
+      fetchImpl: hostTrackingFetch(hosts),
+      endpointDeps: {
+        readArtifact: async () => {
+          throw new Error("r2 down");
+        },
+      },
+    });
+    assert.equal(result.ok, true);
+    // Both lanes run, so both configured hosts appear; what must NOT appear is
+    // any host the (unreadable) pool would have contributed.
+    assert.ok(hosts.has("https://archive.chain.opentensor.ai"));
+    assert.equal(hosts.size, RAW_CAPTURE_LANES.length);
+  });
+});

@@ -81,6 +81,33 @@ export const DECODE_STALE_MS = 3 * 60 * 60 * 1000;
  */
 export const DECODE_LAG_BLOCKS = 2_400;
 
+/**
+ * How far the RAW CAPTURE may trail the CHAIN HEAD before it is a fault.
+ *
+ * THE HOLE THIS EXISTS TO CATCH. Every rule above measures the decoder against
+ * the capture. None of them measures the capture against the chain, so a
+ * capture that is losing satisfies all of them: the decoder keeps up with a
+ * watermark that is barely moving, `chain.blocks` stays contiguous, and the
+ * verdict is `ok`. Production ran 28 h in exactly that state on 2026-08-16 --
+ * `lane-alarm` reporting "0 alarming, 69 lanes" throughout -- while
+ * `/chain/alpha-volume` served a rolling-24h window whose newest row was 28.7 h
+ * old, so the whole network's volume read as a confident zero.
+ *
+ * WHY THE BOUND IS THE RETENTION WINDOW, not the cadence. Neon holds
+ * `chain_detail_account_events` for a rolling 24 h and the lakehouse is the
+ * long-term store. Once capture trails head by more than that retention, the
+ * span between the lakehouse's ceiling and Neon's floor is held by NO store and
+ * cannot be recovered from either -- it has to be re-read from the chain. 24 h
+ * is ~7,200 blocks, so the deadline is 7,200 and the alarm must land with room
+ * to act on it, not at the moment the loss becomes permanent.
+ *
+ * 900 blocks is ~3 hours: an eighth of that deadline, and well clear of the
+ * structural lag, which is one tick's chain production (~25 blocks) plus a
+ * partial final chunk. It cannot fire on healthy operation and still leaves
+ * ~21 h before anything is unrecoverable.
+ */
+export const CAPTURE_LAG_BLOCKS = 900;
+
 export interface SeamVerdict {
   reasons: string[];
   summary: Record<string, unknown>;
@@ -93,6 +120,14 @@ export interface SeamInput {
   watermark: DecodeWatermark | null;
   /** raw_capture_state.last_contiguous_block, or null when unreadable. */
   capturedThrough: number | null;
+  /**
+   * The chain's own head, from `blocks_head` — the yardstick for rule 6.
+   *
+   * NOT `hi` below: that is the lakehouse's newest decoded block, which trails
+   * the capture by construction. Measuring capture against it would compare the
+   * lane to something downstream of itself and always agree.
+   */
+  chainHead: number | null;
   /** min/max/count over chain.blocks, or nulls when unmeasurable. */
   lo: number | null;
   hi: number | null;
@@ -115,6 +150,7 @@ export function evaluateDecodeSeam({
   floor,
   watermark,
   capturedThrough,
+  chainHead,
   lo,
   hi,
   count,
@@ -160,6 +196,26 @@ export function evaluateDecodeSeam({
     );
   }
 
+  // 6. THE CAPTURE IS LOSING TO THE CHAIN. Every rule above is decoder-relative
+  //    and passes while this is true, because the decoder is faithfully
+  //    following a watermark that is falling behind. See CAPTURE_LAG_BLOCKS for
+  //    why the bound is the retention window rather than the cron cadence.
+  if (chainHead === null) {
+    reasons.push(
+      "could not read the chain head from blocks_head — whether the raw capture is keeping up with the chain is unmeasurable this tick",
+    );
+  } else if (
+    capturedThrough !== null &&
+    chainHead - capturedThrough > CAPTURE_LAG_BLOCKS
+  ) {
+    const behind = chainHead - capturedThrough;
+    reasons.push(
+      `the raw capture trails the chain head by ${behind} block(s) (threshold ${CAPTURE_LAG_BLOCKS}, ~${hours(behind * 12_000)}h of chain): ` +
+        `blocks ${capturedThrough + 1}..${chainHead} have not been captured as raw bytes at all, so no decode can recover them. ` +
+        "Past ~24h the span between the lakehouse's ceiling and Neon's rolling retention floor is held by no store and must be re-read from the chain",
+    );
+  }
+
   if (lo === null || hi === null || count === null) {
     // A failed read is not a passing check: staying quiet here would make an
     // unreachable lakehouse indistinguishable from a healthy one.
@@ -175,6 +231,11 @@ export function evaluateDecodeSeam({
         hi,
         count,
         captured_through: capturedThrough,
+        chain_head: chainHead,
+        head_lag:
+          capturedThrough === null || chainHead === null
+            ? null
+            : chainHead - capturedThrough,
       },
     };
   }
@@ -219,6 +280,13 @@ export function evaluateDecodeSeam({
       watermark_per_table: watermark?.perTable ?? null,
       captured_through: capturedThrough,
       capture_lag: capturedThrough === null ? null : capturedThrough - seam,
+      chain_head: chainHead,
+      // The capture's own lag, distinct from `capture_lag` above (which is the
+      // DECODER's lag behind the capture). Both can be healthy while this is not.
+      head_lag:
+        capturedThrough === null || chainHead === null
+          ? null
+          : chainHead - capturedThrough,
       lakehouse_lo: lo,
       lakehouse_hi: hi,
       lakehouse_count: count,
@@ -241,6 +309,28 @@ async function capturedThrough(env: unknown): Promise<number | null> {
   if (!db?.first) return null;
   try {
     return await watermarkRead(db)();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The chain head, or null on any failure.
+ *
+ * `blocks_head` is the per-block register the firehose fills, so it tracks the
+ * tip independently of the capture lane this rule judges. Reading the head from
+ * anything the capture lane also feeds would make rule 6 compare the lane to
+ * itself.
+ */
+async function chainHead(env: unknown): Promise<number | null> {
+  const db = readStore(env, ["blocks_head"]);
+  if (!db?.first) return null;
+  try {
+    const row = (await db.first(
+      "SELECT MAX(block_number) AS head FROM blocks_head",
+    )) as { head?: unknown } | null;
+    const head = num(row?.head);
+    return head !== null && Number.isFinite(head) ? head : null;
   } catch {
     return null;
   }
@@ -315,6 +405,7 @@ export async function runLakehouseSeamWatchdog(
     floor: blocksSeamFloor(env),
     watermark,
     capturedThrough: await capturedThrough(env),
+    chainHead: await chainHead(env),
     lo: num(row?.lo),
     hi: num(row?.hi),
     count: num(row?.n),

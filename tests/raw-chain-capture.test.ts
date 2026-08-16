@@ -239,7 +239,7 @@ describe("fetchRawBlock", () => {
       throw "plain string failure";
     }) as unknown as typeof fetch;
     const result = await captureTick({
-      rpcUrl: "https://rpc",
+      rpcUrls: ["https://rpc"],
       store,
       watermark,
       genesisFloor: 0,
@@ -266,7 +266,7 @@ describe("captureTick — the no-gap guarantee", () => {
     const { store, puts } = memoryStore();
     const { watermark, get } = memoryWatermark(null);
     const result = await captureTick({
-      rpcUrl: "https://rpc",
+      rpcUrls: ["https://rpc"],
       store,
       watermark,
       genesisFloor: 50,
@@ -282,7 +282,7 @@ describe("captureTick — the no-gap guarantee", () => {
     const { store, puts } = memoryStore();
     const { watermark, get } = memoryWatermark(99);
     const result = await captureTick({
-      rpcUrl: "https://rpc",
+      rpcUrls: ["https://rpc"],
       store,
       watermark,
       genesisFloor: 0,
@@ -307,7 +307,7 @@ describe("captureTick — the no-gap guarantee", () => {
     const { store, puts } = memoryStore();
     const { watermark, get } = memoryWatermark(99);
     const failing = {
-      rpcUrl: "https://rpc",
+      rpcUrls: ["https://rpc"],
       store,
       watermark,
       genesisFloor: 0,
@@ -342,7 +342,7 @@ describe("captureTick — the no-gap guarantee", () => {
     const { store, puts } = memoryStore();
     const { watermark, get } = memoryWatermark(99);
     const result = await captureTick({
-      rpcUrl: "https://rpc",
+      rpcUrls: ["https://rpc"],
       store,
       watermark,
       genesisFloor: 0,
@@ -361,7 +361,7 @@ describe("captureTick — the no-gap guarantee", () => {
     const { store, puts } = memoryStore();
     const { watermark } = memoryWatermark(110);
     const result = await captureTick({
-      rpcUrl: "https://rpc",
+      rpcUrls: ["https://rpc"],
       store,
       watermark,
       genesisFloor: 0,
@@ -375,7 +375,7 @@ describe("captureTick — the no-gap guarantee", () => {
   test("reports how far behind the head it still is, so lag is queryable", async () => {
     const { store, watermark } = { ...memoryStore(), ...memoryWatermark(0) };
     const result = await captureTick({
-      rpcUrl: "https://rpc",
+      rpcUrls: ["https://rpc"],
       store,
       watermark,
       genesisFloor: 0,
@@ -394,7 +394,7 @@ describe("captureTick — the no-gap guarantee", () => {
       write: async () => undefined,
     };
     const result = await captureTick({
-      rpcUrl: "https://rpc",
+      rpcUrls: ["https://rpc"],
       store,
       watermark,
       genesisFloor: 20,
@@ -408,7 +408,7 @@ describe("captureTick — the no-gap guarantee", () => {
     const { store, watermark } = { ...memoryStore(), ...memoryWatermark(0) };
     await assert.rejects(
       captureTick({
-        rpcUrl: "https://rpc",
+        rpcUrls: ["https://rpc"],
         store,
         watermark,
         genesisFloor: 0,
@@ -426,7 +426,7 @@ describe("captureTick — the no-gap guarantee", () => {
     globalThis.fetch = rpcFetch({ head: 6 });
     try {
       const result = await captureTick({
-        rpcUrl: "https://rpc",
+        rpcUrls: ["https://rpc"],
         store,
         watermark,
         genesisFloor: 0,
@@ -457,7 +457,7 @@ describe("captureTick flushes in chunks", () => {
       marks,
       gaps,
       deps: {
-        rpcUrl: "https://rpc.invalid",
+        rpcUrls: ["https://rpc.invalid"],
         genesisFloor: 100,
         maxPerTick: opts.heights,
         flushEvery: opts.flushEvery,
@@ -574,6 +574,183 @@ describe("captureTick flushes in chunks", () => {
     assert.ok(
       Date.now() - started >= 30,
       "the shipped pacing did not actually wait",
+    );
+  });
+});
+
+/**
+ * Reading from MORE THAN ONE archive host.
+ *
+ * The binding constraint on this lane is a PER-HOST rate limit (~100 req/client/
+ * min, #9378), so one host WAS the throughput ceiling -- and the lane fell 8,409
+ * blocks (~28 h) behind on 2026-08-16 with no way to buy out of it. Rotation
+ * multiplies the aggregate rate by the hosts available. The no-gap guarantee is
+ * the thing that must survive it, so these are mostly about that.
+ */
+describe("captureTick — reading across several endpoints", () => {
+  /** Records which host each height was requested from. */
+  function trackingFetch(
+    opts: {
+      head?: number;
+      failOn?: (url: string, height: number) => boolean;
+    } = {},
+  ) {
+    const byHost: Record<string, number[]> = {};
+    const impl = (async (url: unknown, init?: { body?: string }) => {
+      const req = JSON.parse(init?.body ?? "{}") as {
+        method: string;
+        params: unknown[];
+      };
+      const host = String(url);
+      const reply = (result: unknown) =>
+        ({ ok: true, json: async () => ({ result }) }) as unknown as Response;
+      if (req.method === "chain_getHeader") {
+        return reply({ number: `0x${(opts.head ?? 110).toString(16)}` });
+      }
+      if (req.method === "chain_getBlockHash") {
+        const n = req.params[0] as number;
+        (byHost[host] ||= []).push(n);
+        if (opts.failOn?.(host, n))
+          return { ok: false, status: 500 } as Response;
+        return reply(`0xh${n}`);
+      }
+      if (req.method === "chain_getBlock") {
+        return reply({
+          block: {
+            header: { number: "0x1", parentHash: "0xp" },
+            extrinsics: ["0xaa"],
+          },
+        });
+      }
+      return reply("0xevents");
+    }) as unknown as typeof fetch;
+    return { impl, byHost };
+  }
+
+  test("consecutive blocks land on DIFFERENT hosts", async () => {
+    // The whole point: each host then sees `minGapMs` between its own calls
+    // while the lane's aggregate rate is N times one host's allowance.
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    const { impl, byHost } = trackingFetch();
+    const result = await captureTick({
+      rpcUrls: ["https://a", "https://b"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 4,
+      fetchImpl: impl,
+    });
+    assert.equal(result.captured, 4);
+    assert.deepEqual(byHost["https://a"], [100, 102]);
+    assert.deepEqual(byHost["https://b"], [101, 103]);
+  });
+
+  test("a height one host cannot serve is retried on another, NOT skipped", async () => {
+    // A flaky host must degrade throughput, never pin the watermark -- and it
+    // must never leave a hole, which is the one thing this module exists for.
+    const { store } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const { impl } = trackingFetch({
+      failOn: (url, height) => url === "https://a" && height === 100,
+    });
+    const result = await captureTick({
+      rpcUrls: ["https://a", "https://b"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 3,
+      fetchImpl: impl,
+    });
+    assert.equal(result.captured, 3, "100 came from the second host");
+    assert.equal(result.stoppedAt, undefined);
+    assert.equal(get(), 102);
+  });
+
+  test("a height NO host can serve still stops the tick and keeps the prefix", async () => {
+    const { store } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const { impl } = trackingFetch({
+      failOn: (_url, height) => height === 102,
+    });
+    const result = await captureTick({
+      rpcUrls: ["https://a", "https://b"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 6,
+      fetchImpl: impl,
+    });
+    assert.equal(result.captured, 2, "100 and 101 only");
+    assert.equal(result.stoppedAt, 102);
+    assert.equal(
+      get(),
+      101,
+      "one BELOW the failure, so the next tick retries it",
+    );
+  });
+
+  test("the head is read from whichever host answers, not a fixed one", async () => {
+    // A tick must not be lost because the preferred host is down when another
+    // could have served the whole run.
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    const inner = trackingFetch();
+    const firstHostDead = (async (url: unknown, init?: { body?: string }) => {
+      if (String(url) === "https://dead") throw new Error("dead host");
+      return inner.impl(url as string, init as RequestInit);
+    }) as unknown as typeof fetch;
+    const result = await captureTick({
+      rpcUrls: ["https://dead", "https://b"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 2,
+      fetchImpl: firstHostDead,
+    });
+    assert.equal(result.captured, 2);
+  });
+
+  test("the per-block sleep is the per-host gap DIVIDED by the host count", async () => {
+    // Each host still sees `minGapMs` between its own calls; the wall gap
+    // between consecutive blocks is that over N. Getting this wrong is how a
+    // widened lane would silently exceed the limit it was measured against.
+    const slept: number[] = [];
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    const { impl } = trackingFetch();
+    await captureTick({
+      rpcUrls: ["https://a", "https://b", "https://c"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 3,
+      minGapMs: 900,
+      fetchImpl: impl,
+      sleepFn: async (ms) => {
+        slept.push(ms);
+      },
+    });
+    assert.deepEqual(
+      slept,
+      [300, 300],
+      "900 / 3 hosts, and never before the first",
+    );
+  });
+
+  test("an empty endpoint list is refused rather than read as 'no work'", async () => {
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    await assert.rejects(
+      captureTick({
+        rpcUrls: [],
+        store,
+        watermark,
+        genesisFloor: 0,
+        maxPerTick: 1,
+        fetchImpl: trackingFetch().impl,
+      }),
+      /rpcUrls is empty/,
     );
   });
 });

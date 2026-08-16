@@ -884,6 +884,83 @@ describe("the projection short-circuits the FEED leg too (#11222)", () => {
     }
   });
 
+  /**
+   * The account the projection has NEVER seen -- every account registered since
+   * the last generation, and the case that used to be the slowest thing here.
+   *
+   * The producer writes every shard, so absence from a shard that exists proves
+   * there is nothing at or before `through`. BOTH legs must therefore bound to
+   * the floor: bounding only the aggregate half would fix the cheap read and
+   * leave the feed scanning the whole table, which is the read that 503s.
+   *
+   * Measured on production 2026-08-16: an account registered 2026-08-15T13:53,
+   * one day past the generation, held exactly ONE event and the route answered
+   * `503 account_summary_unavailable` after aborting at the 15s ceiling.
+   */
+  describe("an account the projection has never seen", () => {
+    /** The shard exists and simply does not list this account. */
+    const unseen = () => archive(null, { limit: 10 });
+    const withoutAccount = () => {
+      const base = unseen() as unknown as {
+        METAGRAPH_ARCHIVE: { get: (k: string) => Promise<unknown> };
+      };
+      return {
+        METAGRAPH_ARCHIVE: {
+          get: async (key: string) => {
+            const got = await base.METAGRAPH_ARCHIVE.get(key);
+            if (key !== SHARD_KEY || !got) return got;
+            // Present, complete, and holding somebody else.
+            return { json: async () => ({ schema_version: 1, accounts: {} }) };
+          },
+        },
+      } as never;
+    };
+
+    test("EVERY read is floored, not just the aggregate one", async () => {
+      const engine = fakeEngine({ recent: [] });
+      const cold = await loadAccountSummaryColdTier(withoutAccount(), SS58, {
+        query: engine.query as never,
+      });
+      assert.equal(cold.declined, undefined);
+      assert.ok(engine.seen.length > 0, "it still reads the bounded window");
+      for (const sql of engine.seen) {
+        assert.match(
+          sql,
+          new RegExp(`observed_at >= ${FLOOR}\\b`),
+          `unfloored read for an account proven to have no history: ${sql.slice(0, 120)}`,
+        );
+      }
+    });
+
+    test("the feed leg is ONE probe, never the unbounded walk", async () => {
+      // The regression that would undo this: leaving the feed on
+      // `windowedRowRead`, whose last step has no floor at all.
+      const engine = fakeEngine({ recent: [] });
+      await loadAccountSummaryColdTier(withoutAccount(), SS58, {
+        query: engine.query as never,
+      });
+      const feed = engine.seen.filter((s) => !s.includes("GROUP BY"));
+      assert.equal(feed.length, 1, "one probe, not a walk");
+    });
+
+    test("events after the floor are still served, not zeroed", async () => {
+      // Absence means "nothing BEFORE the floor" -- emphatically not "no
+      // events". A card that published zero here would be confidently wrong
+      // about the newly-registered account this whole path exists for.
+      const fresh = event({
+        block_number: 8_900_000,
+        observed_at: Date.parse("2026-08-15T13:53:48Z"),
+      });
+      const engine = fakeEngine({ recent: [fresh] });
+      const cold = await loadAccountSummaryColdTier(withoutAccount(), SS58, {
+        query: engine.query as never,
+      });
+      assert.equal(cold.declined, undefined);
+      assert.equal(cold.recent?.length, 1);
+      assert.equal(cold.recent?.[0]!.block_number, 8_900_000);
+    });
+  });
+
   test("the floor is the END of `through`, not the pointer's clock", async () => {
     // `generated_at` is the run's stamp and sits HOURS after the data it
     // describes -- six, on the generation measured 2026-08-15. Flooring there

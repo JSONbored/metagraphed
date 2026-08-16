@@ -27,6 +27,7 @@ const { pg } = await vi.hoisted(async () => ({
 vi.mock("pg", () => pg.module);
 
 import {
+  CAPTURE_LAG_BLOCKS,
   DECODE_LAG_BLOCKS,
   DECODE_STALE_MS,
   evaluateDecodeSeam,
@@ -60,6 +61,9 @@ function healthy(overrides: Partial<SeamInput> = {}): SeamInput {
       perTable: null,
     },
     capturedThrough: HI + 120,
+    // The head sits one tick's chain production ahead of the capture — the
+    // structural lag rule 6 must stay quiet through.
+    chainHead: HI + 150,
     lo: 0,
     hi: HI,
     count: HI + 1,
@@ -261,6 +265,101 @@ describe("the decode-lane rule", () => {
     // without anyone editing the watchdog.
     assert.equal(DECODE_STALE_MS, 3 * 60 * 60 * 1000);
     assert.equal(DECODE_LAG_BLOCKS, 2_400);
+    assert.equal(CAPTURE_LAG_BLOCKS, 900);
+  });
+});
+
+/**
+ * Rule 6 — the capture against the CHAIN, not against the decoder.
+ *
+ * Every other rule here is decoder-relative, which is why production ran 28h
+ * with a capture losing ~3.8 blocks/min and this watchdog reporting `ok`
+ * throughout. These tests exist to prove the rule can actually fail: a gate
+ * that only ever passes is not a gate.
+ */
+describe("the capture-vs-chain-head rule", () => {
+  test("a capture keeping pace with the chain is quiet", () => {
+    const { reasons } = evaluateDecodeSeam(healthy());
+    assert.deepEqual(reasons, []);
+  });
+
+  test("the structural lag of one tick is NOT an alarm", () => {
+    // One cron interval of chain (~25 blocks) plus a partial final chunk. If
+    // this fires, the threshold is measuring cadence rather than loss.
+    const { reasons } = evaluateDecodeSeam(
+      healthy({ capturedThrough: HI + 100, chainHead: HI + 130 }),
+    );
+    assert.deepEqual(reasons, []);
+  });
+
+  test("a capture exactly at the threshold is still quiet", () => {
+    const { reasons } = evaluateDecodeSeam(
+      healthy({
+        capturedThrough: HI,
+        chainHead: HI + CAPTURE_LAG_BLOCKS,
+      }),
+    );
+    assert.deepEqual(reasons, []);
+  });
+
+  test("one block past the threshold fires", () => {
+    const { reasons } = evaluateDecodeSeam(
+      healthy({
+        capturedThrough: HI,
+        chainHead: HI + CAPTURE_LAG_BLOCKS + 1,
+      }),
+    );
+    assert.equal(reasons.length, 1);
+    assert.match(reasons[0]!, /trails the chain head by 901 block\(s\)/);
+  });
+
+  test("the production outage this rule was written for is caught", () => {
+    // 2026-08-16, mainnet: capture at 8,847,313 against a head of 8,855,722,
+    // with the decoder at 8,847,023 — only 290 behind the capture, well inside
+    // DECODE_LAG_BLOCKS. That is the whole point: every decoder-relative rule
+    // was satisfied, so this reason must be the ONLY one, or the rule is riding
+    // on a sibling's failure rather than its own.
+    const decoded = 8_847_023;
+    const { reasons, summary } = evaluateDecodeSeam(
+      healthy({
+        capturedThrough: 8_847_313,
+        chainHead: 8_855_722,
+        watermark: {
+          decodedThrough: decoded,
+          updatedAt: NOW - 20 * 60 * 1000,
+          perTable: null,
+        },
+        lo: 0,
+        hi: decoded,
+        count: decoded + 1,
+      }),
+    );
+    assert.equal(reasons.length, 1);
+    assert.match(reasons[0]!, /trails the chain head by 8409 block\(s\)/);
+    assert.match(reasons[0]!, /must be re-read from the chain/);
+    assert.equal(summary.head_lag, 8_409);
+  });
+
+  test("an unreadable chain head is reported, not skipped", () => {
+    // Same posture as the unreadable capture watermark: a yardstick that could
+    // not be read is an unmeasured tick, never a passing one.
+    const { reasons, summary } = evaluateDecodeSeam(
+      healthy({ chainHead: null }),
+    );
+    assert.equal(reasons.length, 1);
+    assert.match(reasons[0]!, /could not read the chain head/);
+    assert.equal(summary.head_lag, null);
+  });
+
+  test("an unreadable capture watermark does not also fire rule 6", () => {
+    // capturedThrough null already has its own reason. Emitting a second,
+    // derived one would report one fault as two.
+    const { reasons, summary } = evaluateDecodeSeam(
+      healthy({ capturedThrough: null }),
+    );
+    assert.equal(reasons.length, 1);
+    assert.match(reasons[0]!, /could not read raw_capture_state/);
+    assert.equal(summary.head_lag, null);
   });
 });
 
@@ -278,6 +377,7 @@ function env(
   opts: {
     body?: unknown;
     captured?: number | null;
+    head?: number | null;
     storeThrows?: boolean;
     noBucket?: boolean;
     noStore?: boolean;
@@ -294,6 +394,14 @@ function env(
             opts.captured === undefined ? HI + 100 : opts.captured,
         },
       ],
+    },
+    {
+      // Rule 6's yardstick. Matched by substring like its sibling, so the two
+      // reads are answered independently -- a fixture that let the head fall
+      // out of the capture row would make the rule compare the lane to itself,
+      // which is exactly the mistake the rule exists to avoid.
+      match: "blocks_head",
+      rows: [{ head: opts.head === undefined ? HI + 130 : opts.head }],
     },
   ];
   return {
