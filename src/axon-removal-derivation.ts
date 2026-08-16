@@ -92,8 +92,15 @@ export interface AxonRemovalDerivation {
    * Of the confirmed removals, how many still announce something unreachable.
    *
    * Stated on the payload because it is the majority and a reader paging the
-   * list would otherwise have to count them: 166 of 271 same-hotkey losses
-   * over 38 days were moves, not departures (#11398).
+   * list would otherwise have to count them: 130 of 224 confirmed removals
+   * over 30 days are moves rather than departures (#11398).
+   *
+   * That figure is what this rule DERIVES; it is not what the feed served
+   * until 2026-08-16. The narrowing query upstream fetched only slots whose
+   * `axon` column went null, so 79 of the 130 never reached this function at
+   * all and the field read 51 (#11394). Both numbers are in the history for
+   * the same reason: a consumer comparing a cached answer against a fresh one
+   * across that date is looking at a fix, not at the network changing.
    */
   moved_unroutable: number;
 }

@@ -12,11 +12,20 @@
 // building this (19 vs 14), from measuring with one rule and implementing
 // another.
 //
-// So SQL does only what SQL is for: narrowing. It finds the slots that had ANY
-// non-null -> null transition in the window and returns those slots' day
+// So SQL does only what SQL is for: narrowing. It finds the slots that lost a
+// REACHABLE axon at any point in the window and returns those slots' day
 // series. Everything else -- the hotkey test, the confirmation test, the
 // pending accounting -- happens in the derivation module, on rows it already
 // has tests for.
+//
+// ## The narrowing has to move whenever the rule does
+//
+// It did not, once, and the cost was measurable. #11399 widened the derivation
+// from a populated axon to a reachable one and left this predicate on presence,
+// so a slot that only ever moved routable -> unroutable was never fetched and
+// the widened rule never saw it: 79 of 224 confirmed removals over 30 days, all
+// of them moves, SN126 serving 50 against 128. Both ends now read the predicate
+// out of src/axon-transition.ts, which carries the measurement and the reason.
 //
 // ## The narrowing is what makes this affordable
 //
@@ -31,6 +40,7 @@ import {
   type NeuronAxonDayRow,
 } from "./axon-removal-derivation.ts";
 import { readStore } from "./read-store.ts";
+import { AXON_LOSS_SQL, axonSequenceSql } from "./axon-transition.ts";
 
 /** Days of `neuron_daily` to pull. The widest window any route offers. */
 export const AXON_REMOVALS_LOOKBACK_DAYS = 30;
@@ -58,22 +68,18 @@ export interface AxonRemovalsRollup {
 }
 
 /**
- * The day series for every slot that dropped an axon in the window.
+ * The day series for every slot that lost a reachable axon in the window.
  *
- * The inner query is the narrowing: `lag(axon)` over each slot finds the
- * transitions, and the outer query returns those slots WHOLE, because the
- * derivation needs the readings on either side to tell a teardown from a
- * missed poll.
+ * The inner query is the narrowing, and the outer query returns the matching
+ * slots WHOLE, because the derivation needs the readings on either side to tell
+ * a teardown from a missed poll. It projects only the five columns
+ * `NeuronAxonDayRow` names: the sequence carries `routable` and `prev_*` for
+ * the predicate's benefit, and re-deciding reachability in the derivation from
+ * the raw `axon` keeps `isRoutableAxon` the one place that answers it.
  */
 const CANDIDATE_SLOTS_SQL =
-  "WITH windowed AS (" +
-  "  SELECT netuid, uid, snapshot_date, hotkey, axon," +
-  "         lag(axon) OVER (PARTITION BY netuid, uid ORDER BY snapshot_date) AS prev_axon" +
-  "  FROM neuron_daily WHERE snapshot_date >= ?" +
-  "), dropped AS (" +
-  "  SELECT DISTINCT netuid, uid FROM windowed" +
-  "  WHERE prev_axon IS NOT NULL AND prev_axon <> ''" +
-  "    AND (axon IS NULL OR axon = '')" +
+  `WITH windowed AS (${axonSequenceSql()}), dropped AS (` +
+  ` SELECT DISTINCT netuid, uid FROM windowed WHERE ${AXON_LOSS_SQL}` +
   ")" +
   " SELECT w.netuid, w.uid, w.snapshot_date, w.hotkey, w.axon" +
   " FROM windowed w JOIN dropped d ON d.netuid = w.netuid AND d.uid = w.uid" +

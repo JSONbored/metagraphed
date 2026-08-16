@@ -7,6 +7,7 @@ import {
   loadAxonRemovals,
   subnetAxonRemovalRow,
 } from "../src/axon-removals-loader.ts";
+import { AXON_LOSS_SQL } from "../src/axon-transition.ts";
 
 function day(
   date: string,
@@ -151,9 +152,13 @@ describe("loadAxonRemovals", () => {
         },
       },
     );
-    assert.match(sql, /lag\(axon\) OVER \(PARTITION BY netuid, uid/);
+    assert.match(sql, /WINDOW w AS \(PARTITION BY netuid, uid/);
     assert.match(sql, /JOIN dropped/);
     assert.match(sql, /snapshot_date >= \?/);
+    // The predicate itself is the SHARED one, not a copy that reads the same
+    // today. Pinning the literal is how the narrowing stayed on presence while
+    // the derivation moved to reachability (#11394).
+    assert.ok(sql.includes(`WHERE ${AXON_LOSS_SQL}`));
   });
 });
 
