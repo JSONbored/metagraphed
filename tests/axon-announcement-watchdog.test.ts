@@ -24,6 +24,8 @@ import {
   evaluateSubnetAxons,
   groupAxonDays,
   isFleetWide,
+  isRoutableAxon,
+  ROUTABLE_AXON_SQL,
   classifyAxonMechanism,
   loadAxonLossMechanisms,
   isoDaysAgo,
@@ -1036,5 +1038,70 @@ describe("IP concentration — one host, or the subnet", () => {
       q.text.includes("INSERT INTO lane_health"),
     );
     assert.match(String(insert?.values[3]), /ALL FROM ONE ADDRESS/);
+  });
+});
+
+describe("routable axons only (#11373)", () => {
+  // Measured 2026-08-16: 347 of 6,532 announced axons (5.3%) point at ranges
+  // nobody can route to, and 246 of those miners earn. SN33 is almost all of
+  // it -- 247 of 251 announcements are `192.0.2.1`, an RFC 5737 documentation
+  // address, taking 99.82% of the subnet's incentive.
+  //
+  // Counting those as announcing made this watchdog blind in the one direction
+  // it exists to watch: a subnet could lose every real endpoint and read as
+  // healthy while its placeholder count held.
+
+  test("the reserved and private ranges are not routable", () => {
+    for (const axon of [
+      "192.0.2.1:8091", // RFC 5737 TEST-NET-1 -- the SN33 case
+      "198.51.100.7:8091", // TEST-NET-2
+      "203.0.113.9:8091", // TEST-NET-3
+      "127.0.0.1:8091", // loopback
+      "10.0.0.5:8091", // RFC 1918
+      "192.168.1.1:8091", // RFC 1918
+      "172.16.0.1:8091", // RFC 1918 lower bound
+      "172.31.255.254:8091", // RFC 1918 upper bound
+      "0.0.0.0:0", // unspecified
+    ]) {
+      assert.equal(isRoutableAxon(axon), false, `${axon} must not be routable`);
+    }
+  });
+
+  test("real addresses ARE routable, including the 172.x boundary", () => {
+    for (const axon of [
+      "152.53.149.254:8091", // SN101's shared host
+      "3.33.133.240:8091",
+      "172.32.0.1:8091", // just outside RFC 1918 -- must stay routable
+      "172.15.0.1:8091", // just below it
+      "193.0.2.1:8091", // one octet off TEST-NET-1
+    ]) {
+      assert.equal(isRoutableAxon(axon), true, `${axon} must be routable`);
+    }
+  });
+
+  test("absent or malformed is not routable, and does not throw", () => {
+    for (const axon of [null, undefined, "", 42, {}, ":8091"]) {
+      assert.equal(isRoutableAxon(axon), false);
+    }
+  });
+
+  test("both reads share ONE predicate, so they cannot disagree", () => {
+    // The rule is enforced in SQL; a second copy would be free to drift from
+    // the one the JS predicate documents and the tests above pin.
+    assert.match(ROUTABLE_AXON_SQL, /axon IS NOT NULL/);
+    assert.match(ROUTABLE_AXON_SQL, /split_part\(axon, ':', 1\) !~/);
+    assert.match(ROUTABLE_AXON_SQL, /192\\\.0\\\.2\\\./);
+  });
+
+  test("the predicate the JS mirrors is the one the SQL embeds", () => {
+    // Same source string on both sides -- if the pattern is retuned, both move.
+    const embedded = ROUTABLE_AXON_SQL.match(/!~ '(.+)'$/)?.[1];
+    assert.ok(embedded, "the SQL carries the pattern inline");
+    assert.equal(
+      new RegExp(embedded).test("192.0.2.1"),
+      true,
+      "the embedded pattern matches what isRoutableAxon rejects",
+    );
+    assert.equal(new RegExp(embedded).test("152.53.149.254"), false);
   });
 });
