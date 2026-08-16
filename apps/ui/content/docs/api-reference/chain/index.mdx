@@ -3,7 +3,7 @@ title: Chain
 description: Every Chain endpoint in the metagraphed API, with its method and path.
 ---
 
-53 endpoints.
+55 endpoints.
 
 - [Chain Activity](/docs/api-reference/chain/chain-activity) — `GET /api/v1/chain/activity`  
   Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first.
@@ -55,6 +55,8 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the neurons store; schema-stable nulls when cold.
 - [Chain Prometheus](/docs/api-reference/chain/chain-prometheus) — `GET /api/v1/chain/prometheus`  
   Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity.
+- [Chain Prometheus By Network](/docs/api-reference/chain/chain-prometheus-by-network) — `GET /api/v1/{network}/chain/prometheus`  
+  Network-scoped form of /api/v1/chain/prometheus — prefix the route with a network to choose which chain answers it.
 - [Chain Registrations](/docs/api-reference/chain/chain-registrations) — `GET /api/v1/chain/registrations`  
   Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity.
 - [Chain Registrations By Network](/docs/api-reference/chain/chain-registrations-by-network) — `GET /api/v1/{network}/chain/registrations`  
@@ -63,6 +65,8 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Fetch every subnet's revenue coverage in one response.
 - [Chain Serving](/docs/api-reference/chain/chain-serving) — `GET /api/v1/chain/serving`  
   Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity.
+- [Chain Serving By Network](/docs/api-reference/chain/chain-serving-by-network) — `GET /api/v1/{network}/chain/serving`  
+  Network-scoped form of /api/v1/chain/serving — prefix the route with a network to choose which chain answers it.
 - [Chain Signers](/docs/api-reference/chain/chain-signers) — `GET /api/v1/chain/signers`  
   Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=.
 - [Chain Signers By Network](/docs/api-reference/chain/chain-signers-by-network) — `GET /api/v1/{network}/chain/signers`  

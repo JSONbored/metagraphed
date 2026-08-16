@@ -32,6 +32,11 @@
 // both account_events and chain_events, and PrometheusServed exists only in
 // chain_events with its hotkey inside the args JSON. See the survey on #9146.
 import { isR2SqlConfigured, r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import {
+  type ChainNetworkId,
+  chainTable,
+  DEFAULT_CHAIN_NETWORK,
+} from "./chain-network.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
@@ -296,6 +301,7 @@ export async function loadChainEventRollup(
     // lakehouse -- a branch that only runs against live infrastructure is a
     // branch nothing verifies.
     query = r2SqlQuery,
+    network = DEFAULT_CHAIN_NETWORK,
   }: {
     windowDays: number;
     now?: number;
@@ -306,6 +312,17 @@ export async function loadChainEventRollup(
      * where the page slice has always belonged.
      */
     query?: R2SqlReader;
+    /**
+     * Which chain's namespace to read (#11419).
+     *
+     * THREADED rather than hardcoded, since /chain/serving and
+     * /chain/prometheus stopped being mainnet-only: this module named
+     * `chain.account_events` directly, so an un-gated route would have served
+     * MAINNET rows for a testnet request -- well formed, and undetectable
+     * downstream. tests/chain-history-networks.test.ts is the gate that says
+     * so, in those words.
+     */
+    network?: ChainNetworkId;
   },
 ): Promise<ChainEventRollupOutcome<ChainEventRollup>> {
   const kind = safeEventKind(spec.eventKind);
@@ -383,7 +400,7 @@ export async function loadChainEventRollup(
       env,
       `SELECT netuid, sum(n) AS ${countField}, count(*) AS ${distinctField}` +
         ` FROM (SELECT netuid, ${distinctColumn}, count(*) AS n` +
-        ` FROM chain.account_events ${perSubnetWhere}` +
+        ` FROM ${chainTable("account_events", network)} ${perSubnetWhere}` +
         ` GROUP BY netuid, ${distinctColumn})` +
         ` GROUP BY netuid ORDER BY ${countField} DESC LIMIT ${ROLLUP_POPULATION_CAP}`,
     ),
@@ -414,7 +431,7 @@ export async function loadChainEventRollup(
       env,
       `SELECT count(*) AS ${distinctField}, max(newest) AS newest_observed` +
         ` FROM (SELECT ${identity}, max(observed_at) AS newest` +
-        ` FROM chain.account_events ${where} GROUP BY ${identity})`,
+        ` FROM ${chainTable("account_events", network)} ${where} GROUP BY ${identity})`,
     ),
     // How many subnets the window covers (#10249). A THIRD query rather than a
     // column on either of the two above, and both alternatives were measured
@@ -444,7 +461,7 @@ export async function loadChainEventRollup(
     query(
       env,
       `SELECT count(*) AS subnet_count` +
-        ` FROM (SELECT netuid FROM chain.account_events ${perSubnetWhere}` +
+        ` FROM (SELECT netuid FROM ${chainTable("account_events", network)} ${perSubnetWhere}` +
         ` GROUP BY netuid)`,
     ),
   ]);
@@ -510,6 +527,7 @@ export async function loadChainEventIdentityRollup(
     limit = 200,
     netuid,
     query = r2SqlQuery,
+    network = DEFAULT_CHAIN_NETWORK,
   }: {
     windowDays: number;
     now?: number;
@@ -521,6 +539,17 @@ export async function loadChainEventIdentityRollup(
      */
     netuid?: number;
     query?: R2SqlReader;
+    /**
+     * Which chain's namespace to read (#11419).
+     *
+     * THREADED rather than hardcoded, since /chain/serving and
+     * /chain/prometheus stopped being mainnet-only: this module named
+     * `chain.account_events` directly, so an un-gated route would have served
+     * MAINNET rows for a testnet request -- well formed, and undetectable
+     * downstream. tests/chain-history-networks.test.ts is the gate that says
+     * so, in those words.
+     */
+    network?: ChainNetworkId;
   },
 ): Promise<ChainEventRollupOutcome<ChainEventIdentityRollup>> {
   const kind = safeEventKind(spec.eventKind);
@@ -556,7 +585,7 @@ export async function loadChainEventIdentityRollup(
       env,
       `SELECT netuid, ${identity} AS ${identity}, count(*) AS ${countField},` +
         ` min(observed_at) AS first_set, max(observed_at) AS last_set` +
-        ` FROM chain.account_events ${where}` +
+        ` FROM ${chainTable("account_events", network)} ${where}` +
         ` GROUP BY netuid, ${identity}` +
         ` ORDER BY ${countField} DESC LIMIT ${cap}`,
     ),
@@ -581,12 +610,12 @@ export async function loadChainEventIdentityRollup(
     query(
       env,
       `SELECT count(*) AS ${countField}, max(observed_at) AS newest_observed` +
-        ` FROM chain.account_events ${where}`,
+        ` FROM ${chainTable("account_events", network)} ${where}`,
     ),
     query(
       env,
       `SELECT count(*) AS ${distinctField}` +
-        ` FROM (SELECT netuid, ${identity} FROM chain.account_events ${where}` +
+        ` FROM (SELECT netuid, ${identity} FROM ${chainTable("account_events", network)} ${where}` +
         ` GROUP BY netuid, ${identity})`,
     ),
   ]);

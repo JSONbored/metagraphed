@@ -1170,6 +1170,7 @@ import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { HEALTH_TREND_WINDOW_VALUES } from "../schemas-src/routes/health-surfaces.ts";
 import { answerRpcUsage } from "./rpc-usage-answer.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
+import { loadChainServingFromArtifact } from "./chain-serving-artifact.ts";
 import {
   accountSummaryGapMessage,
   answerAccountSummary,
@@ -1316,6 +1317,7 @@ import {
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
 } from "./chain-prometheus.ts";
 import { loadChainPrometheusColdTier } from "./chain-prometheus-loader.ts";
+import { loadChainPrometheusFromArtifact } from "./chain-prometheus-artifact.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
@@ -7461,6 +7463,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // surfaces answer from one implementation. Without this the tool kept
         // returning the zeroed card while /api/v1/chain/serving returned real
         // numbers for the identical question (#9216 wired REST only).
+        // The projection tier first, matching REST and GraphQL (#11419).
+        (await loadChainServingFromArtifact(ctx.env, { window, limit })) ??
         (await loadChainServingColdTier(ctx.env, { window, limit })) ??
         buildChainServing([], { window, limit })
       );
@@ -7504,6 +7508,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // The lakehouse rung, same as REST and GraphQL (#10248).
+        // The projection tier first, matching REST and GraphQL (#11419).
+        (await loadChainPrometheusFromArtifact(ctx.env, { window, limit })) ??
         (await loadChainPrometheusColdTier(ctx.env, { window, limit })) ??
         buildChainPrometheus([], { window, limit })
       );

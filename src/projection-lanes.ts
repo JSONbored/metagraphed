@@ -71,6 +71,10 @@ import { CHAIN_ALPHA_VOLUME_PROJECTION_KEY } from "./chain-alpha-volume-artifact
 import { CHAIN_STAKE_TRANSFERS_PROJECTION_KEY } from "./chain-stake-transfers-artifact.ts";
 import { CHAIN_TRANSFER_PAIRS_PROJECTION_KEY } from "./chain-transfer-pairs-artifact.ts";
 import { CHAIN_STAKE_MOVES_PROJECTION_KEY } from "./chain-stake-moves-artifact.ts";
+import { CHAIN_SERVING_PROJECTION_KEY } from "./chain-serving-artifact.ts";
+import { CHAIN_PROMETHEUS_PROJECTION_KEY } from "./chain-prometheus-artifact.ts";
+import { SERVING_EVENT_KIND } from "./subnet-serving.ts";
+import { PROMETHEUS_EVENT_KIND } from "./subnet-prometheus.ts";
 import {
   BLOCKS_SUMMARY_READ_COLUMNS,
   BLOCKS_SUMMARY_SCAN_CAP,
@@ -854,6 +858,96 @@ async function computeChainStakeTransfers(
   };
 }
 
+/**
+ * GET /api/v1/chain/serving, every supported window (#11419).
+ *
+ * The same per-subnet-distinct shape the stake-moves and stake-transfers lanes
+ * use, over the AxonServed stream. Moved behind the cron because it is a
+ * network-wide aggregate: measured with the engine's own metrics (#11436) it
+ * reads 17.4 MiB and 682 R2 requests for 7d, which is not a large scan -- but
+ * request-time reads against this engine spanned 2.00s to 31.61s on ONE query
+ * against ONE subject, and `QUERY_TIMEOUT_MS` turns that tail into a decline.
+ * A cron pays the variance once per interval instead of per caller.
+ */
+async function computeChainServing(
+  env: Env,
+  network: ChainNetworkId,
+): Promise<Record<string, unknown> | null> {
+  return computeAnalyticsDistinctLanes(
+    env,
+    network,
+    SERVING_EVENT_KIND,
+    "announcements",
+    "distinct_servers",
+  );
+}
+
+/**
+ * GET /api/v1/chain/prometheus, every supported window (#11419).
+ *
+ * AxonServed's twin -- the pallet emits both as (netuid, hotkey) from the same
+ * serving.rs -- so it projects identically. Its card stays empty for the
+ * separate reason `PROMETHEUS_DEGRADED_NOT_CURATED` records (the curation drops
+ * `PrometheusServed`), and the lane does not change that: it stops the empty
+ * costing a 15-second timeout to produce.
+ */
+async function computeChainPrometheus(
+  env: Env,
+  network: ChainNetworkId,
+): Promise<Record<string, unknown> | null> {
+  return computeAnalyticsDistinctLanes(
+    env,
+    network,
+    PROMETHEUS_EVENT_KIND,
+    "announcements",
+    "distinct_exporters",
+  );
+}
+
+/**
+ * Every ANALYTICS_WINDOW_DAYS window of one event kind, in the artifact shape
+ * the readers expect.
+ *
+ * Shared because the two lanes above differ only in the event kind and the two
+ * column aliases -- writing the window loop twice is how a lane gains a window
+ * its twin does not have.
+ */
+async function computeAnalyticsDistinctLanes(
+  env: Env,
+  network: ChainNetworkId,
+  eventKind: string,
+  countAlias: string,
+  distinctAlias: string,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
+    const window = await computeSubnetDistinctWindow(
+      env,
+      subnetDistinctWindowSql(
+        generatedAt - days * DAY_MS,
+        eventKind,
+        countAlias,
+        distinctAlias,
+        network,
+      ),
+    );
+    // One failed window fails the LANE: a partial artifact would serve a real
+    // 7d beside a stale 30d under one `generated_at`, and the runner's
+    // write-only-on-non-null rule keeps the previous tick instead.
+    if (window === null) return null;
+    windows[label] = { days, network: window.network, rows: window.rows };
+    rowCount += window.rows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
 /** GET /api/v1/chain/stake-moves, every supported window — same shape as the
  * stake-transfers lane over the StakeMoved stream. */
 async function computeChainStakeMoves(
@@ -1324,6 +1418,16 @@ export const PROJECTION_LANES: ProjectionLane[] = [
     name: "chain-stake-moves",
     artifactKey: CHAIN_STAKE_MOVES_PROJECTION_KEY,
     compute: computeChainStakeMoves,
+  },
+  {
+    name: "chain-serving",
+    artifactKey: CHAIN_SERVING_PROJECTION_KEY,
+    compute: computeChainServing,
+  },
+  {
+    name: "chain-prometheus",
+    artifactKey: CHAIN_PROMETHEUS_PROJECTION_KEY,
+    compute: computeChainPrometheus,
   },
 ];
 

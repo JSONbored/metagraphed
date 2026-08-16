@@ -4167,6 +4167,7 @@ export type QueryChain_Identity_HistoryArgs = {
 
 export type QueryChain_PrometheusArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -4185,6 +4186,7 @@ export type QueryChain_Revenue_CoverageArgs = {
 
 export type QueryChain_ServingArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 

@@ -8065,12 +8065,6 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/weights/setters") {
       return handleChainWeightSetters(request, env, resolved.url, ctx);
     }
-    if (resolved.url.pathname === "/api/v1/chain/serving") {
-      return handleChainServing(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/prometheus") {
-      return handleChainPrometheus(request, env, resolved.url, ctx);
-    }
     if (resolved.url.pathname === "/api/v1/chain/axon-removals") {
       return handleChainAxonRemovals(request, env, resolved.url, ctx);
     }
@@ -8404,8 +8398,11 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/rpc/usage" ||
     pathname === "/api/v1/chain/weights" ||
     pathname === "/api/v1/chain/weights/setters" ||
-    pathname === "/api/v1/chain/serving" ||
-    pathname === "/api/v1/chain/prometheus" ||
+    // /chain/serving and /chain/prometheus are NO LONGER HERE (#11419): both
+    // now answer from a per-network projection card, so every chain with a
+    // decode lane has its own. They stay in the list below only as long as
+    // they have no lane -- which is exactly what
+    // tests/projection-networks.test.ts holds, in both directions.
     pathname === "/api/v1/chain/axon-removals" ||
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/concentration/subnets" ||
@@ -8774,6 +8771,12 @@ const PROJECTION_ROUTE_HANDLERS: Record<
   "/api/v1/chain/subnet-lifecycle": handleChainSubnetLifecycle,
   "/api/v1/chain/stake-moves": handleChainStakeMoves,
   "/api/v1/chain/stake-transfers": handleChainStakeTransfers,
+  // #11419: both were request-time lakehouse reads dispatched below this table
+  // and gated to mainnet. They are network-wide aggregates -- the shape
+  // projection-lanes.ts exists for -- so they now answer from a per-network
+  // card like their twelve siblings.
+  "/api/v1/chain/serving": handleChainServing,
+  "/api/v1/chain/prometheus": handleChainPrometheus,
 };
 
 /**

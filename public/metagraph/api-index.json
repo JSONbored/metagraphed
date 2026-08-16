@@ -2570,7 +2570,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 175,
+    "mainnet_only_route_count": 173,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -11987,10 +11987,13 @@
       "cache": "short",
       "description": "Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
       "id": "chain-serving",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/serving",
       "public": true,
@@ -12087,10 +12090,13 @@
       "cache": "short",
       "description": "Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
       "id": "chain-prometheus",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/prometheus",
       "public": true,

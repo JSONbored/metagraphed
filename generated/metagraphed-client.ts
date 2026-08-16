@@ -1503,7 +1503,17 @@ export const QUERY_PARAMETER_ENUMS = {
     "network": ["finney","mainnet","test","testnet"],
     "window": ["7d","30d"],
   },
+  "/api/v1/{network}/chain/prometheus": {
+    "format": ["json","csv"],
+    "network": ["finney","mainnet","test","testnet"],
+    "window": ["7d","30d"],
+  },
   "/api/v1/{network}/chain/registrations": {
+    "format": ["json","csv"],
+    "network": ["finney","mainnet","test","testnet"],
+    "window": ["7d","30d"],
+  },
+  "/api/v1/{network}/chain/serving": {
     "format": ["json","csv"],
     "network": ["finney","mainnet","test","testnet"],
     "window": ["7d","30d"],

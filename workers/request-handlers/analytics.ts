@@ -46,6 +46,7 @@ import {
   routeValue,
 } from "../../src/route-query.ts";
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
+import { loadChainServingFromArtifact } from "../../src/chain-serving-artifact.ts";
 import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "../../src/chain-weight-setters-loader.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
@@ -88,6 +89,7 @@ import { buildChainTransfers } from "../../src/chain-transfers.ts";
 import { buildChainServing } from "../../src/chain-serving.ts";
 import { buildChainPrometheus } from "../../src/chain-prometheus.ts";
 import { loadChainPrometheusColdTier } from "../../src/chain-prometheus-loader.ts";
+import { loadChainPrometheusFromArtifact } from "../../src/chain-prometheus-artifact.ts";
 import { buildChainAxonRemovals } from "../../src/chain-axon-removals.ts";
 import { loadAxonRemovals } from "../../src/axon-removals-loader.ts";
 import { buildChainRegistrations } from "../../src/chain-registrations.ts";
@@ -2051,6 +2053,8 @@ export async function handleChainServing(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#11419). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
   const limit = pageLimit(url);
@@ -2064,7 +2068,7 @@ export async function handleChainServing(
     cacheRequest,
     ctx,
     env,
-    "chain-serving",
+    edgeCacheScope("chain-serving", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a store query here would
@@ -2079,7 +2083,26 @@ export async function handleChainServing(
         // surfaces answer from a single implementation rather than three
         // copies that can drift. It declines (null) rather than
         // half-answering, leaving the empty payload below as the fallback.
-        (await loadChainServingColdTier(env, { window: label, limit })) ??
+        // THE PROJECTION TIER FIRST (#11419). A cron recomputes this window
+        // from the lakehouse; a caller then pays one R2 GET. The cold tier
+        // stays underneath as the fallback for a lane that has not run yet --
+        // it is the same builder either way, so the payload is identical and
+        // only the variance moves.
+        //
+        (await loadChainServingFromArtifact(
+          env,
+          { window: label, limit },
+          network,
+        )) ??
+        // THE COLD TIER IS MAINNET-ONLY, and must DECLINE off it rather
+        // than answer. Its SQL names `chain.account_events` directly --
+        // no network parameter -- so letting it run for another chain
+        // would hand back mainnet's history under a testnet path: well
+        // formed, and undetectable downstream. Same guard
+        // `coldTierChainEventsPayload` draws with `mainnetOnlyBranch`.
+        (network === DEFAULT_CHAIN_NETWORK
+          ? await loadChainServingColdTier(env, { window: label, limit })
+          : null) ??
         unmeasured(
           buildChainServing([], {
             window: label,
@@ -2127,6 +2150,8 @@ export async function handleChainPrometheus(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#11419). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
   const limit = pageLimit(url);
@@ -2140,7 +2165,7 @@ export async function handleChainPrometheus(
     cacheRequest,
     ctx,
     env,
-    "chain-prometheus",
+    edgeCacheScope("chain-prometheus", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a store query here would
@@ -2154,7 +2179,26 @@ export async function handleChainPrometheus(
         // lakehouse rollup here since #9216; prometheus fell straight from a
         // tier that always misses to the empty stub, so it published a
         // confident zero no amount of curation could have fixed.
-        (await loadChainPrometheusColdTier(env, { window: label, limit })) ??
+        // THE PROJECTION TIER FIRST (#11419). A cron recomputes this window
+        // from the lakehouse; a caller then pays one R2 GET. The cold tier
+        // stays underneath as the fallback for a lane that has not run yet --
+        // it is the same builder either way, so the payload is identical and
+        // only the variance moves.
+        //
+        (await loadChainPrometheusFromArtifact(
+          env,
+          { window: label, limit },
+          network,
+        )) ??
+        // THE COLD TIER IS MAINNET-ONLY, and must DECLINE off it rather
+        // than answer. Its SQL names `chain.account_events` directly --
+        // no network parameter -- so letting it run for another chain
+        // would hand back mainnet's history under a testnet path: well
+        // formed, and undetectable downstream. Same guard
+        // `coldTierChainEventsPayload` draws with `mainnetOnlyBranch`.
+        (network === DEFAULT_CHAIN_NETWORK
+          ? await loadChainPrometheusColdTier(env, { window: label, limit })
+          : null) ??
         buildChainPrometheus([], {
           window: label,
           limit,

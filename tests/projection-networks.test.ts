@@ -9,6 +9,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { DEFAULT_CHAIN_NETWORK, projectionKey } from "../src/chain-network.ts";
+import { loadChainServingFromArtifact } from "../src/chain-serving-artifact.ts";
+import { loadChainPrometheusFromArtifact } from "../src/chain-prometheus-artifact.ts";
 import {
   isProjectionRouteTemplate,
   PROJECTION_ROUTE_PATHS,
@@ -113,6 +115,21 @@ describe("a projection reader reads its own network's artifact", () => {
       "metagraph/projections/chain-registrations.json",
       (env, network) =>
         loadChainRegistrationsFromArtifact(env, { window: "7d" }, network),
+    ],
+    // #11419: both were request-time lakehouse reads gated to mainnet. Their
+    // readers are the reason un-gating is safe, so they are held to the same
+    // per-network keying as the four above.
+    [
+      "chain-serving",
+      "metagraph/projections/chain-serving.json",
+      (env, network) =>
+        loadChainServingFromArtifact(env, { window: "7d" }, network),
+    ],
+    [
+      "chain-prometheus",
+      "metagraph/projections/chain-prometheus.json",
+      (env, network) =>
+        loadChainPrometheusFromArtifact(env, { window: "7d" }, network),
     ],
   ];
 

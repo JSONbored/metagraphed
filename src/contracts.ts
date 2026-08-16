@@ -5474,6 +5474,10 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/accounts/{ss58}/prometheus",
   "/api/v1/accounts/{ss58}/axon-removals",
   "/api/v1/accounts/{ss58}/serving",
+  // NOT /api/v1/chain/serving or /chain/prometheus (#11419): both moved to a
+  // per-network projection card, so every chain with a decode lane serves its
+  // own. Their per-SUBNET and per-ACCOUNT siblings stay here -- those are
+  // selective reads with no lane, and their cold tier names `chain.*` directly.
   "/api/v1/accounts/{ss58}/weight-setters",
   "/api/v1/accounts/{ss58}/registrations",
   "/api/v1/accounts/{ss58}/subnets",
@@ -5487,9 +5491,7 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/runtime",
   "/api/v1/chain/weights",
   "/api/v1/chain/weights/setters",
-  "/api/v1/chain/serving",
   "/api/v1/chain/axon-removals",
-  "/api/v1/chain/prometheus",
   "/api/v1/chain/concentration",
   "/api/v1/chain/performance",
   "/api/v1/chain/idle-stake",

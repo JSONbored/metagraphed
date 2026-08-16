@@ -439,11 +439,13 @@ const NAMESPACE_HARDCODED_READERS: Readonly<Record<string, readonly string[]>> =
     "src/subnet-ownership-cold-tier.ts": [
       "/api/v1/subnets/{netuid}/ownership-history",
     ],
-    "src/chain-event-rollup-cold-tier.ts": [
-      "/api/v1/chain/serving",
-      "/api/v1/chain/prometheus",
-      "/api/v1/chain/weights",
-    ],
+    // src/chain-event-rollup-cold-tier.ts IS NO LONGER HERE (#11419): it takes
+    // a `network` and builds its table with `chainTable(...)`, because
+    // /chain/serving and /chain/prometheus moved to per-network projection
+    // cards and this gate is what forced the threading rather than a gate the
+    // change worked around. /chain/weights is still mainnet-only, and now for
+    // its own reason (no lane yet) rather than because its reader could not
+    // read another chain.
     "src/nominator-positions-cold-tier.ts": [
       "/api/v1/validators/{hotkey}/nominators",
     ],
