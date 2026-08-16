@@ -250,6 +250,9 @@ export async function loadAccountTransfersColdTier(
     // A cursor page resumes from its own `observed_at` -- cursor[0] of the
     // 3-part token -- rather than from now.
     ceiling: cursor ? safeBlockNumber(cursor[0]) : null,
+    // The same floor already pushed into `where`, so the walk stops when it
+    // reaches it rather than reading a range its own predicate excludes.
+    floorMs: transferFloorMs,
   });
   if (rows === null) return null;
 
@@ -872,6 +875,7 @@ async function counterpartyScan(
           ],
     order: ` ${FEED_ORDER}`,
     need: COUNTERPARTIES_SCAN_CAP,
+    floorMs,
   });
 }
 
