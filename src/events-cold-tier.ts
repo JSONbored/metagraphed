@@ -215,9 +215,23 @@ async function recentEventsLeg(
   // floor from the store rather than pinning it, and anything but a proven
   // overlap falls through to the bounded R2 SQL probe below, which is slower
   // and correct.
-  const hotFloorMs = await accountEventsHotFloorMs(env);
+  // BOTH NEON READS AT ONCE. The floor probe answers "does this store reach
+  // below the fold edge" and the page read answers "what does it hold for this
+  // account" -- neither input depends on the other's result, so issuing them in
+  // sequence spent two round trips where one wall-clock wait would do. The
+  // overlap is still CHECKED before the rows are used; running the read early
+  // costs one query that gets discarded when the check fails, against halving
+  // the latency of the path that succeeds.
+  //
+  // Not memoized, deliberately. A cached floor is only wrong when the prune has
+  // moved above the fold edge inside the TTL -- rare, small, and silent, which
+  // is the combination that makes a bug survive. Parallelism buys the same
+  // latency with none of that.
+  const [hotFloorMs, hot] = await Promise.all([
+    accountEventsHotFloorMs(env),
+    loadAccountEventsHotTier(env, ss58, limit),
+  ]);
   if (hotFloorMs !== null && hotFloorMs <= recent.floorMs) {
-    const hot = await loadAccountEventsHotTier(env, ss58, limit);
     // A hot-tier failure is not a decline: it means this leg could not be
     // served from Neon, and the R2 SQL probe below answers the same question.
     if (hot !== null) {

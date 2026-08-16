@@ -3,7 +3,7 @@
 // one equivalence specific to this module: the single OR disjunction must
 // stand in for data-api's two-scan hotkey/coldkey read.
 import assert from "node:assert/strict";
-import { afterAll, beforeAll, describe, test, vi } from "vitest";
+import { afterAll, beforeAll, describe, test, vi, beforeEach } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { loadAccountEventsHotTier } from "../src/chain-detail-hot-tier.ts";
 
@@ -24,8 +24,16 @@ import {
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
+import { resetAccountSummaryPointerCache } from "../src/account-summary-projection.ts";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import { OFFSET_EMULATION_CAP } from "../src/r2-sql-blocks.ts";
+
+// The pointer memo is module-level and reset only between test FILES, so
+// whichever test resolved it first would decide every later test's generation.
+// Same reasoning as `resetDecodeWatermarkCache` in
+// tests/analytics-edge-cache.test.ts: a file that varies the artifact per test
+// has to own the memo that would otherwise answer from the previous one.
+beforeEach(() => resetAccountSummaryPointerCache());
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";

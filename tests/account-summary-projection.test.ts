@@ -6,7 +6,7 @@
 // the other direction: reading a HALF-PUBLISHED generation, or accepting a
 // payload it should have refused.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, beforeEach } from "vitest";
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "../src/account-events.ts";
 import {
   AccountSummaryPointerSchema,
@@ -23,8 +23,17 @@ import {
   type AccountSummaryProjectionRead,
   recentFloorMs,
   accountHistoryFloorMs,
+  ACCOUNT_SUMMARY_POINTER_TTL_MS,
 } from "../src/account-summary-projection.ts";
 import { DEFAULT_CHAIN_NETWORK } from "../src/chain-network.ts";
+import { resetAccountSummaryPointerCache } from "../src/account-summary-projection.ts";
+
+// The pointer memo is module-level and reset only between test FILES, so
+// whichever test resolved it first would decide every later test's generation.
+// Same reasoning as `resetDecodeWatermarkCache` in
+// tests/analytics-edge-cache.test.ts: a file that varies the artifact per test
+// has to own the memo that would otherwise answer from the previous one.
+beforeEach(() => resetAccountSummaryPointerCache());
 
 const HOT = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 const COLD = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
@@ -1124,5 +1133,92 @@ describe("the pointer, against a producer that deploys independently", () => {
     const found = await readFound(store.env, HOT, FRESH);
     assert.equal(found.groups.length, 1);
     assert.ok(found.span, "the floor every account route depends on");
+  });
+});
+
+/**
+ * The pointer memo, and the miss that makes it safe.
+ *
+ * Measured 2026-08-16: an R2 artifact read from this Worker costs ~370 ms
+ * (`/api/v1/coverage`, which does exactly one), and the projection does two in
+ * sequence -- the pointer, then the shard it names. The pointer changes once an
+ * hour and was being fetched on EVERY account request.
+ */
+describe("the pointer memo", () => {
+  const FRESH_POINTER = () => ({ generated_at: nowIso() });
+
+  test("ONE R2 READ across many callers, not one each", async () => {
+    const store = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
+    for (let i = 0; i < 4; i += 1) {
+      await loadAccountSummaryProjection(store.env, HOT);
+    }
+    const pointerReads = store.asked.filter(
+      (key) => key === ACCOUNT_SUMMARY_POINTER_KEY,
+    ).length;
+    assert.equal(pointerReads, 1, store.asked.join("\n"));
+    assert.equal(
+      store.asked.length,
+      5,
+      "one pointer read plus one shard read per caller",
+    );
+  });
+
+  test("CONCURRENT CALLERS SHARE ONE IN-FLIGHT READ", async () => {
+    // The PROMISE is memoized, not the value, so a cold isolate taking four
+    // simultaneous requests issues one R2 GET rather than racing four.
+    const store = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
+    await Promise.all(
+      [0, 1, 2, 3].map(() => loadAccountSummaryProjection(store.env, HOT)),
+    );
+    assert.equal(
+      store.asked.filter((key) => key === ACCOUNT_SUMMARY_POINTER_KEY).length,
+      1,
+    );
+  });
+
+  test("A SHARD MISS DROPS THE MEMO, so the next request re-reads", async () => {
+    // THE THING THAT MAKES MEMOIZING SAFE AT ALL. The producer deletes a
+    // generation's shards once the next one is live, so a memoized pointer can
+    // name a generation that no longer exists. Without this, every account
+    // request would decline for the rest of the TTL -- turning a 370 ms saving
+    // into a multi-minute outage once an hour.
+    const gone = archive({
+      [ACCOUNT_SUMMARY_POINTER_KEY]: pointer(FRESH_POINTER()),
+    });
+    assert.equal(await loadAccountSummaryProjection(gone.env, HOT), null);
+
+    const live = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
+    const found = await readFound(live.env, HOT, FRESH);
+    assert.equal(
+      found.groups.length,
+      1,
+      "the next request re-read the pointer",
+    );
+    assert.ok(
+      live.asked.includes(ACCOUNT_SUMMARY_POINTER_KEY),
+      "it must not have answered from the dropped memo",
+    );
+  });
+
+  test("AN UNREADABLE POINTER IS NOT MEMOIZED for the TTL", async () => {
+    // A transient R2 blip must cost one request, not five minutes of declines.
+    const broken = archive({ [ACCOUNT_SUMMARY_POINTER_KEY]: { nope: 1 } });
+    assert.equal(await loadAccountSummaryProjection(broken.env, HOT), null);
+
+    const live = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
+    const found = await readFound(live.env, HOT, FRESH);
+    assert.equal(found.groups.length, 1);
+  });
+
+  test("THE MEMO EXPIRES, so a new generation is picked up", async () => {
+    const first = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
+    await loadAccountSummaryProjection(first.env, HOT);
+    const later = () => Date.now() + ACCOUNT_SUMMARY_POINTER_TTL_MS + 1;
+    const second = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
+    await loadAccountSummaryProjection(second.env, HOT, { now: later });
+    assert.ok(
+      second.asked.includes(ACCOUNT_SUMMARY_POINTER_KEY),
+      "past the TTL the pointer must be re-read",
+    );
   });
 });
