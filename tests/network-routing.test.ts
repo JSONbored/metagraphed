@@ -410,8 +410,13 @@ describe("multi-network routing prefix (Phase 1)", () => {
       // The neurons-tier chain analytics ARE still mainnet-only -- they read
       // a store the decode lane does not produce, unlike their
       // projection-backed neighbours (#9412).
+      //
+      // /chain/serving LEFT THIS LIST in #11419: it gained a projection lane,
+      // so testnet answers from its own card once that lane has ticked. Its
+      // reader takes a network now, which is what made un-gating safe -- see
+      // tests/chain-history-networks.test.ts, the gate that required it.
+      // /chain/weights stays: no lane yet.
       "/api/v1/testnet/chain/weights",
-      "/api/v1/testnet/chain/serving",
       "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/performance",

@@ -595,7 +595,9 @@ import {
 } from "../workers/config.ts";
 import { answerRpcUsage } from "./rpc-usage-answer.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
+import { loadChainServingFromArtifact } from "./chain-serving-artifact.ts";
 import { loadChainPrometheusColdTier } from "./chain-prometheus-loader.ts";
+import { loadChainPrometheusFromArtifact } from "./chain-prometheus-artifact.ts";
 import {
   accountSummaryGapMessage,
   answerAccountSummary,
@@ -8029,6 +8031,14 @@ const rootValue = {
       // Same shared loader REST and MCP use. GraphQL keeps its own fallback
       // below because answering with the schema-stable card rather than an
       // error is this surface's deliberate contract, not the loader's call.
+      // THE PROJECTION TIER FIRST (#11419), the same ladder
+      // handleChainServing reads -- tests/graphql-tier-parity.test.ts is the
+      // gate that holds the three surfaces to one order, because a field that
+      // skips a tier its route reads answers a confident zero.
+      ((await loadChainServingFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       ((await loadChainServingColdTier(context.env, {
         window: requestedWindow,
         limit: safeLimit,
@@ -8252,6 +8262,14 @@ const rootValue = {
       // The same lakehouse rung REST and MCP now use (#10248). Wiring one
       // surface and not the others is exactly the drift chain-serving-loader.ts
       // was extracted to stop.
+      // THE PROJECTION TIER FIRST (#11419), the same ladder
+      // handleChainPrometheus reads -- tests/graphql-tier-parity.test.ts is the
+      // gate that holds the three surfaces to one order, because a field that
+      // skips a tier its route reads answers a confident zero.
+      ((await loadChainPrometheusFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       ((await loadChainPrometheusColdTier(context.env, {
         window: requestedWindow,
         limit: safeLimit,
