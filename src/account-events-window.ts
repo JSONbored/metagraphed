@@ -141,6 +141,15 @@ export interface WindowedRowReadOptions extends WindowWalkDeps {
    * from now. Null starts at the newest end.
    */
   ceiling?: number | null;
+  /**
+   * The projection's lower bound, when the caller already pushed one into
+   * `where`. Null when it could not supply one.
+   *
+   * PASSED SEPARATELY rather than parsed back out of `where`, which is an
+   * opaque string array by design. The walk cannot otherwise know that the
+   * range it is about to read is empty -- and it was reading it anyway.
+   */
+  floorMs?: number | null;
 }
 
 /**
@@ -169,7 +178,15 @@ export async function windowedRowRead<Row>(
   env: R2SqlEnv | null | undefined,
   options: WindowedRowReadOptions,
 ): Promise<Row[] | null> {
-  const { table, columns, where, order, need, ceiling = null } = options;
+  const {
+    table,
+    columns,
+    where,
+    order,
+    need,
+    ceiling = null,
+    floorMs = null,
+  } = options;
   const query = options.query ?? r2SqlQuery;
   const now = options.now ?? Date.now;
 
@@ -181,17 +198,35 @@ export async function windowedRowRead<Row>(
         `${order} LIMIT ${need - collected.length}`,
     )) as Row[] | null;
 
+  // The BOTTOM of the walk, and it is the projection's floor when there is one.
+  //
+  // Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC, whose whole folded history is a
+  // single event on 2026-08-11: the two probes cover ten days, so they already
+  // spanned everything the account can have -- and the walk then issued a THIRD
+  // query for `observed_at <= now - 10d`, against a `where` that also carries
+  // `observed_at >= 2026-08-11`. Floor above ceiling: a range that cannot hold
+  // a row, read at full R2 SQL latency, on every request.
+  //
+  // Zero when there is no floor, which is exactly the behaviour before this:
+  // `Math.max(0, ...)` was already the bottom and `floor === 0` already ended
+  // the walk.
+  const bottom = floorMs === null ? 0 : Math.trunc(floorMs);
+
   let top: number | null = ceiling;
   let window = ACCOUNT_EVENTS_WINDOW_MS;
   for (let step = 0; step < PROBE_STEPS && collected.length < need; step++) {
-    const floor = Math.max(0, (top ?? now()) - window);
+    const floor = Math.max(bottom, (top ?? now()) - window);
     const slice = await read(windowBound(floor, top));
     // A failed slice fails the read. Returning what landed so far would publish
     // a page that is short for a reason the caller cannot see, which is the
     // silently-truncated answer this whole family declines rather than serves.
     if (slice === null) return null;
     collected.push(...slice);
-    if (floor === 0) return collected;
+    // THE WHOLE RANGE IS NOW READ. A window whose floor reached the bottom
+    // covers everything at or above it, and the caller's own predicate excludes
+    // everything below -- so a short page here is the complete answer, not an
+    // unfinished one. Widening cannot find a row and neither can the tail read.
+    if (floor <= bottom) return collected;
     top = floor - 1;
     window *= WINDOW_GROWTH;
   }

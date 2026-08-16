@@ -36,9 +36,19 @@ function engine(rows: Row[], { fail = -1 }: { fail?: number } = {}) {
   const query = async (_env: unknown, sql: string) => {
     seen.push(sql);
     if (seen.length - 1 === fail) return null;
-    const lo = Number(/observed_at >= (\d+)/.exec(sql)?.[1] ?? 0);
-    const hiMatch = /observed_at <= (\d+)/.exec(sql);
-    const hi = hiMatch ? Number(hiMatch[1]) : Number.POSITIVE_INFINITY;
+    // EVERY `observed_at >=`, not the first. A caller that pushed the
+    // projection floor into `where` produces two of them, and AND means the
+    // TIGHTEST -- taking the first made both probes read the same range and
+    // return the same row twice, which reads as a paging bug in the walk rather
+    // than as a fact about this double.
+    const lows = [...sql.matchAll(/observed_at >= (\d+)/g)].map((m) =>
+      Number(m[1]),
+    );
+    const lo = lows.length ? Math.max(...lows) : 0;
+    const highs = [...sql.matchAll(/observed_at <= (\d+)/g)].map((m) =>
+      Number(m[1]),
+    );
+    const hi = highs.length ? Math.min(...highs) : Number.POSITIVE_INFINITY;
     const limit = Number(/LIMIT (\d+)\s*$/.exec(sql)?.[1] ?? rows.length);
     return rows
       .filter((r) => Number(r.observed_at) >= lo && Number(r.observed_at) <= hi)
@@ -325,5 +335,116 @@ describe("the default reader", () => {
       }),
       null,
     );
+  });
+});
+
+/**
+ * The walk clamped to the caller's own floor.
+ *
+ * Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC, whose whole folded history is a
+ * single event on 2026-08-11: the two probes cover ten days, so they already
+ * spanned everything the account can have -- and the walk then issued a THIRD
+ * query for `observed_at <= now - 10d`, against a `where` that also carries
+ * `observed_at >= 2026-08-11`. Floor above ceiling: a range that cannot hold a
+ * row, read at full R2 SQL latency, on every request.
+ */
+describe("windowedRowRead -- the floor the caller already knows", () => {
+  test("STOPS at the floor instead of reading below it", async () => {
+    // One row, five days back, page never fills. Without the clamp this is
+    // three queries: two probes and a tail below them that the caller's own
+    // predicate has already emptied.
+    const e = engine(rowsAgedDays(5));
+    const rows = await feed(5, {
+      query: e.query,
+      floorMs: NOW - 6 * DAY,
+      where: [`hotkey = 'x'`, `observed_at >= ${NOW - 6 * DAY}`],
+    });
+    assert.equal(rows!.length, 1, "the row is still returned");
+    assert.equal(e.seen.length, 2, e.seen.join("\n"));
+    // No query may reach below the floor. Asserting on the low bounds rather
+    // than on the presence of a `<=` clause: the probes carry one too, so a
+    // shape check would have matched them and passed for the wrong reason.
+    for (const sql of e.seen) {
+      const low = Math.max(
+        ...[...sql.matchAll(/observed_at >= (\d+)/g)].map((m) => Number(m[1])),
+      );
+      assert.ok(low >= NOW - 6 * DAY, `read below the floor: ${sql}`);
+    }
+  });
+
+  test("the LAST probe is clamped to the floor, not widened past it", async () => {
+    const e = engine(rowsAgedDays(5));
+    await feed(5, {
+      query: e.query,
+      floorMs: NOW - 6 * DAY,
+      where: [`hotkey = 'x'`, `observed_at >= ${NOW - 6 * DAY}`],
+    });
+    const lows = e.seen.map((sql) =>
+      Number(/observed_at >= (\d+)/.exec(sql)![1]),
+    );
+    assert.equal(
+      Math.min(...lows),
+      NOW - 6 * DAY,
+      "the deepest window must sit exactly on the floor",
+    );
+  });
+
+  test("SAME ROWS as the unclamped walk -- the clamp is not a narrowing", async () => {
+    // The property that matters. The floor is the caller's own predicate, so
+    // every row it excludes was already excluded; stopping there must change
+    // the cost and nothing else.
+    const aged = rowsAgedDays(1, 3, 5, 5.5);
+    const floor = NOW - 6 * DAY;
+    const where = [`hotkey = 'x'`, `observed_at >= ${floor}`];
+    const clamped = engine(aged);
+    const walked = engine(aged);
+    assert.deepEqual(
+      await feed(50, { query: clamped.query, where, floorMs: floor }),
+      await feed(50, { query: walked.query, where }),
+    );
+    assert.ok(
+      clamped.seen.length < walked.seen.length,
+      `clamped ${clamped.seen.length} vs walked ${walked.seen.length}`,
+    );
+  });
+
+  test("a floor BELOW the probes changes nothing", async () => {
+    // An account with genuinely old history still gets the full walk: the
+    // clamp only ever removes reads the caller's predicate had emptied.
+    const deep = NOW - 400 * DAY;
+    const where = [`hotkey = 'x'`, `observed_at >= ${deep}`];
+    const clamped = engine(rowsAgedDays(300));
+    const walked = engine(rowsAgedDays(300));
+    assert.deepEqual(
+      await feed(5, { query: clamped.query, where, floorMs: deep }),
+      await feed(5, { query: walked.query, where }),
+    );
+    assert.equal(clamped.seen.length, walked.seen.length);
+  });
+
+  test("NO floor is byte-identical to before", async () => {
+    // Every caller that cannot supply one -- another network, an absent
+    // projection -- must walk exactly as it did.
+    const withNull = engine(rowsAgedDays(300));
+    const without = engine(rowsAgedDays(300));
+    assert.deepEqual(
+      await feed(5, { query: withNull.query, floorMs: null }),
+      await feed(5, { query: without.query }),
+    );
+    assert.deepEqual(withNull.seen, without.seen);
+  });
+
+  test("a FILLED page still stops early, floor or no floor", async () => {
+    // The clamp must not turn a one-query answer into a wider one: a busy
+    // account whose first probe fills the page reads two days, not the floor's
+    // whole span.
+    const e = engine(rowsAgedDays(0.1, 0.2, 0.3));
+    const rows = await feed(2, {
+      query: e.query,
+      floorMs: NOW - 300 * DAY,
+      where: [`hotkey = 'x'`, `observed_at >= ${NOW - 300 * DAY}`],
+    });
+    assert.equal(rows!.length, 2);
+    assert.equal(e.seen.length, 1, e.seen.join("\n"));
   });
 });

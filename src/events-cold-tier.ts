@@ -163,6 +163,9 @@ export async function loadAccountEventsColdTier(
     need: limit + paged,
     // cursor[0] is the token's `observed_at`, the column the walk slices on.
     ceiling: cursor ? (cursor[0] as number) : null,
+    // The same floor already in `where`, told to the walk so it stops when it
+    // reaches it instead of reading a range its own predicate excludes.
+    floorMs,
   });
   if (rows === null) return null;
 
