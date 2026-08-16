@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  accountAxonRemovalRows,
   AXON_REMOVALS_LOOKBACK_DAYS,
   isoDaysAgo,
   loadAxonRemovals,
+  subnetAxonRemovalRow,
 } from "../src/axon-removals-loader.ts";
 
 function day(
@@ -165,5 +167,86 @@ describe("isoDaysAgo", () => {
       isoDaysAgo(Date.parse("2026-08-16T23:59:59Z"), 0),
       "2026-08-16",
     );
+  });
+});
+
+describe("subnetAxonRemovalRow", () => {
+  const rollup = async () =>
+    (await loadAxonRemovals(
+      {},
+      {
+        query: async () => [
+          ...removalSeries(7, 1, "hkA"),
+          ...removalSeries(7, 2, "hkA"),
+          ...removalSeries(9, 1, "hkB"),
+        ],
+      },
+    ))!;
+
+  test("counts only this subnet, and its own newest removal", async () => {
+    const row = subnetAxonRemovalRow(await rollup(), 7);
+    // Two removals by ONE hotkey: the card's removals_per_remover is what
+    // turns that into "one operator", and it needs the distinct count to.
+    assert.deepEqual(row, {
+      distinct_removers: 1,
+      removals: 2,
+      newest_observed: "2026-08-02",
+    });
+  });
+
+  test("A SUBNET WITH NO REMOVALS IS A ZEROED ROW, not null", async () => {
+    // It was measured: we read 30 days and this subnet removed nothing. Null
+    // is reserved for "no store", and conflating them is what this whole
+    // change is undoing.
+    assert.deepEqual(subnetAxonRemovalRow(await rollup(), 999), {
+      distinct_removers: 0,
+      removals: 0,
+      newest_observed: null,
+    });
+  });
+
+  test("no rollup is null, so the caller keeps its degraded empty", () => {
+    assert.equal(subnetAxonRemovalRow(null, 7), null);
+  });
+});
+
+describe("accountAxonRemovalRows", () => {
+  test("groups one hotkey's removals per subnet, with its own first/last", async () => {
+    const out = (await loadAxonRemovals(
+      {},
+      {
+        query: async () => [
+          ...removalSeries(7, 1, "hkA"),
+          ...removalSeries(9, 1, "hkA"),
+          ...removalSeries(7, 2, "hkB"),
+        ],
+      },
+    ))!;
+    assert.deepEqual(accountAxonRemovalRows(out, "hkA"), [
+      {
+        netuid: 7,
+        removals: 1,
+        first_observed: "2026-08-02",
+        last_observed: "2026-08-02",
+      },
+      {
+        netuid: 9,
+        removals: 1,
+        first_observed: "2026-08-02",
+        last_observed: "2026-08-02",
+      },
+    ]);
+  });
+
+  test("an account with no removals is an empty list, not null", async () => {
+    const out = (await loadAxonRemovals(
+      {},
+      { query: async () => removalSeries(7, 1, "hkA") },
+    ))!;
+    assert.deepEqual(accountAxonRemovalRows(out, "hkOther"), []);
+  });
+
+  test("no rollup is null", () => {
+    assert.equal(accountAxonRemovalRows(null, "hkA"), null);
   });
 });

@@ -159,3 +159,71 @@ export async function loadAxonRemovals(
     removals: derived.removals,
   };
 }
+
+/**
+ * The single row `buildSubnetAxonRemovals` takes, for one subnet.
+ *
+ * Null when the rollup itself is null -- "no store" has to stay
+ * distinguishable from "this subnet removed nothing", which is a real answer
+ * and returns a zeroed row.
+ */
+export function subnetAxonRemovalRow(
+  rollup: AxonRemovalsRollup | null,
+  netuid: number,
+): Record<string, unknown> | null {
+  if (!rollup) return null;
+  const mine = rollup.removals.filter((r) => r.netuid === netuid);
+  const hotkeys = new Set(mine.map((r) => r.hotkey));
+  return {
+    distinct_removers: hotkeys.size,
+    removals: mine.length,
+    // The newest removal ON THIS SUBNET, not the network's -- an observed_at
+    // borrowed from elsewhere would date this card to an event it did not
+    // include.
+    newest_observed: mine.reduce<string | null>(
+      (newest, r) =>
+        newest === null || r.removed_on > newest ? r.removed_on : newest,
+      null,
+    ),
+  };
+}
+
+/**
+ * Per-subnet rows for one account, as `buildAccountAxonRemovals` takes them.
+ *
+ * The account here is the HOTKEY that stopped announcing. `neuron_daily` names
+ * the hotkey on the slot, so a coldkey's removals are not derivable from this
+ * table alone -- an empty answer for a coldkey is honest, and the same one the
+ * route gave before.
+ */
+export function accountAxonRemovalRows(
+  rollup: AxonRemovalsRollup | null,
+  ss58: string,
+): Record<string, unknown>[] | null {
+  if (!rollup) return null;
+  const perNetuid = new Map<
+    number,
+    { removals: number; first: string; last: string }
+  >();
+  for (const removal of rollup.removals) {
+    if (removal.hotkey !== ss58) continue;
+    const bucket = perNetuid.get(removal.netuid);
+    if (bucket) {
+      bucket.removals += 1;
+      if (removal.removed_on < bucket.first) bucket.first = removal.removed_on;
+      if (removal.removed_on > bucket.last) bucket.last = removal.removed_on;
+    } else {
+      perNetuid.set(removal.netuid, {
+        removals: 1,
+        first: removal.removed_on,
+        last: removal.removed_on,
+      });
+    }
+  }
+  return [...perNetuid].map(([netuid, bucket]) => ({
+    netuid,
+    removals: bucket.removals,
+    first_observed: bucket.first,
+    last_observed: bucket.last,
+  }));
+}

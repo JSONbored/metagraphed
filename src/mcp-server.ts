@@ -1816,6 +1816,10 @@ import {
 } from "./read-store-tables.ts";
 import { COVERAGE_DEPTH_SEVERITIES as ROUTE_COVERAGE_DEPTH_SEVERITIES } from "../schemas-src/routes/coverage.ts";
 import { loadAxonRemovals } from "./axon-removals-loader.ts";
+import {
+  accountAxonRemovalRows,
+  subnetAxonRemovalRow,
+} from "./axon-removals-loader.ts";
 
 type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -8203,7 +8207,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetSubnetAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetAxonRemovalsInputSchema>,
-      _ctx: McpCtx,
+      ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
       const window = requireWindowArgument(
@@ -8211,11 +8215,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SUBNET_AXON_REMOVALS_WINDOWS,
         DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
       );
-      return (
-        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-        // resolved to null before it could touch DATA_API.
-        buildSubnetAxonRemovals(null, netuid, { window })
+      // DERIVED FROM STATE (#10805): the same rollup the chain scope reads,
+      // so all three scopes agree. Null means no store, never no removals.
+      const rollup = await loadAxonRemovals(ctx.env);
+      return buildSubnetAxonRemovals(
+        subnetAxonRemovalRow(rollup, netuid),
+        netuid,
+        { window },
       );
     },
   },
@@ -11370,7 +11376,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetAccountAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountAxonRemovalsInputSchema>,
-      _ctx: McpCtx,
+      ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
       const window = requireWindowArgument(
@@ -11378,11 +11384,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         AXON_REMOVAL_WINDOWS,
         DEFAULT_AXON_REMOVAL_WINDOW,
       );
-      return (
-        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-        // resolved to null before it could touch DATA_API.
-        buildAccountAxonRemovals([], ss58, { window })
+      // DERIVED FROM STATE (#10805): the same rollup the chain scope reads,
+      // so all three scopes agree. Null means no store, never no removals.
+      const rollup = await loadAxonRemovals(ctx.env);
+      return buildAccountAxonRemovals(
+        accountAxonRemovalRows(rollup, ss58) ?? [],
+        ss58,
+        { window },
       );
     },
   },
