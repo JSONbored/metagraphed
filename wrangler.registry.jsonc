@@ -72,7 +72,13 @@
     //
     // Every lane below is held to `2 * HOUR` by src/table-freshness-watchdog.ts,
     // so a ten-minute flush is twelve ticks inside a bound that already exists.
-    "NEON_WRITE_BUFFER_LANES": "raw-capture-state,neurons,subnet-hyperparams,subnet-identity,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
+    // `raw-capture-state` was the first lane named here and is now removed:
+    // the capture lane reads that watermark back one minute later, so
+    // deferring the write made it resume from a stale value and re-capture the
+    // same range until the flush landed. NEVER_BUFFER_LANES refuses it in code
+    // as well -- this line is kept honest so the config does not advertise
+    // buffering that cannot happen.
+    "NEON_WRITE_BUFFER_LANES": "neurons,subnet-hyperparams,subnet-identity,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
     // THE NEON FLAGS, and this Worker needs them because it now runs a gated
     // path (#10194's self-health probe). `vars` are per-config with no
     // inheritance, so their absence here did not read as "no opinion" -- it

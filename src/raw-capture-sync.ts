@@ -74,24 +74,24 @@ export const RAW_CAPTURE_GENESIS_FLOOR = 8756635;
  * against mainnet's 3.38. What churns is SUBNET state (netuids deregistered
  * and recycled), not the ledger underneath.
  *
- * The real constraint is throughput, not staleness. The public endpoint serves
- * ~100 requests per client per minute (#9378), which at 3 calls per block caps
- * this lane near 33 blocks/minute — so genesis..7,700,000 is roughly 162 DAYS
- * of continuous capture from one client. That is why the floor is shallow, and
- * it is a cost problem with real options (a bulk snapshot from the Foundation,
- * a raised limit, a dedicated backfill lane) rather than a "nobody wants it"
- * problem. Three years of continuous testnet history is genuinely useful — it
- * covers the full testnet life of every subnet that later graduated to
- * mainnet.
+ * The real constraint WAS throughput, and that constraint has largely lifted.
+ * The endpoint serves ~100 requests per minute, and this lane used to spend
+ * three of them per block -- capping it near 33 blocks/minute, which put
+ * genesis..7,700,000 at roughly 162 DAYS of continuous capture. Batching made
+ * a chunk cost two requests for 25 blocks, so the same allowance now funds
+ * hundreds of blocks/minute and that figure falls by more than an order of
+ * magnitude. The floor is left where it is regardless: the watermark is long
+ * past it, and lowering it is a separate decision about how much history to
+ * buy, not a throughput problem any more.
  *
- * DRAIN TIME, measured rather than hoped (#9378): the endpoint's rate limit
- * caps a tick at 32 blocks while the chain produces ~25 in the same 5 minutes,
- * so the backlog closes at ~7 blocks/tick — about **four days**, not the "few
- * hours" this comment originally claimed. It does converge, and the lane tracks
- * the tip once it has. The floor is deliberately NOT raised to shorten that:
- * the watermark is already past it, so moving it up would leave the blocks in
- * between permanently uncaptured, which is the one outcome this lane exists to
- * prevent.
+ * DRAIN TIME. The old numbers here (32 blocks/tick against ~25 produced, ~four
+ * days to converge) described the three-requests-per-block lane and no longer
+ * hold; the budget now outpaces both chains by roughly two orders of magnitude,
+ * so a backlog closes at whatever rate the pacing allows rather than at the
+ * margin between capture and production. The floor is deliberately NOT raised
+ * to shorten a drain: the watermark is already past it, so moving it up would
+ * leave the blocks in between permanently uncaptured, which is the one outcome
+ * this lane exists to prevent.
  *
  * Blocks below this are not captured, and that is a recorded decision rather
  * than a gap: `/api/v1/testnet/blocks` reports its own floor, so a caller can
@@ -104,16 +104,8 @@ export const TESTNET_RAW_CAPTURE_GENESIS_FLOOR = 7_700_000;
  *
  * THE PLATFORM CEILING is 1000 subrequests per invocation, and every lane runs
  * in ONE invocation, so the budgets are bounded together rather than
- * individually.
- *
- * THE ENDPOINT CEILING is ~100 requests per client per minute, measured by
- * replaying this lane's exact call pattern (#9378):
- *
- *     FAILED after 33 blocks (100 calls) in 23.0s: HTTP 429
- *
- * It is per CLIENT, not per host -- probing test.chain.opentensor.ai straight
- * afterwards stopped after 4 blocks, because the first probe had already spent
- * the budget. So there is no sibling endpoint to spread across.
+ * individually. Chunking put two orders of magnitude between the lane and this
+ * ceiling: a full mainnet tick now issues 33 subrequests, not 1,201.
  *
  * THESE USED TO BE TWO HAND-WRITTEN NUMBERS (150 mainnet, 32 testnet), and
  * #9430 is what that cost. 32 was pinned just under the measured 429; 150 was
@@ -125,13 +117,29 @@ export const TESTNET_RAW_CAPTURE_GENESIS_FLOOR = 7_700_000;
  *
  * The limit is PER MINUTE, so that is what the budget reads. An unpaced tick is
  * bounded by one minute's allowance however long it runs; a paced one is
- * bounded by its own span. Both numbers below fall out of the same three
- * measured inputs -- the ceiling, the calls per block, and the cron interval --
- * so a cadence change or a third network moves them together instead of leaving
- * one behind.
+ * bounded by its own span. Both numbers below fall out of the same measured
+ * inputs -- the ceiling, the requests a chunk costs, the blocks a chunk carries,
+ * and the cron interval -- so a cadence change or a third network moves them
+ * together instead of leaving one behind.
  */
 /**
- * Requests the public RPC serves one client per minute, measured (#9378).
+ * HTTP REQUESTS the public RPC serves one client per minute, per backend node.
+ *
+ * REQUESTS, NOT CALLS, and the distinction is the whole shape of the budget
+ * below. Re-measured 2026-08-16 against archive.chain.opentensor.ai by
+ * replaying this lane's own pattern:
+ *
+ *     one call per request:      429 after 103 requests (103 calls)
+ *     fifty calls per request:   no limit in 140 requests (1,400 calls, 103.7s)
+ *
+ * The same allowance carried 13.6x the data purely by batching, so what this
+ * number bounds is round trips. A per-BLOCK call cost is therefore no longer a
+ * multiplier on it -- see `REQUESTS_PER_CHUNK`.
+ *
+ * PER BACKEND NODE, not per client as #9378 concluded: exhausting archive and
+ * then immediately draining lite.chain.opentensor.ai got a full fresh 100.
+ * captureTick's `chunkGapMs` carries that measurement and why the lane still
+ * does not try to spend more than one node's worth.
  *
  * Exported so the budget above is checked against it by a test rather than by a
  * comment — a raised `maxPerTick` that silently re-crosses this limit is the
@@ -139,8 +147,15 @@ export const TESTNET_RAW_CAPTURE_GENESIS_FLOOR = 7_700_000;
  */
 export const RPC_REQUESTS_PER_MINUTE_LIMIT = 100;
 
-/** RPC calls one captured block costs: hash, block body, events blob. */
-export const RPC_CALLS_PER_BLOCK = 3;
+// The wire costs belong to the module that makes the calls; re-exported here
+// because the budget and its tests have always addressed them through this one.
+// IMPORTED THEN RE-EXPORTED, not `export ... from`: a bare re-export does not
+// bind the name locally, and the budget below reads both.
+import {
+  MAX_CAPTURE_CHUNK_BLOCKS,
+  REQUESTS_PER_CHUNK,
+} from "./raw-chain-capture.ts";
+export { MAX_CAPTURE_CHUNK_BLOCKS, REQUESTS_PER_CHUNK };
 
 const RPC_BUDGET_UTILISATION = 0.8;
 
@@ -155,76 +170,78 @@ const RPC_BUDGET_UTILISATION = 0.8;
 const TICK_SPEND_FRACTION = 0.8;
 
 /**
- * Blocks per durable write. One R2 PUT each, so this trades a few writes for
- * how much a killed invocation discards.
+ * Blocks per chunk: ONE batched read and ONE durable write.
  *
- * THIS NUMBER IS A DEADLINE, NOT A BATCH SIZE, and 25 was past it. The chunk
- * only becomes durable once it is FULL, so the time to the first durable write
- * is `flushEvery * minGapMs` -- at the paced 4,500 ms that was 112 s, and an
- * invocation that did not live that long wrote NOTHING. The trailing flush at
- * the end of captureTick covers a clean early `break`; it does not run when the
- * runtime kills the invocation, which is the case this bounds.
+ * THIS WAS A DEADLINE AND IS NOW A BATCH SIZE, which is the whole point of the
+ * change that set it here. It was 5 because a chunk only becomes durable once
+ * it is FULL, and reading a block cost three sequential round trips: the time
+ * to the first durable write was `flushEvery * minGapMs`, which at 25 blocks
+ * and a paced 4,500 ms was 112 s -- longer than the invocation lived, so a tick
+ * wrote NOTHING. Measured against production 2026-08-16, mainnet: the watermark
+ * advanced 25 blocks in 21 minutes while the chain advanced ~105, losing ~3.8
+ * blocks/min and 8,409 blocks (~28 h) behind, throwing nothing the whole time.
  *
- * Measured against production 2026-08-16, mainnet: the watermark advanced 25
- * blocks in 21 minutes (three ticks) while the chain advanced ~105 -- one
- * single chunk, the rest discarded. Capture was losing ~3.8 blocks/min against
- * a chain producing 5/min, having fallen 8,409 blocks (~28 h) behind, and the
- * lane threw nothing the whole time: no exception, `last_error` NULL,
- * `stopped_at` NULL.
+ * Batching removes the deadline instead of tuning it. A chunk is now TWO
+ * requests regardless of size (~1.7 s measured for 25 blocks, 0.81 MB), so the
+ * first durable write lands in seconds and the number is free to be what the
+ * wire wants: the largest chunk the node will answer. Sizing it below the cap
+ * would spend the same two requests on fewer blocks.
  *
- * At 5 the first durable write lands in ~22 s, so a tick killed at any point
- * keeps all but its final partial chunk. The cost is ~11 PUTs per tick instead
- * of ~2 (a full 53-block tick), which is nothing against losing the tick.
+ * DERIVED from the node's stated batch limit rather than chosen, so it cannot
+ * drift past what the endpoint will serve -- an over-large chunk is refused
+ * whole, which would stall the lane rather than slow it.
  */
-const FLUSH_EVERY_BLOCKS = 5;
+const FLUSH_EVERY_BLOCKS = MAX_CAPTURE_CHUNK_BLOCKS;
 
 /**
- * The paced budget for ONE lane, given how many share the client allowance and
- * how many HOSTS the lane spreads across.
+ * The paced budget for ONE lane, in the unit the endpoint actually meters.
  *
- * THE LIMIT IS PER HOST, which is what `hostCount` expresses. #9378 measured it
- * per CLIENT against one host and the lane has read from one host ever since,
- * so the budget and the endpoint were the same number. They are not the same
- * thing: two archive hosts serve two allowances, and `captureTick` rotates
- * across them so each still sees `minGapMs` between its own calls. The
- * aggregate rate therefore scales with the hosts actually available rather
- * than with a constant nobody re-derived when a second archive endpoint was
- * curated into the registry.
+ * COUNTED IN REQUESTS, NOT BLOCKS, and that is the correction this function
+ * needed. The old form divided a per-minute allowance by three CALLS per block
+ * and got ~33 blocks/minute as a hard ceiling -- a ceiling that was never real,
+ * because the limit counts round trips (see RPC_REQUESTS_PER_MINUTE_LIMIT for
+ * the measurement). A chunk costs `REQUESTS_PER_CHUNK` whatever its size, so
+ * the same allowance now funds `MAX_CAPTURE_CHUNK_BLOCKS` times more blocks and
+ * the lane's problem stops being rate at all.
  *
- * `laneCount` DIVIDES: mainnet and testnet run concurrently and share one
- * client allowance.
- *
- * `hostCount` DOES NOT MULTIPLY, and briefly did. Adding endpoints looks like
- * it should buy proportional throughput, and it does not: #9378 measured this
- * limit as PER CLIENT, not per host -- "probing test.chain.opentensor.ai
- * straight afterwards stopped after 4 blocks, because the first probe had
- * already spent the budget." Reading more hosts spends ONE allowance faster,
- * so a multiplier here does not raise the ceiling, it front-loads the minute
- * and buys a 429 partway through the tick.
+ * `laneCount` DIVIDES. Mainnet and testnet run concurrently, and while they
+ * read DIFFERENT backend nodes -- so they do not in fact share one bucket --
+ * the division is kept deliberately. This lane is a guest on free public
+ * infrastructure that the same community also uses, and the resulting spend
+ * (~32 requests/minute per lane against a measured ~100) is already two orders
+ * of magnitude more headroom than a chain producing five blocks/minute needs.
+ * Buying the last factor of two would cost politeness for throughput nobody
+ * can use.
  *
  * There is deliberately NO host parameter, and a test pins the budget against
- * the endpoint count so one cannot be reintroduced silently. The rotation is
- * still worth having -- it is FAILOVER (a height one host cannot serve is
- * retried on the others) and archive-depth coverage -- but those are
- * reliability properties, not rate. Keeping the two apart in the type is what
- * stops the next reader re-deriving the same wrong conclusion from the same
- * reasonable intuition.
+ * the endpoint count so one cannot be reintroduced silently. Rotation is
+ * FAILOVER and archive-depth coverage, not rate; captureTick's `chunkGapMs`
+ * carries the DNS measurement showing why a host multiplier would be wrong
+ * even where it looks free.
  */
 export function pacedLaneBudget(
   laneCount: number,
   cronMinutes: number,
   limitPerMinute: number = RPC_REQUESTS_PER_MINUTE_LIMIT,
 ): { maxBlocks: number; minGapMs: number } {
-  const callsPerMinute = (limitPerMinute * RPC_BUDGET_UTILISATION) / laneCount;
-  const blocksPerMinute = callsPerMinute / RPC_CALLS_PER_BLOCK;
+  const requestsPerMinute =
+    (limitPerMinute * RPC_BUDGET_UTILISATION) / laneCount;
+  const chunksPerMinute = requestsPerMinute / REQUESTS_PER_CHUNK;
+  const blocksPerMinute = chunksPerMinute * MAX_CAPTURE_CHUNK_BLOCKS;
   return {
     // Lanes run CONCURRENTLY, so each gets the whole spendable interval rather
     // than its share of it.
+    //
+    // The floor is a whole CHUNK, not one block: a chunk is indivisible on the
+    // wire, so a budget below one would pace a tick to read nothing.
     maxBlocks: Math.max(
-      1,
+      MAX_CAPTURE_CHUNK_BLOCKS,
       Math.floor(blocksPerMinute * cronMinutes * TICK_SPEND_FRACTION),
     ),
-    minGapMs: Math.ceil(60_000 / blocksPerMinute),
+    // Between CHUNK STARTS. captureTick subtracts the read's own duration from
+    // this, so the figure is a true cycle time and the request rate lands on
+    // the budget instead of on `budget + latency`.
+    minGapMs: Math.ceil(60_000 / chunksPerMinute),
   };
 }
 
@@ -553,10 +570,11 @@ async function runLane(
     // The per-host limit is what was measured, so the budget scales with the
     // hosts this tick actually has -- derived here rather than compiled in,
     // because the pool's membership changes without a deploy.
-    // NOT widened by `rpcUrls.length`. See pacedLaneBudget: the measured limit
-    // is per CLIENT, so more hosts spend one allowance faster rather than
-    // buying more of it. The rotation is failover and archive coverage; the
-    // rate is what it always was.
+    // NOT widened by `rpcUrls.length`. See pacedLaneBudget: the allowance is
+    // per backend node, but two of the three mainnet names resolve to one
+    // machine and batching already leaves the lane two orders of magnitude of
+    // headroom, so there is nothing a host multiplier could buy. The rotation
+    // is failover and archive coverage.
     const budget = pacedLaneBudget(
       RAW_CAPTURE_LANES.length,
       cronStepMinutes(RAW_CAPTURE_CRON),

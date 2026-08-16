@@ -26,7 +26,10 @@
 // the drift #11207 catalogues. Callers decode their own result; what this
 // guarantees is that an ENVELOPE arrived at all, and that an `error` member is
 // raised as one rather than read past.
-import { ChainRpcEnvelopeSchema } from "../schemas-src/chain-rpc-envelope.ts";
+import {
+  ChainRpcBatchSchema,
+  ChainRpcEnvelopeSchema,
+} from "../schemas-src/chain-rpc-envelope.ts";
 
 /**
  * An RPC error rendered for a human, preferring `.message` when the node sent
@@ -146,4 +149,122 @@ export async function chainRpc(
     throw new Error(`${method}: ${describeRpcError(envelope.data.error)}`);
   }
   return envelope.data.result;
+}
+
+/** One call in a batch. Same pair `chainRpc` takes, without the transport. */
+export interface ChainRpcBatchCall {
+  method: string;
+  params: unknown[];
+}
+
+/**
+ * One call's outcome, as DATA rather than as a throw.
+ *
+ * A batch mixes successes and failures in one response, and the two are not
+ * the same kind of event to the caller: a whole-request failure means nothing
+ * was read, while one member erroring means everything else in the chunk is
+ * still good. Throwing on the first bad member would discard the good ones and
+ * turn a one-block problem into a whole-chunk one -- for raw capture, which
+ * keeps the contiguous PREFIX before a hole, that is the difference between
+ * progress and a stall.
+ */
+export type ChainRpcBatchResult =
+  { ok: true; result: unknown } | { ok: false; error: string };
+
+/**
+ * Call many methods in ONE HTTP request; results align to `calls` by index.
+ *
+ * WHY THIS EXISTS. Raw capture cost three sequential HTTP round trips per
+ * block, and the public archive limits a client to ~100 requests/minute
+ * (#9378, re-measured 2026-08-16: 429 after 103). Three requests per block
+ * against that ceiling is ~33 blocks/minute at absolute best, and the round
+ * trips are also what made a tick long enough for the runtime to kill it
+ * before its first durable write. Batching collapses a chunk of blocks into
+ * two requests, which spends the same allowance on an order of magnitude more
+ * blocks and shortens the tick that has to survive.
+ *
+ * REQUEST-LEVEL failures THROW (non-2xx, unparseable body, not an array, a
+ * response that does not answer every call). Those mean nothing was read, and
+ * the caller cannot keep a prefix of nothing. CALL-LEVEL failures are returned
+ * as `{ok: false}` so the caller keeps what did arrive.
+ *
+ * CORRELATED BY `id`, never by position. JSON-RPC explicitly permits a server
+ * to return batch members in any order, so indexing the response array is a
+ * bug that hides until a node reorders -- at which point every block in the
+ * chunk is silently assembled from another block's bytes, and the capture is
+ * WRONG rather than missing. The id is the request's own index, so the mapping
+ * is total and checked below.
+ */
+export async function chainRpcBatch(
+  url: string,
+  calls: ChainRpcBatchCall[],
+  options: ChainRpcOptions = {},
+): Promise<ChainRpcBatchResult[]> {
+  // No request at all for no calls: an empty JSON-RPC batch is itself an
+  // error per the spec, so sending one would turn "nothing to do" into a
+  // failure.
+  if (calls.length === 0) return [];
+  const doFetch = options.fetchImpl ?? fetch;
+  const label = `batch(${calls.length})`;
+  const res = await doFetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    ...(options.timeoutMs === undefined
+      ? {}
+      : { signal: AbortSignal.timeout(options.timeoutMs) }),
+    body: JSON.stringify(
+      calls.map((call, index) => ({
+        jsonrpc: "2.0",
+        id: index,
+        method: call.method,
+        params: call.params,
+      })),
+    ),
+  });
+  if (!res.ok) throw new Error(`${label}: HTTP ${res.status}`);
+
+  let parsedBody: unknown;
+  try {
+    parsedBody = await res.json();
+  } catch (cause) {
+    throw new Error(`${label}: response body was not JSON`, { cause });
+  }
+  const parsed = ChainRpcBatchSchema.safeParse(parsedBody);
+  if (!parsed.success) {
+    // Covers the node that does not support batching at all: it answers a
+    // single envelope (or an error object) to an array request, which is not
+    // an array and so is a classified failure here rather than an empty read.
+    throw new Error(`${label}: response was not a JSON-RPC batch`);
+  }
+
+  const byId = new Map<number, (typeof parsed.data)[number]>();
+  for (const entry of parsed.data) {
+    // A duplicate id makes the mapping ambiguous, and silently keeping one of
+    // the two would assign some call an answer that is not its own.
+    if (byId.has(entry.id)) {
+      throw new Error(`${label}: duplicate id ${entry.id} in response`);
+    }
+    byId.set(entry.id, entry);
+  }
+
+  return calls.map((call, index) => {
+    const entry = byId.get(index);
+    // Every call carried an id, so every call must be answered. A missing
+    // member is a protocol violation, not a per-call error -- but it is
+    // reported per-call so one absent answer costs one block rather than the
+    // chunk.
+    if (entry === undefined) {
+      return {
+        ok: false,
+        error: `${call.method}: no response for id ${index}`,
+      };
+    }
+    if (entry.error !== undefined) {
+      return {
+        ok: false,
+        error: `${call.method}: ${describeRpcError(entry.error)}`,
+      };
+    }
+    return { ok: true, result: entry.result };
+  });
 }

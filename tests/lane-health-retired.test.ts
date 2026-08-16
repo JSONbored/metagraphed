@@ -208,10 +208,16 @@ describe("retired lanes (#10222)", () => {
     // Non-vacuity, on both sides. An empty `fossils` would pass the loop while
     // proving nothing, and an empty `live` would mean the producer table had
     // been emptied rather than that the rule holds.
+    // `raw-capture-state` was here until it stopped being a buffered lane at
+    // all: its watermark is read back by its own producer one tick later, so
+    // NEVER_BUFFER_LANES now refuses it and it leaves `bufferedLanes()`
+    // entirely. It is NOT un-retired by that -- both write paths key through
+    // `neonLaneKey`, so the bare spelling still has no writer -- it is simply
+    // out of scope for a rule about buffered lanes. The test just below still
+    // pins the bare key as retired.
     assert.deepEqual(fossils, [
       "neurons",
       "nominator-positions",
-      "raw-capture-state",
       "tao-usd-index",
       "validator-nominator-counts",
     ]);

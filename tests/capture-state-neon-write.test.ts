@@ -166,8 +166,20 @@ describe("the write-behind buffer seam (#10659)", () => {
     assert.equal(rec.calls.length, 1, "it must still write directly");
   });
 
-  test("a FLAGGED lane enqueues instead of writing", async () => {
+  test("raw-capture-state NEVER buffers, even when the flag names it", async () => {
+    // THE WATERMARK IS READ BACK BY ITS OWN PRODUCER, one minute later.
+    // src/raw-capture-sync.ts reads last_contiguous_block directly from Neon to
+    // decide where to resume, so deferring this write by the flush interval
+    // made every tick resume from a stale value and re-capture the range it had
+    // just captured.
+    //
+    // Measured in production 2026-08-16: ticks ran every 60s each reporting
+    // "10 captured" while the watermark advanced ~5 blocks per ~10 minutes --
+    // one FLUSH_INTERVAL_MS exactly -- so the lane ran at ~1 block/minute
+    // against a chain producing 5 and fell 8,621 blocks behind while every
+    // signal said ok.
     const ns = bufferNamespace();
+    const rec = recordingSql();
     await mirrorRawCaptureStateToNeon(
       {
         NEON_WRITE_BUFFER_LANES: RAW_CAPTURE_STATE_NEON_LANE,
@@ -178,37 +190,37 @@ describe("the write-behind buffer seam (#10659)", () => {
       "mainnet",
       4321,
       999,
-      {},
+      { sql: rec.sql },
     );
-    assert.equal(ns.sent.length, 1);
-    const sent = ns.sent[0] as {
-      lane: string;
-      text: string;
-      values: unknown[];
-    };
-    assert.equal(sent.lane, RAW_CAPTURE_STATE_NEON_LANE);
-    // The SAME statement the direct path would have run -- buffering must not
-    // reshape the write, only defer it.
-    assert.match(sent.text, /INSERT INTO raw_capture_state/);
-    assert.equal(sent.values[0], "mainnet");
+    assert.deepEqual(ns.sent, [], "nothing may be enqueued");
+    assert.equal(rec.calls.length, 1, "it must still write directly");
+    assert.match(rec.calls[0]!.text, /INSERT INTO raw_capture_state/);
+    assert.equal(rec.calls[0]!.values[0], "mainnet");
+    assert.equal(rec.calls[0]!.values[1], 4321);
   });
 
-  test("a refused enqueue costs the lane a stale verdict, not silence", async () => {
+  test("a refused write costs the lane a stale verdict, not silence", async () => {
     // Backpressure has to be visible. The lane's own record() turns the throw
-    // into the verdict; swallowing it would let the buffer fill while every
-    // lane reported ok.
-    const ns = bufferNamespace(503);
+    // into the verdict; swallowing it would let writes fail while every lane
+    // reported ok.
+    //
+    // Driven through an injected sql rather than a refusing buffer, because
+    // BOTH mirrors in this module are now never-buffer -- the refusal path is
+    // record()'s, and this proves record() classifies it rather than proving
+    // which transport raised it.
     const out = await mirrorRawCaptureStateToNeon(
-      {
-        NEON_WRITE_BUFFER_LANES: RAW_CAPTURE_STATE_NEON_LANE,
-        HYPERDRIVE: HD,
-        ...ns,
-      },
+      { HYPERDRIVE: HD },
       ctx,
       "mainnet",
       4321,
       999,
-      {},
+      {
+        sql: {
+          unsafe: async () => {
+            throw new Error("buffer refused (503)");
+          },
+        },
+      },
     );
     assert.equal(out.result?.ok, false);
     assert.match(String(out.result?.reason), /buffer refused/);
@@ -258,7 +270,7 @@ describe("no store bound at all", () => {
   });
 });
 
-describe("a buffered lane writes no enqueue-time verdict (#10690)", () => {
+describe("naming a never-buffer lane in the flag changes nothing (#10690)", () => {
   function laneSpy() {
     const rows: unknown[][] = [];
     return {
@@ -291,28 +303,39 @@ describe("a buffered lane writes no enqueue-time verdict (#10690)", () => {
     HYPERDRIVE: HD,
   };
 
-  test("a successful enqueue records nothing -- the flush owns the verdict", async () => {
+  // The enqueue-time verdict rules themselves (a buffered success records
+  // nothing, a buffered failure still does) are proven against a genuinely
+  // bufferable lane in tests/neon-write.test.ts. What is left to prove HERE is
+  // that this module's lanes never reach that path at all, however the flag is
+  // set -- so these assert the direct behaviour the flag can no longer change.
+  test("a flagged write still goes direct, and records its verdict", async () => {
     const spy = laneSpy();
+    const rec = recordingSql();
+    const ns = bufferNs();
+    await mirrorRawCaptureStateToNeon(
+      { ...enabled, ...ns },
+      ctx,
+      "mainnet",
+      4321,
+      999,
+      { laneHealthDb: spy.db, sql: rec.sql },
+    );
+    assert.equal(rec.calls.length, 1, "written, not enqueued");
+    assert.equal(spy.rows.length, 1, "and the verdict is written now");
+    assert.equal(spy.rows[0][0], `neon:${RAW_CAPTURE_STATE_NEON_LANE}`);
+    assert.equal(spy.rows[0][1], "ok");
+  });
+
+  test("a FAILED direct write records stale -- failure must stay visible", async () => {
+    const spy = laneSpy();
+    const rec = recordingSql("connection refused");
     await mirrorRawCaptureStateToNeon(
       { ...enabled, ...bufferNs() },
       ctx,
       "mainnet",
       4321,
       999,
-      { laneHealthDb: spy.db },
-    );
-    assert.deepEqual(spy.rows, []);
-  });
-
-  test("a REFUSED enqueue still records -- backpressure must stay visible", async () => {
-    const spy = laneSpy();
-    await mirrorRawCaptureStateToNeon(
-      { ...enabled, ...bufferNs(503) },
-      ctx,
-      "mainnet",
-      4321,
-      999,
-      { laneHealthDb: spy.db },
+      { laneHealthDb: spy.db, sql: rec.sql },
     );
     assert.equal(spy.rows.length, 1);
     assert.equal(spy.rows[0][0], `neon:${RAW_CAPTURE_STATE_NEON_LANE}`);
