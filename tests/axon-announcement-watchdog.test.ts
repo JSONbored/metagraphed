@@ -90,7 +90,10 @@ describe("evaluateSubnetAxons — the real incidents", () => {
     const series = then(flat(8, 223), [129, 256]);
     const f = evaluateSubnetAxons(101, series);
     assert.ok(f, "SN101's drop is a finding");
-    assert.equal(f.kind, "announcements-withdrawn");
+    // The pure evaluator is given no per-UID rows, so it cannot name a
+    // mechanism -- only the enrichment can, and SN101 is the one subnet that
+    // really is withdrawal (64/75 same-hotkey, measured 2026-08-16).
+    assert.equal(f.kind, "mechanism-unknown");
     assert.equal(f.withAxon, 129);
     assert.equal(f.baseline, 223);
     assert.ok(f.ratio < 0.6);
@@ -103,7 +106,7 @@ describe("evaluateSubnetAxons — the real incidents", () => {
     const f = evaluateSubnetAxons(25, series);
     assert.ok(f, "SN25's decline is caught against baseline");
     assert.equal(f.withAxon, 21);
-    assert.equal(f.kind, "announcements-withdrawn");
+    assert.equal(f.kind, "mechanism-unknown");
   });
 
   test("the first 26% step alone is NOT flagged", () => {
@@ -169,7 +172,7 @@ describe("evaluateSubnetAxons — what it refuses to measure", () => {
     ];
     const f = evaluateSubnetAxons(9, series);
     assert.ok(f);
-    assert.equal(f.kind, "announcements-withdrawn");
+    assert.equal(f.kind, "mechanism-unknown");
   });
 });
 
@@ -182,7 +185,9 @@ describe("the fleet-wide guard", () => {
     ratio: 0.01,
     neurons: 256,
     neuronBaseline: 256,
-    kind: "announcements-withdrawn",
+    // Null counts and `announcements-withdrawn` cannot co-occur any more --
+    // that kind is only reachable through a successful mechanism read.
+    kind: "mechanism-unknown",
     lossesViaReuse: null,
     lossesSameHotkey: null,
     lossesDistinctIps: null,
@@ -353,7 +358,7 @@ describe("the defensive fallbacks, each exercised", () => {
     assert.equal(f.neuronBaseline, 0);
     assert.equal(
       f.kind,
-      "announcements-withdrawn",
+      "mechanism-unknown",
       "an unmeasurable neuron baseline cannot assert the subnet turned over",
     );
   });
@@ -611,28 +616,32 @@ describe("mechanism — WHAT happened, not just how much (#11369)", () => {
     );
   });
 
-  test("UNMEASURED keeps the default rather than guessing churn", () => {
+  test("UNMEASURED keeps the default rather than guessing EITHER reading", () => {
     // Churn is the reading that does NOT send anyone looking, so inferring it
     // from an absent measurement would turn an unread number into an all-clear.
+    // Withdrawal is no safer: it NAMES a cause, and the caller's default is
+    // `mechanism-unknown` precisely so a failed read cannot publish one.
     for (const counts of [
       { viaReuse: null, sameHotkey: 3 },
       { viaReuse: 3, sameHotkey: null },
       { viaReuse: null, sameHotkey: null },
     ]) {
       assert.equal(
-        classifyAxonMechanism(counts, "announcements-withdrawn"),
-        "announcements-withdrawn",
+        classifyAxonMechanism(counts, "mechanism-unknown"),
+        "mechanism-unknown",
       );
     }
   });
 
-  test("no losses at all keeps the default", () => {
+  test("a read that explains nothing is unknown, not withdrawal", () => {
+    // Distinct from the failure above: this read SUCCEEDED and found no
+    // transition of either shape. Same claim -- we cannot say why it fell.
     assert.equal(
       classifyAxonMechanism(
         { viaReuse: 0, sameHotkey: 0 },
-        "announcements-withdrawn",
+        "mechanism-unknown",
       ),
-      "announcements-withdrawn",
+      "mechanism-unknown",
     );
   });
 
@@ -911,15 +920,36 @@ describe("the tick reports the mechanism it measured", () => {
     );
   });
 
-  test("an unmeasured mechanism leaves the default and the plain detail", async () => {
-    // The mechanism read returns nothing: the finding stands, unlabelled.
+  test("an UNREAD mechanism reports the drop and names no cause", async () => {
+    // THE REGRESSION THIS PINS. `loadAxonLossMechanisms` returns `{}` on any
+    // failure, and the old default was `announcements-withdrawn` -- so a broken
+    // read published "miners that are still registered and still earning
+    // stopped publishing an axon" having measured nothing at all. On SN25 that
+    // sentence is inverted: 67 of 67 losses were deregistrations.
     answer(rowsFor(25, then(flat(8, 80), [14, 256])), []);
+    let captured: Record<string, unknown> | null = null;
     const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
       now: () => Date.parse("2026-08-16T00:00:00Z"),
-      recordException: (async () => true) as never,
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
     })) as { findings: AxonFinding[] };
-    assert.equal(result.findings[0].kind, "announcements-withdrawn");
+
+    assert.equal(result.findings[0].kind, "mechanism-unknown");
     assert.equal(result.findings[0].lossesViaReuse, null);
+    // The alarm still fires -- an unread cause is not an all-clear.
+    assert.equal(result.findings.length, 1);
+    const message = String(
+      (captured as unknown as { error: Error }).error.message,
+    );
+    assert.match(message, /reports the DROP only/);
+    assert.doesNotMatch(
+      message,
+      /stopped publishing an axon|fell through CHURN/,
+      "an unmeasured mechanism must not name one",
+    );
+    assert.match(verdict(), /mechanism UNREAD/);
   });
 
   test("turnover is never reclassified as churn", async () => {

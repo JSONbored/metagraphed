@@ -139,11 +139,25 @@ export interface AxonFinding {
    *   the opposite of what happened.
    * - `subnet-turned-over`: the metagraph itself emptied, so the missing axons
    *   are missing NEURONS and membership is the story.
+   * - `mechanism-unknown`: the drop is real but nothing here explains it. Either
+   *   the per-UID read failed, or it ran and found no transition of either
+   *   shape.
    *
-   * Defaults to `announcements-withdrawn` until the mechanism read runs, which
-   * is the conservative direction: it is the reading that asks for a human.
+   * STARTS AT `mechanism-unknown`, and only a successful read moves it. The
+   * earlier default was `announcements-withdrawn` on the grounds that it is the
+   * reading that asks for a human -- but that is an ASSERTION, not a caution:
+   * it names a mechanism, and `loadAxonLossMechanisms` returns `{}` on any
+   * failure, so a broken read published "miners that are still registered and
+   * still earning stopped publishing an axon" having measured nothing. On the
+   * two subnets flagged 2026-08-16 that claim is exactly inverted (SN25 67/0
+   * and SN102 43/0 deregistrations). An alarm may escalate on uncertainty; it
+   * may not invent the finding it is uncertain about.
    */
-  kind: "announcements-withdrawn" | "churn-replaced" | "subnet-turned-over";
+  kind:
+    | "announcements-withdrawn"
+    | "churn-replaced"
+    | "subnet-turned-over"
+    | "mechanism-unknown";
   /** Axon losses in the window whose UID changed hands. Null until measured. */
   lossesViaReuse: number | null;
   /** Axon losses where the same hotkey stopped announcing. Null until measured. */
@@ -214,7 +228,7 @@ export function evaluateSubnetAxons(
     ratio,
     neurons: latest.neurons,
     neuronBaseline,
-    kind: turnedOver ? "subnet-turned-over" : "announcements-withdrawn",
+    kind: turnedOver ? "subnet-turned-over" : "mechanism-unknown",
     // Filled in by the mechanism read, which needs per-UID rows this pure
     // evaluator is deliberately not given. Null means "not measured", never
     // "zero" -- see classifyAxonMechanism.
@@ -251,16 +265,19 @@ export function axonDetail(findings: readonly AxonFinding[]): string {
         `SN${f.netuid} ${f.withAxon}/${f.baseline} axons (${Math.round(f.ratio * 100)}%` +
         (f.kind === "subnet-turned-over"
           ? `, neurons ${f.neurons}/${f.neuronBaseline} -- the subnet turned over`
-          : f.kind === "churn-replaced"
-            ? `, churn-replaced: ${f.lossesViaReuse ?? 0} of ${(f.lossesViaReuse ?? 0) + (f.lossesSameHotkey ?? 0)} losses were deregistrations`
-            : f.lossesSameHotkey !== null
-              ? `, ${f.lossesSameHotkey} miner(s) stopped announcing` +
+          : f.kind === "mechanism-unknown"
+            ? ", mechanism UNREAD -- the drop is real, the cause is not established"
+            : f.kind === "churn-replaced"
+              ? `, churn-replaced: ${f.lossesViaReuse ?? 0} of ${(f.lossesViaReuse ?? 0) + (f.lossesSameHotkey ?? 0)} losses were deregistrations`
+              : // `announcements-withdrawn` is only reachable through a
+                // successful mechanism read, so the count is a number here --
+                // an unread one is `mechanism-unknown` above.
+                `, ${f.lossesSameHotkey} miner(s) stopped announcing` +
                 (f.lossesDistinctIps === null
                   ? ""
                   : f.lossesDistinctIps === 1
                     ? " -- ALL FROM ONE ADDRESS, so this is one host rather than the subnet"
-                    : ` from ${f.lossesDistinctIps} addresses`)
-              : "") +
+                    : ` from ${f.lossesDistinctIps} addresses`)) +
         ")",
     )
     .join("; ");
@@ -280,11 +297,19 @@ export function axonDetail(findings: readonly AxonFinding[]): string {
  * one is somebody's fleet going dark, the other is ordinary registration churn
  * grinding the announcing set down because replacements do not announce.
  *
- * NULL COUNTS LEAVE THE DEFAULT ALONE. An unmeasured mechanism must not be
- * reported as churn, because churn is the reading that does NOT ask anyone to
- * go looking; guessing it would turn an unread number into an all-clear.
+ * NULL COUNTS LEAVE THE DEFAULT ALONE, and that default is now
+ * `mechanism-unknown`. An unmeasured mechanism must not be reported as churn,
+ * because churn is the reading that does NOT ask anyone to go looking; guessing
+ * it would turn an unread number into an all-clear. It must not be reported as
+ * withdrawal either -- that names a cause, and naming the wrong one sends a
+ * reader to the wrong subnet's operators.
  *
- * A tie resolves to `announcements-withdrawn` for the same reason.
+ * `reuse + same === 0` takes the same exit: the read SUCCEEDED and explained
+ * nothing, which is a different fact from a failed read but the same claim --
+ * we cannot say why the count fell.
+ *
+ * A tie resolves to `announcements-withdrawn`, which stays deliberate: equal
+ * evidence for both is still evidence that some miners went dark.
  */
 export function classifyAxonMechanism(
   counts: { viaReuse: number | null; sameHotkey: number | null },
@@ -448,9 +473,20 @@ export async function runAxonAnnouncementWatchdog(
               `miners were DEREGISTERED and their UIDs reused by miners that never served. ` +
               `Nobody went dark; the announcing set is ground down one registration at a time, ` +
               `and it only reverses if serving starts paying on that subnet (#11369)`
-            : `announced axons collapsed: ${detail} -- miners that are still registered and ` +
-              `still earning stopped publishing an axon, so this is a reachability change ` +
-              `nothing else in the fleet reports (#11328)`,
+            : // ONLY ON A MEASURED WITHDRAWAL. This sentence names a cause and
+              // sends a reader to a specific subnet's operators, so it is
+              // gated on having actually counted same-hotkey stops rather
+              // than on being the last branch left.
+              findings.some((f) => f.kind === "announcements-withdrawn")
+              ? `announced axons collapsed: ${detail} -- miners that are still registered and ` +
+                `still earning stopped publishing an axon, so this is a reachability change ` +
+                `nothing else in the fleet reports (#11328)`
+              : // Turnover and unread mechanisms land here. The detail already
+                // says which, and neither is a withdrawal, so this states the
+                // drop and stops -- see the `mechanism-unknown` note on
+                // AxonFinding for why inventing the cause was worse.
+                `announced axons fell below baseline: ${detail} -- this reports the DROP only; ` +
+                `no miner was measured to have stopped announcing`,
       ),
       route: `watchdog:${AXON_ANNOUNCEMENT_LANE}`,
       errorCode: fleetWide

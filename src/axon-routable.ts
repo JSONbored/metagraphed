@@ -37,7 +37,6 @@ export const UNROUTABLE_AXON_PATTERN =
 export const UNROUTABLE_AXON_V6_PATTERN =
   "^(::$|::1$|[fF][cCdD]|[fF][eE][89aAbB])";
 
-/** SQL fragment: the axon is present AND points somewhere routable. */
 /** SQL fragment: the axon is present AND points somewhere routable.
  *
  * `left(axon, length(axon) - strpos(reverse(axon), ':'))` is "everything before
