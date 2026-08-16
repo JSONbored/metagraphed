@@ -34,12 +34,12 @@
 import { chainRpc } from "./chain-rpc.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
-/** twox128("System") ++ twox128("Events") — the runtime storage key holding
- * the event list for a block. Stable across runtime upgrades (the KEY is a
- * hash of the pallet/item names; only the VALUE's encoding tracks metadata,
- * which is exactly why capturing the value verbatim is safe here). */
-export const SYSTEM_EVENTS_STORAGE_KEY =
-  "0x26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7";
+// The key is DERIVED once in twox-storage-key.ts; re-exported here because this
+// module's own callers and tests have always addressed it through this module.
+import { SYSTEM_EVENTS_STORAGE_KEY } from "./twox-storage-key.ts";
+// Re-exported because this module's callers and tests have always addressed
+// the key through it; the single declaration lives in twox-storage-key.ts.
+export { SYSTEM_EVENTS_STORAGE_KEY };
 
 export interface RawBlockCapture {
   block_number: number;

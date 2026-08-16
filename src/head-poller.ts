@@ -78,9 +78,10 @@ export async function fetchHeadNumber(
  * That is what makes reading it legal for this module, which must never
  * pretend to decode what only the indexer can.
  */
-export const SYSTEM_EVENTS_STORAGE_KEY = bytesToHex(
-  storageMapPrefix("System", "Events"),
-);
+import { SYSTEM_EVENTS_STORAGE_KEY } from "./twox-storage-key.ts";
+// Re-exported because this module's callers and tests have always addressed
+// the key through it; the single declaration lives in twox-storage-key.ts.
+export { SYSTEM_EVENTS_STORAGE_KEY };
 
 /**
  * Storage key for `Aura.Authorities`: twox128("Aura") ++ twox128("Authorities").

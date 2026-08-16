@@ -9,6 +9,16 @@
 // the historical build so artifacts stay byte-stable after the extraction
 // (writeJson sorts keys via stableStringify, so only VALUES must match).
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
+import { SYSTEM_EVENTS_STORAGE_KEY } from "./twox-storage-key.ts";
+
+// DECLARED BEFORE the probe list, which reads it at module init: the archive
+// probe asks for STATE at this block, so a `const` below the array would be in
+// its temporal dead zone.
+// Finney (Bittensor mainnet) genesis hash — verified live against
+// bittensor-finney.api.onfinality.io. Endpoints whose block-0 hash differs are
+// classified `wrong-chain`. Override per-network via probeSubtensorHttp options.
+export const FINNEY_GENESIS_HASH =
+  "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03";
 
 export const SUBTENSOR_PROBE_CALLS = [
   {
@@ -20,8 +30,27 @@ export const SUBTENSOR_PROBE_CALLS = [
   { key: "rpc_methods", method: "rpc_methods", params: [] as unknown[] },
   {
     key: "archive_probe",
-    method: "chain_getBlockHash",
-    params: [1] as unknown[],
+    // `state_getStorage` AT GENESIS, and emphatically not `chain_getBlockHash`.
+    //
+    // An archive node is one that retains historical STATE. A pruned node
+    // discards state but keeps every block HASH, so `chain_getBlockHash(1)` --
+    // what this probed until now -- succeeds on both and measured nothing.
+    // Verified against production 2026-08-16: `lite.chain.opentensor.ai` and
+    // `entrypoint-finney.opentensor.ai` both answer `chain_getBlockHash(1)`
+    // with a hash and both answer `state_getStorage` at any historical block
+    // with `UnknownBlock: State already discarded`, while
+    // `archive.chain.opentensor.ai` and onfinality serve the state. The old
+    // probe called all four archives.
+    //
+    // THAT WAS NOT COSMETIC once something selected on it: the raw-capture lane
+    // picks archive hosts to read `state_getStorage` from, so a pruned host
+    // scored as an archive is a host that fails EVERY block it is handed.
+    //
+    // Genesis rather than a recent height because the params must be static and
+    // a moving height is not: the genesis hash is a constant this file already
+    // owns, and state at block 0 is exactly what a pruned node cannot serve.
+    method: "state_getStorage",
+    params: [SYSTEM_EVENTS_STORAGE_KEY, FINNEY_GENESIS_HASH] as unknown[],
   },
   // Genesis (block 0) hash — uniquely identifies the network. Lets us reject an
   // RPC endpoint that answers but is on the WRONG chain (cosmos.directory checks
@@ -29,12 +58,6 @@ export const SUBTENSOR_PROBE_CALLS = [
   // different genesis and is excluded before it can pollute the proxy pool.
   { key: "genesis", method: "chain_getBlockHash", params: [0] as unknown[] },
 ];
-
-// Finney (Bittensor mainnet) genesis hash — verified live against
-// bittensor-finney.api.onfinality.io. Endpoints whose block-0 hash differs are
-// classified `wrong-chain`. Override per-network via probeSubtensorHttp options.
-export const FINNEY_GENESIS_HASH =
-  "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03";
 
 function normalizeHash(value: unknown): string | null {
   return typeof value === "string" ? value.trim().toLowerCase() : null;
@@ -956,15 +979,27 @@ export function summarizeRpcProbe(probe: RpcProbeResult): RpcProbeResult {
   const latestBlock = parseBlockNumber(header?.raw_header);
   return {
     ...probe,
-    archive_support: Boolean(
-      archiveProbe?.ok && archiveProbe.raw_hex_result_present,
-    ),
+    // `ok` ALONE, deliberately: `ok` is `response.ok && !body.error`, so it is
+    // false exactly when the node answered `UnknownBlock: State already
+    // discarded` and true when it served the slot.
+    //
+    // NOT `raw_hex_result_present`, which is what the old criterion added and
+    // is wrong for this question: `System.Events` at GENESIS is legitimately
+    // EMPTY, so a real archive answers `{"result": null}` with no error.
+    // Requiring a hex payload would score every archive as pruned -- the
+    // opposite of the bug this replaces, and just as silent.
+    archive_support: Boolean(archiveProbe?.ok),
     latest_block: latestBlock,
     methods_supported: {
       chain_getHeader: Boolean(methodResults.chain_getHeader?.ok),
       system_health: Boolean(methodResults.system_health?.ok),
       rpc_methods: Boolean(methodResults.rpc_methods?.ok),
-      chain_getBlockHash: Boolean(methodResults.archive_probe?.ok),
+      // KEYED ON THE `genesis` PROBE, which is the call that actually issues
+      // `chain_getBlockHash` now. It used to read `archive_probe` because that
+      // probe WAS a chain_getBlockHash; once the archive probe became a
+      // `state_getStorage`, this field would have reported state-retention
+      // under a method name that no longer matched it.
+      chain_getBlockHash: Boolean(methodResults.genesis?.ok),
     },
     rpc_method_count: methods?.rpc_method_count ?? null,
   };

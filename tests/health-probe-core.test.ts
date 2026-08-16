@@ -382,7 +382,15 @@ describe("summarizeRpcProbe", () => {
         chain_getHeader: { ok: true, raw_header: { number: "0x10" } },
         system_health: { ok: true },
         rpc_methods: { ok: true, rpc_method_count: 42 },
-        archive_probe: { ok: true, raw_hex_result_present: true },
+        // No `raw_hex_result_present`: the archive probe is a state read at
+        // genesis, where `System.Events` is legitimately EMPTY, so a real
+        // archive answers `{"result": null}` with no error. `ok` is the whole
+        // criterion.
+        archive_probe: { ok: true },
+        // `chain_getBlockHash` support is reported from the probe that actually
+        // issues it -- the genesis call -- not from the archive probe, which no
+        // longer uses that method.
+        genesis: { ok: true },
       },
     } as unknown as RpcProbeResult);
     assert.equal(summary.archive_support, true);
@@ -842,13 +850,48 @@ describe("probeSubtensorHttp / jsonRpcHttp (HTTP RPC)", () => {
     assert.equal(probe.method_results!.chain_getHeader.ok, true);
   });
 
-  test("archive NOT detected when block-hash result is not a hex string", async () => {
+  test("A PRUNED NODE IS NOT AN ARCHIVE, even though it serves every block hash", async () => {
+    // The bug this replaces. `chain_getBlockHash` succeeds on a pruned node --
+    // hashes are retained, only STATE is discarded -- so probing it called
+    // every endpoint an archive. Verified against production 2026-08-16:
+    // lite.chain.opentensor.ai and entrypoint-finney answered
+    // chain_getBlockHash(1) with a hash and `UnknownBlock: State already
+    // discarded` for state at any historical block.
+    //
+    // It stopped being cosmetic when the raw-capture lane began selecting
+    // archive hosts to read `state_getStorage` from: a pruned host scored as an
+    // archive fails EVERY block handed to it.
     const probe = await probeSubtensorHttp("https://rpc.dev", 5000, {
       isUnsafeUrl: async () => false,
       fetchImpl: async (_url, init) => {
         const req = JSON.parse(init!.body as string);
+        if (req.method === "state_getStorage") {
+          return fakeResponse({
+            status: 200,
+            // A JSON-RPC error body, which is how a pruned node refuses a
+            // historical state read -- HTTP 200 with `error` set, never a
+            // transport failure.
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: req.id,
+              error: {
+                code: 4003,
+                message: "Client error: UnknownBlock: State already discarded",
+              },
+            }),
+          });
+        }
         if (req.method === "chain_getBlockHash") {
-          return fakeResponse({ status: 200, body: rpcBody(req.id, null) });
+          // The genesis call must answer with the REAL genesis, or the probe
+          // reads as wrong-chain and this test would assert `live` against a
+          // classification it never reached.
+          return fakeResponse({
+            status: 200,
+            body: rpcBody(
+              req.id,
+              req.params[0] === 0 ? FINNEY_GENESIS_HASH : "0xdead",
+            ),
+          });
         }
         return fakeResponse({
           status: 200,
@@ -857,7 +900,38 @@ describe("probeSubtensorHttp / jsonRpcHttp (HTTP RPC)", () => {
       },
     });
     assert.equal(probe.archive_support, false);
+    // ...and the node genuinely does serve chain_getBlockHash, which is the
+    // point: that field says nothing about archive depth.
     assert.equal(probe.methods_supported!.chain_getBlockHash, true);
+    // THE SAFETY PROPERTY. A pruned node is a perfectly healthy RPC endpoint --
+    // it just cannot answer historical state. Classifying it dead would evict
+    // lite/entrypoint from the proxy pool over a probe that was only ever meant
+    // to grade archive DEPTH, turning a capability signal into an outage.
+    assert.equal(classifyRpcProbe(probe), "live");
+  });
+
+  test("AN ARCHIVE IS DETECTED even when the slot it reads is empty", async () => {
+    // `System.Events` at genesis is legitimately empty, so a real archive
+    // answers `{"result": null}` with NO error. Requiring a hex payload -- the
+    // old criterion -- would score every archive as pruned, which is the same
+    // bug pointing the other way.
+    const probe = await probeSubtensorHttp("https://rpc.dev", 5000, {
+      isUnsafeUrl: async () => false,
+      fetchImpl: async (_url, init) => {
+        const req = JSON.parse(init!.body as string);
+        if (req.method === "state_getStorage") {
+          return fakeResponse({ status: 200, body: rpcBody(req.id, null) });
+        }
+        if (req.method === "chain_getBlockHash") {
+          return fakeResponse({ status: 200, body: rpcBody(req.id, "0xdead") });
+        }
+        return fakeResponse({
+          status: 200,
+          body: rpcBody(req.id, { number: "0x1" }),
+        });
+      },
+    });
+    assert.equal(probe.archive_support, true);
   });
 
   test("transport error: fail-fast after first failed RPC call", async () => {

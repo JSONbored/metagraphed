@@ -244,3 +244,23 @@ export function twox64ConcatU32StorageKey(
 export function bytesToHex(bytes: Uint8Array): string {
   return "0x" + toHex(bytes);
 }
+
+/**
+ * `System.Events` — twox128("System") ++ twox128("Events").
+ *
+ * DECLARED ONCE, HERE, beside the derivation and the vectors that prove it.
+ * This key had two homes: `head-poller.ts` derived it (arguing, correctly, that
+ * derivation means it "cannot drift from the rest of the repo and cannot be
+ * mistyped into something that silently reads the wrong slot") while
+ * `raw-chain-capture.ts` hardcoded the same 32 bytes as a hex literal -- the
+ * exact thing that comment warns against, sitting one module away from it.
+ * They happened to agree; nothing made them.
+ *
+ * Metadata-independent by construction: both halves hash literal names, so the
+ * key is identical on every Substrate runtime and survives a runtime upgrade.
+ * Only the VALUE's encoding tracks metadata, which is why reading this slot is
+ * legal for modules that must never pretend to decode it.
+ */
+export const SYSTEM_EVENTS_STORAGE_KEY = bytesToHex(
+  storageMapPrefix("System", "Events"),
+);
