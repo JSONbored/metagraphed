@@ -132,6 +132,38 @@ export const NeuronSchema = z
     "One UID's live metagraph state within a subnet (hot/cold keys, scores, stake/emission, axon, take).",
   );
 
+/**
+ * Whether the miners this subnet PAYS are the miners that can be REACHED.
+ *
+ * Describes the whole subnet, never the response: these counts are computed
+ * over every neuron before any `limit`/`sort`/filter narrows `neurons`, so a
+ * paged request reports the subnet's figures rather than the page's.
+ *
+ * ABSENT when the snapshot carried no neurons at all. That is not the same as
+ * "pays nobody" -- it is also what a declined cold tier looks like, and a row
+ * of zeroes would be a measurement of a subnet nothing was read for.
+ */
+export const AxonEarningSchema = z
+  .object({
+    earning_miners: z.int().min(0).meta({
+      description:
+        "How many neurons earn a non-zero incentive. Incentive is the miner signal (validators are paid dividends), so this is the count of miners this subnet actually pays. Excludes the burn UID when `burn_excluded` is true.",
+    }),
+    announcing_earners: z.int().min(0).meta({
+      description:
+        "How many of `earning_miners` publish an axon that points somewhere ROUTABLE. Stricter than 'announces an axon': an address in a private, loopback or reserved range is announced and unreachable, which is 5.3% of announced axons network-wide. Compare against `earning_miners` to read whether being reachable has anything to do with being paid on this subnet -- on roughly half of the subnets that pay miners at all, this is zero.",
+    }),
+    incentive_share_to_announcers: z.number().min(0).max(1).nullable().meta({
+      description:
+        "The fraction of this subnet's miner incentive that reaches miners publishing a routable endpoint, 0..1. NULL when no neuron earns incentive -- a subnet paying no miners has no share to report, which is a different answer from 0 ('pays miners, none reachable'). Incentive normalizes to 1.0 within a subnet, so this is a within-subnet proportion and is NOT comparable across subnets as a magnitude.",
+    }),
+    burn_excluded: z.boolean().meta({
+      description:
+        "Whether the burn UID was identified and removed from the figures above. Burn earns incentive and is not a miner, so including it dilutes the share. It can only be excluded when the burn hotkey was resolvable from chain state for this request; when false, the figures include burn and should be read as an upper bound on `earning_miners` and a lower bound on the share.",
+    }),
+  })
+  .strict();
+
 export const SubnetMetagraphArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -139,6 +171,9 @@ export const SubnetMetagraphArtifactSchema = z
     neuron_count: z.int().min(0),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
+    // Optional because it is ABSENT on an empty snapshot -- see the schema's
+    // own header for why zeroes would be a claim rather than an answer.
+    axon_earning: AxonEarningSchema.optional(),
     neurons: z.array(NeuronSchema),
   })
   .strict();
