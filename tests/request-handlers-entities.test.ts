@@ -5148,7 +5148,14 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // Nothing asks the binding, and the answer carries none of its marker.
     assert.deepEqual(tier.paths, []);
     assert.equal(body.data.marker, undefined);
-    assert.deepEqual(captures.sql, []);
+    // #10805: this used to assert NO query at all, which was true only while
+    // the route had no source. It now derives removals from `neuron_daily`,
+    // so the claim worth pinning is narrower and still the one the test is
+    // named for -- the retired TIER is not consulted, and what runs instead is
+    // the state diff rather than an account_events read.
+    assert.equal(captures.sql.length, 1);
+    assert.match(String(captures.sql[0]), /FROM neuron_daily/);
+    assert.doesNotMatch(String(captures.sql[0]), /account_events/);
   });
 
   test("handleAccountPrometheus: the retired tier flag is not consulted even when set (#10190)", async () => {

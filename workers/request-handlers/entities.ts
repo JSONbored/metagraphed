@@ -537,6 +537,10 @@ import type {
   HistoryEmissionRow,
   HistoryRow,
 } from "../../src/validator-economics.ts";
+import {
+  loadAxonRemovals,
+  subnetAxonRemovalRow,
+} from "../../src/axon-removals-loader.ts";
 
 const RESPONSE_FORMATS = ["json", "csv"];
 const NEURON_CSV_COLUMNS = [
@@ -3350,11 +3354,13 @@ export async function handleSubnetAxonRemovals(
     SUBNET_AXON_REMOVALS_WINDOWS,
     DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
   );
-  const data =
-    // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-    // resolved to null before it could touch DATA_API.
-    buildSubnetAxonRemovals(null, netuid, { window: windowParam });
+  // DERIVED FROM STATE (#10805), the same rollup MCP and GraphQL read.
+  const removalsRollup = await loadAxonRemovals(env);
+  const data = buildSubnetAxonRemovals(
+    subnetAxonRemovalRow(removalsRollup, netuid),
+    netuid,
+    { window: windowParam },
+  );
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed AxonInfoRemoved event, mirroring the sibling stake-flow route.
   return envelopeResponse(

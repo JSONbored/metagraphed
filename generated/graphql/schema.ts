@@ -7717,6 +7717,7 @@ type ChainAxonRemovals {
   """
   intensity_distribution: IntensityDistribution
   subnets: [ChainAxonRemovalsSubnet!]!
+  derivation: ChainAxonRemovalsDerivation
   degraded: DegradedInfo
 }
 
@@ -7739,6 +7740,25 @@ type ChainAxonRemovalsSubnet {
   distinct_removers: Int!
   removals: Int!
   removals_per_remover: Float
+}
+
+type ChainAxonRemovalsDerivation {
+  method: String!
+
+  """
+  Days of \`neuron_daily\` the derivation had available. A removal older than this is outside the window, not absent.
+  """
+  lookback_days: Int!
+
+  """
+  Axon drops attributed to a DEREGISTRATION instead: the slot changed hands, and the incoming miner simply never announced. 93.8% of raw drops measured over 30 days, so a feed that counted them would overstate teardowns roughly 18x and double-report an event /chain/deregistrations already publishes.
+  """
+  excluded_uid_reuse: Int!
+
+  """
+  Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket.
+  """
+  pending_confirmation: Int!
 }
 
 type ChainWeightSetters {

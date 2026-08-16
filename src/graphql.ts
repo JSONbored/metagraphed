@@ -952,6 +952,11 @@ import {
   SURFACE_HISTORY_TABLES,
   TAO_USD_TABLES,
 } from "./read-store-tables.ts";
+import { loadAxonRemovals } from "./axon-removals-loader.ts";
+import {
+  accountAxonRemovalRows,
+  subnetAxonRemovalRow,
+} from "./axon-removals-loader.ts";
 
 type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2759,7 +2764,7 @@ const rootValue = {
 
   async subnet_axon_removals(
     { netuid, window }: QuerySubnet_Axon_RemovalsArgs,
-    _context: GqlContext,
+    context: GqlContext,
   ) {
     // Same 7d/30d window validation handleSubnetAxonRemovals uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -2776,11 +2781,13 @@ const rootValue = {
     // GraphQL error.
     const params = new URLSearchParams();
     params.set("window", windowParam);
-    const data =
-      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-      // resolved to null before it could touch DATA_API.
-      buildSubnetAxonRemovals(null, netuid, { window: windowParam });
+    // DERIVED FROM STATE (#10805), the same rollup REST and MCP read.
+    const removalsRollup = await loadAxonRemovals(context.env);
+    const data = buildSubnetAxonRemovals(
+      subnetAxonRemovalRow(removalsRollup, netuid),
+      netuid,
+      { window: windowParam },
+    );
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6744,7 +6751,7 @@ const rootValue = {
 
   async account_axon_removals(
     { ss58, window }: QueryAccount_Axon_RemovalsArgs,
-    _context: GqlContext,
+    context: GqlContext,
   ) {
     // Same SS58 + window validation handleAccountAxonRemovals (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
@@ -6761,11 +6768,13 @@ const rootValue = {
     // is a schema-stable zeroed card, never a GraphQL error.
     const params = new URLSearchParams();
     params.set("window", windowParam);
-    const data =
-      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-      // resolved to null before it could touch DATA_API.
-      buildAccountAxonRemovals([], ss58, { window: windowParam });
+    // DERIVED FROM STATE (#10805), the same rollup REST and MCP read.
+    const removalsRollup = await loadAxonRemovals(context.env);
+    const data = buildAccountAxonRemovals(
+      accountAxonRemovalRows(removalsRollup, ss58) ?? [],
+      ss58,
+      { window: windowParam },
+    );
     return {
       schema_version: data.schema_version ?? 1,
       address: data.address ?? ss58,
@@ -8028,7 +8037,7 @@ const rootValue = {
 
   async chain_axon_removals(
     { window, limit }: QueryChain_Axon_RemovalsArgs,
-    _context: GqlContext,
+    context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
     if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, requestedWindow)) {
@@ -8049,11 +8058,16 @@ const rootValue = {
     // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainAxonRemovals uses,
     // never a GraphQL error.
-    const data =
-      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-      // resolved to null before it could touch DATA_API.
-      buildChainAxonRemovals([], { window: requestedWindow, limit: safeLimit });
+    // DERIVED FROM STATE (#10805), the same read REST and MCP make, so the
+    // three surfaces cannot drift. A null rollup is "no store", not "no
+    // removals" -- the builder keeps its degraded empty for that.
+    const rollup = await loadAxonRemovals(context.env);
+    const data = buildChainAxonRemovals(rollup?.subnets ?? [], {
+      window: requestedWindow,
+      limit: safeLimit,
+      networkDistinct: rollup?.network,
+      derivation: rollup?.derivation,
+    });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
