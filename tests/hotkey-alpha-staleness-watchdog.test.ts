@@ -21,7 +21,6 @@
 // place is an alarm that is quietly too low to fire, and nothing about a passing
 // tick would say so.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -43,7 +42,6 @@ import {
   runHotkeyAlphaStalenessWatchdog,
 } from "../src/hotkey-alpha-staleness-watchdog.ts";
 import { handleScheduled } from "../workers/api.ts";
-import * as workerConfig from "../workers/config.ts";
 import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;

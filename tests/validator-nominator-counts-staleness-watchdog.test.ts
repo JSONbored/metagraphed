@@ -15,7 +15,6 @@
 // the scan never got to. The production reading behind #9530 is asserted below
 // on this lane's own numbers.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -38,7 +37,6 @@ import {
   runValidatorNominatorCountsStalenessWatchdog,
 } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { handleScheduled } from "../workers/api.ts";
-import * as workerConfig from "../workers/config.ts";
 import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;

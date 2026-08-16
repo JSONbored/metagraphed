@@ -486,11 +486,8 @@ describe("every tick leaves a durable verdict, not just a notification", () => {
   });
 });
 
-describe("the watchdog cron", () => {
-  // Dispatch keys on the LITERAL cron string, so a duplicate silently steals
-  // the other's tick.
-  test("handleScheduled dispatches to the watchdog and returns its summary", async () => {
-    const { handleScheduled } = await import("../workers/api.ts");
+describe("the watchdog lane, as the heartbeat runs it", () => {
+  test("the registry entry reaches the watchdog and returns its summary", async () => {
     const reads: string[] = [];
     const result = (await runStalenessLane(
       "projection-staleness",
@@ -508,7 +505,7 @@ describe("the watchdog cron", () => {
             };
           },
         },
-      } as unknown as Parameters<typeof handleScheduled>[1],
+      } as unknown,
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; stale: boolean; checked: number };
     assert.equal(result.ok, true);

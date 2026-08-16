@@ -35,7 +35,6 @@ import {
 } from "../src/neurons-staleness-watchdog.ts";
 import { FLUSH_INTERVAL_MS } from "../src/neon-write-buffer.ts";
 import { handleScheduled } from "../workers/api.ts";
-import * as workerConfig from "../workers/config.ts";
 import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;

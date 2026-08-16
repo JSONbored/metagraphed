@@ -7,7 +7,6 @@
 // 34 hours and produced this issue.
 import assert from "node:assert/strict";
 import { POSITION_SOURCE_ALPHA } from "../src/nominator-positions-neon-write.ts";
-import { readFileSync } from "node:fs";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -31,7 +30,6 @@ import {
   runNominatorPositionsStalenessWatchdog,
 } from "../src/nominator-positions-staleness-watchdog.ts";
 import { handleScheduled } from "../workers/api.ts";
-import * as workerConfig from "../workers/config.ts";
 import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;

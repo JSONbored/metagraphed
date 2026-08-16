@@ -20,7 +20,6 @@
 // verbatim, because a rule that gets every synthetic case right and that one
 // wrong is the rule this file already had.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -43,7 +42,6 @@ import {
   runAccountBalancesStalenessWatchdog,
 } from "../src/account-balances-staleness-watchdog.ts";
 import { handleScheduled } from "../workers/api.ts";
-import * as workerConfig from "../workers/config.ts";
 import { runStalenessLane } from "./helpers/staleness-lane.ts";
 
 const NOW = 1_785_800_000_000;

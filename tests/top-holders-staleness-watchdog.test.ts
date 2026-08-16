@@ -641,7 +641,6 @@ describe("the watchdog's cron", () => {
   // Dispatch keys on the LITERAL cron string, so a duplicate would silently
   // route this lane's tick to whichever branch is checked first.
   test("handleScheduled dispatches to the watchdog and returns its summary", async () => {
-    const { handleScheduled } = await import("../workers/api.ts");
     let read = 0;
     const result = (await runStalenessLane(
       "top-holders-flow-staleness",
@@ -674,7 +673,6 @@ describe("the watchdog's cron", () => {
   });
 
   test("an unbound bucket still reports through the cron wrapper", async () => {
-    const { handleScheduled } = await import("../workers/api.ts");
     const result = (await runStalenessLane(
       "top-holders-flow-staleness",
       {} as never,
