@@ -11,14 +11,14 @@
 // validator by hand, which is the arrangement this repo keeps finding drifted.
 // Re-exported under their original names so every import site is unchanged.
 import type {
-  WssPool,
-  WssPoolEndpoint,
-  WssPoolsArtifact,
+  RpcPoolsReadPool,
+  RpcPoolsReadEndpoint,
+  RpcPoolsReadArtifact,
 } from "../schemas-src/internal-wire.ts";
 
-export type PoolEndpoint = WssPoolEndpoint;
-export type Pool = WssPool;
-export type PoolsArtifact = WssPoolsArtifact;
+export type PoolEndpoint = RpcPoolsReadEndpoint;
+export type Pool = RpcPoolsReadPool;
+export type PoolsArtifact = RpcPoolsReadArtifact;
 
 /**
  * What the selectors below ACCEPT, which is broader than what `loadPools`

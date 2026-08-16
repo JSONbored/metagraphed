@@ -131,6 +131,32 @@ export const ResponseMetaSchema = z
       .describe(
         "Real publish time from the KV latest pointer, distinct from generated_at. Null before the first publish or when the control KV is unbound.",
       ),
+    // Same shape and the same reason as `stale_contract` below: a SERVE-TIME
+    // provenance signal, declared on the shared meta because it is a property
+    // of the tier that answered, not of the entity asked about.
+    //
+    // WHAT IT SEPARATES, and why zeros alone could not. A 200 with
+    // `event_count: 0` is the correct answer for a valid ss58 with no activity
+    // -- that is a settled contract rule (`absent is null, never zero`), and
+    // these routes must stay on it. But it is ALSO what a reader returns when
+    // the tier's coverage simply has not reached the account yet, and the two
+    // were indistinguishable. Measured 2026-08-16: an account registered at
+    // 13:53 read as an empty account for a whole day, because the lakehouse's
+    // coverage ended at 02:30 that morning and nothing said so.
+    //
+    // Naming and semantics follow the field this repo already publishes on
+    // `/subnets/{netuid}/ownership-history`: how far the source covers at all,
+    // so a caller can tell "watched, nothing there" from "not watched since".
+    // Null, or absent, when the horizon cannot be established -- a guessed
+    // horizon would be worse than none, because a consumer would trust it.
+    observed_through: z
+      .string()
+      .meta({ format: "date-time" })
+      .nullable()
+      .optional()
+      .describe(
+        "How far the tier that answered this request has observed at all. A payload reporting no activity at or before this time is a measured absence; one whose subject is newer is outside coverage, not empty. Null when the horizon is unreadable.",
+      ),
     source: z.string().optional(),
     stale_contract: z
       .object({

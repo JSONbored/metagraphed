@@ -31,6 +31,17 @@ import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
 import { overlayRpcPoolEligibility } from "./health-serving.ts";
 import { recordOrNull } from "./read-store.ts";
 import type { ChainNetworkId } from "./chain-network.ts";
+// PARSED, NOT CAST, and with the schema this artifact already has rather than a
+// second one -- a second declaration of the same bytes is a second place for the
+// reading to drift.
+//
+// It pins the structure a consumer NAVIGATES (`pools` is a REQUIRED list, so an
+// error body cannot parse as an artifact that merely holds no pools) and leaves
+// the leaves `unknown`, because this module narrows them itself. Note that a
+// leaf must still be DECLARED there to survive the parse at all: zod strips
+// undeclared keys, so an omitted field reads as `undefined` from a perfectly
+// healthy artifact rather than going merely untyped.
+import { RpcPoolsReadSchema } from "../schemas-src/internal-wire.ts";
 
 /** The pool ids that hold base-layer HTTP RPC endpoints, per network. */
 const RPC_POOL_ID: Record<ChainNetworkId, string> = {
@@ -95,34 +106,37 @@ export async function resolveCaptureEndpoints(
   deps: CaptureEndpointDeps,
 ): Promise<string[]> {
   if (!env) return [];
-  let artifact: Row | null;
+  let parsed: { pools: { id?: string; endpoints?: unknown[] }[] } | null;
   try {
     const result = await deps.readArtifact(env, RPC_POOLS_ARTIFACT_PATH);
-    artifact =
-      result?.ok && result.data && typeof result.data === "object"
-        ? (result.data as Row)
-        : null;
+    if (!result?.ok) return [];
+    const read = RpcPoolsReadSchema.safeParse(result.data);
+    if (!read.success) return [];
+    // The union accepts the artifact both bare and enveloped, because it is
+    // served as a file AND on /api/v1; `pools` is present in either arm.
+    parsed = "data" in read.data ? read.data.data : read.data;
   } catch {
     // An unreadable pool is not a fault here -- the caller has a default.
     return [];
   }
-  if (!artifact || !Array.isArray(artifact.pools)) return [];
+  if (!parsed) return [];
+
+  // ONE POOL, not all of them: only this network's is ever read, so overlaying
+  // the rest would spend the recompute on rows nothing here looks at.
+  const wanted = RPC_POOL_ID[network];
+  const found = parsed.pools.find((p) => p.id === wanted);
+  if (!found) return [];
 
   // The same live overlay the REST route and the MCP mirror apply, so this
   // cannot select on a day-old `pool_eligible` or a day-old `archive_support`.
-  let overlaid = artifact;
+  let pool: Row = found as Row;
   if (deps.readHealthKv) {
     try {
       const live = recordOrNull(
         await deps.readHealthKv(env, KV_HEALTH_RPC_POOL),
       );
       if (live && Array.isArray(live.endpoints)) {
-        overlaid = {
-          ...artifact,
-          pools: (artifact.pools as Row[]).map(
-            (pool) => (overlayRpcPoolEligibility(pool, live) ?? pool) as Row,
-          ),
-        };
+        pool = (overlayRpcPoolEligibility(pool, live) ?? pool) as Row;
       }
     } catch {
       // Fall through on the baked pool rather than declining: a stale
@@ -131,9 +145,7 @@ export async function resolveCaptureEndpoints(
     }
   }
 
-  const wanted = RPC_POOL_ID[network];
-  const pool = (overlaid.pools as Row[]).find((p) => p.id === wanted);
-  if (!pool || !Array.isArray(pool.endpoints)) return [];
+  if (!Array.isArray(pool.endpoints)) return [];
   const urls: string[] = [];
   for (const row of pool.endpoints as Row[]) {
     if (usableArchiveEndpoint(row)) urls.push(row.url as string);

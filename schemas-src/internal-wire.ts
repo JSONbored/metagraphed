@@ -193,44 +193,83 @@ export const ColdTierAnswerSchema = z.object({
 });
 
 /**
- * `GET /api/v1/rpc/pools` as the wss load balancer reads it.
+ * `GET /api/v1/rpc/pools` as an INTERNAL reader reads it.
  *
- * DELIBERATELY LOOSE ALL THE WAY DOWN, and this is not laziness: every field
- * the selector touches (`url`, `score`, `pool_eligible`, `latest_block`) is
- * re-read through its own coercion there -- `Number(e.score)`, an explicit
- * null check on `latest_block` because `Number(null)` is 0 and would mis-read a
- * block-less endpoint as height 0. Typing them here would state a second,
- * stricter contract that the selector then ignores.
+ * NAMED FOR THE ARTIFACT, NOT ITS FIRST READER. This was `WssPool*` while the
+ * load balancer was the only consumer, and its own selector immediately
+ * re-aliased the types to `Pool`/`PoolEndpoint`/`PoolsArtifact` to get the
+ * service name back out of them -- which is the tell. The raw-capture lane now
+ * reads the same bytes to pick archive hosts, so a name that says "wss" would
+ * make the second reader look like it was borrowing the first one's schema
+ * rather than sharing the artifact's.
  *
- * What IS pinned is the structure the selector navigates: `pools` is a list --
+ * DELIBERATELY LOOSE ALL THE WAY DOWN, and this is not laziness: every field a
+ * consumer touches is re-read through its own coercion -- `Number(e.score)`, an
+ * explicit null check on `latest_block` because `Number(null)` is 0 and would
+ * mis-read a block-less endpoint as height 0, `=== true` on the booleans
+ * because `undefined` must not pass. Typing them here would state a second,
+ * stricter contract that every consumer then ignores.
+ *
+ * `catchall(unknown)` FOR THE SAME REASON AlertTriggerRowSchema HAS IT: a row
+ * is handed onward to code that owns a vocabulary this file must not
+ * enumerate. Zod's default STRIPS undeclared keys, so without it a parsed row
+ * is a LOSSY copy -- and the loss is silent, arriving at the consumer as
+ * `undefined` from a perfectly healthy artifact.
+ *
+ * Both halves of that bit this in one change. The capture lane read
+ * `archive_support`, which was undeclared, so every archive host failed its
+ * filter and the lane fell back to one endpoint. Then the parsed row was passed
+ * to `overlayRpcPoolEligibility`, which recomputes eligibility from
+ * `auth_required`/`public_safe` and rescores from `methods_supported` -- none
+ * of them declared here, all of them stripped, so a healthy endpoint came back
+ * ineligible. Declaring the overlay's whole field list here would make this
+ * schema a second copy of health-serving's vocabulary; `catchall` keeps the
+ * row intact and lets each consumer narrow what it reads.
+ *
+ * Fields ARE still declared when this file wants to say a consumer depends on
+ * them -- that is documentation, not enforcement, since `catchall` would carry
+ * them through regardless.
+ *
+ * What IS pinned is the structure a consumer navigates: `pools` is a list --
  * REQUIRED, which is the whole point. Optional here would let `{ error: "not
  * found" }` parse as an artifact with no pools, which is precisely the reading
  * the cast produced and precisely what a caller cannot tell from "no upstream
  * is eligible right now". One of those is an outage; the other is Tuesday.
  * An EMPTY list still parses, because that genuinely is the second case.
  */
-const WssPoolEndpointSchema = z.object({
-  id: z.string().optional(),
-  url: z.unknown().optional(),
-  kind: z.string().optional(),
-  pool_eligible: z.unknown().optional(),
-  score: z.unknown().optional(),
-  status: z.string().optional(),
-  latest_block: z.unknown().optional(),
-});
-export type WssPoolEndpoint = z.infer<typeof WssPoolEndpointSchema>;
+const RpcPoolsReadEndpointSchema = z
+  .object({
+    id: z.string().optional(),
+    url: z.unknown().optional(),
+    kind: z.string().optional(),
+    pool_eligible: z.unknown().optional(),
+    score: z.unknown().optional(),
+    status: z.string().optional(),
+    latest_block: z.unknown().optional(),
+    /** Read by the raw-capture lane to refuse pruned nodes: it fetches
+     * `state_getStorage` at heights up to a day back, which a pruned host cannot
+     * serve at all. Unknown like its siblings -- the lane narrows it. */
+    archive_support: z.unknown().optional(),
+  })
+  .catchall(z.unknown());
+export type RpcPoolsReadEndpoint = z.infer<typeof RpcPoolsReadEndpointSchema>;
 
-const WssPoolSchema = z.object({
-  id: z.string().optional(),
-  kind: z.string().optional(),
-  endpoints: z.array(WssPoolEndpointSchema).optional(),
-});
-export type WssPool = z.infer<typeof WssPoolSchema>;
+const RpcPoolsReadPoolSchema = z
+  .object({
+    id: z.string().optional(),
+    kind: z.string().optional(),
+    endpoints: z.array(RpcPoolsReadEndpointSchema).optional(),
+  })
+  // Same reason as the endpoint above: `overlayRpcPoolEligibility` reads and
+  // rewrites pool-level fields (`eligible_count`, `best_endpoint_id`) that a
+  // stripped copy would arrive without.
+  .catchall(z.unknown());
+export type RpcPoolsReadPool = z.infer<typeof RpcPoolsReadPoolSchema>;
 
-const WssPoolsArtifactSchema = z.object({
-  pools: z.array(WssPoolSchema),
+const RpcPoolsReadArtifactSchema = z.object({
+  pools: z.array(RpcPoolsReadPoolSchema),
 });
-export type WssPoolsArtifact = z.infer<typeof WssPoolsArtifactSchema>;
+export type RpcPoolsReadArtifact = z.infer<typeof RpcPoolsReadArtifactSchema>;
 
 /**
  * The same artifact as `/api/v1` serves it: wrapped in an envelope.
@@ -240,9 +279,9 @@ export type WssPoolsArtifact = z.infer<typeof WssPoolsArtifactSchema>;
  * moves -- the tolerance the cast expressed as an intersection type, which is
  * not a thing a runtime value can be.
  */
-export const WssPoolsResponseSchema = z.union([
-  z.object({ data: WssPoolsArtifactSchema }),
-  WssPoolsArtifactSchema,
+export const RpcPoolsReadSchema = z.union([
+  z.object({ data: RpcPoolsReadArtifactSchema }),
+  RpcPoolsReadArtifactSchema,
 ]);
 
 /**

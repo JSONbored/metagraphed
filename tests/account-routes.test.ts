@@ -505,3 +505,30 @@ test("GET /accounts/{ss58}/axon-removals rejects an unsupported window with 400"
   const body = await res.json();
   assert.equal(body.meta.parameter, "window");
 });
+
+test("every account response publishes the tier's coverage horizon (`observed_through`)", async () => {
+  // The field that separates "this ss58 has no activity" from "coverage has not
+  // reached it yet". Both are a 200 with zeros -- deliberately, because an ss58
+  // is a valid identity whether or not it has ever acted -- so the distinction
+  // has to ride BESIDE the zeros rather than become an error.
+  //
+  // Measured 2026-08-16: an account registered at 13:53 read as an empty
+  // account for a full day, because the lakehouse's coverage ended at 02:30
+  // that morning and nothing in the payload said so.
+  //
+  // Asserted as PRESENT-and-null rather than skipped when unresolvable: this
+  // fixture binds no watermark, and dropping the key would make "this tier
+  // publishes no horizon" and "it could not be read this tick" the same
+  // absence, which is the conflation the field exists to end.
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/events`),
+    dbWith({ events: [] }) as never,
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(
+    "observed_through" in body.meta,
+    `meta must carry the horizon; got ${JSON.stringify(Object.keys(body.meta))}`,
+  );
+  assert.equal(body.meta.observed_through, null);
+});

@@ -9799,6 +9799,8 @@ export interface components {
             contract_version: string;
             /** @description Deterministic build content marker (epoch by default); not a wall clock. Use published_at for human-facing freshness. */
             generated_at?: string | null;
+            /** @description How far the tier that answered this request has observed at all. A payload reporting no activity at or before this time is a measured absence; one whose subject is newer is outside coverage, not empty. Null when the horizon is unreadable. */
+            observed_through?: string | null;
             pagination?: components["schemas"]["PaginationMeta"];
             /** @description Real publish time from the KV latest pointer, distinct from generated_at. Null before the first publish or when the control KV is unbound. */
             published_at?: string | null;
@@ -14107,6 +14109,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -14219,6 +14222,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -14342,6 +14346,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -14465,6 +14470,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -14595,6 +14601,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -14734,6 +14741,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -14855,6 +14863,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -14966,6 +14975,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -15087,6 +15097,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -15223,6 +15234,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -15367,6 +15379,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -15493,6 +15506,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -15610,6 +15624,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -15731,6 +15746,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -15905,6 +15921,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -16030,6 +16047,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -16154,6 +16172,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -16311,6 +16330,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -16450,6 +16470,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -16596,6 +16617,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -16726,6 +16748,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -16876,6 +16899,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -17022,6 +17046,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -17168,6 +17193,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -17302,6 +17328,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -17447,6 +17474,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -17597,6 +17625,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -17729,6 +17758,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -17856,6 +17886,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -18033,6 +18064,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -18150,6 +18182,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -18297,6 +18330,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -18426,6 +18460,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -18547,6 +18582,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -18659,6 +18695,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -18797,6 +18834,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -18914,6 +18952,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -19082,6 +19121,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -19443,6 +19483,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -19555,6 +19596,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -19678,6 +19720,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -19790,6 +19833,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -19900,6 +19944,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -20035,6 +20080,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -20186,6 +20232,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -20308,6 +20355,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -20418,6 +20466,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -20539,6 +20588,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -20690,6 +20740,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -20824,6 +20875,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -20937,6 +20989,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -21066,6 +21119,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -21206,6 +21260,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -21337,6 +21392,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -21453,6 +21509,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -21574,6 +21631,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -21700,6 +21758,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -21839,6 +21898,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -21957,6 +22017,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -22079,6 +22140,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -22197,6 +22259,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -22325,6 +22388,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -22443,6 +22507,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -22575,6 +22640,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -22694,6 +22760,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -22806,6 +22873,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -22932,6 +23000,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -23060,6 +23129,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -23183,6 +23253,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -23305,6 +23376,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -23435,6 +23507,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -23589,6 +23662,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -23746,6 +23820,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -23877,6 +23952,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -23991,6 +24067,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -24107,6 +24184,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -24243,6 +24321,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -24362,6 +24441,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -24471,6 +24551,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -24590,6 +24671,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -24724,6 +24806,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -24865,6 +24948,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -25045,6 +25129,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -25185,6 +25270,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -25313,6 +25399,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -25427,6 +25514,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -25545,6 +25633,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -25716,6 +25805,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -25869,6 +25959,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -25991,6 +26082,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -26112,6 +26204,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -26291,6 +26384,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -26484,6 +26578,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -26627,6 +26722,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -26772,6 +26868,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -26921,6 +27018,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -27096,6 +27194,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -27227,6 +27326,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -27353,6 +27453,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -27483,6 +27584,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -27594,6 +27696,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -27704,6 +27807,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -27824,6 +27928,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -27989,6 +28094,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -28131,6 +28237,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -28274,6 +28381,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -28433,6 +28541,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -28571,6 +28680,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -28698,6 +28808,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -28845,6 +28956,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -28988,6 +29100,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -29131,6 +29244,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -29288,6 +29402,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -29419,6 +29534,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -29561,6 +29677,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -29709,6 +29826,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -29852,6 +29970,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -29988,6 +30107,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -30113,6 +30233,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -30253,6 +30374,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -30372,6 +30494,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -30524,6 +30647,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -30693,6 +30817,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -30835,6 +30960,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -31039,6 +31165,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -31173,6 +31300,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -31298,6 +31426,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -31440,6 +31569,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -31566,6 +31696,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -31688,6 +31819,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -31862,6 +31994,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -31986,6 +32119,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -32149,6 +32283,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -32328,6 +32463,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -32499,6 +32635,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -32637,6 +32774,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -32747,6 +32885,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -32891,6 +33030,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -33018,6 +33158,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -34723,6 +34864,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -34967,6 +35109,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -35104,6 +35247,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -35244,6 +35388,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -35382,6 +35527,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -35518,6 +35664,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -35665,6 +35812,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -35798,6 +35946,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -35938,6 +36087,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -36064,6 +36214,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -36182,6 +36333,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -36291,6 +36443,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -36421,6 +36574,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -36556,6 +36710,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -36673,6 +36828,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -36938,6 +37094,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -37075,6 +37232,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -37217,6 +37375,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -37393,6 +37552,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -37513,6 +37673,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -37649,6 +37810,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -37811,6 +37973,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -37943,6 +38106,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -38107,6 +38271,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -38324,6 +38489,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -38556,6 +38722,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -38694,6 +38861,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -38902,6 +39070,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -39058,6 +39227,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -39238,6 +39408,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -39392,6 +39563,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -39537,6 +39709,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -39662,6 +39835,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -39792,6 +39966,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -39919,6 +40094,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -40033,6 +40209,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -40155,6 +40332,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -40286,6 +40464,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -40411,6 +40590,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -40544,6 +40724,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -40709,6 +40890,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -41068,6 +41250,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -41182,6 +41365,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -41292,6 +41476,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -41408,6 +41593,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -41550,6 +41736,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -41731,6 +41918,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -41845,6 +42033,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -41966,6 +42155,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -42161,6 +42351,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -42296,6 +42487,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -42427,6 +42619,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -42560,6 +42753,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -42693,6 +42887,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -42871,6 +43066,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -43024,6 +43220,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -43151,6 +43348,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -43288,6 +43486,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -43501,6 +43700,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -43656,6 +43856,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -43784,6 +43985,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -43906,6 +44108,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -44031,6 +44234,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -44146,6 +44350,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -44272,6 +44477,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -44412,6 +44618,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -44533,6 +44740,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -44659,6 +44867,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -44770,6 +44979,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -44891,6 +45101,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -45001,6 +45212,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -45123,6 +45335,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -45254,6 +45467,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -45412,6 +45626,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -45544,6 +45759,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -45666,6 +45882,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -45797,6 +46014,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -46145,6 +46363,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -46290,6 +46509,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -46427,6 +46647,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -46536,6 +46757,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -46703,6 +46925,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -46817,6 +47040,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -47264,6 +47488,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -47378,6 +47603,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -47488,6 +47714,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -47598,6 +47825,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -47757,6 +47985,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -47867,6 +48096,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -47980,6 +48210,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -48090,6 +48321,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -48206,6 +48438,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -48316,6 +48549,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -48436,6 +48670,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -48576,6 +48811,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -48708,6 +48944,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -48837,6 +49074,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -48984,6 +49222,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -49123,6 +49362,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -49278,6 +49518,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -49405,6 +49646,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -49524,6 +49766,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -49661,6 +49904,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -49812,6 +50056,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -49922,6 +50167,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -50048,6 +50294,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -50186,6 +50433,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -50305,6 +50553,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -50461,6 +50710,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -50606,6 +50856,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -50718,6 +50969,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -50855,6 +51107,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -50976,6 +51229,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -51136,6 +51390,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -51298,6 +51553,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -51421,6 +51677,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -51558,6 +51815,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -51738,6 +51996,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
@@ -51851,6 +52110,7 @@ export interface operations {
                      *         "cache": "short",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
                      *           "cursor": 1,
