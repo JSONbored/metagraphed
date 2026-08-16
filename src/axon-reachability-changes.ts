@@ -62,6 +62,7 @@
 // asking for 7d would get 6 and no way to tell.
 
 import { ROUTABLE_AXON_SQL } from "./axon-routable.ts";
+import { windowCoverage } from "./turnover.ts";
 
 /**
  * How a UID stopped having a reachable axon.
@@ -267,129 +268,212 @@ export function axonChangesDerivation(): AxonChangesDerivation {
   };
 }
 
+/** Supported lookback windows (label -> days), matching the routes they feed. */
+export const AXON_CHANGES_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+};
+export const DEFAULT_AXON_CHANGES_WINDOW = "7d";
+
+/** The account scope keeps its wider set, as its route always has. */
+export const ACCOUNT_AXON_CHANGES_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+export const DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW = "30d";
+
 /**
- * What a scope actually read, so a caller never has to infer it.
+ * What a scope actually read, flat, the way every other windowed route says it.
  *
- * `end_date_settled` is false when the window's last day is the table's newest
- * -- the one still being rewritten. See the module header: the same query
- * forty minutes apart returned different counts off that day.
+ * `windowCoverage` already answers covered/requested/truncated and is shared
+ * with turnover and movers, so this only adds the one fact those routes have
+ * no reason to carry: whether the last day had settled.
  */
-export interface AxonChangesWindow {
-  window: string;
-  requested_days: number;
+export interface AxonChangesCoverage {
   start_date: string | null;
   end_date: string | null;
+  covered_days: number | null;
+  requested_days: number | null;
+  window_truncated: boolean | null;
+  /**
+   * False when the window's last day is the newest the table has -- the one
+   * still being rewritten. See the module header: the same aggregate returned
+   * different counts forty minutes apart off that day.
+   */
   end_date_settled: boolean;
 }
 
-export function axonChangesWindow(
-  window: string,
-  requestedDays: number,
-  startDate: string | null,
-  endDate: string | null,
-  newestDate: string | null,
-): AxonChangesWindow {
+export function axonChangesCoverage(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+  requestedDays: number | null | undefined,
+  newestDate: string | null | undefined,
+): AxonChangesCoverage {
   return {
-    window,
-    requested_days: requestedDays,
     start_date: startDate ?? null,
     end_date: endDate ?? null,
+    ...windowCoverage(startDate, endDate, requestedDays),
     // Unsettled only when there IS an end date and it is the newest row the
-    // table has. A window that stops short of today read settled days only.
+    // table has. A window stopping short of today read settled days only.
     end_date_settled: endDate == null ? false : endDate !== newestDate,
   };
 }
 
-/** One subnet's changes, for the chain-scope leaderboard. */
-export interface AxonChangesSubnetRow {
+/** Per-subnet aggregate as the derived SQL returns it, before shaping. */
+export interface AxonChangeSubnetAggregate {
   netuid: number;
   changes: AxonChangeBreakdown;
-}
-
-export interface AxonChangesChainResult {
-  schema_version: 1;
-  window: AxonChangesWindow;
-  derivation: AxonChangesDerivation;
-  subnet_count: number;
-  network: AxonChangeBreakdown;
-  subnets: AxonChangesSubnetRow[];
+  /** Distinct hotkeys that STOPPED ANNOUNCING -- the honest remover count. */
+  distinct_removers: number;
 }
 
 /**
- * Network-wide rollup plus a per-subnet leaderboard.
+ * Fold `{netuid, kind, n, removers}` rows into per-subnet aggregates.
  *
- * Ordered by the count that means what the route NAME implies -- miners that
- * actually stopped announcing -- and only then by total. Sorting by total
- * would put SN126's 160 moves above every genuine withdrawal on the network,
- * which is precisely the misreading this family exists to stop making.
+ * The SQL groups by (netuid, kind), so a subnet arrives as up to three rows.
+ * Anything with an unrecognised kind is DROPPED rather than bucketed, for the
+ * reason `toAxonReachabilityChange` drops it: a mechanism nothing measured
+ * must not be attributed (#11381).
  */
-export function buildAxonChangesChain(
-  changes: readonly AxonReachabilityChange[] | null | undefined,
-  window: AxonChangesWindow,
-  limit: number,
-): AxonChangesChainResult {
-  // Filtered rather than guarded per-iteration, matching the scoped builder:
-  // rows arrive from `toAxonReachabilityChange`, which already returns null for
-  // anything unusable, so the hole is only reachable by a direct caller.
-  const list = (changes ?? []).filter(Boolean);
-  const perSubnet = new Map<number, AxonReachabilityChange[]>();
-  for (const change of list) {
-    const bucket = perSubnet.get(change.netuid);
-    if (bucket) bucket.push(change);
-    else perSubnet.set(change.netuid, [change]);
+export function foldAxonChangeRows(
+  rows: Array<Record<string, unknown>> | null | undefined,
+): AxonChangeSubnetAggregate[] {
+  const perSubnet = new Map<number, AxonChangeSubnetAggregate>();
+  for (const row of rows ?? []) {
+    const netuid = intOrNull(row?.netuid);
+    const kind = axonChangeKind(row?.kind);
+    if (netuid == null || kind == null) continue;
+    const n = countOrZero(row?.n);
+    const entry = perSubnet.get(netuid) ?? {
+      netuid,
+      changes: emptyAxonChangeBreakdown(),
+      distinct_removers: 0,
+    };
+    if (kind === "deregistered") entry.changes.deregistered += n;
+    else if (kind === "moved-unroutable") entry.changes.moved_unroutable += n;
+    else {
+      entry.changes.stopped_announcing += n;
+      // Only the stopped-announcing row carries a remover count; the other two
+      // kinds have no remover, because nobody removed anything.
+      entry.distinct_removers += countOrZero(row?.removers);
+    }
+    entry.changes.total += n;
+    perSubnet.set(netuid, entry);
   }
-  const subnets: AxonChangesSubnetRow[] = [];
-  for (const [netuid, rows] of perSubnet) {
-    subnets.push({ netuid, changes: tallyAxonChanges(rows) });
-  }
-  subnets.sort(
+  return [...perSubnet.values()];
+}
+
+/** A non-negative whole count from a COUNT() cell (int8 arrives as a string). */
+function countOrZero(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+/**
+ * Rank subnets by what the route NAME means, not by volume.
+ *
+ * Sorting by total would put SN126's 160 moves above every genuine withdrawal
+ * on the network -- exactly the misreading this family exists to prevent. So
+ * removals lead, then total, then netuid for a stable order.
+ */
+export function rankAxonChangeSubnets(
+  subnets: readonly AxonChangeSubnetAggregate[],
+): AxonChangeSubnetAggregate[] {
+  return [...subnets].sort(
     (a, b) =>
       b.changes.stopped_announcing - a.changes.stopped_announcing ||
       b.changes.total - a.changes.total ||
       a.netuid - b.netuid,
   );
-  return {
-    schema_version: 1,
-    window,
-    derivation: axonChangesDerivation(),
-    subnet_count: subnets.length,
-    network: tallyAxonChanges(list),
-    subnets: subnets.slice(0, Math.max(0, limit)),
-  };
 }
 
-export interface AxonChangesScopedResult {
-  schema_version: 1;
-  window: AxonChangesWindow;
-  derivation: AxonChangesDerivation;
-  changes: AxonChangeBreakdown;
-  items: AxonReachabilityChange[];
+/** Sum per-subnet aggregates into the network rollup. */
+export function sumAxonChangeBreakdowns(
+  subnets: readonly AxonChangeSubnetAggregate[],
+): AxonChangeBreakdown {
+  const out = emptyAxonChangeBreakdown();
+  for (const subnet of subnets) {
+    out.deregistered += subnet.changes.deregistered;
+    out.moved_unroutable += subnet.changes.moved_unroutable;
+    out.stopped_announcing += subnet.changes.stopped_announcing;
+    out.total += subnet.changes.total;
+  }
+  return out;
 }
 
 /**
- * One subnet's or one account's changes, newest first.
+ * The envelope's `generated_at` for a daily derivation.
  *
- * The tally spans EVERY change in the window; `items` is the page. A caller
- * that read only the page would otherwise have to assume the counts matched
- * it, and they do not once `limit` truncates.
+ * MIDNIGHT UTC of the last day read, not `Date.now()`. The answer describes a
+ * day, and stamping it with the request time would claim a freshness the
+ * source does not have -- the snapshot behind it is up to 24h old.
  */
-export function buildAxonChangesScoped(
-  changes: readonly AxonReachabilityChange[] | null | undefined,
-  window: AxonChangesWindow,
-  limit: number,
-): AxonChangesScopedResult {
-  const list = (changes ?? []).filter(Boolean);
-  const ordered = [...list].sort(
-    (a, b) =>
-      String(b.date).localeCompare(String(a.date)) ||
-      a.netuid - b.netuid ||
-      a.uid - b.uid,
+export function axonChangesObservedAt(
+  endDate: string | null | undefined,
+): string | null {
+  if (typeof endDate !== "string" || endDate.trim() === "") return null;
+  const parsed = Date.parse(`${endDate.trim()}T00:00:00.000Z`);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+}
+
+/**
+ * The grouped read every scope runs, as one statement.
+ *
+ * Takes the window's first date and an optional scope filter, and returns one
+ * row per (netuid, kind). `prev_hotkey` is the remover on a stop -- the hotkey
+ * that WAS announcing -- because `hotkey` on that row is the same account and
+ * on a deregistration would be the newcomer.
+ */
+export function axonChangesGroupedSql(scopeFilter: string): string {
+  return (
+    `WITH seq AS (${AXON_TRANSITION_SEQ_SQL} ` +
+    `WHERE snapshot_date >= ?${scopeFilter ? ` AND ${scopeFilter}` : ""} ` +
+    `${AXON_TRANSITION_WINDOW_SQL}) ` +
+    `SELECT netuid, ${AXON_CHANGE_KIND_SQL} AS kind, COUNT(*) AS n, ` +
+    "COUNT(DISTINCT prev_hotkey) AS removers " +
+    `FROM seq WHERE ${AXON_CHANGE_PREDICATE_SQL} GROUP BY netuid, kind`
   );
-  return {
-    schema_version: 1,
-    window,
-    derivation: axonChangesDerivation(),
-    changes: tallyAxonChanges(list),
-    items: ordered.slice(0, Math.max(0, limit)),
-  };
+}
+
+/**
+ * The account-scoped read.
+ *
+ * THE FILTER CANNOT GO IN THE CTE. Restricting the sequence to one hotkey's
+ * rows removes the row that REPLACED it, and a deregistration is defined by
+ * exactly that row -- the UID would then look like the account stopped
+ * announcing when in fact it lost the slot. So the account filter is applied
+ * to `prev_hotkey` on the OUTSIDE, after the comparison has been made.
+ *
+ * The CTE is still pruned to the netuids the account has appeared on, which is
+ * a small set for any real account and keeps this from scanning the network.
+ */
+export function axonChangesAccountSql(): string {
+  return (
+    `WITH seq AS (${AXON_TRANSITION_SEQ_SQL} ` +
+    "WHERE snapshot_date >= ? AND netuid IN " +
+    "(SELECT DISTINCT netuid FROM neuron_daily WHERE hotkey = ?) " +
+    `${AXON_TRANSITION_WINDOW_SQL}) ` +
+    `SELECT netuid, ${AXON_CHANGE_KIND_SQL} AS kind, COUNT(*) AS n, ` +
+    "MIN(snapshot_date) AS first_date, MAX(snapshot_date) AS last_date " +
+    `FROM seq WHERE ${AXON_CHANGE_PREDICATE_SQL} AND prev_hotkey = ? ` +
+    "GROUP BY netuid, kind"
+  );
+}
+
+/**
+ * Distinct hotkeys that stopped announcing anywhere in the window.
+ *
+ * Separate from the grouped read because it is a network-wide COUNT DISTINCT:
+ * one hotkey that stopped on three subnets is ONE remover, and summing the
+ * per-subnet counts would treble it.
+ */
+export function axonChangesNetworkRemoversSql(): string {
+  return (
+    `WITH seq AS (${AXON_TRANSITION_SEQ_SQL} ` +
+    `WHERE snapshot_date >= ? ${AXON_TRANSITION_WINDOW_SQL}) ` +
+    "SELECT COUNT(DISTINCT prev_hotkey) AS removers FROM seq " +
+    `WHERE ${AXON_CHANGE_PREDICATE_SQL} AND hotkey = prev_hotkey ` +
+    "AND (axon IS NULL OR axon = '')"
+  );
 }

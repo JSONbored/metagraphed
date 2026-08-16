@@ -56,7 +56,10 @@ import {
   envelopeResponse,
   publishedAt,
 } from "../responses.ts";
-import { currentDataApiTierFallbackGeneration } from "../data-api-tier.ts";
+import {
+  currentDataApiTierFallbackGeneration,
+  tryDataApiTier,
+} from "../data-api-tier.ts";
 import { currentR2SqlFailureGeneration } from "../../src/r2-sql.ts";
 import { currentOffsetCapDeclineGeneration } from "../../src/r2-sql-blocks.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
@@ -88,7 +91,10 @@ import { buildChainTransfers } from "../../src/chain-transfers.ts";
 import { buildChainServing } from "../../src/chain-serving.ts";
 import { buildChainPrometheus } from "../../src/chain-prometheus.ts";
 import { loadChainPrometheusColdTier } from "../../src/chain-prometheus-loader.ts";
-import { buildChainAxonRemovals } from "../../src/chain-axon-removals.ts";
+import {
+  buildChainAxonRemovals,
+  type ChainAxonRemovalsResult,
+} from "../../src/chain-axon-removals.ts";
 import { buildChainRegistrations } from "../../src/chain-registrations.ts";
 import { buildChainDeregistrations } from "../../src/chain-deregistrations.ts";
 import {
@@ -2215,14 +2221,17 @@ export async function handleChainAxonRemovals(
     env,
     "chain-axon-removals",
     async () => {
-      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a store query here would
-      // always miss (#6013). Postgres → schema-stable empty stub, never a
-      // live store read.
+      // #10805: DERIVED from neuron_daily in DATA_API. The account_events path
+      // this route was built on could only ever miss -- AxonInfoRemoved has
+      // never been emitted -- so the tier flag is what makes it answer at all.
+      // A declined tier falls back to the schema-stable empty card, which is
+      // distinguishable from a quiet network by its NULL start_date.
       const data =
-        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-        // resolved to null before it could touch DATA_API.
+        ((await tryDataApiTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_AXON_CHANGES_SOURCE",
+        )) as ChainAxonRemovalsResult | null) ??
         buildChainAxonRemovals([], {
           window: label,
           limit,

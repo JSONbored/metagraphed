@@ -75,7 +75,6 @@ import {
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
 } from "../src/chain-deregistrations-artifact.ts";
 import {
-  AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
   DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
   PROMETHEUS_DEGRADED_NOT_CURATED,
 } from "../src/uncurated-event-streams.ts";
@@ -24204,21 +24203,6 @@ describe("graphql — event-stream honesty (#9307)", () => {
       `{ account_prometheus(ss58: "${SS58_ADDR}") { degraded { reason } } }`,
       PROMETHEUS_DEGRADED_NOT_CURATED,
     ],
-    [
-      "chain_axon_removals",
-      "{ chain_axon_removals { degraded { reason } } }",
-      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
-    ],
-    [
-      "subnet_axon_removals",
-      "{ subnet_axon_removals(netuid: 3) { degraded { reason } } }",
-      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
-    ],
-    [
-      "account_axon_removals",
-      `{ account_axon_removals(ss58: "${SS58_ADDR}") { degraded { reason } } }`,
-      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
-    ],
   ])(
     "%s marks an empty answer instead of publishing a zero",
     async (field, query, reason) => {
@@ -24231,6 +24215,52 @@ describe("graphql — event-stream honesty (#9307)", () => {
       );
     },
   );
+});
+
+// #10805: the three axon-removals resolvers used to sit in the table above,
+// marked `axon_removals_never_emitted`. They are DERIVED from neuron_daily now
+// and answer for real, so the marker is gone -- and its job is done better by
+// the data: an unanswered window has NULL dates, which a zero-with-dates does
+// not. A marker can be forgotten on a new field; a null start_date cannot.
+describe("graphql — the axon family answers instead of marking (#10805)", () => {
+  const SS58_ADDR = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  test.each([
+    [
+      "chain_axon_removals",
+      "{ chain_axon_removals { start_date derivation { source resolution } } }",
+    ],
+    [
+      "subnet_axon_removals",
+      "{ subnet_axon_removals(netuid: 3) { start_date derivation { source resolution } } }",
+    ],
+    [
+      "account_axon_removals",
+      `{ account_axon_removals(ss58: "${SS58_ADDR}") { start_date derivation { source resolution } } }`,
+    ],
+  ])(
+    "%s states its derivation, and a declined tier has a NULL start_date",
+    async (field, query) => {
+      const { body } = await gql(query);
+      const data = (body.data as Row)[field] as Row;
+      assert.equal(data.derivation.source, "neuron_daily");
+      assert.equal(data.derivation.resolution, "daily");
+      // No tier is bound in this harness, so nothing was read -- and that is
+      // visible without a flag.
+      assert.equal(data.start_date, null);
+    },
+  );
+
+  test("no axon-removals resolver still publishes a degraded marker", async () => {
+    const { body } = await gql("{ chain_axon_removals { __typename } }");
+    assert.equal(body.errors, undefined);
+    const { body: probe } = await gql(
+      "{ chain_axon_removals { degraded { reason } } }",
+    );
+    assert.ok(
+      probe.errors,
+      "the field is gone from the SDL, so selecting it must be a query error",
+    );
+  });
 });
 
 // Every field src/graphql.ts started forwarding for #10214, driven through the

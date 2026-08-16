@@ -13,6 +13,11 @@ import {
   DeregistrationDerivationSchema,
   EventStreamDegradedSchema,
 } from "./event-stream-honesty.ts";
+import {
+  AxonChangeBreakdownSchema,
+  AxonChangesCoverageShape,
+  AxonChangesDerivationSchema,
+} from "./chain-network-rollups.ts";
 
 export const WINDOW_ENUM_90D = ["7d", "30d", "90d"] as const;
 const WINDOW_ENUM_7_30D = ["7d", "30d"] as const;
@@ -22,7 +27,14 @@ export const AccountAxonRemovalsArtifactSchema = z
     schema_version: z.int(),
     address: z.string(),
     window: z.enum(WINDOW_ENUM_90D).nullable(),
-    total_removals: z.int().min(0),
+    observed_at: z.string().nullable(),
+    ...AxonChangesCoverageShape,
+    total_removals: z
+      .int()
+      .min(0)
+      .describe(
+        "Changes where this account STOPPED ANNOUNCING. An account whose UID was recycled on ten subnets removed nothing, and `changes.deregistered` is where that shows.",
+      ),
     subnet_count: z.int().min(0),
     concentration: z.number().nullable(),
     dominant_netuid: z.int().min(0).nullable(),
@@ -31,17 +43,22 @@ export const AccountAxonRemovalsArtifactSchema = z
         .object({
           netuid: z.int().min(0),
           removals: z.int().min(0),
-          first_removed_at: z.string().nullable(),
+          first_removed_at: z
+            .string()
+            .nullable()
+            .describe(
+              "Null on a subnet where the account only lost slots: those dates would belong to whoever took the UID.",
+            ),
           last_removed_at: z.string().nullable(),
+          changes: AxonChangeBreakdownSchema,
         })
         .strict()
         .describe(
-          "One subnet's slice of an account's axon-removal footprint over the window.",
+          "One subnet's slice of an account's reachability changes. Present even with zero removals, so churn is visible rather than hidden.",
         ),
     ),
-    // #9307: AxonInfoRemoved has never been emitted, so this footprint's zero
-    // has never measured this account.
-    degraded: EventStreamDegradedSchema.nullable().optional(),
+    changes: AxonChangeBreakdownSchema,
+    derivation: AxonChangesDerivationSchema,
   })
   .strict();
 export type AccountAxonRemovalsArtifact = z.infer<

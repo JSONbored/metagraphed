@@ -322,6 +322,12 @@
     // FORWARDABLE_TIER_FLAGS in workers/data-api-tier.ts. "retired" would make the
     // fully-seeded D1 tables unreachable and serve empties.
     "METAGRAPH_NEURONS_SOURCE": "data-api",
+    // axon reachability changes (#10805): the axon-removals family answered a
+    // permanent zero because AxonInfoRemoved has never been emitted. It is now
+    // DERIVED from neuron_daily in DATA_API, so this flag must forward there --
+    // see FORWARDABLE_TIER_FLAGS in workers/data-api-tier.ts. "retired" would
+    // put the routes back on the empty builder they were stuck on.
+    "METAGRAPH_AXON_CHANGES_SOURCE": "data-api",
     // top-holders (#6741/#6743): no D1 predecessor ever existed for this route
     // (account_balances/nominator_positions are Postgres-only tables) -- this
     // flag exists purely to reuse tryPostgresTier's proven fail-closed-to-

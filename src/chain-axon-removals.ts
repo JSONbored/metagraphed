@@ -1,20 +1,35 @@
-// Live network-wide axon-removal activity from the account_events AxonInfoRemoved stream: a
-// per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
-// (buildChainAxonRemovals); the D1 loader was retired in #4909 (account_events' D1 table was
-// dropped in #4772, so it always missed -- see #6013). Callers now go
-// tryDataApiTier() ?? buildChainAxonRemovals([]). The field semantics live in
-// schemas-src/routes/chain-network-rollups.ts (ChainAxonRemovalsArtifact). The teardown-side companion
-// to the axon-announcement /chain/serving: AxonInfoRemoved is emitted when a neuron's announced axon
-// endpoint is removed on a subnet (which subnets churn their serving infrastructure), read from the
-// same account_events [netuid, hotkey] tuple AxonServed uses — the network-wide companion to the
-// per-subnet /api/v1/subnets/{netuid}/axon-removals.
+// Network-wide axon reachability changes, DERIVED from daily metagraph state
+// (#10805).
+//
+// This route used to read the account_events `AxonInfoRemoved` stream, which
+// has zero occurrences in the complete pallet-level stream, genesis to head --
+// so it answered a permanent zero on every scope, in every window.
+//
+// It now answers from `neuron_daily`, through the shared transition definition
+// in src/axon-reachability-changes.ts. `removals` counts ONLY miners that
+// stopped announcing. A deregistration (the UID changed hands) and a move to
+// an unroutable address (the miner is still announcing) are carried in
+// `changes` instead, because neither removed anything: over 38 days
+// network-wide the split is 105 / 1,915 / 166.
+//
+// THE LEADERBOARD RANKS BY REMOVALS, NOT BY TOTAL. Ranking by total puts
+// SN126's 160 moves above every genuine withdrawal on the network, which is
+// precisely the misreading this family exists to prevent.
 
 import { roundDp, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
-  AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
-  type EventStreamDegraded,
-} from "./uncurated-event-streams.ts";
+  axonChangesCoverage,
+  axonChangesDerivation,
+  axonChangesObservedAt,
+  emptyAxonChangeBreakdown,
+  rankAxonChangeSubnets,
+  sumAxonChangeBreakdowns,
+  type AxonChangeBreakdown,
+  type AxonChangeSubnetAggregate,
+  type AxonChangesCoverage,
+  type AxonChangesDerivation,
+} from "./axon-reachability-changes.ts";
 
 export const CHAIN_AXON_REMOVALS_LIMIT_DEFAULT = 20;
 export const CHAIN_AXON_REMOVALS_LIMIT_MAX = 100;
@@ -33,35 +48,6 @@ export const DEFAULT_CHAIN_AXON_REMOVALS_WINDOW = "7d";
 function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
-}
-
-// A non-negative integer netuid, or null for a malformed/absent cell. Guard null AND a
-// blank/whitespace-only string explicitly so neither is silently coerced to subnet 0
-// (Number(null), Number(""), and Number("  ") all === 0); a malformed row must be skipped,
-// never counted as netuid 0.
-function normalizedNetuid(value: unknown): number | null {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const netuid = Number(value);
-  return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
-}
-
-// Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
-// envelope's generated_at, the same way account-events does.
-function coerceEpochMs(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
-  // toIso's new Date(n).toISOString() throw a RangeError, which would 500 this
-  // endpoint on a single corrupt observed_at cell. Drop it to null, mirroring the
-  // getTime() range guard chain-stake-flow.ts added in #3016.
-  return Number.isFinite(new Date(n).getTime()) ? n : null;
-}
-
-function toIso(value: unknown): string | null {
-  const n = coerceEpochMs(value);
-  return n == null ? null : new Date(n).toISOString();
 }
 
 // Average AxonInfoRemoved events per distinct hotkey — the subnet's re-teardown intensity (1.0
@@ -109,20 +95,16 @@ export interface ChainAxonRemovalsNetwork {
   removals_per_remover: number | null;
 }
 
-const EMPTY_NETWORK: ChainAxonRemovalsNetwork = {
-  distinct_removers: 0,
-  removals: 0,
-  removals_per_remover: null,
-};
-
 export interface ChainAxonRemovalsSubnet {
   netuid: number;
   distinct_removers: number;
   removals: number;
-  removals_per_remover: number;
+  /** Null when nobody stopped announcing on this subnet. */
+  removals_per_remover: number | null;
+  changes: AxonChangeBreakdown;
 }
 
-export interface ChainAxonRemovalsResult {
+export interface ChainAxonRemovalsResult extends AxonChangesCoverage {
   schema_version: 1;
   window: string | null;
   observed_at: string | null;
@@ -130,109 +112,93 @@ export interface ChainAxonRemovalsResult {
   network: ChainAxonRemovalsNetwork;
   intensity_distribution: IntensityDistribution | null;
   subnets: ChainAxonRemovalsSubnet[];
-  /** Present only on the empty answer — see the `empty` literal below. */
-  degraded?: EventStreamDegraded;
+  /** The full three-way split, network-wide. */
+  changes: AxonChangeBreakdown;
+  derivation: AxonChangesDerivation;
 }
 
-// Shape the network-wide axon-removal scorecard from the per-subnet account_events aggregate.
-// `subnetRows` carries one row per netuid (COUNT(*) removals, COUNT(DISTINCT hotkey)
-// distinct_removers). `networkDistinct` carries the true network-wide distinct hotkey count (a
-// hotkey removing an axon on several subnets counts once, so this is NOT the sum of the per-subnet
-// distinct_removers) plus the newest observed_at. `limit` caps the leaderboard; subnet_count and
-// the distribution span every subnet with observed removal activity (subnets with no
-// AxonInfoRemoved events in the window are absent). Null-safe: no rows yields the empty block.
+/**
+ * Shape the network-wide scorecard from the folded per-subnet aggregates.
+ *
+ * `subnets` is ranked by REMOVALS (miners that stopped announcing), then by
+ * total, then by netuid -- see the module header for why total alone is the
+ * wrong key. `subnet_count` and the distribution span every subnet with a
+ * change, so the spread stays network-wide even when `limit` truncates.
+ *
+ * NOTHING READ IS NOT ZERO: with no coverage the dates are null and every
+ * count is 0, which is how a declined tier is told apart from a quiet network.
+ */
 export function buildChainAxonRemovals(
-  subnetRows: Array<Record<string, unknown>> | null | undefined,
+  aggregates: readonly AxonChangeSubnetAggregate[] | null | undefined,
   {
     window,
     limit = CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
-    networkDistinct,
+    coverage,
+    networkDistinctRemovers,
   }: {
     window?: string | null;
     limit?: number;
-    networkDistinct?: {
-      distinct_removers?: unknown;
-      newest_observed?: unknown;
-    };
+    coverage?: AxonChangesCoverage;
+    /**
+     * Distinct hotkeys that stopped announcing anywhere in the window.
+     *
+     * NOT the sum of the per-subnet counts: one hotkey that stopped on three
+     * subnets is one remover. Only the caller's own network-wide COUNT
+     * DISTINCT can say, so an absent value is 0 rather than a guess.
+     */
+    networkDistinctRemovers?: unknown;
   } = {},
 ): ChainAxonRemovalsResult {
-  const list = Array.isArray(subnetRows) ? subnetRows : [];
+  const list = (aggregates ?? []).filter(Boolean);
   const normalizedLimit = clampRowLimit(
     limit,
     CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
     CHAIN_AXON_REMOVALS_LIMIT_MAX,
   );
-  const observedAt = toIso(networkDistinct?.newest_observed);
+  const resolved = coverage ?? axonChangesCoverage(null, null, null, null);
+  const ranked = rankAxonChangeSubnets(list);
+  const networkChanges = sumAxonChangeBreakdowns(list);
+  const networkRemovers = toCount(networkDistinctRemovers);
 
-  const empty: ChainAxonRemovalsResult = {
-    schema_version: 1,
-    window: window ?? null,
-    observed_at: observedAt,
-    subnet_count: 0,
-    network: { ...EMPTY_NETWORK },
-    intensity_distribution: null,
-    subnets: [],
-    // AxonInfoRemoved has never been emitted -- zero occurrences in the
-    // complete pallet-level stream, ever -- so the empty answer is the only
-    // answer, and it is not a measurement. Marked in the shared builder so
-    // REST, MCP and the GraphQL resolver all inherit it.
-    degraded: { reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED },
-  };
-  if (list.length === 0) return empty;
+  const subnets: ChainAxonRemovalsSubnet[] = ranked.map((entry) => ({
+    netuid: entry.netuid,
+    distinct_removers: entry.distinct_removers,
+    removals: entry.changes.stopped_announcing,
+    // Null where nobody stopped -- a subnet whose changes are all moves has no
+    // teardown intensity, and 0 would claim it measured one.
+    removals_per_remover: removalsPerRemover(
+      entry.changes.stopped_announcing,
+      entry.distinct_removers,
+    ),
+    changes: entry.changes,
+  }));
 
-  // Merge by netuid so a malformed direct caller passing duplicate rows for a subnet sums rather
-  // than double-counting (the SQL loader GROUPs BY netuid, so production rows are unique per
-  // subnet; this keeps the pure builder correct outside that path).
-  const perNetuid = new Map<number, { removers: number; removals: number }>();
-  for (const row of list) {
-    const netuid = normalizedNetuid(row?.netuid);
-    if (netuid == null) continue;
-    const removers = toCount(row?.distinct_removers);
-    if (removers === 0) continue; // no removers: not a teardown surface
-    const bucket = perNetuid.get(netuid) ?? { removers: 0, removals: 0 };
-    bucket.removers += removers;
-    bucket.removals += toCount(row?.removals);
-    perNetuid.set(netuid, bucket);
-  }
-  if (perNetuid.size === 0) return empty;
-
-  const subnets: ChainAxonRemovalsSubnet[] = [];
-  let totalRemovals = 0;
-  for (const [netuid, bucket] of perNetuid) {
-    subnets.push({
-      netuid,
-      distinct_removers: bucket.removers,
-      removals: bucket.removals,
-      // removalsPerRemover only returns null when removers <= 0, and every bucket here has
-      // removers > 0 (the `removers === 0` guard above skips it before it's ever created).
-      removals_per_remover: removalsPerRemover(
-        bucket.removals,
-        bucket.removers,
-      ) as number,
-    });
-    totalRemovals += bucket.removals;
-  }
-  // Most active removal subnets first (by total AxonInfoRemoved events), tie-broken by netuid.
-  subnets.sort((a, b) => b.removals - a.removals || a.netuid - b.netuid);
-
-  const networkRemovers = toCount(networkDistinct?.distinct_removers);
-  const network: ChainAxonRemovalsNetwork = {
-    distinct_removers: networkRemovers,
-    removals: totalRemovals,
-    removals_per_remover: removalsPerRemover(totalRemovals, networkRemovers),
-  };
+  // Only subnets that actually had a removal have an intensity; folding in the
+  // move-only subnets as zeroes would drag the distribution toward a teardown
+  // rate nobody exhibited.
+  const intensities = subnets
+    .map((subnet) => subnet.removals_per_remover)
+    .filter((value): value is number => typeof value === "number");
 
   return {
     schema_version: 1,
     window: window ?? null,
-    observed_at: observedAt,
+    observed_at: axonChangesObservedAt(resolved.end_date),
+    ...resolved,
     subnet_count: subnets.length,
-    network,
-    // Distribution of per-subnet re-teardown intensity over EVERY subnet (not just the returned
-    // page), so the spread is network-wide even when `limit` truncates the leaderboard.
-    intensity_distribution: intensityDistribution(
-      subnets.map((subnet) => subnet.removals_per_remover),
-    ),
+    network: {
+      distinct_removers: networkRemovers,
+      removals: networkChanges.stopped_announcing,
+      removals_per_remover: removalsPerRemover(
+        networkChanges.stopped_announcing,
+        networkRemovers,
+      ),
+    },
+    intensity_distribution:
+      intensities.length === 0 ? null : intensityDistribution(intensities),
     subnets: subnets.slice(0, normalizedLimit),
+    changes:
+      networkChanges.total === 0 ? emptyAxonChangeBreakdown() : networkChanges,
+    derivation: axonChangesDerivation(),
   };
 }

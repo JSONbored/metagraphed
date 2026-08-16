@@ -5199,19 +5199,56 @@ export interface components {
     schemas: {
         AccountAxonRemovalsArtifact: {
             address: string;
+            /** @description Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+            changes: {
+                /** @description The UID changed hands: the announcing miner was deregistered and its slot reused by one that never served. Nobody withdrew anything. */
+                deregistered: number;
+                /** @description The same miner is STILL ANNOUNCING, at an address in documentation or private space that nothing can reach. It did not go dark. */
+                moved_unroutable: number;
+                /** @description The same miner stopped publishing an axon at all. The only kind that means what 'axon removal' sounds like, and what `removals` counts. */
+                stopped_announcing: number;
+                total: number;
+            };
             concentration: number | null;
-            degraded?: components["schemas"]["DegradedInfo"] | null;
+            covered_days: number | null;
+            derivation: {
+                /** @description Widest window the retained daily history can answer. A longer request is out of range, not an empty result. */
+                max_window_days: number;
+                note: string;
+                /** @constant */
+                resolution: "daily";
+                /** @constant */
+                source: "neuron_daily";
+            };
             dominant_netuid: number | null;
+            end_date: string | null;
+            end_date_settled: boolean;
+            observed_at: string | null;
+            requested_days: number | null;
             schema_version: number;
+            start_date: string | null;
             subnet_count: number;
             subnets: {
+                /** @description Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+                changes: {
+                    /** @description The UID changed hands: the announcing miner was deregistered and its slot reused by one that never served. Nobody withdrew anything. */
+                    deregistered: number;
+                    /** @description The same miner is STILL ANNOUNCING, at an address in documentation or private space that nothing can reach. It did not go dark. */
+                    moved_unroutable: number;
+                    /** @description The same miner stopped publishing an axon at all. The only kind that means what 'axon removal' sounds like, and what `removals` counts. */
+                    stopped_announcing: number;
+                    total: number;
+                };
+                /** @description Null on a subnet where the account only lost slots: those dates would belong to whoever took the UID. */
                 first_removed_at: string | null;
                 last_removed_at: string | null;
                 netuid: number;
                 removals: number;
             }[];
+            /** @description Changes where this account STOPPED ANNOUNCING. An account whose UID was recycled on ten subnets removed nothing, and `changes.deregistered` is where that shows. */
             total_removals: number;
             window: ("7d" | "30d" | "90d") | null;
+            window_truncated: boolean | null;
         };
         /** @description Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance. */
         AccountBalanceArtifact: {
@@ -6593,7 +6630,28 @@ export interface components {
             window: "24h";
         };
         ChainAxonRemovalsArtifact: {
-            degraded?: components["schemas"]["DegradedInfo"] | null;
+            /** @description Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+            changes: {
+                /** @description The UID changed hands: the announcing miner was deregistered and its slot reused by one that never served. Nobody withdrew anything. */
+                deregistered: number;
+                /** @description The same miner is STILL ANNOUNCING, at an address in documentation or private space that nothing can reach. It did not go dark. */
+                moved_unroutable: number;
+                /** @description The same miner stopped publishing an axon at all. The only kind that means what 'axon removal' sounds like, and what `removals` counts. */
+                stopped_announcing: number;
+                total: number;
+            };
+            covered_days: number | null;
+            derivation: {
+                /** @description Widest window the retained daily history can answer. A longer request is out of range, not an empty result. */
+                max_window_days: number;
+                note: string;
+                /** @constant */
+                resolution: "daily";
+                /** @constant */
+                source: "neuron_daily";
+            };
+            end_date: string | null;
+            end_date_settled: boolean;
             /** @description Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard. */
             intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -6603,16 +6661,30 @@ export interface components {
                 /** @description Null when distinct_removers is 0 (no defined intensity without removers). */
                 removals_per_remover: number | null;
             };
+            /** @description Midnight UTC of the last day read. The answer describes a day, so stamping it with the request time would claim a freshness the daily snapshot does not have. */
             observed_at: string | null;
+            requested_days: number | null;
             schema_version: number;
+            start_date: string | null;
             subnet_count: number;
             subnets: {
+                /** @description Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+                changes: {
+                    /** @description The UID changed hands: the announcing miner was deregistered and its slot reused by one that never served. Nobody withdrew anything. */
+                    deregistered: number;
+                    /** @description The same miner is STILL ANNOUNCING, at an address in documentation or private space that nothing can reach. It did not go dark. */
+                    moved_unroutable: number;
+                    /** @description The same miner stopped publishing an axon at all. The only kind that means what 'axon removal' sounds like, and what `removals` counts. */
+                    stopped_announcing: number;
+                    total: number;
+                };
                 distinct_removers: number;
                 netuid: number;
                 removals: number;
                 removals_per_remover: number | null;
             }[];
             window: ("7d" | "30d") | null;
+            window_truncated: boolean | null;
         };
         ChainBurnArtifact: {
             cheapest_burn_tao: number | null;
@@ -10809,14 +10881,40 @@ export interface components {
             window: "24h" | null;
         };
         SubnetAxonRemovalsArtifact: {
-            degraded?: components["schemas"]["DegradedInfo"] | null;
+            /** @description Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+            changes: {
+                /** @description The UID changed hands: the announcing miner was deregistered and its slot reused by one that never served. Nobody withdrew anything. */
+                deregistered: number;
+                /** @description The same miner is STILL ANNOUNCING, at an address in documentation or private space that nothing can reach. It did not go dark. */
+                moved_unroutable: number;
+                /** @description The same miner stopped publishing an axon at all. The only kind that means what 'axon removal' sounds like, and what `removals` counts. */
+                stopped_announcing: number;
+                total: number;
+            };
+            covered_days: number | null;
+            derivation: {
+                /** @description Widest window the retained daily history can answer. A longer request is out of range, not an empty result. */
+                max_window_days: number;
+                note: string;
+                /** @constant */
+                resolution: "daily";
+                /** @constant */
+                source: "neuron_daily";
+            };
             distinct_removers: number;
+            end_date: string | null;
+            end_date_settled: boolean;
             netuid: number;
+            /** @description Midnight UTC of the last day read -- the answer describes a day, not an instant. */
             observed_at: string | null;
+            /** @description Miners that STOPPED ANNOUNCING. Deregistrations and moves to unroutable addresses are in `changes` instead, because neither removed anything. */
             removals: number;
             removals_per_remover: number | null;
+            requested_days: number | null;
             schema_version: number;
+            start_date: string | null;
             window: ("7d" | "30d") | null;
+            window_truncated: boolean | null;
         };
         /** @description Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn. */
         SubnetBurnArtifact: {
@@ -20274,16 +20372,36 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "address": "example",
+                     *         "changes": {
+                     *           "deregistered": 1,
+                     *           "moved_unroutable": 1,
+                     *           "stopped_announcing": 1,
+                     *           "total": 1
+                     *         },
                      *         "concentration": 0.5,
-                     *         "degraded": {
-                     *           "detail": "example",
-                     *           "reason": "example"
+                     *         "covered_days": 1,
+                     *         "derivation": {
+                     *           "max_window_days": 1,
+                     *           "note": "example",
+                     *           "resolution": "daily",
+                     *           "source": "neuron_daily"
                      *         },
                      *         "dominant_netuid": 7,
+                     *         "end_date": "example",
+                     *         "end_date_settled": false,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "requested_days": 1,
                      *         "schema_version": 1,
+                     *         "start_date": "example",
                      *         "subnet_count": 1,
                      *         "subnets": [
                      *           {
+                     *             "changes": {
+                     *               "deregistered": 1,
+                     *               "moved_unroutable": 1,
+                     *               "stopped_announcing": 1,
+                     *               "total": 1
+                     *             },
                      *             "first_removed_at": "2026-06-01T00:00:00.000Z",
                      *             "last_removed_at": "2026-06-01T00:00:00.000Z",
                      *             "netuid": 7,
@@ -20291,7 +20409,8 @@ export interface operations {
                      *           }
                      *         ],
                      *         "total_removals": 1,
-                     *         "window": "7d"
+                     *         "window": "7d",
+                     *         "window_truncated": false
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -25810,10 +25929,21 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "degraded": {
-                     *           "detail": "example",
-                     *           "reason": "example"
+                     *         "changes": {
+                     *           "deregistered": 90,
+                     *           "moved_unroutable": 55,
+                     *           "stopped_announcing": 70,
+                     *           "total": 215
                      *         },
+                     *         "covered_days": 1,
+                     *         "derivation": {
+                     *           "max_window_days": 1,
+                     *           "note": "example",
+                     *           "resolution": "daily",
+                     *           "source": "neuron_daily"
+                     *         },
+                     *         "end_date": "example",
+                     *         "end_date_settled": false,
                      *         "intensity_distribution": {
                      *           "count": 2,
                      *           "max": 15,
@@ -25830,23 +25960,38 @@ export interface operations {
                      *           "removals_per_remover": 14
                      *         },
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "requested_days": 1,
                      *         "schema_version": 1,
+                     *         "start_date": "example",
                      *         "subnet_count": 2,
                      *         "subnets": [
                      *           {
+                     *             "changes": {
+                     *               "deregistered": 90,
+                     *               "moved_unroutable": 0,
+                     *               "stopped_announcing": 40,
+                     *               "total": 130
+                     *             },
                      *             "distinct_removers": 4,
                      *             "netuid": 1,
                      *             "removals": 40,
                      *             "removals_per_remover": 10
                      *           },
                      *           {
+                     *             "changes": {
+                     *               "deregistered": 0,
+                     *               "moved_unroutable": 55,
+                     *               "stopped_announcing": 30,
+                     *               "total": 85
+                     *             },
                      *             "distinct_removers": 2,
                      *             "netuid": 2,
                      *             "removals": 30,
                      *             "removals_per_remover": 15
                      *           }
                      *         ],
-                     *         "window": "7d"
+                     *         "window": "7d",
+                     *         "window_truncated": false
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -41149,17 +41294,31 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "degraded": {
-                     *           "detail": "example",
-                     *           "reason": "example"
+                     *         "changes": {
+                     *           "deregistered": 1,
+                     *           "moved_unroutable": 1,
+                     *           "stopped_announcing": 1,
+                     *           "total": 1
+                     *         },
+                     *         "covered_days": 1,
+                     *         "derivation": {
+                     *           "max_window_days": 1,
+                     *           "note": "example",
+                     *           "resolution": "daily",
+                     *           "source": "neuron_daily"
                      *         },
                      *         "distinct_removers": 1,
+                     *         "end_date": "example",
+                     *         "end_date_settled": false,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "removals": 1,
                      *         "removals_per_remover": 0.5,
+                     *         "requested_days": 1,
                      *         "schema_version": 1,
-                     *         "window": "7d"
+                     *         "start_date": "example",
+                     *         "window": "7d",
+                     *         "window_truncated": false
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

@@ -559,29 +559,53 @@ function normalizeChainAxonRemovalsSample(out: Sample): Sample {
   ) {
     return out;
   }
-  // An internally consistent worked example: two subnets whose removers emit 40 and 30
-  // AxonInfoRemoved events, so removals_per_remover reads 40/4 = 10 and 30/2 = 15; the network
-  // rollup uses the true distinct remover count (5, below the 6 per-subnet sum because a remover
-  // removes an axon on both subnets), total 40 + 30 = 70 give 70/5 = 14, and the distribution
-  // summarizes [10, 15]. The generic per-field generator cannot satisfy these events/removers ratios itself.
+  // An internally consistent worked example (#10805): two subnets where 40 and
+  // 30 miners STOPPED ANNOUNCING, so removals_per_remover reads 40/4 = 10 and
+  // 30/2 = 15; the network rollup uses the true distinct remover count (5,
+  // below the 6 per-subnet sum because one hotkey stopped on both subnets),
+  // total 40 + 30 = 70 gives 70/5 = 14, and the distribution summarizes
+  // [10, 15]. The generic per-field generator cannot satisfy these ratios.
+  //
+  // The `changes` blocks carry the network's REAL proportions: removals are the
+  // minority everywhere. Subnet 1 also saw 90 deregistrations, and subnet 2 saw
+  // 55 miners move to an unroutable address -- an example that showed only the
+  // removals would teach a reader the opposite of what the data says.
   out.subnets = [
     {
       netuid: 1,
       distinct_removers: 4,
       removals: 40,
       removals_per_remover: 10,
+      changes: {
+        deregistered: 90,
+        moved_unroutable: 0,
+        stopped_announcing: 40,
+        total: 130,
+      },
     },
     {
       netuid: 2,
       distinct_removers: 2,
       removals: 30,
       removals_per_remover: 15,
+      changes: {
+        deregistered: 0,
+        moved_unroutable: 55,
+        stopped_announcing: 30,
+        total: 85,
+      },
     },
   ];
   out.network = {
     distinct_removers: 5,
     removals: 70,
     removals_per_remover: 14,
+  };
+  out.changes = {
+    deregistered: 90,
+    moved_unroutable: 55,
+    stopped_announcing: 70,
+    total: 215,
   };
   out.subnet_count = 2;
   out.intensity_distribution = {

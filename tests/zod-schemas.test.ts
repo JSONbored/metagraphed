@@ -237,6 +237,10 @@ import {
   buildChainFees,
 } from "../src/chain-analytics.ts";
 import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
+import {
+  axonChangesCoverage,
+  foldAxonChangeRows,
+} from "../src/axon-reachability-changes.ts";
 import { buildChainDeregistrations } from "../src/chain-deregistrations.ts";
 import { buildChainPrometheus } from "../src/chain-prometheus.ts";
 import { buildChainRegistrations } from "../src/chain-registrations.ts";
@@ -1896,14 +1900,25 @@ describe("batch 6 (#8060) route artifact schemas parse real builder output", () 
   // ---- network-rollup family (8 routes, identical shape) -------------------
 
   test("chain-axon-removals: ArtifactSchema.parse(buildChainAxonRemovals(...)) succeeds", () => {
+    // #10805: the builder now takes folded reachability-change aggregates, not
+    // account_events rows -- `removals` is stopped_announcing, and the other
+    // two kinds are carried separately rather than summed in.
     const data = buildChainAxonRemovals(
-      [
-        { netuid: 1, distinct_removers: 4, removals: 40 },
-        { netuid: 2, distinct_removers: 2, removals: 30 },
-      ],
+      foldAxonChangeRows([
+        { netuid: 1, kind: "stopped-announcing", n: 40, removers: 4 },
+        { netuid: 1, kind: "deregistered", n: 5 },
+        { netuid: 2, kind: "stopped-announcing", n: 30, removers: 2 },
+        { netuid: 2, kind: "moved-unroutable", n: 9 },
+      ]),
       {
         window: "7d",
-        networkDistinct: { distinct_removers: 6, newest_observed: OBS },
+        coverage: axonChangesCoverage(
+          "2026-08-09",
+          "2026-08-16",
+          7,
+          "2026-08-16",
+        ),
+        networkDistinctRemovers: 6,
       },
     );
     const parsed = ChainAxonRemovalsArtifactSchema.parse(data);

@@ -1517,11 +1517,11 @@ import {
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "./account-stake-moves.ts";
+import { buildAccountAxonRemovals } from "./account-axon-removals.ts";
 import {
-  buildAccountAxonRemovals,
-  AXON_REMOVAL_WINDOWS,
-  DEFAULT_AXON_REMOVAL_WINDOW,
-} from "./account-axon-removals.ts";
+  ACCOUNT_AXON_CHANGES_WINDOWS,
+  DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW,
+} from "./axon-reachability-changes.ts";
 import {
   buildAccountPrometheus,
   PROMETHEUS_WINDOWS,
@@ -11372,8 +11372,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const ss58 = requireSs58(args);
       const window = requireWindowArgument(
         args,
-        AXON_REMOVAL_WINDOWS,
-        DEFAULT_AXON_REMOVAL_WINDOW,
+        ACCOUNT_AXON_CHANGES_WINDOWS,
+        DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW,
       );
       return (
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in

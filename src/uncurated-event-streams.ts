@@ -49,25 +49,27 @@ export interface EventStreamDegraded {
  */
 export const PROMETHEUS_DEGRADED_NOT_CURATED = "prometheus_stream_not_curated";
 
-/**
- * `AxonInfoRemoved` has ZERO occurrences in the complete pallet-level stream,
- * ever. The routes were modelled on an event the Subtensor runtime does not
- * emit, so no indexer work can populate them.
+/*
+ * AXON REMOVALS: RESOLVED BY DERIVATION, 2026-08-16 (#10805).
  *
- * Unlike deregistration -- implicit in the chain but derivable from UID reuse
- * (src/deregistration-derivation.ts) -- an axon going away is a STATE
- * transition (`AxonInfo` cleared, or its `block` going stale), not an event,
- * and nothing in the event streams observes it. So there is no derivation to
- * ship here.
+ * This block used to declare `axon_removals_never_emitted`, the marker three
+ * routes carried because `AxonInfoRemoved` has zero occurrences in the
+ * complete pallet-level stream, genesis to head. Its own text set out the only
+ * two honest ways forward: "derive it from axon-info state if the poller can
+ * observe that transition, or RETIRE the route family".
  *
- * The remaining options are to derive it from axon-info state if the poller
- * can observe that transition, or to RETIRE the route family and say so in
- * the contract. Retiring a published route is a contract decision for the
- * repo owner, not something this marker presumes; what it does settle is that
- * publishing a confident 0 forever was never one of the options.
+ * The first was taken. `neuron_daily` does observe the transition, and
+ * src/axon-reachability-changes.ts derives it -- correctly, which turned out
+ * to matter: the obvious derivation is wrong 95% of the time, because 1,915 of
+ * 2,186 transitions over 38 days are deregistrations and another 166 are
+ * miners moving to an unroutable address. Only 105 are a miner that stopped
+ * announcing.
+ *
+ * The marker is gone because the routes answer now. What replaced it is
+ * stronger than a flag: an unread window has a NULL `start_date`, which a
+ * measured zero does not -- a new field can forget to set a marker, but it
+ * cannot forge dates it never read.
  */
-export const AXON_REMOVALS_DEGRADED_NEVER_EMITTED =
-  "axon_removals_never_emitted";
 
 /**
  * The deregistration derivation could not answer THIS request: the projection

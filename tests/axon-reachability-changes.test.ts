@@ -8,11 +8,12 @@ import {
   AXON_TRANSITION_SEQ_SQL,
   AXON_TRANSITION_WINDOW_SQL,
   axonChangeKind,
+  axonChangesCoverage,
   axonChangesDerivation,
-  axonChangesWindow,
-  buildAxonChangesChain,
-  buildAxonChangesScoped,
   emptyAxonChangeBreakdown,
+  foldAxonChangeRows,
+  rankAxonChangeSubnets,
+  sumAxonChangeBreakdowns,
   tallyAxonChanges,
   toAxonReachabilityChange,
   type AxonReachabilityChange,
@@ -183,187 +184,164 @@ describe("tallies state every kind, including the zeroes", () => {
   });
 });
 
-describe("the window says what was read, and whether it had settled", () => {
+describe("the coverage block says what was read, and whether it settled", () => {
   test("a window ending on the newest day is NOT settled", () => {
     // Measured 2026-08-16: the newest snapshot_date was rewritten mid-day and
-    // the same query returned different counts forty minutes apart.
-    const w = axonChangesWindow(
-      "7d",
-      7,
-      "2026-08-10",
-      "2026-08-16",
-      "2026-08-16",
-    );
-    assert.equal(w.end_date_settled, false);
-    assert.equal(w.start_date, "2026-08-10");
-    assert.equal(w.requested_days, 7);
+    // the same aggregate returned different counts forty minutes apart.
+    const c = axonChangesCoverage("2026-08-10", "2026-08-16", 7, "2026-08-16");
+    assert.equal(c.end_date_settled, false);
+    assert.equal(c.start_date, "2026-08-10");
+    assert.equal(c.requested_days, 7);
+    assert.equal(c.covered_days, 6);
   });
 
-  test("a window stopping short of the newest day is settled", () => {
+  test("a window stopping short of the newest day IS settled", () => {
     assert.equal(
-      axonChangesWindow("7d", 7, "2026-08-01", "2026-08-08", "2026-08-16")
+      axonChangesCoverage("2026-08-01", "2026-08-08", 7, "2026-08-16")
         .end_date_settled,
       true,
     );
   });
 
   test("no end date is not settled, because nothing was read", () => {
-    assert.equal(
-      axonChangesWindow("7d", 7, null, null, "2026-08-16").end_date_settled,
-      false,
-    );
+    const c = axonChangesCoverage(null, null, 7, "2026-08-16");
+    assert.equal(c.end_date_settled, false);
+    assert.equal(c.covered_days, null);
+    // Unknowable rather than complete -- windowCoverage's own rule.
+    assert.equal(c.window_truncated, null);
+  });
+
+  test("a short window is reported as truncated, not as a quiet network", () => {
+    const c = axonChangesCoverage("2026-08-10", "2026-08-14", 30, "2026-08-16");
+    assert.equal(c.covered_days, 4);
+    assert.equal(c.window_truncated, true);
   });
 });
 
-describe("the chain scope ranks by what the route NAME means", () => {
-  const window = axonChangesWindow("30d", 30, "2026-07-17", "2026-08-16", null);
+describe("folding the grouped rows", () => {
+  test("THE NETWORK SHAPE: three kinds per subnet, only one is a removal", () => {
+    const folded = foldAxonChangeRows([
+      { netuid: 25, kind: "deregistered", n: 67 },
+      { netuid: 126, kind: "moved-unroutable", n: 160 },
+      { netuid: 101, kind: "stopped-announcing", n: 76, removers: 74 },
+      { netuid: 101, kind: "deregistered", n: 64 },
+    ]);
+    const byNetuid = new Map(folded.map((f) => [f.netuid, f]));
+    assert.equal(byNetuid.get(126)!.changes.moved_unroutable, 160);
+    assert.equal(byNetuid.get(126)!.changes.total, 160);
+    // A move has no remover: nobody removed anything.
+    assert.equal(byNetuid.get(126)!.distinct_removers, 0);
+    assert.equal(byNetuid.get(101)!.changes.stopped_announcing, 76);
+    assert.equal(byNetuid.get(101)!.changes.deregistered, 64);
+    assert.equal(byNetuid.get(101)!.changes.total, 140);
+    assert.equal(byNetuid.get(101)!.distinct_removers, 74);
+  });
 
-  test("SN126's 160 moves do NOT outrank a genuine withdrawal", () => {
-    // Sorting by total would put the largest source on the network -- which is
-    // miners moving, not leaving -- above every real removal. That is exactly
-    // the misreading this family exists to stop making.
-    const result = buildAxonChangesChain(
-      [
-        ...Array.from({ length: 160 }, () =>
-          change({ netuid: 126, kind: "moved-unroutable" }),
-        ),
-        ...Array.from({ length: 3 }, () =>
-          change({ netuid: 101, kind: "stopped-announcing" }),
-        ),
-      ],
-      window,
-      10,
+  test("int8 counts arriving as STRINGS are still counted", () => {
+    // COUNT(*) is int8 and node-postgres hands it back as a string.
+    const folded = foldAxonChangeRows([
+      { netuid: 1, kind: "stopped-announcing", n: "9", removers: "7" },
+    ]);
+    assert.equal(folded[0].changes.stopped_announcing, 9);
+    assert.equal(folded[0].distinct_removers, 7);
+  });
+
+  test("an unrecognised kind is DROPPED, never bucketed", () => {
+    // Attributing a mechanism nothing measured is the #11381 failure.
+    assert.deepEqual(
+      foldAxonChangeRows([{ netuid: 1, kind: "removed", n: 5 }]),
+      [],
     );
-    assert.equal(result.subnets[0].netuid, 101);
-    assert.equal(result.subnets[0].changes.stopped_announcing, 3);
-    assert.equal(result.subnets[1].netuid, 126);
-    assert.equal(result.subnets[1].changes.moved_unroutable, 160);
-    assert.equal(result.network.total, 163);
-    assert.equal(result.subnet_count, 2);
+    assert.deepEqual(
+      foldAxonChangeRows([{ netuid: null, kind: "deregistered", n: 5 }]),
+      [],
+    );
+    assert.deepEqual(foldAxonChangeRows(null), []);
+  });
+
+  test("a negative or unreadable count reads as zero, not as a negative", () => {
+    const folded = foldAxonChangeRows([
+      { netuid: 1, kind: "stopped-announcing", n: -4, removers: "junk" },
+    ]);
+    assert.equal(folded[0].changes.stopped_announcing, 0);
+    assert.equal(folded[0].distinct_removers, 0);
+  });
+});
+
+describe("ranking puts real removals above volume", () => {
+  test("SN126's 160 moves do NOT outrank three genuine withdrawals", () => {
+    // Sorting by total would put the largest source on the network -- miners
+    // moving, not leaving -- above every real removal.
+    const ranked = rankAxonChangeSubnets(
+      foldAxonChangeRows([
+        { netuid: 126, kind: "moved-unroutable", n: 160 },
+        { netuid: 101, kind: "stopped-announcing", n: 3, removers: 3 },
+      ]),
+    );
+    assert.deepEqual(
+      ranked.map((s) => s.netuid),
+      [101, 126],
+    );
   });
 
   test("equal removals fall back to total, then to netuid", () => {
-    const result = buildAxonChangesChain(
-      [
-        change({ netuid: 9, kind: "deregistered" }),
-        change({ netuid: 4, kind: "deregistered" }),
-        change({ netuid: 4, kind: "deregistered" }),
-      ],
-      window,
-      10,
+    const ranked = rankAxonChangeSubnets(
+      foldAxonChangeRows([
+        { netuid: 9, kind: "deregistered", n: 1 },
+        { netuid: 4, kind: "deregistered", n: 2 },
+        { netuid: 2, kind: "deregistered", n: 2 },
+      ]),
     );
     assert.deepEqual(
-      result.subnets.map((s) => s.netuid),
-      [4, 9],
+      ranked.map((s) => s.netuid),
+      [2, 4, 9],
     );
-  });
-
-  test("the leaderboard is paged but the rollup is not", () => {
-    const result = buildAxonChangesChain(
-      [
-        change({ netuid: 1, kind: "stopped-announcing" }),
-        change({ netuid: 2, kind: "stopped-announcing" }),
-        change({ netuid: 3, kind: "stopped-announcing" }),
-      ],
-      window,
-      1,
-    );
-    assert.equal(result.subnets.length, 1);
-    assert.equal(result.subnet_count, 3, "counted every subnet, not the page");
-    assert.equal(result.network.total, 3);
-  });
-
-  test("an empty answer still states the derivation and every zero", () => {
-    const result = buildAxonChangesChain([], window, 10);
-    assert.deepEqual(result.network, emptyAxonChangeBreakdown());
-    assert.equal(result.subnets.length, 0);
-    assert.equal(result.derivation.source, "neuron_daily");
-    assert.equal(result.derivation.resolution, "daily");
-    assert.equal(
-      result.derivation.max_window_days,
-      AXON_CHANGES_MAX_WINDOW_DAYS,
-    );
-  });
-
-  test("a nonsense limit cannot produce a negative slice", () => {
-    assert.equal(
-      buildAxonChangesChain([change()], window, -5).subnets.length,
-      0,
-    );
-    assert.equal(buildAxonChangesChain(null, window, 10).subnet_count, 0);
-  });
-});
-
-describe("the scoped answer pages the rows but tallies the window", () => {
-  const window = axonChangesWindow("7d", 7, "2026-08-10", "2026-08-16", null);
-
-  test("newest first, then netuid, then uid", () => {
-    const result = buildAxonChangesScoped(
-      [
-        change({ date: "2026-08-10", netuid: 2, uid: 1 }),
-        change({ date: "2026-08-16", netuid: 5, uid: 9 }),
-        change({ date: "2026-08-16", netuid: 5, uid: 2 }),
-        change({ date: "2026-08-16", netuid: 1, uid: 0 }),
-      ],
-      window,
-      10,
-    );
-    assert.deepEqual(
-      result.items.map((i) => [i.date, i.netuid, i.uid]),
-      [
-        ["2026-08-16", 1, 0],
-        ["2026-08-16", 5, 2],
-        ["2026-08-16", 5, 9],
-        ["2026-08-10", 2, 1],
-      ],
-    );
-  });
-
-  test("THE TALLY SPANS THE WINDOW, not the page", () => {
-    // A caller reading only `items` would otherwise assume the counts matched
-    // it, and they do not once the limit truncates.
-    const result = buildAxonChangesScoped(
-      [
-        change({ kind: "deregistered" }),
-        change({ kind: "deregistered" }),
-        change({ kind: "stopped-announcing" }),
-      ],
-      window,
-      1,
-    );
-    assert.equal(result.items.length, 1);
-    assert.equal(result.changes.total, 3);
-    assert.equal(result.changes.deregistered, 2);
   });
 
   test("the input array is never reordered in place", () => {
-    const input = [
-      change({ date: "2026-08-10" }),
-      change({ date: "2026-08-16" }),
-    ];
-    buildAxonChangesScoped(input, window, 10);
-    assert.equal(input[0].date, "2026-08-10");
-  });
-
-  test("empty and null answer with stated zeroes", () => {
-    assert.deepEqual(
-      buildAxonChangesScoped(null, window, 10).changes,
-      emptyAxonChangeBreakdown(),
-    );
-    assert.equal(
-      buildAxonChangesScoped([change()], window, -1).items.length,
-      0,
-    );
+    const input = foldAxonChangeRows([
+      { netuid: 9, kind: "moved-unroutable", n: 5 },
+      { netuid: 1, kind: "stopped-announcing", n: 5, removers: 5 },
+    ]);
+    rankAxonChangeSubnets(input);
+    assert.equal(input[0].netuid, 9);
   });
 });
 
-describe("the derivation block is a provenance note, not a degraded marker", () => {
-  test("it names the source, the resolution and the bound", () => {
+describe("the network rollup sums every kind", () => {
+  test("totals across subnets, each kind kept separate", () => {
+    const total = sumAxonChangeBreakdowns(
+      foldAxonChangeRows([
+        { netuid: 1, kind: "deregistered", n: 1915 },
+        { netuid: 2, kind: "moved-unroutable", n: 166 },
+        { netuid: 3, kind: "stopped-announcing", n: 105, removers: 100 },
+      ]),
+    );
+    // The measured 38-day network shape: 95% of transitions are not removals.
+    assert.deepEqual(total, {
+      deregistered: 1915,
+      moved_unroutable: 166,
+      stopped_announcing: 105,
+      total: 2186,
+    });
+  });
+
+  test("no subnets is every kind at zero, not an absent block", () => {
+    assert.deepEqual(sumAxonChangeBreakdowns([]), emptyAxonChangeBreakdown());
+  });
+});
+
+describe("the derivation block is provenance, not a degraded marker", () => {
+  test("it names the source, the resolution and the retention bound", () => {
+    // Degraded means "we could not measure". This is a complete measurement of
+    // a different thing from what the route name implies, and saying so is the
+    // point -- an honest marker on a permanently-empty answer is still empty.
     const d = axonChangesDerivation();
     assert.equal(d.source, "neuron_daily");
     assert.equal(d.resolution, "daily");
-    assert.equal(d.max_window_days, 38);
+    assert.equal(d.max_window_days, AXON_CHANGES_MAX_WINDOW_DAYS);
     assert.match(d.note, /AxonInfoRemoved has never been emitted/);
     assert.match(d.note, /moved-unroutable/);
+    assert.match(d.note, /no block height/);
   });
 });

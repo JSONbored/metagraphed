@@ -129,6 +129,28 @@ import {
   CHAIN_TURNOVER_LIMIT_DEFAULT,
 } from "../src/chain-turnover.ts";
 import {
+  ACCOUNT_AXON_CHANGES_WINDOWS,
+  AXON_CHANGES_WINDOWS,
+  DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW,
+  DEFAULT_AXON_CHANGES_WINDOW,
+  axonChangesAccountSql,
+  axonChangesCoverage,
+  axonChangesGroupedSql,
+  axonChangesNetworkRemoversSql,
+  foldAxonChangeRows,
+} from "../src/axon-reachability-changes.ts";
+import {
+  CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+  buildChainAxonRemovals,
+} from "../src/chain-axon-removals.ts";
+import {
+  DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
+  SUBNET_AXON_REMOVALS_WINDOWS,
+  buildSubnetAxonRemovals,
+} from "../src/subnet-axon-removals.ts";
+import { buildAccountAxonRemovals } from "../src/account-axon-removals.ts";
+import { toPositionalPlaceholders } from "../src/pg-sql.ts";
+import {
   buildMovers,
   MOVERS_WINDOWS,
   DEFAULT_MOVERS_WINDOW,
@@ -8080,6 +8102,127 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
           startDate,
           endDate,
           limit,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/chain/axon-removals?window=&limit= (#10805). DERIVED from
+  // neuron_daily, not from AxonInfoRemoved -- that event has never been
+  // emitted, which is why this family answered a permanent zero. The shared
+  // definition in src/axon-reachability-changes.ts is the same one the
+  // axon-announcement alarm reads, so the two cannot disagree.
+  if (url.pathname === "/api/v1/chain/axon-removals") {
+    return async (sql) => {
+      const windowParam =
+        url.searchParams.get("window") || DEFAULT_AXON_CHANGES_WINDOW;
+      const windowLabel = Object.hasOwn(AXON_CHANGES_WINDOWS, windowParam)
+        ? windowParam
+        : DEFAULT_AXON_CHANGES_WINDOW;
+      const days = AXON_CHANGES_WINDOWS[windowLabel];
+      const limitRaw = url.searchParams.get("limit");
+      const limit =
+        limitRaw == null || limitRaw === ""
+          ? CHAIN_AXON_REMOVALS_LIMIT_DEFAULT
+          : Number(limitRaw);
+      const { startDate, endDate } = await neuronDailyWindowBounds(sql, days);
+      let rows: Row[] = [];
+      let removers: Row[] = [];
+      if (startDate != null) {
+        rows = await sql.unsafe<Row>(
+          toPositionalPlaceholders(axonChangesGroupedSql("")),
+          [startDate],
+        );
+        // Network-wide COUNT DISTINCT, separately: one hotkey that stopped on
+        // three subnets is ONE remover, so summing the per-subnet counts
+        // would treble it.
+        removers = await sql.unsafe<Row>(
+          toPositionalPlaceholders(axonChangesNetworkRemoversSql()),
+          [startDate],
+        );
+      }
+      return json(
+        buildChainAxonRemovals(foldAxonChangeRows(rows), {
+          window: windowLabel,
+          limit,
+          coverage: axonChangesCoverage(startDate, endDate, days, endDate),
+          networkDistinctRemovers: removers[0]?.removers,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/axon-removals?window= (#10805).
+  const axonRemovalsSubnetMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/axon-removals$/,
+  );
+  if (axonRemovalsSubnetMatch) {
+    const netuid = Number(axonRemovalsSubnetMatch[1]);
+    return async (sql) => {
+      const windowParam =
+        url.searchParams.get("window") || DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
+      const windowLabel = Object.hasOwn(
+        SUBNET_AXON_REMOVALS_WINDOWS,
+        windowParam,
+      )
+        ? windowParam
+        : DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
+      const days = SUBNET_AXON_REMOVALS_WINDOWS[windowLabel];
+      // The GLOBAL newest date, not this subnet's: a subnet whose own newest
+      // snapshot is older than the network's has settled data, and saying so
+      // is the point of the flag.
+      const { endDate: newestDate } = await neuronDailyWindowBounds(sql, null);
+      const { startDate, endDate } = await neuronDailyWindowBounds(
+        sql,
+        days,
+        netuid,
+      );
+      let rows: Row[] = [];
+      if (startDate != null) {
+        rows = await sql.unsafe<Row>(
+          toPositionalPlaceholders(axonChangesGroupedSql("netuid = ?")),
+          [startDate, netuid],
+        );
+      }
+      return json(
+        buildSubnetAxonRemovals(foldAxonChangeRows(rows)[0] ?? null, netuid, {
+          window: windowLabel,
+          coverage: axonChangesCoverage(startDate, endDate, days, newestDate),
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/accounts/:ss58/axon-removals?window= (#10805). The account
+  // filter is applied OUTSIDE the sequence -- see axonChangesAccountSql for
+  // why filtering the CTE would turn a deregistration into a withdrawal.
+  const axonRemovalsAccountMatch = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/axon-removals$/,
+  );
+  if (axonRemovalsAccountMatch) {
+    const ss58 = decodeURIComponent(axonRemovalsAccountMatch[1]);
+    return async (sql) => {
+      const windowParam =
+        url.searchParams.get("window") || DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW;
+      const windowLabel = Object.hasOwn(
+        ACCOUNT_AXON_CHANGES_WINDOWS,
+        windowParam,
+      )
+        ? windowParam
+        : DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW;
+      const days = ACCOUNT_AXON_CHANGES_WINDOWS[windowLabel];
+      const { startDate, endDate } = await neuronDailyWindowBounds(sql, days);
+      let rows: Row[] = [];
+      if (startDate != null) {
+        rows = await sql.unsafe<Row>(
+          toPositionalPlaceholders(axonChangesAccountSql()),
+          [startDate, ss58, ss58],
+        );
+      }
+      return json(
+        buildAccountAxonRemovals(rows, ss58, {
+          window: windowLabel,
+          coverage: axonChangesCoverage(startDate, endDate, days, endDate),
         }),
       );
     };

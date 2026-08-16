@@ -12,6 +12,11 @@ import {
   DeregistrationDerivationSchema,
   EventStreamDegradedSchema,
 } from "./event-stream-honesty.ts";
+import {
+  AxonChangeBreakdownSchema,
+  AxonChangesCoverageShape,
+  AxonChangesDerivationSchema,
+} from "./chain-network-rollups.ts";
 
 const ACTIVITY_WINDOWS = ["7d", "30d"] as const;
 
@@ -25,13 +30,23 @@ export const SubnetAxonRemovalsArtifactSchema = z
     schema_version: z.int(),
     netuid: z.int().min(0),
     window: ActivityWindowSchema,
-    observed_at: z.iso.datetime().nullable(),
+    observed_at: z.iso
+      .datetime()
+      .nullable()
+      .describe(
+        "Midnight UTC of the last day read -- the answer describes a day, not an instant.",
+      ),
+    ...AxonChangesCoverageShape,
     distinct_removers: z.int().min(0),
-    removals: z.int().min(0),
+    removals: z
+      .int()
+      .min(0)
+      .describe(
+        "Miners that STOPPED ANNOUNCING. Deregistrations and moves to unroutable addresses are in `changes` instead, because neither removed anything.",
+      ),
     removals_per_remover: z.number().min(0).nullable(),
-    // #9307: AxonInfoRemoved has never been emitted, so this card's zero has
-    // never measured this subnet.
-    degraded: EventStreamDegradedSchema.nullable().optional(),
+    changes: AxonChangeBreakdownSchema,
+    derivation: AxonChangesDerivationSchema,
   })
   .strict();
 export type SubnetAxonRemovalsArtifact = z.infer<

@@ -267,10 +267,6 @@ const NO_TIER_ANYWHERE: Record<string, string> = {
     "get_account_axon_removals falls to buildAccountAxonRemovals([]) on MCP too -- no lane exists for it",
   subnet_axon_removals:
     "get_subnet_axon_removals falls to buildSubnetAxonRemovals(null) on MCP too -- no lane exists for it",
-  handleChainAxonRemovals:
-    "the REST twin of chain_axon_removals -- same absent lane, same correct empty",
-  handleSubnetAxonRemovals:
-    "the REST twin of subnet_axon_removals -- same absent lane, same correct empty",
   get_chain_axon_removals:
     "the MCP twin the GraphQL entry above cites as evidence; naming it here keeps the claim checkable from either side",
   get_account_axon_removals:

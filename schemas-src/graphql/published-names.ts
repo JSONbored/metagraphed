@@ -112,6 +112,12 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   UnavailableDegraded: "UnavailableDegraded",
   AccountAxonRemovalsArtifact: "AccountAxonRemovals",
   AccountAxonRemovalsArtifactSubnets: "AccountAxonRemovalSubnet",
+  // #10805: the three-way reachability split and its provenance block are
+  // structurally identical everywhere they appear, so they collapse to one
+  // published name each -- the same treatment DegradedInfo gets above.
+  AccountAxonRemovalsArtifactChanges: "AxonChangeBreakdown",
+  AccountAxonRemovalsArtifactSubnetsChanges: "AxonChangeBreakdown",
+  AccountAxonRemovalsArtifactDerivation: "AxonChangesDerivation",
   AccountBalanceArtifact: "AccountBalance",
   AccountChildrenArtifact: "AccountChildren",
   AccountChildrenArtifactSubnets: "AccountChildSubnet",
@@ -217,6 +223,9 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   ChainAxonRemovalsArtifact: "ChainAxonRemovals",
   ChainAxonRemovalsArtifactNetwork: "ChainAxonRemovalsNetwork",
   ChainAxonRemovalsArtifactSubnets: "ChainAxonRemovalsSubnet",
+  ChainAxonRemovalsArtifactChanges: "AxonChangeBreakdown",
+  ChainAxonRemovalsArtifactSubnetsChanges: "AxonChangeBreakdown",
+  ChainAxonRemovalsArtifactDerivation: "AxonChangesDerivation",
   ChainCallsArtifact: "ChainCalls",
   ChainCallsArtifactCalls: "ChainCall",
   ChainConcentrationArtifact: "ChainConcentration",
@@ -399,6 +408,8 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SourceSnapshotsArtifact: "SourceSnapshotList",
   SubnetAlphaVolumeArtifact: "SubnetVolume",
   SubnetAxonRemovalsArtifact: "SubnetAxonRemovals",
+  SubnetAxonRemovalsArtifactChanges: "AxonChangeBreakdown",
+  SubnetAxonRemovalsArtifactDerivation: "AxonChangesDerivation",
   SubnetBurnArtifact: "SubnetBurn",
   SubnetConcentrationArtifact: "SubnetConcentration",
   SubnetConcentrationHistoryArtifact: "SubnetConcentrationHistory",

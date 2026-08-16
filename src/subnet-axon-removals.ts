@@ -1,108 +1,86 @@
-// Per-subnet axon-removal activity from the account_events AxonInfoRemoved stream: for ONE
-// subnet over a 7d/30d window, the distinct removers (hotkeys), AxonInfoRemoved event count,
-// and average removals per remover. This is raw axon-teardown activity — the removal-side
-// companion to the AxonServed announcement activity in /serving (which measures neurons
-// announcing an axon, NOT tearing one down), exactly the way /registrations (raw
-// NeuronRegistered demand) coexists with /turnover (net validator-set churn). Pure shaping
-// (buildSubnetAxonRemovals) + a thin store loader (loadSubnetAxonRemovals); the Worker adds the
-// envelope. Null-safe: a cold store or a subnet with no AxonInfoRemoved events yields the zeroed card.
+// Per-subnet axon-removal activity, DERIVED from daily metagraph state (#10805).
+//
+// This route used to read the account_events `AxonInfoRemoved` stream. That
+// event has zero occurrences in the complete pallet-level stream, genesis to
+// head, so the card could only ever be a zero -- and its D1 loader was already
+// dead code, reachable from its own tests and nothing else, because the handler
+// passed `null` and never called it.
+//
+// It now answers from `neuron_daily`, through the shared transition definition
+// in src/axon-reachability-changes.ts. `removals` counts ONLY miners that
+// stopped announcing; a deregistration and a move to an unroutable address are
+// carried separately in `changes`, because neither removed anything. Over 38
+// days network-wide that split is 105 / 1,915 / 166 -- reporting the sum as
+// removals is wrong by 95%.
 
-import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "./uncurated-event-streams.ts";
+import {
+  axonChangesCoverage,
+  axonChangesDerivation,
+  axonChangesObservedAt,
+  emptyAxonChangeBreakdown,
+  type AxonChangeSubnetAggregate,
+  type AxonChangesCoverage,
+} from "./axon-reachability-changes.ts";
 import { roundDp } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
-type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// The account_events kind emitted when a neuron's announced axon endpoint is removed on a subnet.
-export const AXON_REMOVAL_EVENT_KIND = "AxonInfoRemoved";
-
-// Supported windows (label -> days) + default, matching the sibling account_events routes.
+// Supported windows (label -> days) + default, matching the sibling routes.
 export const SUBNET_AXON_REMOVALS_WINDOWS: Record<string, number> = {
   "7d": 7,
   "30d": 30,
 };
 export const DEFAULT_SUBNET_AXON_REMOVALS_WINDOW = "7d";
 
-// Round a removals-per-remover ratio to a stable 2dp precision. Always finite and non-negative
-// here (removals / distinct removers, with the divisor guarded below).
-
-// A non-negative whole count from a COUNT() cell (number, numeric string, or null),
-// defaulting to 0 for anything non-finite or negative.
+// A non-negative whole count from a COUNT() cell (number, numeric string, or
+// null), defaulting to 0 for anything non-finite or negative.
 function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
-// Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
-// envelope's generated_at, the same way account-events does. Guards the JS Date range so a
-// finite but out-of-range epoch cannot throw a RangeError on the response.
-function toIso(value: unknown): string | null {
-  if (value == null) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const date = new Date(n);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-}
-
-// Average AxonInfoRemoved events per distinct remover — the subnet's re-teardown intensity (1.0
-// means each remover removed once; higher means hotkeys removed an axon repeatedly after
-// re-announcing). A subnet with no removers has no defined intensity (null), not a divide-by-zero.
+// Average removals per remover -- how often the same miner stopped announcing
+// after re-announcing. No removers means no defined intensity (null), not a
+// divide-by-zero and not a zero.
 function removalsPerRemover(removals: number, removers: number): number | null {
   if (removers <= 0) return null;
   return roundDp(removals / removers);
 }
 
-// Shape one subnet's axon-removal scorecard from the single-row account_events aggregate. `row`
-// carries removals (COUNT(*)), distinct_removers (COUNT(DISTINCT hotkey)), and newest_observed
-// (MAX(observed_at)). Null-safe: a null/absent row yields the zeroed card.
+/**
+ * Shape one subnet's card from its folded per-kind aggregate.
+ *
+ * `removals` IS `stopped_announcing`, and only that. The other two kinds sit
+ * in `changes`, stated rather than summed in, so a consumer cannot make the
+ * mistake the old contract invited.
+ *
+ * NOTHING READ IS NOT ZERO. When no coverage is supplied -- the tier declined
+ * -- `start_date` is null and every count is 0. A real read always carries
+ * dates, so the two are distinguishable without the `degraded` flag this used
+ * to need.
+ */
 export function buildSubnetAxonRemovals(
-  row: Row | null | undefined,
+  aggregate: AxonChangeSubnetAggregate | null | undefined,
   netuid: unknown,
-  { window }: { window?: unknown } = {},
+  {
+    window,
+    coverage,
+  }: { window?: unknown; coverage?: AxonChangesCoverage } = {},
 ): Row {
-  const distinctRemovers = toCount(row?.distinct_removers);
-  const removals = toCount(row?.removals);
-  const card: Row = {
+  const changes = aggregate?.changes ?? emptyAxonChangeBreakdown();
+  const distinctRemovers = toCount(aggregate?.distinct_removers);
+  const removals = changes.stopped_announcing;
+  const resolved = coverage ?? axonChangesCoverage(null, null, null, null);
+  return {
     schema_version: 1,
     netuid,
     window: window ?? null,
-    observed_at: toIso(row?.newest_observed),
+    observed_at: axonChangesObservedAt(resolved.end_date),
+    ...resolved,
     distinct_removers: distinctRemovers,
     removals,
     removals_per_remover: removalsPerRemover(removals, distinctRemovers),
+    changes,
+    derivation: axonChangesDerivation(),
   };
-  // AxonInfoRemoved has zero occurrences in the complete pallet-level stream,
-  // ever, so this card's zero has never been a measurement of this subnet.
-  // Conditional rather than unconditional so a future tier that CAN observe
-  // axon teardown serves an unmarked card without touching this line.
-  if (removals === 0) {
-    card.degraded = { reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED };
-  }
-  return card;
-}
-
-// One subnet's axon-removal activity, computed live: read the account_events AxonInfoRemoved
-// stream for this netuid over the window (observed_at >= now - windowDays, epoch ms) as a single
-// aggregate (event count + true distinct removers + newest observed_at, served by
-// idx_account_events(netuid, event_kind, block_number) from migration 0024), and shape with
-// buildSubnetAxonRemovals. An AxonInfoRemoved event always carries the removing hotkey, so
-// COUNT(DISTINCT hotkey) is exact here. The handler resolves windowLabel/windowDays from the
-// window param. Cold/absent store -> the schema-stable zeroed card.
-export async function loadSubnetAxonRemovals(
-  runner: SqlRunner,
-  netuid: unknown,
-  { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
-): Promise<Row> {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await runner(
-    "SELECT COUNT(*) AS removals, COUNT(DISTINCT hotkey) AS distinct_removers, " +
-      "MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ?",
-    [netuid, AXON_REMOVAL_EVENT_KIND, cutoff],
-  );
-  return buildSubnetAxonRemovals(rows?.[0] ?? null, netuid, {
-    window: windowLabel,
-  });
 }

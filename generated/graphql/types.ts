@@ -25,9 +25,12 @@ export type AccountActivity = {
   tx_count: Scalars['Int']['output'];
 };
 
-/** One subnet's slice of an account's axon-removal footprint over the window. */
+/** One subnet's slice of an account's reachability changes. Present even with zero removals, so churn is visible rather than hidden. */
 export type AccountAxonRemovalSubnet = {
   __typename?: 'AccountAxonRemovalSubnet';
+  /** Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+  changes: AxonChangeBreakdown;
+  /** Null on a subnet where the account only lost slots: those dates would belong to whoever took the UID. */
   first_removed_at?: Maybe<Scalars['String']['output']>;
   last_removed_at?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
@@ -37,14 +40,24 @@ export type AccountAxonRemovalSubnet = {
 export type AccountAxonRemovals = {
   __typename?: 'AccountAxonRemovals';
   address: Scalars['String']['output'];
+  /** Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+  changes: AxonChangeBreakdown;
   concentration?: Maybe<Scalars['Float']['output']>;
-  degraded?: Maybe<DegradedInfo>;
+  covered_days?: Maybe<Scalars['Int']['output']>;
+  derivation: AxonChangesDerivation;
   dominant_netuid?: Maybe<Scalars['Int']['output']>;
+  end_date?: Maybe<Scalars['String']['output']>;
+  end_date_settled: Scalars['Boolean']['output'];
+  observed_at?: Maybe<Scalars['String']['output']>;
+  requested_days?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
+  start_date?: Maybe<Scalars['String']['output']>;
   subnet_count: Scalars['Int']['output'];
   subnets: Array<AccountAxonRemovalSubnet>;
+  /** Changes where this account STOPPED ANNOUNCING. An account whose UID was recycled on ten subnets removed nothing, and `changes.deregistered` is where that shows. */
   total_removals: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
+  window_truncated?: Maybe<Scalars['Boolean']['output']>;
 };
 
 /** Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance. */
@@ -761,6 +774,27 @@ export type AttributionEvidence = {
   source_url?: Maybe<Scalars['String']['output']>;
 };
 
+/** Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+export type AxonChangeBreakdown = {
+  __typename?: 'AxonChangeBreakdown';
+  /** The UID changed hands: the announcing miner was deregistered and its slot reused by one that never served. Nobody withdrew anything. */
+  deregistered: Scalars['Int']['output'];
+  /** The same miner is STILL ANNOUNCING, at an address in documentation or private space that nothing can reach. It did not go dark. */
+  moved_unroutable: Scalars['Int']['output'];
+  /** The same miner stopped publishing an axon at all. The only kind that means what 'axon removal' sounds like, and what `removals` counts. */
+  stopped_announcing: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+};
+
+export type AxonChangesDerivation = {
+  __typename?: 'AxonChangesDerivation';
+  /** Widest window the retained daily history can answer. A longer request is out of range, not an empty result. */
+  max_window_days: Scalars['Int']['output'];
+  note: Scalars['String']['output'];
+  resolution: Scalars['String']['output'];
+  source: Scalars['String']['output'];
+};
+
 export type Block = {
   __typename?: 'Block';
   author?: Maybe<Scalars['String']['output']>;
@@ -1062,16 +1096,25 @@ export type ChainAlphaVolumeSubnet = {
 
 export type ChainAxonRemovals = {
   __typename?: 'ChainAxonRemovals';
-  degraded?: Maybe<DegradedInfo>;
+  /** Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+  changes: AxonChangeBreakdown;
+  covered_days?: Maybe<Scalars['Int']['output']>;
+  derivation: AxonChangesDerivation;
+  end_date?: Maybe<Scalars['String']['output']>;
+  end_date_settled: Scalars['Boolean']['output'];
   /** Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard. */
   intensity_distribution?: Maybe<IntensityDistribution>;
   /** Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
   network: ChainAxonRemovalsNetwork;
+  /** Midnight UTC of the last day read. The answer describes a day, so stamping it with the request time would claim a freshness the daily snapshot does not have. */
   observed_at?: Maybe<Scalars['String']['output']>;
+  requested_days?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
+  start_date?: Maybe<Scalars['String']['output']>;
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainAxonRemovalsSubnet>;
   window?: Maybe<Scalars['String']['output']>;
+  window_truncated?: Maybe<Scalars['Boolean']['output']>;
 };
 
 /** Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -1083,9 +1126,11 @@ export type ChainAxonRemovalsNetwork = {
   removals_per_remover?: Maybe<Scalars['Float']['output']>;
 };
 
-/** One subnet's axon-removal activity in the window, ranked by removals. */
+/** One subnet's reachability changes in the window. Ranked by REMOVALS, then total, then netuid -- ranking by total alone puts a subnet whose miners merely moved above every subnet whose miners went dark. */
 export type ChainAxonRemovalsSubnet = {
   __typename?: 'ChainAxonRemovalsSubnet';
+  /** Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+  changes: AxonChangeBreakdown;
   distinct_removers: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   removals: Scalars['Int']['output'];
@@ -6116,14 +6161,24 @@ export type SubnetSurfacesArgs = {
 
 export type SubnetAxonRemovals = {
   __typename?: 'SubnetAxonRemovals';
-  degraded?: Maybe<DegradedInfo>;
+  /** Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim. */
+  changes: AxonChangeBreakdown;
+  covered_days?: Maybe<Scalars['Int']['output']>;
+  derivation: AxonChangesDerivation;
   distinct_removers: Scalars['Int']['output'];
+  end_date?: Maybe<Scalars['String']['output']>;
+  end_date_settled: Scalars['Boolean']['output'];
   netuid: Scalars['Int']['output'];
+  /** Midnight UTC of the last day read -- the answer describes a day, not an instant. */
   observed_at?: Maybe<Scalars['String']['output']>;
+  /** Miners that STOPPED ANNOUNCING. Deregistrations and moves to unroutable addresses are in `changes` instead, because neither removed anything. */
   removals: Scalars['Int']['output'];
   removals_per_remover?: Maybe<Scalars['Float']['output']>;
+  requested_days?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
+  start_date?: Maybe<Scalars['String']['output']>;
   window?: Maybe<Scalars['String']['output']>;
+  window_truncated?: Maybe<Scalars['Boolean']['output']>;
 };
 
 /** Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn. */
@@ -8484,6 +8539,8 @@ export type ResolversTypes = ResolversObject<{
   AdapterArtifactSnapshot: ResolverTypeWrapper<AdapterArtifactSnapshot>;
   AlphaUsdFieldSource: ResolverTypeWrapper<AlphaUsdFieldSource>;
   AttributionEvidence: ResolverTypeWrapper<AttributionEvidence>;
+  AxonChangeBreakdown: ResolverTypeWrapper<AxonChangeBreakdown>;
+  AxonChangesDerivation: ResolverTypeWrapper<AxonChangesDerivation>;
   Block: ResolverTypeWrapper<Block>;
   BlockChainEvents: ResolverTypeWrapper<BlockChainEvents>;
   BlockChainEventsArtifactEvents: ResolverTypeWrapper<BlockChainEventsArtifactEvents>;
@@ -8955,6 +9012,8 @@ export type ResolversParentTypes = ResolversObject<{
   AdapterArtifactSnapshot: AdapterArtifactSnapshot;
   AlphaUsdFieldSource: AlphaUsdFieldSource;
   AttributionEvidence: AttributionEvidence;
+  AxonChangeBreakdown: AxonChangeBreakdown;
+  AxonChangesDerivation: AxonChangesDerivation;
   Block: Block;
   BlockChainEvents: BlockChainEvents;
   BlockChainEventsArtifactEvents: BlockChainEventsArtifactEvents;
@@ -9371,6 +9430,7 @@ export type AccountActivityResolvers<ContextType = GqlContext, ParentType extend
 }>;
 
 export type AccountAxonRemovalSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountAxonRemovalSubnet'] = ResolversParentTypes['AccountAxonRemovalSubnet']> = ResolversObject<{
+  changes?: Resolver<ResolversTypes['AxonChangeBreakdown'], ParentType, ContextType>;
   first_removed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   last_removed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9379,14 +9439,22 @@ export type AccountAxonRemovalSubnetResolvers<ContextType = GqlContext, ParentTy
 
 export type AccountAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountAxonRemovals'] = ResolversParentTypes['AccountAxonRemovals']> = ResolversObject<{
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  changes?: Resolver<ResolversTypes['AxonChangeBreakdown'], ParentType, ContextType>;
   concentration?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  covered_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  derivation?: Resolver<ResolversTypes['AxonChangesDerivation'], ParentType, ContextType>;
   dominant_netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  end_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  end_date_settled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  requested_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  start_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['AccountAxonRemovalSubnet']>, ParentType, ContextType>;
   total_removals?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  window_truncated?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
 export type AccountBalanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountBalance'] = ResolversParentTypes['AccountBalance']> = ResolversObject<{
@@ -9962,6 +10030,20 @@ export type AttributionEvidenceResolvers<ContextType = GqlContext, ParentType ex
   source_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type AxonChangeBreakdownResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AxonChangeBreakdown'] = ResolversParentTypes['AxonChangeBreakdown']> = ResolversObject<{
+  deregistered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  moved_unroutable?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  stopped_announcing?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type AxonChangesDerivationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AxonChangesDerivation'] = ResolversParentTypes['AxonChangesDerivation']> = ResolversObject<{
+  max_window_days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  note?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  resolution?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type BlockResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Block'] = ResolversParentTypes['Block']> = ResolversObject<{
   author?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   block_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -10206,14 +10288,21 @@ export type ChainAlphaVolumeSubnetResolvers<ContextType = GqlContext, ParentType
 }>;
 
 export type ChainAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovals'] = ResolversParentTypes['ChainAxonRemovals']> = ResolversObject<{
-  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  changes?: Resolver<ResolversTypes['AxonChangeBreakdown'], ParentType, ContextType>;
+  covered_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  derivation?: Resolver<ResolversTypes['AxonChangesDerivation'], ParentType, ContextType>;
+  end_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  end_date_settled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainAxonRemovalsNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  requested_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  start_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainAxonRemovalsSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  window_truncated?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
 export type ChainAxonRemovalsNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovalsNetwork'] = ResolversParentTypes['ChainAxonRemovalsNetwork']> = ResolversObject<{
@@ -10223,6 +10312,7 @@ export type ChainAxonRemovalsNetworkResolvers<ContextType = GqlContext, ParentTy
 }>;
 
 export type ChainAxonRemovalsSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovalsSubnet'] = ResolversParentTypes['ChainAxonRemovalsSubnet']> = ResolversObject<{
+  changes?: Resolver<ResolversTypes['AxonChangeBreakdown'], ParentType, ContextType>;
   distinct_removers?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   removals?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -12899,14 +12989,21 @@ export type SubnetResolvers<ContextType = GqlContext, ParentType extends Resolve
 }>;
 
 export type SubnetAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAxonRemovals'] = ResolversParentTypes['SubnetAxonRemovals']> = ResolversObject<{
-  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  changes?: Resolver<ResolversTypes['AxonChangeBreakdown'], ParentType, ContextType>;
+  covered_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  derivation?: Resolver<ResolversTypes['AxonChangesDerivation'], ParentType, ContextType>;
   distinct_removers?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  end_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  end_date_settled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   removals?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   removals_per_remover?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  requested_days?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  start_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  window_truncated?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
 export type SubnetBurnResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetBurn'] = ResolversParentTypes['SubnetBurn']> = ResolversObject<{
@@ -14671,6 +14768,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AdapterArtifactSnapshot?: AdapterArtifactSnapshotResolvers<ContextType>;
   AlphaUsdFieldSource?: AlphaUsdFieldSourceResolvers<ContextType>;
   AttributionEvidence?: AttributionEvidenceResolvers<ContextType>;
+  AxonChangeBreakdown?: AxonChangeBreakdownResolvers<ContextType>;
+  AxonChangesDerivation?: AxonChangesDerivationResolvers<ContextType>;
   Block?: BlockResolvers<ContextType>;
   BlockChainEvents?: BlockChainEventsResolvers<ContextType>;
   BlockChainEventsArtifactEvents?: BlockChainEventsArtifactEventsResolvers<ContextType>;

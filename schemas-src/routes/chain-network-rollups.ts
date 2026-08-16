@@ -27,11 +27,78 @@ export const IntensityDistributionSchema = distributionStatsSchema(
   "A count and the spread of a per-subnet intensity: mean, min, max, and the 25th/50th/75th/90th percentiles. WHAT is being counted is stated by the field carrying this block, since the same summary describes registrations per hotkey, announcements per server, and transfers per sender alike.",
 );
 
+// #10805: the three-way split of what actually happened. `removals` is
+// `stopped_announcing` and only that -- a deregistration and a move to an
+// unroutable address are carried here instead, because neither removed
+// anything. Over 38 days network-wide the split is 105 / 1,915 / 166, so a
+// consumer summing these into "removals" would be wrong by 95%.
+export const AxonChangeBreakdownSchema = z
+  .object({
+    deregistered: z
+      .int()
+      .min(0)
+      .describe(
+        "The UID changed hands: the announcing miner was deregistered and its slot reused by one that never served. Nobody withdrew anything.",
+      ),
+    moved_unroutable: z
+      .int()
+      .min(0)
+      .describe(
+        "The same miner is STILL ANNOUNCING, at an address in documentation or private space that nothing can reach. It did not go dark.",
+      ),
+    stopped_announcing: z
+      .int()
+      .min(0)
+      .describe(
+        "The same miner stopped publishing an axon at all. The only kind that means what 'axon removal' sounds like, and what `removals` counts.",
+      ),
+    total: z.int().min(0),
+  })
+  .strict()
+  .describe(
+    "Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim.",
+  );
+
+// #10805: how the answer was produced. NOT a degraded marker -- degraded means
+// "we could not measure", and this is a complete measurement of a different
+// thing from what the route name implies.
+export const AxonChangesDerivationSchema = z
+  .object({
+    source: z.literal("neuron_daily"),
+    resolution: z.literal("daily"),
+    max_window_days: z
+      .int()
+      .min(0)
+      .describe(
+        "Widest window the retained daily history can answer. A longer request is out of range, not an empty result.",
+      ),
+    note: z.string(),
+  })
+  .strict();
+
+// #10805: which days were actually read. `end_date_settled` is false when the
+// window's last day is the newest the table has -- that day is still being
+// rewritten, and the same query minutes apart can return different counts.
+export const AxonChangesCoverageShape = {
+  start_date: z.string().nullable(),
+  end_date: z.string().nullable(),
+  covered_days: z.int().min(0).nullable(),
+  requested_days: z.int().min(0).nullable(),
+  window_truncated: z.boolean().nullable(),
+  end_date_settled: z.boolean(),
+};
+
 export const ChainAxonRemovalsArtifactSchema = z
   .object({
     schema_version: z.int(),
     window: z.enum(["7d", "30d"]).nullable(),
-    observed_at: z.string().nullable(),
+    observed_at: z
+      .string()
+      .nullable()
+      .describe(
+        "Midnight UTC of the last day read. The answer describes a day, so stamping it with the request time would claim a freshness the daily snapshot does not have.",
+      ),
+    ...AxonChangesCoverageShape,
     subnet_count: z.int().min(0),
     network: z
       .object({
@@ -59,15 +126,15 @@ export const ChainAxonRemovalsArtifactSchema = z
           distinct_removers: z.int().min(0),
           removals: z.int().min(0),
           removals_per_remover: z.number().min(0).nullable(),
+          changes: AxonChangeBreakdownSchema,
         })
         .strict()
         .describe(
-          "One subnet's axon-removal activity in the window, ranked by removals.",
+          "One subnet's reachability changes in the window. Ranked by REMOVALS, then total, then netuid -- ranking by total alone puts a subnet whose miners merely moved above every subnet whose miners went dark.",
         ),
     ),
-    // #9307: AxonInfoRemoved has never been emitted, so the empty answer this
-    // route can only ever give is not a measurement.
-    degraded: EventStreamDegradedSchema.nullable().optional(),
+    changes: AxonChangeBreakdownSchema,
+    derivation: AxonChangesDerivationSchema,
   })
   .strict();
 export type ChainAxonRemovalsArtifact = z.infer<

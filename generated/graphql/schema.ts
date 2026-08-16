@@ -2339,11 +2339,62 @@ type SubnetAxonRemovals {
   schema_version: Int!
   netuid: Int!
   window: String
+
+  """
+  Midnight UTC of the last day read -- the answer describes a day, not an instant.
+  """
   observed_at: String
+  start_date: String
+  end_date: String
+  covered_days: Int
+  requested_days: Int
+  window_truncated: Boolean
+  end_date_settled: Boolean!
   distinct_removers: Int!
+
+  """
+  Miners that STOPPED ANNOUNCING. Deregistrations and moves to unroutable addresses are in \`changes\` instead, because neither removed anything.
+  """
   removals: Int!
   removals_per_remover: Float
-  degraded: DegradedInfo
+
+  """
+  Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim.
+  """
+  changes: AxonChangeBreakdown!
+  derivation: AxonChangesDerivation!
+}
+
+"""
+Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim.
+"""
+type AxonChangeBreakdown {
+  """
+  The UID changed hands: the announcing miner was deregistered and its slot reused by one that never served. Nobody withdrew anything.
+  """
+  deregistered: Int!
+
+  """
+  The same miner is STILL ANNOUNCING, at an address in documentation or private space that nothing can reach. It did not go dark.
+  """
+  moved_unroutable: Int!
+
+  """
+  The same miner stopped publishing an axon at all. The only kind that means what 'axon removal' sounds like, and what \`removals\` counts.
+  """
+  stopped_announcing: Int!
+  total: Int!
+}
+
+type AxonChangesDerivation {
+  source: String!
+  resolution: String!
+
+  """
+  Widest window the retained daily history can answer. A longer request is out of range, not an empty result.
+  """
+  max_window_days: Int!
+  note: String!
 }
 
 type SubnetWeights {
@@ -6509,22 +6560,47 @@ type AccountAxonRemovals {
   schema_version: Int!
   address: String!
   window: String
+  observed_at: String
+  start_date: String
+  end_date: String
+  covered_days: Int
+  requested_days: Int
+  window_truncated: Boolean
+  end_date_settled: Boolean!
+
+  """
+  Changes where this account STOPPED ANNOUNCING. An account whose UID was recycled on ten subnets removed nothing, and \`changes.deregistered\` is where that shows.
+  """
   total_removals: Int!
   subnet_count: Int!
   concentration: Float
   dominant_netuid: Int
   subnets: [AccountAxonRemovalSubnet!]!
-  degraded: DegradedInfo
+
+  """
+  Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim.
+  """
+  changes: AxonChangeBreakdown!
+  derivation: AxonChangesDerivation!
 }
 
 """
-One subnet's slice of an account's axon-removal footprint over the window.
+One subnet's slice of an account's reachability changes. Present even with zero removals, so churn is visible rather than hidden.
 """
 type AccountAxonRemovalSubnet {
   netuid: Int!
   removals: Int!
+
+  """
+  Null on a subnet where the account only lost slots: those dates would belong to whoever took the UID.
+  """
   first_removed_at: String
   last_removed_at: String
+
+  """
+  Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim.
+  """
+  changes: AxonChangeBreakdown!
 }
 
 type AccountStakeMoves {
@@ -7704,7 +7780,17 @@ type ChainActivityDay {
 type ChainAxonRemovals {
   schema_version: Int!
   window: String
+
+  """
+  Midnight UTC of the last day read. The answer describes a day, so stamping it with the request time would claim a freshness the daily snapshot does not have.
+  """
   observed_at: String
+  start_date: String
+  end_date: String
+  covered_days: Int
+  requested_days: Int
+  window_truncated: Boolean
+  end_date_settled: Boolean!
   subnet_count: Int!
 
   """
@@ -7717,7 +7803,12 @@ type ChainAxonRemovals {
   """
   intensity_distribution: IntensityDistribution
   subnets: [ChainAxonRemovalsSubnet!]!
-  degraded: DegradedInfo
+
+  """
+  Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim.
+  """
+  changes: AxonChangeBreakdown!
+  derivation: AxonChangesDerivation!
 }
 
 """
@@ -7733,12 +7824,19 @@ type ChainAxonRemovalsNetwork {
   removals_per_remover: Float
 }
 
-"""One subnet's axon-removal activity in the window, ranked by removals."""
+"""
+One subnet's reachability changes in the window. Ranked by REMOVALS, then total, then netuid -- ranking by total alone puts a subnet whose miners merely moved above every subnet whose miners went dark.
+"""
 type ChainAxonRemovalsSubnet {
   netuid: Int!
   distinct_removers: Int!
   removals: Int!
   removals_per_remover: Float
+
+  """
+  Reachability changes by mechanism. Every kind is present even at zero: an absent key would read as 'not measured', which is a different claim.
+  """
+  changes: AxonChangeBreakdown!
 }
 
 type ChainWeightSetters {

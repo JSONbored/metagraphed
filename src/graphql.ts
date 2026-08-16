@@ -572,10 +572,8 @@ import {
   buildAccountServing,
   DEFAULT_SERVING_WINDOW,
 } from "./account-serving.ts";
-import {
-  buildAccountAxonRemovals,
-  DEFAULT_AXON_REMOVAL_WINDOW,
-} from "./account-axon-removals.ts";
+import { buildAccountAxonRemovals } from "./account-axon-removals.ts";
+import { DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW } from "./axon-reachability-changes.ts";
 import {
   buildAccountStakeMoves,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
@@ -2789,9 +2787,17 @@ const rootValue = {
       distinct_removers: data.distinct_removers ?? 0,
       removals: data.removals ?? 0,
       removals_per_remover: data.removals_per_remover ?? null,
-      // #9307: AxonInfoRemoved has zero occurrences in the complete stream,
-      // ever, so this card's zero has never measured this subnet.
-      degraded: data.degraded ?? null,
+      // #10805: derived from daily state, so no degraded marker. `changes` is
+      // what stops a consumer reading a subnet's moves and deregistrations as
+      // removals -- 95% of reachability changes network-wide are neither.
+      changes: data.changes,
+      derivation: data.derivation,
+      start_date: data.start_date ?? null,
+      end_date: data.end_date ?? null,
+      covered_days: data.covered_days ?? null,
+      requested_days: data.requested_days ?? null,
+      window_truncated: data.window_truncated ?? null,
+      end_date_settled: data.end_date_settled ?? false,
     };
   },
 
@@ -6754,7 +6760,7 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const windowParam = window ?? DEFAULT_AXON_REMOVAL_WINDOW;
+    const windowParam = window ?? DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW;
     // Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountAxonRemovals([], ...) zeroed-card cold fallback) the
     // REST handler uses; an account with no AxonInfoRemoved events in the window
@@ -6779,10 +6785,20 @@ const rootValue = {
         removals: s.removals,
         first_removed_at: s.first_removed_at ?? null,
         last_removed_at: s.last_removed_at ?? null,
+        changes: s.changes,
       })),
-      // #9307: AxonInfoRemoved has zero occurrences in the complete stream,
-      // ever, so this footprint's zero has never measured this account.
-      degraded: data.degraded ?? null,
+      // #10805: derived from daily state now, so there is no degraded marker.
+      // The split and the coverage take its place -- an account whose UID was
+      // recycled on ten subnets removed nothing, and only `changes` says so.
+      changes: data.changes ?? null,
+      derivation: data.derivation ?? null,
+      observed_at: data.observed_at ?? null,
+      start_date: data.start_date ?? null,
+      end_date: data.end_date ?? null,
+      covered_days: data.covered_days ?? null,
+      requested_days: data.requested_days ?? null,
+      window_truncated: data.window_truncated ?? null,
+      end_date_settled: data.end_date_settled ?? false,
     };
   },
 
@@ -8066,10 +8082,19 @@ const rootValue = {
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],
-      // #9307: AxonInfoRemoved was never emitted, so an empty answer here is
-      // not a measurement. The builder marks it; this projection must carry
-      // the marker through or GraphQL alone keeps publishing a confident 0.
-      degraded: data.degraded ?? null,
+      // #10805: the answer is DERIVED from daily state now, not read from an
+      // event that never fired, so there is no degraded marker to carry. What
+      // must come through instead is the three-way split and the coverage --
+      // without them GraphQL alone would publish `removals` with no way to see
+      // that 95% of reachability changes are not removals.
+      changes: data.changes ?? null,
+      derivation: data.derivation ?? null,
+      start_date: data.start_date ?? null,
+      end_date: data.end_date ?? null,
+      covered_days: data.covered_days ?? null,
+      requested_days: data.requested_days ?? null,
+      window_truncated: data.window_truncated ?? null,
+      end_date_settled: data.end_date_settled ?? false,
     };
   },
 

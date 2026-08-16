@@ -98,7 +98,6 @@ import {
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
 } from "../src/chain-deregistrations-artifact.ts";
 import {
-  AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
   DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
   PROMETHEUS_DEGRADED_NOT_CURATED,
 } from "../src/uncurated-event-streams.ts";
@@ -25619,17 +25618,6 @@ describe("MCP event-stream honesty (#9307)", () => {
       { ss58: HONEST_SS58 },
       PROMETHEUS_DEGRADED_NOT_CURATED,
     ],
-    ["get_chain_axon_removals", {}, AXON_REMOVALS_DEGRADED_NEVER_EMITTED],
-    [
-      "get_subnet_axon_removals",
-      { netuid: 3 },
-      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
-    ],
-    [
-      "get_account_axon_removals",
-      { ss58: HONEST_SS58 },
-      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
-    ],
   ])(
     "%s marks an empty answer instead of publishing a zero",
     async (tool, args, reason) => {
@@ -25638,6 +25626,34 @@ describe("MCP event-stream honesty (#9307)", () => {
         res.body.result.structuredContent.degraded,
         { reason },
         `${tool} must not publish a confident zero`,
+      );
+    },
+  );
+
+  // #10805: the three axon-removals tools used to sit in the table above. They
+  // are DERIVED from neuron_daily now and answer for real, so the marker is
+  // gone -- replaced by something a new field cannot forget to set. An
+  // unanswered window has a NULL start_date; a measured one has dates.
+  test.each([
+    ["get_chain_axon_removals", {}],
+    ["get_subnet_axon_removals", { netuid: 3 }],
+    ["get_account_axon_removals", { ss58: HONEST_SS58 }],
+  ])(
+    "%s states its derivation, and an unread window has NULL dates",
+    async (tool, args) => {
+      const res = await callTool(tool as string, args);
+      const payload = res.body.result.structuredContent;
+      assert.equal(payload.derivation.source, "neuron_daily");
+      assert.equal(payload.derivation.resolution, "daily");
+      assert.equal(
+        payload.start_date,
+        null,
+        `${tool} read nothing here, and that must be visible without a flag`,
+      );
+      assert.equal(
+        "degraded" in payload,
+        false,
+        `${tool} no longer needs a marker -- it answers`,
       );
     },
   );

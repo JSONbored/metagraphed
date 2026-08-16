@@ -44,7 +44,7 @@ import {
   envelopeResponse,
   publishedAt,
 } from "../responses.ts";
-import { tryDataApiTier } from "../data-api-tier.ts";
+import { tryDataApiTier, type ForwardableTierFlag } from "../data-api-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import { recordExceptionEvent } from "../../src/usage-telemetry.ts";
 import {
@@ -398,6 +398,10 @@ import {
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
 } from "../../src/subnet-axon-removals.ts";
 import {
+  ACCOUNT_AXON_CHANGES_WINDOWS,
+  DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW,
+} from "../../src/axon-reachability-changes.ts";
+import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
@@ -483,11 +487,7 @@ import {
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
 } from "../../src/account-serving.ts";
-import {
-  buildAccountAxonRemovals,
-  AXON_REMOVAL_WINDOWS,
-  DEFAULT_AXON_REMOVAL_WINDOW,
-} from "../../src/account-axon-removals.ts";
+import { buildAccountAxonRemovals } from "../../src/account-axon-removals.ts";
 import {
   buildAccountPrometheus,
   PROMETHEUS_WINDOWS,
@@ -3350,10 +3350,11 @@ export async function handleSubnetAxonRemovals(
     SUBNET_AXON_REMOVALS_WINDOWS,
     DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
   );
+  // #10805: DERIVED from neuron_daily in DATA_API. A declined tier falls back
+  // to the schema-stable empty card, told apart from a quiet subnet by its
+  // NULL start_date rather than by a degraded flag.
   const data =
-    // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-    // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-    // resolved to null before it could touch DATA_API.
+    (await tryDataApiTier(env, request, "METAGRAPH_AXON_CHANGES_SOURCE")) ??
     buildSubnetAxonRemovals(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed AxonInfoRemoved event, mirroring the sibling stake-flow route.
@@ -4606,6 +4607,7 @@ function makeAccountEventHandler({
   defaultWindow,
   build,
   urlSuffix,
+  tierFlag,
   coldTier,
   markUnanswered,
 }: {
@@ -4617,6 +4619,11 @@ function makeAccountEventHandler({
     options: { window: string },
   ) => unknown;
   urlSuffix: string;
+  /** #10805: forwards to DATA_API when set. The family was built when every
+   * account feed read account_events, whose flag is deleted from every config
+   * -- so the factory had no tier rung at all and every account fell to the
+   * empty card. A feed with a live DATA_API derivation needs one. */
+  tierFlag?: ForwardableTierFlag;
   /** Lakehouse reader tried between the Postgres tier and the schema-stable
    * empty (src/account-feeds-cold-tier.ts) -- returns the same wrapped
    * `{ data, generatedAt }` shape the Postgres tier does, or null to fall
@@ -4638,11 +4645,24 @@ function makeAccountEventHandler({
     url: URL,
   ) {
     const { label: windowParam } = resolveWindow(url, windows, defaultWindow);
+    // #10805: the tier rung this family never had. Without it every account
+    // feed fell to the empty card, because METAGRAPH_ACCOUNT_EVENTS_SOURCE is
+    // deleted from every config (#10228) and nothing else forwarded.
+    const tiered = tierFlag
+      ? await tryDataApiTier(env, request, tierFlag)
+      : null;
     const { data, generatedAt } =
-      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every config (#10228)
-      // and is absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-      // before it could touch DATA_API.
-
+      (tiered
+        ? {
+            data: tiered,
+            // The derived card dates itself; `observed_at` is midnight of the
+            // last day read, never the request time.
+            generatedAt:
+              typeof tiered.observed_at === "string"
+                ? tiered.observed_at
+                : null,
+          }
+        : null) ??
       (coldTier ? await coldTier(env, ss58, windowParam) : null) ??
       (() => {
         const empty = build([], ss58, { window: windowParam });
@@ -4723,10 +4743,13 @@ export const handleAccountServing = makeAccountEventHandler({
 // where its teardown activity is focused, and the dominant subnet. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
 export const handleAccountAxonRemovals = makeAccountEventHandler({
-  windows: AXON_REMOVAL_WINDOWS,
-  defaultWindow: DEFAULT_AXON_REMOVAL_WINDOW,
+  windows: ACCOUNT_AXON_CHANGES_WINDOWS,
+  defaultWindow: DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW,
   build: buildAccountAxonRemovals,
   urlSuffix: "axon-removals",
+  // #10805: derived from neuron_daily in DATA_API. Without this the route
+  // keeps answering the permanent zero it has always answered.
+  tierFlag: "METAGRAPH_AXON_CHANGES_SOURCE",
 });
 
 // GET /api/v1/accounts/{ss58}/prometheus: the account's per-subnet PrometheusServed footprint over a

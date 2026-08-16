@@ -1,236 +1,197 @@
-import assert from "node:assert/strict";
-import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "../src/uncurated-event-streams.ts";
 import { describe, test } from "vitest";
+import assert from "node:assert/strict";
+
 import {
-  buildAccountAxonRemovals,
-  loadAccountAxonRemovals,
-  AXON_REMOVAL_EVENT_KIND,
-  DEFAULT_AXON_REMOVAL_WINDOW,
-} from "../src/account-axon-removals.ts";
+  ACCOUNT_AXON_CHANGES_WINDOWS,
+  DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW,
+  axonChangesCoverage,
+} from "../src/axon-reachability-changes.ts";
+import { buildAccountAxonRemovals } from "../src/account-axon-removals.ts";
 
-// One GROUP BY netuid row (removal count + first/last observed epoch ms).
-function row(
-  netuid: number | string | null,
-  removals: number,
-  first: number | null,
-  last: number | null,
-): Record<string, unknown> {
-  return {
-    netuid,
-    removals,
-    first_observed: first,
-    last_observed: last,
-  };
-}
+const coverage = axonChangesCoverage(
+  "2026-07-10",
+  "2026-08-16",
+  30,
+  "2026-08-16",
+);
 
-const ADDR = "5GReferenceAccountAddressForAxonRemovalsTestssss";
+const ADDRESS = "5HK5tp6t2S59DywmHRWPBVJeJ86T61KjurYqeooqj8sREpeN";
 
-describe("buildAccountAxonRemovals", () => {
-  test("cold / empty input yields a zeroed, schema-stable card", () => {
-    for (const rows of [[], null, undefined]) {
-      const d = buildAccountAxonRemovals(rows, ADDR, { window: "30d" });
-      assert.equal(d.schema_version, 1);
-      assert.equal(d.address, ADDR);
-      assert.equal(d.window, "30d");
-      assert.equal(d.total_removals, 0);
-      assert.equal(d.subnet_count, 0);
-      assert.equal(d.concentration, null);
-      assert.equal(d.dominant_netuid, null);
-      assert.deepEqual(d.subnets, []);
+describe("the window set the account route accepts", () => {
+  test("7d, 30d and 90d, defaulting to 30d", () => {
+    assert.deepEqual(Object.keys(ACCOUNT_AXON_CHANGES_WINDOWS), [
+      "7d",
+      "30d",
+      "90d",
+    ]);
+    assert.equal(DEFAULT_ACCOUNT_AXON_CHANGES_WINDOW, "30d");
+  });
+});
+
+describe("an account that lost slots did not remove anything", () => {
+  // THE REAL SHAPE, measured against production 2026-08-16. This is the
+  // busiest account in the whole 38-day window: 6 transitions across 5
+  // subnets, every one a DEREGISTRATION. The old contract reported that as
+  // "6 removals" for an account that tore down nothing.
+  const rows = [
+    {
+      netuid: 23,
+      kind: "deregistered",
+      n: 1,
+      first_date: "2026-07-27",
+      last_date: "2026-07-27",
+    },
+    {
+      netuid: 37,
+      kind: "deregistered",
+      n: 2,
+      first_date: "2026-08-06",
+      last_date: "2026-08-08",
+    },
+    {
+      netuid: 41,
+      kind: "deregistered",
+      n: 1,
+      first_date: "2026-08-06",
+      last_date: "2026-08-06",
+    },
+    {
+      netuid: 44,
+      kind: "deregistered",
+      n: 1,
+      first_date: "2026-08-01",
+      last_date: "2026-08-01",
+    },
+    {
+      netuid: 60,
+      kind: "deregistered",
+      n: 1,
+      first_date: "2026-07-30",
+      last_date: "2026-07-30",
+    },
+  ];
+
+  test("total_removals is ZERO, and the churn is still visible", () => {
+    const card = buildAccountAxonRemovals(rows, ADDRESS, {
+      window: "30d",
+      coverage,
+    });
+    assert.equal(card.total_removals, 0);
+    assert.equal(card.subnet_count, 5, "the subnets still appear");
+    assert.deepEqual(card.changes, {
+      deregistered: 6,
+      moved_unroutable: 0,
+      stopped_announcing: 0,
+      total: 6,
+    });
+  });
+
+  test("no dominant subnet and no concentration without a removal", () => {
+    // Concentration is HHI over REMOVALS. An account that removed nothing has
+    // nothing to concentrate, and naming a dominant subnet would imply it did.
+    const card = buildAccountAxonRemovals(rows, ADDRESS, { coverage });
+    assert.equal(card.dominant_netuid, null);
+    assert.equal(card.concentration, null);
+  });
+
+  test("a deregistration carries NO removal dates", () => {
+    // Those dates would belong to whoever took the UID, not to this account.
+    const card = buildAccountAxonRemovals(rows, ADDRESS, { coverage });
+    for (const subnet of card.subnets) {
+      assert.equal(subnet.first_removed_at, null);
+      assert.equal(subnet.last_removed_at, null);
     }
   });
+});
 
-  test("omitted window defaults to null", () => {
-    assert.equal(buildAccountAxonRemovals([], ADDR).window, null);
-  });
-
-  test("folds per-subnet removal counts + first/last timestamps", () => {
-    const d = buildAccountAxonRemovals(
+describe("a genuine withdrawal is counted, dated and concentrated", () => {
+  test("removals, dates and HHI come only from stopped-announcing", () => {
+    const card = buildAccountAxonRemovals(
       [
-        row(1, 3, 1_700_000_000_000, 1_700_500_000_000),
-        row(7, 1, 1_700_100_000_000, 1_700_100_000_000),
+        {
+          netuid: 101,
+          kind: "stopped-announcing",
+          n: 3,
+          first_date: "2026-08-11",
+          last_date: "2026-08-13",
+        },
+        { netuid: 101, kind: "deregistered", n: 9 },
+        {
+          netuid: 8,
+          kind: "stopped-announcing",
+          n: 1,
+          first_date: "2026-08-02",
+          last_date: "2026-08-02",
+        },
       ],
-      ADDR,
-      { window: "30d" },
+      ADDRESS,
+      { window: "30d", coverage },
     );
-    assert.equal(d.total_removals, 4);
-    assert.equal(d.subnet_count, 2);
-    // subnet 1 has the most removals (3), so it leads + is dominant.
-    assert.equal(d.subnets[0].netuid, 1);
-    assert.equal(d.dominant_netuid, 1);
-    const s1 = d.subnets.find((s) => s.netuid === 1)!;
-    assert.equal(s1.removals, 3);
-    assert.equal(
-      s1.first_removed_at,
-      new Date(1_700_000_000_000).toISOString(),
-    );
-    assert.equal(s1.last_removed_at, new Date(1_700_500_000_000).toISOString());
+    assert.equal(card.total_removals, 4);
+    assert.equal(card.dominant_netuid, 101);
+    // HHI over 3 and 1: (9 + 1) / 16 = 0.625.
+    assert.equal(card.concentration, 0.625);
+    assert.equal(card.subnets[0].netuid, 101);
+    assert.equal(card.subnets[0].first_removed_at, "2026-08-11T00:00:00.000Z");
+    assert.equal(card.subnets[0].last_removed_at, "2026-08-13T00:00:00.000Z");
+    // The deregistrations ride along without inflating the removal count.
+    assert.equal(card.subnets[0].changes.deregistered, 9);
+    assert.equal(card.changes.total, 13);
   });
 
-  test("HHI concentration: all removals on one subnet -> 1, spread -> < 1", () => {
-    const one = buildAccountAxonRemovals([row(1, 5, 1000, 2000)], ADDR, {
-      window: "7d",
-    });
-    assert.equal(one.concentration, 1);
-    // 3 and 3 across two subnets: HHI = (9 + 9) / 36 = 0.5.
-    const split = buildAccountAxonRemovals(
-      [row(1, 3, 1000, 2000), row(2, 3, 1000, 2000)],
-      ADDR,
-      { window: "7d" },
-    );
-    assert.equal(split.concentration, 0.5);
-  });
-
-  test("never rounds a sub-perfect concentration up to exactly 1", () => {
-    // Extreme skew (100000 vs 1): HHI ≈ 0.99998, which rounds to 1.0000 at 4dp but is < 1 —
-    // the anti-overstatement clamp holds it at 0.9999.
-    const d = buildAccountAxonRemovals(
-      [row(1, 100000, 1000, 2000), row(2, 1, 1000, 2000)],
-      ADDR,
-      { window: "7d" },
-    );
-    assert.equal(d.concentration, 0.9999);
-    assert.equal(d.subnet_count, 2);
-  });
-
-  test("ties on removal count break by netuid ascending", () => {
-    const d = buildAccountAxonRemovals(
-      [row(9, 4, 1000, 2000), row(4, 4, 1000, 2000)],
-      ADDR,
-      { window: "30d" },
+  test("subnets rank by removals, then by total change, then netuid", () => {
+    const card = buildAccountAxonRemovals(
+      [
+        { netuid: 9, kind: "moved-unroutable", n: 50 },
+        {
+          netuid: 3,
+          kind: "stopped-announcing",
+          n: 1,
+          first_date: "2026-08-01",
+          last_date: "2026-08-01",
+        },
+      ],
+      ADDRESS,
+      { coverage },
     );
     assert.deepEqual(
-      d.subnets.map((s) => s.netuid),
-      [4, 9],
+      card.subnets.map((s) => s.netuid),
+      [3, 9],
+      "one real removal outranks fifty moves",
     );
-    assert.equal(d.dominant_netuid, 4);
   });
+});
 
-  test("merges duplicate netuid rows and keeps the widest first/last span", () => {
-    const d = buildAccountAxonRemovals(
-      [row(1, 2, 3000, 4000), row(1, 1, 1000, 5000)],
-      ADDR,
-      { window: "30d" },
-    );
-    assert.equal(d.subnet_count, 1);
-    const s = d.subnets[0];
-    assert.equal(s.removals, 3); // 2 + 1
-    assert.equal(s.first_removed_at, new Date(1000).toISOString()); // min
-    assert.equal(s.last_removed_at, new Date(5000).toISOString()); // max
-  });
-
-  test("skips malformed/blank/negative netuid and zero-count rows", () => {
-    const d = buildAccountAxonRemovals(
+describe("unusable rows and empty answers", () => {
+  test("an unrecognised kind or netuid is dropped, never bucketed", () => {
+    const card = buildAccountAxonRemovals(
       [
-        row(1, 4, 1000, 2000),
-        { netuid: null, removals: 3 },
-        { netuid: "", removals: 3 },
-        { netuid: "bad", removals: 3 },
-        { netuid: -1, removals: 3 },
-        row(2, 0, 1000, 2000), // zero removals: skipped
+        { netuid: 1, kind: "removed", n: 5 },
+        { netuid: null, kind: "deregistered", n: 5 },
       ],
-      ADDR,
-      { window: "7d" },
+      ADDRESS,
+      { coverage },
     );
-    assert.equal(d.subnet_count, 1);
-    assert.equal(d.subnets[0].netuid, 1);
+    assert.equal(card.subnet_count, 0);
+    assert.equal(card.changes.total, 0);
   });
 
-  test("null / out-of-range observed timestamps degrade to null, not a 1970 stamp", () => {
-    const d = buildAccountAxonRemovals(
-      [row(1, 2, 0, -5), row(2, 1, null, 9e15)],
-      ADDR,
-      { window: "7d" },
-    );
-    const s1 = d.subnets.find((s) => s.netuid === 1)!;
-    assert.equal(s1.first_removed_at, null);
-    assert.equal(s1.last_removed_at, null);
-    const s2 = d.subnets.find((s) => s.netuid === 2)!;
-    assert.equal(s2.first_removed_at, null);
-    assert.equal(s2.last_removed_at, null);
-  });
-});
+  test("a declined tier has NULL dates; a real empty read has them", () => {
+    const declined = buildAccountAxonRemovals(null, ADDRESS, {});
+    assert.equal(declined.start_date, null);
+    assert.equal(declined.observed_at, null);
+    assert.equal(declined.window_truncated, null);
 
-describe("buildAccountAxonRemovals honesty marker (#9307)", () => {
-  test("an empty footprint says its zero is not a measurement", () => {
-    const d = buildAccountAxonRemovals([], "5A", { window: "30d" });
-    assert.deepEqual(d.degraded, {
-      reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
-    });
+    const measured = buildAccountAxonRemovals([], ADDRESS, { coverage });
+    assert.equal(measured.start_date, "2026-07-10");
+    assert.equal(measured.observed_at, "2026-08-16T00:00:00.000Z");
+    assert.equal(measured.total_removals, 0);
   });
 
-  test("a footprint with removals carries NO marker", () => {
-    const d = buildAccountAxonRemovals(
-      [{ netuid: 5, removals: 3, first_observed: 1, last_observed: 2 }],
-      "5A",
-      { window: "30d" },
+  test("the degraded marker is gone", () => {
+    assert.equal(
+      "degraded" in buildAccountAxonRemovals([], ADDRESS, { coverage }),
+      false,
     );
-    assert.equal(d.degraded, undefined);
-  });
-});
-
-describe("loadAccountAxonRemovals", () => {
-  test("seeks the hotkey index for AxonInfoRemoved over the window and shapes it", async () => {
-    let captured: { sql: string; params: unknown[] } | undefined;
-    const runner = async (sql: string, params: unknown[]) => {
-      captured = { sql, params };
-      // Multiple rows so generatedAt walks past the first (later row wins) and a
-      // null-observed row is skipped rather than counted.
-      return [
-        row(1, 3, 1_700_000_000_000, 1_700_000_000_000),
-        row(2, 1, 1_700_400_000_000, 1_700_500_000_000), // newer -> wins generatedAt
-        row(3, 1, null, null), // no observed timestamp -> skipped for generatedAt
-      ];
-    };
-    const { data, generatedAt } = await loadAccountAxonRemovals(runner, ADDR, {
-      windowLabel: "7d",
-    });
-    assert.match(
-      captured!.sql,
-      /FROM account_events INDEXED BY idx_account_events_hotkey/,
-    );
-    assert.match(captured!.sql, /WHERE hotkey = \? AND event_kind = \?/);
-    assert.match(captured!.sql, /GROUP BY netuid/);
-    assert.equal(captured!.params[0], ADDR);
-    assert.equal(captured!.params[1], AXON_REMOVAL_EVENT_KIND);
-    assert.equal(typeof captured!.params[2], "number"); // epoch-ms cutoff
-    assert.equal(data.total_removals, 5);
-    assert.equal(generatedAt, new Date(1_700_500_000_000).toISOString());
-  });
-
-  test("an unknown window label falls back to the default window days", async () => {
-    let captured: { sql: string; params: unknown[] } | undefined;
-    const runner = async (sql: string, params: unknown[]) => {
-      captured = { sql, params };
-      return [];
-    };
-    await loadAccountAxonRemovals(runner, ADDR, { windowLabel: "bogus" });
-    const expected = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    assert.ok(
-      Math.abs((captured!.params[2] as number) - expected) <
-        24 * 60 * 60 * 1000,
-    );
-  });
-
-  test("a cold store (no rows) yields a zeroed card + null generatedAt", async () => {
-    const { data, generatedAt } = await loadAccountAxonRemovals(
-      async () => [],
-      ADDR,
-      { windowLabel: DEFAULT_AXON_REMOVAL_WINDOW },
-    );
-    assert.equal(data.total_removals, 0);
-    assert.equal(data.subnet_count, 0);
-    assert.equal(generatedAt, null);
-  });
-
-  test("a non-array store result degrades to a zeroed card (never throws)", async () => {
-    const { data, generatedAt } = await loadAccountAxonRemovals(
-      async () => null as unknown as Record<string, unknown>[],
-      ADDR,
-      { windowLabel: "7d" },
-    );
-    assert.equal(data.total_removals, 0);
-    assert.deepEqual(data.subnets, []);
-    assert.equal(generatedAt, null);
   });
 });
