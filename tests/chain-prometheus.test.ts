@@ -10,6 +10,20 @@ import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
+/**
+ * The network block of a MEASURED card.
+ *
+ * `network` is nullable since #11417 because a declined read publishes null
+ * there rather than zeros. An assertion rather than a `!`: a test that silently
+ * read through a decline would pass while asserting nothing.
+ */
+function measuredNetwork<N>(card: { network: N | null }): N {
+  // `assert.ok` is an assertion function, so this NARROWS -- no cast, and a
+  // decline fails the test loudly instead of reading through as undefined.
+  assert.ok(card.network, "expected a measured card, got a decline");
+  return card.network;
+}
+
 const OBS = 1_700_000_000_000;
 
 // One per-subnet account_events PrometheusServed aggregate row (the loader GROUPs BY netuid).
@@ -61,10 +75,12 @@ describe("buildChainPrometheus", () => {
   });
 
   test("rolls up the true distinct hotkey count and derived total events", () => {
-    const { network } = buildChainPrometheus(SUBNETS, {
-      window: "7d",
-      networkDistinct: NETWORK,
-    });
+    const network = measuredNetwork(
+      buildChainPrometheus(SUBNETS, {
+        window: "7d",
+        networkDistinct: NETWORK,
+      }),
+    );
     assert.equal(network.distinct_exporters, 12); // true distinct, not the 16 per-subnet sum
     assert.equal(network.announcements, 95);
     assert.equal(network.announcements_per_exporter, 7.92); // 95 / 12
@@ -177,8 +193,8 @@ describe("buildChainPrometheus", () => {
       // newest_observed 0 is present-but-invalid: observed_at coerces to null, not a 1970 stamp.
       networkDistinct: { distinct_exporters: 0, newest_observed: 0 },
     });
-    assert.equal(zeroed.network.distinct_exporters, 0);
-    assert.equal(zeroed.network.announcements_per_exporter, null);
+    assert.equal(measuredNetwork(zeroed).distinct_exporters, 0);
+    assert.equal(measuredNetwork(zeroed).announcements_per_exporter, null);
     assert.equal(zeroed.observed_at, null);
     const absent = buildChainPrometheus(SUBNETS, { window: "7d" });
     assert.equal(absent.observed_at, null);
@@ -191,8 +207,8 @@ describe("buildChainPrometheus", () => {
       }).observed_at,
       null,
     );
-    assert.equal(absent.network.distinct_exporters, 0);
-    assert.equal(absent.network.announcements_per_exporter, null);
+    assert.equal(measuredNetwork(absent).distinct_exporters, 0);
+    assert.equal(measuredNetwork(absent).announcements_per_exporter, null);
   });
 
   test("an omitted window is emitted as null in both shapes", () => {
@@ -212,8 +228,8 @@ describe("buildChainPrometheus", () => {
       assert.equal(data.subnet_count, 0);
       assert.deepEqual(data.subnets, []);
       assert.equal(data.intensity_distribution, null);
-      assert.equal(data.network.distinct_exporters, 0);
-      assert.equal(data.network.announcements_per_exporter, null);
+      assert.equal(measuredNetwork(data).distinct_exporters, 0);
+      assert.equal(measuredNetwork(data).announcements_per_exporter, null);
     }
   });
 });

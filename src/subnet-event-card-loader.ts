@@ -20,6 +20,10 @@
 // occur in the window at all. Their zero is the right answer, and wiring a loader there
 // would have been a fix for a bug that is not there.
 import { loadChainEventIdentityRollup } from "./chain-event-rollup-cold-tier.ts";
+import {
+  DEGRADED_UNAVAILABLE,
+  type EventStreamDegraded,
+} from "./uncurated-event-streams.ts";
 import type { ChainEventRollupSpec } from "./chain-event-rollup-cold-tier.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 
@@ -37,7 +41,7 @@ type Row = Record<string, unknown>;
  * a summary summed from it would shrink as the page did. No limit is passed at all,
  * because a summary card needs no rows.
  */
-export async function loadSubnetEventCardColdTier<T>(
+export async function loadSubnetEventCardColdTier<T extends object>(
   env: Parameters<R2SqlReader>[0],
   spec: ChainEventRollupSpec,
   netuid: number,
@@ -52,12 +56,33 @@ export async function loadSubnetEventCardColdTier<T>(
     /** Injectable for tests; forwarded to the rollup reader. */
     query?: R2SqlReader;
   },
-): Promise<T | null> {
+): Promise<(T & { degraded?: EventStreamDegraded }) | null> {
   const rollup = await loadChainEventIdentityRollup(env, spec, {
     windowDays,
     netuid,
     query,
   });
-  if (!rollup) return null;
-  return build(rollup.totals, netuid, { window: windowLabel });
+  // THE DISTINCTION THIS MODULE'S HEADER ALREADY CLAIMED TO DRAW (#11417).
+  //
+  // It declined for every reason with one `null`, and fifteen call sites spell
+  // that `?? buildX(null, ...)` -- so "could not read" arrived at the caller as
+  // the zeroed card, which the header above calls "the whole defect this
+  // closes". It was closed at this frame and reopened at the next one.
+  //
+  // Only a configured lakehouse that could not answer is marked. An `empty`
+  // window is a MEASUREMENT and a `miss` is a deployment with no lakehouse;
+  // both keep the caller's zeros, unmarked, because in both cases the zeros are
+  // the right answer.
+  //
+  // The card is still built, from a null row, so the marked payload has exactly
+  // the key set the measured one has -- a consumer branches on `degraded`, never
+  // on which fields exist.
+  if (rollup.kind === "gap") {
+    return {
+      ...build(null, netuid, { window: windowLabel }),
+      degraded: { reason: DEGRADED_UNAVAILABLE },
+    };
+  }
+  if (rollup.kind !== "answer") return null;
+  return build(rollup.rollup.totals, netuid, { window: windowLabel });
 }

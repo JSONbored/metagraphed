@@ -18,6 +18,7 @@ import {
   CHAIN_WEIGHTS_ROLLUP,
   loadChainEventIdentityRollup,
 } from "./chain-event-rollup-cold-tier.ts";
+import { DEGRADED_UNAVAILABLE } from "./uncurated-event-streams.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
@@ -50,13 +51,30 @@ export async function loadSubnetWeightSettersColdTier(
     netuid,
     query,
   });
-  if (!rollup) return null;
+  // A configured lakehouse that could not answer. The builder still shapes the
+  // card so its key set is unchanged, and `degraded` is what says the zeros in
+  // it are not a measurement. `empty` and `miss` keep the plain zeros.
+  if (rollup.kind === "gap") {
+    return {
+      ...buildSubnetWeightSetters(null, null, netuid, {
+        window: windowLabel,
+        tempo: await loadSubnetTempo(env, netuid),
+      }),
+      degraded: { reason: DEGRADED_UNAVAILABLE },
+    };
+  }
+  if (rollup.kind !== "answer") return null;
   // Totals ride separately from the rows: the page is capped by `limit`, so a
   // share computed against a summed page would grow as the page shrank.
-  return buildSubnetWeightSetters(rollup.rows, rollup.totals, netuid, {
-    window: windowLabel,
-    tempo: await loadSubnetTempo(env, netuid),
-  });
+  return buildSubnetWeightSetters(
+    rollup.rollup.rows,
+    rollup.rollup.totals,
+    netuid,
+    {
+      window: windowLabel,
+      tempo: await loadSubnetTempo(env, netuid),
+    },
+  );
 }
 
 /**

@@ -15,6 +15,12 @@ import { describe, test } from "vitest";
 import { loadChainServingColdTier } from "../src/chain-serving-loader.ts";
 import { ROLLUP_POPULATION_CAP } from "../src/chain-event-rollup-cold-tier.ts";
 
+/** The network block of a MEASURED card -- see the note in chain-serving.test.ts. */
+function measuredNetwork<N>(card: { network: N | null }): N {
+  assert.ok(card.network, "expected a measured card, got a decline");
+  return card.network;
+}
+
 const NOW_ROWS = [{ netuid: 7, announcements: 9, distinct_servers: 4 }];
 const NETWORK = [{ distinct_servers: 4, newest_observed: 1_785_000_000_000 }];
 
@@ -193,7 +199,11 @@ describe("the loader resolves its window and limit exactly once", () => {
     });
     assert.ok(data);
     assert.equal(data.subnets.length, 1, "the page is what the caller asked");
-    assert.equal(data.network.announcements, 100, "60 + 30 + 10, not 60");
+    assert.equal(
+      measuredNetwork(data).announcements,
+      100,
+      "60 + 30 + 10, not 60",
+    );
     assert.equal(data.subnet_count, 3);
     assert.equal(
       data.intensity_distribution?.count,

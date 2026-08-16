@@ -107,6 +107,8 @@ export const SubnetRegistrationsArtifactSchema = z
     distinct_registrants: z.int().min(0),
     registrations: z.int().min(0),
     registrations_per_registrant: z.number().min(0).nullable(),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type SubnetRegistrationsArtifact = z.infer<
@@ -122,6 +124,8 @@ export const SubnetServingArtifactSchema = z
     distinct_servers: z.int().min(0),
     announcements: z.int().min(0),
     announcements_per_server: z.number().min(0).nullable(),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type SubnetServingArtifact = z.infer<typeof SubnetServingArtifactSchema>;

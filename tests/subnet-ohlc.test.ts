@@ -5,13 +5,13 @@ import {
   buildSubnetOhlc,
   buildSubnetOhlcFromBuckets,
   declineSubnetOhlc,
-  OHLC_DEGRADED_UNAVAILABLE,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   MAX_CANDLES,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
 } from "../src/subnet-ohlc.ts";
+import { DEGRADED_UNAVAILABLE } from "../src/uncurated-event-streams.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -517,7 +517,7 @@ describe("buildSubnetOhlc — output shape", () => {
   test("a decline is null-counted and marked, where an empty window is neither", () => {
     const declined = declineSubnetOhlc(12, { interval: "1d" });
     assert.equal(declined.candle_count, null);
-    assert.deepEqual(declined.degraded, { reason: OHLC_DEGRADED_UNAVAILABLE });
+    assert.deepEqual(declined.degraded, { reason: DEGRADED_UNAVAILABLE });
     assert.deepEqual(declined.candles, []);
     assert.equal(declined.root_excluded, false);
     assert.equal(declined.window_truncated, false);

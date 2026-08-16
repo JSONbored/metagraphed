@@ -4,6 +4,7 @@
 // in #4772, so it always missed -- see #6013). Callers now go tryDataApiTier() ?? buildChainServing([]).
 // The field semantics live in schemas-src/routes/chain-network-rollups.ts (ChainServingArtifact).
 
+import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
 import { roundDp, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 
@@ -120,10 +121,15 @@ export interface ChainServingResult {
   schema_version: 1;
   window: string | null;
   observed_at: string | null;
-  subnet_count: number;
-  network: ChainServingNetwork;
+  /** NULL only on a decline -- see ChainEventCardDecline. */
+  subnet_count: number | null;
+  /** NULL only on a decline: after a failed read nothing is known about
+   * the network block, and zeros there are the confident zero #11417 names. */
+  network: ChainServingNetwork | null;
   intensity_distribution: IntensityDistribution | null;
   subnets: ChainServingSubnet[];
+  /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape the network-wide serving scorecard from the per-subnet account_events aggregate.

@@ -266,12 +266,12 @@ describe("loadChainEventIdentityRollup guards", () => {
       { ...good, distinctColumn: "coldkey" },
     ];
     for (const spec of bad) {
-      assert.equal(
+      assert.deepEqual(
         await loadChainEventIdentityRollup({} as never, spec as never, {
           windowDays: 7,
           query: engine(),
         }),
-        null,
+        { kind: "miss" },
         `${JSON.stringify(spec)} must be refused, not escaped`,
       );
     }
@@ -279,12 +279,12 @@ describe("loadChainEventIdentityRollup guards", () => {
 
   test("refuses a window that is not a positive finite number of days", async () => {
     for (const windowDays of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
-      assert.equal(
+      assert.deepEqual(
         await loadChainEventIdentityRollup({} as never, good, {
           windowDays,
           query: engine(),
         }),
-        null,
+        { kind: "miss" },
         `windowDays ${windowDays} must be refused`,
       );
     }
@@ -300,13 +300,13 @@ describe("loadChainEventIdentityRollup guards", () => {
       [1_000, 7],
       [NOW, 1e-9],
     ] as const) {
-      assert.equal(
+      assert.deepEqual(
         await loadChainEventIdentityRollup({} as never, good, {
           windowDays,
           now,
           query: engine(),
         }),
-        null,
+        { kind: "miss" },
       );
     }
   });
@@ -337,12 +337,12 @@ describe("loadChainEventIdentityRollup guards", () => {
 
   test("declines when the totals query returns no row at all", async () => {
     const e = fakeEngine({ totals: [] });
-    assert.equal(
+    assert.deepEqual(
       await loadChainEventIdentityRollup({} as never, good, {
         windowDays: 7,
         query: e.query as never,
       }),
-      null,
+      { kind: "miss" },
       "an empty totals result has no denominator to publish shares against",
     );
   });

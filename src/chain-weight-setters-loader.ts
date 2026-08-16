@@ -23,6 +23,7 @@ import {
   CHAIN_WEIGHTS_ROLLUP,
   loadChainEventIdentityRollup,
 } from "./chain-event-rollup-cold-tier.ts";
+import { declineChainWeightSetters } from "./chain-weight-setters.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
@@ -51,11 +52,15 @@ export async function loadChainWeightSettersColdTier(
     limit,
     query,
   });
-  if (!rollup) return null;
+  // Only a configured lakehouse that could not answer is a decline; an `empty`
+  // window and a `miss` both keep the caller's zeros. See
+  // ChainEventRollupOutcome.
+  if (rollup.kind === "gap") return declineChainWeightSetters(window);
+  if (rollup.kind !== "answer") return null;
   // `totals` rides separately from the rows on purpose: the row page is capped
   // by `limit`, so a share computed against a summed page would grow as the
   // page shrank. The denominator has to be the window's own COUNT(*).
-  return buildChainWeightSetters(rollup.rows, rollup.totals, {
+  return buildChainWeightSetters(rollup.rollup.rows, rollup.rollup.totals, {
     window,
     limit,
   });

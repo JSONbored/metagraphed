@@ -18,6 +18,26 @@ import { generateOpenApiZodComponents } from "../scripts/generate-openapi-zod-co
 
 const SCRIPT = "scripts/generate-openapi-zod-components.ts";
 
+/**
+ * Compiling the registry is the expensive part, and this file used to do it
+ * FOUR times: two subprocess spawns plus a fresh in-process call inside each
+ * test. Hoisted so the in-process half happens once.
+ */
+const COMPONENT_NAMES = Object.keys(generateOpenApiZodComponents()).sort();
+
+/**
+ * This file spawns the real CLI twice, and each spawn compiles all 338
+ * component schemas. Measured on 2026-08-16: 6.6s per spawn bare, 9.4s with
+ * `NODE_V8_COVERAGE` inherited. Two of those plus the in-process compile runs
+ * past the suite's 30s default whenever the machine is also running the other
+ * test workers -- which is why this timed out under `test:coverage` while
+ * passing under a plain `vitest run`.
+ *
+ * Same escape hatch tests/public-safety.test.ts takes for its full-repo scan:
+ * the 30s default is a default, and a file doing genuinely slow work says so.
+ */
+const CLI_TEST_TIMEOUT_MS = 90_000;
+
 function run(args: string[]): string {
   return execFileSync(process.execPath, [SCRIPT, ...args], {
     cwd: repoRoot,
@@ -25,6 +45,17 @@ function run(args: string[]): string {
     // The bare mode legitimately emits ~1MB; the default 1MB stdout cap would
     // truncate it and fail the JSON.parse below for the wrong reason.
     maxBuffer: 64 * 1024 * 1024,
+    // COVERAGE IS STRIPPED FROM THE CHILD, deliberately. Vitest exports
+    // `NODE_V8_COVERAGE` and every subprocess inherits it, so this CLI was
+    // being instrumented too -- 43% slower (6.6s -> 9.4s) and 1.7MB of
+    // coverage data written per spawn. None of it is ever read: this script is
+    // not in vitest.config.ts's `coverage.include`, which lists src/**,
+    // workers/**, schemas-src/** and six named scripts. Pure cost, and it was
+    // the difference between passing and timing out.
+    // Spread rather than rebuilt: `process.env` is strictly typed here, and
+    // Node omits an env entry whose value is `undefined` rather than passing
+    // an empty string -- which is what actually unsets it for the child.
+    env: { ...process.env, NODE_V8_COVERAGE: undefined },
   });
 }
 
@@ -36,34 +67,45 @@ function openApiZodStepCalls(source: string): string[] {
 }
 
 describe("generate-openapi-zod-components CLI", () => {
-  test("--check reports a count instead of the payload", () => {
-    const out = run(["--check"]);
-    const lines = out.trimEnd().split("\n");
-    assert.equal(lines.length, 1, "--check must emit exactly one line");
-    // The count is real, not a hardcoded string: it has to match what the
-    // function returns, so a registry that silently emptied still fails.
-    const expected = Object.keys(generateOpenApiZodComponents()).length;
-    assert.ok(expected > 0, "registry should compile at least one component");
-    assert.equal(
-      lines[0],
-      `openapi-zod: ${expected} component schema(s) compiled.`,
-    );
-    // The whole point: no JSON body.
-    assert.ok(!out.includes('"type": "object"'), "--check must not print JSON");
-    assert.ok(out.length < 200, `--check output was ${out.length} bytes`);
-  });
+  test(
+    "--check reports a count instead of the payload",
+    { timeout: CLI_TEST_TIMEOUT_MS },
+    () => {
+      const out = run(["--check"]);
+      const lines = out.trimEnd().split("\n");
+      assert.equal(lines.length, 1, "--check must emit exactly one line");
+      // The count is real, not a hardcoded string: it has to match what the
+      // function returns, so a registry that silently emptied still fails.
+      const expected = COMPONENT_NAMES.length;
+      assert.ok(expected > 0, "registry should compile at least one component");
+      assert.equal(
+        lines[0],
+        `openapi-zod: ${expected} component schema(s) compiled.`,
+      );
+      // The whole point: no JSON body.
+      assert.ok(
+        !out.includes('"type": "object"'),
+        "--check must not print JSON",
+      );
+      assert.ok(out.length < 200, `--check output was ${out.length} bytes`);
+    },
+  );
 
-  test("bare still prints the full component JSON", () => {
-    const out = run([]);
-    const parsed = JSON.parse(out) as Record<string, unknown>;
-    assert.deepEqual(
-      Object.keys(parsed).sort(),
-      Object.keys(generateOpenApiZodComponents()).sort(),
-    );
-    // Guards the escape hatch the fix deliberately kept: `npm run
-    // build:openapi-zod` runs bare and must keep emitting the payload.
-    assert.ok(out.length > 100_000, `bare output was only ${out.length} bytes`);
-  });
+  test(
+    "bare still prints the full component JSON",
+    { timeout: CLI_TEST_TIMEOUT_MS },
+    () => {
+      const out = run([]);
+      const parsed = JSON.parse(out) as Record<string, unknown>;
+      assert.deepEqual(Object.keys(parsed).sort(), COMPONENT_NAMES);
+      // Guards the escape hatch the fix deliberately kept: `npm run
+      // build:openapi-zod` runs bare and must keep emitting the payload.
+      assert.ok(
+        out.length > 100_000,
+        `bare output was only ${out.length} bytes`,
+      );
+    },
+  );
 });
 
 describe("scripts/build.ts wires --check", () => {

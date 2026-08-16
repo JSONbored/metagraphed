@@ -27,6 +27,7 @@ import {
   CHAIN_WEIGHTS_ROLLUP,
   loadChainEventIdentityRollup,
 } from "./chain-event-rollup-cold-tier.ts";
+import { DEGRADED_UNAVAILABLE } from "./uncurated-event-streams.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
@@ -62,6 +63,14 @@ export async function loadSubnetWeightsColdTier(
     netuid,
     query,
   });
-  if (!rollup) return null;
-  return buildSubnetWeights(rollup.totals, netuid, { window: windowLabel });
+  if (rollup.kind === "gap") {
+    return {
+      ...buildSubnetWeights(null, netuid, { window: windowLabel }),
+      degraded: { reason: DEGRADED_UNAVAILABLE },
+    };
+  }
+  if (rollup.kind !== "answer") return null;
+  return buildSubnetWeights(rollup.rollup.totals, netuid, {
+    window: windowLabel,
+  });
 }

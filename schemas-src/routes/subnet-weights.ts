@@ -7,6 +7,7 @@
 // (confirmed every setter row's `hotkey` reads back null in practice --
 // matches the hand-edited component's declared nullability).
 import { z } from "zod";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 export const SubnetWeightsArtifactSchema = z
   .object({
@@ -17,6 +18,8 @@ export const SubnetWeightsArtifactSchema = z
     distinct_setters: z.int().min(0),
     weight_sets: z.int().min(0),
     sets_per_setter: z.number().min(0).nullable(),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type SubnetWeightsArtifact = z.infer<typeof SubnetWeightsArtifactSchema>;
@@ -75,6 +78,8 @@ export const SubnetWeightSettersArtifactSchema = z
     overdue_tempo_multiple: z.int().min(0),
     overdue_setter_count: z.int().min(0),
     setters: z.array(SubnetWeightSetterSchema),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict()
   .describe(

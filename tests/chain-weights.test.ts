@@ -9,6 +9,20 @@ import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
+/**
+ * The network block of a MEASURED card.
+ *
+ * `network` is nullable since #11417 because a declined read publishes null
+ * there rather than zeros. An assertion rather than a `!`: a test that silently
+ * read through a decline would pass while asserting nothing.
+ */
+function measuredNetwork<N>(card: { network: N | null }): N {
+  // `assert.ok` is an assertion function, so this NARROWS -- no cast, and a
+  // decline fails the test loudly instead of reading through as undefined.
+  assert.ok(card.network, "expected a measured card, got a decline");
+  return card.network;
+}
+
 const OBS = 1_700_000_000_000;
 
 // One per-subnet account_events WeightsSet aggregate row (the loader GROUPs BY netuid).
@@ -58,10 +72,12 @@ describe("buildChainWeights", () => {
   });
 
   test("rolls up the true distinct setter count and derived total events", () => {
-    const { network } = buildChainWeights(SUBNETS, {
-      window: "7d",
-      networkDistinct: NETWORK,
-    });
+    const network = measuredNetwork(
+      buildChainWeights(SUBNETS, {
+        window: "7d",
+        networkDistinct: NETWORK,
+      }),
+    );
     assert.equal(network.distinct_setters, 12); // true distinct, not the 16 per-subnet sum
     assert.equal(network.weight_sets, 95);
     assert.equal(network.sets_per_setter, 7.92); // 95 / 12
@@ -173,8 +189,8 @@ describe("buildChainWeights", () => {
       // newest_observed 0 is present-but-invalid: observed_at coerces to null, not a 1970 stamp.
       networkDistinct: { distinct_setters: 0, newest_observed: 0 },
     });
-    assert.equal(zeroed.network.distinct_setters, 0);
-    assert.equal(zeroed.network.sets_per_setter, null);
+    assert.equal(measuredNetwork(zeroed).distinct_setters, 0);
+    assert.equal(measuredNetwork(zeroed).sets_per_setter, null);
     assert.equal(zeroed.observed_at, null);
     const absent = buildChainWeights(SUBNETS, { window: "7d" });
     assert.equal(absent.observed_at, null);
@@ -187,8 +203,8 @@ describe("buildChainWeights", () => {
       }).observed_at,
       null,
     );
-    assert.equal(absent.network.distinct_setters, 0);
-    assert.equal(absent.network.sets_per_setter, null);
+    assert.equal(measuredNetwork(absent).distinct_setters, 0);
+    assert.equal(measuredNetwork(absent).sets_per_setter, null);
   });
 
   test("an omitted window is emitted as null in both shapes", () => {
@@ -208,8 +224,8 @@ describe("buildChainWeights", () => {
       assert.equal(data.subnet_count, 0);
       assert.deepEqual(data.subnets, []);
       assert.equal(data.intensity_distribution, null);
-      assert.equal(data.network.distinct_setters, 0);
-      assert.equal(data.network.sets_per_setter, null);
+      assert.equal(measuredNetwork(data).distinct_setters, 0);
+      assert.equal(measuredNetwork(data).sets_per_setter, null);
     }
   });
 });

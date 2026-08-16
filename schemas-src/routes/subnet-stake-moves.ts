@@ -3,6 +3,7 @@
 // src/subnet-stake-moves.ts's buildSubnetStakeMoves(), cross-checked
 // against the hand-edited SubnetStakeMovesArtifact component it replaces.
 import { z } from "zod";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 export const SubnetStakeMovesArtifactSchema = z
   .object({
@@ -13,6 +14,8 @@ export const SubnetStakeMovesArtifactSchema = z
     distinct_movers: z.int().min(0),
     movements: z.int().min(0),
     movements_per_mover: z.number().min(0).nullable(),
+    /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type SubnetStakeMovesArtifact = z.infer<
