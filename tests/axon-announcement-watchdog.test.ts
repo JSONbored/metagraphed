@@ -32,7 +32,11 @@ import {
   type AxonDay,
   type AxonFinding,
 } from "../src/axon-announcement-watchdog.ts";
-import { isRoutableAxon, ROUTABLE_AXON_SQL } from "../src/axon-routable.ts";
+import {
+  isRoutableAxon,
+  splitAxon,
+  ROUTABLE_AXON_SQL,
+} from "../src/axon-routable.ts";
 
 /** Days at a uniform width, oldest first. */
 const flat = (n: number, withAxon: number, neurons = 256): AxonDay[] =>
@@ -1088,19 +1092,81 @@ describe("routable axons only (#11373)", () => {
     // The rule is enforced in SQL; a second copy would be free to drift from
     // the one the JS predicate documents and the tests above pin.
     assert.match(ROUTABLE_AXON_SQL, /axon IS NOT NULL/);
-    assert.match(ROUTABLE_AXON_SQL, /split_part\(axon, ':', 1\) !~/);
+    // The address is everything before the LAST colon, so an IPv6 axon is not
+    // read as its first hex group (#11373 follow-up).
+    assert.match(ROUTABLE_AXON_SQL, /strpos\(reverse\(axon\), ':'\)/);
+    assert.doesNotMatch(ROUTABLE_AXON_SQL, /split_part\(axon, ':', 1\)/);
     assert.match(ROUTABLE_AXON_SQL, /192\\\.0\\\.2\\\./);
   });
 
   test("the predicate the JS mirrors is the one the SQL embeds", () => {
     // Same source string on both sides -- if the pattern is retuned, both move.
-    const embedded = ROUTABLE_AXON_SQL.match(/!~ '(.+)'$/)?.[1];
-    assert.ok(embedded, "the SQL carries the pattern inline");
+    // The IPv4 pattern is the one after the ELSE branch.
+    const embedded = ROUTABLE_AXON_SQL.match(/ELSE .+ !~ '(.+?)' END/)?.[1];
+    assert.ok(embedded, "the SQL carries the IPv4 pattern inline");
     assert.equal(
       new RegExp(embedded).test("192.0.2.1"),
       true,
       "the embedded pattern matches what isRoutableAxon rejects",
     );
     assert.equal(new RegExp(embedded).test("152.53.149.254"), false);
+  });
+});
+
+describe("IPv6 axons — the port is after the LAST colon", () => {
+  // Measured 2026-08-16: three announcements are IPv6 (SN12, SN51, SN56), e.g.
+  // `2607:fb90:2832:452:9369:e6b4:10f3:1036:10000`. Splitting on the FIRST
+  // colon read `2607` as the address and `fb90` as the port. They classified
+  // correctly only by accident -- `2607` matches no IPv4 unroutable prefix --
+  // and an IPv6 loopback would have read as routable.
+
+  test("splitAxon takes the port from the end, not position two", () => {
+    assert.deepEqual(splitAxon("1.2.3.4:8091"), {
+      address: "1.2.3.4",
+      port: "8091",
+    });
+    assert.deepEqual(splitAxon("2607:fb90:1036:10000"), {
+      address: "2607:fb90:1036",
+      port: "10000",
+    });
+    assert.deepEqual(splitAxon("nocolon"), { address: "nocolon", port: "" });
+  });
+
+  test("the real production IPv6 announcements are routable", () => {
+    for (const axon of [
+      "2607:fb90:2832:452:9369:e6b4:10f3:1036:10000",
+      "2607:fb92:480:5ab2:61d1:e593:914b:538d:8001",
+      "2605:a141:2310:2189::1:20004",
+    ]) {
+      assert.equal(isRoutableAxon(axon), true, `${axon} is public IPv6`);
+    }
+  });
+
+  test("IPv6 loopback, link-local and unique-local are NOT routable", () => {
+    // The cases the first-colon split got wrong: each would have been read as
+    // its leading hex group and passed the IPv4 prefix test.
+    for (const axon of [
+      "::1:8091", // loopback
+      "fe80::1:8091", // link-local
+      "fc00::1:8091", // unique-local
+      "fd12:3456::1:8091", // unique-local, fd half of fc00::/7
+      "FE80::1:8091", // case-insensitive
+    ]) {
+      assert.equal(isRoutableAxon(axon), false, `${axon} must not be routable`);
+    }
+  });
+
+  test("a documentation IPv6 prefix is still routable — we only claim what we test", () => {
+    // 2001:db8::/32 is RFC 3849 documentation space. It is NOT in the pattern,
+    // and this pins that as a deliberate limit rather than an oversight: no
+    // announcement in the measured window uses it, and claiming coverage we
+    // have not measured would be worse than the gap.
+    assert.equal(isRoutableAxon("2001:db8::1:8091"), true);
+  });
+
+  test("the SQL splits on the last colon and branches by family", () => {
+    assert.match(ROUTABLE_AXON_SQL, /strpos\(reverse\(axon\), ':'\)/);
+    assert.match(ROUTABLE_AXON_SQL, /LIKE '%:%'/);
+    assert.match(ROUTABLE_AXON_SQL, /CASE WHEN/);
   });
 });

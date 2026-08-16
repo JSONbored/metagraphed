@@ -26,17 +26,56 @@
 export const UNROUTABLE_AXON_PATTERN =
   "^(0\\.|10\\.|127\\.|192\\.168\\.|192\\.0\\.2\\.|198\\.51\\.100\\.|203\\.0\\.113\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)";
 
-/** SQL fragment: the axon is present AND points somewhere routable. */
-export const ROUTABLE_AXON_SQL = `axon IS NOT NULL AND axon <> '' AND split_part(axon, ':', 1) !~ '${UNROUTABLE_AXON_PATTERN}'`;
+/**
+ * IPv6 ranges nobody can route to: unspecified `::`, loopback `::1`,
+ * unique-local `fc00::/7`, and link-local `fe80::/10`.
+ *
+ * Separate from the IPv4 pattern because the two are different address
+ * families, not different spellings -- `10.` and `10::` share a prefix and
+ * mean unrelated things.
+ */
+export const UNROUTABLE_AXON_V6_PATTERN =
+  "^(::$|::1$|[fF][cCdD]|[fF][eE][89aAbB])";
 
-/** The same rule in JS, for callers holding a row rather than writing SQL. */
+/** SQL fragment: the axon is present AND points somewhere routable. */
+/** SQL fragment: the axon is present AND points somewhere routable.
+ *
+ * `left(axon, length(axon) - strpos(reverse(axon), ':'))` is "everything before
+ * the LAST colon" -- the same address/port split `splitAxon` does, so an IPv6
+ * announcement is not read as its first hex group. */
+export const AXON_ADDRESS_SQL =
+  "left(axon, length(axon) - strpos(reverse(axon), ':'))";
+export const ROUTABLE_AXON_SQL =
+  `axon IS NOT NULL AND axon <> '' AND ${AXON_ADDRESS_SQL} <> '' AND ` +
+  `CASE WHEN ${AXON_ADDRESS_SQL} LIKE '%:%' ` +
+  `THEN ${AXON_ADDRESS_SQL} !~ '${UNROUTABLE_AXON_V6_PATTERN}' ` +
+  `ELSE ${AXON_ADDRESS_SQL} !~ '${UNROUTABLE_AXON_PATTERN}' END`;
+
+/**
+ * Split an announced axon into address and port.
+ *
+ * THE PORT IS AFTER THE LAST COLON, not the second. IPv4 makes the two look
+ * identical (`1.2.3.4:8091`), which is why the naive split survived review --
+ * but an IPv6 axon is `2607:fb90:...:1036:10000`, where taking component two
+ * yields `fb90` as the port and `2607` as the address. Measured 2026-08-16,
+ * three announcements on SN12/SN51/SN56 are IPv6 and were being parsed that
+ * way; they classified correctly only by accident, because `2607` matches no
+ * IPv4 unroutable prefix. An IPv6 loopback would have read as routable.
+ */
+export function splitAxon(axon: string): { address: string; port: string } {
+  const cut = axon.lastIndexOf(":");
+  if (cut < 0) return { address: axon, port: "" };
+  return { address: axon.slice(0, cut), port: axon.slice(cut + 1) };
+}
+
+/** The same rule as the SQL, in JS, for callers holding a row. */
 export function isRoutableAxon(axon: unknown): boolean {
   if (typeof axon !== "string" || axon === "") return false;
-  // `split(":", 1).join("")` rather than indexing: `split` always yields at
-  // least one element, so a `?? ""` guard on `[0]` would be a branch nothing
-  // could reach, and a test written to reach it could only assert the code's
-  // own assumption back at it.
-  const ip = axon.split(":", 1).join("");
-  if (ip === "") return false;
-  return !new RegExp(UNROUTABLE_AXON_PATTERN).test(ip);
+  const { address } = splitAxon(axon);
+  if (address === "") return false;
+  // An address carrying a colon is IPv6 and gets the IPv6 rules; applying the
+  // IPv4 prefixes to it would compare a hex group against a dotted quad.
+  return address.includes(":")
+    ? !new RegExp(UNROUTABLE_AXON_V6_PATTERN).test(address)
+    : !new RegExp(UNROUTABLE_AXON_PATTERN).test(address);
 }
