@@ -952,6 +952,7 @@ import {
   SURFACE_HISTORY_TABLES,
   TAO_USD_TABLES,
 } from "./read-store-tables.ts";
+import { loadAxonRemovals } from "./axon-removals-loader.ts";
 
 type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -8028,7 +8029,7 @@ const rootValue = {
 
   async chain_axon_removals(
     { window, limit }: QueryChain_Axon_RemovalsArgs,
-    _context: GqlContext,
+    context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
     if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, requestedWindow)) {
@@ -8049,11 +8050,16 @@ const rootValue = {
     // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
     // schema-stable zeroed card contract REST's handleChainAxonRemovals uses,
     // never a GraphQL error.
-    const data =
-      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-      // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-      // resolved to null before it could touch DATA_API.
-      buildChainAxonRemovals([], { window: requestedWindow, limit: safeLimit });
+    // DERIVED FROM STATE (#10805), the same read REST and MCP make, so the
+    // three surfaces cannot drift. A null rollup is "no store", not "no
+    // removals" -- the builder keeps its degraded empty for that.
+    const rollup = await loadAxonRemovals(context.env);
+    const data = buildChainAxonRemovals(rollup?.subnets ?? [], {
+      window: requestedWindow,
+      limit: safeLimit,
+      networkDistinct: rollup?.network,
+      derivation: rollup?.derivation,
+    });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,

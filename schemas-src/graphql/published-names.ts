@@ -216,6 +216,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetAlphaVolumeArtifactTaoUsd: "TaoUsdConversion",
   ChainAxonRemovalsArtifact: "ChainAxonRemovals",
   ChainAxonRemovalsArtifactNetwork: "ChainAxonRemovalsNetwork",
+  ChainAxonRemovalsArtifactDerivation: "ChainAxonRemovalsDerivation",
   ChainAxonRemovalsArtifactSubnets: "ChainAxonRemovalsSubnet",
   ChainCallsArtifact: "ChainCalls",
   ChainCallsArtifactCalls: "ChainCall",

@@ -35,12 +35,19 @@ import { readStore } from "./read-store.ts";
 /** Days of `neuron_daily` to pull. The widest window any route offers. */
 export const AXON_REMOVALS_LOOKBACK_DAYS = 30;
 
-/** One subnet's rollup, in the shape `buildChainAxonRemovals` already takes. */
-export interface AxonRemovalSubnetRow {
+/**
+ * One subnet's rollup, in the shape `buildChainAxonRemovals` already takes.
+ *
+ * A `type` and not an `interface`: the builders take `Record<string, unknown>[]`,
+ * and an interface has no implicit index signature, so naming this as one would
+ * oblige every call site to assert. Same reason as ArtifactSizeEntry in
+ * scripts/build-artifacts.ts.
+ */
+export type AxonRemovalSubnetRow = {
   netuid: number;
   distinct_removers: number;
   removals: number;
-}
+};
 
 export interface AxonRemovalsRollup {
   subnets: AxonRemovalSubnetRow[];

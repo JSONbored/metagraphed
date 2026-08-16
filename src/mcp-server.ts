@@ -1815,6 +1815,7 @@ import {
   UPTIME_DAILY_TABLES,
 } from "./read-store-tables.ts";
 import { COVERAGE_DEPTH_SEVERITIES as ROUTE_COVERAGE_DEPTH_SEVERITIES } from "../schemas-src/routes/coverage.ts";
+import { loadAxonRemovals } from "./axon-removals-loader.ts";
 
 type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -7399,7 +7400,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetChainAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetChainAxonRemovalsInputSchema>,
-      _ctx: McpCtx,
+      ctx: McpCtx,
     ) {
       const window = requireWindowArgument(
         args,
@@ -7411,15 +7412,17 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
         CHAIN_AXON_REMOVALS_LIMIT_MAX,
       );
-      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a store query here would
-      // always miss (#6013).
-      return (
-        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
-        // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
-        // resolved to null before it could touch DATA_API.
-        buildChainAxonRemovals([], { window, limit })
-      );
+      // DERIVED FROM STATE (#10805): same read as REST and GraphQL, so the
+      // three surfaces cannot drift. A null rollup means no store was read,
+      // not that nothing was removed -- the builder keeps its degraded empty
+      // for that case and only that case.
+      const rollup = await loadAxonRemovals(ctx.env);
+      return buildChainAxonRemovals(rollup?.subnets ?? [], {
+        window,
+        limit,
+        networkDistinct: rollup?.network,
+        derivation: rollup?.derivation,
+      });
     },
   },
   {

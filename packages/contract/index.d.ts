@@ -6594,6 +6594,16 @@ export interface components {
         };
         ChainAxonRemovalsArtifact: {
             degraded?: components["schemas"]["DegradedInfo"] | null;
+            derivation?: {
+                /** @description Axon drops attributed to a DEREGISTRATION instead: the slot changed hands, and the incoming miner simply never announced. 93.8% of raw drops measured over 30 days, so a feed that counted them would overstate teardowns roughly 18x and double-report an event /chain/deregistrations already publishes. */
+                excluded_uid_reuse: number;
+                /** @description Days of `neuron_daily` the derivation had available. A removal older than this is outside the window, not absent. */
+                lookback_days: number;
+                /** @constant */
+                method: "axon-state-diff";
+                /** @description Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket. */
+                pending_confirmation: number;
+            };
             /** @description Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard. */
             intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -25813,6 +25823,12 @@ export interface operations {
                      *         "degraded": {
                      *           "detail": "example",
                      *           "reason": "example"
+                     *         },
+                     *         "derivation": {
+                     *           "excluded_uid_reuse": 1,
+                     *           "lookback_days": 1,
+                     *           "method": "axon-state-diff",
+                     *           "pending_confirmation": 1
                      *         },
                      *         "intensity_distribution": {
                      *           "count": 2,

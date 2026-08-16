@@ -532,3 +532,45 @@ describe("chain/axon-removals edge cache", () => {
     assert.equal((await cached.json()).data.subnet_count, 0);
   });
 });
+
+// #10805: the routes answered a confident 0 for their whole life because they
+// filtered for an event the runtime never emits. Now that the removals are
+// derived from state, the builder has to keep two empties apart.
+describe("buildChainAxonRemovals — derived (#10805)", () => {
+  const derivation = {
+    method: "axon-state-diff",
+    lookback_days: 30,
+    excluded_uid_reuse: 1485,
+    pending_confirmation: 0,
+  };
+
+  test("carries the derivation, so a consumer sees what was set aside", () => {
+    const d = buildChainAxonRemovals(
+      [{ netuid: 101, distinct_removers: 40, removals: 75 }],
+      { window: "30d", networkDistinct: { distinct_removers: 40 }, derivation },
+    );
+    assert.deepEqual(d.derivation, derivation);
+    assert.equal(d.subnets[0]!.removals, 75);
+    assert.equal(d.degraded, undefined, "a measured answer is not degraded");
+  });
+
+  test("AN EMPTY MEASUREMENT IS NOT A DEGRADED ONE", () => {
+    // The distinction the whole issue turns on. A store that answered "no
+    // removals" measured something; no store at all did not. The first must
+    // not carry `axon_removals_never_emitted`, or the fix is invisible.
+    const measured = buildChainAxonRemovals([], { window: "30d", derivation });
+    assert.equal(measured.subnet_count, 0);
+    assert.deepEqual(measured.derivation, derivation);
+    assert.equal(
+      "degraded" in measured,
+      false,
+      "the key must be absent, not merely undefined",
+    );
+  });
+
+  test("no derivation means no store was read — the marker stays", () => {
+    const unread = buildChainAxonRemovals([], { window: "30d" });
+    assert.equal(unread.degraded?.reason, "axon_removals_never_emitted");
+    assert.equal(unread.derivation, undefined);
+  });
+});

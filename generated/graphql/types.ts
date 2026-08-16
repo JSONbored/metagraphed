@@ -1063,6 +1063,7 @@ export type ChainAlphaVolumeSubnet = {
 export type ChainAxonRemovals = {
   __typename?: 'ChainAxonRemovals';
   degraded?: Maybe<DegradedInfo>;
+  derivation?: Maybe<ChainAxonRemovalsDerivation>;
   /** Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard. */
   intensity_distribution?: Maybe<IntensityDistribution>;
   /** Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -1072,6 +1073,17 @@ export type ChainAxonRemovals = {
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainAxonRemovalsSubnet>;
   window?: Maybe<Scalars['String']['output']>;
+};
+
+export type ChainAxonRemovalsDerivation = {
+  __typename?: 'ChainAxonRemovalsDerivation';
+  /** Axon drops attributed to a DEREGISTRATION instead: the slot changed hands, and the incoming miner simply never announced. 93.8% of raw drops measured over 30 days, so a feed that counted them would overstate teardowns roughly 18x and double-report an event /chain/deregistrations already publishes. */
+  excluded_uid_reuse: Scalars['Int']['output'];
+  /** Days of `neuron_daily` the derivation had available. A removal older than this is outside the window, not absent. */
+  lookback_days: Scalars['Int']['output'];
+  method: Scalars['String']['output'];
+  /** Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket. */
+  pending_confirmation: Scalars['Int']['output'];
 };
 
 /** Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -8508,6 +8520,7 @@ export type ResolversTypes = ResolversObject<{
   ChainAlphaVolumeNetwork: ResolverTypeWrapper<ChainAlphaVolumeNetwork>;
   ChainAlphaVolumeSubnet: ResolverTypeWrapper<ChainAlphaVolumeSubnet>;
   ChainAxonRemovals: ResolverTypeWrapper<ChainAxonRemovals>;
+  ChainAxonRemovalsDerivation: ResolverTypeWrapper<ChainAxonRemovalsDerivation>;
   ChainAxonRemovalsNetwork: ResolverTypeWrapper<ChainAxonRemovalsNetwork>;
   ChainAxonRemovalsSubnet: ResolverTypeWrapper<ChainAxonRemovalsSubnet>;
   ChainBurn: ResolverTypeWrapper<ChainBurn>;
@@ -8979,6 +8992,7 @@ export type ResolversParentTypes = ResolversObject<{
   ChainAlphaVolumeNetwork: ChainAlphaVolumeNetwork;
   ChainAlphaVolumeSubnet: ChainAlphaVolumeSubnet;
   ChainAxonRemovals: ChainAxonRemovals;
+  ChainAxonRemovalsDerivation: ChainAxonRemovalsDerivation;
   ChainAxonRemovalsNetwork: ChainAxonRemovalsNetwork;
   ChainAxonRemovalsSubnet: ChainAxonRemovalsSubnet;
   ChainBurn: ChainBurn;
@@ -10207,6 +10221,7 @@ export type ChainAlphaVolumeSubnetResolvers<ContextType = GqlContext, ParentType
 
 export type ChainAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovals'] = ResolversParentTypes['ChainAxonRemovals']> = ResolversObject<{
   degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  derivation?: Resolver<Maybe<ResolversTypes['ChainAxonRemovalsDerivation']>, ParentType, ContextType>;
   intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainAxonRemovalsNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -10214,6 +10229,13 @@ export type ChainAxonRemovalsResolvers<ContextType = GqlContext, ParentType exte
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainAxonRemovalsSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ChainAxonRemovalsDerivationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovalsDerivation'] = ResolversParentTypes['ChainAxonRemovalsDerivation']> = ResolversObject<{
+  excluded_uid_reuse?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  lookback_days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  method?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  pending_confirmation?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ChainAxonRemovalsNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovalsNetwork'] = ResolversParentTypes['ChainAxonRemovalsNetwork']> = ResolversObject<{
@@ -14694,6 +14716,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainAlphaVolumeNetwork?: ChainAlphaVolumeNetworkResolvers<ContextType>;
   ChainAlphaVolumeSubnet?: ChainAlphaVolumeSubnetResolvers<ContextType>;
   ChainAxonRemovals?: ChainAxonRemovalsResolvers<ContextType>;
+  ChainAxonRemovalsDerivation?: ChainAxonRemovalsDerivationResolvers<ContextType>;
   ChainAxonRemovalsNetwork?: ChainAxonRemovalsNetworkResolvers<ContextType>;
   ChainAxonRemovalsSubnet?: ChainAxonRemovalsSubnetResolvers<ContextType>;
   ChainBurn?: ChainBurnResolvers<ContextType>;

@@ -2546,6 +2546,12 @@
               "detail": "example",
               "reason": "example"
             },
+            "derivation": {
+              "excluded_uid_reuse": 1,
+              "lookback_days": 1,
+              "method": "axon-state-diff",
+              "pending_confirmation": 1
+            },
             "intensity_distribution": {
               "count": 2,
               "max": 15,
@@ -22178,6 +22184,40 @@
                 "type": "null"
               }
             ]
+          },
+          "derivation": {
+            "additionalProperties": false,
+            "properties": {
+              "excluded_uid_reuse": {
+                "description": "Axon drops attributed to a DEREGISTRATION instead: the slot changed hands, and the incoming miner simply never announced. 93.8% of raw drops measured over 30 days, so a feed that counted them would overstate teardowns roughly 18x and double-report an event /chain/deregistrations already publishes.",
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "lookback_days": {
+                "description": "Days of `neuron_daily` the derivation had available. A removal older than this is outside the window, not absent.",
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "method": {
+                "const": "axon-state-diff",
+                "type": "string"
+              },
+              "pending_confirmation": {
+                "description": "Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket.",
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "method",
+              "lookback_days",
+              "excluded_uid_reuse",
+              "pending_confirmation"
+            ],
+            "type": "object"
           },
           "intensity_distribution": {
             "anyOf": [

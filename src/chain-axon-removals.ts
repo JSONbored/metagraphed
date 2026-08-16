@@ -15,6 +15,7 @@ import {
   AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
   type EventStreamDegraded,
 } from "./uncurated-event-streams.ts";
+import type { AxonRemovalDerivation } from "./axon-removal-derivation.ts";
 
 export const CHAIN_AXON_REMOVALS_LIMIT_DEFAULT = 20;
 export const CHAIN_AXON_REMOVALS_LIMIT_MAX = 100;
@@ -130,6 +131,13 @@ export interface ChainAxonRemovalsResult {
   network: ChainAxonRemovalsNetwork;
   intensity_distribution: IntensityDistribution | null;
   subnets: ChainAxonRemovalsSubnet[];
+  /**
+   * How the removals were derived, and what the derivation set aside (#10805).
+   *
+   * Present whenever a store answered. Absent alongside `degraded` on the
+   * empty answer, because there is nothing to describe the derivation OF.
+   */
+  derivation?: AxonRemovalDerivation;
   /** Present only on the empty answer — see the `empty` literal below. */
   degraded?: EventStreamDegraded;
 }
@@ -147,6 +155,7 @@ export function buildChainAxonRemovals(
     window,
     limit = CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
     networkDistinct,
+    derivation,
   }: {
     window?: string | null;
     limit?: number;
@@ -154,6 +163,7 @@ export function buildChainAxonRemovals(
       distinct_removers?: unknown;
       newest_observed?: unknown;
     };
+    derivation?: AxonRemovalDerivation;
   } = {},
 ): ChainAxonRemovalsResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
@@ -178,7 +188,17 @@ export function buildChainAxonRemovals(
     // REST, MCP and the GraphQL resolver all inherit it.
     degraded: { reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED },
   };
-  if (list.length === 0) return empty;
+  // A store that answered with no removals is a MEASUREMENT; no store at all
+  // is not. The caller passes `derivation` only in the first case, so it is
+  // what separates "we looked and found none" from "we could not look".
+  if (list.length === 0) {
+    if (!derivation) return empty;
+    // Destructured out rather than set to `undefined`: an explicit undefined
+    // leaves the KEY present, which `deepEqual` and a strict schema both see
+    // differently from an absent one.
+    const { degraded: _neverEmitted, ...measured } = empty;
+    return { ...measured, derivation };
+  }
 
   // Merge by netuid so a malformed direct caller passing duplicate rows for a subnet sums rather
   // than double-counting (the SQL loader GROUPs BY netuid, so production rows are unique per
@@ -234,5 +254,6 @@ export function buildChainAxonRemovals(
       subnets.map((subnet) => subnet.removals_per_remover),
     ),
     subnets: subnets.slice(0, normalizedLimit),
+    ...(derivation ? { derivation } : {}),
   };
 }

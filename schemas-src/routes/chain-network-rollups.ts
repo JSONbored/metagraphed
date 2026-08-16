@@ -27,6 +27,38 @@ export const IntensityDistributionSchema = distributionStatsSchema(
   "A count and the spread of a per-subnet intensity: mean, min, max, and the 25th/50th/75th/90th percentiles. WHAT is being counted is stated by the field carrying this block, since the same summary describes registrations per hotkey, announcements per server, and transfers per sender alike.",
 );
 
+/**
+ * How an axon-removal answer was derived, and what the derivation set aside.
+ *
+ * `AxonInfoRemoved` is emitted zero times by the Subtensor runtime, so these
+ * routes are derived from the daily `neuron_daily.axon` state instead: a
+ * non-null axon becoming null on a slot whose hotkey did not change, confirmed
+ * by a second absent reading (#10805).
+ */
+export const AxonRemovalDerivationSchema = z
+  .object({
+    method: z.literal("axon-state-diff"),
+    lookback_days: z
+      .int()
+      .min(1)
+      .describe(
+        "Days of `neuron_daily` the derivation had available. A removal older than this is outside the window, not absent.",
+      ),
+    excluded_uid_reuse: z
+      .int()
+      .min(0)
+      .describe(
+        "Axon drops attributed to a DEREGISTRATION instead: the slot changed hands, and the incoming miner simply never announced. 93.8% of raw drops measured over 30 days, so a feed that counted them would overstate teardowns roughly 18x and double-report an event /chain/deregistrations already publishes.",
+      ),
+    pending_confirmation: z
+      .int()
+      .min(0)
+      .describe(
+        "Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket.",
+      ),
+  })
+  .strict();
+
 export const ChainAxonRemovalsArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -65,8 +97,12 @@ export const ChainAxonRemovalsArtifactSchema = z
           "One subnet's axon-removal activity in the window, ranked by removals.",
         ),
     ),
-    // #9307: AxonInfoRemoved has never been emitted, so the empty answer this
-    // route can only ever give is not a measurement.
+    derivation: AxonRemovalDerivationSchema.optional(),
+    // #9307/#10805: `AxonInfoRemoved` is never emitted, so this route once had
+    // only one answer and it was not a measurement. Now that removals are
+    // DERIVED from `neuron_daily` state, this marker means only "no store was
+    // read" -- an empty answer carrying `derivation` was measured, and does
+    // not carry this.
     degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
