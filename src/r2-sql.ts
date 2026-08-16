@@ -41,6 +41,7 @@ import { registerModuleStateReset } from "./module-state-registry.ts";
 import { LAKEHOUSE_ROW_SCHEMAS } from "../schemas-src/lakehouse.ts";
 import { LAKEHOUSE_NAMESPACES } from "./chain-network.ts";
 import { R2SqlBodySchema } from "../schemas-src/r2-sql-envelope.ts";
+import type { R2SqlMetrics } from "../schemas-src/r2-sql-envelope.ts";
 
 /** Personal/API token with R2 SQL read access (wrangler secret). */
 /**
@@ -317,6 +318,28 @@ export interface R2SqlDeps {
    * Optional and side-effect-only, so no existing caller changes behaviour.
    */
   onError?: (detail: string) => void;
+  /**
+   * Called with what the query COST, on every successful read.
+   *
+   * The engine reports `bytes_scanned` / `files_scanned` / `cache_hits` in its
+   * envelope and this module has always discarded them. That is why every
+   * latency issue in #10312 is argued in wall-clock: measured 2026-08-16, one
+   * query against one subject ran 2.00s and 31.61s in the same session -- a
+   * 15.8x spread, wider than the 9.4x between the shapes being compared. Scan
+   * cost does not move like that, so it is the only figure a budget can be set
+   * against.
+   *
+   * A HOOK rather than a telemetry call, deliberately. A usage event per read
+   * would multiply billable volume on a product this repo has already been
+   * over-billed by (#10603), and most reads are cheap and uninteresting. The
+   * caller decides what is worth recording; `scripts/check-lakehouse-scan-cost.ts`
+   * is the first one that does.
+   *
+   * Optional and side-effect-only, so no existing caller changes behaviour, and
+   * a throw here is swallowed for the same reason `onError`'s is: reporting must
+   * never turn an answered query into a failed one.
+   */
+  onMetrics?: (metrics: R2SqlMetrics, queryKind: string) => void;
   /**
    * The row schema to VALIDATE against, rather than cast to.
    *
@@ -825,6 +848,15 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
       throw new Error(
         `r2 sql: ${first?.message ?? "query failed"}${first?.code ? ` (${first.code})` : ""}`,
       );
+    }
+    const metrics = body?.result?.metrics;
+    if (metrics && deps.onMetrics) {
+      try {
+        deps.onMetrics(metrics, r2SqlQueryKind(sql));
+      } catch {
+        // A caller's own accounting must never turn an answered query into a
+        // failed one -- the same rule `onError` follows above.
+      }
     }
     const rows = body?.result?.rows;
     // A successful query with no rows is a legitimate answer (no such block),

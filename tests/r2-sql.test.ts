@@ -61,6 +61,122 @@ function jsonFetch(body: unknown, _ok = true, status = 200) {
   return { impl, calls };
 }
 
+describe("the engine's own scan metrics (#11420)", () => {
+  const noCapture = { recordException: (async () => true) as never };
+
+  /** The decline path logs by design; this keeps the suite output readable. */
+  async function withoutConsoleError<T>(run: () => Promise<T>): Promise<T> {
+    const spy = console.error;
+    console.error = () => {};
+    try {
+      return await run();
+    } finally {
+      console.error = spy;
+    }
+  }
+  const METRICS = {
+    bytes_scanned: 54_240,
+    files_scanned: 20,
+    r2_requests_count: 13,
+    cache_hits: 12,
+  };
+
+  test("onMetrics receives what the query COST, with its table attribution", async () => {
+    // The block the engine has always returned and this module always dropped.
+    // Wall-clock cannot attribute a lakehouse read -- measured 2026-08-16, one
+    // query against one subject ran 2.00s and 31.61s in the same session --
+    // and scan cost does not move like that.
+    const { impl } = jsonFetch({
+      success: true,
+      result: { rows: [{ n: 1 }], metrics: METRICS },
+    });
+    const seen: { metrics: unknown; kind: string }[] = [];
+    const rows = await r2SqlQuery(
+      mockEnv(TOKEN),
+      "SELECT count(*) AS n FROM chain.account_events",
+      {
+        fetch: impl,
+        onMetrics: (metrics, kind) => seen.push({ metrics, kind }),
+        ...noCapture,
+      },
+    );
+    assert.deepEqual(rows, [{ n: 1 }]);
+    assert.equal(seen.length, 1);
+    assert.deepEqual(seen[0]!.metrics, METRICS);
+    // The same attribution the failure path already carries, so a cost can be
+    // charged to a table rather than to "some query".
+    assert.equal(seen[0]!.kind, "chain.account_events");
+  });
+
+  test("an unknown metric survives, because the envelope is Cloudflare's", async () => {
+    // `.loose()`: a metric they add must reach the caller rather than being
+    // stripped by our schema, which is the whole reason this block is parsed
+    // rather than asserted.
+    const { impl } = jsonFetch({
+      success: true,
+      result: { rows: [], metrics: { ...METRICS, rows_produced: 7 } },
+    });
+    const seen: Record<string, unknown>[] = [];
+    await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+      fetch: impl,
+      onMetrics: (metrics) => seen.push(metrics),
+      ...noCapture,
+    });
+    assert.equal(seen[0]!.rows_produced, 7);
+  });
+
+  test("a response with NO metrics block does not call the hook", async () => {
+    // Absence is not zero. Reporting `bytes_scanned: 0` for a response that
+    // never carried the field would put a free query in the report, which is
+    // the confident-zero mistake in a different costume.
+    const { impl } = jsonFetch({ success: true, result: { rows: [] } });
+    let calls = 0;
+    await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+      fetch: impl,
+      onMetrics: () => (calls += 1),
+      ...noCapture,
+    });
+    assert.equal(calls, 0);
+  });
+
+  test("a throwing onMetrics never turns an answered query into a failed one", async () => {
+    // The rule `onError` already follows: a caller's own accounting must not
+    // cost the caller its rows.
+    const { impl } = jsonFetch({
+      success: true,
+      result: { rows: [{ n: 1 }], metrics: METRICS },
+    });
+    const rows = await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+      fetch: impl,
+      onMetrics: () => {
+        throw new Error("the caller's own accounting is broken");
+      },
+      ...noCapture,
+    });
+    assert.deepEqual(rows, [{ n: 1 }], "the answer survives the reporting");
+  });
+
+  test("a FAILED query reports no cost, because it did not answer", async () => {
+    // Non-vacuity in the other direction: the hook is on the success path, so
+    // a decline cannot contribute a misleading zero-byte row to a cost report.
+    const { impl } = jsonFetch(
+      { success: false, errors: [{ code: 40015, message: "scan budget" }] },
+      false,
+      422,
+    );
+    let calls = 0;
+    const rows = await withoutConsoleError(() =>
+      r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+        fetch: impl,
+        onMetrics: () => (calls += 1),
+        ...noCapture,
+      }),
+    );
+    assert.equal(rows, null);
+    assert.equal(calls, 0);
+  });
+});
+
 describe("isR2SqlConfigured", () => {
   test("requires a non-empty token", () => {
     assert.equal(isR2SqlConfigured(mockEnv(TOKEN)), true);

@@ -22,11 +22,51 @@ import { z } from "zod";
  * three fields this module actually reads, so a body that cannot answer them
  * is a classified decline instead of a silent empty.
  */
+/**
+ * What the engine reports a query COST, on every successful response.
+ *
+ * `bytes_scanned` is the number this repo has been arguing about without ever
+ * reading. #10312's whole latency epic is stated in wall-clock, and wall-clock
+ * cannot attribute it: measured 2026-08-16, the SAME query against the SAME
+ * subject ran 2.00s and 31.61s in one session, a 15.8x spread that exceeded the
+ * 9.4x spread BETWEEN the query shapes being compared. `cache_hits` in this
+ * block is why.
+ *
+ * Scan cost does not move with cache state, so it is the figure a scan budget
+ * can actually be set against -- the same figure
+ * `scripts/validate-r2-sql-scan-bounds.ts` quotes from a manual probe
+ * ("577.5 MB / 3,480 R2 requests" against "0.1 MB / 9") and which nothing has
+ * been able to observe in production since.
+ *
+ * Every field OPTIONAL and the object EXPLICITLY open: this is Cloudflare's
+ * envelope, so a metric they add must reach the caller rather than be stripped
+ * by our schema, and a metric they remove must degrade the observability rather
+ * than fail the read. `.catchall(z.unknown())` is the reviewed spelling of that
+ * -- `.loose()` is the same behaviour without the statement, which is what
+ * `validate:no-passthrough` refuses.
+ */
+const R2SqlMetricsSchema = z
+  .object({
+    /** Bytes the engine read to answer. The cost that matters. */
+    bytes_scanned: z.number().optional(),
+    /** Data files opened. R2 SQL has a real per-file cost -- see the
+     * scan-bounds validator on why bucketing traded bytes for requests badly. */
+    files_scanned: z.number().optional(),
+    /** Requests made against R2 to serve this query. */
+    r2_requests_count: z.number().optional(),
+    /** How many of those were served from cache -- the variance the wall-clock
+     * numbers were measuring. */
+    cache_hits: z.number().optional(),
+  })
+  .catchall(z.unknown());
+
+export type R2SqlMetrics = z.infer<typeof R2SqlMetricsSchema>;
+
 export const R2SqlBodySchema = z.object({
   result: z
     .object({
       rows: z.unknown().optional(),
-      metrics: z.record(z.string(), z.unknown()).optional(),
+      metrics: R2SqlMetricsSchema.optional(),
     })
     .nullish(),
   success: z.boolean().optional(),
