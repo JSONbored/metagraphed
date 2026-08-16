@@ -1926,10 +1926,22 @@ CREATE INDEX idx_cat_owner_ss58_active ON public.chain_alert_triggers USING btre
 CREATE INDEX idx_chain_concentration_daily_day ON public.chain_concentration_daily USING btree (day DESC);
 
 --
+-- Name: idx_chain_detail_account_events_coldkey_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chain_detail_account_events_coldkey_observed ON public.chain_detail_account_events USING btree (coldkey, observed_at DESC NULLS LAST);
+
+--
 -- Name: idx_chain_detail_account_events_extrinsic; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_chain_detail_account_events_extrinsic ON public.chain_detail_account_events USING btree (block_number, extrinsic_index);
+
+--
+-- Name: idx_chain_detail_account_events_hotkey_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chain_detail_account_events_hotkey_observed ON public.chain_detail_account_events USING btree (hotkey, observed_at DESC NULLS LAST);
 
 --
 -- Name: idx_chain_detail_account_events_observed; Type: INDEX; Schema: public; Owner: -
