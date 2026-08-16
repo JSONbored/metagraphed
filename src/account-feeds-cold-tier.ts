@@ -1054,6 +1054,57 @@ async function headProbe(
   return mergeNewestEvents(published, head, limit);
 }
 
+/**
+ * The feed for an account the projection HAS, in two bounded reads.
+ *
+ * THE CASE THAT IS ACTUALLY IN PRODUCTION. `headProbe` above needs `recent` --
+ * the published event map from metagraphed-infra#575 -- and no generation
+ * carries one yet: measured 2026-08-16, the live pointer publishes no
+ * `recent_limit` and shard 12350 of generation 20260815T062657Z holds 43
+ * accounts, all groups-only. So `readRecent` declines for EVERY account and
+ * every present account fell through to the unbounded lifetime scan, which is
+ * the 15s abort behind the 503 on /accounts/{ss58}.
+ *
+ * The groups alone are enough to bound it. They are a lifetime aggregate, so
+ * `[firstMs, lastMs]` provably contains every event at or before the fold, and
+ * `foldFloorMs` is where the fold stops -- the two ranges MEET, so together
+ * they cover the account's whole history with nothing outside them.
+ *
+ * ABOVE THE FOLD FIRST, and short-circuiting, because that window is small (one
+ * fold interval) and an account with `limit` events in it needs no second read
+ * at all -- those ARE the newest. Only an account quieter than that pays for
+ * the second query, and that one is bounded to its own active span instead of
+ * to all of time.
+ */
+async function spanProbe(
+  env: R2SqlEnv | null | undefined,
+  options: {
+    query: R2SqlReader;
+    where: string;
+    span: { firstMs: number; lastMs: number; foldFloorMs: number };
+    limit: number;
+  },
+): Promise<Record<string, unknown>[] | null> {
+  const { query, where, span, limit } = options;
+  const select = `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} `;
+  const above = await query(
+    env,
+    `${select}AND observed_at >= ${Math.trunc(span.foldFloorMs)} ${FEED_ORDER} LIMIT ${limit}`,
+  );
+  if (!above) return null;
+  if (above.length >= limit) return above.slice(0, limit);
+  // The folded remainder, bounded on BOTH sides by where the groups say this
+  // account's events are. `lastMs` is at or below the fold edge by
+  // construction, so this can never double-count a row the probe above found.
+  const folded = await query(
+    env,
+    `${select}AND observed_at >= ${Math.trunc(span.firstMs)} ` +
+      `AND observed_at <= ${Math.trunc(span.lastMs)} ${FEED_ORDER} LIMIT ${limit}`,
+  );
+  if (!folded) return null;
+  return mergeNewestEvents(above, folded, limit);
+}
+
 export async function loadAccountSummaryColdTier(
   env: R2SqlEnv | null | undefined,
   ss58: string,
@@ -1232,14 +1283,23 @@ export async function loadAccountSummaryColdTier(
             limit,
             published: found.recent.rows,
           })
-        : windowedRowRead<AccountEventsRow>(env, {
-            query: (e, sql) => query(e, sql, { onError: track("recent-feed") }),
-            table: "chain.account_events",
-            columns: EVENT_COLUMNS,
-            where: [where],
-            order: ` ${FEED_ORDER}`,
-            need: limit,
-          }),
+        : found?.span
+          ? spanProbe(env, {
+              query: (e, sql) =>
+                query(e, sql, { onError: track("recent-span") }),
+              where,
+              span: found.span,
+              limit,
+            })
+          : windowedRowRead<AccountEventsRow>(env, {
+              query: (e, sql) =>
+                query(e, sql, { onError: track("recent-feed") }),
+              table: "chain.account_events",
+              columns: EVENT_COLUMNS,
+              where: [where],
+              order: ` ${FEED_ORDER}`,
+              need: limit,
+            }),
   ]);
 
   // Either half missing is a decline: a card mixing measured aggregates with a

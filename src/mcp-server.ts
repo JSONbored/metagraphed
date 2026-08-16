@@ -36,6 +36,7 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
+import { GraphqlResponsePayloadSchema } from "../schemas-src/internal-wire.ts";
 import {
   DECLARATIONS_REQUIRING_A_GPU,
   MIN_COMPUTE_SURFACES_REGISTERED,
@@ -4662,19 +4663,10 @@ const GraphqlErrorEntrySchema = z
   .catch({ message: "(no message)" });
 
 // The GraphQL-over-HTTP response envelope, as read back through
-// Response.json(). Deliberately looser than QueryGraphqlOutputSchema (which
-// describes what this TOOL returns): `data` is legitimately `null` on a failed
-// query, which that schema's `.optional()` does not admit, and the error
-// entries are only ever summarized, never re-published. `.catch` keeps a
-// malformed envelope from throwing inside a path whose whole job is reporting
-// that something already went wrong.
-const GraphqlResponsePayloadSchema = z
-  .object({
-    data: z.unknown().optional(),
-    errors: z.array(z.unknown()).catch([]).optional(),
-  })
-  .passthrough()
-  .catch({});
+// The schema lives in schemas-src/internal-wire.ts (#11194's rule). Declared
+// here it also carried `.passthrough()`, which survived only because
+// `validate-no-passthrough` cannot see outside schemas-src; nothing read the
+// undeclared keys, so the move drops it with no change in behaviour.
 
 /** Flatten a GraphQL errors[] into one bounded, human-readable line. */
 function summarizeGraphqlErrors(errors: unknown[]): string {

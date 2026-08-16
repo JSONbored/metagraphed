@@ -146,6 +146,28 @@ export interface AccountSummaryProjectionRead {
    * validated them.
    */
   recent: { rows: AccountSummaryRecentEvent[]; floorMs: number } | null;
+  /**
+   * WHERE THIS ACCOUNT'S FOLDED EVENTS LIE, from the groups' own first/last
+   * observed columns, plus the first millisecond the fold does not cover.
+   *
+   * The weaker half of `recent`, and the one that works TODAY. `recent` needs a
+   * producer publishing the map from metagraphed-infra#575; every generation in
+   * production carries groups and no map, so that leg declines for every
+   * account and the feed goes back to an unbounded lifetime scan. These three
+   * numbers come out of groups the producer has always written.
+   *
+   * WHAT MAKES IT A BOUND rather than a hint: the groups are a LIFETIME
+   * aggregate (the read above declines anything over the scan cap rather than
+   * publishing a windowed subtotal), so every event at or before the fold sits
+   * inside `[firstMs, lastMs]` by construction. Nothing older than `firstMs`
+   * exists to miss, and everything newer than `lastMs` is above `foldFloorMs`.
+   * The two ranges therefore MEET rather than overlapping or leaving a gap --
+   * the same edge argument `recentFloorMs` makes for `recent`.
+   *
+   * Null when the generation left any of the three unreadable: a partial bound
+   * is not a bound, and guessing one would drop events off the end of a feed.
+   */
+  span: { firstMs: number; lastMs: number; foldFloorMs: number } | null;
   /** Never set on a read that FOUND the account. The discriminant against
    * `AccountSummaryProjectionAbsent`, so a caller cannot confuse "here are the
    * account's groups" with "this account has no history before `floorMs`". */
@@ -343,11 +365,47 @@ export async function loadAccountSummaryProjection(
 
   return {
     groups,
+    span: groupsSpan(groups, pointer.through),
     // `scanned` is the account's lifetime event count, already summed above to
     // apply the cap -- reused rather than recomputed so the two decisions
     // cannot disagree about how many events this account has.
     ...readRecent(payload, account, pointer, recentLimit, scanned),
   };
+}
+
+/**
+ * The window the groups prove this account's folded events sit inside.
+ *
+ * ALL THREE OR NOTHING. A first without a last bounds only one end, and a
+ * bound without `foldFloorMs` cannot say where the folded range stops and the
+ * live one begins -- so a caller handed two of the three would have to invent
+ * the missing edge, which is how a feed silently loses its newest or oldest
+ * rows. Returning null sends that caller back to the unbounded read it already
+ * knows how to do.
+ */
+function groupsSpan(
+  groups: readonly Record<string, unknown>[],
+  through: string | undefined,
+): { firstMs: number; lastMs: number; foldFloorMs: number } | null {
+  const foldFloorMs = recentFloorMs(through);
+  if (foldFloorMs === null) return null;
+  // BOTH FINITE BY CONSTRUCTION, so there is no emptiness guard below: the
+  // caller returns before this on `!groups.length`, and every group that
+  // reaches the loop contributes two numbers or returns null. A
+  // `Number.isFinite` check on the result would be a branch nothing can take,
+  // which codecov counts and which reads as safety without being any.
+  let firstMs = Number.POSITIVE_INFINITY;
+  let lastMs = Number.NEGATIVE_INFINITY;
+  for (const group of groups) {
+    const fo = group.fo;
+    const lo = group.lo;
+    // A single null makes the span a guess: this group's events are somewhere
+    // unknown, so the range no longer provably contains every event.
+    if (typeof fo !== "number" || typeof lo !== "number") return null;
+    if (fo < firstMs) firstMs = fo;
+    if (lo > lastMs) lastMs = lo;
+  }
+  return { firstMs, lastMs, foldFloorMs };
 }
 
 /**
