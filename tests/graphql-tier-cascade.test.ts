@@ -261,23 +261,17 @@ const NO_TIER_ANYWHERE: Record<string, string> = {
   // cold tier to hold. An empty answer here is the correct answer, and the
   // question of whether the event will ever fire belongs to the lane, not to
   // wiring on any of these three surfaces.
-  chain_axon_removals:
-    "get_chain_axon_removals falls to buildChainAxonRemovals([]) on MCP too -- no lane exists for it",
-  account_axon_removals:
-    "get_account_axon_removals falls to buildAccountAxonRemovals([]) on MCP too -- no lane exists for it",
-  subnet_axon_removals:
-    "get_subnet_axon_removals falls to buildSubnetAxonRemovals(null) on MCP too -- no lane exists for it",
-  handleChainAxonRemovals:
-    "the REST twin of chain_axon_removals -- same absent lane, same correct empty",
-  handleSubnetAxonRemovals:
-    "the REST twin of subnet_axon_removals -- same absent lane, same correct empty",
-  get_chain_axon_removals:
-    "the MCP twin the GraphQL entry above cites as evidence; naming it here keeps the claim checkable from either side",
-  get_account_axon_removals:
-    "the MCP twin of account_axon_removals -- same absent lane",
-  get_subnet_axon_removals:
-    "the MCP twin of subnet_axon_removals -- same absent lane",
-
+  // ── AXON REMOVALS are no longer here (#10805). Eight entries said the same
+  // thing: no lane exists, so every surface correctly serves an empty. That
+  // was true of the EVENT -- `AxonInfoRemoved` is emitted zero times, genesis
+  // to head -- and it stopped being true of the ANSWER once the removals were
+  // derived from `neuron_daily` state instead. All three scopes now read the
+  // same rollup on all three surfaces.
+  //
+  // This test is why they came out on the same commit that wired them: it
+  // fails on a stale exemption as loudly as on a missing one, so an exemption
+  // here cannot outlive its reason. That is the property an exemption list
+  // usually lacks.
   // ── PROMETHEUS is no longer here (#10322). The entries said all surfaces
   // "agree, which is what makes this a lane question rather than a wiring
   // bug" -- and that was false: /api/v1/chain/prometheus read the same
