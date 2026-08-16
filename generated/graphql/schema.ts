@@ -8652,6 +8652,11 @@ type SubnetOwnershipHistory {
   The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read.
   """
   observed_through: String
+
+  """
+  Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement.
+  """
+  degraded: DegradedInfo
 }
 
 type SubnetOwnershipHistoryArtifactOwnershipChanges {
@@ -8680,6 +8685,11 @@ type SubnetConviction {
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
   """
   field_sources: JSON!
+
+  """
+  Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement.
+  """
+  degraded: DegradedInfo
 }
 
 type SubnetConvictionArtifactLeaderboard {
@@ -8727,6 +8737,11 @@ type SubnetLeaseHistory {
   event_kinds: [String!]!
   count: Int!
   lease_events: [SubnetLeaseHistoryArtifactLeaseEvents!]!
+
+  """
+  Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement.
+  """
+  degraded: DegradedInfo
 }
 
 type SubnetLeaseHistoryArtifactLeaseEvents {

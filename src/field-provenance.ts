@@ -127,11 +127,20 @@ export const STORAGE_ITEM_PATTERN =
  * Labelling any of them `measured` would be a false claim and `reconstructed`
  * an empty one — /api/v1/chain/emission-pipeline draws the same line, mapping
  * its row fields and none of its envelope.
+ *
+ * `degraded` belongs here for the same reason and is the sharpest case of it:
+ * it is a statement that the READ could not be made, so it describes the
+ * response rather than the chain. Calling it `measured` would assert we
+ * observed a failure on chain; calling it `reconstructed` would claim we
+ * derived it from something. Neither is true — it is the absence of a
+ * measurement, which is exactly what a provenance map has nothing to say
+ * about (#11423).
  */
 export const PROVENANCE_EXEMPT_FIELDS = new Set([
   "schema_version",
   "queried_at",
   "netuid",
+  "degraded",
 ]);
 
 /**

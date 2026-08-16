@@ -1748,7 +1748,8 @@ import { isCrowdloanId, loadCrowdloan, loadCrowdloans } from "./crowdloans.ts";
 // through here -- it has one, and this tool answers from it below.
 import {
   coldTierChainEventsPayload,
-  degradedChainEventsPayload,
+  markedChainEventsPayload,
+  TIER_UNAVAILABLE_REASON,
 } from "./chain-events-degraded.ts";
 import {
   answerSubnetOwnershipHistory,
@@ -3410,10 +3411,9 @@ async function loadSubnetEconomics(
 // because an MCP result has no headers to put it in. Null when the path is
 // unmapped, which keeps the throw for anything this map does not cover.
 function degradedDataApiRead(path: string): Row | null {
-  const payload = degradedChainEventsPayload(new URL(`https://d${path}`));
-  return payload
-    ? { ...payload, degraded: { reason: MCP_DEGRADED_REASON } }
-    : null;
+  // The shared marker+map, so this surface, REST and GraphQL cannot disagree
+  // about a proxied route's empty (#11423).
+  return markedChainEventsPayload(path);
 }
 
 // get_subnet_ownership_history, with the lakehouse behind DATA_API.
@@ -16835,7 +16835,6 @@ function scheduleTraceSpan(
  * way -- a false "degraded" makes good data look suspect, where the bug it
  * replaces made missing data look measured.
  */
-export const MCP_DEGRADED_REASON = "tier_unavailable";
 
 /**
  * A `call_module`-scoped request that reached the empty floor did NOT measure
@@ -16957,7 +16956,7 @@ export function markMcpTierDegraded(
   // GraphQL both can -- and every one of those answers is already degraded, so
   // keeping the specific reason never loses the signal this marker exists for.
   if ("degraded" in (data as Row)) return data;
-  return { ...(data as Row), degraded: { reason: MCP_DEGRADED_REASON } };
+  return { ...(data as Row), degraded: { reason: TIER_UNAVAILABLE_REASON } };
 }
 
 async function dispatchTool(

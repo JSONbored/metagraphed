@@ -6251,6 +6251,8 @@ export type SubnetConcentrationHistoryPoint = {
 export type SubnetConviction = {
   __typename?: 'SubnetConviction';
   count: Scalars['Int']['output'];
+  /** Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement. */
+  degraded?: Maybe<DegradedInfo>;
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources: Scalars['JSON']['output'];
   king?: Maybe<Scalars['String']['output']>;
@@ -6847,6 +6849,8 @@ export type SubnetLeaseArtifactLease = {
 export type SubnetLeaseHistory = {
   __typename?: 'SubnetLeaseHistory';
   count: Scalars['Int']['output'];
+  /** Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement. */
+  degraded?: Maybe<DegradedInfo>;
   event_kinds: Array<Scalars['String']['output']>;
   event_pallet: Scalars['String']['output'];
   lease_events: Array<SubnetLeaseHistoryArtifactLeaseEvents>;
@@ -7189,6 +7193,8 @@ export type SubnetOwnerCaptureUid = {
 export type SubnetOwnershipHistory = {
   __typename?: 'SubnetOwnershipHistory';
   count: Scalars['Int']['output'];
+  /** Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement. */
+  degraded?: Maybe<DegradedInfo>;
   /** The chain_events method the authoritative records are decoded from. */
   event_method: Scalars['String']['output'];
   /** The chain_events pallet the authoritative records are decoded from. */
@@ -13031,6 +13037,7 @@ export type SubnetConcentrationHistoryPointResolvers<ContextType = GqlContext, P
 
 export type SubnetConvictionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetConviction'] = ResolversParentTypes['SubnetConviction']> = ResolversObject<{
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   king?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   leaderboard?: Resolver<Array<ResolversTypes['SubnetConvictionArtifactLeaderboard']>, ParentType, ContextType>;
@@ -13475,6 +13482,7 @@ export type SubnetLeaseArtifactLeaseResolvers<ContextType = GqlContext, ParentTy
 
 export type SubnetLeaseHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLeaseHistory'] = ResolversParentTypes['SubnetLeaseHistory']> = ResolversObject<{
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   event_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
   event_pallet?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   lease_events?: Resolver<Array<ResolversTypes['SubnetLeaseHistoryArtifactLeaseEvents']>, ParentType, ContextType>;
@@ -13725,6 +13733,7 @@ export type SubnetOwnerCaptureUidResolvers<ContextType = GqlContext, ParentType 
 
 export type SubnetOwnershipHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnershipHistory'] = ResolversParentTypes['SubnetOwnershipHistory']> = ResolversObject<{
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   event_method?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   event_pallet?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;

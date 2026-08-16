@@ -294,10 +294,13 @@ export function decodeCrowdloan(hex: unknown): Row | null {
  */
 export const CROWDLOANS_FIELD_SOURCES = {
   crowdloan_count: { kind: "reconstructed", storage: null },
-  // Ours too, and about the READ rather than the chain: it reports that the
-  // storage batch did not land, which is exactly what `crowdloan_count: 0`
-  // used to be published as instead (#9898).
-  degraded: { kind: "reconstructed", storage: null },
+  // NO `degraded` ENTRY, and the note that used to sit here is why: it said
+  // the field is "about the READ rather than the chain", then declared it
+  // `reconstructed` anyway because the gate required every served field to
+  // carry provenance. That was an empty claim -- nothing derives a failure to
+  // read. `degraded` is exempt in PROVENANCE_EXEMPT_FIELDS now, alongside the
+  // other response metadata, so every route that gains the marker gets the
+  // same answer instead of each inventing one (#11423).
   next_crowdloan_id: {
     kind: "measured",
     storage: "Crowdloan.NextCrowdloanId",

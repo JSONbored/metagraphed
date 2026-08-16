@@ -5,6 +5,7 @@
 // it replaces. No query params (verified: the DATA_API route reads only the
 // netuid path segment).
 import { z } from "zod";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 import { ChainU64Schema, FieldSourcesSchema } from "../shared.ts";
 
 const SubnetConvictionEntrySchema = z
@@ -29,6 +30,11 @@ export const SubnetConvictionArtifactSchema = z
     // #9108. Every leaderboard row is an extrapolation to `queried_at_block`,
     // not a reading at it -- this is where the response says so.
     field_sources: FieldSourcesSchema,
+    degraded: EventStreamDegradedSchema.nullable()
+      .optional()
+      .describe(
+        "Present ONLY when the tier could not answer. All three surfaces publish the SAME marked empty for this route (#11423); an empty result WITHOUT it is a measurement.",
+      ),
   })
   .strict()
   .describe(

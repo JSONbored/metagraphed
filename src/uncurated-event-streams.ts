@@ -47,6 +47,19 @@ export interface EventStreamDegraded {
  * Spelled once because the same word is the whole contract on eight declining
  * routes and in `UnavailableDegradedSchema`, and three modules had written the
  * bare literal.
+ *
+ * NOT THE ONLY DECLINE REASON THE API PUBLISHES, and the split is by TIER
+ * rather than by accident. This one marks a LAKEHOUSE read that could not be
+ * made, and its routes declare it through `UnavailableDegradedSchema`, whose
+ * enum admits this value alone. `TIER_UNAVAILABLE_REASON`
+ * ("tier_unavailable", `src/chain-events-degraded.ts`) marks the six PROXIED
+ * chain-events routes, whose empties come from that module's own map.
+ *
+ * The two are emitted by disjoint code paths, so no route can publish both,
+ * and neither is a rename of the other -- a consumer reading `degraded.reason`
+ * on a given route sees one stable value. Stated here because two words for
+ * "the read failed" is the kind of thing that grows a third: anything new
+ * belongs to one of these, not beside them.
  */
 export const DEGRADED_UNAVAILABLE = "unavailable";
 
