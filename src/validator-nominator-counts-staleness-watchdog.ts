@@ -159,7 +159,17 @@ export const VALIDATOR_NOMINATOR_COUNTS_EXPECTED_HOTKEYS = 21_547;
  */
 export const VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_RATIO = 0.8;
 
-/** The floor the rule compares against, ~89,796 hotkeys. */
+/**
+ * The floor the rule compares against: 17,238 hotkeys.
+ *
+ * DERIVED -- never restate it from memory. This read "~89,796" until
+ * 2026-08-16, which is 0.8 x 112,245, the floor from before #11166 re-pinned
+ * the expectation to 21,547. An operator triaging a `partial` verdict would
+ * read a covered count near 17,000 against a quoted floor of 89,796 and see an
+ * 81% shortfall -- a catastrophically truncated scan -- when the lane is
+ * sitting on its floor. See derived-floor-comments.test.ts, which now fails on
+ * a mismatch instead of leaving it to be found during an incident.
+ */
 export const VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_ROWS = Math.round(
   VALIDATOR_NOMINATOR_COUNTS_EXPECTED_HOTKEYS *
     VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_RATIO,
