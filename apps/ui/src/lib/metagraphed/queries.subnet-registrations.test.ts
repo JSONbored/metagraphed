@@ -7,6 +7,7 @@ import {
   subnetDeregistrationsQuery,
   subnetRegistrationsQuery,
 } from "./queries";
+import { runQuery } from "./run-query";
 
 vi.mock("./client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./client")>();
@@ -21,22 +22,6 @@ function resolveWith(data: unknown): void {
     meta: {} as ApiResult<unknown>["meta"],
     url: "/api/v1/subnets/7",
   });
-}
-
-// Invoke a queryOptions' queryFn directly (the factory returns a fully-typed
-// options object; each call site keeps its own precise data type).
-function runQuery<
-  O extends {
-    queryKey: readonly unknown[];
-    queryFn?: (context: never) => unknown;
-  },
->(opts: O): ReturnType<NonNullable<O["queryFn"]>> {
-  if (!opts.queryFn) throw new Error("expected a queryFn");
-  return opts.queryFn({
-    signal: new AbortController().signal,
-    queryKey: opts.queryKey,
-    meta: undefined,
-  } as never) as ReturnType<NonNullable<O["queryFn"]>>;
 }
 
 describe("normalizeSubnetRegistrations", () => {

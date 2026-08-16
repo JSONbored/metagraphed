@@ -83,7 +83,7 @@ export function ChainStakeFlowSankey({
         formatValue={(v) => formatTao(v)}
         onNodeSelect={(nodeId) => {
           const target = resolveSankeyNode(nodeId);
-          if (target) navigate({ to: target.to as never, params: target.params as never });
+          if (target) navigate({ to: target.to, params: target.params });
         }}
       />
     </ChartCard>

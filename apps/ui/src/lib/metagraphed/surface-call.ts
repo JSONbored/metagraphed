@@ -1,4 +1,5 @@
 import { API_BASE } from "./config";
+import { readKey, readNumber, readString } from "./read-key";
 
 /**
  * Calls a catalogued subnet surface through the registry's existing guarded
@@ -119,7 +120,56 @@ export async function callSubnetSurface(
     };
   }
 
-  return { ok: true, result: structured as unknown as SurfaceCallResult };
+  const result = surfaceCallResult(structured);
+  if (!result) {
+    return {
+      ok: false,
+      error: {
+        code: "bad_response",
+        message: "The surface answered in a shape this client cannot read.",
+      },
+    };
+  }
+  return { ok: true, result };
+}
+
+/**
+ * The call result, PARSED.
+ *
+ * This is a third-party subnet's answer relayed through the MCP tool, so its
+ * shape is a promise someone else keeps. The assertion this replaces claimed
+ * seven required fields about a `Record<string, unknown>`, and the playground
+ * renders every one of them: a missing `status_code` made `>= 200` false and
+ * painted the response amber as though it had failed, and a missing
+ * `latency_ms` rendered the literal text "undefined ms" next to it.
+ *
+ * `body` stays `unknown` on purpose -- it is whatever the surface returned,
+ * and the renderer stringifies it into a text node rather than trusting it.
+ */
+function surfaceCallResult(structured: Record<string, unknown>): SurfaceCallResult | null {
+  const surface_id = readString(structured, "surface_id");
+  const url = readString(structured, "url");
+  const status_code = readNumber(structured, "status_code");
+  const latency_ms = readNumber(structured, "latency_ms");
+  if (
+    surface_id === undefined ||
+    url === undefined ||
+    status_code === undefined ||
+    latency_ms === undefined
+  ) {
+    return null;
+  }
+  return {
+    surface_id,
+    url,
+    status_code,
+    latency_ms,
+    // Optional in practice: absent is a real answer for a response with no
+    // content type, and `truncated` absent means it was not truncated.
+    content_type: readString(structured, "content_type") ?? null,
+    truncated: readKey(structured, "truncated") === true,
+    body: readKey(structured, "body"),
+  };
 }
 
 /**

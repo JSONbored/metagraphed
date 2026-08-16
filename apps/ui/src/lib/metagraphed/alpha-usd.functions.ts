@@ -30,6 +30,8 @@
 // All three are decided here, as pure functions over what the API already
 // states, so a component cannot render a USD figure by forgetting to ask.
 
+import { readKey, readString } from "./read-key";
+
 /** What a series payload states about its own USD coverage. */
 export interface AlphaUsdSeriesLike {
   /** Oldest point carrying USD, ISO. Null when none does. */
@@ -109,7 +111,16 @@ const asDate = (v: unknown): string | null => {
  * where USD begins, which is exactly the decision #10382 moved server-side so
  * that every surface answers it the same way.
  */
-export function alphaUsdCoverage(series: AlphaUsdSeriesLike | null | undefined): AlphaUsdCoverage {
+/**
+ * `unknown`, because that is what this receives.
+ *
+ * The body already opened with `if (!series || typeof series !== "object")`,
+ * so it was written for arbitrary input -- but the signature promised
+ * `AlphaUsdSeriesLike`, and its own test feeds it `42`, `"x"` and `[]` to
+ * prove the guard works. The test could only do that by asserting, which meant
+ * the guard's real contract lived in the test rather than in the type.
+ */
+export function alphaUsdCoverage(series: unknown): AlphaUsdCoverage {
   const none: AlphaUsdCoverage = {
     available: false,
     unavailableLabel: alphaUsdUnavailableLabel(undefined),
@@ -121,16 +132,23 @@ export function alphaUsdCoverage(series: AlphaUsdSeriesLike | null | undefined):
   };
   if (!series || typeof series !== "object") return none;
 
-  const priced = int(series.priced_candle_count ?? series.priced_day_count);
-  const total = int(series.candle_count ?? series.day_count);
-  const from = asDate(series.usd_available_from_iso) ?? asDate(series.usd_available_from);
+  const priced = int(readKey(series, "priced_candle_count") ?? readKey(series, "priced_day_count"));
+  const total = int(readKey(series, "candle_count") ?? readKey(series, "day_count"));
+  const from =
+    asDate(readKey(series, "usd_available_from_iso")) ??
+    asDate(readKey(series, "usd_available_from"));
+  // Checked, not assumed: alphaUsdUnavailableLabel switches on known reason
+  // strings and falls through to a generic label, so a non-string here would
+  // have been switched on and silently produced the generic message as though
+  // the payload had said nothing at all.
+  const unavailable = readString(series, "usd_unavailable");
 
   // A stated reason wins over any count. A payload that names why it could not
   // price must not be rendered as a series that merely happens to be empty.
-  if (series.usd_unavailable) {
+  if (unavailable) {
     return {
       ...none,
-      unavailableLabel: alphaUsdUnavailableLabel(series.usd_unavailable),
+      unavailableLabel: alphaUsdUnavailableLabel(unavailable),
       totalCount: total,
     };
   }

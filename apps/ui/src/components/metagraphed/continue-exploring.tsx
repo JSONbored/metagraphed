@@ -141,7 +141,7 @@ export function ContinueExploring() {
               <li key={q}>
                 <Link
                   to="/subnets"
-                  search={{ q } as never}
+                  search={{ q }}
                   className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 mg-type-caption text-ink hover:border-accent/40 hover:text-accent transition-colors"
                 >
                   <Search className="size-3 text-ink-muted group-hover:text-accent transition-colors" />

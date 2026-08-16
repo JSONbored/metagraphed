@@ -11,12 +11,12 @@ import { NUMERIC_FIELDS } from "./neuron-table";
  */
 describe("NeuronTable sort-field invariant", () => {
   it("never makes the sponsored-placement pin sortable", () => {
-    expect(NUMERIC_FIELDS.has("featured" as never)).toBe(false);
+    expect(NUMERIC_FIELDS.has("featured")).toBe(false);
   });
 
   it("never makes any other likely sponsor/partnership field sortable", () => {
     for (const field of ["sponsored", "partner", "partnership", "promoted"]) {
-      expect(NUMERIC_FIELDS.has(field as never)).toBe(false);
+      expect(NUMERIC_FIELDS.has(field)).toBe(false);
     }
   });
 
@@ -32,7 +32,7 @@ describe("NeuronTable sort-field invariant", () => {
       "validator_trust",
       "take",
     ]) {
-      expect(NUMERIC_FIELDS.has(field as never)).toBe(true);
+      expect(NUMERIC_FIELDS.has(field)).toBe(true);
     }
   });
 });

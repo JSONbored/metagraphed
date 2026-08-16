@@ -1,7 +1,6 @@
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { StatusPage } from "./-status-page";
 
 // #3977: the probe-history drill-down's date + its nested table controls are
@@ -14,18 +13,18 @@ const SURFACE_SORT_FIELDS = ["netuid", "provider", "kind", "status", "latency_ms
 export type StatusSearch = z.infer<typeof statusSearchSchema>;
 
 export const statusSearchSchema = z.object({
-  date: fallback(z.string(), "").default(""),
-  kind: fallback(z.string(), "").default(""),
-  status: fallback(z.string(), "").default(""),
-  sort: fallback(z.enum(SURFACE_SORT_FIELDS), "status").default("status"),
-  order: fallback(z.enum(["asc", "desc"]), "asc").default("asc"),
+  date: z.string().catch("").default(""),
+  kind: z.string().catch("").default(""),
+  status: z.string().catch("").default(""),
+  sort: z.enum(SURFACE_SORT_FIELDS).catch("status").default("status"),
+  order: z.enum(["asc", "desc"]).catch("asc").default("asc"),
   // #3976: RecentIncidents' 7d/30d window is URL-backed (like /explorer) so a
   // shared /status link restores the same window and back/forward works.
-  window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
+  window: z.enum(["7d", "30d"]).catch("7d").default("7d"),
 });
 
 export const Route = createFileRoute("/status")({
-  validateSearch: zodValidator(statusSearchSchema),
+  validateSearch: statusSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(statusSearchSchema)] },
   head: () => ({
     meta: [

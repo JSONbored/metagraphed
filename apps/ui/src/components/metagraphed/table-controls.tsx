@@ -18,7 +18,14 @@ export function ariaSort(
   return order === "asc" ? "ascending" : "descending";
 }
 
-export function SortHeader({
+/**
+ * `TField` is inferred from the table's own `onSort`, so a `field` that is not
+ * one of that table's sortable columns is a compile error. It used to be
+ * `string` on both, which meant a typo compiled and then did nothing visible:
+ * the router's search schema `.catch()`es an unknown sort back to its default,
+ * so the column simply never sorted and nothing said why.
+ */
+export function SortHeader<TField extends string>({
   label,
   field,
   active,
@@ -27,10 +34,10 @@ export function SortHeader({
   align = "left",
 }: {
   label: string;
-  field: string;
+  field: TField;
   active?: boolean;
   order?: "asc" | "desc";
-  onSort: (field: string) => void;
+  onSort: (field: TField) => void;
   align?: "left" | "right";
 }) {
   const sortHint = active ? `, sorted ${order === "asc" ? "ascending" : "descending"}` : "";

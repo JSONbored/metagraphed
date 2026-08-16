@@ -1,7 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
@@ -24,17 +23,17 @@ const NOMINATOR_ENUMS = QUERY_PARAMETER_ENUMS["/api/v1/validators/{hotkey}/nomin
 const validatorDetailSearchSchema = z.object({
   // #8251: which detail tab is active (Per-subnet performance / Nominators /
   // History) — same `tab` convention subnets.$netuid.tsx uses.
-  tab: fallback(z.string(), "subnets").default("subnets"),
+  tab: z.string().catch("subnets").default("subnets"),
   // The nominators route's own published enums (#10994).
-  window: fallback(z.enum(NOMINATOR_ENUMS.window), "30d").default("30d"),
-  sort: fallback(z.enum(NOMINATOR_ENUMS.sort), "net_staked").default("net_staked"),
-  limit: fallback(z.number().int().min(1).max(100), 20).default(20),
-  offset: fallback(z.number().int().min(0), 0).default(0),
-  coldkey: fallback(z.string(), "").default(""),
+  window: z.enum(NOMINATOR_ENUMS.window).catch("30d").default("30d"),
+  sort: z.enum(NOMINATOR_ENUMS.sort).catch("net_staked").default("net_staked"),
+  limit: z.number().int().min(1).max(100).catch(20).default(20),
+  offset: z.number().int().min(0).catch(0).default(0),
+  coldkey: z.string().catch("").default(""),
 });
 
 export const Route = createFileRoute("/validators/$hotkey")({
-  validateSearch: zodValidator(validatorDetailSearchSchema),
+  validateSearch: validatorDetailSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(validatorDetailSearchSchema)] },
   // #6429: validate the hotkey at the router level, matching blocks.$ref.tsx
   // (#3422) and subnets.$netuid.tsx. parseParams runs before head()/the loader,

@@ -154,14 +154,14 @@ function SchemaDriftDetailHost() {
       onOpenChange={(o) => {
         if (!o) {
           navigate({
-            search: (p: Record<string, unknown>) => ({ ...p, driftDetail: "" }) as never,
+            search: (p: Record<string, unknown>) => ({ ...p, driftDetail: "" }),
             replace: true,
           });
         }
       }}
       onOpenInExplorer={(id) =>
         navigate({
-          search: (p: Record<string, unknown>) => ({ ...p, driftDetail: "", open: id }) as never,
+          search: (p: Record<string, unknown>) => ({ ...p, driftDetail: "", open: id }),
           replace: true,
         })
       }
@@ -346,7 +346,7 @@ function SchemaExplorer() {
   const setSearch = useCallback(
     (patch: Partial<typeof search>) =>
       navigate({
-        search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+        search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
         // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
         resetScroll: false,
         replace: true,
@@ -519,7 +519,7 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
               type="button"
               onClick={() =>
                 navigate({
-                  search: (p: Record<string, unknown>) => ({ ...p, open: "" }) as never,
+                  search: (p: Record<string, unknown>) => ({ ...p, open: "" }),
                   replace: true,
                 })
               }

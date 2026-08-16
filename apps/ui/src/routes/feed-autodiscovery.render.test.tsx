@@ -64,9 +64,27 @@ function alternatesFrom(links: HeadLink[]) {
   return renderAlternates(links).tags;
 }
 
+/**
+ * A route `head()` context, faked down to the fields these heads read.
+ *
+ * `AssetFnContextOptions` carries ten type parameters and a full router match;
+ * a unit process cannot construct one, and does not need to -- these head
+ * functions read `params`, `loaderData` and `match`. So the assertion IS the
+ * mechanism here, the same way it is for a `KVNamespace` fixture.
+ *
+ * What it is not is `as never` scattered across eight call sites. `never`
+ * accepts every value, so it also stopped the compiler checking the fields the
+ * head function DOES read -- and one of these tests deliberately passes
+ * `netuid: "not-a-number"`, which only reads as deliberate when the fake is
+ * named in one place and every call site is otherwise checked.
+ */
+function headContext<TFields extends object>(fields: TFields): never {
+  return fields as unknown as never;
+}
+
 describe("feed autodiscovery in rendered markup (#8703)", () => {
   it("the root layout advertises the registry feed as RSS and Atom", async () => {
-    const head = await RootRoute.options.head?.({} as never);
+    const head = await RootRoute.options.head?.(headContext({}));
     const alternates = alternatesFrom((head?.links ?? []) as HeadLink[]);
     expect(alternates).toHaveLength(2);
     expect(alternates.map((tag) => tag.type).sort()).toEqual([
@@ -79,10 +97,12 @@ describe("feed autodiscovery in rendered markup (#8703)", () => {
   });
 
   it("a subnet page advertises that subnet's own feed", async () => {
-    const head = await SubnetRoute.options.head?.({
-      params: { netuid: 8 },
-      loaderData: { name: "Chutes", health: "healthy" },
-    } as never);
+    const head = await SubnetRoute.options.head?.(
+      headContext({
+        params: { netuid: 8 },
+        loaderData: { name: "Chutes", health: "healthy" },
+      }),
+    );
     const alternates = alternatesFrom((head?.links ?? []) as HeadLink[]);
     expect(alternates).toHaveLength(2);
     for (const tag of alternates) {
@@ -96,10 +116,9 @@ describe("feed autodiscovery in rendered markup (#8703)", () => {
   it("pairs each media type with the matching suffix", async () => {
     // A reader that requests the Atom alternate and receives RSS silently
     // fails to parse it, which looks like an empty feed rather than an error.
-    const head = await SubnetRoute.options.head?.({
-      params: { netuid: 64 },
-      loaderData: null,
-    } as never);
+    const head = await SubnetRoute.options.head?.(
+      headContext({ params: { netuid: 64 }, loaderData: null }),
+    );
     for (const tag of alternatesFrom((head?.links ?? []) as HeadLink[])) {
       const expectedSuffix = tag.type === "application/rss+xml" ? ".rss" : ".atom";
       expect(tag.href?.endsWith(expectedSuffix)).toBe(true);
@@ -109,11 +128,8 @@ describe("feed autodiscovery in rendered markup (#8703)", () => {
   it("emits absolute hrefs a reader can resolve on its own", async () => {
     // A feed reader has no page context, so a site-relative href is unusable.
     const heads = await Promise.all([
-      RootRoute.options.head?.({} as never),
-      SubnetRoute.options.head?.({
-        params: { netuid: 8 },
-        loaderData: null,
-      } as never),
+      RootRoute.options.head?.(headContext({})),
+      SubnetRoute.options.head?.(headContext({ params: { netuid: 8 }, loaderData: null })),
     ]);
     for (const head of heads) {
       for (const tag of alternatesFrom((head?.links ?? []) as HeadLink[])) {
@@ -126,24 +142,22 @@ describe("feed autodiscovery in rendered markup (#8703)", () => {
     // #8624 made these paths return noindex not-found metadata; handing a
     // reader a feed URL for netuid 99999 would be a permanent empty
     // subscription. Both the malformed and the absent case must stay bare.
-    const malformed = await SubnetRoute.options.head?.({
-      params: { netuid: "not-a-number" },
-      loaderData: null,
-    } as never);
+    const malformed = await SubnetRoute.options.head?.(
+      headContext({ params: { netuid: "not-a-number" }, loaderData: null }),
+    );
     expect(alternatesFrom((malformed?.links ?? []) as HeadLink[])).toEqual([]);
 
     // #11204: the absent case is signalled by the MATCH now, not by loaderData.
     // The loader throws notFound() so the SSR request answers 404 rather than
     // 200, which means head() sees a not-found match and no loader data at all.
-    const missing = await SubnetRoute.options.head?.({
-      params: { netuid: 99999 },
-      match: { status: "notFound" },
-    } as never);
+    const missing = await SubnetRoute.options.head?.(
+      headContext({ params: { netuid: 99999 }, match: { status: "notFound" } }),
+    );
     expect(alternatesFrom((missing?.links ?? []) as HeadLink[])).toEqual([]);
   });
 
   it("renders well-formed link markup", async () => {
-    const head = await RootRoute.options.head?.({} as never);
+    const head = await RootRoute.options.head?.(headContext({}));
     const { markup } = renderAlternates((head?.links ?? []) as HeadLink[]);
     expect(markup).toContain('rel="alternate"');
     expect(markup).toContain('type="application/rss+xml"');

@@ -68,7 +68,7 @@ export function ValidatorsPage() {
   });
   const onDensityChange = (d: Density) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }),
       replace: true,
     });
   return (
@@ -144,7 +144,7 @@ function ValidatorsDirectory({
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       // Patch in-page search/filter state only; no scroll-to-top per keystroke (#3691).
       resetScroll: false,
       replace: true,
@@ -152,12 +152,11 @@ function ValidatorsDirectory({
 
   const onSort = (field: string) =>
     navigate({
-      search: (prev: Record<string, unknown>) =>
-        ({
-          ...prev,
-          sort: field,
-          order: prev.sort === field && prev.order === "desc" ? "asc" : "desc",
-        }) as never,
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        sort: field,
+        order: prev.sort === field && prev.order === "desc" ? "asc" : "desc",
+      }),
       replace: true,
     });
 

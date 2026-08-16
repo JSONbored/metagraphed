@@ -206,12 +206,12 @@ export function SubnetsPage() {
     !search.includeRoot;
   const onReset = () =>
     navigate({
-      search: { view: search.view } as never,
+      search: { view: search.view },
       replace: true,
     });
   const setView = (v: ViewMode) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, view: v }),
       replace: true,
     });
   const isMobile = useIsMobile();
@@ -223,17 +223,17 @@ export function SubnetsPage() {
         : "comfortable";
   const setDensity = (d: Density) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }),
       replace: true,
     });
   const setSection = (section: "registry" | "rankings") =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, section }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, section }),
       resetScroll: false,
     });
   const setWindow = (window: "7d" | "30d") =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, window }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, window }),
       replace: true,
       resetScroll: false,
     });
@@ -475,8 +475,10 @@ function SubnetsDomainsRollup() {
               type="button"
               onClick={() =>
                 navigate({
-                  search: (prev: Record<string, unknown>) =>
-                    ({ ...prev, domain: active ? "" : d.domain }) as never,
+                  search: (prev: Record<string, unknown>) => ({
+                    ...prev,
+                    domain: active ? "" : d.domain,
+                  }),
                   replace: true,
                 })
               }
@@ -621,19 +623,18 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
       resetScroll: false,
     });
 
   const onSort = (field: string) =>
     navigate({
-      search: (prev: { sort?: string; order?: "asc" | "desc" }) =>
-        ({
-          ...prev,
-          sort: field,
-          order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
-        }) as never,
+      search: (prev: { sort?: string; order?: "asc" | "desc" }) => ({
+        ...prev,
+        sort: field,
+        order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
+      }),
     });
 
   const filtersActive = !!(
@@ -1024,7 +1025,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           activeFilterCount > 0
             ? () =>
                 navigate({
-                  search: { view: search.view } as never,
+                  search: { view: search.view },
                   replace: true,
                 })
             : undefined
@@ -1119,7 +1120,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
               chipItems.length > 1
                 ? () =>
                     navigate({
-                      search: { view: search.view } as never,
+                      search: { view: search.view },
                       replace: true,
                     })
                 : undefined

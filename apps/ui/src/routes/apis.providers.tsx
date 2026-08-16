@@ -1,7 +1,6 @@
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { RoutePending } from "@/components/metagraphed/primitives";
 import { ProvidersPage } from "./-providers-index-page";
 import { hubMeta } from "@/lib/metagraphed/hub-copy";
@@ -15,16 +14,16 @@ export const providersSearchSchema = z.object({
   // #8303: the audit measured an 11,900px wall of 136 provider cards. The
   // table view already existed -- this was only ever the DEFAULT. Flipped
   // rather than rebuilt; the grid stays one toggle away.
-  view: fallback(z.enum(["grid", "table"]), "table").default("table"),
-  q: fallback(z.string(), "").default(""),
-  kind: fallback(z.string(), "").default(""),
+  view: z.enum(["grid", "table"]).catch("table").default("table"),
+  q: z.string().catch("").default(""),
+  kind: z.string().catch("").default(""),
   // `high` is a nav shortcut for official + provider-claimed (see nav-mega-menu-data).
-  authority: fallback(z.string(), "").default(""),
-  sort: fallback(z.enum(providerSortKeys), "name").default("name"),
+  authority: z.string().catch("").default(""),
+  sort: z.enum(providerSortKeys).catch("name").default("name"),
 });
 
 export const Route = createFileRoute("/apis/providers")({
-  validateSearch: zodValidator(providersSearchSchema),
+  validateSearch: providersSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(providersSearchSchema)] },
   head: () => ({
     meta: hubMeta("/apis/providers"),

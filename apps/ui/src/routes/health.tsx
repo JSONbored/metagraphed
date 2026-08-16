@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { HealthPage } from "./-health-page";
 
 // Mirrors the Health mega-menu ops deep-links (nav-mega-menu-data.ts
@@ -16,14 +15,14 @@ const HEALTH_STATUSES = ["all", "down", "warn", "resolved"] as const;
 export type StateFilter = (typeof HEALTH_STATUSES)[number];
 
 const healthSearchSchema = z.object({
-  view: fallback(z.enum(HEALTH_VIEWS), "").default(""),
-  status: fallback(z.enum(HEALTH_STATUSES), "all").default("all"),
+  view: z.enum(HEALTH_VIEWS).catch("").default(""),
+  status: z.enum(HEALTH_STATUSES).catch("all").default("all"),
 });
 
 export type HealthSearch = z.infer<typeof healthSearchSchema>;
 
 export const Route = createFileRoute("/health")({
-  validateSearch: zodValidator(healthSearchSchema),
+  validateSearch: healthSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(healthSearchSchema)] },
   head: () => ({
     meta: [

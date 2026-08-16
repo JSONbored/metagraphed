@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { fallback } from "@tanstack/zod-adapter";
 import {
   joinEconomics,
   joinHealth,
@@ -189,18 +188,19 @@ describe("stripDefaultSearchParams (#8628)", () => {
   // The middleware's real contract is ({ search, next, meta }) => result,
   // where `next` is the continuation returning the search to filter. Modelled
   // on the implementation in @tanstack/router-core rather than guessed at.
-  const apply = <T extends z.ZodObject>(schema: T, search: object) =>
-    stripDefaultSearchParams(schema)({
-      search,
-      next: (s: object) => s,
-    } as never) as Record<string, unknown>;
+  // `search` is typed as the schema's own output now that the schema infers --
+  // it used to be `object` with the argument asserted past the mismatch, which
+  // meant this helper could hand the middleware a shape the middleware would
+  // never see, and the tests below would still pass.
+  const apply = <T extends z.ZodObject>(schema: T, search: z.output<T>): Record<string, unknown> =>
+    stripDefaultSearchParams(schema)({ search, next: (s) => s });
 
   it("derives the defaults from the schema rather than a hand-written list", () => {
     // The whole point: nothing here names a default. A changed default must
     // change what gets stripped, with no second place to update.
     const schema = z.object({
-      a: fallback(z.string(), "hello").default("hello"),
-      b: fallback(z.number(), 42).default(42),
+      a: z.string().catch("hello").default("hello"),
+      b: z.number().catch(42).default(42),
     });
     expect(apply(schema, { a: "hello", b: 42 })).toEqual({});
   });

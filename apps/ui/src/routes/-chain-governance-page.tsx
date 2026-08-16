@@ -61,7 +61,7 @@ export function ChainGovernancePage() {
 
   const setView = (next: GovernanceView) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, view: next }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, view: next }),
       resetScroll: false,
     });
 

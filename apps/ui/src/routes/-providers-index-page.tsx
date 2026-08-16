@@ -50,6 +50,13 @@ import { providerSortKeys } from "./apis.providers";
 import { ApisTabActions } from "./-apis-hub";
 import { cancelIdle, requestIdle } from "@/lib/metagraphed/idle";
 
+/** The layouts this route offers, and the two its search schema accepts. */
+const PROVIDER_VIEWS = ["table", "grid"] as const;
+
+function isProviderView(value: string): value is (typeof PROVIDER_VIEWS)[number] {
+  return PROVIDER_VIEWS.some((view) => view === value);
+}
+
 export function ProvidersPage() {
   const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
   const navigate = useNavigate({ from: "/apis/providers" });
@@ -57,7 +64,7 @@ export function ProvidersPage() {
   const filtersActive = Boolean(
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
-  const onReset = () => navigate({ search: { view: search.view } as never, replace: true });
+  const onReset = () => navigate({ search: { view: search.view }, replace: true });
   // This page fetches the full provider list once and filters/sorts client-side,
   // so the CSV export hits the backend route directly (full provider snapshot, no
   // client filters) — same shape as endpoints.tsx. Forwarding the page's own
@@ -71,13 +78,21 @@ export function ProvidersPage() {
       <ApisTabActions>
         <ViewModeToggle
           value={view}
-          options={["table", "grid"]}
-          onChange={(v) =>
+          options={[...PROVIDER_VIEWS]}
+          onChange={(v) => {
+            // ui-kit's ViewMode is "table" | "grid" | "matrix"; this toggle is
+            // configured with two of the three, and this route's search schema
+            // accepts exactly those two. The guard cannot fail as configured --
+            // it exists so that adding a third option here without widening the
+            // schema is a no-op rather than a value the schema silently
+            // `.catch()`es back to its default, which looks identical to the
+            // user and leaves a wrong ?view= in a shared URL.
+            if (!isProviderView(v)) return;
             navigate({
-              search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
+              search: (prev) => ({ ...prev, view: v }),
               replace: true,
-            })
-          }
+            });
+          }}
         />
         <ActionBar>
           <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
@@ -170,7 +185,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
   const navigate = useNavigate({ from: "/apis/providers" });
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       replace: true,
     });
 

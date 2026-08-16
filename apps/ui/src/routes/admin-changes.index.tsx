@@ -8,7 +8,7 @@ export const Route = createFileRoute("/admin-changes/")({
   beforeLoad: ({ search }) => {
     throw redirect({
       to: "/chain/governance",
-      search: { ...(search as Record<string, unknown>), view: "admin" } as never,
+      search: { ...(search as Record<string, unknown>), view: "admin" },
       replace: true,
       // 301, not the 307 default: this route is permanently retired. A
       // temporary redirect tells a search engine to keep the old URL and

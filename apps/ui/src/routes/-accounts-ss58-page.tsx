@@ -1894,6 +1894,13 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
 // The route's own published windows (#10994).
 const STAKE_FLOW_WINDOWS = QUERY_PARAMETER_ENUMS["/api/v1/accounts/{ss58}/stake-flow"].window;
 
+/** A predicate, so the check NARROWS. `(X as readonly string[]).includes(v)`
+ *  answers the question and then throws the answer away, leaving `v` a string
+ *  that only an assertion could pass to a union-typed setter. */
+function isStakeFlowWindow(value: string): value is (typeof STAKE_FLOW_WINDOWS)[number] {
+  return STAKE_FLOW_WINDOWS.some((window) => window === value);
+}
+
 // Direction label → tone, reusing the health-ok/warn/muted convention the
 // transfers section uses for sent/received direction. `exiting` and `churning`
 // were amber-500 vs amber-400 -- a shade split the health-* scale doesn't carry,
@@ -1920,9 +1927,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
     <SelectFilter
       label="Window"
       value={window}
-      onChange={(v) =>
-        setWindow((STAKE_FLOW_WINDOWS as readonly string[]).includes(v) ? (v as never) : "30d")
-      }
+      onChange={(v) => setWindow(isStakeFlowWindow(v) ? v : "30d")}
       options={STAKE_FLOW_WINDOWS.map((w) => ({ value: w, label: w }))}
     />
   );
@@ -3131,7 +3136,7 @@ function AccountEventsSection({
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
       resetScroll: false,
     });

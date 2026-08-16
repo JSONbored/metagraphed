@@ -16,7 +16,7 @@ export function EventsPage() {
 
   const onFilter = (patch: { pallet?: string; method?: string; noise?: boolean }) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }),
       resetScroll: false,
     });
 

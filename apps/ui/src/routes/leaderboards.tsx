@@ -1,10 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 
 export const leaderboardsSearchSchema = z.object({
-  window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
+  window: z.enum(["7d", "30d"]).catch("7d").default("7d"),
 });
 
 // #8311: /leaderboards retired into /subnets?section=rankings. Every board
@@ -12,7 +11,7 @@ export const leaderboardsSearchSchema = z.object({
 // separate top-level route. `window` is forwarded so an existing shared link
 // lands on the same range it named.
 export const Route = createFileRoute("/leaderboards")({
-  validateSearch: zodValidator(leaderboardsSearchSchema),
+  validateSearch: leaderboardsSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(leaderboardsSearchSchema)] },
   beforeLoad: ({ search }) => {
     throw redirect({

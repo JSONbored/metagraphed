@@ -1,24 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChainGovernancePage } from "./-chain-governance-page";
 
 // /sudo and /admin-changes shipped BYTE-IDENTICAL search schemas, which is part
 // of why they merge cleanly (#8291). The only addition is `view`, the source
 // toggle — in the URL so either half stays shareable.
 const governanceSearchSchema = z.object({
-  view: fallback(z.enum(["sudo", "admin"]), "sudo").default("sudo"),
-  limit: fallback(z.number().int().min(1).max(100), 50).default(50),
-  offset: fallback(z.number().int().min(0), 0).default(0),
-  call_function: fallback(z.string(), "").default(""),
-  success: fallback(z.enum(["", "true", "false"]), "").default(""),
+  view: z.enum(["sudo", "admin"]).catch("sudo").default("sudo"),
+  limit: z.number().int().min(1).max(100).catch(50).default(50),
+  offset: z.number().int().min(0).catch(0).default(0),
+  call_function: z.string().catch("").default(""),
+  success: z.enum(["", "true", "false"]).catch("").default(""),
 });
 
 export type GovernanceSearch = z.infer<typeof governanceSearchSchema>;
 
 export const Route = createFileRoute("/chain/governance")({
-  validateSearch: zodValidator(governanceSearchSchema),
+  validateSearch: governanceSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(governanceSearchSchema)] },
   head: () => ({
     meta: [

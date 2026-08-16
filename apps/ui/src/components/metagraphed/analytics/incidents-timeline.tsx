@@ -234,9 +234,10 @@ export function IncidentsTimeline({ className }: { className?: string }) {
                   {pool ? (
                     <Link
                       to="/apis/endpoints"
-                      search={(prev: Record<string, unknown>) =>
-                        ({ ...prev, q: pool.name ?? pool.id }) as never
-                      }
+                      search={(prev: Record<string, unknown>) => ({
+                        ...prev,
+                        q: pool.name ?? pool.id,
+                      })}
                       className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
                     >
                       pool · {pool.name ?? pool.id}

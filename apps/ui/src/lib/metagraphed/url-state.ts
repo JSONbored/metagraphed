@@ -1,28 +1,27 @@
 import { z } from "zod";
 import { stripSearchParams } from "@tanstack/react-router";
-import { fallback } from "@tanstack/zod-adapter";
 
 /** Common URL-driven table state schema for /subnets and /surfaces. */
 export const tableSearchSchema = z.object({
-  q: fallback(z.string(), "").default(""),
-  sort: fallback(z.string(), "").default(""),
-  order: fallback(z.enum(["asc", "desc"]), "asc").default("asc"),
+  q: z.string().catch("").default(""),
+  sort: z.string().catch("").default(""),
+  order: z.enum(["asc", "desc"]).catch("asc").default("asc"),
   // Server-driven cursor pagination. `limit` = page size sent to API;
   // `cursor` is an opaque token returned in meta.pagination.next_cursor.
-  limit: fallback(z.number().int().min(5).max(200), 25).default(25),
-  cursor: fallback(z.string(), "").default(""),
+  limit: z.number().int().min(5).max(200).catch(25).default(25),
+  cursor: z.string().catch("").default(""),
   // Legacy client-side pagination kept for back-compat with older callers.
-  page: fallback(z.number().int().min(1), 1).default(1),
-  pageSize: fallback(z.number().int().min(5).max(200), 25).default(25),
-  curation: fallback(z.string(), "").default(""),
-  health: fallback(z.string(), "").default(""),
-  kind: fallback(z.string(), "").default(""),
-  stale: fallback(z.string(), "").default(""),
-  provider: fallback(z.string(), "").default(""),
-  netuid: fallback(z.string(), "").default(""),
+  page: z.number().int().min(1).catch(1).default(1),
+  pageSize: z.number().int().min(5).max(200).catch(25).default(25),
+  curation: z.string().catch("").default(""),
+  health: z.string().catch("").default(""),
+  kind: z.string().catch("").default(""),
+  stale: z.string().catch("").default(""),
+  provider: z.string().catch("").default(""),
+  netuid: z.string().catch("").default(""),
   // #9: agent-catalog capability filters (applied client-side over joined rows).
-  serviceKind: fallback(z.string(), "").default(""),
-  readiness: fallback(z.string(), "").default(""),
+  serviceKind: z.string().catch("").default(""),
+  readiness: z.string().catch("").default(""),
   // #6270: root-subnet inclusion toggle for /subnets, applied client-side over
   // the `subnet_type` the list response already returns. A boolean defaulting
   // to true (the endpoints route's `callable` toggle shape) rather than the ""
@@ -35,18 +34,18 @@ export const tableSearchSchema = z.object({
   // live — ?status=inactive returns 0). A client-side inactive filter could
   // only narrow rows the server already sent, so it would be inert by
   // construction; it belongs here only once that route serves non-active rows.
-  includeRoot: fallback(z.boolean(), true).default(true),
+  includeRoot: z.boolean().catch(true).default(true),
   // #8248: client-only "Watched" quick-tab -- narrows the list to rows
   // starred in the localStorage watchlist (lib/metagraphed/watchlist.ts).
   // Optional/additive so pages that don't offer a watchlist never set it.
-  watched: fallback(z.boolean(), false).default(false),
+  watched: z.boolean().catch(false).default(false),
   // #8248: domains rollup chip filter (subnets belonging to a capability
   // domain from GET /api/v1/domains). Optional/additive, same as `watched`.
-  domain: fallback(z.string(), "").default(""),
+  domain: z.string().catch("").default(""),
   // Layout state for list routes that support multiple views + row density.
   // Additive + optional with safe fallbacks so the toggles persist in the URL.
-  view: fallback(z.enum(["table", "grid", "matrix"]), "table").default("table"),
-  density: fallback(z.enum(["comfortable", "compact"]), "comfortable").default("comfortable"),
+  view: z.enum(["table", "grid", "matrix"]).catch("table").default("table"),
+  density: z.enum(["comfortable", "compact"]).catch("comfortable").default("comfortable"),
 });
 
 /**

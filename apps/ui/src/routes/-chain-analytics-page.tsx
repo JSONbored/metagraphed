@@ -109,7 +109,7 @@ export function ChainAnalyticsPage() {
               aria-selected={w === search.window}
               onClick={() =>
                 navigate({
-                  search: (prev: Record<string, unknown>) => ({ ...prev, window: w }) as never,
+                  search: (prev: Record<string, unknown>) => ({ ...prev, window: w }),
                   resetScroll: false,
                 })
               }

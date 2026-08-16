@@ -137,7 +137,7 @@ function ExtrinsicsTable() {
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }),
       // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
       resetScroll: false,
     });

@@ -646,8 +646,8 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
       onOpenChange(false);
       router.navigate({
         to: target.to,
-        params: target.params as never,
-        search: (target.search ?? {}) as never,
+        params: target.params,
+        search: target.search ?? {},
       });
     },
     [router, onOpenChange, debounced],
@@ -748,14 +748,14 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
     pushRecent(debounced);
     trackAction("filter:subnets");
     onOpenChange(false);
-    navigate({ to: "/subnets", search: { q: debounced } as never });
+    navigate({ to: "/subnets", search: { q: debounced } });
   }, [debounced, navigate, onOpenChange]);
 
   const filterEndpointsByQuery = useCallback(() => {
     pushRecent(debounced);
     trackAction("filter:endpoints");
     onOpenChange(false);
-    navigate({ to: "/apis/endpoints", search: { q: debounced } as never });
+    navigate({ to: "/apis/endpoints", search: { q: debounced } });
   }, [debounced, navigate, onOpenChange]);
 
   return (

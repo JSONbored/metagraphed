@@ -60,7 +60,7 @@ export function NotFoundComponent() {
     if (Number.isFinite(n) && n >= 0 && n <= 1024) {
       router.navigate({ to: "/subnets/$netuid", params: { netuid: n } });
     } else {
-      router.navigate({ to: "/subnets", search: { q: raw } as never });
+      router.navigate({ to: "/subnets", search: { q: raw } });
     }
   };
 

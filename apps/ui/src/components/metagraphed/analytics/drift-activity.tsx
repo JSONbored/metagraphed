@@ -65,13 +65,13 @@ export function DriftActivity({ schemas, fromPath }: Props) {
   const openDrift = (id: string) =>
     navigate({
       to: "/apis/schemas",
-      search: (prev: Record<string, unknown>) => ({ ...prev, driftDetail: id }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, driftDetail: id }),
       replace: true,
     });
   const openInExplorer = (id: string) =>
     navigate({
       to: "/apis/schemas",
-      search: (prev: Record<string, unknown>) => ({ ...prev, open: id, drift: "all" }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, open: id, drift: "all" }),
       replace: true,
     });
 

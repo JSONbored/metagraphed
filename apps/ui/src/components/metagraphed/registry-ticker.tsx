@@ -142,7 +142,7 @@ export function RegistryTicker() {
 
           <Link
             to="/subnets"
-            search={{ curation: "verified" } as never}
+            search={{ curation: "verified" }}
             className="hidden lg:inline-flex items-baseline gap-1.5 shrink-0 hover:opacity-80 transition-opacity"
           >
             <span className="text-ink-muted">curated</span>

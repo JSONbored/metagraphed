@@ -437,7 +437,7 @@ describe("acquireSharedChainStream", () => {
         deliver: (p: unknown) => seen.push(p),
         cancel: () => {},
         ...overrides,
-      } as never,
+      },
     };
   }
 
@@ -454,7 +454,7 @@ describe("acquireSharedChainStream", () => {
     const src = fakeSource();
     const open = () => {
       opened += 1;
-      return src as never;
+      return src;
     };
     const a = subscriber(["blocks"]);
     const b = subscriber(["account_events"]);
@@ -476,7 +476,7 @@ describe("acquireSharedChainStream", () => {
     const src = fakeSource();
     const open = () => {
       opened += 1;
-      return src as never;
+      return src;
     };
     const a = subscriber(["blocks"]);
     const b = subscriber(["blocks"]);
@@ -494,7 +494,7 @@ describe("acquireSharedChainStream", () => {
     const src = fakeSource();
     const open = () => {
       opened += 1;
-      return src as never;
+      return src;
     };
     const a = subscriber(["blocks"]);
     const b = subscriber(["account_events"]);
@@ -511,8 +511,8 @@ describe("acquireSharedChainStream", () => {
     const src = fakeSource();
     const a = subscriber(["blocks"]);
     const b = subscriber(["blocks"]);
-    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
-    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
+    const releaseA = acquireSharedChainStream(() => src, a.sub);
+    const releaseB = acquireSharedChainStream(() => src, b.sub);
     releaseA();
     expectEq(src.closed, 0, "unmounting one consumer closed the shared socket");
     releaseB();
@@ -526,8 +526,8 @@ describe("acquireSharedChainStream", () => {
     const src = fakeSource();
     const a = subscriber(["blocks"]);
     const b = subscriber(["account_events"]);
-    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
-    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
+    const releaseA = acquireSharedChainStream(() => src, a.sub);
+    const releaseB = acquireSharedChainStream(() => src, b.sub);
     src.emit({ table: "blocks", block_number: 1 });
     src.emit({ table: "account_events", id: 7 });
     expectEq(a.seen, [{ table: "blocks", block_number: 1 }]);
@@ -543,7 +543,7 @@ describe("acquireSharedChainStream", () => {
   it("a frame for no subscribed topic is dropped by everyone", () => {
     const src = fakeSource();
     const a = subscriber(["blocks"]);
-    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
+    const releaseA = acquireSharedChainStream(() => src, a.sub);
     src.emit({ table: "something_else", id: 1 });
     expectEq(a.seen, []);
     releaseA();
@@ -555,8 +555,8 @@ describe("acquireSharedChainStream", () => {
       getMatches: () => (p: unknown) => (p as { block_number: number }).block_number > 5,
     });
     const b = subscriber(["blocks"]);
-    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
-    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
+    const releaseA = acquireSharedChainStream(() => src, a.sub);
+    const releaseB = acquireSharedChainStream(() => src, b.sub);
     src.emit({ table: "blocks", block_number: 1 });
     src.emit({ table: "blocks", block_number: 9 });
     expectEq(a.seen, [{ table: "blocks", block_number: 9 }]);
@@ -571,10 +571,10 @@ describe("acquireSharedChainStream", () => {
   it("a late subscriber is told the connection is already open", () => {
     const src = fakeSource();
     const a = subscriber(["blocks"]);
-    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
+    const releaseA = acquireSharedChainStream(() => src, a.sub);
     src.open();
     const b = subscriber(["blocks"]);
-    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
+    const releaseB = acquireSharedChainStream(() => src, b.sub);
     expectEq(b.statuses.at(-1), "open");
     releaseA();
     releaseB();
@@ -584,8 +584,8 @@ describe("acquireSharedChainStream", () => {
     const src = fakeSource();
     const a = subscriber(["blocks"]);
     const b = subscriber(["blocks"]);
-    const releaseA = acquireSharedChainStream(() => src as never, a.sub);
-    const releaseB = acquireSharedChainStream(() => src as never, b.sub);
+    const releaseA = acquireSharedChainStream(() => src, a.sub);
+    const releaseB = acquireSharedChainStream(() => src, b.sub);
     releaseA();
     src.emit({ table: "blocks", block_number: 2 });
     expectEq(a.seen, [], "an unmounted consumer still received a frame");

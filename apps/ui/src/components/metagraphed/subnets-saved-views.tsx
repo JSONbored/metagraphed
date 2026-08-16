@@ -103,7 +103,7 @@ export function SubnetsSavedViews() {
           if (v === undefined) delete next[k];
           else next[k] = v;
         }
-        return next as never;
+        return next;
       },
       replace: true,
     });

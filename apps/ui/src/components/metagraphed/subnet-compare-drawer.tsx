@@ -44,7 +44,11 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
     (next: number | null) => {
       navigate({
         to: ".",
-        search: (prev: Record<string, unknown>) => ({
+        // `prev` is INFERRED. Annotating it as Record<string, unknown> was
+        // what made this reducer's return type lose every other search field,
+        // which the router then rejected -- silently, until its search types
+        // started resolving.
+        search: (prev) => ({
           ...prev,
           compare: next == null ? undefined : next,
         }),
