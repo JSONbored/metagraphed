@@ -67,6 +67,7 @@ import {
   McpSessionStateSchema,
   HubSessionUriBodySchema,
 } from "../schemas-src/internal-wire.ts";
+import type { McpSessionHubState } from "./do-state.ts";
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 
@@ -163,7 +164,7 @@ const SESSION_HUB_ROUTES: Record<string, string> = {
 };
 
 export class McpSessionHub implements DurableObject {
-  state: DurableObjectState;
+  state: McpSessionHubState;
   env: Env;
   subscribedUris: Set<string>;
   pendingUris: Set<string>;
@@ -175,7 +176,7 @@ export class McpSessionHub implements DurableObject {
   hydrated: boolean;
   sessionId: string | null;
 
-  constructor(state: DurableObjectState, env: Env) {
+  constructor(state: McpSessionHubState, env: Env) {
     this.state = state;
     this.env = env;
     this.subscribedUris = new Set();
@@ -198,9 +199,7 @@ export class McpSessionHub implements DurableObject {
     if (this.hydrated) return;
     // Keys DERIVED from the schema -- see MCP_SESSION_STATE_KEYS. A
     // hand-written list here was the third place the field set was stated.
-    const stored = await this.state.storage.get<
-      string | string[] | number | boolean
-    >([...MCP_SESSION_STATE_KEYS]);
+    const stored = await this.state.storage.get([...MCP_SESSION_STATE_KEYS]);
     // PARSED, NOT CAST (#11194). These come back from a PREVIOUS deploy's
     // `persist()`, so their shape is a contract with code that is no longer
     // running. `as string[]` over a value that is actually a string would be

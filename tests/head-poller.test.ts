@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { apiEnv } from "../scripts/lib/worker-env.ts";
 
 // The hub's only durable write is `mirrorBlocksHeadToNeon`, which reaches
 // Postgres through `new Client(...)` inside src/pg-sql.ts (#10179). A DO test
@@ -327,6 +328,11 @@ function hubWith(env: Record<string, unknown>, storage: Map<string, unknown>) {
   let alarmAt: number | null = null;
   const state = {
     getWebSockets: () => [],
+    // The hub calls this on the WebSocket upgrade path. This fixture never
+    // upgrades, but an absent member is a TypeError the moment anything here
+    // touches that path -- and until the constructor was typed against
+    // ChainFirehoseHubState, the `as never` below meant nothing said so.
+    acceptWebSocket: () => {},
     // A DurableObjectState IS the waitUntil handle -- createPgSql hands the
     // pooled connection back through it, so a stub without one turns every
     // mirror write into a TypeError swallowed as a lane verdict.
@@ -338,7 +344,7 @@ function hubWith(env: Record<string, unknown>, storage: Map<string, unknown>) {
       setAlarm: async (t: number) => void (alarmAt = t),
     },
   };
-  const hub = new ChainFirehoseHub(state as never, env as never);
+  const hub = new ChainFirehoseHub(state, apiEnv(env));
   return { hub, state, alarm: () => alarmAt };
 }
 
@@ -465,6 +471,62 @@ test("alarm: broadcasts and durably records each new block, advancing last_seen"
   assert.equal(storage.get("head:last_seen"), 16);
   assert.ok(alarm() !== null, "re-armed");
 });
+
+// Every corrupt cursor wedges the lane the same way, and all three reach it
+// through a different branch of the guard -- a string fails the `typeof`, NaN
+// and Infinity pass it and fail `Number.isFinite`. Verified against the real
+// function: heightsToEmit(v, 16) is [] for each of these.
+const CORRUPT_CURSORS: readonly unknown[] = [
+  "14",
+  Number.NaN,
+  Number.POSITIVE_INFINITY,
+];
+
+for (const corrupt of CORRUPT_CURSORS) {
+  test(`alarm: a persisted cursor of ${String(corrupt)} is treated as absent, not compared`, async () => {
+    // The bug this pins is silent and permanent, which is why it needs a test
+    // rather than a type. heightsToEmit does `lastSeen + 1`; for a string that
+    // CONCATENATES, so "14" + 1 is "141", the emit loop starts past the head and
+    // never runs. Nothing is emitted, so nothing is written back, so the bad
+    // cursor is never overwritten -- the lane goes quiet at every head, forever,
+    // with no error to alarm on. `storage.get<number>()` named the type instead
+    // of checking it, so the compiler was satisfied and nothing else looked.
+    const storage = new Map<string, unknown>();
+    storage.set("head:last_seen", corrupt);
+    const { hub, alarm } = hubWith(
+      {
+        CHAIN_HEAD_POLL_ENABLED: "true",
+        CHAIN_HEAD_RPC_URL: "https://rpc.example",
+        ...pgMockEnv(),
+      },
+      storage,
+    );
+    const seen: unknown[] = [];
+    (hub as unknown as { broadcast: (p: unknown) => Promise<void> }).broadcast =
+      async (p) => void seen.push(p);
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = rpcFetch({
+      chain_getHeader: () => ({ number: "0x10" }),
+      chain_getBlockHash: (params) => `0xhash${(params as number[])[0]}`,
+      chain_getBlock: () => ({
+        block: { header: { parentHash: "0xp" }, extrinsics: [1] },
+      }),
+    });
+    try {
+      await hub.alarm();
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    // Absent cursor semantics: resume live from the head, one block, not a
+    // catch-up burst from a coerced number.
+    assert.equal(seen.length, 1, "resumed from the head");
+    assert.equal((seen[0] as { block_number: number }).block_number, 16);
+    // The assertion that matters. An unchanged cursor IS the wedged lane: it
+    // means nothing was emitted and nothing was written back.
+    assert.equal(storage.get("head:last_seen"), 16);
+    assert.ok(alarm() !== null, "re-armed");
+  });
+}
 
 test("alarm: an RPC failure is contained and the chain re-arms", async () => {
   const { hub, alarm } = hubWith(

@@ -51,6 +51,10 @@ import {
   repoRoot,
 } from "./lib.ts";
 import { apiEnv } from "./lib/worker-env.ts";
+import type {
+  ChainFirehoseHubState,
+  McpSessionHubState,
+} from "../workers/do-state.ts";
 
 // MCP tool call results are dynamic JSON-RPC payloads, read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -245,7 +249,15 @@ async function callOk(name: string, args: unknown): Promise<Row> {
 // updated round trip below exercises the actual class code, not a
 // hand-rolled simulation of it.
 
-function inMemoryDoStorage() {
+// The hub state doubles. Typed against the surfaces the hubs declare in
+// workers/do-state.ts rather than asserted into `DurableObjectState`, so a hub
+// that starts using something new fails to COMPILE here. That matters more
+// than it sounds: every one of these hubs parks telemetry on
+// `state.waitUntil` inside a `try` that swallows the error, so an absent
+// member does not fail the run -- it silently removes the behaviour and this
+// script still prints OK.
+
+function keyedDoStorage(): McpSessionHubState["storage"] {
   const data = new Map<string, unknown>();
   return {
     async get(keys: string[]) {
@@ -263,6 +275,33 @@ function inMemoryDoStorage() {
     },
   };
 }
+
+function singleKeyDoStorage(): ChainFirehoseHubState["storage"] {
+  const data = new Map<string, unknown>();
+  let alarm: number | null = null;
+  return {
+    async get(key: string) {
+      return data.get(key);
+    },
+    async put(key: string, value: unknown) {
+      data.set(key, value);
+    },
+    async getAlarm() {
+      return alarm;
+    },
+    async setAlarm(scheduledTime: number | Date) {
+      alarm =
+        scheduledTime instanceof Date ? scheduledTime.getTime() : scheduledTime;
+    },
+  };
+}
+
+// Runs the promise detached, which is what the real `waitUntil` guarantees and
+// what the hubs' telemetry needs. Swallowing it here would make this script
+// agree with the bug it exists to catch.
+const detachedWaitUntil = (promise: Promise<unknown>): void => {
+  void promise.catch(() => false);
+};
 
 interface DoStub {
   fetch(request: Request): Promise<Response> | Response;
@@ -295,7 +334,7 @@ function fakeDoNamespace(makeInstance: (id: string) => DoStub) {
 const mcpSessionHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new McpSessionHub(
-      { storage: inMemoryDoStorage() } as unknown as DurableObjectState,
+      { storage: keyedDoStorage(), waitUntil: detachedWaitUntil },
       apiEnv({
         CHAIN_FIREHOSE_HUB: chainFirehoseHubNS,
         SUBNET_STATUS_HUB: subnetStatusHubNS,
@@ -305,14 +344,24 @@ const mcpSessionHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
 const chainFirehoseHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new ChainFirehoseHub(
-      { getWebSockets: () => [] } as unknown as DurableObjectState,
+      {
+        storage: singleKeyDoStorage(),
+        getWebSockets: () => [],
+        acceptWebSocket: () => {
+          // No hibernation in-process: this script drives the hub over its
+          // fetch surface and never opens a socket. Present because the hub
+          // calls it on the upgrade path, and an absent member is exactly the
+          // hole the old assertion left.
+        },
+        waitUntil: detachedWaitUntil,
+      },
       apiEnv({ MCP_SESSION_HUB: mcpSessionHubNS }),
     ),
 );
 const subnetStatusHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new SubnetStatusHub(
-      { storage: inMemoryDoStorage() } as unknown as DurableObjectState,
+      { storage: keyedDoStorage(), waitUntil: detachedWaitUntil },
       apiEnv({ MCP_SESSION_HUB: mcpSessionHubNS }),
     ),
 );

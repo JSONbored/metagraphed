@@ -32,6 +32,7 @@ import {
   HubRequiredSessionIdBodySchema,
   HubSubnetSessionBodySchema,
 } from "../schemas-src/internal-wire.ts";
+import type { SubnetStatusHubState } from "./do-state.ts";
 
 type NetuidIndex = Map<number, Set<string>>;
 type SessionIndex = Map<string, Set<number>>;
@@ -128,13 +129,13 @@ export function hydrateSubscriptionIndex(stored: unknown): {
 }
 
 export class SubnetStatusHub implements DurableObject {
-  state: DurableObjectState;
+  state: SubnetStatusHubState;
   env: Env;
   byNetuid: NetuidIndex;
   sessionByNetuid: SessionIndex;
   hydrated: boolean;
 
-  constructor(state: DurableObjectState, env: Env) {
+  constructor(state: SubnetStatusHubState, env: Env) {
     this.state = state;
     this.env = env;
     this.byNetuid = new Map();

@@ -107,6 +107,7 @@ export {
   CHAIN_FIREHOSE_TABLES,
   CHAIN_FIREHOSE_PUBLISHED_TABLES,
 } from "../src/chain-firehose-topics.ts";
+import type { ChainFirehoseHubState } from "./do-state.ts";
 
 /**
  * Requested topics that no producer currently publishes, sorted for a stable
@@ -694,7 +695,7 @@ export function formatChainFirehoseTopicNoticeFrame(topics: string[]): string {
 // graphql-ws fanout; every other broadcast population is unaffected, and the
 // next broadcast() retries getWebSockets() fresh.
 function safeGetWebSockets(
-  state: DurableObjectState,
+  state: ChainFirehoseHubState,
   tag?: string,
 ): WebSocket[] {
   try {
@@ -910,7 +911,7 @@ interface ChainEventsGraphqlWsExtra {
 // below, not the whole class -- see #4982's issue body ("note any coverage
 // gap explicitly rather than skipping silently").
 export class ChainFirehoseHub implements DurableObject {
-  state: DurableObjectState;
+  state: ChainFirehoseHubState;
   env: Env;
   sseClients: Set<SseClientEntry>;
   // #5004 item 1: live SSE/WS connection count per client IP, mirroring
@@ -973,7 +974,7 @@ export class ChainFirehoseHub implements DurableObject {
   // failure is the desired behavior, not a leak.
   lastCapturedHeadPollerError?: string;
 
-  constructor(state: DurableObjectState, env: Env) {
+  constructor(state: ChainFirehoseHubState, env: Env) {
     this.state = state;
     this.env = env;
     this.sseClients = new Set();
@@ -1240,8 +1241,20 @@ export class ChainFirehoseHub implements DurableObject {
       if (this.env.CHAIN_HEAD_POLL_ENABLED !== "true") return; // kill switch
       const rpcUrl =
         this.env.CHAIN_HEAD_RPC_URL || "https://archive.chain.opentensor.ai";
+      // Checked, not asserted. `get<number>` named a type for a value some
+      // earlier deploy wrote, and named it about storage that returns whatever
+      // was put there. A string cursor wedges this lane permanently and
+      // silently: heightsToEmit does `lastSeen + 1`, which CONCATENATES for a
+      // string, so "14" + 1 is "141" and the emit loop starts past the head
+      // and never runs. Measured, not reasoned -- heightsToEmit("14", 16) and
+      // heightsToEmit("14", 99) both return []. Nothing is emitted, so nothing
+      // is put back, so the bad cursor is never overwritten and the lane stays
+      // silent at every head forever, with no error to alarm on.
+      const storedLastSeen = await this.state.storage.get("head:last_seen");
       const lastSeen =
-        (await this.state.storage.get<number>("head:last_seen")) ?? null;
+        typeof storedLastSeen === "number" && Number.isFinite(storedLastSeen)
+          ? storedLastSeen
+          : null;
       const head = await fetchHeadNumber(rpcUrl);
       for (const height of heightsToEmit(lastSeen, head)) {
         // #9417: read the event count too, so a block is complete the moment
