@@ -884,6 +884,76 @@ describe("the projection short-circuits the FEED leg too (#11222)", () => {
     }
   });
 
+  test("the card's COUNT includes what the fold was too early to see", async () => {
+    // Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC: the projection's groups held
+    // ONE NeuronRegistered at block 8836052, the feed's newest row was block
+    // 8850439, and the card published `event_count: 1` beside a two-row feed.
+    // The aggregate leg served the projection verbatim, so it reported the count
+    // as of the fold while the feed reported it as of now. Whichever is right,
+    // they cannot both be.
+    const postFold = {
+      kind: "NeuronRegistered",
+      netuid: 105,
+      count: 1,
+      fb: 8_850_439,
+      lb: 8_850_439,
+      fo: FLOOR + 3_600_000,
+      lo: FLOOR + 3_600_000,
+    };
+    const seen: string[] = [];
+    // The GROUPED read is the one under test, so it answers only the post-fold
+    // window -- the folded half comes from the projection, not from here.
+    const engine = async (
+      _env: unknown,
+      sql: string,
+      _deps?: { onError?: (d: string) => void },
+    ) => {
+      seen.push(sql);
+      if (sql.includes("GROUP BY event_kind, netuid")) return [postFold];
+      return [];
+    };
+    const cold = await loadAccountSummaryColdTier(archive(null), SS58, {
+      query: engine as never,
+    });
+    assert.equal(cold.declined, undefined);
+    // The projection's groupsSummingTo(1) plus the one event above the fold.
+    assert.equal(
+      cold.agg?.c,
+      2,
+      "the count must span the fold, not stop at it",
+    );
+    // ...and the probe that found it is BOUNDED to the post-fold window, so the
+    // accuracy does not cost the lifetime scan back.
+    const grouped = seen.filter((q) =>
+      q.includes("GROUP BY event_kind, netuid"),
+    );
+    assert.equal(grouped.length, 1);
+    assert.match(grouped[0]!, new RegExp(`observed_at >= ${FLOOR}\\b`));
+  });
+
+  test("a failed post-fold probe DECLINES rather than publishing the stale count", async () => {
+    // Falling back to the groups alone would republish the self-contradicting
+    // card this exists to fix, and would do it silently.
+    const engine = async (
+      _env: unknown,
+      sql: string,
+      deps?: { onError?: (d: string) => void },
+    ) => {
+      if (sql.includes("GROUP BY event_kind, netuid")) {
+        deps?.onError?.("r2 sql: HTTP 500 (stubbed failure)");
+        return null;
+      }
+      return [];
+    };
+    const cold = await loadAccountSummaryColdTier(archive(null), SS58, {
+      query: engine as never,
+    });
+    assert.ok(
+      cold.declined?.some((r) => r.startsWith("summary-groups-postfold:")),
+      `expected a postfold decline, got ${JSON.stringify(cold.declined)}`,
+    );
+  });
+
   /**
    * GROUPS BUT NO RECENT MAP -- which is every account in production today.
    *

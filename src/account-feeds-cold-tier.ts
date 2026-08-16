@@ -1055,6 +1055,54 @@ async function headProbe(
 }
 
 /**
+ * The projection's groups PLUS everything it was folded too early to see.
+ *
+ * The aggregate leg served `found.groups` verbatim, which is the projection's
+ * count as of its `through` day -- so a card could report `event_count: 1` while
+ * its own feed listed two events. Measured 2026-08-16 on
+ * 5EEmaGFE...5oM3qDSC: groups held one NeuronRegistered at block 8836052, the
+ * feed's newest row was block 8850439, and the card published both numbers side
+ * by side. Whichever is right, they cannot both be, and a card that disagrees
+ * with itself is worse than a slow one.
+ *
+ * The fix is the fold edge the feed already uses. Everything at or before it is
+ * in the groups; everything after it is one bounded read away. CONCATENATED
+ * rather than merged key-by-key, because `foldSummaryGroups` already sums
+ * `count` per kind, unions the netuids and min/maxes the block and observed
+ * bounds -- and the two ranges are disjoint by construction, so a (kind, netuid)
+ * appearing in both is two real disjoint tallies of the same pair.
+ *
+ * NO SPAN, NO PROBE. Without `through` there is no edge to read from, and
+ * guessing one would either double-count or leave a hole; serving the groups
+ * alone is what this did before and is at worst stale, never wrong-by-overlap.
+ */
+async function postFoldGroups(
+  env: R2SqlEnv | null | undefined,
+  options: {
+    query: R2SqlReader;
+    scan: (bound: string) => string;
+    published: Record<string, unknown>[];
+    span: { foldFloorMs: number } | null;
+  },
+): Promise<Record<string, unknown>[] | null> {
+  const { query, scan, published, span } = options;
+  if (span === null) return published;
+  const bound = ` AND observed_at >= ${Math.trunc(span.foldFloorMs)}`;
+  const above = await query(
+    env,
+    `WITH scan AS (${scan(bound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
+      `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
+      `min(observed_at) AS fo, max(observed_at) AS lo ` +
+      `FROM scan GROUP BY event_kind, netuid`,
+  );
+  // A failed probe DECLINES rather than falling back to the groups alone: the
+  // caller would publish the same self-contradicting card this exists to fix,
+  // and it would do it silently.
+  if (!above) return null;
+  return [...published, ...above];
+}
+
+/**
  * The feed for an account the projection HAS, in two bounded reads.
  *
  * THE CASE THAT IS ACTUALLY IN PRODUCTION. `headProbe` above needs `recent` --
@@ -1224,7 +1272,13 @@ export async function loadAccountSummaryColdTier(
           { onError: track("summary-groups-bounded") },
         )
       : found
-        ? Promise.resolve(found.groups)
+        ? postFoldGroups(env, {
+            query: (e, sql) =>
+              query(e, sql, { onError: track("summary-groups-postfold") }),
+            scan,
+            published: found.groups,
+            span: found.span,
+          })
         : windowedFloorRead<Record<string, unknown>[]>(env, {
             query,
             attempt: (bound, run) =>
