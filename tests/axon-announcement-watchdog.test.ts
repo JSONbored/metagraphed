@@ -24,6 +24,8 @@ import {
   evaluateSubnetAxons,
   groupAxonDays,
   isFleetWide,
+  classifyAxonMechanism,
+  loadAxonLossMechanisms,
   isoDaysAgo,
   medianOf,
   runAxonAnnouncementWatchdog,
@@ -38,6 +40,13 @@ const flat = (n: number, withAxon: number, neurons = 256): AxonDay[] =>
     withAxon,
     neurons,
   }));
+
+const pgLaneDb = () => ({
+  query: async (t: string, v?: unknown[]) =>
+    (await import("../src/read-store.ts")).readStore(pgMockEnv(), [
+      "neuron_daily",
+    ])!.query!(t, v),
+});
 
 const then = (base: AxonDay[], ...tail: [number, number][]): AxonDay[] => [
   ...base,
@@ -169,6 +178,8 @@ describe("the fleet-wide guard", () => {
     neurons: 256,
     neuronBaseline: 256,
     kind: "announcements-withdrawn",
+    lossesViaReuse: null,
+    lossesSameHotkey: null,
   });
 
   test("three subnets is the observed independent maximum, so not fleet-wide", () => {
@@ -552,5 +563,361 @@ describe("the watchdog tick", () => {
     );
     assert.ok(read);
     assert.equal(read.values[0], "2026-08-07");
+  });
+});
+
+describe("mechanism — WHAT happened, not just how much (#11369)", () => {
+  // Measured 2026-08-16 over the watchdog's own 8-day window, per UID:
+  //   SN25   via_reuse 67  same_hotkey  0   -> churn
+  //   SN102  via_reuse 43  same_hotkey  0   -> churn
+  //   SN101  via_reuse 64  same_hotkey 75   -> withdrawal
+  // SN101 is the #11328 case and must stay `announcements-withdrawn`; the other
+  // two had ZERO miners stop announcing, so calling them withdrawal asserted
+  // the opposite of what happened.
+
+  test("all losses via UID reuse is churn, not withdrawal", () => {
+    assert.equal(
+      classifyAxonMechanism(
+        { viaReuse: 67, sameHotkey: 0 },
+        "announcements-withdrawn",
+      ),
+      "churn-replaced",
+    );
+  });
+
+  test("a majority of same-hotkey stops stays withdrawal (the SN101 shape)", () => {
+    assert.equal(
+      classifyAxonMechanism(
+        { viaReuse: 64, sameHotkey: 75 },
+        "announcements-withdrawn",
+      ),
+      "announcements-withdrawn",
+    );
+  });
+
+  test("a tie resolves to withdrawal — the reading that asks for a human", () => {
+    assert.equal(
+      classifyAxonMechanism(
+        { viaReuse: 5, sameHotkey: 5 },
+        "announcements-withdrawn",
+      ),
+      "announcements-withdrawn",
+    );
+  });
+
+  test("UNMEASURED keeps the default rather than guessing churn", () => {
+    // Churn is the reading that does NOT send anyone looking, so inferring it
+    // from an absent measurement would turn an unread number into an all-clear.
+    for (const counts of [
+      { viaReuse: null, sameHotkey: 3 },
+      { viaReuse: 3, sameHotkey: null },
+      { viaReuse: null, sameHotkey: null },
+    ]) {
+      assert.equal(
+        classifyAxonMechanism(counts, "announcements-withdrawn"),
+        "announcements-withdrawn",
+      );
+    }
+  });
+
+  test("no losses at all keeps the default", () => {
+    assert.equal(
+      classifyAxonMechanism(
+        { viaReuse: 0, sameHotkey: 0 },
+        "announcements-withdrawn",
+      ),
+      "announcements-withdrawn",
+    );
+  });
+
+  test("the fallback is honoured, so turnover is never reclassified", () => {
+    assert.equal(
+      classifyAxonMechanism(
+        { viaReuse: 99, sameHotkey: 0 },
+        "subnet-turned-over",
+      ),
+      "churn-replaced",
+      "the classifier itself is unconditional -- the RUNNER guards turnover",
+    );
+  });
+
+  test("the detail names the mechanism, not just the ratio", () => {
+    const churn: AxonFinding = {
+      netuid: 25,
+      date: "2026-08-16",
+      withAxon: 14,
+      baseline: 80,
+      ratio: 0.175,
+      neurons: 256,
+      neuronBaseline: 256,
+      kind: "churn-replaced",
+      lossesViaReuse: 67,
+      lossesSameHotkey: 0,
+    };
+    const detail = axonDetail([churn]);
+    assert.match(detail, /SN25 14\/80 axons/);
+    assert.match(
+      detail,
+      /churn-replaced: 67 of 67 losses were deregistrations/,
+    );
+  });
+
+  test("a withdrawal detail says how many miners stopped", () => {
+    const withdrawn: AxonFinding = {
+      netuid: 101,
+      date: "2026-08-16",
+      withAxon: 125,
+      baseline: 223,
+      ratio: 0.56,
+      neurons: 256,
+      neuronBaseline: 256,
+      kind: "announcements-withdrawn",
+      lossesViaReuse: 64,
+      lossesSameHotkey: 75,
+    };
+    assert.match(axonDetail([withdrawn]), /75 miner\(s\) stopped announcing/);
+  });
+});
+
+describe("loadAxonLossMechanisms", () => {
+  beforeEach(() => {
+    pg.control.queries.length = 0;
+    pg.control.answers.length = 0;
+    pg.control.rows = null;
+    pg.control.failNext = null;
+  });
+
+  test("groups the split by netuid", async () => {
+    pg.control.answers.push({
+      match: /FROM seq/,
+      rows: [
+        { netuid: 25, via_reuse: 67, same_hotkey: 0 },
+        { netuid: 101, via_reuse: 64, same_hotkey: 75 },
+      ],
+    });
+    const out = await loadAxonLossMechanisms(
+      pgLaneDb(),
+      [25, 101],
+      "2026-08-08",
+    );
+    assert.deepEqual(out[25], { viaReuse: 67, sameHotkey: 0 });
+    assert.deepEqual(out[101], { viaReuse: 64, sameHotkey: 75 });
+  });
+
+  test("int8 counts arrive as STRINGS and are still counted", async () => {
+    // Same Postgres shape as the main read: COUNT(*) is int8.
+    pg.control.answers.push({
+      match: /FROM seq/,
+      rows: [{ netuid: 25, via_reuse: "67", same_hotkey: "0" }],
+    });
+    const out = await loadAxonLossMechanisms(pgLaneDb(), [25], "2026-08-08");
+    assert.deepEqual(out[25], { viaReuse: 67, sameHotkey: 0 });
+  });
+
+  test("no netuids asks nothing at all", async () => {
+    const out = await loadAxonLossMechanisms(pgLaneDb(), [], "2026-08-08");
+    assert.deepEqual(out, {});
+    assert.equal(pg.control.queries.length, 0, "no query for an empty list");
+  });
+
+  test("a failing read is unmeasured, not zero", async () => {
+    pg.control.failNext = new Error("boom");
+    assert.deepEqual(
+      await loadAxonLossMechanisms(pgLaneDb(), [25], "2026-08-08"),
+      {},
+    );
+  });
+
+  test("no store bound yields nothing", async () => {
+    assert.deepEqual(
+      await loadAxonLossMechanisms(null, [25], "2026-08-08"),
+      {},
+    );
+  });
+});
+
+describe("mechanism — the defensive edges", () => {
+  beforeEach(() => {
+    pg.control.queries.length = 0;
+    pg.control.answers.length = 0;
+    pg.control.rows = null;
+    pg.control.failNext = null;
+  });
+
+  test("`?? 0` in the churn detail survives half-measured counts", () => {
+    // Only reachable if a producer ever fills one side and not the other. The
+    // string must still be readable rather than printing `null of null`.
+    const half: AxonFinding = {
+      netuid: 5,
+      date: "2026-08-16",
+      withAxon: 1,
+      baseline: 50,
+      ratio: 0.02,
+      neurons: 256,
+      neuronBaseline: 256,
+      kind: "churn-replaced",
+      lossesViaReuse: null,
+      lossesSameHotkey: null,
+    };
+    assert.match(axonDetail([half]), /churn-replaced: 0 of 0 losses/);
+  });
+
+  test("a null netuid list is treated as empty rather than throwing", () => {
+    assert.doesNotReject(async () => {
+      await loadAxonLossMechanisms(
+        pgLaneDb(),
+        null as unknown as number[],
+        "2026-08-08",
+      );
+    });
+  });
+
+  test("negative and non-integer netuids are filtered out", async () => {
+    const out = await loadAxonLossMechanisms(
+      pgLaneDb(),
+      [-1, 1.5, Number.NaN] as number[],
+      "2026-08-08",
+    );
+    assert.deepEqual(out, {});
+    assert.equal(pg.control.queries.length, 0, "nothing usable, nothing asked");
+  });
+
+  test("malformed rows are skipped, not counted as zero", async () => {
+    pg.control.answers.push({
+      match: /FROM seq/,
+      rows: [
+        { netuid: "nope", via_reuse: 1, same_hotkey: 0 },
+        { netuid: 25, via_reuse: "x", same_hotkey: 0 },
+        { netuid: 26, via_reuse: 4, same_hotkey: 1 },
+      ],
+    });
+    const out = await loadAxonLossMechanisms(
+      pgLaneDb(),
+      [25, 26],
+      "2026-08-08",
+    );
+    assert.deepEqual(Object.keys(out), ["26"]);
+  });
+
+  test("a store returning nothing at all is unmeasured, not a throw", async () => {
+    // The `?? []` guard: `query` promises an array, so this is a store breaking
+    // its contract rather than an ordinary empty result. Same shape the sibling
+    // groupAxonDays guards, and reached the same way.
+    const out = await loadAxonLossMechanisms(
+      { query: async () => null as unknown as unknown[] },
+      [25],
+      "2026-08-08",
+    );
+    assert.deepEqual(out, {});
+  });
+
+  test("an empty result set leaves every finding unmeasured", async () => {
+    pg.control.answers.push({ match: /FROM seq/, rows: [] });
+    assert.deepEqual(
+      await loadAxonLossMechanisms(pgLaneDb(), [25], "2026-08-08"),
+      {},
+    );
+  });
+});
+
+describe("the tick reports the mechanism it measured", () => {
+  beforeEach(() => {
+    pg.control.queries.length = 0;
+    pg.control.answers.length = 0;
+    pg.control.rows = null;
+    pg.control.failNext = null;
+  });
+
+  const rowsFor = (netuid: number, series: AxonDay[]) =>
+    series.map((d) => ({
+      netuid,
+      date: d.date,
+      with_axon: d.withAxon,
+      neurons: d.neurons,
+    }));
+
+  const answer = (
+    days: Record<string, unknown>[],
+    mech: Record<string, unknown>[],
+  ) => {
+    pg.control.answers.push({ match: /FROM seq/, rows: mech });
+    pg.control.answers.push({ match: /FROM neuron_daily/, rows: days });
+    pg.control.answers.push({ match: /.*/, rows: [] });
+  };
+
+  const verdict = () => {
+    const insert = pg.control.queries.find((q) =>
+      q.text.includes("INSERT INTO lane_health"),
+    );
+    assert.ok(insert);
+    return String(insert.values[3]);
+  };
+
+  test("a churn subnet is reported as churn, not as withdrawal", async () => {
+    answer(rowsFor(25, then(flat(8, 80), [14, 256])), [
+      { netuid: 25, via_reuse: 67, same_hotkey: 0 },
+    ]);
+    let captured: Record<string, unknown> | null = null;
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
+    })) as { findings: AxonFinding[] };
+
+    assert.equal(result.findings[0].kind, "churn-replaced");
+    assert.equal(result.findings[0].lossesViaReuse, 67);
+    assert.match(verdict(), /churn-replaced: 67 of 67/);
+    assert.match(
+      String((captured as unknown as { error: Error }).error.message),
+      /fell through CHURN, not withdrawal/,
+      "the message must not claim anyone went dark",
+    );
+  });
+
+  test("a withdrawal subnet keeps the #11328 wording", async () => {
+    answer(rowsFor(101, then(flat(8, 223), [125, 256])), [
+      { netuid: 101, via_reuse: 64, same_hotkey: 75 },
+    ]);
+    let captured: Record<string, unknown> | null = null;
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
+    })) as { findings: AxonFinding[] };
+
+    assert.equal(result.findings[0].kind, "announcements-withdrawn");
+    assert.match(
+      String((captured as unknown as { error: Error }).error.message),
+      /stopped publishing an axon/,
+    );
+  });
+
+  test("an unmeasured mechanism leaves the default and the plain detail", async () => {
+    // The mechanism read returns nothing: the finding stands, unlabelled.
+    answer(rowsFor(25, then(flat(8, 80), [14, 256])), []);
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async () => true) as never,
+    })) as { findings: AxonFinding[] };
+    assert.equal(result.findings[0].kind, "announcements-withdrawn");
+    assert.equal(result.findings[0].lossesViaReuse, null);
+  });
+
+  test("turnover is never reclassified as churn", async () => {
+    // SN103's shape: the metagraph emptied. Even with every loss via reuse --
+    // which is what a mass deregistration looks like -- membership is the story.
+    answer(rowsFor(103, then(flat(8, 252, 256), [0, 2])), [
+      { netuid: 103, via_reuse: 250, same_hotkey: 0 },
+    ]);
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async () => true) as never,
+    })) as { findings: AxonFinding[] };
+    assert.equal(result.findings[0].kind, "subnet-turned-over");
+    assert.match(verdict(), /the subnet turned over/);
   });
 });

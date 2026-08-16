@@ -126,12 +126,27 @@ export interface AxonFinding {
   neurons: number;
   neuronBaseline: number;
   /**
-   * `announcements-withdrawn`: the miners are still there and stopped
-   * announcing -- the #11328 shape. `subnet-turned-over`: the metagraph itself
-   * emptied, so the missing axons are missing NEURONS and the subnet's
-   * membership is the story.
+   * WHAT happened, which is a different question from how much (#11369).
+   *
+   * - `announcements-withdrawn`: the same miners are still registered and
+   *   stopped announcing. The #11328 shape, and the only one that means
+   *   "somebody's miners went dark".
+   * - `churn-replaced`: the announcing miners were DEREGISTERED and their UIDs
+   *   reused by miners that do not announce. Nobody withdrew anything. Measured
+   *   2026-08-16, this is 100% of SN25's and SN102's losses -- zero same-hotkey
+   *   stops between them -- so labelling those `announcements-withdrawn` states
+   *   the opposite of what happened.
+   * - `subnet-turned-over`: the metagraph itself emptied, so the missing axons
+   *   are missing NEURONS and membership is the story.
+   *
+   * Defaults to `announcements-withdrawn` until the mechanism read runs, which
+   * is the conservative direction: it is the reading that asks for a human.
    */
-  kind: "announcements-withdrawn" | "subnet-turned-over";
+  kind: "announcements-withdrawn" | "churn-replaced" | "subnet-turned-over";
+  /** Axon losses in the window whose UID changed hands. Null until measured. */
+  lossesViaReuse: number | null;
+  /** Axon losses where the same hotkey stopped announcing. Null until measured. */
+  lossesSameHotkey: number | null;
 }
 
 /** Median of a list, on a copy — the caller's array is never reordered. */
@@ -186,6 +201,11 @@ export function evaluateSubnetAxons(
     neurons: latest.neurons,
     neuronBaseline,
     kind: turnedOver ? "subnet-turned-over" : "announcements-withdrawn",
+    // Filled in by the mechanism read, which needs per-UID rows this pure
+    // evaluator is deliberately not given. Null means "not measured", never
+    // "zero" -- see classifyAxonMechanism.
+    lossesViaReuse: null,
+    lossesSameHotkey: null,
   };
 }
 
@@ -216,7 +236,11 @@ export function axonDetail(findings: readonly AxonFinding[]): string {
         `SN${f.netuid} ${f.withAxon}/${f.baseline} axons (${Math.round(f.ratio * 100)}%` +
         (f.kind === "subnet-turned-over"
           ? `, neurons ${f.neurons}/${f.neuronBaseline} -- the subnet turned over`
-          : "") +
+          : f.kind === "churn-replaced"
+            ? `, churn-replaced: ${f.lossesViaReuse ?? 0} of ${(f.lossesViaReuse ?? 0) + (f.lossesSameHotkey ?? 0)} losses were deregistrations`
+            : f.lossesSameHotkey !== null
+              ? `, ${f.lossesSameHotkey} miner(s) stopped announcing`
+              : "") +
         ")",
     )
     .join("; ");
@@ -225,6 +249,82 @@ export function axonDetail(findings: readonly AxonFinding[]): string {
       ? ` (+${findings.length - AXON_MAX_LISTED} more)`
       : "";
   return `${listed}${rest}`;
+}
+
+/**
+ * Which mechanism produced a subnet's axon losses (#11369).
+ *
+ * `sameHotkey` means the registered miner stopped announcing. `viaReuse` means
+ * its UID changed hands -- a deregistration, where the newcomer simply never
+ * served. They look identical in an aggregate count and mean opposite things:
+ * one is somebody's fleet going dark, the other is ordinary registration churn
+ * grinding the announcing set down because replacements do not announce.
+ *
+ * NULL COUNTS LEAVE THE DEFAULT ALONE. An unmeasured mechanism must not be
+ * reported as churn, because churn is the reading that does NOT ask anyone to
+ * go looking; guessing it would turn an unread number into an all-clear.
+ *
+ * A tie resolves to `announcements-withdrawn` for the same reason.
+ */
+export function classifyAxonMechanism(
+  counts: { viaReuse: number | null; sameHotkey: number | null },
+  fallback: AxonFinding["kind"],
+): AxonFinding["kind"] {
+  const reuse = counts?.viaReuse;
+  const same = counts?.sameHotkey;
+  if (typeof reuse !== "number" || typeof same !== "number") return fallback;
+  if (reuse + same === 0) return fallback;
+  return reuse > same ? "churn-replaced" : "announcements-withdrawn";
+}
+
+/**
+ * Split each subnet's axon losses by mechanism, over the same window.
+ *
+ * ONLY FOR SUBNETS ALREADY FLAGGED. The per-UID comparison is the expensive
+ * read here -- 256 rows per subnet per day rather than one -- and on a typical
+ * day the flag list is one to three subnets, so scoping it to those keeps the
+ * cost proportional to what was found rather than to the network.
+ *
+ * `{}` on any failure, which leaves every finding's kind at its default. See
+ * classifyAxonMechanism for why that is the safe direction.
+ */
+export async function loadAxonLossMechanisms(
+  db:
+    | { query?: (t: string, v?: unknown[]) => Promise<unknown[]> }
+    | null
+    | undefined,
+  netuids: readonly number[],
+  sinceDate: string,
+): Promise<Record<number, { viaReuse: number; sameHotkey: number }>> {
+  const out: Record<number, { viaReuse: number; sameHotkey: number }> = {};
+  const ids = (netuids ?? []).filter((n) => Number.isSafeInteger(n) && n >= 0);
+  if (!db?.query || ids.length === 0) return out;
+  try {
+    const rows = (await db.query(
+      "WITH seq AS (SELECT netuid, uid, snapshot_date, hotkey, " +
+        "(axon IS NOT NULL) AS has_axon, " +
+        "LAG(axon IS NOT NULL) OVER w AS prev_has, " +
+        "LAG(hotkey) OVER w AS prev_hotkey FROM neuron_daily " +
+        `WHERE snapshot_date >= ? AND netuid IN (${ids.map(() => "?").join(",")}) ` +
+        "WINDOW w AS (PARTITION BY netuid, uid ORDER BY snapshot_date)) " +
+        "SELECT netuid, " +
+        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey IS DISTINCT FROM prev_hotkey) AS via_reuse, " +
+        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS same_hotkey " +
+        "FROM seq GROUP BY netuid",
+      [sinceDate, ...ids],
+    )) as Record<string, unknown>[];
+    for (const row of rows ?? []) {
+      const netuid = Number(row?.netuid);
+      const viaReuse = Number(row?.via_reuse ?? 0);
+      const sameHotkey = Number(row?.same_hotkey ?? 0);
+      if (!Number.isFinite(netuid)) continue;
+      if (!Number.isFinite(viaReuse) || !Number.isFinite(sameHotkey)) continue;
+      out[netuid] = { viaReuse, sameHotkey };
+    }
+  } catch {
+    // Unmeasured, not zero. The caller keeps each finding's default kind.
+  }
+  return out;
 }
 
 export interface AxonWatchdogDeps {
@@ -267,6 +367,29 @@ export async function runAxonAnnouncementWatchdog(
   }
 
   const findings = evaluateAxonAnnouncements(bySubnet);
+
+  // WHAT happened, not just how much (#11369). Measured 2026-08-16, SN25 and
+  // SN102 had ZERO miners stop announcing -- every loss was a deregistration
+  // whose replacement never served -- so reporting them as withdrawal stated
+  // the opposite of the truth. Scoped to the flagged subnets, so an ordinary
+  // day costs one extra grouped read over one to three netuids.
+  const mechanisms = await loadAxonLossMechanisms(
+    db,
+    findings.map((f) => f.netuid),
+    isoDaysAgo(now(), AXON_BASELINE_DAYS + 1),
+  );
+  for (const finding of findings) {
+    const counts = mechanisms[finding.netuid];
+    if (!counts) continue;
+    finding.lossesViaReuse = counts.viaReuse;
+    finding.lossesSameHotkey = counts.sameHotkey;
+    // Turnover is decided by the neuron count and is not up for revision here:
+    // a subnet that emptied is not "churn" at any ratio.
+    if (finding.kind !== "subnet-turned-over") {
+      finding.kind = classifyAxonMechanism(counts, finding.kind);
+    }
+  }
+
   const fleetWide = isFleetWide(findings);
   const detail = axonDetail(findings);
 
@@ -281,9 +404,14 @@ export async function runAxonAnnouncementWatchdog(
           ? `${findings.length} subnets dropped below their axon baseline on the same day -- ` +
               `that is far more than any observed independent cluster (max 3), so read this as the ` +
               `metagraph capture failing rather than as subnets going dark: ${detail}`
-          : `announced axons collapsed: ${detail} -- these miners are still registered and still ` +
-              `earning, so an axon that stops being published is a reachability change nothing ` +
-              `else in the fleet reports (#11328)`,
+          : findings.every((f) => f.kind === "churn-replaced")
+            ? `announced axons fell through CHURN, not withdrawal: ${detail} -- the announcing ` +
+              `miners were DEREGISTERED and their UIDs reused by miners that never served. ` +
+              `Nobody went dark; the announcing set is ground down one registration at a time, ` +
+              `and it only reverses if serving starts paying on that subnet (#11369)`
+            : `announced axons collapsed: ${detail} -- miners that are still registered and ` +
+              `still earning stopped publishing an axon, so this is a reachability change ` +
+              `nothing else in the fleet reports (#11328)`,
       ),
       route: `watchdog:${AXON_ANNOUNCEMENT_LANE}`,
       errorCode: fleetWide
