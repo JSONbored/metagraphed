@@ -107,6 +107,14 @@ describe("the staleness watchdog registry", () => {
         "top-holders-flow-staleness": 30,
         // was 54
         "hotkey-alpha-staleness": 60,
+        // NOT one of the eight, and it never had a cron of its own: it was
+        // added because the five lanes in metagraphed-infra's decode container
+        // had NO watchdog at all -- `lane_health` held zero rows for them, and
+        // the account-summary projection went dark for 32 hours unnoticed.
+        // Hourly because that is the container's own pass cadence; a
+        // quarter-hourly tick would buy four times the R2 GETs and no earlier
+        // detection.
+        "container-lanes": 60,
       },
     );
   });
@@ -163,6 +171,9 @@ describe("the staleness watchdog registry", () => {
       [],
       "a staleness lane took a cron minute back",
     );
-    assert.equal(STALENESS_WATCHDOGS.length, 8);
+    // Eight consolidated lanes plus `container-lanes`, which joined the
+    // heartbeat rather than claiming a ninth cron minute -- the whole point of
+    // the registry being the place a lane's cadence lives.
+    assert.equal(STALENESS_WATCHDOGS.length, 9);
   });
 });
