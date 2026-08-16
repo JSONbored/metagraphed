@@ -1059,7 +1059,23 @@ export type AccountSummaryColdTierResult =
  * query returned. Sorting on `observed_at` alone would reorder events inside a
  * block, and the cursor token the other tier issues encodes all three.
  */
-function feedKey(row: Record<string, unknown>): [number, number, number] {
+/**
+ * The three columns the account feed orders and de-duplicates on.
+ *
+ * DECLARED AS A SHAPE rather than taking `Record<string, unknown>`, so the two
+ * row types that meet here -- the lakehouse's parsed row and the projection's
+ * stricter `AccountSummaryRecentEvent` -- can both satisfy it without either
+ * being erased through `unknown`. That erasure is what the double-assertion
+ * ratchet sits at zero for: it would have let a merge of the wrong two row
+ * types compile.
+ */
+export interface FeedKeyed {
+  observed_at?: unknown;
+  block_number?: unknown;
+  event_index?: unknown;
+}
+
+function feedKey(row: FeedKeyed): [number, number, number] {
   return [
     Number(row.observed_at ?? 0),
     Number(row.block_number ?? 0),
@@ -1082,13 +1098,13 @@ function feedKey(row: Record<string, unknown>): [number, number, number] {
  * row in a card is a visible wrong answer, while the cost of the check is a Set
  * over at most twenty rows.
  */
-export function mergeNewestEvents(
-  published: readonly Record<string, unknown>[],
-  head: readonly Record<string, unknown>[],
+export function mergeNewestEvents<Row extends FeedKeyed>(
+  published: readonly Row[],
+  head: readonly Row[],
   limit: number,
-): Record<string, unknown>[] {
+): Row[] {
   const seen = new Set<string>();
-  const merged: Record<string, unknown>[] = [];
+  const merged: Row[] = [];
   for (const row of [...head, ...published]) {
     const id = `${String(row.block_number)}:${String(row.event_index)}`;
     if (seen.has(id)) continue;

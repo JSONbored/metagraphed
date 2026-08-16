@@ -22,6 +22,7 @@ import {
   foldSummaryGroups,
   loadAccountSummaryColdTier,
   mergeNewestEvents,
+  type FeedKeyed,
 } from "../src/account-feeds-cold-tier.ts";
 import {
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
@@ -1273,7 +1274,12 @@ describe("mergeNewestEvents", () => {
     // columns is nullable on `chain.account_events`. A missing key must not
     // throw and must not sort ABOVE a real event -- the card's top row is the
     // most visible thing on it.
-    const merged = mergeNewestEvents(
+    // The type argument is explicit because the fixtures below are DELIBERATELY
+    // partial -- one row per nullable sort column -- and left to infer, TS
+    // narrows `Row` to a union of those exact literal shapes and then refuses
+    // the complete row in the published half. `FeedKeyed` is the shape the
+    // merge actually needs, which is what these rows are testing against.
+    const merged = mergeNewestEvents<FeedKeyed>(
       [{ observed_at: 50, block_number: 1, event_index: 3 }],
       [
         // One row per nullable sort column, each with an identity of its own so
