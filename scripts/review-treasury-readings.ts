@@ -34,7 +34,10 @@
 // produce the same candidate forever with nothing recording that a human had
 // already dismissed it.
 import pg from "pg";
-import { TREASURY_REVIEW_STATES } from "../schemas-src/treasury.ts";
+import {
+  PromotableTreasuryReviewStateSchema,
+  type PromotableTreasuryReviewState,
+} from "../schemas-src/treasury.ts";
 
 interface CandidateRow {
   netuid: number;
@@ -49,18 +52,15 @@ interface CandidateRow {
   review_state: string;
 }
 
-/** The states a maintainer may promote INTO. `candidate` is what the extractor
- * writes; promoting something back to it would be undoing a review rather than
- * making one, and there is no reason to do that from here. */
-export const PROMOTABLE_STATES = TREASURY_REVIEW_STATES.filter(
-  (state) => state !== "candidate",
-);
+/** The states a maintainer may promote INTO, for the usage message. The set
+ *  itself lives with the vocabulary in schemas-src/treasury.ts. */
+export const PROMOTABLE_STATES = PromotableTreasuryReviewStateSchema.options;
 
 export interface ReviewCommand {
   action: "list" | "promote";
   netuid?: number;
   sourceUrl?: string;
-  state?: string;
+  state?: PromotableTreasuryReviewState;
 }
 
 /**
@@ -102,12 +102,19 @@ export function parseReviewArgs(
         "promote whichever the database returned first.",
     };
   }
-  if (!state || !PROMOTABLE_STATES.includes(state as never)) {
+  // Parsed rather than tested, so what survives is the narrow union. The
+  // value goes straight into `SET review_state = $3`, and it is also compared
+  // against a literal further down -- with a bare `string` a typo in either
+  // place compiles and reaches the database.
+  const promotable = PromotableTreasuryReviewStateSchema.safeParse(state);
+  if (!promotable.success) {
     return {
       error: `promote needs a state, one of: ${PROMOTABLE_STATES.join(", ")}`,
     };
   }
-  return { command: { action: "promote", netuid, sourceUrl, state } };
+  return {
+    command: { action: "promote", netuid, sourceUrl, state: promotable.data },
+  };
 }
 
 /** One candidate, printed with the fields the served card withholds. */
