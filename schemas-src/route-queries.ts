@@ -645,7 +645,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     // avoid (#10096). Read from VALIDATOR_ECONOMICS_SORTS, the module that
     // owns it, not a fourth copy.
     sort: sortSchema(
-      VALIDATOR_ECONOMICS_SORTS as unknown as [string, ...string[]],
+      VALIDATOR_ECONOMICS_SORTS,
       "earning_floor_cost_tao",
     ).optional(),
     limit: limitSchema(
