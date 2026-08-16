@@ -50,6 +50,7 @@ import {
   latestArtifactDate,
   repoRoot,
 } from "./lib.ts";
+import { apiEnv } from "./lib/worker-env.ts";
 
 // MCP tool call results are dynamic JSON-RPC payloads, read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -177,14 +178,14 @@ async function mcpRaw(
     headers: { "content-type": "application/json", ...headers },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
-  return handleRequest(request, envOverride as unknown as Env, {});
+  return handleRequest(request, apiEnv(envOverride), {});
 }
 
 async function getJson(path: string): Promise<Row> {
   const request = new Request(`https://api.metagraph.sh${path}`, {
     method: "GET",
   });
-  const response = await handleRequest(request, env as unknown as Env, {});
+  const response = await handleRequest(request, apiEnv(env), {});
   const text = await response.text();
   return { status: response.status, body: text ? JSON.parse(text) : null };
 }
@@ -295,24 +296,24 @@ const mcpSessionHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new McpSessionHub(
       { storage: inMemoryDoStorage() } as unknown as DurableObjectState,
-      {
+      apiEnv({
         CHAIN_FIREHOSE_HUB: chainFirehoseHubNS,
         SUBNET_STATUS_HUB: subnetStatusHubNS,
-      } as unknown as Env,
+      }),
     ),
 );
 const chainFirehoseHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new ChainFirehoseHub(
       { getWebSockets: () => [] } as unknown as DurableObjectState,
-      { MCP_SESSION_HUB: mcpSessionHubNS } as unknown as Env,
+      apiEnv({ MCP_SESSION_HUB: mcpSessionHubNS }),
     ),
 );
 const subnetStatusHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new SubnetStatusHub(
       { storage: inMemoryDoStorage() } as unknown as DurableObjectState,
-      { MCP_SESSION_HUB: mcpSessionHubNS } as unknown as Env,
+      apiEnv({ MCP_SESSION_HUB: mcpSessionHubNS }),
     ),
 );
 const lifecycleEnv = createLocalArtifactEnv({

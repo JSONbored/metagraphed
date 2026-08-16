@@ -13,6 +13,7 @@ import addFormatsPlugin from "ajv-formats";
 import { handleRequest } from "../workers/api.ts";
 import { EMBED_MODEL } from "../src/ai-search.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.ts";
+import { apiEnv } from "./lib/worker-env.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop
@@ -39,7 +40,7 @@ const SEMANTIC_URL = "https://api.metagraph.sh/api/v1/search/semantic";
 const ASK_URL = "https://api.metagraph.sh/api/v1/ask";
 
 function get(url: string, env: Row) {
-  return handleRequest(new Request(url), env as unknown as Env, {});
+  return handleRequest(new Request(url), apiEnv(env), {});
 }
 function post(
   url: string,
@@ -53,7 +54,7 @@ function post(
       headers: { "content-type": "application/json", ...headers },
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
-    env as unknown as Env,
+    apiEnv(env),
     {},
   );
 }

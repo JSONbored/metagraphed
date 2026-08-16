@@ -31,6 +31,7 @@ import {
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.ts";
+import { apiEnv } from "./lib/worker-env.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop
@@ -89,7 +90,7 @@ export async function runCommittedSeedGate({
     try {
       response = await handleRequest(
         new Request(`https://metagraph.sh${route.path}`),
-        env as unknown as Env,
+        apiEnv(env),
         {},
       );
     } catch (error) {
