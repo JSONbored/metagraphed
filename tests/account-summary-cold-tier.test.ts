@@ -11,13 +11,14 @@
 // capped-scan boundary must survive the probe that used to answer it being
 // folded into the aggregate (it was the query that aborted -- see "two reads").
 import assert from "node:assert/strict";
+import { resetAccountSummaryPointerCache } from "../src/account-summary-projection.ts";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
   ACCOUNT_SUMMARY_POINTER_KEY,
   accountSummaryShardKey,
 } from "../src/account-summary-projection.ts";
 import { readFileSync } from "node:fs";
-import { describe, test } from "vitest";
+import { describe, test, beforeEach } from "vitest";
 import {
   foldSummaryGroups,
   loadAccountSummaryColdTier,
@@ -31,6 +32,12 @@ import {
 } from "../src/account-events.ts";
 
 type Row = Record<string, unknown>;
+
+// The pointer memo is module-level and reset only between test FILES, so
+// whichever test resolved it first would decide every later test's generation.
+// Same reasoning as `resetDecodeWatermarkCache` in
+// tests/analytics-edge-cache.test.ts.
+beforeEach(() => resetAccountSummaryPointerCache());
 
 const SS58 = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
 

@@ -58,6 +58,8 @@ import {
   AccountSummaryRecentSchema,
 } from "../schemas-src/artifacts/account-summary-projection.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { z } from "zod";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
 /** Objects the producer writes, one per shard. Contract with
@@ -240,6 +242,56 @@ async function readJson(
  * lifetime total and publishing it would be a better number -- but a route
  * whose meaning depends on its tier is worse than either.
  */
+/**
+ * How long a resolved pointer is reused inside one isolate.
+ *
+ * FIVE MINUTES against an hourly producer, the same ratio
+ * `resolveDecodeWatermark` uses and for the same reason: it bounds the visible
+ * lag at ~8% of the producer's own cadence, which is well inside the freshness
+ * this artifact already claims (`ACCOUNT_SUMMARY_MAX_AGE_MS` is three days).
+ */
+export const ACCOUNT_SUMMARY_POINTER_TTL_MS = 5 * 60_000;
+
+/** The resolved pointer and when it expires. The PROMISE is memoized, not the
+ * value, so concurrent requests on a cold isolate share one R2 GET instead of
+ * racing to issue several. */
+let pointerMemo: {
+  expiresAt: number;
+  value: Promise<z.infer<typeof AccountSummaryPointerSchema> | null>;
+} | null = null;
+
+registerModuleStateReset("src/account-summary-projection.ts", () => {
+  pointerMemo = null;
+});
+
+/** Drop the memo so the next resolve re-reads R2. Exported for tests, and
+ * called on a shard miss -- see the call site for why that is what makes
+ * memoizing safe at all. */
+export function resetAccountSummaryPointerCache(): void {
+  pointerMemo = null;
+}
+
+async function resolvePointer(
+  bucket: ArtifactBucket,
+  now: () => number,
+): Promise<z.infer<typeof AccountSummaryPointerSchema> | null> {
+  const at = now();
+  if (pointerMemo && pointerMemo.expiresAt > at) return pointerMemo.value;
+  const value = (async () => {
+    const parsed = AccountSummaryPointerSchema.safeParse(
+      await readJson(bucket, ACCOUNT_SUMMARY_POINTER_KEY),
+    );
+    return parsed.success ? parsed.data : null;
+  })();
+  // A FAILED READ IS NOT MEMOIZED for the TTL: it is stored so concurrent
+  // callers share the in-flight request, then cleared, so a transient R2 blip
+  // costs one request rather than five minutes of declines.
+  pointerMemo = { expiresAt: at + ACCOUNT_SUMMARY_POINTER_TTL_MS, value };
+  const resolved = await value;
+  if (resolved === null) pointerMemo = null;
+  return resolved;
+}
+
 export async function loadAccountSummaryProjection(
   env: R2SqlEnv | null | undefined,
   account: string,
@@ -271,11 +323,14 @@ export async function loadAccountSummaryProjection(
   // `generated_at`, a POSITIVE INTEGER `shard_count`) are the two the previous
   // hand-rolled checks existed to enforce. See the schema's header for why each
   // one is load-bearing.
-  const parsedPointer = AccountSummaryPointerSchema.safeParse(
-    await readJson(bucket, ACCOUNT_SUMMARY_POINTER_KEY),
-  );
-  if (!parsedPointer.success) return null;
-  const pointer = parsedPointer.data;
+  //
+  // MEMOIZED, because this object changes once an hour and was being fetched on
+  // EVERY account request. Measured 2026-08-16, an R2 artifact read from this
+  // Worker costs ~370 ms (`/api/v1/coverage`, which does exactly one), and the
+  // projection does two in sequence -- the pointer, then the shard it names --
+  // so the pointer alone was a third of the wall clock on the fast path.
+  const pointer = await resolvePointer(bucket, now);
+  if (pointer === null) return null;
   if (pointer.schema_version !== ACCOUNT_SUMMARY_SCHEMA_VERSION) return null;
   const shards = pointer.shard_count;
   const generation = pointer.generation;
@@ -287,7 +342,20 @@ export async function loadAccountSummaryProjection(
     bucket,
     accountSummaryShardKey(account, shards, generation),
   );
-  if (!payload) return null;
+  // A MISS INVALIDATES THE MEMO, and that is what makes memoizing the pointer
+  // safe. The producer deletes a generation's shards once the next one is live,
+  // so a memoized pointer can name a generation that no longer exists -- and
+  // without this every account request would decline for the rest of the TTL,
+  // turning a 370 ms saving into a multi-minute outage once an hour.
+  //
+  // Dropping it here means the NEXT request re-reads the pointer and succeeds,
+  // so the window is one request rather than one TTL. This request still
+  // declines, which is correct: it has no shard to answer from, and the caller
+  // falls back to the lakehouse exactly as it did before the projection existed.
+  if (!payload) {
+    resetAccountSummaryPointerCache();
+    return null;
+  }
   const accounts = payload["accounts"];
   if (!accounts || typeof accounts !== "object") return null;
 
