@@ -1086,10 +1086,13 @@
       // LINK_STATUS_SYNC_CRON in workers/config.ts and
       // src/link-status-sync.ts's header.
       "35 7 * * *",
-      // */5 = raw chain capture (extrinsic/event bytes -> R2). Out-runs the
-      // chain ~6x so an outage backlog drains; see RAW_CAPTURE_CRON in
-      // workers/config.ts and src/raw-chain-capture.ts's no-gap guarantee.
-      "*/5 * * * *",
+      // */1 = raw chain capture (extrinsic/event bytes -> R2). Every minute,
+      // not every five: the tick is sized from this interval, and a */5 tick was
+      // sized to read for ~4 minutes -- longer than a Worker invocation
+      // reliably lives, so it was truncated mid-tick. See RAW_CAPTURE_CRON in
+      // workers/config.ts for the measurement and src/raw-chain-capture.ts for
+      // the no-gap guarantee.
+      "*/1 * * * *",
       // #9402: the registration-cost capture lane. 1/16/31/46 is the only 15-minute
       // grid that collides with none of the crons above. See
       // SUBNET_BURN_CAPTURE_CRON for why the cadence is resolution-driven.
