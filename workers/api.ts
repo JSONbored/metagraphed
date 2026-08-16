@@ -606,6 +606,7 @@ import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.t
 import { runLaneAlarm } from "../src/lane-alarm.ts";
 import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positions-staleness-watchdog.ts";
 import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
+import { runContainerLaneWatchdog } from "../src/container-lane-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { runAccountBalancesStalenessWatchdog } from "../src/account-balances-staleness-watchdog.ts";
 import { isFinneySs58Address } from "../src/account-balance.ts";
@@ -3438,6 +3439,23 @@ export const STALENESS_WATCHDOGS: ReadonlyArray<
     name: "projection-staleness",
     everyMinutes: 30,
     run: ({ env }) => runProjectionStalenessWatchdog(env),
+  },
+  {
+    // The five lanes inside metagraphed-infra's decode container, which no
+    // watchdog could see: `projection-staleness` iterates PROJECTION_LANES --
+    // the thirteen this Worker computes -- so anything container-written is
+    // structurally outside it. Measured 2026-08-16: `lane_health` held ZERO
+    // rows for `%summary%`, `%decode%`, `%rollup%` and `%mirror%`, and the
+    // account-summary projection had been dead 32 hours while the lanes either
+    // side of it in the same pass ran normally.
+    //
+    // HOURLY, matching the container's own pass rather than the 15/30-minute
+    // cadences around it: five R2 GETs against a lane that cannot advance
+    // faster than its cron, so a quarter-hourly tick would buy nothing but
+    // four times the reads.
+    name: "container-lanes",
+    everyMinutes: 60,
+    run: ({ env }) => runContainerLaneWatchdog(env),
   },
   {
     // #9273. That lane had no watchdog and no writer at all, and the gap was

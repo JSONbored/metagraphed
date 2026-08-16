@@ -155,94 +155,102 @@ export function evaluateProjectionStaleness(input: {
     generatedAt: string | null | undefined;
     /** `row_count` from the artifact body; absent/unreadable => null. */
     rowCount?: number | null;
+    /**
+     * Whether ZERO rows is a fault for this lane. Defaults true so the rule is
+     * unchanged for any caller that does not express an opinion; `watchedLanes`
+     * sets it false for non-default networks, where an idle day is normal.
+     */
+    emptyIsFault?: boolean;
   }[];
   nowMs: number;
   thresholdMs: number;
 }): ProjectionStalenessVerdict {
   const { artifacts, nowMs, thresholdMs } = input;
-  const entries = artifacts.map(({ lane, generatedAt, rowCount }) => {
-    const rows = typeof rowCount === "number" ? rowCount : null;
-    if (generatedAt == null) {
-      // An artifact that is not there at all is a stall of infinite age, not a
-      // quiet lane: every lane in the registry is supposed to have written on
-      // the last tick, and a route over a missing card serves its zeroed floor.
+  const entries = artifacts.map(
+    ({ lane, generatedAt, rowCount, emptyIsFault }) => {
+      const rows = typeof rowCount === "number" ? rowCount : null;
+      if (generatedAt == null) {
+        // An artifact that is not there at all is a stall of infinite age, not a
+        // quiet lane: every lane in the registry is supposed to have written on
+        // the last tick, and a route over a missing card serves its zeroed floor.
+        return {
+          lane,
+          stale: true,
+          reason: "absent" as const,
+          age_ms: null,
+          generated_at: null,
+          row_count: rows,
+        };
+      }
+      const at = Date.parse(generatedAt);
+      if (!Number.isFinite(at)) {
+        // A body whose timestamp cannot be read is worse than a missing one: the
+        // route is serving it, and nothing can say how old it is.
+        return {
+          lane,
+          stale: true,
+          reason: "unreadable" as const,
+          age_ms: null,
+          generated_at: generatedAt,
+          row_count: rows,
+        };
+      }
+      const age = nowMs - at;
+      if (age > thresholdMs) {
+        return {
+          lane,
+          stale: true,
+          reason: "stale" as const,
+          age_ms: age,
+          generated_at: generatedAt,
+          row_count: rows,
+        };
+      }
+      // FRESH BUT EMPTY -- the failure this watchdog could not see.
+      //
+      // The module header says it exists because two lanes "stopped writing".
+      // This is the opposite shape and the age check cannot reach it: the lane
+      // runs on time, computes zero rows, and overwrites a good artifact with an
+      // empty one, so `generated_at` stays minutes old forever while every route
+      // over the card serves its zeroed floor.
+      //
+      // MEASURED 2026-08-16: `metagraph/projections/chain-alpha-volume.json` read
+      // `{generated_at: "…11:46:31Z", row_count: 0, windows: {24h: {rows: []}}}`
+      // -- minutes old -- because its rolling 24h window queried a lakehouse
+      // whose newest data was ~29h back, so no row it could return existed. The
+      // site's 24h on-chain volume showed an em-dash for a day and this watchdog
+      // reported `ok` every 30 minutes throughout.
+      //
+      // ONLY AN EXPLICIT ZERO, never a missing field: an artifact that does not
+      // report `row_count` is not making a claim about its own coverage, and
+      // treating silence as zero would fire this on every lane whose envelope
+      // predates the field.
+      //
+      // These lanes are rolling-window aggregates over a chain producing a block
+      // every 12s, so zero rows in the window is not a quiet period -- it means
+      // the window and the data no longer overlap. A lane that CAN legitimately
+      // be empty should be exempted by name, with the reason written down, rather
+      // than by weakening this into a rule that cannot fire.
+      if (rows === 0 && emptyIsFault !== false) {
+        return {
+          lane,
+          stale: true,
+          reason: "empty" as const,
+          age_ms: age,
+          generated_at: generatedAt,
+          row_count: 0,
+        };
+      }
       return {
         lane,
-        stale: true,
-        reason: "absent" as const,
-        age_ms: null,
-        generated_at: null,
-        row_count: rows,
-      };
-    }
-    const at = Date.parse(generatedAt);
-    if (!Number.isFinite(at)) {
-      // A body whose timestamp cannot be read is worse than a missing one: the
-      // route is serving it, and nothing can say how old it is.
-      return {
-        lane,
-        stale: true,
-        reason: "unreadable" as const,
-        age_ms: null,
-        generated_at: generatedAt,
-        row_count: rows,
-      };
-    }
-    const age = nowMs - at;
-    if (age > thresholdMs) {
-      return {
-        lane,
-        stale: true,
-        reason: "stale" as const,
+        stale: false,
+        reason: null,
         age_ms: age,
         generated_at: generatedAt,
         row_count: rows,
       };
-    }
-    // FRESH BUT EMPTY -- the failure this watchdog could not see.
-    //
-    // The module header says it exists because two lanes "stopped writing".
-    // This is the opposite shape and the age check cannot reach it: the lane
-    // runs on time, computes zero rows, and overwrites a good artifact with an
-    // empty one, so `generated_at` stays minutes old forever while every route
-    // over the card serves its zeroed floor.
-    //
-    // MEASURED 2026-08-16: `metagraph/projections/chain-alpha-volume.json` read
-    // `{generated_at: "…11:46:31Z", row_count: 0, windows: {24h: {rows: []}}}`
-    // -- minutes old -- because its rolling 24h window queried a lakehouse
-    // whose newest data was ~29h back, so no row it could return existed. The
-    // site's 24h on-chain volume showed an em-dash for a day and this watchdog
-    // reported `ok` every 30 minutes throughout.
-    //
-    // ONLY AN EXPLICIT ZERO, never a missing field: an artifact that does not
-    // report `row_count` is not making a claim about its own coverage, and
-    // treating silence as zero would fire this on every lane whose envelope
-    // predates the field.
-    //
-    // These lanes are rolling-window aggregates over a chain producing a block
-    // every 12s, so zero rows in the window is not a quiet period -- it means
-    // the window and the data no longer overlap. A lane that CAN legitimately
-    // be empty should be exempted by name, with the reason written down, rather
-    // than by weakening this into a rule that cannot fire.
-    if (rows === 0) {
-      return {
-        lane,
-        stale: true,
-        reason: "empty" as const,
-        age_ms: age,
-        generated_at: generatedAt,
-        row_count: 0,
-      };
-    }
-    return {
-      lane,
-      stale: false,
-      reason: null,
-      age_ms: age,
-      generated_at: generatedAt,
-      row_count: rows,
-    };
-  });
+    },
+  );
   const staleLanes = entries.filter((e) => e.stale).map((e) => e.lane);
   return {
     stale: staleLanes.length > 0,
@@ -267,7 +275,11 @@ export interface ProjectionStalenessDeps {
 }
 
 /** Every lane x every network, labelled the way the runner labels them. */
-function watchedLanes(): { lane: string; key: string }[] {
+function watchedLanes(): {
+  lane: string;
+  key: string;
+  emptyIsFault: boolean;
+}[] {
   return PROJECTION_NETWORKS.flatMap((network) =>
     PROJECTION_LANES.map((lane) => ({
       lane:
@@ -275,6 +287,25 @@ function watchedLanes(): { lane: string; key: string }[] {
           ? lane.name
           : `${lane.name}:${network}`,
       key: projectionKey(lane.artifactKey, network),
+      // ZERO ROWS IS A FAULT ON MAINNET ONLY, and the difference is not a
+      // narrowing to make an alarm quieter -- it is the claim the rule makes.
+      //
+      // "Empty means broken" says the chain produces enough activity that an
+      // empty window cannot be real. That holds for mainnet: a block every 12s
+      // with continuous staking, where 24h of zero stake events would itself be
+      // the incident. It does not hold for a TEST chain, which is allowed to be
+      // idle for a day and frequently is.
+      //
+      // Measured 2026-08-16, the tick after this rule shipped: it flagged
+      // `chain-alpha-volume:testnet`, whose artifact was fresh (12:24) with
+      // `row_count: 0` -- a quiet test chain, not a broken lane. A rule that
+      // stands permanently on testnet is how the whole lane becomes wallpaper,
+      // which costs more than the coverage it buys.
+      //
+      // Testnet keeps every OTHER rule: absent, unreadable and stale-by-age all
+      // still fire, and `chain-stake-moves:testnet` was correctly flagged for
+      // age in that same tick.
+      emptyIsFault: network === DEFAULT_CHAIN_NETWORK,
     })),
   );
 }
@@ -302,8 +333,9 @@ export async function runProjectionStalenessWatchdog(
     lane: string;
     generatedAt: string | null;
     rowCount: number | null;
+    emptyIsFault: boolean;
   }[] = [];
-  for (const { lane, key } of watchedLanes()) {
+  for (const { lane, key, emptyIsFault } of watchedLanes()) {
     let generatedAt: string | null;
     let rowCount: number | null;
     try {
@@ -328,7 +360,7 @@ export async function runProjectionStalenessWatchdog(
       generatedAt = null;
       rowCount = null;
     }
-    artifacts.push({ lane, generatedAt, rowCount });
+    artifacts.push({ lane, generatedAt, rowCount, emptyIsFault });
   }
 
   const verdict = evaluateProjectionStaleness({

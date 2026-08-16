@@ -160,6 +160,63 @@ describe("evaluateProjectionStaleness -- fresh but empty", () => {
     assert.equal(verdict.entries[0]!.row_count, 128);
   });
 
+  test("a QUIET TEST CHAIN is not a fault -- emptyIsFault gates it", () => {
+    // "Empty means broken" is a claim about ACTIVITY LEVEL, not about the lane.
+    // It holds for mainnet -- a block every 12s with continuous staking, where
+    // 24h of zero stake events would itself be the incident -- and not for a
+    // test chain, which is allowed to be idle for a day.
+    //
+    // Measured on the tick after this rule shipped: it flagged
+    // `chain-alpha-volume:testnet`, fresh at 12:24 with row_count 0. A rule
+    // that stands permanently on testnet turns the whole lane into wallpaper.
+    const verdict = evaluateProjectionStaleness({
+      artifacts: [
+        { lane: "chain-alpha-volume", generatedAt: FRESH, rowCount: 0 },
+        {
+          lane: "chain-alpha-volume:testnet",
+          generatedAt: FRESH,
+          rowCount: 0,
+          emptyIsFault: false,
+        },
+      ],
+      nowMs: NOW,
+      thresholdMs: PROJECTION_STALENESS_THRESHOLD_MS,
+    });
+    assert.deepEqual(
+      verdict.stale_lanes,
+      ["chain-alpha-volume"],
+      "mainnet still faults on the identical payload",
+    );
+    assert.equal(verdict.entries[1]!.reason, null);
+    assert.equal(
+      verdict.entries[1]!.row_count,
+      0,
+      "the count is still reported -- exempt from the verdict, not from the record",
+    );
+  });
+
+  test("an exempt lane keeps every OTHER rule", () => {
+    // The exemption is for emptiness alone. A testnet lane that stops being
+    // written, or goes unreadable, must still fire -- which is what happened to
+    // `chain-stake-moves:testnet` in the same production tick, correctly.
+    const verdict = evaluateProjectionStaleness({
+      artifacts: [
+        {
+          lane: "stale:testnet",
+          generatedAt: "2026-08-14T09:00:00.000Z",
+          rowCount: 0,
+          emptyIsFault: false,
+        },
+        { lane: "absent:testnet", generatedAt: null, emptyIsFault: false },
+      ],
+      nowMs: NOW,
+      thresholdMs: PROJECTION_STALENESS_THRESHOLD_MS,
+    });
+    assert.deepEqual(verdict.stale_lanes, ["stale:testnet", "absent:testnet"]);
+    assert.equal(verdict.entries[0]!.reason, "stale");
+    assert.equal(verdict.entries[1]!.reason, "absent");
+  });
+
   test("a MISSING row_count is not read as zero", () => {
     // Silence is not a claim. An envelope that predates the field would
     // otherwise fire this on every lane at once, which is how a new alarm gets
