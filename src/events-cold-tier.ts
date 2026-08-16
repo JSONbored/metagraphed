@@ -179,7 +179,21 @@ async function recentEventsLeg(
   });
   if (projected === null || projected.absent === true) return null;
   const recent = projected.recent;
-  if (recent === null || recent.rows.length < limit) return null;
+  // NO LENGTH CHECK, and the first version of this had one -- `rows.length <
+  // limit` -- which was both redundant and WRONG IN THE DIRECTION THAT MATTERS.
+  //
+  // `readRecent` returns a list only when two things already hold: the pointer
+  // publishes at least `limit` events per account (it declines when
+  // `recent_limit < need`), and the list is COMPLETE for this account (it
+  // declines when the list is shorter than `min(published, lifetime)`). So a
+  // list that arrives here is the newest `min(published, lifetime)` events --
+  // every event the account has, when it has fewer than the limit asked for.
+  //
+  // Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC, whose whole history is two
+  // events: `?limit=5` saw a two-row list, read it as "not enough", and walked
+  // the lakehouse anyway -- 13.4s. The check rejected exactly the quiet accounts
+  // the hot tier is cheapest for, which is most of them.
+  if (recent === null) return null;
 
   // THE HEAD, FROM NEON WHEN THE TWO TIERS PROVABLY MEET.
   //
