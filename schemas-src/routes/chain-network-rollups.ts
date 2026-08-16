@@ -31,9 +31,10 @@ export const IntensityDistributionSchema = distributionStatsSchema(
  * How an axon-removal answer was derived, and what the derivation set aside.
  *
  * `AxonInfoRemoved` is emitted zero times by the Subtensor runtime, so these
- * routes are derived from the daily `neuron_daily.axon` state instead: a
- * non-null axon becoming null on a slot whose hotkey did not change, confirmed
- * by a second absent reading (#10805).
+ * routes are derived from the daily `neuron_daily.axon` state instead: an axon
+ * that stops being REACHABLE on a slot whose hotkey did not change, confirmed
+ * by a second reading (#10805, widened from presence to reachability in
+ * #11398).
  */
 export const AxonRemovalDerivationSchema = z
   .object({
@@ -55,6 +56,12 @@ export const AxonRemovalDerivationSchema = z
       .min(0)
       .describe(
         "Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket.",
+      ),
+    moved_unroutable: z
+      .int()
+      .min(0)
+      .describe(
+        "Of the confirmed removals, how many still announce an address nothing can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback. A running but unreachable miner, not a departed one. The MAJORITY: 166 of 271 same-hotkey losses over 38 days, and all but one of SN126's 160.",
       ),
   })
   .strict();

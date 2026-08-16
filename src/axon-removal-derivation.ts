@@ -61,6 +61,8 @@
 // equivalent SQL window function agree per subnet exactly -- 2, 1, 4, 5, 2, 5
 // -- and on the 230 drops it excluded as UID reuse.
 
+import { isRoutableAxon } from "./axon-routable.ts";
+
 /** How the axon-removal feeds are derived, echoed on every payload. */
 export const AXON_REMOVAL_DERIVATION_METHOD = "axon-state-diff";
 
@@ -86,6 +88,14 @@ export interface AxonRemovalDerivation {
    * always in this bucket, because confirmation needs a day after it.
    */
   pending_confirmation: number;
+  /**
+   * Of the confirmed removals, how many still announce something unreachable.
+   *
+   * Stated on the payload because it is the majority and a reader paging the
+   * list would otherwise have to count them: 166 of 271 same-hotkey losses
+   * over 38 days were moves, not departures (#11398).
+   */
+  moved_unroutable: number;
 }
 
 /** One (netuid, uid) observation on one day, as `neuron_daily` stores it. */
@@ -97,15 +107,29 @@ export interface NeuronAxonDayRow {
   axon: unknown;
 }
 
-/** One derived removal: this hotkey stopped announcing on this slot. */
+/** How a slot stopped being reachable, with the same hotkey still in it. */
+export type AxonRemovalKind = "stopped-announcing" | "moved-unroutable";
+
+/** One derived removal: this hotkey stopped being reachable on this slot. */
 export interface DerivedAxonRemoval {
   netuid: number;
   uid: number;
   hotkey: string;
-  /** The first day the axon was absent. */
+  /** The first day the axon was unreachable. */
   removed_on: string;
   /** What it had been announcing the day before. */
   previous_axon: string;
+  /**
+   * `stopped-announcing` cleared the field; `moved-unroutable` still publishes
+   * an address, at somewhere nothing can reach.
+   *
+   * Both are removals of REACHABILITY and both belong in the feed, but they
+   * ask different things of a reader: one miner went away, the other is
+   * running and misconfigured. Collapsing them would hide the second entirely.
+   */
+  kind: AxonRemovalKind;
+  /** The unreachable address on a move; null when the field was cleared. */
+  current_axon: string | null;
 }
 
 export interface DerivedAxonRemovals {
@@ -118,8 +142,25 @@ interface NormalizedDay {
   uid: number;
   date: string;
   hotkey: string;
-  /** Null means "no axon announced", which is what a removal transitions to. */
+  /**
+   * Null means "nothing REACHABLE announced" -- which is what a removal
+   * transitions to.
+   *
+   * Reachability, not presence (#11398). An axon in RFC 5737 documentation
+   * space or RFC 1918 private space is announced and cannot be reached by
+   * anyone, so a miner that moves to one has stopped serving exactly as much
+   * as one that cleared the field. Testing presence alone missed 166 of 271
+   * same-hotkey losses over 38 days, and all but one of SN126's 160 -- the
+   * largest same-hotkey source on the network, which read as a single event.
+   */
   axon: string | null;
+  /**
+   * What is announced, reachable or not.
+   *
+   * Non-null while `axon` is null is precisely the move case, and it is what
+   * separates `moved-unroutable` from `stopped-announcing` below.
+   */
+  announced: string | null;
 }
 
 /** A row is usable only if it identifies a slot, a day and an occupant. */
@@ -138,9 +179,14 @@ function normalize(row: NeuronAxonDayRow): NormalizedDay | null {
         ? raw.slice(0, 10)
         : "";
   if (!date) return null;
-  const axon =
+  const announced =
     typeof row?.axon === "string" && row.axon !== "" ? row.axon : null;
-  return { netuid, uid, date, hotkey, axon };
+  // `isRoutableAxon` is the same predicate the serving path publishes as
+  // `axon_routable` and the axon-announcement alarm counts by, so all three
+  // agree on what "reachable" means rather than each deciding for itself.
+  const axon =
+    announced !== null && isRoutableAxon(announced) ? announced : null;
+  return { netuid, uid, date, hotkey, axon, announced };
 }
 
 /**
@@ -198,6 +244,11 @@ export function deriveAxonRemovals(
         hotkey: current.hotkey,
         removed_on: current.date,
         previous_axon: previous.axon,
+        kind:
+          current.announced === null
+            ? "stopped-announcing"
+            : "moved-unroutable",
+        current_axon: current.announced,
       });
     }
   }
@@ -220,6 +271,9 @@ export function deriveAxonRemovals(
       lookback_days: lookbackDays,
       excluded_uid_reuse: excludedUidReuse,
       pending_confirmation: pending,
+      moved_unroutable: removals.filter(
+        (removal) => removal.kind === "moved-unroutable",
+      ).length,
     },
   };
 }

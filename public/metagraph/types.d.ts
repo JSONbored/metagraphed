@@ -6601,6 +6601,8 @@ export interface components {
                 lookback_days: number;
                 /** @constant */
                 method: "axon-state-diff";
+                /** @description Of the confirmed removals, how many still announce an address nothing can reach -- RFC 5737 documentation space, RFC 1918 private space, loopback. A running but unreachable miner, not a departed one. The MAJORITY: 166 of 271 same-hotkey losses over 38 days, and all but one of SN126's 160. */
+                moved_unroutable: number;
                 /** @description Drops by a still-present hotkey with no later reading of that slot yet. Not removals and not discarded: a one-reading absence is indistinguishable from a missed poll, so confirmation waits for the next observation. The newest day of any window is structurally in this bucket. */
                 pending_confirmation: number;
             };
@@ -25918,6 +25920,7 @@ export interface operations {
                      *           "excluded_uid_reuse": 1,
                      *           "lookback_days": 1,
                      *           "method": "axon-state-diff",
+                     *           "moved_unroutable": 1,
                      *           "pending_confirmation": 1
                      *         },
                      *         "intensity_distribution": {

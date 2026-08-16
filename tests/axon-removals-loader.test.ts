@@ -354,8 +354,16 @@ describe("accountAxonRemovalRows — order independence", () => {
       lookback_days: 30,
       excluded_uid_reuse: 0,
       pending_confirmation: 0,
+      moved_unroutable: 0,
     },
-    removals: removals.map((r) => ({ ...r, previous_axon: "1.2.3.4:8091" })),
+    removals: removals.map((r) => ({
+      ...r,
+      previous_axon: "1.2.3.4:8091",
+      // These fixtures are all field-cleared removals; the move case has its
+      // own coverage in axon-removal-derivation.test.ts (#11398).
+      kind: "stopped-announcing" as const,
+      current_axon: null,
+    })),
   });
 
   test("widens the window in BOTH directions, whatever order rows arrive in", () => {

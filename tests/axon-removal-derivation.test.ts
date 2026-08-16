@@ -43,10 +43,13 @@ describe("deriveAxonRemovals", () => {
       hotkey: "hkA",
       removed_on: "2026-08-02",
       previous_axon: "1.2.3.4:8091",
+      kind: "stopped-announcing",
+      current_axon: null,
     });
     assert.equal(derivation.method, AXON_REMOVAL_DERIVATION_METHOD);
     assert.equal(derivation.excluded_uid_reuse, 0);
     assert.equal(derivation.pending_confirmation, 0);
+    assert.equal(derivation.moved_unroutable, 0);
   });
 
   // CORRECTION 1. 1,485 of 1,584 drops measured over 30 days are this, so
@@ -336,5 +339,107 @@ describe("deriveAxonRemovals — the shapes a row can arrive in", () => {
     const reversed = deriveAxonRemovals([...rows].reverse(), opts);
     assert.deepEqual(reversed.removals, forward.removals);
     assert.equal(forward.removals.length, 1);
+  });
+});
+
+describe("deriveAxonRemovals — reachability, not presence (#11398)", () => {
+  // THE GAP THIS CLOSES. Testing `axon` non-null -> null asks whether a field
+  // is populated. A miner that moves to RFC 5737 documentation space is still
+  // populated and reachable by nobody. Measured over the 38 days neuron_daily
+  // retains: 166 of 271 same-hotkey losses are moves, and SN126 -- the largest
+  // same-hotkey source on the network -- read as ONE event instead of 160.
+
+  test("a move into documentation space IS a removal, and says so", () => {
+    const { removals, derivation } = deriveAxonRemovals(
+      [
+        day("2026-08-01", { axon: "1.2.3.4:8091" }),
+        day("2026-08-02", { axon: "192.0.2.1:8091" }),
+        day("2026-08-03", { axon: "192.0.2.1:8091" }),
+      ],
+      opts,
+    );
+    assert.equal(removals.length, 1);
+    assert.equal(removals[0].kind, "moved-unroutable");
+    assert.equal(removals[0].previous_axon, "1.2.3.4:8091");
+    // The address it moved TO, so a reader can see it is misconfigured rather
+    // than gone -- a running miner nobody can reach.
+    assert.equal(removals[0].current_axon, "192.0.2.1:8091");
+    assert.equal(derivation.moved_unroutable, 1);
+  });
+
+  test("private and loopback space count too", () => {
+    for (const unreachable of [
+      "10.0.0.5:8091",
+      "127.0.0.1:8091",
+      "192.168.1.9:8091",
+    ]) {
+      const { removals } = deriveAxonRemovals(
+        [
+          day("2026-08-01", { axon: "1.2.3.4:8091" }),
+          day("2026-08-02", { axon: unreachable }),
+          day("2026-08-03", { axon: unreachable }),
+        ],
+        opts,
+      );
+      assert.equal(removals.length, 1, unreachable);
+      assert.equal(removals[0].kind, "moved-unroutable", unreachable);
+    }
+  });
+
+  test("moving between two REACHABLE addresses is not a removal", () => {
+    // Re-homing a live miner is ordinary operations, and the feed must not
+    // report it -- otherwise every host migration on the network lands here.
+    const { removals, derivation } = deriveAxonRemovals(
+      [
+        day("2026-08-01", { axon: "1.2.3.4:8091" }),
+        day("2026-08-02", { axon: "5.6.7.8:8091" }),
+        day("2026-08-03", { axon: "5.6.7.8:8091" }),
+      ],
+      opts,
+    );
+    assert.deepEqual(removals, []);
+    assert.equal(derivation.moved_unroutable, 0);
+  });
+
+  test("coming BACK to a reachable address is a flap, not a removal", () => {
+    // The same debounce that protects a missed poll protects this: a slot that
+    // is reachable again on the next reading was never torn down.
+    const { removals } = deriveAxonRemovals(
+      [
+        day("2026-08-01", { axon: "1.2.3.4:8091" }),
+        day("2026-08-02", { axon: "192.0.2.1:8091" }),
+        day("2026-08-03", { axon: "1.2.3.4:8091" }),
+      ],
+      opts,
+    );
+    assert.deepEqual(removals, []);
+  });
+
+  test("a move whose slot changes hands is STILL uid reuse, not a removal", () => {
+    // Correction 1 runs before the mechanism split, so widening what counts as
+    // "lost" cannot smuggle a deregistration back into the feed.
+    const { removals, derivation } = deriveAxonRemovals(
+      [
+        day("2026-08-01", { axon: "1.2.3.4:8091" }),
+        day("2026-08-02", { axon: "192.0.2.1:8091", hotkey: "hkB" }),
+        day("2026-08-03", { axon: "192.0.2.1:8091", hotkey: "hkB" }),
+      ],
+      opts,
+    );
+    assert.deepEqual(removals, []);
+    assert.equal(derivation.excluded_uid_reuse, 1);
+    assert.equal(derivation.moved_unroutable, 0);
+  });
+
+  test("an unconfirmed move is PENDING, not published", () => {
+    const { removals, derivation } = deriveAxonRemovals(
+      [
+        day("2026-08-01", { axon: "1.2.3.4:8091" }),
+        day("2026-08-02", { axon: "192.0.2.1:8091" }),
+      ],
+      opts,
+    );
+    assert.deepEqual(removals, []);
+    assert.equal(derivation.pending_confirmation, 1);
   });
 });
