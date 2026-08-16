@@ -29,16 +29,19 @@
 // below, so that empty is never read as a measurement. Same contract as the
 // sibling chain-* artifact readers.
 
+import { z } from "zod";
+
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
 } from "./chain-deregistrations.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readArtifactObject } from "./projection-store.ts";
 import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+  ProjectionAggregateSchema,
+  ProjectionRowsSchema,
+} from "../schemas-src/projection-artifact.ts";
 import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
@@ -52,8 +55,13 @@ import {
 import {
   deregistrationRowsForHotkey,
   type DeregistrationDerivation,
-  type DeregistrationUidTuple,
 } from "./deregistration-derivation.ts";
+// The SAME schema the route publishes, not a second copy of it. It is
+// `.strict()` with `z.int().min(0)` bounds, so the read now proves the stored
+// derivation is exactly what callers are promised -- and `is_lower_bound`, the
+// field that says the count is a FLOOR rather than a measurement, can no
+// longer be absent and read as false (#9708).
+import { DeregistrationDerivationSchema } from "../schemas-src/routes/event-stream-honesty.ts";
 import { DEREGISTRATIONS_DEGRADED_NOT_DERIVED } from "./uncurated-event-streams.ts";
 
 /** The rollup body: per-subnet rows + the network rollup, ~8 KB. */
@@ -74,16 +82,64 @@ export const CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY =
 export const CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY =
   "metagraph/projections/chain-deregistrations-by-uid.json";
 
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
+/**
+ * One window across all three scopes.
+ *
+ * Every field is optional because the three objects this lane writes do not
+ * share a shape: the rollup carries `rows` + `network`, the per-hotkey index
+ * carries `hotkeys`, and each caller requires the one it reads. Requiring all
+ * of them here would decline two objects out of three on every call.
+ */
+const DeregistrationWindowSchema = z.object({
+  network: ProjectionAggregateSchema,
+  rows: ProjectionRowsSchema.optional(),
+  hotkeys: z.record(z.string(), z.unknown()).optional(),
+  // A derivation that does not parse degrades to ABSENT rather than failing
+  // the window. That is not leniency for its own sake: "no derivation echo" is
+  // a state every caller already handles (bodies predating #9708 have none),
+  // whereas declining would drop an otherwise-good leaderboard over an
+  // advisory block. What it must never do is default `is_lower_bound` to
+  // false, which would publish a floor as a measurement.
+  derivation: DeregistrationDerivationSchema.optional().catch(undefined),
+});
+type ProjectionWindow = z.infer<typeof DeregistrationWindowSchema>;
 
-interface ProjectionWindow {
-  network?: unknown;
-  rows?: unknown;
-  hotkeys?: unknown;
-  derivation?: unknown;
-}
+/**
+ * The envelope, keeping unknown keys.
+ *
+ * `.catchall` rather than a fixed shape because the three objects diverge
+ * BELOW `schema_version`: two are keyed by window, the per-uid index publishes
+ * `by_netuid` instead. Pinning `windows` here would decline the uid object on
+ * every call, which is the same reason the function this replaces checked only
+ * `schema_version`.
+ */
+const DeregistrationEnvelopeSchema = z
+  .object({ schema_version: z.literal(1) })
+  .catchall(z.unknown());
+
+/**
+ * One eviction, exactly as `DeregistrationUidTuple` declares it.
+ *
+ * Parsed PER TUPLE rather than over the whole list, because the contract here
+ * is drop-the-bad-row, not decline-the-subnet: a lane that emitted one short
+ * or half-typed row must not cost a caller every other eviction on that
+ * subnet. Publishing such a row instead would put `"observed_at": null`, or a
+ * five-field row's undefined tail, into a response that claims every field is
+ * present.
+ */
+const DeregistrationUidTupleSchema = z.tuple([
+  z.number(),
+  z.string(),
+  z.string(),
+  z.number(),
+  z.number(),
+  z.number().nullable(),
+]);
+
+/** The per-uid eviction index: netuid -> the tuples the subnet scope slices. */
+const DeregistrationUidIndexSchema = z.object({
+  by_netuid: z.record(z.string(), z.array(z.unknown())).optional(),
+});
 
 /**
  * Attach the "this zero is not a measurement" marker to a schema-stable empty
@@ -107,11 +163,13 @@ async function readProjection(
   network: ChainNetworkId,
 ): Promise<Record<string, ProjectionWindow> | null> {
   const body = await readProjectionBody(env, key, network);
-  const windows = body?.windows;
+  if (!body) return null;
   // A body that is not the artifact the lane wrote is a decline, not a
   // guess -- same contract as the sibling chain-* readers.
-  if (typeof windows !== "object" || windows === null) return null;
-  return windows as Record<string, ProjectionWindow>;
+  const windows = z
+    .record(z.string(), DeregistrationWindowSchema)
+    .safeParse(body.windows);
+  return windows.success ? windows.data : null;
 }
 
 /**
@@ -129,20 +187,12 @@ async function readProjectionBody(
   key: string,
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(projectionKey(key, network));
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-    } | null;
-    if (body?.schema_version !== 1) return null;
-    return body as Record<string, unknown>;
-  } catch {
-    return null;
-  }
+  return await readArtifactObject(
+    env,
+    key,
+    network,
+    DeregistrationEnvelopeSchema,
+  );
 }
 
 /**
@@ -172,8 +222,7 @@ function selectWindow(
 function derivationOf(
   window: ProjectionWindow,
 ): DeregistrationDerivation | null {
-  const derivation = window.derivation as DeregistrationDerivation | undefined;
-  return derivation && typeof derivation === "object" ? derivation : null;
+  return window.derivation ?? null;
 }
 
 /**
@@ -197,15 +246,11 @@ export async function loadChainDeregistrationsFromArtifact(
   );
   if (selected === null) return null;
   const rows = selected.window.rows;
-  if (!Array.isArray(rows)) return null;
-  const data = buildChainDeregistrations(rows as Record<string, unknown>[], {
+  if (!rows) return null;
+  const data = buildChainDeregistrations(rows, {
     window: selected.label,
     limit: query.limit,
-    networkDistinct:
-      (selected.window.network as {
-        distinct_deregistered_hotkeys?: unknown;
-        newest_observed?: unknown;
-      } | null) ?? undefined,
+    networkDistinct: selected.window.network ?? undefined,
   });
   const derivation = derivationOf(selected.window);
   if (derivation) data.derivation = derivation;
@@ -245,12 +290,10 @@ export async function loadSubnetDeregistrationsFromArtifact(
   );
   if (selected === null) return null;
   const rows = selected.window.rows;
-  if (!Array.isArray(rows)) return null;
+  if (!rows) return null;
   const target = Number(netuid);
   const row =
-    (rows as Record<string, unknown>[]).find(
-      (candidate) => Number(candidate?.netuid) === target,
-    ) ?? null;
+    rows.find((candidate) => Number(candidate.netuid) === target) ?? null;
   const data = buildSubnetDeregistrations(row, netuid, {
     window: selected.label,
   });
@@ -291,18 +334,18 @@ function subnetUidEvictions(
   netuid: number,
   windowDays: number,
 ): Record<string, unknown>[] {
-  const rows = (
-    projection as {
-      by_netuid?: Record<string, DeregistrationUidTuple[]>;
-    } | null
-  )?.by_netuid?.[String(netuid)];
-  if (!Array.isArray(rows)) return [];
+  const index = DeregistrationUidIndexSchema.safeParse(projection);
+  const rows = index.success
+    ? index.data.by_netuid?.[String(netuid)]
+    : undefined;
+  if (!rows) return [];
   const since = Date.now() - windowDays * 24 * 60 * 60 * 1000;
   const out: Record<string, unknown>[] = [];
-  for (const tuple of rows) {
-    if (!Array.isArray(tuple) || tuple.length < 6) continue;
-    const [uid, hotkey, successor, block, observedAt, tenure] = tuple;
-    if (typeof observedAt !== "number" || observedAt < since) continue;
+  for (const candidate of rows) {
+    const parsed = DeregistrationUidTupleSchema.safeParse(candidate);
+    if (!parsed.success) continue;
+    const [uid, hotkey, successor, block, observedAt, tenure] = parsed.data;
+    if (observedAt < since) continue;
     out.push({
       uid,
       // The DISPLACED holder -- this event is a deregistration OF this hotkey.
@@ -346,10 +389,8 @@ export async function loadAccountDeregistrationsFromArtifact(
   );
   if (selected === null) return null;
   const index = selected.window.hotkeys;
-  if (typeof index !== "object" || index === null) return null;
-  const rows = deregistrationRowsForHotkey(
-    (index as Record<string, unknown>)[ss58],
-  );
+  if (!index) return null;
+  const rows = deregistrationRowsForHotkey(index[ss58]);
   const data = buildAccountDeregistrations(rows, ss58, {
     window: selected.label,
   });

@@ -8892,7 +8892,10 @@ function asPlainJson(value: unknown) {
 describe("graphql — blocks_summary (#5664, archived projection)", () => {
   /** The artifact envelope the blocks-summary lane writes. */
   function summaryProjection(summary: Row) {
-    return { schema_version: 1, summary };
+    // The stored card carries its OWN schema_version -- `buildBlocksSummary`
+    // emits it, and since #11418 the reader validates the summary against
+    // `BlocksSummaryArtifactSchema`, the schema the route publishes.
+    return { schema_version: 1, summary: { schema_version: 1, ...summary } };
   }
 
   /** An archive binding that answers every key with the same body. */
@@ -24162,6 +24165,10 @@ describe("graphql — event-stream honesty (#9307)", () => {
     lookback_days: 30,
     window_registrations: 8064,
     unattributed_registrations: 1726,
+    // #9708: the lane always writes this (`unattributed_registrations > 0`).
+    // Absent here until #11418, when the reader started parsing the derivation
+    // instead of casting it through unchecked.
+    is_lower_bound: true,
   };
   const SS58_ADDR = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -24212,7 +24219,7 @@ describe("graphql — event-stream honesty (#9307)", () => {
           subnet_count
           network { distinct_deregistered_hotkeys }
           subnets { netuid deregistrations }
-          derivation { method lookback_days window_registrations unattributed_registrations }
+          derivation { method lookback_days window_registrations unattributed_registrations is_lower_bound }
           degraded { reason }
         } }`,
       projectionEnv(ROLLUP),

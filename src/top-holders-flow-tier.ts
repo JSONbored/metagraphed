@@ -63,6 +63,8 @@
 // leaves the previous artifact in place and records one exception, and a
 // caller keeps yesterday's ranking rather than getting a plausible blank.
 
+import { artifactBucket } from "./projection-store.ts";
+
 import type { ProjectionLane } from "./projection-lanes.ts";
 import { PROJECTION_QUERY_TIMEOUT_MS } from "./projection-lanes.ts";
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./chain-stake-flow.ts";
@@ -328,10 +330,6 @@ export const TOP_HOLDERS_FLOW_LANE: ProjectionLane = {
   compute: computeTopHoldersFlow,
 };
 
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
-
 /**
  * The rows this reader will serve, or null when the body is not the artifact
  * the lane wrote.
@@ -396,9 +394,8 @@ export async function loadTopHoldersFlowTier(
   // written object can say what it actually ranked.
   const sort = query.sort ?? "";
   if (!TOP_HOLDERS_LIVE_SORTS.includes(sort)) return null;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
+  const bucket = artifactBucket(env);
+  if (!bucket) return null;
   try {
     const object = await bucket.get(TOP_HOLDERS_FLOW_PROJECTION_KEY);
     if (!object) return null;

@@ -47,6 +47,8 @@
 // SubnetLeaseShares (#6719). `contributors_count` on each record already gives
 // the aggregate; the per-contributor breakdown is a future extension.
 
+import { chainRpcResult } from "./chain-rpc.ts";
+
 import { encodeAccountId32 } from "./ss58.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import {
@@ -155,8 +157,7 @@ async function rpcCall(
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
     if (!rpcResp.ok) return { ok: false, raw: undefined };
-    const rpcBody = (await rpcResp.json()) as Row;
-    return { ok: true, raw: rpcBody?.result };
+    return { ok: true, raw: chainRpcResult(await rpcResp.json()) };
   } catch {
     return { ok: false, raw: undefined };
   }

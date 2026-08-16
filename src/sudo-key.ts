@@ -10,6 +10,8 @@
 // Server-side SS58 encoding lives in src/ss58.ts (extracted #4688) -- see
 // that module's header for why @noble/hashes' blake2b is required over
 // node:crypto's createHash("blake2b512") (unsupported in workerd).
+import { chainRpcResult } from "./chain-rpc.ts";
+
 import { encodeAccountId32 } from "./ss58.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import {
@@ -94,8 +96,7 @@ async function loadSudoKeySnapshot(
       }),
     });
     if (rpcResp.ok) {
-      const rpcBody = (await rpcResp.json()) as Row;
-      const raw = rpcBody?.result;
+      const raw = chainRpcResult(await rpcResp.json());
       if (typeof raw === "string" && /^0x[0-9a-fA-F]{64}$/.test(raw)) {
         hotkey = encodeAccountId32(hexToBytes(raw), FINNEY_SS58_PREFIX);
         rpcOk = true;

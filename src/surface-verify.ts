@@ -5,6 +5,8 @@
 // re-probes the exact URLs the 15-minute health cron already probes, just on
 // demand. The worker layer adds the rate limiter + a 60s per-surface cache so
 // repeated calls can't fan out into real outbound probes.
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { probeSurface, type ProbeSurface } from "./health-probe-core.ts";
 import { resolveSurfaceAlias } from "./surface-aliases.ts";
@@ -163,8 +165,10 @@ export async function verifySurfaceWithCache(
   if (cache && cacheKey) {
     const hit = await cache.match(cacheKey);
     if (hit) {
-      const cached = (await hit.json()) as Row;
-      return { ...cached, from_cache: true };
+      // A cache entry is spread STRAIGHT INTO the response, so a body that is
+      // not an object would publish `from_cache` and nothing else.
+      const cached = asJsonObject(await hit.json());
+      if (cached) return { ...cached, from_cache: true };
     }
   }
 

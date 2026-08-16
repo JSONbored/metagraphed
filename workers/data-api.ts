@@ -29,6 +29,7 @@ import {
   subnetOwnershipSyncRowSchema,
   validateSyncRows,
 } from "../schemas-src/sync-rows.ts";
+import { readJsonObjectBody } from "../schemas-src/json-request.ts";
 import { spotPriceTao } from "../src/stake-quote.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { isPathUnder } from "./http.ts";
@@ -4678,12 +4679,8 @@ async function handleWatchPushSubscriptionCreate(
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return writeJson({ error: "body must be JSON" }, 400);
-  }
+  const body = await readJsonObjectBody(request);
+  if (!body) return writeJson({ error: "body must be a JSON object" }, 400);
 
   const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
   const p256dh = typeof body.p256dh === "string" ? body.p256dh : "";
@@ -4870,12 +4867,8 @@ async function handleInternalPushSubscription(
   }
 
   if (request.method === "DELETE") {
-    let body: Record<string, unknown>;
-    try {
-      body = (await request.json()) as Record<string, unknown>;
-    } catch {
-      return writeJson({ error: "body must be JSON" }, 400);
-    }
+    const body = await readJsonObjectBody(request);
+    if (!body) return writeJson({ error: "body must be a JSON object" }, 400);
     const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
     if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
     return withAlertTriggersSql(env, ctx, async (sql) => {
@@ -5599,15 +5592,11 @@ async function handleApiQuotaSpend(
       401,
     );
   }
-  let body: { account_id?: unknown; cost?: unknown; limit?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return writeJson({ error: "invalid body" }, 400);
-  }
-  const accountId = Number(body?.account_id);
-  const cost = Number(body?.cost);
-  const limit = Number(body?.limit);
+  const body = await readJsonObjectBody(request);
+  if (!body) return writeJson({ error: "invalid body" }, 400);
+  const accountId = Number(body.account_id);
+  const cost = Number(body.cost);
+  const limit = Number(body.limit);
   if (
     !Number.isInteger(accountId) ||
     accountId <= 0 ||
@@ -5697,13 +5686,9 @@ async function handleUsageRollupIncrement(
       401,
     );
   }
-  let body: { buckets?: unknown };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return writeJson({ error: "invalid body" }, 400);
-  }
-  const buckets = Array.isArray(body?.buckets) ? body.buckets : [];
+  const body = await readJsonObjectBody(request);
+  if (!body) return writeJson({ error: "invalid body" }, 400);
+  const buckets = Array.isArray(body.buckets) ? body.buckets : [];
   if (buckets.length === 0) return writeJson({ ok: true, applied: 0 });
   try {
     await withAccountsSql(env, ctx, async (sql) => {

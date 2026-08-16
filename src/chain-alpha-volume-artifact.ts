@@ -8,22 +8,25 @@
 // ranking, the network rollup, the distribution, and the limit slice.
 
 import { buildChainAlphaVolume } from "./chain-alpha-volume.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsCellSchema } from "../schemas-src/projection-artifact.ts";
 
 export const CHAIN_ALPHA_VOLUME_PROJECTION_KEY =
   "metagraph/projections/chain-alpha-volume.json";
 
 /** The route's one window label (fixed 24h, no ?window= param) — kept as a
  * windows-object key so the artifact envelope matches every sibling lane. */
-const ALPHA_VOLUME_WINDOW = "24h";
+export const ALPHA_VOLUME_WINDOW = "24h";
 
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
+/**
+ * The route's window SET, which for this lane has exactly one member.
+ *
+ * Spelled as a set anyway so the shared reader applies the same rule it
+ * applies everywhere else: a label the route does not publish is a decline,
+ * checked before the artifact is opened.
+ */
+export const ALPHA_VOLUME_WINDOWS = { [ALPHA_VOLUME_WINDOW]: true };
 
 /**
  * The projected chain-alpha-volume leaderboard, or null when the artifact
@@ -44,36 +47,17 @@ export async function loadChainAlphaVolumeFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainAlphaVolume> | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_ALPHA_VOLUME_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess — same contract as src/top-holders-artifact.ts.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const win = (body.windows as Record<string, unknown>)[
-      ALPHA_VOLUME_WINDOW
-    ] as { rows?: unknown } | null;
-    if (!Array.isArray(win?.rows)) return null;
-    return buildChainAlphaVolume(win.rows as Record<string, unknown>[], {
-      limit: query.limit,
-      marketCapByNetuid: query.marketCapByNetuid ?? null,
-    });
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_ALPHA_VOLUME_PROJECTION_KEY,
+    network,
+    window: ALPHA_VOLUME_WINDOW,
+    defaultWindow: ALPHA_VOLUME_WINDOW,
+    windows: ALPHA_VOLUME_WINDOWS,
+    cell: ProjectionRowsCellSchema,
+  });
+  if (!read) return null;
+  return buildChainAlphaVolume(read.cell.rows, {
+    limit: query.limit,
+    marketCapByNetuid: query.marketCapByNetuid ?? null,
+  });
 }

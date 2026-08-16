@@ -3,7 +3,7 @@ title: Chain
 description: Every Chain endpoint in the metagraphed API, with its method and path.
 ---
 
-55 endpoints.
+57 endpoints.
 
 - [Chain Activity](/docs/api-reference/chain/chain-activity) — `GET /api/v1/chain/activity`  
   Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first.
@@ -99,8 +99,12 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores.
 - [Chain Weight Setters](/docs/api-reference/chain/chain-weight-setters) — `GET /api/v1/chain/weights/setters`  
   Fetch the network-wide weight-setter leaderboard over a 7d or 30d window: the individual validators driving consensus across every subnet ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time.
+- [Chain Weight Setters By Network](/docs/api-reference/chain/chain-weight-setters-by-network) — `GET /api/v1/{network}/chain/weights/setters`  
+  Network-scoped form of /api/v1/chain/weights/setters — prefix the route with a network to choose which chain answers it.
 - [Chain Weights](/docs/api-reference/chain/chain-weights) — `GET /api/v1/chain/weights`  
   Fetch network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): a per-subnet leaderboard (distinct weight-setting validators, WeightsSet event count, and average updates per validator) ranked by total events, a network rollup with the true distinct setter count (a validator setting weights on several subnets counts once) and total events, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet update intensity.
+- [Chain Weights By Network](/docs/api-reference/chain/chain-weights-by-network) — `GET /api/v1/{network}/chain/weights`  
+  Network-scoped form of /api/v1/chain/weights — prefix the route with a network to choose which chain answers it.
 - [Chain Yield](/docs/api-reference/chain/chain-yield) — `GET /api/v1/chain/yield`  
   Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons store; schema-stable nulls when cold.
 - [Crowdloan Detail](/docs/api-reference/chain/crowdloan-detail) — `GET /api/v1/crowdloans/{crowdloan_id}`  

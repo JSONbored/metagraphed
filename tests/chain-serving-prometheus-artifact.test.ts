@@ -19,6 +19,14 @@ import {
   CHAIN_PROMETHEUS_PROJECTION_KEY,
   loadChainPrometheusFromArtifact,
 } from "../src/chain-prometheus-artifact.ts";
+import {
+  CHAIN_WEIGHTS_PROJECTION_KEY,
+  loadChainWeightsFromArtifact,
+} from "../src/chain-weights-artifact.ts";
+import {
+  CHAIN_WEIGHT_SETTERS_PROJECTION_KEY,
+  loadChainWeightSettersFromArtifact,
+} from "../src/chain-weight-setters-artifact.ts";
 
 const NEWEST = 1_786_900_000_000;
 
@@ -33,8 +41,18 @@ function artifact(distinctField: string) {
         days: 7,
         network: { [distinctField]: "5", newest_observed: NEWEST },
         rows: [
-          { netuid: 3, announcements: "10", [distinctField]: "2" },
-          { netuid: 11, announcements: "4", [distinctField]: "4" },
+          {
+            netuid: 3,
+            announcements: "10",
+            weight_sets: "10",
+            [distinctField]: "2",
+          },
+          {
+            netuid: 11,
+            announcements: "4",
+            weight_sets: "4",
+            [distinctField]: "4",
+          },
         ],
       },
       "30d": { days: 30, network: null, rows: [] },
@@ -74,6 +92,15 @@ const CASES = [
     key: CHAIN_PROMETHEUS_PROJECTION_KEY,
     distinctField: "distinct_exporters",
     load: loadChainPrometheusFromArtifact,
+  },
+  // #11418: same per-netuid rollup shape, so it is held to the same contract.
+  // Its rows count `weight_sets` rather than `announcements`, which the
+  // builder reads and this fixture supplies through `countField`.
+  {
+    name: "chain-weights",
+    key: CHAIN_WEIGHTS_PROJECTION_KEY,
+    distinctField: "distinct_setters",
+    load: loadChainWeightsFromArtifact,
   },
 ] as const;
 
@@ -200,3 +227,135 @@ for (const { name, key, distinctField, load } of CASES) {
     });
   });
 }
+
+// The per-IDENTITY reader stores `{ rows, totals }` rather than
+// `{ network, rows }`, so it gets its own block rather than being bent into the
+// shared table above (#11418).
+describe("chain-weight-setters projection reader", () => {
+  function settersArtifact() {
+    return {
+      schema_version: 1,
+      generated_at: "2026-08-16T12:00:00.000Z",
+      row_count: 2,
+      windows: {
+        "7d": {
+          days: 7,
+          totals: { weight_sets: "40", distinct_setters: "9" },
+          rows: [
+            { netuid: 3, uid: 1, weight_sets: "30", last_set: NEWEST },
+            { netuid: 3, uid: 2, weight_sets: "10", last_set: NEWEST - 1000 },
+          ],
+        },
+        "30d": { days: 30, totals: {}, rows: [] },
+      },
+    };
+  }
+
+  test("serves the stored leaderboard through the shared builder", async () => {
+    const { env, gets } = bucketWith(settersArtifact());
+    const card = await loadChainWeightSettersFromArtifact(env, {
+      window: "7d",
+    });
+    assert.ok(card);
+    assert.deepEqual(gets, [CHAIN_WEIGHT_SETTERS_PROJECTION_KEY]);
+    assert.equal(card.setters.length, 2);
+  });
+
+  test("the SHARE denominator comes from totals, not from the page", async () => {
+    // The reason totals ride separately: the page is capped by `limit`, so a
+    // share summed from it would grow as the page shrank.
+    const { env } = bucketWith(settersArtifact());
+    const full = await loadChainWeightSettersFromArtifact(env, {
+      window: "7d",
+    });
+    const { env: env2 } = bucketWith(settersArtifact());
+    const paged = await loadChainWeightSettersFromArtifact(env2, {
+      window: "7d",
+      limit: 1,
+    });
+    assert.ok(full && paged);
+    assert.equal(paged.setters.length, 1, "the page narrowed");
+    assert.equal(
+      paged.weight_sets,
+      full.weight_sets,
+      "the denominator did not move with the page",
+    );
+  });
+
+  test("a missing totals object DECLINES rather than publishing shares of nothing", async () => {
+    // Unlike the per-netuid readers, the builder has nothing to fall back to
+    // here: without a denominator every share is undefined.
+    const bad = settersArtifact();
+    delete (bad.windows["7d"] as Record<string, unknown>).totals;
+    const { env } = bucketWith(bad);
+    assert.equal(
+      await loadChainWeightSettersFromArtifact(env, { window: "7d" }),
+      null,
+    );
+  });
+
+  test("reads the per-network key off mainnet", async () => {
+    const { env, gets } = bucketWith(settersArtifact());
+    await loadChainWeightSettersFromArtifact(env, { window: "7d" }, "testnet");
+    assert.ok(gets.length > 0);
+    assert.ok(!gets.includes(CHAIN_WEIGHT_SETTERS_PROJECTION_KEY));
+  });
+
+  test("declines on every shape that is not the artifact the lane wrote", async () => {
+    for (const body of [
+      null,
+      { schema_version: 2, windows: {} },
+      { schema_version: 1, windows: null },
+    ]) {
+      const { env } = bucketWith(body);
+      assert.equal(
+        await loadChainWeightSettersFromArtifact(env, { window: "7d" }),
+        null,
+      );
+    }
+    const { env: noBucket } = { env: {} as unknown as Env };
+    assert.equal(
+      await loadChainWeightSettersFromArtifact(noBucket, { window: "7d" }),
+      null,
+    );
+    const bad = settersArtifact();
+    (bad.windows["7d"] as Record<string, unknown>).rows = "nope";
+    const { env: badRows } = bucketWith(bad);
+    assert.equal(
+      await loadChainWeightSettersFromArtifact(badRows, { window: "7d" }),
+      null,
+    );
+    const { env: missing } = bucketWith(null, { missing: true });
+    assert.equal(
+      await loadChainWeightSettersFromArtifact(missing, { window: "7d" }),
+      null,
+    );
+    const throwing = {
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          throw new Error("archive unavailable");
+        },
+      },
+    } as unknown as Env;
+    assert.equal(
+      await loadChainWeightSettersFromArtifact(throwing, { window: "7d" }),
+      null,
+    );
+    const { env: badWindow } = bucketWith(settersArtifact());
+    assert.equal(
+      await loadChainWeightSettersFromArtifact(badWindow, { window: "90d" }),
+      null,
+      "a window outside the route's own set",
+    );
+    // A window the ROUTE publishes but this artifact does not carry -- a
+    // different branch from the one above, and the one that must never be
+    // answered with a different window's numbers.
+    const partial = settersArtifact();
+    delete (partial.windows as Record<string, unknown>)["30d"];
+    const { env: absentWindow } = bucketWith(partial);
+    assert.equal(
+      await loadChainWeightSettersFromArtifact(absentWindow, { window: "30d" }),
+      null,
+    );
+  });
+});

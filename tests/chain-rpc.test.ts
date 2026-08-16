@@ -15,6 +15,7 @@ import {
   UNDESCRIBED_RPC_ERROR,
   chainRpc,
   chainRpcBatch,
+  chainRpcResult,
   describeRpcError,
 } from "../src/chain-rpc.ts";
 
@@ -401,5 +402,32 @@ describe("chainRpcBatch", () => {
       timeoutMs: 5_000,
     });
     assert.ok(sawSignal, "timeoutMs must reach the request");
+  });
+});
+
+describe("chainRpcResult (#11418)", () => {
+  test("hands back the result member, null included", () => {
+    assert.equal(chainRpcResult({ result: "0x01" }), "0x01");
+    // The UNSET-STORAGE case every caller reports as a real zero. It has to
+    // survive the parse intact or a genuinely empty storage slot becomes
+    // indistinguishable from a node that answered nonsense.
+    assert.equal(chainRpcResult({ result: null }), null);
+  });
+
+  test("a body that is not an envelope is undefined, never null", () => {
+    // The distinction the callers depend on: `null` means the node said the
+    // slot is unset, `undefined` means we could not tell. A cast collapsed
+    // them, which is how an HTML error page could read as a measured zero.
+    for (const body of [null, "not an envelope", 42, [], undefined]) {
+      assert.equal(
+        chainRpcResult(body),
+        undefined,
+        `${JSON.stringify(body)} must not be readable as unset storage`,
+      );
+    }
+  });
+
+  test("an error-only envelope carries no result", () => {
+    assert.equal(chainRpcResult({ error: { message: "boom" } }), undefined);
   });
 });

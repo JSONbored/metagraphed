@@ -337,6 +337,8 @@ describe("GET /api/v1/chain/deregistrations", () => {
                     lookback_days: 30,
                     window_registrations: 8064,
                     unattributed_registrations: 1726,
+                    // #9708: always written by the lane; see #11418.
+                    is_lower_bound: true,
                   },
                 },
               },

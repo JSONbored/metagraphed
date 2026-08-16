@@ -45,6 +45,8 @@
 // The package's real TYPES (as opposed to its runtime) have no
 // cloudflare:workers dependency, so `import type` below is safe at module
 // scope -- type-only imports are fully erased and carry no runtime cost.
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
 import type {
   AuthRequest,
   OAuthHelpers,
@@ -396,7 +398,7 @@ export async function handleGithubOAuthCallback(
   if (!tokenResponse.ok) {
     return new Response("github token exchange failed", { status: 502 });
   }
-  const tokenBody = (await tokenResponse.json()) as Record<string, unknown>;
+  const tokenBody = asJsonObject(await tokenResponse.json()) ?? {};
   const githubAccessToken = tokenBody?.access_token;
   if (typeof githubAccessToken !== "string" || !githubAccessToken) {
     return new Response("github token exchange returned no access_token", {
@@ -416,7 +418,7 @@ export async function handleGithubOAuthCallback(
       status: 502,
     });
   }
-  const githubUser = (await userResponse.json()) as Record<string, unknown>;
+  const githubUser = asJsonObject(await userResponse.json()) ?? {};
   const githubUserId = githubUser?.id;
   const githubLogin = githubUser?.login;
   if (
@@ -461,7 +463,7 @@ export async function handleGithubOAuthCallback(
   if (!upsertResponse.ok) {
     return new Response("account storage failed", { status: 502 });
   }
-  const account = (await upsertResponse.json()) as Record<string, unknown>;
+  const account = asJsonObject(await upsertResponse.json()) ?? {};
 
   const getHelpers = deps.getHelpers ?? defaultGetOAuthHelpers;
   const helpers = await getHelpers(env);

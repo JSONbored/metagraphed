@@ -48,6 +48,8 @@
 //
 // None of them is suppressed, on #9475's reasoning, which stands unchanged.
 
+import type { ArtifactObjectStore } from "./projection-store.ts";
+
 import { laneHealthStore } from "./lane-health-store.ts";
 import { missedTicksMs } from "./producer-cadence.ts";
 import {
@@ -71,7 +73,7 @@ import type { TelemetryEnv } from "./usage-telemetry.ts";
 type TopHoldersStalenessWatchdogEnv = StoreEnv &
   TelemetryEnv & {
     /** Partial: the guard below handles a binding with no `get`. */
-    METAGRAPH_ARCHIVE?: Partial<ArtifactBucket>;
+    METAGRAPH_ARCHIVE?: Partial<ArtifactObjectStore>;
     TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS?: unknown;
     TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS?: unknown;
   };
@@ -222,7 +224,7 @@ export function evaluateTopHoldersStaleness(input: {
 /**
  * Does this binding actually answer `get`?
  *
- * A TYPE PREDICATE, not `if (!bucket?.get)` followed by a cast. The binding is
+ * A TYPE PREDICATE, not `if (!bucket)` followed by a cast. The binding is
  * whatever the platform injected -- a deployment can bind nothing, and the
  * suite exercises exactly that (`{ METAGRAPH_ARCHIVE: {} }` must degrade, not
  * throw) -- so the declared type is `Partial` and this is what narrows it
@@ -230,13 +232,9 @@ export function evaluateTopHoldersStaleness(input: {
  * believing the value could still be partial one line later.
  */
 function usableBucket(
-  bucket: Partial<ArtifactBucket> | null | undefined,
-): bucket is ArtifactBucket {
+  bucket: Partial<ArtifactObjectStore> | null | undefined,
+): bucket is ArtifactObjectStore {
   return typeof bucket?.get === "function";
-}
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
 }
 
 export interface TopHoldersStalenessDeps {
@@ -255,7 +253,7 @@ export interface TopHoldersStalenessDeps {
  * they drift is the dangerous one: a looser test reports healthy on exactly the
  * object the route is declining. */
 export async function readTopHoldersArtifactState(
-  bucket: ArtifactBucket,
+  bucket: ArtifactObjectStore,
   key: string = TOP_HOLDERS_FLOW_PROJECTION_KEY,
   readRows: (body: unknown) => unknown[] | null = topHoldersFlowRows,
 ): Promise<TopHoldersArtifactState> {

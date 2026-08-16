@@ -367,7 +367,11 @@ describe("the chain-history route list is derived from the router", () => {
     // network dimension; it is a projection route now, held by
     // tests/projection-networks.test.ts, and the remaining example is the
     // neurons-tier analytics, which read a store no decode lane produces.
-    for (const template of ["/api/v1/chain/weights"]) {
+    // WAS /api/v1/chain/weights, which gained a lane in #11418 and is no
+    // longer gated. Swapped for its closest surviving analogue rather than
+    // deleted: the paired positive below is the whole point of this test, and
+    // it needs a route that is genuinely still mainnet-only.
+    for (const template of ["/api/v1/chain/axon-removals"]) {
       assert.ok(
         !isChainHistoryRouteTemplate(template),
         `${template} is still mainnet-only but the list claims it`,

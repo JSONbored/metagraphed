@@ -12,18 +12,12 @@ import {
   CHAIN_STAKE_FLOW_WINDOWS,
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
 } from "./chain-stake-flow.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsCellSchema } from "../schemas-src/projection-artifact.ts";
 
 export const CHAIN_STAKE_FLOW_PROJECTION_KEY =
   "metagraph/projections/chain-stake-flow.json";
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
 
 /**
  * The projected chain-stake-flow leaderboard for one window, or null when
@@ -37,40 +31,17 @@ export async function loadChainStakeFlowFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainStakeFlow> | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_STAKE_FLOW_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess — same contract as src/top-holders-artifact.ts.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
-    // A window outside the route's set — or one this artifact does not carry
-    // — must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, label)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      rows?: unknown;
-    } | null;
-    if (!Array.isArray(win?.rows)) return null;
-    return buildChainStakeFlow(win.rows as Record<string, unknown>[], {
-      window: label,
-      limit: query.limit,
-    });
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_STAKE_FLOW_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
+    windows: CHAIN_STAKE_FLOW_WINDOWS,
+    cell: ProjectionRowsCellSchema,
+  });
+  if (!read) return null;
+  return buildChainStakeFlow(read.cell.rows, {
+    window: read.label,
+    limit: query.limit,
+  });
 }

@@ -21,18 +21,12 @@ import {
   CHAIN_REGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
 } from "./chain-registrations.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsWithAggregateCellSchema } from "../schemas-src/projection-artifact.ts";
 
 export const CHAIN_REGISTRATIONS_PROJECTION_KEY =
   "metagraph/projections/chain-registrations.json";
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
 
 /**
  * The projected registration leaderboard for one window, or null when the
@@ -46,53 +40,23 @@ export async function loadChainRegistrationsFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainRegistrations> | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_REGISTRATIONS_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess -- same contract as the sibling chain-* readers.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_CHAIN_REGISTRATIONS_WINDOW;
-    // A window outside the route's set -- or one this artifact does not carry
-    // -- must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(CHAIN_REGISTRATIONS_WINDOWS, label)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      rows?: unknown;
-      network?: unknown;
-    } | null;
-    if (!Array.isArray(win?.rows)) return null;
-
-    // The network rollup is a SEPARATE aggregate, not a sum of the per-subnet
-    // rows: a hotkey registering on three subnets is three subnet-level
-    // registrants but one network-wide distinct registrant. Summing the rows
-    // would silently overcount, so the lane stores the real network aggregate
-    // and this hands it through untouched.
-    const chainWide = (win.network ?? null) as {
-      distinct_registrants?: unknown;
-      newest_observed?: unknown;
-    } | null;
-
-    return buildChainRegistrations(win.rows as Record<string, unknown>[], {
-      window: label,
-      limit: query.limit,
-      networkDistinct: chainWide ?? undefined,
-    });
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_REGISTRATIONS_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
+    windows: CHAIN_REGISTRATIONS_WINDOWS,
+    cell: ProjectionRowsWithAggregateCellSchema,
+  });
+  if (!read) return null;
+  // The network rollup is a SEPARATE aggregate, not a sum of the per-subnet
+  // rows: a hotkey registering on three subnets is three subnet-level
+  // registrants but one network-wide distinct registrant. Summing the rows
+  // would silently overcount, so the lane stores the real network aggregate and
+  // this hands it through untouched.
+  return buildChainRegistrations(read.cell.rows, {
+    window: read.label,
+    limit: query.limit,
+    networkDistinct: read.cell.network ?? undefined,
+  });
 }

@@ -309,6 +309,25 @@ describe("transport guards", () => {
     assert.equal(res.status, 503);
   });
 
+  test("valid JSON that is not an object is an INVALID REQUEST, not a parse error", async () => {
+    // `null`, `42` and `"message/send"` all parse. The cast this replaces let
+    // each through to the method switch as a call with no method, answered as
+    // "method not found" -- which tells a caller their method was wrong when
+    // their whole envelope was.
+    for (const body of ["null", "42", '"message/send"', "[]"]) {
+      const res = await handleA2ARequest(
+        new Request(RPC_URL, { method: "POST", body }),
+        aiEnv(),
+        { askQuestionImpl: async () => askResult },
+      );
+      assert.equal(
+        ((await res.json()) as Row).error?.["code"],
+        -32600,
+        `${body} must be an invalid-request`,
+      );
+    }
+  });
+
   test("malformed JSON is a parse error", async () => {
     const res = await handleA2ARequest(
       new Request(RPC_URL, { method: "POST", body: "not json" }),

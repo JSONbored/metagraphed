@@ -12,12 +12,12 @@
 // unbounded), so a filtered call declines to the schema-stable empty rather
 // than serving unfiltered numbers under a filtered label.
 
+import { z } from "zod";
+
 import { buildChainFees } from "./chain-analytics.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsSchema } from "../schemas-src/projection-artifact.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import {
   ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
@@ -26,15 +26,26 @@ import {
 export const CHAIN_FEES_PROJECTION_KEY =
   "metagraph/projections/chain-fees.json";
 
+/**
+ * THREE row sets per window, all required.
+ *
+ * The card reports a daily series, a median series and a payer leaderboard
+ * together; any one of them missing makes the other two a partial answer
+ * wearing a whole answer's shape, so the cell declines rather than serving a
+ * fee card with a silently empty leg.
+ */
+const ChainFeesCellSchema = z.object({
+  daily_rows: ProjectionRowsSchema,
+  median_rows: ProjectionRowsSchema,
+  payer_rows: ProjectionRowsSchema,
+  newest_observed: z.unknown().optional(),
+});
+
 /** The REST route's limit contract (workers/request-handlers/analytics.ts's
  * parseLimitParam({defaultLimit: 25, maxLimit: 100}) — hardcoded there, so
  * single-sourced here for the lane writer and this reader). */
 export const CHAIN_FEES_LIMIT_DEFAULT = 25;
 export const CHAIN_FEES_LIMIT_MAX = 100;
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
 
 /** The route's limit contract re-applied at the reader: both callers pass
  * already-validated values, but a direct call must not page past the route's
@@ -72,53 +83,21 @@ export async function loadChainFeesFromArtifact(
   // series under a filtered label would be a wrong answer, not a degraded one.
   if (typeof query.callModule === "string" && query.callModule.length > 0)
     return null;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_FEES_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess — same contract as src/top-holders-artifact.ts.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_ANALYTICS_WINDOW;
-    // A window outside the route's set — or one this artifact does not carry
-    // — must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(ANALYTICS_WINDOW_DAYS, label)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      newest_observed?: unknown;
-      daily_rows?: unknown;
-      median_rows?: unknown;
-      payer_rows?: unknown;
-    } | null;
-    if (
-      !Array.isArray(win?.daily_rows) ||
-      !Array.isArray(win?.median_rows) ||
-      !Array.isArray(win?.payer_rows)
-    ) {
-      return null;
-    }
-    const limit = normalizedLimit(query.limit);
-    return buildChainFees({
-      window: label,
-      observedAt: newestObservedIso(win.newest_observed),
-      dailyRows: win.daily_rows as Record<string, unknown>[],
-      medianRows: win.median_rows as Record<string, unknown>[],
-      payerRows: (win.payer_rows as Record<string, unknown>[]).slice(0, limit),
-    });
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_FEES_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_ANALYTICS_WINDOW,
+    windows: ANALYTICS_WINDOW_DAYS,
+    cell: ChainFeesCellSchema,
+  });
+  if (!read) return null;
+  const limit = normalizedLimit(query.limit);
+  return buildChainFees({
+    window: read.label,
+    observedAt: newestObservedIso(read.cell.newest_observed),
+    dailyRows: read.cell.daily_rows,
+    medianRows: read.cell.median_rows,
+    payerRows: read.cell.payer_rows.slice(0, limit),
+  });
 }

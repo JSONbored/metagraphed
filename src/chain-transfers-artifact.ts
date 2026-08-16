@@ -18,6 +18,8 @@
 // formatter because top_sender_share is defined over the returned page —
 // data-api computes it from its LIMIT-ed fetch, and this must match.
 
+import { z } from "zod";
+
 import {
   buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,
@@ -25,18 +27,28 @@ import {
   CHAIN_TRANSFER_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_WINDOW,
 } from "./chain-transfers.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
 import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+  ProjectionRowSchema,
+  ProjectionRowsSchema,
+} from "../schemas-src/projection-artifact.ts";
 
 export const CHAIN_TRANSFERS_PROJECTION_KEY =
   "metagraph/projections/chain-transfers.json";
 
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
+/**
+ * Totals plus two leaderboards, all required.
+ *
+ * `totals` is NOT nullable here, unlike its transfer-pairs sibling: this card
+ * reads `observed_at` out of it and reports network-wide sums from it, so a
+ * cell without one has no whole to report parts of.
+ */
+const ChainTransfersCellSchema = z.object({
+  totals: ProjectionRowSchema,
+  senders: ProjectionRowsSchema,
+  receivers: ProjectionRowsSchema,
+});
 
 /** The route's limit contract (1..100, default 25) re-applied at the reader:
  * both callers pass already-validated values, but a direct call must not
@@ -67,54 +79,21 @@ export async function loadChainTransfersFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainTransfers> | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_TRANSFERS_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess — same contract as src/top-holders-artifact.ts.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
-    // A window outside the route's set — or one this artifact does not carry
-    // — must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, label)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      totals?: unknown;
-      senders?: unknown;
-      receivers?: unknown;
-    } | null;
-    const totals = win?.totals;
-    if (
-      typeof totals !== "object" ||
-      totals === null ||
-      !Array.isArray(win?.senders) ||
-      !Array.isArray(win?.receivers)
-    ) {
-      return null;
-    }
-    const limit = normalizedLimit(query.limit);
-    return buildChainTransfers({
-      window: label,
-      observedAt: newestObservedIso(totals as Record<string, unknown>),
-      totals: totals as Record<string, unknown>,
-      senders: (win.senders as Record<string, unknown>[]).slice(0, limit),
-      receivers: (win.receivers as Record<string, unknown>[]).slice(0, limit),
-    });
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_TRANSFERS_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_CHAIN_TRANSFER_WINDOW,
+    windows: CHAIN_TRANSFER_WINDOWS,
+    cell: ChainTransfersCellSchema,
+  });
+  if (!read) return null;
+  const limit = normalizedLimit(query.limit);
+  return buildChainTransfers({
+    window: read.label,
+    observedAt: newestObservedIso(read.cell.totals),
+    totals: read.cell.totals,
+    senders: read.cell.senders.slice(0, limit),
+    receivers: read.cell.receivers.slice(0, limit),
+  });
 }

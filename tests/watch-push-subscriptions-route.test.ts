@@ -144,6 +144,39 @@ test("POST push-subscriptions: 400 on a non-JSON body", async () => {
   assert.equal(res.status, 400);
 });
 
+// `null`, `[]`, `"str"` and `42` are all VALID JSON, so `request.json()`
+// resolves and the old `as Record<string, unknown>` cast let them past. The
+// handler then read `body.endpoint` OUTSIDE the try that had caught the parse
+// -- so a four-byte `null` body was a property access on null: an uncaught
+// TypeError served as a 500, from a handler already able to answer 400.
+for (const [label, body] of [
+  ["null", "null"],
+  ["an array", "[]"],
+  ["a string", '"endpoint"'],
+  ["a number", "42"],
+] as const) {
+  test(`POST push-subscriptions: 400, not 500, when the body is ${label}`, async () => {
+    const res = await call("/api/v1/watch/push-subscriptions", {
+      method: "POST",
+      headers: await watchHeaders(),
+      body,
+    });
+    assert.equal(res.status, 400, `${label} must not reach the field reads`);
+  });
+
+  test(`DELETE internal push-subscription: 400, not 500, when the body is ${label}`, async () => {
+    const res = await call("/api/v1/internal/push-subscription", {
+      method: "DELETE",
+      headers: {
+        "x-alert-triggers-internal-token": INTERNAL_TOKEN,
+        "content-type": "application/json",
+      },
+      body,
+    });
+    assert.equal(res.status, 400, `${label} must not reach the field reads`);
+  });
+}
+
 test("POST push-subscriptions: 400 on a private or non-https endpoint (SSRF)", async () => {
   for (const endpoint of [
     "http://fcm.googleapis.com/x",

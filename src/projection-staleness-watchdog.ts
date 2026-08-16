@@ -26,6 +26,8 @@
 // a pure rule, a summary rather than a throw, and one exception event per
 // stale tick. Zero alerts is the correct steady state.
 
+import { type ArtifactStoreEnv, artifactBucket } from "./projection-store.ts";
+
 import { ProjectionArtifactEnvelopeSchema } from "../schemas-src/artifacts/projection-envelope.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { DEFAULT_CHAIN_NETWORK, projectionKey } from "./chain-network.ts";
@@ -46,7 +48,9 @@ import type { TelemetryEnv } from "./usage-telemetry.ts";
  * to get past it. Listing the keys costs nothing and states the contract.
  */
 type ProjectionStalenessWatchdogEnv = StoreEnv &
-  TelemetryEnv & {
+  TelemetryEnv &
+  // Declared rather than cast to: this watchdog reads every lane's artifact.
+  ArtifactStoreEnv & {
     PROJECTION_STALENESS_THRESHOLD_MS?: unknown;
   };
 
@@ -261,10 +265,6 @@ export function evaluateProjectionStaleness(input: {
   };
 }
 
-interface ProjectionBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
-
 export interface ProjectionStalenessDeps {
   now?: () => number;
   /** Telemetry seam for tests; defaults to the real recordExceptionEvent. */
@@ -321,9 +321,8 @@ export async function runProjectionStalenessWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ProjectionBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return { ok: false, reason: "r2 binding unavailable" };
+  const bucket = artifactBucket(env);
+  if (!bucket) return { ok: false, reason: "r2 binding unavailable" };
 
   const thresholdMs =
     Number(env?.PROJECTION_STALENESS_THRESHOLD_MS) ||
@@ -340,7 +339,7 @@ export async function runProjectionStalenessWatchdog(
     let rowCount: number | null;
     try {
       const object = await bucket.get(key);
-      const body = object ? ((await object.json()) as unknown) : null;
+      const body = object ? await object.json() : null;
       // PARSED, not cast (#11194's rule, one boundary further out). The cast
       // this replaces typed the access without checking a byte of it, and these
       // bodies come out of R2 written by whatever deploy was live at the time.

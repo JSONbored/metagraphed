@@ -4250,12 +4250,14 @@ export type QueryChain_TurnoverArgs = {
 
 export type QueryChain_Weight_SettersArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryChain_WeightsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 

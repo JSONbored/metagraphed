@@ -41,6 +41,8 @@
 // than the HTTP proxy's 11-method allowlist, because a WebSocket URL is something
 // people point a whole Substrate client at and that client cannot start without
 // state_call and storage reads. See that constant for the full reasoning.
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
 import { selectWssUpstreams, type PoolsArtifact } from "./wss-lb-select.ts";
 import { MAX_RPC_BODY_BYTES, WSS_DENIED_RPC_PREFIXES } from "./config.ts";
 import { RpcPoolsReadSchema } from "../schemas-src/internal-wire.ts";
@@ -359,8 +361,9 @@ export function deniedRpcMethod(data: string | ArrayBuffer): string | null {
     return null;
   }
   if (Array.isArray(rpc)) return "batch";
-  if (!rpc || typeof rpc !== "object") return null;
-  const method = (rpc as { method?: unknown }).method;
+  const request = asJsonObject(rpc);
+  if (!request) return null;
+  const method = request.method;
   if (typeof method !== "string") return null;
   return WSS_DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))
     ? method
@@ -370,11 +373,11 @@ export function deniedRpcMethod(data: string | ArrayBuffer): string | null {
 function rpcMethodNotAllowed(data: string, method: string): string {
   let id: string | number | null = null;
   try {
-    const parsed = JSON.parse(data) as { id?: unknown };
+    const parsed = asJsonObject(JSON.parse(data));
     if (
-      typeof parsed.id === "string" ||
-      typeof parsed.id === "number" ||
-      parsed.id === null
+      typeof parsed?.id === "string" ||
+      typeof parsed?.id === "number" ||
+      parsed?.id === null
     ) {
       id = parsed.id;
     }

@@ -29,6 +29,8 @@
 // delete}_key, never the account-wide api.*.* wildcard) and env.UNKEY_API_ID
 // (the keyspace's public apiId, not a secret). See wrangler.data.jsonc's own
 // provisioning comment.
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
 const UNKEY_BASE_URL = "https://api.unkey.com";
 
 type Row = Record<string, unknown>;
@@ -85,12 +87,8 @@ async function unkeyFetch(
   } catch {
     return { ok: false, code: "provider_unreachable" };
   }
-  let payload: Row;
-  try {
-    payload = (await response.json()) as Row;
-  } catch {
-    return { ok: false, code: "provider_invalid_response" };
-  }
+  const payload = asJsonObject(await response.json().catch(() => null));
+  if (!payload) return { ok: false, code: "provider_invalid_response" };
   if (!response.ok || !payload?.data) {
     return { ok: false, code: "provider_error", status: response.status };
   }

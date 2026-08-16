@@ -29,6 +29,8 @@
 // simulating a lifecycle this server does not have, and the card declares
 // streaming and push notifications unsupported so a conformant client never
 // tries.
+import { asJsonObject } from "../../schemas-src/json-request.ts";
+
 import {
   aiEnabled,
   askQuestion,
@@ -229,15 +231,22 @@ export async function handleA2ARequest(
   if (!bounded.ok) {
     return rpcError(null, RPC_INVALID_REQUEST, "Request body too large.", 413);
   }
-  let rpc: Row;
+  let rpc: Row | null;
   try {
-    rpc = JSON.parse(bounded.text) as Row;
+    rpc = asJsonObject(JSON.parse(bounded.text));
   } catch {
     return rpcError(null, RPC_PARSE_ERROR, "Body must be valid JSON.");
   }
-  const id = rpc?.id;
-  const method = rpc?.method;
-  const params = (rpc?.params ?? {}) as Row;
+  // `null`, `42` and `"method"` all PARSE. None of them is a request object,
+  // and the cast this replaces let every one of them through to the method
+  // switch as a call with no method -- answered as "method not found" rather
+  // than as the malformed request it was.
+  if (!rpc) {
+    return rpcError(null, RPC_INVALID_REQUEST, "Body must be a JSON object.");
+  }
+  const id = rpc.id;
+  const method = rpc.method;
+  const params = asJsonObject(rpc.params) ?? {};
 
   switch (method) {
     case "message/send": {

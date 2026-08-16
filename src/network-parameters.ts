@@ -26,6 +26,8 @@
 // PendingChildKeyCooldown raw result 0x201c000000000000 -> a plain u64
 // block count (7200, no TAO conversion).
 
+import { chainRpcResult } from "./chain-rpc.ts";
+
 import { blockEmissionForIssuance } from "./block-emission.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import {
@@ -192,8 +194,7 @@ async function fetchStorageU64(
       }),
     });
     if (!rpcResp.ok) return null;
-    const rpcBody = (await rpcResp.json()) as Record<string, unknown>;
-    const raw = rpcBody?.result;
+    const raw = chainRpcResult(await rpcResp.json());
     const bits = decodeLeU64(raw);
     if (bits != null) return bits;
     if (raw === null) return whenUnset;
@@ -297,8 +298,7 @@ async function fetchStorageRaw(
       }),
     });
     if (!rpcResp.ok) return { state: "failed" };
-    const rpcBody = (await rpcResp.json()) as Record<string, unknown>;
-    const raw = rpcBody?.result;
+    const raw = chainRpcResult(await rpcResp.json());
     if (raw === null) return { state: "unset" };
     return typeof raw === "string"
       ? { state: "value", hex: raw }
@@ -326,8 +326,7 @@ async function fetchStorageU128(
       }),
     });
     if (!rpcResp.ok) return { state: "failed" };
-    const rpcBody = (await rpcResp.json()) as Record<string, unknown>;
-    const raw = rpcBody?.result;
+    const raw = chainRpcResult(await rpcResp.json());
     if (raw === null) return { state: "unset" };
     const bits = decodeLeU128(raw);
     return bits != null ? { state: "value", bits } : { state: "failed" };

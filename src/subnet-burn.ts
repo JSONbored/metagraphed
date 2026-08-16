@@ -26,6 +26,8 @@
 // a raw state_getStorage RPC call for netuid 1 (result 0x20a1070000000000 =
 // 500000 rao, matching Subtensor.recycle(1) exactly).
 
+import { chainRpcResult } from "./chain-rpc.ts";
+
 import { isU16Netuid } from "./subnet-recycled.ts";
 import {
   type ChainNetworkId,
@@ -137,8 +139,7 @@ async function loadSubnetBurnSnapshot(
       }),
     });
     if (rpcResp.ok) {
-      const rpcBody = (await rpcResp.json()) as Row;
-      const raw = rpcBody?.result;
+      const raw = chainRpcResult(await rpcResp.json());
       const rao = decodeLeU64(raw);
       if (rao != null) {
         burnTao = raoToTao(rao);

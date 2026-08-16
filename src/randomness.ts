@@ -17,6 +17,8 @@
 // changes). Cross-checked against that module's already-verified
 // twox-storage-key.ts output at write time -- see tests/randomness.test.ts.
 
+import { chainRpcResult } from "./chain-rpc.ts";
+
 import type { FieldSources } from "./field-provenance.ts";
 import {
   type ChainNetworkId,
@@ -72,8 +74,7 @@ async function fetchStorageU64(
       }),
     });
     if (!rpcResp.ok) return null;
-    const rpcBody = (await rpcResp.json()) as Record<string, unknown>;
-    const raw = rpcBody?.result;
+    const raw = chainRpcResult(await rpcResp.json());
     const bits = decodeLeU64(raw);
     if (bits != null) return bits;
     if (raw === null) return 0n;

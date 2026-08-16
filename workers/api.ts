@@ -190,6 +190,10 @@ import {
   type ProbeJobType,
 } from "../schemas-src/probe-jobs.ts";
 import {
+  asJsonObject,
+  readJsonObjectBody,
+} from "../schemas-src/json-request.ts";
+import {
   declineUnknownProbeJobs,
   partitionProbeJobs,
 } from "../src/probe-jobs.ts";
@@ -1325,7 +1329,7 @@ async function fetchDataApiJson(env: Env, path: string): Promise<Row | null> {
       new Request(`https://api.metagraph.sh${path}`),
     );
     if (!upstream.ok) return null;
-    return (await upstream.json()) as Row;
+    return asJsonObject(await upstream.json());
   } catch {
     return null;
   }
@@ -2591,17 +2595,12 @@ async function handleWebhookDispatch(request: Request, env: Env) {
     );
   }
 
-  let event: Record<string, unknown>;
-  try {
-    event = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return errorResponse(
-      "webhook_dispatch_invalid_body",
-      "Body must be JSON.",
-      400,
-    );
-  }
-  if (!event || typeof event !== "object") {
+  // ONE check where there were two. The second used to re-test `!event ||
+  // typeof event !== "object"` after the cast had already claimed the body was
+  // an object -- a guard the compiler believed could not fire and which, for a
+  // body of `null`, was the only thing that did. Parsing decides it once.
+  const event = await readJsonObjectBody(request);
+  if (!event) {
     return errorResponse(
       "webhook_dispatch_invalid_body",
       "Body must be a change event object.",
@@ -2704,10 +2703,16 @@ export async function handleWebhookQueue(
     // will not become JSON on the eighth attempt, so retrying it would spend
     // the whole budget and dead-letter anyway -- the same rule the unparseable
     // message above follows.
-    let event: Record<string, unknown>;
+    // A body that PARSES but is not an object (`null`, a bare string) is as
+    // undeliverable as one that does not parse, and for the same reason: it
+    // will not become an object on the eighth attempt.
+    let event: Record<string, unknown> | null;
     try {
-      event = JSON.parse(body.body) as Record<string, unknown>;
+      event = asJsonObject(JSON.parse(body.body));
     } catch {
+      event = null;
+    }
+    if (!event) {
       message.ack();
       return;
     }
@@ -3968,7 +3973,7 @@ async function dispatchScheduled(
       ),
       env,
     );
-    const body = (await response.json()) as Row;
+    const body = asJsonObject(await response.json());
     return { ok: response.ok, status: response.status, body };
   }
   if (cron === LANE_ALARM_CRON) {
@@ -8084,12 +8089,6 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       ctx,
     );
     if (projectionResponse) return projectionResponse;
-    if (resolved.url.pathname === "/api/v1/chain/weights") {
-      return handleChainWeights(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/weights/setters") {
-      return handleChainWeightSetters(request, env, resolved.url, ctx);
-    }
     if (resolved.url.pathname === "/api/v1/chain/axon-removals") {
       return handleChainAxonRemovals(request, env, resolved.url, ctx);
     }
@@ -8421,13 +8420,12 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/health" ||
     pathname === "/api/v1/incidents" ||
     pathname === "/api/v1/rpc/usage" ||
-    pathname === "/api/v1/chain/weights" ||
-    pathname === "/api/v1/chain/weights/setters" ||
-    // /chain/serving and /chain/prometheus are NO LONGER HERE (#11419): both
+    // /chain/weights and /chain/weights/setters left in #11418, and
+    // /chain/serving and /chain/prometheus in #11419: all four
     // now answer from a per-network projection card, so every chain with a
-    // decode lane has its own. They stay in the list below only as long as
-    // they have no lane -- which is exactly what
-    // tests/projection-networks.test.ts holds, in both directions.
+    // decode lane has its own. A route stays in this list only as long as it
+    // has no lane -- which is exactly what tests/projection-networks.test.ts
+    // holds, in both directions.
     pathname === "/api/v1/chain/axon-removals" ||
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/concentration/subnets" ||
@@ -8802,6 +8800,8 @@ const PROJECTION_ROUTE_HANDLERS: Record<
   // card like their twelve siblings.
   "/api/v1/chain/serving": handleChainServing,
   "/api/v1/chain/prometheus": handleChainPrometheus,
+  "/api/v1/chain/weights": handleChainWeights,
+  "/api/v1/chain/weights/setters": handleChainWeightSetters,
 };
 
 /**

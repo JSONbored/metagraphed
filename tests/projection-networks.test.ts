@@ -11,6 +11,8 @@ import { describe, test } from "vitest";
 import { DEFAULT_CHAIN_NETWORK, projectionKey } from "../src/chain-network.ts";
 import { loadChainServingFromArtifact } from "../src/chain-serving-artifact.ts";
 import { loadChainPrometheusFromArtifact } from "../src/chain-prometheus-artifact.ts";
+import { loadChainWeightsFromArtifact } from "../src/chain-weights-artifact.ts";
+import { loadChainWeightSettersFromArtifact } from "../src/chain-weight-setters-artifact.ts";
 import {
   isProjectionRouteTemplate,
   PROJECTION_ROUTE_PATHS,
@@ -130,6 +132,18 @@ describe("a projection reader reads its own network's artifact", () => {
       "metagraph/projections/chain-prometheus.json",
       (env, network) =>
         loadChainPrometheusFromArtifact(env, { window: "7d" }, network),
+    ],
+    [
+      "chain-weights",
+      "metagraph/projections/chain-weights.json",
+      (env, network) =>
+        loadChainWeightsFromArtifact(env, { window: "7d" }, network),
+    ],
+    [
+      "chain-weight-setters",
+      "metagraph/projections/chain-weight-setters.json",
+      (env, network) =>
+        loadChainWeightSettersFromArtifact(env, { window: "7d" }, network),
     ],
   ];
 

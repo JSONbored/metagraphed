@@ -17,6 +17,8 @@
 // (one lane's throw never skips the next) and each failure records exactly
 // one exception under `projection:<name>` so a silently dead lane is visible.
 
+import { artifactWriteBucket } from "./projection-store.ts";
+
 import {
   type ChainNetworkId,
   chainTable,
@@ -73,6 +75,13 @@ import { CHAIN_TRANSFER_PAIRS_PROJECTION_KEY } from "./chain-transfer-pairs-arti
 import { CHAIN_STAKE_MOVES_PROJECTION_KEY } from "./chain-stake-moves-artifact.ts";
 import { CHAIN_SERVING_PROJECTION_KEY } from "./chain-serving-artifact.ts";
 import { CHAIN_PROMETHEUS_PROJECTION_KEY } from "./chain-prometheus-artifact.ts";
+import { CHAIN_WEIGHTS_PROJECTION_KEY } from "./chain-weights-artifact.ts";
+import {
+  CHAIN_WEIGHTS_ROLLUP,
+  loadChainEventIdentityRollup,
+  ROLLUP_POPULATION_CAP,
+} from "./chain-event-rollup-cold-tier.ts";
+import { CHAIN_WEIGHT_SETTERS_PROJECTION_KEY } from "./chain-weight-setters-artifact.ts";
 import { SERVING_EVENT_KIND } from "./subnet-serving.ts";
 import { PROMETHEUS_EVENT_KIND } from "./subnet-prometheus.ts";
 import {
@@ -859,6 +868,85 @@ async function computeChainStakeTransfers(
 }
 
 /**
+ * GET /api/v1/chain/weights, every supported window (#11418).
+ *
+ * The serving/prometheus lanes' shape over the WeightsSet stream.
+ * `CHAIN_WEIGHTS_ROLLUP` counts distinct `uid` rather than `hotkey`, because
+ * `account_events.hotkey` is NULL on all 50,890,747 WeightsSet rows -- the
+ * chain event emits [netuid, uid] and nothing else. Precomputing does not
+ * change that; the lane stores whatever the rollup produced.
+ */
+async function computeChainWeights(
+  env: Env,
+  network: ChainNetworkId,
+): Promise<Record<string, unknown> | null> {
+  return computeAnalyticsDistinctLanes(
+    env,
+    network,
+    CHAIN_WEIGHTS_ROLLUP.eventKind,
+    CHAIN_WEIGHTS_ROLLUP.countField,
+    CHAIN_WEIGHTS_ROLLUP.distinctField,
+  );
+}
+
+/**
+ * GET /api/v1/chain/weights/setters, every supported window (#11418).
+ *
+ * The per-IDENTITY leaderboard, so it stores `{ rows, totals }` rather than the
+ * per-netuid `{ network, rows }` its siblings store -- the totals ride
+ * separately because the row page is capped by `limit`, and a share computed
+ * against a summed page would grow as the page shrank.
+ *
+ * Reads through `loadChainEventIdentityRollup`, the SAME function the
+ * request-time path uses, rather than a second copy of its SQL here. That is
+ * the whole claim this lane makes: identical rows, computed on a cron instead
+ * of under a request, so only the variance moves.
+ */
+async function computeChainWeightSetters(
+  env: Env,
+  network: ChainNetworkId,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
+    const outcome = await loadChainEventIdentityRollup(
+      env,
+      CHAIN_WEIGHTS_ROLLUP,
+      {
+        windowDays: days,
+        now: generatedAt,
+        // The POPULATION, not a page: the route's ceiling is 100, and a lane
+        // that stored only the default 20 would make `?limit=100` short for a
+        // reason no caller could see.
+        limit: ROLLUP_POPULATION_CAP,
+        network,
+      },
+    );
+    // `empty` is a MEASURED quiet window and stores as one. Only a `gap` or a
+    // `miss` fails the lane, because the runner writes only on a non-null body
+    // -- which is what keeps the previous tick rather than overwriting it.
+    if (outcome.kind === "empty") {
+      windows[label] = { days, totals: {}, rows: [] };
+      continue;
+    }
+    if (outcome.kind !== "answer") return null;
+    windows[label] = {
+      days,
+      totals: outcome.rollup.totals,
+      rows: outcome.rollup.rows,
+    };
+    rowCount += outcome.rollup.rows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
+/**
  * GET /api/v1/chain/serving, every supported window (#11419).
  *
  * The same per-subnet-distinct shape the stake-moves and stake-transfers lanes
@@ -1429,11 +1517,17 @@ export const PROJECTION_LANES: ProjectionLane[] = [
     artifactKey: CHAIN_PROMETHEUS_PROJECTION_KEY,
     compute: computeChainPrometheus,
   },
+  {
+    name: "chain-weights",
+    artifactKey: CHAIN_WEIGHTS_PROJECTION_KEY,
+    compute: computeChainWeights,
+  },
+  {
+    name: "chain-weight-setters",
+    artifactKey: CHAIN_WEIGHT_SETTERS_PROJECTION_KEY,
+    compute: computeChainWeightSetters,
+  },
 ];
-
-interface ProjectionBucket {
-  put(key: string, value: string): Promise<unknown>;
-}
 
 /**
  * Which chains the lanes run for.
@@ -1481,9 +1575,8 @@ export async function runProjectionLane(
   // exception on the secondary chain look like an outage on the primary.
   const label =
     network === DEFAULT_CHAIN_NETWORK ? lane.name : `${lane.name}:${network}`;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ProjectionBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.put) {
+  const bucket = artifactWriteBucket(env);
+  if (!bucket) {
     // Without the bucket a computed body has nowhere durable to land —
     // refuse before spending second-scale queries on an answer that would be
     // dropped (raw-capture-sync's posture).

@@ -808,3 +808,21 @@ test("the default export also serves without an ExecutionContext (no waitUntil)"
     globalThis.fetch = realFetch;
   }
 });
+
+test("a JSON frame that is not an object yields a null id, not a throw (#11418)", () => {
+  // `rpcMethodNotAllowed` re-parses the frame to echo the caller's id back.
+  // The cast this replaces typed the parse as `{ id?: unknown }`, so a frame
+  // of `null` reached a property access on null inside the very function that
+  // exists to answer a refusal.
+  for (const frame of ["null", "42", '"chain_getHeader"']) {
+    assert.equal(
+      deniedRpcMethod(frame),
+      null,
+      `${frame} carries no denied method`,
+    );
+  }
+  // An ARRAY is the one non-object that is not "no method": a JSON-RPC batch
+  // is refused as a batch, and must keep being refused rather than falling
+  // through to the null branch above.
+  assert.equal(deniedRpcMethod("[]"), "batch");
+});

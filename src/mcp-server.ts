@@ -35,6 +35,8 @@
 // exists to prevent for a human clicking through a browser. Revisit only via
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
 import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
 import { GraphqlResponsePayloadSchema } from "../schemas-src/internal-wire.ts";
 import {
@@ -1177,7 +1179,9 @@ import {
   ACCOUNT_SUMMARY_GAP_CODE,
 } from "./account-summary-card.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
+import { loadChainWeightsFromArtifact } from "./chain-weights-artifact.ts";
 import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
+import { loadChainWeightSettersFromArtifact } from "./chain-weight-setters-artifact.ts";
 import {
   buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,
@@ -3491,7 +3495,7 @@ async function loadSubnetOwnershipHistoryFromDataApi(
   // result and a tier answering with more than the contract names does not have
   // it projected away here.
   return subnetOwnershipHistoryNode(
-    (await response.json()) as Row | null,
+    asJsonObject(await response.json()),
     netuid,
   );
 }
@@ -3583,7 +3587,7 @@ async function loadSubnetConvictionFromDataApi(ctx: McpCtx, netuid: number) {
         "Try again shortly.",
     );
   }
-  return narrowConviction((await response.json()) as Row | null, netuid);
+  return narrowConviction(asJsonObject(await response.json()), netuid);
 }
 
 // Mirrors loadSubnetOwnershipHistory above (#6719): same DATA_API-direct
@@ -3629,7 +3633,7 @@ async function loadSubnetLeaseHistory(ctx: McpCtx, netuid: number) {
         "Try again shortly.",
     );
   }
-  const data = (await response.json()) as Row | null;
+  const data = asJsonObject(await response.json());
   return {
     schema_version: data?.schema_version ?? 1,
     netuid,
@@ -7242,6 +7246,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         // Same shared loader REST and GraphQL use (#9229's parity lesson).
+        // The projection tier first, matching REST and GraphQL (#11418).
+        (await loadChainWeightsFromArtifact(ctx.env, { window, limit })) ??
         (await loadChainWeightsColdTier(ctx.env, { window, limit })) ??
         buildChainWeights([], {
           window,
@@ -7285,6 +7291,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
+        // The projection tier first, matching REST and GraphQL (#11418).
+        (await loadChainWeightSettersFromArtifact(ctx.env, {
+          window,
+          limit,
+        })) ??
         (await loadChainWeightSettersColdTier(ctx.env, { window, limit })) ??
         buildChainWeightSetters([], null, { window, limit })
       );

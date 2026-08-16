@@ -29,6 +29,8 @@
 // Safe no-op when POSTHOG_PROJECT_TOKEN is unset — self-hosters / local / CI
 // see zero behavior change. Never throws.
 
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
 import { ErrorTracking } from "@posthog/core";
 import { z } from "zod";
 
@@ -252,12 +254,11 @@ function usageSampleRatesByRoute(
   if (raw === usageSampleRatesRaw) return usageSampleRatesParsed;
   const parsed: Record<string, number> = {};
   try {
-    const map = JSON.parse(raw) as Record<string, unknown>;
-    if (map && typeof map === "object" && !Array.isArray(map)) {
-      for (const [route, value] of Object.entries(map)) {
-        const rate = parseRate(value);
-        if (rate !== undefined) parsed[route] = rate;
-      }
+    for (const [route, value] of Object.entries(
+      asJsonObject(JSON.parse(raw)) ?? {},
+    )) {
+      const rate = parseRate(value);
+      if (rate !== undefined) parsed[route] = rate;
     }
   } catch {
     // A malformed map must never take telemetry (or the request) down: fall

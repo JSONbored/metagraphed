@@ -36,18 +36,12 @@ import {
   ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "./route-limits.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsWithAggregateCellSchema } from "../schemas-src/projection-artifact.ts";
 
 export const CHAIN_SERVING_PROJECTION_KEY =
   "metagraph/projections/chain-serving.json";
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
 
 /**
  * The projected chain-serving card for one window, or null when the artifact
@@ -61,50 +55,23 @@ export async function loadChainServingFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainServing> | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_SERVING_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a guess
-    // -- same contract as its twelve siblings.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_ANALYTICS_WINDOW;
-    // A window outside the route's set -- or one this artifact does not carry
-    // -- must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(ANALYTICS_WINDOW_DAYS, label)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      network?: unknown;
-      rows?: unknown;
-    } | null;
-    if (!Array.isArray(win?.rows)) return null;
-    const chainWide = win.network ?? null;
-    if (chainWide !== null && typeof chainWide !== "object") return null;
-    // NO `subnetCount` PASSED, and that is correct here rather than an
-    // omission: the lane stores EVERY per-subnet row, so the builder's own
-    // `subnets.length` is the true population. #10249's defect was the
-    // opposite case -- a loader that capped in SQL and left the builder
-    // counting a page under a field named for a population.
-    return buildChainServing(win.rows as Record<string, unknown>[], {
-      window: label,
-      limit: query.limit ?? CHAIN_SERVING_LIMIT_DEFAULT,
-      networkDistinct:
-        (chainWide as Record<string, unknown> | null) ?? undefined,
-    });
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_SERVING_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_ANALYTICS_WINDOW,
+    windows: ANALYTICS_WINDOW_DAYS,
+    cell: ProjectionRowsWithAggregateCellSchema,
+  });
+  if (!read) return null;
+  // NO `subnetCount` PASSED, and that is correct here rather than an omission:
+  // the lane stores EVERY per-subnet row, so the builder's own `subnets.length`
+  // is the true population. #10249's defect was the opposite case -- a loader
+  // that capped in SQL and left the builder counting a page under a field
+  // named for a population.
+  return buildChainServing(read.cell.rows, {
+    window: read.label,
+    limit: query.limit ?? CHAIN_SERVING_LIMIT_DEFAULT,
+    networkDistinct: read.cell.network ?? undefined,
+  });
 }
