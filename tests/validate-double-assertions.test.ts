@@ -10,7 +10,11 @@
 // in this codebase ("reads as never having reported") and a grep-based version
 // would fail on the sentence describing the problem it fixes.
 import { describe, expect, it } from "vitest";
-import { findDoubleAssertions } from "../scripts/validate-double-assertions.ts";
+import {
+  areaOf,
+  BUDGETS,
+  findDoubleAssertions,
+} from "../scripts/validate-double-assertions.ts";
 
 const scan = (source: string) => findDoubleAssertions("probe.ts", source);
 
@@ -74,5 +78,43 @@ describe("findDoubleAssertions", () => {
     expect(
       scan("const a = x as unknown as A;\nconst b = y as unknown as B;"),
     ).toHaveLength(2);
+  });
+});
+
+describe("areaOf", () => {
+  it("attributes a finding to its top-level directory", () => {
+    expect(areaOf("scripts/lib/worker-env.ts")).toBe("scripts");
+    expect(areaOf("src/r2-sql.ts")).toBe("src");
+  });
+
+  it("does not confuse a nested directory with a top-level one", () => {
+    // `packages/client/scripts/x.ts` counts against packages, not scripts --
+    // otherwise a workspace could quietly spend another area's budget.
+    expect(areaOf("packages/client/scripts/x.ts")).toBe("packages");
+  });
+
+  it("handles a repo-root file without inventing a directory", () => {
+    expect(areaOf("vitest.config.ts")).toBe("vitest.config.ts");
+  });
+});
+
+describe("BUDGETS", () => {
+  it("holds the four swept areas at zero", () => {
+    // Not a restatement of the constant: these four were driven to zero by
+    // #11339/#11361/#11368 and a nonzero entry here is a silent regression
+    // budget, which is the thing this gate exists to prevent.
+    for (const area of ["src", "workers", "schemas-src", "packages"]) {
+      expect(BUDGETS[area]).toBe(0);
+    }
+  });
+
+  it("covers every area a cast could hide in outside tests", () => {
+    expect(Object.keys(BUDGETS).sort()).toEqual([
+      "packages",
+      "schemas-src",
+      "scripts",
+      "src",
+      "workers",
+    ]);
   });
 });

@@ -37,20 +37,46 @@
 //
 // ## The ratchet
 //
-// `MAX_DOUBLE_ASSERTIONS` may only fall. It is at zero because #11339 drove it
-// there; a PR that adds one fails, and a PR that removes one without lowering
-// the budget ALSO fails, so the number tracks reality rather than intent.
+// `BUDGETS` is per top-level directory and each entry may only fall. A PR that
+// adds one fails, and a PR that removes one without lowering the budget ALSO
+// fails, so every number tracks reality rather than intent. Four of the five
+// areas are at zero; `scripts` ratchets down from where #11368 left it.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { repoRoot } from "./lib.ts";
 
-/** The budget, which may only fall. Raising it is not a fix. */
-export const MAX_DOUBLE_ASSERTIONS = 0;
+/**
+ * The budget per area, which may only fall.
+ *
+ * `src`, `workers`, `schemas-src` and `packages` are at ZERO and stay there:
+ * #11339 and #11361 drove them there, and a regression in any of them is a
+ * plain failure rather than a number to negotiate.
+ *
+ * `scripts` is a RATCHET at its current real count. The remaining sites are
+ * mostly third-party shapes -- ajv's plugin interop, GraphQL's type unions, a
+ * Durable Object's state -- where the fix is a per-library helper rather than a
+ * sweep, so a ceiling that only falls beats pretending the number is zero or
+ * exempting the directory entirely. An exemption list stops being read the
+ * moment it is longer than a screen (see validate-untyped-db-reads.ts's note);
+ * a number cannot hide anything.
+ *
+ * `tests` is NOT scanned, and that is a judgement rather than an oversight: a
+ * unit process cannot construct a `KVNamespace`, `Hyperdrive`,
+ * `ExecutionContext` or `R2Bucket`, so there the assertion is the mechanism.
+ * The useful discipline for fixtures is to centralise it -- see
+ * scripts/lib/worker-env.ts, whose key-checked parameter is what caught four
+ * fixtures still setting a binding retired two releases ago.
+ */
+export const BUDGETS: Readonly<Record<string, number>> = {
+  src: 0,
+  workers: 0,
+  "schemas-src": 0,
+  packages: 0,
+  scripts: 21,
+};
 
-/** Directories this repo ships. Tests build fixtures for platform bindings a
- *  suite cannot construct, which is a different problem from this one. */
-const SCANNED_DIRS = ["src", "workers"] as const;
+const SCANNED_DIRS = Object.keys(BUDGETS);
 
 export interface DoubleAssertion {
   file: string;
@@ -128,33 +154,55 @@ export function scanRepository(): DoubleAssertion[] {
   return found;
 }
 
+/** Which budget a finding counts against -- its top-level directory. */
+export function areaOf(file: string): string {
+  return file.split("/")[0] ?? file;
+}
+
 function main(): void {
   const found = scanRepository();
+  const counts = new Map<string, number>(
+    Object.keys(BUDGETS).map((area) => [area, 0]),
+  );
   for (const cast of found) {
-    console.error(`${cast.file}:${cast.line}  [${cast.kind}]  ${cast.text}`);
+    const area = areaOf(cast.file);
+    counts.set(area, (counts.get(area) ?? 0) + 1);
   }
-  if (found.length > MAX_DOUBLE_ASSERTIONS) {
-    console.error(
-      `\nvalidate:double-assertions FAILED: ${found.length} double ` +
-        `assertion(s), budget ${MAX_DOUBLE_ASSERTIONS}.\n` +
-        "Routing through `unknown` (or `never`) erases every relationship the " +
-        "compiler could have checked. Fix the TYPE that made it necessary: " +
-        "widen an over-strict parameter, narrow with a real guard, or parse " +
-        "the value against a schema in schemas-src/.",
-    );
-    process.exit(1);
+  const errors: string[] = [];
+  for (const [area, budget] of Object.entries(BUDGETS)) {
+    const n = counts.get(area) ?? 0;
+    if (n > budget) {
+      for (const cast of found.filter((c) => areaOf(c.file) === area)) {
+        console.error(
+          `${cast.file}:${cast.line}  [${cast.kind}]  ${cast.text}`,
+        );
+      }
+      errors.push(
+        `${area}: ${n} double assertion(s), budget ${budget}. Routing through ` +
+          "`unknown` (or `never`) erases every relationship the compiler could " +
+          "have checked. Fix the TYPE that made it necessary: widen an " +
+          "over-strict parameter, narrow with a real guard, or parse the value " +
+          "against a schema in schemas-src/.",
+      );
+    } else if (n < budget) {
+      // The other half of the ratchet. A budget above the real count is a
+      // budget nobody is holding, and the next addition slides in under it.
+      errors.push(
+        `${area}: ${n} remain but the budget is ${budget}. Lower BUDGETS["${area}"] ` +
+          `to ${n} in the same change that removed them.`,
+      );
+    }
   }
-  if (found.length < MAX_DOUBLE_ASSERTIONS) {
+  if (errors.length) {
     console.error(
-      `\nvalidate:double-assertions FAILED: ${found.length} remain but the ` +
-        `budget is ${MAX_DOUBLE_ASSERTIONS}. Lower MAX_DOUBLE_ASSERTIONS to ` +
-        `${found.length} in the same change that removed them.`,
+      `\nvalidate:double-assertions FAILED:\n${errors.map((e) => `  - ${e}`).join("\n")}`,
     );
     process.exit(1);
   }
   console.log(
-    `validate:double-assertions OK — ${found.length} double assertion(s) ` +
-      `(budget ${MAX_DOUBLE_ASSERTIONS}).`,
+    `validate:double-assertions OK — ${Object.entries(BUDGETS)
+      .map(([a, b]) => `${a} ${counts.get(a) ?? 0}/${b}`)
+      .join(", ")}.`,
   );
 }
 
