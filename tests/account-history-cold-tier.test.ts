@@ -19,6 +19,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { loadAccountHistoryColdTier } from "../src/account-history-cold-tier.ts";
+import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
 
 type Row = Record<string, unknown>;
 
@@ -377,5 +378,83 @@ describe("all three history surfaces reach the lakehouse", () => {
         `${path} must pass env, or the loader cannot reach the lakehouse`,
       );
     }
+  });
+});
+
+/**
+ * The projection floor on the one read that had none and could not be seen.
+ *
+ * This is a LIFETIME `GROUP BY day, netuid` over a scattered `hotkey`, so
+ * without `?from` it walked to genesis. `scripts/validate-r2-sql-scan-bounds.ts`
+ * was blind to it for a second reason: this loader calls an INJECTED `queryFn`
+ * rather than the literal `r2SqlQuery(` the gate greps for, so no amount of
+ * tightening that gate's predicate test would have surfaced it. The floor is
+ * asserted here instead.
+ */
+describe("loadAccountHistoryColdTier -- the projection floor", () => {
+  const FIRST = 1_785_000_000_000;
+
+  const archive = (entry: unknown) =>
+    accountSummaryArchive({ accounts: { [SS58]: entry } });
+
+  test("BOTH reads carry the account's earliest folded event", async () => {
+    // Both, not just the page: the kinds read has the same scattered predicate
+    // over the same table, and a floor on one of two identical scans halves a
+    // problem rather than fixing it.
+    const engine = fakeEngine();
+    await loadAccountHistoryColdTier(
+      archive([
+        {
+          kind: "StakeAdded",
+          netuid: 64,
+          count: 1,
+          fb: 8_750_000,
+          lb: 8_750_000,
+          fo: FIRST,
+          lo: FIRST,
+        },
+      ]) as never,
+      SS58,
+      { limit: 100 },
+      { queryFn: engine.query as never },
+    );
+    assert.equal(engine.seen.length, 2, "premise: both reads were issued");
+    for (const sql of engine.seen) {
+      assert.ok(
+        sql.includes(`observed_at >= ${FIRST}`),
+        `unfloored: ${sql.slice(0, 160)}`,
+      );
+    }
+  });
+
+  test("an ABSENT account floors at the generation's edge", async () => {
+    // The producer writes every shard, so absence PROVES there is nothing at
+    // or before `through` -- the strongest floor available, and the case that
+    // matters most: an account with no folded history is exactly the one whose
+    // unbounded walk reads the whole table to answer "nothing".
+    const engine = fakeEngine();
+    await loadAccountHistoryColdTier(
+      archive(null) as never,
+      SS58,
+      { limit: 100 },
+      { queryFn: engine.query as never },
+    );
+    assert.equal(engine.seen.length, 2, "premise: both reads were issued");
+    const edge = Date.parse("2026-08-15T00:00:00.000Z");
+    assert.ok(
+      engine.page().includes(`observed_at >= ${edge}`),
+      `must floor at the day after \`through\`: ${engine.page().slice(0, 160)}`,
+    );
+  });
+
+  test("NO projection leaves the walk exactly as it was", async () => {
+    // The PAGE read only. The kinds read carries an `observed_at` range of its
+    // own -- derived from the days the page returned, at :238 -- so asserting
+    // "no bound anywhere" would assert against a bound that predates this
+    // change and has nothing to do with the projection.
+    const engine = fakeEngine();
+    await load(engine);
+    assert.equal(engine.seen.length, 2, "premise: both reads were issued");
+    assert.ok(!engine.page().includes("observed_at >="), engine.page());
   });
 });

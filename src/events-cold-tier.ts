@@ -40,12 +40,8 @@ import {
   type ChainEventApi,
 } from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import {
-  type ChainNetworkId,
-  chainTable,
-  DEFAULT_CHAIN_NETWORK,
-} from "./chain-network.ts";
-import { loadAccountSummaryProjection } from "./account-summary-projection.ts";
+import { type ChainNetworkId, chainTable } from "./chain-network.ts";
+import { accountHistoryFloorMs } from "./account-summary-projection.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -154,18 +150,8 @@ export async function loadAccountEventsColdTier(
   // MAINNET ONLY. The projection is written for the default network, so reading
   // it for another chain would floor a feed against the wrong history. Other
   // networks keep the unbounded walk -- correct, just not faster.
-  if (network === undefined || network === DEFAULT_CHAIN_NETWORK) {
-    const projected = await loadAccountSummaryProjection(env, ss58, {
-      // The aggregate leg only: this route wants the FLOOR, not the published
-      // rows, and asking for rows would read a map it then throws away.
-      recentLimit: 0,
-    });
-    const floorMs =
-      projected?.absent === true
-        ? projected.floorMs
-        : (projected?.span?.firstMs ?? null);
-    if (floorMs !== null) where.push(`observed_at >= ${Math.trunc(floorMs)}`);
-  }
+  const floorMs = await accountHistoryFloorMs(env, ss58, network);
+  if (floorMs !== null) where.push(`observed_at >= ${Math.trunc(floorMs)}`);
 
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;

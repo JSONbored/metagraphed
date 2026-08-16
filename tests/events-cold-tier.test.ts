@@ -11,6 +11,7 @@ import {
   loadSubnetEventsColdTier,
 } from "../src/events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import { OFFSET_EMULATION_CAP } from "../src/r2-sql-blocks.ts";
 
@@ -87,45 +88,8 @@ describe("loadAccountEventsColdTier -- the projection floor", () => {
   const FLOOR = Date.parse("2026-08-15T00:00:00.000Z");
   const FIRST = 1_786_629_372_000;
 
-  /** An archive publishing one generation; `entry` is this account's shard row. */
-  function archive(entry: unknown, { through = "2026-08-14" } = {}) {
-    const GEN = "20260815T000000Z";
-    const SHARDS = 16384;
-    let h = 0x811c9dc5;
-    for (const b of new TextEncoder().encode(ADDR)) {
-      h ^= b;
-      h = Math.imul(h, 0x01000193) >>> 0;
-    }
-    const shardKey = `metagraph/projections/account-summary/${GEN}/${h % SHARDS}.json`;
-    return {
-      METAGRAPH_ARCHIVE: {
-        get: async (key: string) => {
-          if (key === "metagraph/projections/account-summary/current.json") {
-            return {
-              json: async () => ({
-                schema_version: 1,
-                generation: GEN,
-                shard_count: SHARDS,
-                generated_at: new Date().toISOString(),
-                account_count: 1,
-                through,
-              }),
-            };
-          }
-          if (key === shardKey) {
-            return {
-              json: async () => ({
-                schema_version: 1,
-                shard_count: SHARDS,
-                accounts: entry === null ? {} : { [ADDR]: entry },
-              }),
-            };
-          }
-          return null;
-        },
-      },
-    };
-  }
+  const archive = (entry: unknown) =>
+    accountSummaryArchive({ accounts: { [ADDR]: entry } });
 
   test("a PRESENT account floors at its earliest folded event", async () => {
     const q = sqlFetch([eventRow(10, 0)]);

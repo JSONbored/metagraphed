@@ -36,6 +36,7 @@ import {
   buildAccountHistory,
   type AccountHistoryResult,
 } from "./account-events.ts";
+import { accountHistoryFloorMs } from "./account-summary-projection.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
@@ -117,6 +118,17 @@ export async function loadAccountHistoryColdTier(
   // `netuid IS NOT NULL` mirrors the retired writer's own WHERE clause: a row
   // with no subnet has no (hotkey, netuid, day) key and was never rolled up.
   const where = [`hotkey = '${addr}'`, "netuid IS NOT NULL"];
+  // THE PROJECTION FLOOR (#11131's bound, applied to the one read that had
+  // none). This is a LIFETIME `GROUP BY day, netuid` over a scattered key, so
+  // without `?from` it walked to genesis -- and the gate could not see it,
+  // because it calls an injected `queryFn` rather than the literal
+  // `r2SqlQuery(` the scan-bound check greps for.
+  // No `network` argument: this loader takes none and reads the mainnet
+  // tables, which is exactly the case the helper floors.
+  const historyFloorMs = await accountHistoryFloorMs(env, ss58);
+  if (historyFloorMs !== null) {
+    where.push(`observed_at >= ${Math.trunc(historyFloorMs)}`);
+  }
 
   if (query.netuid != null) {
     const netuid = safeBlockNumber(query.netuid);

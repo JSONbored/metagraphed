@@ -57,6 +57,7 @@ import {
   distinctHotkeys,
   stakeByHotkeyNetuid,
 } from "./account-nominator-positions.ts";
+import { accountHistoryFloorMs } from "./account-summary-projection.ts";
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { r2SqlQuery, safeSs58Literal } from "./r2-sql.ts";
@@ -210,11 +211,22 @@ export async function latestStakeEventAt(
 ): Promise<number | null> {
   const coldkey = safeSs58Literal(ss58);
   if (coldkey === null) return null;
+  // FLOORED, and it had no bound at all. `MAX(observed_at)` over a scattered
+  // `coldkey` reads this account's whole history, and it fires precisely for
+  // the accounts holding NO delegated positions -- so the cheapest answer paid
+  // the most expensive read. The scan-bound gate could not see it either: its
+  // PRUNABLE test is bare substring presence, and `MAX(observed_at)` in the
+  // SELECT list satisfied it without a single predicate on that column.
+  //
+  // Same table the projection describes, so the floor is sound here in a way it
+  // is NOT for chain.extrinsics -- see loadAccountExtrinsicsColdTier.
+  const floorMs = await accountHistoryFloorMs(env, ss58);
   const rows = await r2SqlQuery(
     env,
     "SELECT MAX(observed_at) AS latest FROM chain.account_events" +
       ` WHERE coldkey = '${coldkey}'` +
-      ` AND event_kind IN ('${STAKE_ADDED_KIND}', '${STAKE_REMOVED_KIND}')`,
+      ` AND event_kind IN ('${STAKE_ADDED_KIND}', '${STAKE_REMOVED_KIND}')` +
+      (floorMs === null ? "" : ` AND observed_at >= ${Math.trunc(floorMs)}`),
   );
   return latestStamp(rows);
 }
