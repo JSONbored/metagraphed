@@ -77,8 +77,50 @@ self.addEventListener("install", (event) => {
   // Deliberately no skipWaiting() -- see the "update" section of
   // use-service-worker.ts for why activation waits on explicit user
   // consent (#8384 requirement 6).
-  event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.add("/offline.html")));
+  event.waitUntil(precacheOfflineShell());
 });
+
+/**
+ * Precache /offline.html as a NON-REDIRECTED response.
+ *
+ * `cache.add("/offline.html")` is the obvious spelling and it is the bug
+ * (#9079). Cloudflare Workers Assets strips the `.html` extension, so in
+ * production `/offline.html` answers **307 -> /offline**. `add()` follows the
+ * redirect and succeeds, so nothing looks wrong -- but the response it stores
+ * carries `redirected: true`.
+ *
+ * A navigation request has redirect mode "manual". Answering one from
+ * `respondWith` with a redirected response is a network error, which the
+ * browser renders as its own error page -- exactly the thing this precache
+ * exists to prevent. The e2e failure was `net::ERR_FAILED`, not a 404.
+ *
+ * Measured against production 2026-08-16:
+ *
+ *   cache.add("/offline.html")  -> { status: 200, redirected: true,
+ *                                    url: "https://metagraph.sh/offline" }
+ *   this function              -> { status: 200, redirected: false }
+ *
+ * Re-wrapping the body mints a fresh response with the flag cleared, stored
+ * under the key `handleNavigation` matches on. It also explains why the spec
+ * passed under `npm run dev`: Vite serves `public/offline.html` as a file, with
+ * no extension stripping and so no redirect. This never worked in production.
+ */
+async function precacheOfflineShell() {
+  const cache = await caches.open(SHELL_CACHE);
+  const response = await fetch("/offline.html");
+  if (!response.ok) return;
+  // Body first, then a new Response around it: `redirected` is not settable and
+  // is not carried across construction, which is the whole point.
+  const body = await response.blob();
+  await cache.put(
+    "/offline.html",
+    new Response(body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    }),
+  );
+}
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
