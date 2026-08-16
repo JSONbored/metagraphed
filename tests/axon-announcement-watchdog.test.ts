@@ -190,6 +190,7 @@ describe("the fleet-wide guard", () => {
     kind: "mechanism-unknown",
     lossesViaReuse: null,
     lossesSameHotkey: null,
+    lossesMovedUnroutable: null,
     lossesDistinctIps: null,
   });
 
@@ -668,6 +669,7 @@ describe("mechanism — WHAT happened, not just how much (#11369)", () => {
       kind: "churn-replaced",
       lossesViaReuse: 67,
       lossesSameHotkey: 0,
+      lossesMovedUnroutable: 0,
       lossesDistinctIps: null,
     };
     const detail = axonDetail([churn]);
@@ -690,6 +692,7 @@ describe("mechanism — WHAT happened, not just how much (#11369)", () => {
       kind: "announcements-withdrawn",
       lossesViaReuse: 64,
       lossesSameHotkey: 75,
+      lossesMovedUnroutable: 0,
       lossesDistinctIps: null,
     };
     assert.match(axonDetail([withdrawn]), /75 miner\(s\) stopped announcing/);
@@ -717,10 +720,16 @@ describe("loadAxonLossMechanisms", () => {
       [25, 101],
       "2026-08-08",
     );
-    assert.deepEqual(out[25], { viaReuse: 67, sameHotkey: 0, distinctIps: 0 });
+    assert.deepEqual(out[25], {
+      viaReuse: 67,
+      sameHotkey: 0,
+      movedUnroutable: 0,
+      distinctIps: 0,
+    });
     assert.deepEqual(out[101], {
       viaReuse: 64,
       sameHotkey: 75,
+      movedUnroutable: 0,
       distinctIps: 1,
     });
   });
@@ -730,11 +739,46 @@ describe("loadAxonLossMechanisms", () => {
     pg.control.answers.push({
       match: /FROM seq/,
       rows: [
-        { netuid: 25, via_reuse: "67", same_hotkey: "0", distinct_ips: "0" },
+        {
+          netuid: 25,
+          via_reuse: "67",
+          same_hotkey: "9",
+          moved_unroutable: "4",
+          distinct_ips: "0",
+        },
       ],
     });
     const out = await loadAxonLossMechanisms(pgLaneDb(), [25], "2026-08-08");
-    assert.deepEqual(out[25], { viaReuse: 67, sameHotkey: 0, distinctIps: 0 });
+    assert.deepEqual(out[25], {
+      viaReuse: 67,
+      sameHotkey: 9,
+      movedUnroutable: 4,
+      distinctIps: 0,
+    });
+  });
+
+  test("moved is CLAMPED into the same-hotkey total it partitions", async () => {
+    // `stopped` is rendered as sameHotkey - moved, so a moved count exceeding
+    // its own superset would publish a negative number of miners going dark.
+    pg.control.answers.push({
+      match: /FROM seq/,
+      rows: [
+        { netuid: 25, via_reuse: 0, same_hotkey: 5, moved_unroutable: 99 },
+      ],
+    });
+    const out = await loadAxonLossMechanisms(pgLaneDb(), [25], "2026-08-08");
+    assert.equal(out[25]!.movedUnroutable, 5);
+  });
+
+  test("an unreadable moved count is 0, which keeps the pre-split answer", async () => {
+    pg.control.answers.push({
+      match: /FROM seq/,
+      rows: [
+        { netuid: 25, via_reuse: 0, same_hotkey: 5, moved_unroutable: "junk" },
+      ],
+    });
+    const out = await loadAxonLossMechanisms(pgLaneDb(), [25], "2026-08-08");
+    assert.equal(out[25]!.movedUnroutable, 0);
   });
 
   test("no netuids asks nothing at all", async () => {
@@ -781,6 +825,7 @@ describe("mechanism — the defensive edges", () => {
       kind: "churn-replaced",
       lossesViaReuse: null,
       lossesSameHotkey: null,
+      lossesMovedUnroutable: null,
       lossesDistinctIps: null,
     };
     assert.match(axonDetail([half]), /churn-replaced: 0 of 0 losses/);
@@ -910,6 +955,53 @@ describe("the tick reports the mechanism it measured", () => {
     assert.match(verdict(), /churn-replaced: 67 of 67/);
   });
 
+  test("SN126's REAL shape: moved to an unroutable address, not gone dark", async () => {
+    // Measured 2026-08-16 over 38 days. SN126 is the largest same-hotkey source
+    // on the network -- 160 losses in 14 days, larger than the #11328 case --
+    // and its miners never stopped announcing. They moved to addresses nothing
+    // can reach. Network-wide the moves OUTNUMBER the stops, 166 to 105, so
+    // calling this "stopped publishing an axon" is false for the majority.
+    answer(rowsFor(126, then(flat(8, 80), [14, 256])), [
+      { netuid: 126, via_reuse: 2, same_hotkey: 60, moved_unroutable: 58 },
+    ]);
+    let captured: Record<string, unknown> | null = null;
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
+    })) as { findings: AxonFinding[]; alerted: boolean };
+
+    assert.equal(result.findings[0].kind, "moved-unroutable");
+    assert.equal(result.findings[0].lossesMovedUnroutable, 58);
+    // It still pages -- reachability really did change, and nothing else says so.
+    assert.equal(result.alerted, true);
+    const message = String(
+      (captured as unknown as { error: Error }).error.message,
+    );
+    assert.match(message, /still announcing/);
+    assert.doesNotMatch(
+      message,
+      /stopped publishing an axon/,
+      "they did not stop; the withdrawal wording must not cover a move",
+    );
+    assert.match(verdict(), /58 of 60 still announce/);
+  });
+
+  test("a MINORITY of moves stays withdrawal", async () => {
+    // The split is decided by which mechanism dominates, so a subnet where
+    // most miners genuinely went dark keeps the #11328 wording.
+    answer(rowsFor(101, then(flat(8, 223), [125, 256])), [
+      { netuid: 101, via_reuse: 10, same_hotkey: 75, moved_unroutable: 5 },
+    ]);
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async () => true) as never,
+    })) as { findings: AxonFinding[] };
+    assert.equal(result.findings[0].kind, "announcements-withdrawn");
+  });
+
   test("churn MIXED with a withdrawal still pages", async () => {
     // `every` is the bar, so one non-churn finding restores the page. A real
     // withdrawal must not be silenced by a churning neighbour on the same day.
@@ -1034,6 +1126,7 @@ describe("IP concentration — one host, or the subnet", () => {
     kind: "announcements-withdrawn",
     lossesViaReuse: 64,
     lossesSameHotkey: 75,
+    lossesMovedUnroutable: 0,
     lossesDistinctIps: ips,
   });
 
@@ -1066,6 +1159,7 @@ describe("IP concentration — one host, or the subnet", () => {
       kind: "churn-replaced",
       lossesViaReuse: 67,
       lossesSameHotkey: 0,
+      lossesMovedUnroutable: 0,
     };
     const detail = axonDetail([churn]);
     assert.match(detail, /churn-replaced: 67 of 67/);

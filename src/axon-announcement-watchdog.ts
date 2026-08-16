@@ -137,6 +137,12 @@ export interface AxonFinding {
    *   2026-08-16, this is 100% of SN25's and SN102's losses -- zero same-hotkey
    *   stops between them -- so labelling those `announcements-withdrawn` states
    *   the opposite of what happened.
+   * - `moved-unroutable`: the same miners are STILL ANNOUNCING, at an address
+   *   nobody can reach. Measured 2026-08-16 over 38 days, 166 of the 271
+   *   same-hotkey losses network-wide are this, not withdrawal -- and SN126,
+   *   the single largest source (160 in 14 days, larger than the #11328 case),
+   *   is almost entirely this shape. Calling it "stopped publishing an axon"
+   *   is false: they never stopped.
    * - `subnet-turned-over`: the metagraph itself emptied, so the missing axons
    *   are missing NEURONS and membership is the story.
    * - `mechanism-unknown`: the drop is real but nothing here explains it. Either
@@ -156,12 +162,20 @@ export interface AxonFinding {
   kind:
     | "announcements-withdrawn"
     | "churn-replaced"
+    | "moved-unroutable"
     | "subnet-turned-over"
     | "mechanism-unknown";
   /** Axon losses in the window whose UID changed hands. Null until measured. */
   lossesViaReuse: number | null;
   /** Axon losses where the same hotkey stopped announcing. Null until measured. */
   lossesSameHotkey: number | null;
+  /**
+   * Of those, the ones STILL ANNOUNCING -- at an unroutable address.
+   *
+   * A subset of `lossesSameHotkey`, so `sameHotkey - movedUnroutable` is the
+   * count that genuinely went dark. Null until measured.
+   */
+  lossesMovedUnroutable: number | null;
   /**
    * Distinct IPs the withdrawn axons were announcing from. Null until measured.
    *
@@ -234,6 +248,7 @@ export function evaluateSubnetAxons(
     // "zero" -- see classifyAxonMechanism.
     lossesViaReuse: null,
     lossesSameHotkey: null,
+    lossesMovedUnroutable: null,
     lossesDistinctIps: null,
   };
 }
@@ -267,17 +282,19 @@ export function axonDetail(findings: readonly AxonFinding[]): string {
           ? `, neurons ${f.neurons}/${f.neuronBaseline} -- the subnet turned over`
           : f.kind === "mechanism-unknown"
             ? ", mechanism UNREAD -- the drop is real, the cause is not established"
-            : f.kind === "churn-replaced"
-              ? `, churn-replaced: ${f.lossesViaReuse ?? 0} of ${(f.lossesViaReuse ?? 0) + (f.lossesSameHotkey ?? 0)} losses were deregistrations`
-              : // `announcements-withdrawn` is only reachable through a
-                // successful mechanism read, so the count is a number here --
-                // an unread one is `mechanism-unknown` above.
-                `, ${f.lossesSameHotkey} miner(s) stopped announcing` +
-                (f.lossesDistinctIps === null
-                  ? ""
-                  : f.lossesDistinctIps === 1
-                    ? " -- ALL FROM ONE ADDRESS, so this is one host rather than the subnet"
-                    : ` from ${f.lossesDistinctIps} addresses`)) +
+            : f.kind === "moved-unroutable"
+              ? `, ${f.lossesMovedUnroutable} of ${f.lossesSameHotkey} still announce -- they MOVED to an unroutable address rather than going dark`
+              : f.kind === "churn-replaced"
+                ? `, churn-replaced: ${f.lossesViaReuse ?? 0} of ${(f.lossesViaReuse ?? 0) + (f.lossesSameHotkey ?? 0)} losses were deregistrations`
+                : // `announcements-withdrawn` is only reachable through a
+                  // successful mechanism read, so the count is a number here --
+                  // an unread one is `mechanism-unknown` above.
+                  `, ${f.lossesSameHotkey} miner(s) stopped announcing` +
+                  (f.lossesDistinctIps === null
+                    ? ""
+                    : f.lossesDistinctIps === 1
+                      ? " -- ALL FROM ONE ADDRESS, so this is one host rather than the subnet"
+                      : ` from ${f.lossesDistinctIps} addresses`)) +
         ")",
     )
     .join("; ");
@@ -312,14 +329,28 @@ export function axonDetail(findings: readonly AxonFinding[]): string {
  * evidence for both is still evidence that some miners went dark.
  */
 export function classifyAxonMechanism(
-  counts: { viaReuse: number | null; sameHotkey: number | null },
+  counts: {
+    viaReuse: number | null;
+    sameHotkey: number | null;
+    movedUnroutable?: number | null;
+  },
   fallback: AxonFinding["kind"],
 ): AxonFinding["kind"] {
   const reuse = counts?.viaReuse;
   const same = counts?.sameHotkey;
   if (typeof reuse !== "number" || typeof same !== "number") return fallback;
   if (reuse + same === 0) return fallback;
-  return reuse > same ? "churn-replaced" : "announcements-withdrawn";
+  if (reuse > same) return "churn-replaced";
+  // SAME-HOTKEY IS TWO MECHANISMS, NOT ONE. A miner that moved to an
+  // unroutable address still announces, so "stopped publishing an axon" is
+  // false for it -- and network-wide the moves OUTNUMBER the stops 166 to 105.
+  // Only a measured majority of genuine stops earns the withdrawal wording;
+  // an unmeasured `movedUnroutable` is 0, which leaves today's answer.
+  const moved = counts?.movedUnroutable;
+  if (typeof moved === "number" && Number.isFinite(moved) && moved > same / 2) {
+    return "moved-unroutable";
+  }
+  return "announcements-withdrawn";
 }
 
 /**
@@ -343,18 +374,28 @@ export async function loadAxonLossMechanisms(
 ): Promise<
   Record<
     number,
-    { viaReuse: number; sameHotkey: number; distinctIps: number | null }
+    {
+      viaReuse: number;
+      sameHotkey: number;
+      movedUnroutable: number;
+      distinctIps: number | null;
+    }
   >
 > {
   const out: Record<
     number,
-    { viaReuse: number; sameHotkey: number; distinctIps: number | null }
+    {
+      viaReuse: number;
+      sameHotkey: number;
+      movedUnroutable: number;
+      distinctIps: number | null;
+    }
   > = {};
   const ids = (netuids ?? []).filter((n) => Number.isSafeInteger(n) && n >= 0);
   if (!db?.query || ids.length === 0) return out;
   try {
     const rows = (await db.query(
-      "WITH seq AS (SELECT netuid, uid, snapshot_date, hotkey, " +
+      "WITH seq AS (SELECT netuid, uid, snapshot_date, hotkey, axon, " +
         `(${ROUTABLE_AXON_SQL}) AS has_axon, ` +
         `LAG(${ROUTABLE_AXON_SQL}) OVER w AS prev_has, ` +
         "LAG(hotkey) OVER w AS prev_hotkey, LAG(axon) OVER w AS prev_axon " +
@@ -364,6 +405,8 @@ export async function loadAxonLossMechanisms(
         "SELECT netuid, " +
         "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey IS DISTINCT FROM prev_hotkey) AS via_reuse, " +
         "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS same_hotkey, " +
+        "COUNT(*) FILTER (WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey " +
+        "AND axon IS NOT NULL AND axon <> '') AS moved_unroutable, " +
         "COUNT(DISTINCT split_part(prev_axon, ':', 1)) FILTER " +
         "(WHERE prev_has AND NOT has_axon AND hotkey = prev_hotkey) AS distinct_ips " +
         "FROM seq GROUP BY netuid",
@@ -373,12 +416,20 @@ export async function loadAxonLossMechanisms(
       const netuid = Number(row?.netuid);
       const viaReuse = Number(row?.via_reuse ?? 0);
       const sameHotkey = Number(row?.same_hotkey ?? 0);
+      const moved = Number(row?.moved_unroutable ?? 0);
       const ips = Number(row?.distinct_ips);
       if (!Number.isFinite(netuid)) continue;
       if (!Number.isFinite(viaReuse) || !Number.isFinite(sameHotkey)) continue;
       out[netuid] = {
         viaReuse,
         sameHotkey,
+        // Clamped into the same-hotkey total it is a subset of: a driver that
+        // hands back something unreadable must not make "moved" exceed the
+        // losses it partitions, which would render as a negative "stopped".
+        movedUnroutable:
+          Number.isFinite(moved) && moved >= 0
+            ? Math.min(moved, sameHotkey)
+            : 0,
         // Null rather than 0 when unreadable: "no addresses" and "we did not
         // count the addresses" are different, and only one of them is a fact.
         distinctIps: Number.isFinite(ips) ? ips : null,
@@ -446,6 +497,7 @@ export async function runAxonAnnouncementWatchdog(
     if (!counts) continue;
     finding.lossesViaReuse = counts.viaReuse;
     finding.lossesSameHotkey = counts.sameHotkey;
+    finding.lossesMovedUnroutable = counts.movedUnroutable;
     finding.lossesDistinctIps = counts.distinctIps;
     // Turnover is decided by the neuron count and is not up for revision here:
     // a subnet that emptied is not "churn" at any ratio.
@@ -501,12 +553,16 @@ export async function runAxonAnnouncementWatchdog(
             ? `announced axons collapsed: ${detail} -- miners that are still registered and ` +
               `still earning stopped publishing an axon, so this is a reachability change ` +
               `nothing else in the fleet reports (#11328)`
-            : // Turnover, unread mechanisms, and churn MIXED with either land
-              // here -- pure churn never reaches this call at all. The detail
-              // already says which, and none of them is a withdrawal, so this
-              // states the drop and stops.
-              `announced axons fell below baseline: ${detail} -- this reports the DROP only; ` +
-              `no miner was measured to have stopped announcing`,
+            : findings.some((f) => f.kind === "moved-unroutable")
+              ? `routable axons fell WITHOUT anyone going dark: ${detail} -- the same miners ` +
+                `are still announcing, at addresses in documentation or private ranges that ` +
+                `nothing can reach. Reachability changed; publishing did not (#11392)`
+              : // Turnover, unread mechanisms, and churn MIXED with either land
+                // here -- pure churn never reaches this call at all. The detail
+                // already says which, and none of them is a withdrawal, so this
+                // states the drop and stops.
+                `announced axons fell below baseline: ${detail} -- this reports the DROP only; ` +
+                `no miner was measured to have stopped announcing`,
       ),
       route: `watchdog:${AXON_ANNOUNCEMENT_LANE}`,
       errorCode: fleetWide
