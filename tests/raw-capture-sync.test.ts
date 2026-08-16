@@ -835,3 +835,88 @@ describe("the archive endpoints a lane reads from", () => {
     assert.equal(hosts.size, RAW_CAPTURE_LANES.length);
   });
 });
+
+/**
+ * The budget must not scale with how many endpoints the lane reads.
+ *
+ * This is the correction of a wrong premise, pinned so it cannot come back.
+ * Adding hosts LOOKS like it should buy proportional throughput; #9378 measured
+ * that it does not, because the limit is per CLIENT -- "probing
+ * test.chain.opentensor.ai straight afterwards stopped after 4 blocks, because
+ * the first probe had already spent the budget."
+ *
+ * A multiplier here does not raise the ceiling, it spends one minute's
+ * allowance in a quarter of the minute and buys a 429 partway through the tick.
+ * The rotation stays for FAILOVER and archive coverage; the rate is unchanged.
+ */
+describe("the tick budget against the endpoint count", () => {
+  test("more endpoints do NOT widen the budget", async () => {
+    const hosts = new Set<string>();
+    const { env } = envWith();
+    const pool = (n: number) => ({
+      readArtifact: async () => ({
+        ok: true,
+        data: {
+          pools: [
+            {
+              id: "finney-rpc",
+              endpoints: Array.from({ length: n }, (_, i) => ({
+                id: `archive-${i}`,
+                url: `https://archive-${i}.example`,
+                kind: "subtensor-rpc",
+                auth_required: false,
+                public_safe: true,
+                pool_eligible: true,
+                archive_support: true,
+                status: "ok",
+              })),
+            },
+          ],
+        },
+      }),
+    });
+    const gaps: number[] = [];
+    for (const n of [1, 6]) {
+      hosts.clear();
+      await runRawCaptureSync(env as never, {
+        ctx: CTX,
+        endpointDeps: pool(n),
+        // The paced gap IS the budget's observable half, so recording it is
+        // how this asserts the rate rather than the endpoint list.
+        sleepFn: async (ms) => {
+          gaps.push(ms);
+        },
+        fetchImpl: (async (url: unknown, init?: { body?: string }) => {
+          hosts.add(new URL(String(url)).origin);
+          const req = JSON.parse(init?.body ?? "{}") as { method: string };
+          const reply = (result: unknown) =>
+            ({
+              ok: true,
+              json: async () => ({ result }),
+            }) as unknown as Response;
+          if (req.method === "chain_getHeader")
+            return reply({ number: "0x989680" });
+          if (req.method === "chain_getBlockHash") return reply("0xh1");
+          if (req.method === "chain_getBlock") {
+            return reply({
+              block: {
+                header: { number: "0x1", parentHash: "0xp" },
+                extrinsics: ["0xaa"],
+              },
+            });
+          }
+          return reply("0xevents");
+        }) as unknown as typeof fetch,
+      });
+    }
+    // Six endpoints were genuinely read -- the rotation is live, so this is not
+    // passing because the pool arm never ran.
+    assert.ok(hosts.size > 1, `rotation did not engage: ${[...hosts].length}`);
+    const distinct = [...new Set(gaps)];
+    assert.equal(
+      distinct.length,
+      1,
+      `the per-block gap must not depend on the endpoint count; saw ${distinct.join(", ")}`,
+    );
+  });
+});

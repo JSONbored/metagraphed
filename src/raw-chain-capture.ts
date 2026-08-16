@@ -34,11 +34,10 @@
 import { chainRpc } from "./chain-rpc.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
-// The key is DERIVED once in twox-storage-key.ts; re-exported here because this
-// module's own callers and tests have always addressed it through this module.
+// DERIVED once in twox-storage-key.ts, beside the vectors that prove it.
+// Re-exported here because this module's callers and tests have always
+// addressed the key through it.
 import { SYSTEM_EVENTS_STORAGE_KEY } from "./twox-storage-key.ts";
-// Re-exported because this module's callers and tests have always addressed
-// the key through it; the single declaration lives in twox-storage-key.ts.
 export { SYSTEM_EVENTS_STORAGE_KEY };
 
 export interface RawBlockCapture {
@@ -214,11 +213,11 @@ export async function captureTick(deps: {
   /**
    * The archive endpoints this tick may read from, in preference order.
    *
-   * A LIST, NOT A URL, because the binding constraint on this lane is a
-   * PER-HOST rate limit (~100 requests per client per minute, measured in
-   * #9378), and one host was the whole budget. Blocks rotate across the list,
-   * so each host sees the same per-host rate it saw before while the lane's
-   * aggregate rate multiplies by the number of hosts.
+   * A LIST, NOT A URL, for RELIABILITY -- not for rate. The measured limit
+   * (#9378) is per CLIENT, not per host, so reading more endpoints does not buy
+   * more throughput; see `stepGapMs` below. What the list buys is that a host
+   * which is down, or which cannot serve historical state at all, stops being a
+   * single point of failure for the whole lane.
    *
    * THE NO-GAP GUARANTEE IS UNCHANGED, and the rotation is why it needed care:
    * a height that fails on one endpoint is retried on the OTHERS before the
@@ -269,11 +268,21 @@ export async function captureTick(deps: {
   if (endpoints.length === 0) {
     throw new Error("captureTick: rpcUrls is empty; nothing to read from");
   }
-  // The gap the CALLER computed is per host. Rotating across N hosts means the
-  // wall gap between consecutive blocks is that divided by N -- each host still
-  // sees `minGapMs` between its own calls, which is the rate the measured limit
-  // applies to, while the lane's aggregate rate is N times what one host allowed.
-  const stepGapMs = Math.ceil(minGapMs / endpoints.length);
+  // THE GAP IS NOT DIVIDED BY THE ENDPOINT COUNT, and briefly was.
+  //
+  // Dividing assumes the rate limit is per HOST -- rotate across N hosts, let
+  // each see `minGapMs` between its own calls, and the lane's aggregate rate is
+  // N times one host's allowance. That is a reasonable model and it is not this
+  // endpoint's. #9378 measured the limit as per CLIENT: after exhausting it on
+  // one host, a DIFFERENT host refused too, "because the first probe had
+  // already spent the budget."
+  //
+  // Under a per-client limit the divisor spends one minute's allowance in a
+  // fraction of the minute and buys a 429 partway through the tick -- more
+  // hosts, same ceiling, worse pacing. So the gap between consecutive blocks is
+  // the caller's `minGapMs` whatever the rotation width, and the rotation buys
+  // FAILOVER and archive coverage rather than rate.
+  const stepGapMs = minGapMs;
   const stored = await deps.watermark.read();
   // An unset watermark starts just below the floor, so the first tick captures
   // the floor block itself rather than skipping it.
