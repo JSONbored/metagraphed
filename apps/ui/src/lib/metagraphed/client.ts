@@ -1,4 +1,5 @@
 import { getApiBase, getNetworkPrefix } from "./config";
+import { recordApiLatency } from "./api-latency.ts";
 import type { ApiEnvelope, ApiMeta } from "./types";
 
 export class ApiError extends Error {
@@ -87,6 +88,12 @@ export async function apiFetch<T>(
   opts: { params?: QueryParams; signal?: AbortSignal; init?: RequestInit } = {},
 ): Promise<ApiResult<T>> {
   const url = buildUrl(path, opts.params);
+  // Every call is a real round trip to the API's own origin, so timing it here
+  // is what lets the footer health dot stop issuing a probe of its own -- see
+  // lib/metagraphed/api-latency.ts. Recorded on BOTH paths: a failure is the
+  // sample that renders "down", and dropping it would leave the last good
+  // number on screen while nothing works.
+  const startedAt = performance.now?.() ?? Date.now();
   let res: Response;
   try {
     res = await fetch(url, {
@@ -95,11 +102,16 @@ export async function apiFetch<T>(
       ...opts.init,
     });
   } catch (err) {
+    // An ABORT is not a measurement. React Query cancels in-flight requests on
+    // unmount and on every keystroke behind a debounce, and reporting those as
+    // "down" would paint the dot red on ordinary navigation.
+    if (!opts.signal?.aborted) recordApiLatency(null);
     throw new ApiError((err as Error).message || "Network error", {
       status: 0,
       url: redactUrlForError(url),
     });
   }
+  recordApiLatency(Math.round((performance.now?.() ?? Date.now()) - startedAt));
 
   const text = await res.text();
   let body: unknown = null;
