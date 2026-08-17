@@ -109,6 +109,39 @@ if [[ "$POSTHOG_ENABLED" == "true" ]] &&
   POSTHOG_ENABLED=false
 fi
 
+# ...AND IT HAS TO REACH POSTHOG (#11421). The rule above is right and was
+# applied to only half the ways this step fails: a MISSING cli skipped, but a
+# cli that ran and could not reach the API took the deploy down with it, under
+# `set -e`.
+#
+# That is not hypothetical. On 2026-08-17 every Workers Build in the account
+# began failing at `posthog-cli sourcemap inject` with
+#
+#   WARN posthog_cli::api::releases: failed to get release from hash:
+#     Request error: error sending request for url (https://us.i.posthog.com/...)
+#   Failed: error occurred while running deploy command
+#
+# after a 30s timeout -- on three Workers, on unrelated branches (a renovate
+# bump and a perf branch), and identically on a retrigger ten minutes later.
+# The wrangler build had already SUCCEEDED in every one of them; the bytes were
+# ready to ship. A third-party observability endpoint being unreachable had
+# become an estate-wide deploy outage.
+#
+# So the same trade is applied to the same failure: run the two posthog phases
+# tolerantly, and on ANY failure fall through to the plain deploy below. That
+# path rebuilds from source, so a bundle half-injected by a failed `inject` is
+# never what ships -- and no chunk id is stamped without a map behind it, which
+# is the one outcome worse than no symbolication at all.
+posthog_phase() {
+  if "$@"; then
+    return 0
+  fi
+  echo "warning: $1 failed (see #11421); deploying WITHOUT sourcemap" \
+    "injection or upload. A Worker deployed without symbolication is a small" \
+    "observability loss; a Worker that did not deploy is an outage." >&2
+  return 1
+}
+
 if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # Phase 0: start from an empty $OUTDIR. `wrangler --outdir` writes into the
   # directory without clearing it, so anything left there from an earlier run
@@ -148,10 +181,15 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # (metagraphed-data-api, 2026-07-31). posthog-cli's own help says these are
   # "strongly recommended to be set explicitly during release CD workflows",
   # and this is why: they are what makes the 3 Workers x 2 modes distinct.
-  npx @posthog/cli sourcemap inject \
+  if ! posthog_phase npx @posthog/cli sourcemap inject \
     --directory "$OUTDIR" \
     --release-name "$RELEASE_NAME" \
-    --release-version "$RELEASE_VERSION"
+    --release-version "$RELEASE_VERSION"; then
+    POSTHOG_ENABLED=false
+  fi
+fi
+
+if [[ "$POSTHOG_ENABLED" == "true" ]]; then
 
   # Phases 3-4 below: upload the sourcemap, then ship the EXACT injected
   # file -- --no-bundle skips wrangler's
@@ -187,11 +225,15 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # live on 2026-08-02's deploys. Uploading first is safe: the map + chunk
   # id are fully determined by phase 2's inject, and an upload for a deploy
   # that subsequently fails is inert (its chunk id never serves traffic).
-  npx @posthog/cli sourcemap upload \
+  if ! posthog_phase npx @posthog/cli sourcemap upload \
     --directory "$OUTDIR" \
     --release-name "$RELEASE_NAME" \
-    --release-version "$RELEASE_VERSION"
+    --release-version "$RELEASE_VERSION"; then
+    POSTHOG_ENABLED=false
+  fi
+fi
 
+if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # Phase 4: ship the EXACT injected bundle the map above describes.
   npx wrangler "${WRANGLER_SUBCOMMAND[@]}" \
     "$ENTRY_JS" \
