@@ -515,15 +515,25 @@ describe("loadAccountSummaryProjection", () => {
     }
   });
 
-  test("AN ACCOUNT OVER THE CAP DECLINES -- the two tiers would disagree", async () => {
-    // The defect this exists for, caught in production before it was trusted.
-    // The projection aggregates an account's WHOLE history; the live path
-    // aggregates the newest CAP events. `event_count` clamps to CAP either way,
-    // so the difference hides there -- but `event_kinds` and `subnet_count`
-    // silently widen to lifetime.
+  test("AN ACCOUNT OVER THE CAP IS ANSWERED -- with the history it really has", async () => {
+    // THE DECLINE THIS USED TO ASSERT, and why it inverted (#11468).
     //
-    // Measured on a real account: live reported 4 kinds across 2 subnets, the
-    // projection 10 across 3. Same route, different answer by tier.
+    // The disagreement it was built on is real: the projection aggregates an
+    // account's WHOLE history, the live path aggregates the newest CAP events,
+    // and above the cap `event_kinds`/`subnet_count` differ. Measured on a real
+    // account, live reported 4 kinds across 2 subnets and the projection 10
+    // across 3. One route must not answer two ways.
+    //
+    // What declining got wrong is WHICH answer to keep. The capped one is the
+    // degraded one -- `event_count` clamped to 5,000, `first_block` and
+    // `first_seen_at` nulled outright -- while the projection's is the account's
+    // real history, folded forward associatively from a 2020 floor. Declining
+    // held the route to the worse answer AND made it slow: null is the signal
+    // the caller reads to pick its arms, so it sent both legs to unbounded
+    // scans. Measured on production 2026-08-17, over-cap correlated with slow
+    // 16/16 -- 0.63-1.07s under the cap, 6.7-22.8s and 503s over it.
+    //
+    // So an over-cap account is now ANSWERED, with the totals it really has.
     const over = [
       group({
         kind: "AxonServed",
@@ -533,9 +543,16 @@ describe("loadAccountSummaryProjection", () => {
       group({ kind: "Transfer", netuid: null, count: 1 }),
     ];
     const store = archive(published({ [HOT]: over }));
+    const found = await readFound(store.env, HOT, FRESH);
     assert.equal(
-      await loadAccountSummaryProjection(store.env, HOT, FRESH),
-      null,
+      found.groups.length,
+      2,
+      "the over-cap account is served, not declined",
+    );
+    assert.equal(
+      found.groups.reduce((n, g) => n + Number(g.count), 0),
+      ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1,
+      "and its lifetime total is published rather than clamped",
     );
   });
 

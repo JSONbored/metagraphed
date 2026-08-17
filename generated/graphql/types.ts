@@ -654,7 +654,7 @@ export type AccountSummary = {
   activity?: Maybe<AccountActivity>;
   event_count: Scalars['Int']['output'];
   event_kinds?: Maybe<Array<AccountEventKind>>;
-  /** True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null. */
+  /** True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null. False means the totals are the account's complete history, at any magnitude: when the account-summary projection answers, the counts are running totals folded over the whole history rather than a scan of the newest N, so a large event_count here is exact rather than truncated. */
   event_scan_capped?: Maybe<Scalars['Boolean']['output']>;
   first_block?: Maybe<Scalars['Int']['output']>;
   first_seen_at?: Maybe<Scalars['String']['output']>;

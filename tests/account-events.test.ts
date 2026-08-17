@@ -953,6 +953,50 @@ test("buildAccountSummary nulls all-time first_* when the event scan is capped",
   assert.ok(full.first_seen_at);
 });
 
+test("a COMPLETE aggregate is not capped, however large it is", () => {
+  // #11468. `scanned > CAP` was only ever a proxy for "the lakehouse probe
+  // stopped at CAP + 1", and it stopped holding when the projection began
+  // answering above the cap: those totals are running sums folded forward
+  // associatively from a 2020 floor, so a 208,423-event account is EXACT rather
+  // than truncated.
+  //
+  // Inferring truncation from size would null `first_block`/`first_seen_at` on
+  // precisely the accounts whose whole history is known -- a block explorer
+  // reporting "first seen: unknown" for an account it has fully counted.
+  const complete = buildAccountSummary("5Hk", {
+    agg: { c: 208_423, sc: 42, fb: 100, lb: 900, fo: 1000, lo: 9000 },
+    scanned: 208_423,
+    complete: true,
+  });
+  assert.equal(complete.event_scan_capped, false);
+  assert.equal(
+    complete.event_count,
+    208_423,
+    "the lifetime total is published, not clamped to the cap",
+  );
+  assert.equal(complete.subnet_count, 42);
+  assert.equal(complete.first_block, 100, "the real first event, not a floor");
+  assert.ok(complete.first_seen_at);
+
+  // The SAME numbers without the claim keep the old reading: a caller with no
+  // evidence of completeness still gets the conservative answer.
+  const unclaimed = buildAccountSummary("5Hk", {
+    agg: { c: 208_423, sc: 42, fb: 100, lb: 900, fo: 1000, lo: 9000 },
+    scanned: 208_423,
+  });
+  assert.equal(unclaimed.event_scan_capped, true);
+  assert.equal(unclaimed.first_block, null);
+
+  // And `complete: false` is not a way to CLEAR a cap the probe really hit.
+  const stillCapped = buildAccountSummary("5Hk", {
+    agg: { c: ACCOUNT_EVENT_SUMMARY_SCAN_CAP, sc: 3, fb: 100, fo: 1000 },
+    scanned: ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1,
+    complete: false,
+  });
+  assert.equal(stillCapped.event_scan_capped, true);
+  assert.equal(stillCapped.first_block, null);
+});
+
 test("buildSubnetEventSummary groups event kinds into coarse categories", () => {
   const out = buildSubnetEventSummary(
     [
