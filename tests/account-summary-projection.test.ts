@@ -1200,6 +1200,82 @@ describe("the pointer memo", () => {
     );
   });
 
+  test("A ROTATION IS SERVED, not declined and left to the lakehouse", async () => {
+    // THE COST OF DECLINING, which the memo-drop above does not pay back. It
+    // repairs the NEXT request on THIS isolate; the memo is isolate-local, so
+    // every isolate alive across a rotation still has one request that finds no
+    // shard -- and that request does not merely go slow, it falls through to
+    // the caller's unbounded `windowedRowRead` walk of chain.account_events.
+    //
+    // Measured on production 2026-08-17: six accounts whose shards all existed
+    // and whose payloads all parsed, three answered in 0.64-0.89s from the
+    // projection while the others took 19.2s, 25.7s and 30.8s with five r2sql
+    // calls, and /accounts/{ss58} 503s when that walk overruns the 15s ceiling.
+    // Every generation but the current one is deleted, so the only difference
+    // between those two outcomes was which generation the isolate had memoized.
+    const NEXT = "20260814T110000Z";
+    const rotated = archive({
+      // The pointer the producer has already advanced...
+      [ACCOUNT_SUMMARY_POINTER_KEY]: pointer({
+        generation: NEXT,
+        generated_at: "2026-08-14T11:00:00Z",
+      }),
+      // ...and only the new generation's shard, because the old one is deleted.
+      [accountSummaryShardKey(HOT, SHARDS, NEXT)]: {
+        schema_version: ACCOUNT_SUMMARY_SCHEMA_VERSION,
+        generated_at: "2026-08-14T11:00:00Z",
+        shard_count: SHARDS,
+        accounts: { [HOT]: [group()] },
+      },
+    });
+
+    // Warm the memo onto the OLD generation, exactly as an isolate that served
+    // a request before the rotation would hold it.
+    const stale = archive(published({ [HOT]: [group()] }));
+    await readFound(stale.env, HOT, FRESH);
+
+    // Now the same isolate takes a request after the producer rotated.
+    const found = await readFound(rotated.env, HOT, FRESH);
+    assert.equal(
+      found.groups.length,
+      1,
+      "the rotation must be re-resolved and served, not declined",
+    );
+    assert.deepEqual(
+      rotated.asked,
+      [
+        accountSummaryShardKey(HOT, SHARDS, GEN),
+        ACCOUNT_SUMMARY_POINTER_KEY,
+        accountSummaryShardKey(HOT, SHARDS, NEXT),
+      ],
+      "the miss on the memoized generation re-reads the pointer, then the shard it now names",
+    );
+  });
+
+  test("a shard absent under the CURRENT generation is not re-read", async () => {
+    // The retry is for a rotation, and a fresh pointer naming the SAME
+    // generation is not one: the shard is genuinely absent -- a partial
+    // publish, or an account the producer never wrote -- and asking for the
+    // identical key a second time buys the same miss twice. So this declines on
+    // one shard GET plus the pointer re-read that proved nothing had moved.
+    const gone = archive({
+      [ACCOUNT_SUMMARY_POINTER_KEY]: pointer(),
+    });
+    assert.equal(
+      await loadAccountSummaryProjection(gone.env, HOT, FRESH),
+      null,
+    );
+    assert.deepEqual(
+      gone.asked,
+      [
+        ACCOUNT_SUMMARY_POINTER_KEY,
+        accountSummaryShardKey(HOT, SHARDS, GEN),
+        ACCOUNT_SUMMARY_POINTER_KEY,
+      ],
+      "one shard read, never two for the same key",
+    );
+  });
+
   test("AN UNREADABLE POINTER IS NOT MEMOIZED for the TTL", async () => {
     // A transient R2 blip must cost one request, not five minutes of declines.
     const broken = archive({ [ACCOUNT_SUMMARY_POINTER_KEY]: { nope: 1 } });

@@ -301,6 +301,31 @@ async function resolvePointer(
   return resolved;
 }
 
+/**
+ * The current pointer, or null unless it is one this reader may serve from.
+ *
+ * EXTRACTED SO THE RETRY CANNOT SKIP A CHECK. The rotation retry below resolves
+ * a second pointer and reads a second shard from it, so every rule that
+ * qualified the first one -- the schema version it declares, a `generated_at`
+ * that is a real date, and the staleness bound -- has to hold for the second
+ * one too. Inlining them once and trusting the retry to be "the same pointer,
+ * just newer" is how a stale or wrong-versioned generation gets served by the
+ * path that exists to recover from a missing one.
+ */
+async function usablePointer(
+  bucket: ArtifactObjectStore,
+  now: () => number,
+  maxAgeMs: number,
+): Promise<z.infer<typeof AccountSummaryPointerSchema> | null> {
+  const pointer = await resolvePointer(bucket, now);
+  if (pointer === null) return null;
+  if (pointer.schema_version !== ACCOUNT_SUMMARY_SCHEMA_VERSION) return null;
+  const generated = Date.parse(pointer.generated_at);
+  if (!Number.isFinite(generated)) return null;
+  if (maxAgeMs > 0 && now() - generated > maxAgeMs) return null;
+  return pointer;
+}
+
 export async function loadAccountSummaryProjection(
   env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   account: string,
@@ -337,33 +362,63 @@ export async function loadAccountSummaryProjection(
   // Worker costs ~370 ms (`/api/v1/coverage`, which does exactly one), and the
   // projection does two in sequence -- the pointer, then the shard it names --
   // so the pointer alone was a third of the wall clock on the fast path.
-  const pointer = await resolvePointer(bucket, now);
-  if (pointer === null) return null;
-  if (pointer.schema_version !== ACCOUNT_SUMMARY_SCHEMA_VERSION) return null;
-  const shards = pointer.shard_count;
-  const generation = pointer.generation;
-  const generated = Date.parse(pointer.generated_at);
-  if (!Number.isFinite(generated)) return null;
-  if (maxAgeMs > 0 && now() - generated > maxAgeMs) return null;
+  const first = await usablePointer(bucket, now, maxAgeMs);
+  if (first === null) return null;
 
-  const payload = await readJson(
+  let pointer = first;
+  let payload = await readJson(
     bucket,
-    accountSummaryShardKey(account, shards, generation),
+    accountSummaryShardKey(account, first.shard_count, first.generation),
   );
+
   // A MISS INVALIDATES THE MEMO, and that is what makes memoizing the pointer
   // safe. The producer deletes a generation's shards once the next one is live,
   // so a memoized pointer can name a generation that no longer exists -- and
   // without this every account request would decline for the rest of the TTL,
   // turning a 370 ms saving into a multi-minute outage once an hour.
   //
-  // Dropping it here means the NEXT request re-reads the pointer and succeeds,
-  // so the window is one request rather than one TTL. This request still
-  // declines, which is correct: it has no shard to answer from, and the caller
-  // falls back to the lakehouse exactly as it did before the projection existed.
+  // AND THEN IT RE-READS, rather than declining this request. Dropping the memo
+  // fixes the NEXT request on THIS isolate, which is a much weaker guarantee
+  // than it reads as: the memo is isolate-local, so every isolate that survives
+  // a rotation pays its own declining request, and the thing a decline costs
+  // here is not a slow read -- it is the caller's unbounded lakehouse walk.
+  //
+  // Measured on production 2026-08-17, six accounts whose shards all existed and
+  // whose payloads all parsed: three answered in 0.64-0.89s from the projection
+  // (`neon` only, no `r2sql`), and the rest took 19.2s, 25.7s and 30.8s with
+  // FIVE `r2sql` calls -- the `windowedRowRead` walk -- and the route 503s at
+  // the 15s ceiling when that walk overruns. Every generation but the current
+  // one is deleted (verified: three prior generations return no object), so the
+  // only thing separating those two outcomes was which generation the isolate
+  // had memoized.
+  //
+  // ONE RETRY, AND ONLY ON A NEW GENERATION. A fresh pointer naming the SAME
+  // generation means the shard is genuinely absent -- a partial publish, or an
+  // account whose shard the producer never wrote -- and re-reading the identical
+  // key would just buy the same miss twice. So the retry is conditioned on the
+  // generation actually having moved, which is exactly the rotation this exists
+  // to survive, and costs one pointer GET (~250 ms) against a walk that costs
+  // twenty to thirty seconds.
   if (!payload) {
     resetAccountSummaryPointerCache();
-    return null;
+    const fresh = await usablePointer(bucket, now, maxAgeMs);
+    if (fresh !== null && fresh.generation !== first.generation) {
+      pointer = fresh;
+      payload = await readJson(
+        bucket,
+        accountSummaryShardKey(account, fresh.shard_count, fresh.generation),
+      );
+    }
+    // A MISS STILL LEAVES NO MEMO BEHIND, which is the invariant the retry must
+    // not spend. `usablePointer` re-memoizes whatever it resolved, so without
+    // this a request that failed to find its shard would hand the next one a
+    // pointer it had just proven unusable -- the exact stale-pointer state
+    // dropping the memo exists to prevent, restored by the code meant to
+    // recover from it. Success keeps its memo: that pointer is the fresh one,
+    // and it just answered.
+    if (!payload) resetAccountSummaryPointerCache();
   }
+  if (!payload) return null;
   const accounts = payload["accounts"];
   if (!accounts || typeof accounts !== "object") return null;
 
