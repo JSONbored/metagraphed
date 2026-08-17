@@ -39,7 +39,12 @@ import {
 } from "./extrinsics.ts";
 import { formatAccountEvent } from "./account-events.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { type ChainNetworkId, chainTable } from "./chain-network.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  chainTable,
+} from "./chain-network.ts";
+import { loadExtrinsicsHeadHotTier } from "./chain-detail-hot-tier.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -184,6 +189,60 @@ async function feedRows(
   // Cursor pages never carry an offset -- the cursor already narrows past
   // prior pages -- mirroring data-api's `OFFSET only when no cursor`.
   const paged = decodeCursor(query.cursor, CURSOR_ARITY) ? 0 : offset;
+
+  // THE HOT STORE FIRST. Measured live 2026-08-17, `?limit=11` spent 7,637ms in
+  // the lakehouse (`server-timing: r2sql;dur=7637`) for a page that is one
+  // index scan in Neon -- 0.088ms, off the `observed_at` index migration 0017
+  // added for the freshness probe, which already presorts this feed's leading
+  // key. The answer is also NEWER: that store tracks the chain head while the
+  // lakehouse ends at the decode seam, ~50 minutes back.
+  //
+  // A SHORT PAGE FALLS THROUGH, exactly as the chain-events feed does: the hot
+  // store is contiguous from its floor to the head, so a FULL page is provably
+  // the newest `limit + paged`; a short one means the rest is below that floor.
+  // Serving it would truncate the feed and strand the walk, since the cursor a
+  // full page emits is the same token the lakehouse leg seeks on.
+  //
+  // NO OFFSET PAGES. `paged > 0` means the caller is deep in an offset walk,
+  // and over-fetching `limit + paged` rows to slice them is a trade the
+  // lakehouse leg makes because R2 SQL has no OFFSET. Repeating it here would
+  // pull the same rows through a second store for no gain.
+  //
+  // Only the DEFAULT NETWORK: `chain_detail_*` is mainnet's and carries no
+  // network column.
+  if (
+    paged === 0 &&
+    extraWhere.length === 0 &&
+    (network === undefined || network === DEFAULT_CHAIN_NETWORK)
+  ) {
+    const cursorToken = decodeCursor(query.cursor, CURSOR_ARITY);
+    const hot = await loadExtrinsicsHeadHotTier(env, {
+      limit,
+      ceilingObservedAt: cursorToken ? (cursorToken[0] as number) : null,
+      signer: typeof query.signer === "string" ? query.signer : null,
+      module: typeof query.module === "string" ? query.module : null,
+      callFunction:
+        typeof query.callFunction === "string" ? query.callFunction : null,
+      success: typeof query.success === "boolean" ? query.success : null,
+      blockStart:
+        typeof query.blockStart === "number" ? query.blockStart : null,
+      blockEnd: typeof query.blockEnd === "number" ? query.blockEnd : null,
+    });
+    if (hot !== null && hot.length === limit) {
+      const page = hot as ExtrinsicsRow[];
+      const tail = page[page.length - 1]!;
+      return {
+        rows: page,
+        limit,
+        offset,
+        nextCursor: encodeCursor([
+          safeBlockNumber(tail.observed_at),
+          safeBlockNumber(tail.block_number),
+          safeBlockNumber(tail.extrinsic_index),
+        ]),
+      };
+    }
+  }
 
   const sql =
     `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)}` +

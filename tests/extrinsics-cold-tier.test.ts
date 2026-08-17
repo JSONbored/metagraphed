@@ -6,7 +6,16 @@
 //   3. STABLE ORDER — two extrinsics share a block, so block_number alone is
 //      not a total order; paging on it would repeat or drop rows.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { loadExtrinsicsHeadHotTier } from "../src/chain-detail-hot-tier.ts";
+
+// The head leg reads `chain_detail_extrinsics` through src/read-store.ts,
+// which builds `new Client(...)` itself -- so the module is the seam.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 import {
   loadAccountExtrinsicsColdTier,
   loadBlockExtrinsicsColdTier,
@@ -579,5 +588,182 @@ describe("loadExtrinsicColdTier", () => {
       throw new Error("down");
     }) as unknown as typeof fetch;
     assert.equal(await loadExtrinsicColdTier(TOKEN as never, "1-0"), null);
+  });
+});
+
+/**
+ * The head of the recent-extrinsic feed, from Neon instead of the lakehouse.
+ *
+ * Measured live 2026-08-17: `/api/v1/extrinsics?limit=11` spent 7,637ms in the
+ * lakehouse (`server-timing: r2sql;dur=7637`) for a page that is one index scan
+ * here -- 0.088ms, off the `observed_at` index migration 0017 added for the
+ * freshness probe, which already presorts this feed's leading key.
+ */
+describe("loadExtrinsicFeedColdTier -- the Neon head", () => {
+  const hotRow = (block: number, index = 0, over = {}) => ({
+    block_number: block,
+    extrinsic_index: index,
+    extrinsic_hash: `0x${block.toString(16).padStart(64, "0")}`,
+    signer: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+    call_module: "SubtensorModule",
+    call_function: "set_weights",
+    success: true,
+    fee_tao: 0,
+    tip_tao: 0,
+    call_args: "{}",
+    observed_at: 1_700_000_000_000 + block,
+    ...over,
+  });
+
+  function store(rows: Record<string, unknown>[]) {
+    const seen: string[] = [];
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = ({ text }) => {
+      seen.push(text);
+      pg.control.rows = rows;
+    };
+    return { seen, env: { ...TOKEN, ...pgMockEnv() } as never };
+  }
+
+  test("A FULL PAGE COMES FROM NEON, with no lakehouse query", async () => {
+    const q = sqlFetch([]);
+    const { seen, env } = store([hotRow(900), hotRow(899)]);
+    // `loadExtrinsicFeedColdTier` returns the BUILT feed, not the raw page --
+    // `buildExtrinsicFeed` is what shapes it, so assert on what callers see.
+    const page = await loadExtrinsicFeedColdTier(env, { limit: 2 });
+    assert.ok(page);
+    assert.equal(page.extrinsics.length, 2);
+    assert.equal(q.length, 0, `expected no R2 SQL:\n${q.join("\n")}`);
+    assert.match(
+      seen[0]!,
+      /ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC/,
+      "the hot leg must use the feed's own composite order",
+    );
+  });
+
+  test("A SHORT PAGE FALLS THROUGH -- it does not truncate the feed", async () => {
+    const q = sqlFetch([]);
+    const { env } = store([hotRow(900)]);
+    await loadExtrinsicFeedColdTier(env, { limit: 5 });
+    assert.ok(q.length > 0, "expected the lakehouse read");
+  });
+
+  test("AN OFFSET PAGE IS NOT SERVED from the hot store", async () => {
+    // `offset > 0` means a deep walk, and the over-fetch-then-slice trade the
+    // lakehouse leg makes exists only because R2 SQL has no OFFSET. Repeating
+    // it here would pull the same rows through a second store for no gain.
+    const q = sqlFetch([]);
+    const { seen, env } = store([hotRow(900), hotRow(899), hotRow(898)]);
+    await loadExtrinsicFeedColdTier(env, { limit: 2, offset: 1 });
+    assert.equal(seen.length, 0, "the hot store was asked for an offset page");
+    assert.ok(q.length > 0);
+  });
+
+  test("THE CURSOR SEEKS ON observed_at, the key the token encodes", async () => {
+    // Extrinsics share a block, so no prefix of the composite key is a total
+    // order -- and the public token leads with `observed_at`. A hot leg seeking
+    // on anything else would mis-page against the lakehouse leg's own tokens.
+    const { env } = store([hotRow(900), hotRow(899)]);
+    sqlFetch([]);
+    const first = await loadExtrinsicFeedColdTier(env, { limit: 2 });
+    assert.ok(first?.next_cursor, "a full page must paginate");
+
+    const second = store([hotRow(898), hotRow(897)]);
+    sqlFetch([]);
+    await loadExtrinsicFeedColdTier(second.env, {
+      limit: 2,
+      cursor: first.next_cursor,
+    });
+    assert.match(second.seen[0]!, /observed_at <= \$\d/);
+  });
+
+  test("EVERY FILTER IS APPLIED IN THE QUERY", async () => {
+    const { seen, env } = store([hotRow(900)]);
+    sqlFetch([]);
+    await loadExtrinsicFeedColdTier(env, {
+      limit: 1,
+      signer: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+      module: "SubtensorModule",
+      callFunction: "set_weights",
+      success: true,
+    });
+    for (const column of [
+      "signer",
+      "call_module",
+      "call_function",
+      "success",
+    ]) {
+      assert.match(seen[0]!, new RegExp(`${column} = \\$\\d`), column);
+    }
+  });
+
+  test("AN UNUSABLE ARGUMENT REFUSES, and issues no query", async () => {
+    // `loadExtrinsicsHeadHotTier` is EXPORTED, so "the one caller already
+    // validated it" is a property of today's code and not of the function.
+    // An INVERTED window is in here too: it matches nothing at any height, so
+    // refusing beats asking a question whose answer is already known.
+    pg.control.queries.length = 0;
+    pg.control.onQuery = () => {
+      pg.control.rows = [];
+    };
+    const env = pgMockEnv();
+    for (const [label, opts] of [
+      ["zero limit", { limit: 0, ceilingObservedAt: null }],
+      ["NaN limit", { limit: Number.NaN, ceilingObservedAt: null }],
+      ["unusable ceiling", { limit: 5, ceilingObservedAt: Number.NaN }],
+      [
+        "unusable block_start",
+        { limit: 5, ceilingObservedAt: null, blockStart: Number.NaN },
+      ],
+      [
+        "unusable block_end",
+        { limit: 5, ceilingObservedAt: null, blockEnd: Number.NaN },
+      ],
+      [
+        "inverted window",
+        { limit: 5, ceilingObservedAt: null, blockStart: 500, blockEnd: 100 },
+      ],
+      ["empty signer", { limit: 5, ceilingObservedAt: null, signer: "" }],
+      [
+        "non-boolean success",
+        { limit: 5, ceilingObservedAt: null, success: "yes" as never },
+      ],
+    ] as [string, Parameters<typeof loadExtrinsicsHeadHotTier>[1]][]) {
+      assert.equal(
+        await loadExtrinsicsHeadHotTier(env, opts),
+        null,
+        `${label} must be refused`,
+      );
+    }
+    assert.equal(
+      pg.control.queries.length,
+      0,
+      "an unusable argument reached the store",
+    );
+  });
+
+  test("A VALID BLOCK WINDOW IS APPLIED, not dropped", async () => {
+    // The first version of this leg ignored `block_start`/`block_end` entirely,
+    // which is a WRONG ANSWER rather than a slow one: a windowed request would
+    // have been handed the newest N regardless of the window.
+    const { seen, env } = store([hotRow(900)]);
+    sqlFetch([]);
+    await loadExtrinsicFeedColdTier(env, {
+      limit: 1,
+      blockStart: 100,
+      blockEnd: 900,
+    });
+    assert.match(seen[0]!, /block_number >= \$\d/);
+    assert.match(seen[0]!, /block_number <= \$\d/);
+  });
+
+  test("ANOTHER NETWORK never reads mainnet's hot store", async () => {
+    sqlFetch([]);
+    const { seen, env } = store([hotRow(900), hotRow(899)]);
+    await loadExtrinsicFeedColdTier(env, { limit: 2 }, "testnet");
+    assert.equal(seen.length, 0, "mainnet's hot store was asked for testnet");
   });
 });

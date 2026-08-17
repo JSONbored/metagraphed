@@ -459,6 +459,103 @@ export function formatChainEvent(
  * same reason: a filter applied to a page already cut to `limit` would return
  * fewer than the caller asked for while more matches existed.
  */
+/**
+ * The newest extrinsics at or below `ceiling`, from the hot store.
+ *
+ * The sibling of `loadChainEventsHeadHotTier`, for the same reason and with the
+ * same rules -- see that function for the full argument. Measured live
+ * 2026-08-17, `/api/v1/extrinsics?limit=11` spent 7,637ms in the lakehouse for
+ * a page that is one index scan here:
+ *
+ *   Limit (actual time=0.065..0.067 rows=11)
+ *     -> Incremental Sort  Presorted Key: observed_at
+ *          -> Index Scan Backward using idx_chain_detail_extrinsics_observed
+ *   Execution Time: 0.088 ms      Buffers: shared hit=11
+ *
+ * That index came from migration 0017 for the freshness probe, and it already
+ * presorts this feed's leading key -- so the ordering is answered rather than
+ * computed.
+ *
+ * ORDERED BY `observed_at` FIRST, matching the lakehouse leg exactly. The public
+ * cursor token encodes this composite key, so a tier ordering differently would
+ * emit tokens the other tier mis-seeks on -- and extrinsics share a block, so no
+ * prefix of the key is a total order on its own.
+ */
+export async function loadExtrinsicsHeadHotTier(
+  env: unknown,
+  options: {
+    limit: number;
+    /** Read at or below this `observed_at`; null starts at the head. */
+    ceilingObservedAt: number | null;
+    signer?: string | null;
+    module?: string | null;
+    callFunction?: string | null;
+    success?: boolean | null;
+    /** The `?block_start`/`?block_end` window, when the caller gave one. */
+    blockStart?: number | null;
+    blockEnd?: number | null;
+  },
+): Promise<Row[] | null> {
+  const need = safeBlockNumber(options.limit);
+  if (need === null || need <= 0) return null;
+  const where: string[] = [];
+  const params: unknown[] = [];
+  // THE BLOCK WINDOW IS PART OF THE QUESTION, and the first version of this
+  // dropped it -- which is a WRONG ANSWER, not a slow one: a windowed request
+  // would have been handed the newest N regardless of the window. The full
+  // suite caught it through the inverted-window short-circuit, which is the
+  // case that makes the omission observable.
+  //
+  // An INVERTED window matches nothing at any height, so it refuses here rather
+  // than issuing a query whose result is knowable without asking.
+  const startBlock =
+    options.blockStart == null ? null : safeBlockNumber(options.blockStart);
+  if (options.blockStart != null && startBlock === null) return null;
+  const endBlock =
+    options.blockEnd == null ? null : safeBlockNumber(options.blockEnd);
+  if (options.blockEnd != null && endBlock === null) return null;
+  if (startBlock !== null && endBlock !== null && startBlock > endBlock) {
+    return null;
+  }
+  if (startBlock !== null) {
+    where.push("block_number >= ?");
+    params.push(startBlock);
+  }
+  if (endBlock !== null) {
+    where.push("block_number <= ?");
+    params.push(endBlock);
+  }
+  if (options.ceilingObservedAt !== null) {
+    const ceiling = safeBlockNumber(options.ceilingObservedAt);
+    if (ceiling === null) return null;
+    where.push("observed_at <= ?");
+    params.push(ceiling);
+  }
+  for (const [value, column] of [
+    [options.signer, "signer"],
+    [options.module, "call_module"],
+    [options.callFunction, "call_function"],
+  ] as [unknown, string][]) {
+    if (value == null) continue;
+    if (typeof value !== "string" || value === "") return null;
+    where.push(`${column} = ?`);
+    params.push(value);
+  }
+  if (options.success != null) {
+    if (typeof options.success !== "boolean") return null;
+    where.push("success = ?");
+    params.push(options.success);
+  }
+  return query(
+    env,
+    `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics` +
+      (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
+      " ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC" +
+      " LIMIT ?",
+    [...params, need],
+  );
+}
+
 export async function loadChainEventsHeadHotTier(
   env: unknown,
   options: {

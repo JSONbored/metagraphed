@@ -4451,7 +4451,15 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // Nothing asks the binding, and the answer carries none of its marker.
     assert.deepEqual(tier.paths, []);
     assert.equal(body.data.marker, undefined);
-    assert.deepEqual(captures.sql, []);
+    // ANY store read here is the HOT TIER's, never the retired one. This used
+    // to assert `captures.sql` empty, which was INCIDENTAL rather than the
+    // property under test: the lakehouse leg reads over `fetch`, so nothing
+    // reached pg at all. The extrinsic feeds now try `chain_detail_extrinsics`
+    // first, which is a legitimate store read that says nothing about the
+    // retired flag -- so this asserts what the test is named for.
+    for (const sql of captures.sql) {
+      assert.match(String(sql), /FROM chain_detail_/, String(sql));
+    }
   });
 
   test("handleExtrinsic: the retired tier flag is not consulted even when set (#10190)", async () => {
@@ -5428,7 +5436,15 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // Nothing asks the binding, and the answer carries none of its marker.
     assert.deepEqual(tier.paths, []);
     assert.equal(body.data.marker, undefined);
-    assert.deepEqual(captures.sql, []);
+    // ANY store read here is the HOT TIER's, never the retired one. This used
+    // to assert `captures.sql` empty, which was INCIDENTAL rather than the
+    // property under test: the lakehouse leg reads over `fetch`, so nothing
+    // reached pg at all. The extrinsic feeds now try `chain_detail_extrinsics`
+    // first, which is a legitimate store read that says nothing about the
+    // retired flag -- so this asserts what the test is named for.
+    for (const sql of captures.sql) {
+      assert.match(String(sql), /FROM chain_detail_/, String(sql));
+    }
   });
 
   test("handleSudo: the retired tier flag is not consulted even when set (#10190)", async () => {
@@ -5448,7 +5464,15 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // Nothing asks the binding, and the answer carries none of its marker.
     assert.deepEqual(tier.paths, []);
     assert.equal(body.data.marker, undefined);
-    assert.deepEqual(captures.sql, []);
+    // ANY store read here is the HOT TIER's, never the retired one. This used
+    // to assert `captures.sql` empty, which was INCIDENTAL rather than the
+    // property under test: the lakehouse leg reads over `fetch`, so nothing
+    // reached pg at all. The extrinsic feeds now try `chain_detail_extrinsics`
+    // first, which is a legitimate store read that says nothing about the
+    // retired flag -- so this asserts what the test is named for.
+    for (const sql of captures.sql) {
+      assert.match(String(sql), /FROM chain_detail_/, String(sql));
+    }
   });
 
   test("handleGovernanceConfigChanges: the retired tier flag is not consulted even when set (#10190)", async () => {
@@ -5468,7 +5492,15 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // Nothing asks the binding, and the answer carries none of its marker.
     assert.deepEqual(tier.paths, []);
     assert.equal(body.data.marker, undefined);
-    assert.deepEqual(captures.sql, []);
+    // ANY store read here is the HOT TIER's, never the retired one. This used
+    // to assert `captures.sql` empty, which was INCIDENTAL rather than the
+    // property under test: the lakehouse leg reads over `fetch`, so nothing
+    // reached pg at all. The extrinsic feeds now try `chain_detail_extrinsics`
+    // first, which is a legitimate store read that says nothing about the
+    // retired flag -- so this asserts what the test is named for.
+    for (const sql of captures.sql) {
+      assert.match(String(sql), /FROM chain_detail_/, String(sql));
+    }
   });
 
   test("handleRuntime: the retired flag is not consulted; the lakehouse answers", async () => {
