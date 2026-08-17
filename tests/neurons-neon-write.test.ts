@@ -167,6 +167,74 @@ describe("NEURON_MIRROR_PLANS", () => {
     assert.ok(spy.rows.every((r) => r.verdict === "ok"));
   });
 
+  test("buffered: a FULL pass records the prune and the tally too", async () => {
+    // THE REGRESSION THIS EXISTS TO CATCH, and the reason the test above could
+    // not. That one asserts an exact lane list, which looks like it would fail
+    // the moment a sub-lane stopped recording -- but it drives the shared
+    // `input`, which carries no `pass` and no `netuidMaxCapturedAt`. Both
+    // blocks are therefore skipped entirely, and an assertion that the prune
+    // and tally are absent from a run that never reached them holds no matter
+    // what their `oncePerPass` argument says.
+    //
+    // So it held through #10908 adding that argument and through #10917
+    // dropping it again four hours later, and production ran five days with
+    // `neon:neurons-prune` and `neon:neurons-pass` reading `unknown` -- two
+    // lane alarms that could never auto-close, over a prune and a tally that
+    // were both working. A pass-shaped input is what makes the list mean
+    // something.
+    const spy = laneSpy();
+    const sent: unknown[] = [];
+    const ns = {
+      idFromName: (name: string) => name,
+      get: () => ({
+        async fetch(request: Request) {
+          sent.push(await request.json());
+          return new Response("{}", { status: 200 });
+        },
+      }),
+    };
+    const out = await mirrorNeuronSnapshotToNeon(
+      {
+        NEON_WRITE_BUFFER_LANES: NEURONS_NEON_LANE,
+        NEON_WRITE_BUFFER: ns,
+        HYPERDRIVE: { connectionString: "postgresql://x" },
+      },
+      ctx,
+      {
+        ...input,
+        netuidMaxCapturedAt: new Map([[1, 5]]),
+        pass: {
+          capturedAt: NOW,
+          expectedRows: input.rows.length,
+          receivedRows: input.rows.length,
+          nowMs: NOW,
+        },
+      },
+      { laneHealthDb: spy.db, now: () => NOW },
+    );
+    assert.equal(out.attempted, true);
+    assert.equal(out.prune?.ok, true);
+    assert.deepEqual(
+      spy.rows.map((r) => r.lane),
+      [
+        "neon:neuron_daily",
+        "neon:account_position_daily",
+        "neon:neurons-prune",
+        "neon:neurons-pass",
+      ],
+      "every sub-lane records at enqueue; only the flush-attributed base lane waits",
+    );
+    assert.ok(spy.rows.every((r) => r.verdict === "ok"));
+    // ENQUEUED, not landed. The rows are in the buffer at this point, and a
+    // verdict claiming Neon holds them is the overclaim #10690 refused.
+    assert.ok(
+      spy.rows.every((r) => /enqueued/.test(String(r.detail))),
+      `buffered verdicts must say enqueued -- got ${spy.rows
+        .map((r) => r.detail)
+        .join(" | ")}`,
+    );
+  });
+
   test("a failing table is reported and does not stop the others", async () => {
     // The mirror is best-effort per table. A missing `neuron_daily` must not
     // cost `account_position_daily` its refresh, and each gets its own verdict

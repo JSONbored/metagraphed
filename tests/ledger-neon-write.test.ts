@@ -110,6 +110,58 @@ describe("mirrorLedgerToNeon", () => {
     ]);
   });
 
+  test("buffered: the base lane waits for the flush, the tally does NOT", async () => {
+    // THE INVARIANT THIS LANE HAD AND COULD NOT PROVE. `-pass` passes
+    // `oncePerPass: true` in src/ledger-neon-write.ts and nothing pinned it,
+    // which is exactly the position the neurons writer was in when #10917
+    // dropped the same argument during an unrelated refactor and two lanes
+    // read `unknown` for five days.
+    //
+    // The rule it encodes: a buffered success records nothing, on the
+    // assumption that the flush files an honest verdict for the lane later.
+    // That holds for the base lane, whose statements carry its name. It is
+    // false for `-pass`, which rides under the base lane's tag and so never
+    // appears in the flush's per-lane tally under any key -- so if it does not
+    // record here, nothing records it ever.
+    const spy = laneSpy();
+    const sent: unknown[] = [];
+    const ns = {
+      idFromName: (name: string) => name,
+      get: () => ({
+        async fetch(request: Request) {
+          sent.push(await request.json());
+          return new Response("{}", { status: 200 });
+        },
+      }),
+    };
+    const out = await mirrorLedgerToNeon(
+      {
+        NEON_WRITE_BUFFER_LANES: "account-balances",
+        NEON_WRITE_BUFFER: ns,
+        HYPERDRIVE: { connectionString: "postgresql://x" },
+      },
+      ctx,
+      "account-balances",
+      rows,
+      { laneHealthDb: spy.db, now: () => NOW },
+      {
+        capturedAt: NOW,
+        expectedRows: rows.length,
+        receivedRows: rows.length,
+        nowMs: NOW,
+      },
+    );
+    assert.equal(out.attempted, true);
+    assert.ok(sent.length >= 1, "statements must enqueue, not connect");
+    assert.deepEqual(
+      spy.rows.map((r) => r.lane),
+      ["neon:account-balances-pass"],
+      "the tally records at enqueue; the flush-attributed base lane does not",
+    );
+    assert.equal(spy.rows[0].verdict, "ok");
+    assert.match(String(spy.rows[0].detail), /enqueued/);
+  });
+
   // "a lane the flag does not name writes nothing" retired with the flag
   // (#10051): the write is unconditional now, and the off-arm is gone.
 

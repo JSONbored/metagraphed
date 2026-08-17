@@ -513,6 +513,20 @@ export async function mirrorNeuronSnapshotToNeon(
       prune,
       now(),
       buffered,
+      // ONCE PER PASS (#10826), and this argument has been dropped once
+      // already. #10908 added it here; #10917 removed it four hours later
+      // while rewriting the surrounding read handles, and production's last
+      // `neon:neurons-prune` verdict is dated 2026-08-12T22:33 -- the deploy
+      // that carried it. The lane then read `unknown` for five days while the
+      // prune ran correctly every pass (0 stale rows in `neurons`, measured
+      // 2026-08-17), because a buffered success records nothing unless this
+      // says the lane cannot be recorded by anything else.
+      //
+      // It cannot: this sub-lane's statements ride under the base lane's tag,
+      // so the flush's per-lane tally never names it. The suppression in
+      // recordNeonWriteVerdict is sound only for lanes the flush will speak
+      // for later, and no flush will ever speak for this one.
+      true,
     );
   }
 
@@ -544,6 +558,10 @@ export async function mirrorNeuronSnapshotToNeon(
       verdict,
       now(),
       buffered,
+      // ONCE PER PASS -- see the prune's note above, which this lane shares
+      // verbatim: same buffered runner, same missing flush attribution, same
+      // five days of `unknown` while `neurons_passes` took a row every pass.
+      true,
     );
     results[`${NEURONS_NEON_LANE}_passes`] = verdict;
   }
