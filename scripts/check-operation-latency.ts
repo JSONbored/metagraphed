@@ -15,11 +15,22 @@
 // rather than filled with a placeholder. Timing `/api/v1/subnets/x/ohlc` times
 // a 404 and reports the route as broken.
 //
-// ONE CALL EACH, NOT A BENCHMARK, and the report says so. A single sample
-// cannot separate a slow operation from a cold isolate or a noisy hop, which is
-// why the budget below is deliberately loose: it exists to catch the ten-second
-// operation, not to police the difference between 300ms and 500ms. Anything
-// tighter would fail on weather.
+// ONE CALL EACH, THEN THREE FOR ANYTHING THAT CROSSED THE LINE (#11420). A
+// single sample cannot separate a slow operation from a cold isolate or a noisy
+// hop, and this script used to answer that with a loose budget alone -- which
+// works only if the noise is small next to the budget. It is not. Measured
+// against production 2026-08-16, eleven COLD `/api/v1/blocks/{ref}` point
+// lookups (one query shape, distinct refs so the edge cache could not answer)
+// ran 898ms to 15,032ms: a 16.7x spread around a 3,647ms median, with draws on
+// both sides of the 5s line. No budget separates signal from noise there,
+// because the operation does not HAVE a single time.
+//
+// So the budget stays loose AND the sweep draws again: an operation over budget
+// on its first call is re-timed and scored on the median of three. That is the
+// difference between "this read is slow" and "this read was slow once", which
+// is the claim every issue filed off this sweep actually needs.
+//
+// The confirmation pass is deliberately narrow -- see `confirmOverBudget`.
 //
 // SERIAL AND SPACED, for the reason the MCP sweep records: the endpoint
 // rate-limits per client, and a parallel run turns healthy operations into
@@ -50,10 +61,24 @@ const REQUEST_TIMEOUT_MS = 45000;
  *
  * FIVE SECONDS because that is the number #9789 was filed against and the one
  * an agent's own timeout is usually set near -- past it, a caller gives up
- * rather than waits. Loose on purpose: one sample per operation cannot tell a
- * slow query from a cold start, so a tight budget would report weather.
+ * rather than waits.
+ *
+ * Still loose on purpose, but it is no longer the ONLY defence against noise:
+ * `confirmOverBudget` re-draws anything that crosses this line, so a budget
+ * that used to have to absorb a 16.7x spread now only has to sit above the
+ * median of one.
  */
 const BUDGET_MS = Number(process.env.LATENCY_BUDGET_MS ?? 5000);
+
+/**
+ * Total draws for an operation that crossed the budget on its first one.
+ *
+ * THREE, because the question a re-draw answers is "was that draw typical",
+ * and a median needs an odd count to answer it without a tie-break. Two would
+ * only tell you the two disagreed; five would spend twice the calls to move
+ * the estimate very little on a distribution this wide.
+ */
+const CONFIRM_SAMPLES = Number(process.env.LATENCY_CONFIRM_SAMPLES ?? 3);
 
 /**
  * How far under budget an operation must come in before its DECLARED entry is
@@ -160,8 +185,30 @@ type Answer = "ok" | "unaskable" | "failed";
 export interface Timing {
   surface: "rest" | "mcp" | "graphql";
   operation: string;
+  /**
+   * The operation's SCORED time -- the median of `samples`, not one draw.
+   *
+   * A single draw is what this sweep used to report, and it is not a property
+   * of the operation. Measured against production 2026-08-16, eleven COLD
+   * `/api/v1/blocks/{ref}` point lookups -- one query shape, distinct refs so
+   * the edge cache could not answer -- ran 898ms to 15,032ms, a 16.7x spread
+   * with a median of 3,647ms. Both "under budget" and "at the 15s
+   * QUERY_TIMEOUT_MS ceiling" are ordinary draws from that one distribution, so
+   * which one the sweep reported was decided by when it happened to call.
+   *
+   * That is not a budget that can be loosened into correctness: it is a
+   * distribution, and the fix is to draw from it more than once.
+   */
   ms: number;
   answer: Answer;
+  /**
+   * Every draw taken, oldest first.
+   *
+   * One element for the operations that came in under budget on the first pass
+   * -- re-timing something already fast buys nothing and costs a request
+   * against a warehouse this account has been rate-limited on (#9465).
+   */
+  samples?: number[];
 }
 
 export interface LatencyReport {
@@ -377,6 +424,8 @@ async function listLiveTools(): Promise<{ name: string; args: Row }[]> {
 
 export async function run(): Promise<LatencyReport> {
   const timings: Timing[] = [];
+  /** How to draw the same operation again, for the confirmation pass below. */
+  const retime = new Map<string, () => Promise<[number, Answer]>>();
 
   for (const route of [...API_ROUTES, ...FEED_ROUTES]) {
     // GET only. `/api/v1/ask` is the one POST route in the table, and asking it
@@ -385,14 +434,30 @@ export async function run(): Promise<LatencyReport> {
     const path = concreteRoute(route.path);
     if (path === null) continue;
     const [ms, answer] = await timeRest(path);
-    timings.push({ surface: "rest", operation: route.path, ms, answer });
+    const timing: Timing = {
+      surface: "rest",
+      operation: route.path,
+      ms,
+      answer,
+      samples: [ms],
+    };
+    timings.push(timing);
+    retime.set(key(timing), () => timeRest(path));
     process.stderr.write(`rest ${ms}ms ${answer} ${route.path}\n`);
     await sleep(CALL_SPACING_MS);
   }
 
   for (const tool of await listLiveTools()) {
     const [ms, answer] = await timeMcp(tool.name, tool.args);
-    timings.push({ surface: "mcp", operation: tool.name, ms, answer });
+    const timing: Timing = {
+      surface: "mcp",
+      operation: tool.name,
+      ms,
+      answer,
+      samples: [ms],
+    };
+    timings.push(timing);
+    retime.set(key(timing), () => timeMcp(tool.name, tool.args));
     process.stderr.write(`mcp ${ms}ms ${answer} ${tool.name}\n`);
     await sleep(CALL_SPACING_MS);
   }
@@ -400,12 +465,86 @@ export async function run(): Promise<LatencyReport> {
   const { plans } = planAll(buildSchema(SDL));
   for (const plan of plans) {
     const [ms, answer] = await timeGraphql(plan);
-    timings.push({ surface: "graphql", operation: plan.field, ms, answer });
+    const timing: Timing = {
+      surface: "graphql",
+      operation: plan.field,
+      ms,
+      answer,
+      samples: [ms],
+    };
+    timings.push(timing);
+    retime.set(key(timing), () => timeGraphql(plan));
     process.stderr.write(`graphql ${ms}ms ${answer} ${plan.field}\n`);
     await sleep(CALL_SPACING_MS);
   }
 
+  await confirmOverBudget(timings, retime);
   return summarise(timings);
+}
+
+/**
+ * Draw the over-budget operations again, and score each on its MEDIAN.
+ *
+ * WHY ONLY THESE. Re-timing all ~600 operations would triple a sweep that
+ * already runs for the better part of an hour, and it would spend those calls
+ * on the ones whose verdict is not in doubt: an operation that answered in
+ * 300ms is not one draw away from 5000ms. The operations at risk of a wrong
+ * verdict are exactly the ones that crossed the line, and there are few of them
+ * -- the 2026-08-16 run had 40 of 624, so this costs ~13% more calls, not 200%.
+ *
+ * WHY THE MEDIAN and not the minimum: the fastest draw is as unrepresentative
+ * as the slowest, and reporting it would hide real regressions behind one lucky
+ * call. The median of three is the cheapest estimator that ignores a single
+ * outlier in either direction.
+ *
+ * An operation that stops answering `ok` under re-timing keeps its FIRST
+ * answer: a 4xx on the second draw is the sweep's own subject going stale
+ * mid-run, not the operation declining, and `failed`/`unaskable` are counted
+ * elsewhere precisely so they cannot be read as slowness.
+ */
+export async function confirmOverBudget(
+  timings: Timing[],
+  retime: Map<string, () => Promise<[number, Answer]>>,
+  /** Overridable so the unit test does not sit through the real pacing. */
+  spacingMs: number = CALL_SPACING_MS,
+): Promise<void> {
+  const suspects = timings.filter(
+    (timing) => timing.answer === "ok" && timing.ms > BUDGET_MS,
+  );
+  if (suspects.length === 0) return;
+  process.stderr.write(
+    `\nconfirming ${suspects.length} over-budget call(s) with ` +
+      `${CONFIRM_SAMPLES - 1} more sample(s) each\n`,
+  );
+  for (const timing of suspects) {
+    const draw = retime.get(key(timing));
+    if (!draw) continue;
+    for (let i = 1; i < CONFIRM_SAMPLES; i++) {
+      // A zero spacing schedules NOTHING, rather than a zero-delay timer. The
+      // sweep always passes a real gap, so this is for the unit test -- and it
+      // is a correctness fix, not a convenience: the shared-registry suite runs
+      // with `isolate: false`, so a sibling file's `vi.useFakeTimers()` is still
+      // installed when this runs, and a timer that nothing advances never
+      // fires. The first version of these tests passed alone and timed out at
+      // 30s in CI for exactly that reason.
+      if (spacingMs > 0) await sleep(spacingMs);
+      const [ms, answer] = await draw();
+      if (answer !== "ok") continue;
+      timing.samples = [...(timing.samples ?? [timing.ms]), ms];
+    }
+    // The upper median, which matters only when a draw was DISCARDED above and
+    // the count came out even. On a tie this gate should prefer the slower
+    // number: half the evidence says the operation is over budget, and calling
+    // it fixed on the other half is how a real regression gets hidden by one
+    // lucky call -- the failure this whole pass exists to prevent, pointing the
+    // other way.
+    const sorted = [...(timing.samples ?? [timing.ms])].sort((a, b) => a - b);
+    timing.ms = sorted[Math.floor(sorted.length / 2)]!;
+    process.stderr.write(
+      `confirm ${timing.surface} ${timing.operation}` +
+        ` [${timing.samples?.join(", ")}] -> median ${timing.ms}ms\n`,
+    );
+  }
 }
 
 /** The verdict, split out so a recorded run can be re-scored without calling. */

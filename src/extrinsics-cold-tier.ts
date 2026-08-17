@@ -352,24 +352,58 @@ export async function loadExtrinsicColdTier(
   network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildExtrinsic> | null> {
   let predicate: string;
+  // Hoisted out of the branch because the events read below uses them when the
+  // ref is composite -- they are the key it would otherwise wait to learn.
+  let compositeBlock: number | null = null;
+  let compositeIndex: number | null = null;
 
   const composite = /^(\d+)-(\d+)$/.exec(String(ref).trim());
   if (composite) {
-    const block = safeBlockNumber(composite[1]);
-    const index = safeBlockNumber(composite[2]);
-    if (block === null || index === null) return null;
-    predicate = `block_number = ${block} AND extrinsic_index = ${index}`;
+    compositeBlock = safeBlockNumber(composite[1]);
+    compositeIndex = safeBlockNumber(composite[2]);
+    if (compositeBlock === null || compositeIndex === null) return null;
+    predicate = `block_number = ${compositeBlock} AND extrinsic_index = ${compositeIndex}`;
   } else {
     const hash = safeHexLiteral(ref);
     if (hash === null) return null;
     predicate = `extrinsic_hash = '${hash}'`;
   }
 
-  const rows = await r2SqlQuery<ExtrinsicsRow>(
+  const extrinsicQuery = r2SqlQuery<ExtrinsicsRow>(
     env,
     `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)} WHERE ${predicate} LIMIT 1`,
     { rowSchema: ExtrinsicsRowSchema },
   );
+
+  // A COMPOSITE ref already names the events' key, so the second read does not
+  // depend on the first and the two go together (#11420). Measured against
+  // production 2026-08-16, `/extrinsics/8760000-1` reported
+  // `server-timing: r2sql;dur=10768;desc="2 calls"` -- two serial reads of a
+  // warehouse whose own per-query spread is 16.7x, so the route was paying that
+  // tail twice for keys it held before the first query was sent.
+  //
+  // A HASH ref cannot do this: `block_number`/`extrinsic_index` are what the
+  // first read is FOR, so that form stays serial rather than guessing a key.
+  //
+  // The cost of being wrong is bounded and one-sided: on a ref that matches no
+  // extrinsic the events read was issued for nothing. It is concurrent, so it
+  // costs the caller no wall-clock, and a point ref naming a block-index pair
+  // that does not exist is not a shape real traffic produces.
+  //
+  // NO `.catch` HERE, deliberately. The two paths below return before awaiting
+  // this promise, so a rejection would be unhandled -- but `r2SqlQuery` cannot
+  // reject. Verified 2026-08-16 rather than assumed: a fetch that throws and a
+  // body over `R2_SQL_MAX_BODY_BYTES` both come back as `null`, because the
+  // one `throw` inside it (`R2SqlBodyTooLargeError`) is re-caught before the
+  // function returns. A catch here would be a guard nothing can fire, and the
+  // test written to cover it passed with the catch REMOVED -- which is how it
+  // was caught.
+  const eventsQuery =
+    composite && compositeBlock !== null && compositeIndex !== null
+      ? embeddedEvents(env, compositeBlock, compositeIndex, network)
+      : null;
+
+  const rows = await extrinsicQuery;
   if (rows === null) return null;
   const row = rows[0];
   // A confirmed absence is an ANSWER, and the same schema-stable payload the
@@ -378,19 +412,34 @@ export async function loadExtrinsicColdTier(
 
   const block = safeBlockNumber(row.block_number);
   const index = safeBlockNumber(row.extrinsic_index);
-  let events: unknown[] = [];
-  if (block !== null && index !== null) {
-    const found = await r2SqlQuery<AccountEventsRow>(
-      env,
-      `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
-        `WHERE block_number = ${block} AND extrinsic_index = ${index} ` +
-        `ORDER BY event_index LIMIT ${MAX_EMBEDDED_EVENTS}`,
-      { rowSchema: AccountEventsRowSchema },
-    );
-    // Events failing is NOT a reason to withhold the extrinsic: the Postgres
-    // tier serves an empty event list for pre-migration rows too, so an empty
-    // list here is a shape the caller already handles.
-    events = (found ?? []).map(formatAccountEvent).filter(Boolean);
-  }
-  return buildExtrinsic(row, ref, events);
+  const events =
+    eventsQuery ??
+    (block !== null && index !== null
+      ? embeddedEvents(env, block, index, network)
+      : Promise.resolve([]));
+  return buildExtrinsic(row, ref, await events);
+}
+
+/**
+ * The account_events this extrinsic emitted, embedded exactly as the Postgres
+ * tier embeds them.
+ *
+ * Events failing is NOT a reason to withhold the extrinsic: the Postgres tier
+ * serves an empty event list for pre-migration rows too, so an empty list here
+ * is a shape the caller already handles.
+ */
+async function embeddedEvents(
+  env: R2SqlEnv | null | undefined,
+  block: number,
+  index: number,
+  network?: ChainNetworkId,
+): Promise<unknown[]> {
+  const found = await r2SqlQuery<AccountEventsRow>(
+    env,
+    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
+      `WHERE block_number = ${block} AND extrinsic_index = ${index} ` +
+      `ORDER BY event_index LIMIT ${MAX_EMBEDDED_EVENTS}`,
+    { rowSchema: AccountEventsRowSchema },
+  );
+  return (found ?? []).map(formatAccountEvent).filter(Boolean);
 }

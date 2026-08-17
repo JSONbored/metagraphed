@@ -13,7 +13,7 @@ import {
   loadExtrinsicColdTier,
   loadExtrinsicFeedColdTier,
 } from "../src/extrinsics-cold-tier.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { R2_SQL_TOKEN_ENV, r2SqlQuery } from "../src/r2-sql.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 const SIGNER = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
@@ -381,6 +381,103 @@ describe("loadAccountExtrinsicsColdTier", () => {
 });
 
 describe("loadExtrinsicColdTier", () => {
+  /**
+   * Issue every query but HOLD the extrinsic read open, so "was the events read
+   * dispatched yet?" is answerable. A serial implementation cannot have issued
+   * it -- it is still awaiting the row that names its key.
+   */
+  function gatedFetch() {
+    const issued: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init.body)).query);
+      issued.push(sql);
+      const events = sql.includes("account_events");
+      if (!events) await gate;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: { rows: events ? [] : [row(500, 3)] },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    return { issued, release: () => release() };
+  }
+
+  test("a composite ref issues BOTH reads at once (#11420)", async () => {
+    // Measured against production 2026-08-16, this route reported
+    // `r2sql;dur=10768;desc="2 calls"` -- two SERIAL reads of a warehouse whose
+    // per-query spread is 16.7x, for a key the ref already named.
+    const { issued, release } = gatedFetch();
+    const pending = loadExtrinsicColdTier(TOKEN as never, "500-3");
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(
+      issued.length,
+      2,
+      "both reads must be in flight while the first is still unresolved",
+    );
+    assert.ok(
+      issued.some((q) => q.includes("account_events")),
+      "the events read is the one that must not wait",
+    );
+    release();
+    assert.ok(await pending);
+  });
+
+  test("a HASH ref stays serial -- its key is what the first read is FOR", async () => {
+    // The counterpart control: without it, "issue both" could be implemented by
+    // guessing a key, and this test is what makes that impossible to ship.
+    const { issued, release } = gatedFetch();
+    const pending = loadExtrinsicColdTier(
+      TOKEN as never,
+      `0x${"ab".repeat(32)}`,
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(
+      issued.length,
+      1,
+      "the events read cannot be issued before the row names its block/index",
+    );
+    release();
+    assert.ok(await pending);
+  });
+
+  test("r2SqlQuery DECLINES rather than rejecting, so no catch is owed", async () => {
+    // Why `loadExtrinsicColdTier` starts the events read without a `.catch`
+    // even though two paths return before awaiting it. This is the fact that
+    // makes a floating promise safe, and it is asserted rather than assumed --
+    // the first version of this test went through the loader instead and
+    // passed with the catch REMOVED, proving nothing.
+    const big = JSON.stringify({
+      success: true,
+      result: { rows: [{ padding: "x".repeat(4000) }] },
+    });
+    for (const [label, stub] of [
+      [
+        "a fetch that throws",
+        async () => {
+          throw new Error("network down");
+        },
+      ],
+      ["a body over the cap", async () => new Response(big, { status: 200 })],
+    ] as const) {
+      globalThis.fetch = stub as unknown as typeof fetch;
+      assert.equal(
+        await r2SqlQuery(
+          { ...TOKEN, R2_SQL_MAX_BODY_BYTES: 128 } as never,
+          "SELECT 1",
+        ),
+        null,
+        `${label} must decline, not reject`,
+      );
+    }
+  });
+
   test("resolves a composite <block>-<index> id and embeds its events", async () => {
     const q = sqlFetch(
       [row(500, 3)],
