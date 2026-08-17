@@ -1,4 +1,6 @@
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
 import { observationsReadDb } from "./observations-read-runner.ts";
 import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "./subnet-event-card-loader.ts";
@@ -604,7 +606,9 @@ import {
   ACCOUNT_SUMMARY_GAP_CODE,
 } from "./account-summary-card.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
+import { loadChainWeightsFromArtifact } from "./chain-weights-artifact.ts";
 import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
+import { loadChainWeightSettersFromArtifact } from "./chain-weight-setters-artifact.ts";
 import {
   CHAIN_SIGNERS_SORTS,
   CHAIN_SIGNERS_LIMIT_DEFAULT,
@@ -1692,7 +1696,7 @@ async function fetchAllEventsTierFromDataApi(
       `The chain-events tier returned an error (status ${response.status}). Try again shortly.`,
     );
   }
-  return response.json() as Promise<Row | null>;
+  return asJsonObject(await response.json());
 }
 
 // --- Node builders (attach lazy relationship resolvers to artifact rows) ---
@@ -7977,6 +7981,11 @@ const rootValue = {
       // resolved to null before it could touch DATA_API.
       // Same shared loader REST and MCP use; GraphQL keeps its own
       // schema-stable card below because that contract is this surface's own.
+      // The projection tier first, the same ladder the route reads (#11418).
+      ((await loadChainWeightsFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       ((await loadChainWeightsColdTier(context.env, {
         window: requestedWindow,
         limit: safeLimit,
@@ -8401,6 +8410,11 @@ const rootValue = {
       // Same lakehouse reader REST and MCP use; the zeroed card below stays the
       // fallback because this resolver's contract is a schema-stable card
       // rather than an error, which is why the loader declines with null.
+      // The projection tier first, the same ladder the route reads (#11418).
+      ((await loadChainWeightSettersFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       ((await loadChainWeightSettersColdTier(context.env, {
         window: requestedWindow,
         limit: safeLimit,

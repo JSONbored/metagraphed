@@ -25502,6 +25502,10 @@ describe("MCP event-stream honesty (#9307)", () => {
     lookback_days: 30,
     window_registrations: 8064,
     unattributed_registrations: 1726,
+    // #9708: the lane always writes this (`unattributed_registrations > 0`).
+    // Absent here until #11418, when the reader started parsing the derivation
+    // instead of casting it through unchecked.
+    is_lower_bound: true,
   };
   const HONEST_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 

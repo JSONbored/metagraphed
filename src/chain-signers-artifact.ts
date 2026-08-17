@@ -11,12 +11,12 @@
 // unbounded), so a filtered call declines to the schema-stable empty rather
 // than serving unfiltered numbers under a filtered label.
 
+import { z } from "zod";
+
 import { buildChainSigners } from "./chain-analytics.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsSchema } from "../schemas-src/projection-artifact.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import {
   ANALYTICS_WINDOW_DAYS,
@@ -26,15 +26,20 @@ import {
 export const CHAIN_SIGNERS_PROJECTION_KEY =
   "metagraph/projections/chain-signers.json";
 
+/**
+ * One cell holds BOTH orders, keyed by `sort`. `sorts` is pinned only as an
+ * object; the requested order's rows are parsed at the call site.
+ */
+const ChainSignersCellSchema = z.object({
+  sorts: z.record(z.string(), z.unknown()),
+  newest_observed: z.unknown().optional(),
+});
+
 /** The REST route's limit contract (workers/request-handlers/analytics.ts's
  * parseLimitParam({defaultLimit: 50, maxLimit: 100}) — hardcoded there, so
  * single-sourced here for the lane writer and this reader). */
 export const CHAIN_SIGNERS_LIMIT_DEFAULT = 50;
 export const CHAIN_SIGNERS_LIMIT_MAX = 100;
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
 
 /** The route's limit contract re-applied at the reader: both callers pass
  * already-validated values, but a direct call must not page past the route's
@@ -74,51 +79,28 @@ export async function loadChainSignersFromArtifact(
   // degraded one.
   if (typeof query.callModule === "string" && query.callModule.length > 0)
     return null;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_SIGNERS_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess — same contract as src/top-holders-artifact.ts.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_ANALYTICS_WINDOW;
-    // A window outside the route's set — or one this artifact does not carry
-    // — must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(ANALYTICS_WINDOW_DAYS, label)) return null;
-    const sort = query.sort ?? "tx_count";
-    // Only the two precomputed orders exist; an unknown sort must never be
-    // answered with a DIFFERENT order's rows.
-    if (!CHAIN_SIGNERS_SORTS.includes(sort)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      newest_observed?: unknown;
-      sorts?: unknown;
-    } | null;
-    const sorts = win?.sorts as Record<string, unknown> | null | undefined;
-    if (typeof sorts !== "object" || sorts === null) return null;
-    const rows = sorts[sort];
-    if (!Array.isArray(rows)) return null;
-    const limit = normalizedLimit(query.limit);
-    return buildChainSigners({
-      window: label,
-      sort,
-      observedAt: newestObservedIso(win?.newest_observed),
-      rows: (rows as Record<string, unknown>[]).slice(0, limit),
-    });
-  } catch {
-    return null;
-  }
+  const sort = query.sort ?? "tx_count";
+  // Only the two precomputed orders exist; an unknown sort must never be
+  // answered with a DIFFERENT order's rows.
+  if (!CHAIN_SIGNERS_SORTS.includes(sort)) return null;
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_SIGNERS_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_ANALYTICS_WINDOW,
+    windows: ANALYTICS_WINDOW_DAYS,
+    cell: ChainSignersCellSchema,
+  });
+  if (!read) return null;
+  // Only the REQUESTED order is parsed, so a malformed order fails only the
+  // reads that would have served it.
+  const rows = ProjectionRowsSchema.safeParse(read.cell.sorts[sort]);
+  if (!rows.success) return null;
+  const limit = normalizedLimit(query.limit);
+  return buildChainSigners({
+    window: read.label,
+    sort,
+    observedAt: newestObservedIso(read.cell.newest_observed),
+    rows: rows.data.slice(0, limit),
+  });
 }

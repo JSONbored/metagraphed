@@ -229,6 +229,38 @@ describe("surface-verify core (#358)", () => {
     assert.equal(probes, 1);
   });
 
+  test("verifySurfaceWithCache re-probes when the cache entry is not an object", async () => {
+    // A hit is SPREAD straight into the response, so a cached body that is not
+    // an object would publish `{ from_cache: true }` and nothing else -- a
+    // result with no status, no classification and no last_checked, shaped
+    // like an answer. Re-probing is the only honest read of a poisoned entry.
+    let probes = 0;
+    const cache = {
+      async match() {
+        return { json: async () => "not an object" };
+      },
+      async put() {},
+    } as unknown as Cache;
+    const prober = async () => {
+      probes += 1;
+      return {
+        status: "ok",
+        classification: "live",
+        latency_ms: 12,
+        status_code: 200,
+        last_checked: "2026-06-16T00:00:00.000Z",
+      };
+    };
+    const out = await verifySurfaceWithCache(
+      surfaces[0],
+      {},
+      { cache, waitUntil: (p) => p, prober },
+    );
+    assert.equal(probes, 1, "the unusable entry did not short-circuit a probe");
+    assert.equal(out.from_cache, false);
+    assert.equal(out.classification, "live");
+  });
+
   test("verifySurfaceWithCache coalesces concurrent cache misses for one surface", async () => {
     let probes = 0;
     let releaseProbe: ((value?: unknown) => void) | undefined;

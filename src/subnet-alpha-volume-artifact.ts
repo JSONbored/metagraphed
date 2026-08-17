@@ -22,20 +22,30 @@
 // netuid and hands them to the per-subnet builder the Postgres tier used to feed. The
 // two routes therefore cannot disagree about a subnet's volume: they are shaping the
 // same rows.
+import { z } from "zod";
+
 import { buildAlphaVolume } from "./alpha-volume.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
-import { CHAIN_ALPHA_VOLUME_PROJECTION_KEY } from "./chain-alpha-volume-artifact.ts";
+  ALPHA_VOLUME_WINDOW,
+  ALPHA_VOLUME_WINDOWS,
+  CHAIN_ALPHA_VOLUME_PROJECTION_KEY,
+} from "./chain-alpha-volume-artifact.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsCellSchema } from "../schemas-src/projection-artifact.ts";
 
-/** The route's one window label (fixed 24h, no `?window=` param). */
-const ALPHA_VOLUME_WINDOW = "24h";
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
+/**
+ * The alpha-volume cell: rows, plus the window's own compute stamp.
+ *
+ * `observed_at` is `.catch(undefined)` rather than a hard string, and that is
+ * deliberate: it is a DISPLAY field with an envelope-level fallback, so a lane
+ * that wrote it as a number should degrade to the envelope's `generated_at`,
+ * not fail the whole read and drop a subnet's volume card. Rows, which the
+ * numbers come from, get no such leniency.
+ */
+const AlphaVolumeCellSchema = ProjectionRowsCellSchema.extend({
+  observed_at: z.string().optional().catch(undefined),
+});
 
 /**
  * One subnet's 24h alpha volume, or null when the artifact store cannot answer
@@ -57,47 +67,23 @@ export async function loadSubnetAlphaVolumeFromArtifact(
   generatedAt: string | null;
 } | null> {
   if (!Number.isSafeInteger(netuid) || netuid < 0) return null;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_ALPHA_VOLUME_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a guess — the
-    // same contract loadChainAlphaVolumeFromArtifact applies to the same object.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const win = (body.windows as Record<string, unknown>)[
-      ALPHA_VOLUME_WINDOW
-    ] as { rows?: unknown; observed_at?: unknown } | null;
-    if (!Array.isArray(win?.rows)) return null;
-    const rows = (win.rows as Record<string, unknown>[]).filter(
-      (row) => Number(row?.netuid) === netuid,
-    );
-    // The lane's own timestamp, not "now": the card reports when the projection was
-    // computed, so a stalled lane reads as stale rather than as fresh zeros.
-    const observedAt =
-      typeof win.observed_at === "string"
-        ? win.observed_at
-        : typeof (body as { generated_at?: unknown }).generated_at === "string"
-          ? ((body as { generated_at?: string }).generated_at ?? null)
-          : null;
-    return {
-      data: buildAlphaVolume(rows, netuid, { marketCapTao }),
-      generatedAt: observedAt,
-    };
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_ALPHA_VOLUME_PROJECTION_KEY,
+    network,
+    window: ALPHA_VOLUME_WINDOW,
+    defaultWindow: ALPHA_VOLUME_WINDOW,
+    windows: ALPHA_VOLUME_WINDOWS,
+    cell: AlphaVolumeCellSchema,
+  });
+  if (!read) return null;
+  const rows = read.cell.rows.filter((row) => Number(row.netuid) === netuid);
+  return {
+    data: buildAlphaVolume(rows, netuid, { marketCapTao }),
+    // The lane's own timestamp, not "now": the card reports when the projection
+    // was computed, so a stalled lane reads as stale rather than as fresh zeros.
+    // The cell's own stamp wins over the envelope's because a multi-window
+    // artifact is written once but its windows can be computed at different
+    // ticks.
+    generatedAt: read.cell.observed_at ?? read.generatedAt,
+  };
 }

@@ -411,12 +411,13 @@ describe("multi-network routing prefix (Phase 1)", () => {
       // a store the decode lane does not produce, unlike their
       // projection-backed neighbours (#9412).
       //
-      // /chain/serving LEFT THIS LIST in #11419: it gained a projection lane,
-      // so testnet answers from its own card once that lane has ticked. Its
-      // reader takes a network now, which is what made un-gating safe -- see
-      // tests/chain-history-networks.test.ts, the gate that required it.
-      // /chain/weights stays: no lane yet.
-      "/api/v1/testnet/chain/weights",
+      // /chain/serving and /chain/prometheus left this list in #11419, and
+      // /chain/weights and /chain/weights/setters in #11418: all four gained a
+      // projection lane, so testnet answers from its own card once that lane
+      // has ticked. Their reader takes a network now, which is what made
+      // un-gating safe -- see tests/chain-history-networks.test.ts, the gate
+      // that required it. /chain/axon-removals stays: no lane yet.
+      "/api/v1/testnet/chain/axon-removals",
       "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/performance",
@@ -441,9 +442,9 @@ describe("multi-network routing prefix (Phase 1)", () => {
       ["POST", "/api/v1/testnet/graphql"],
       ["POST", "/api/v1/testnet/ask"],
       // /blocks and /blocks/summary are both served on testnet now (#8700,
-      // #9412), so a genuinely still-gated route carries the
-      // method-independence assertion.
-      ["GET", "/api/v1/testnet/chain/weights"],
+      // #9412), and /chain/weights joined them in #11418, so a genuinely
+      // still-gated route carries the method-independence assertion.
+      ["GET", "/api/v1/testnet/chain/axon-removals"],
     ]) {
       const { res, body } = await get(env, path, { method });
       assert.equal(res.status, 404, `${method} ${path}`);

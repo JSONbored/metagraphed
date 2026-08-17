@@ -33,10 +33,6 @@
 
 type Row = Record<string, unknown>;
 
-interface ServiceBinding {
-  fetch(request: Request): Promise<Response>;
-}
-
 /** Flag values that name a tier able to answer this route. "data-api" is the
  * dispatcher in DATA_API (the value stopped saying "d1" about a deleted
  * database, #10223); the legacy "postgres" box value died with the box.
@@ -57,9 +53,11 @@ export async function readLiveSurfaceStatus(
 ): Promise<Row[]> {
   if (!env) return [];
   if (!TIERS_THAT_ANSWER.has(String(env.METAGRAPH_HEALTH_SOURCE))) return [];
-  const dataApi = (env as { DATA_API?: ServiceBinding } | null | undefined)
-    ?.DATA_API;
-  if (!dataApi?.fetch) return [];
+  // Not cast to reach it: `Env` declares DATA_API. The runtime check stays --
+  // a wrangler config without the service binding is a real state, and a
+  // thrown TypeError here would surface as a 500 rather than an empty read.
+  const dataApi = env.DATA_API;
+  if (typeof dataApi?.fetch !== "function") return [];
   const since =
     Number.isFinite(sinceMs) && sinceMs > 0 ? Math.floor(sinceMs) : 0;
   let response: Response;

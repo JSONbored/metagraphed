@@ -5375,11 +5375,29 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     // #9146: the blocks-summary projection is what serves this card now.
+    // A COMPLETE card, not a sentinel. This used to plant
+    // `{ marker: "projection" }` -- a body no lane could write -- and the
+    // reader's cast served it back. The projection tier is now proved by the
+    // DATA_API binding staying untouched plus this card's own distinctive
+    // block_count, both asserted below.
     env.METAGRAPH_ARCHIVE = {
       get: async () => ({
         json: async () => ({
           schema_version: 1,
-          summary: { marker: "projection", block_count: 7 },
+          summary: {
+            schema_version: 1,
+            block_count: 7,
+            first_block: 100,
+            last_block: 106,
+            first_observed_at: "2026-07-01T00:00:00.000Z",
+            last_observed_at: "2026-07-01T00:01:12.000Z",
+            block_time: null,
+            throughput: null,
+            distinct_authors: 1,
+            author_concentration: null,
+            distinct_spec_versions: 1,
+            latest_spec_version: 199,
+          },
         }),
       }),
     };
@@ -5391,7 +5409,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       ),
     );
     assert.deepEqual(tier.paths, []);
-    assert.equal(body.data.marker, "projection");
+    assert.equal(body.data.block_count, 7);
   });
 
   test("handleAccountExtrinsics: the retired tier flag is not consulted even when set (#10190)", async () => {

@@ -18,19 +18,39 @@
 // Postgres tier fed, so a summary served from R2 is identical in shape to one
 // served from Postgres.
 
-import type { BlocksSummaryResult } from "./blocks-summary.ts";
+import { z } from "zod";
+
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readArtifactObject } from "./projection-store.ts";
 import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+  type BlocksSummaryArtifact,
+  BlocksSummaryArtifactSchema,
+} from "../schemas-src/routes/blocks-summary.ts";
 
 export const BLOCKS_SUMMARY_PROJECTION_KEY =
   "metagraph/projections/blocks-summary.json";
 
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
+/**
+ * The stored envelope, validated against the schema the ROUTE publishes.
+ *
+ * This one is not shaped like its windowed siblings -- there is no window set,
+ * just a single `summary` -- but it was carrying the worst cast of the group:
+ * `body.summary as BlocksSummaryResult` asserted a fully specified RESPONSE
+ * shape over arbitrary JSON and then served it. Every field the OpenAPI
+ * document promises callers -- `block_time.p90_ms`, `throughput`,
+ * `author_concentration` -- was a claim nothing checked, so a drifted artifact
+ * reached callers as a response that satisfied the compiler and not the
+ * contract.
+ *
+ * Reusing `BlocksSummaryArtifactSchema` rather than writing a second shape here
+ * is the point: the read now proves the stored bytes are exactly what
+ * `/api/v1/blocks/summary` publishes, and a lane that drifts from the contract
+ * declines to a schema-stable zeroed card instead of serving the drift.
+ */
+const BlocksSummaryEnvelopeSchema = z.object({
+  schema_version: z.literal(1),
+  summary: BlocksSummaryArtifactSchema,
+});
 
 /**
  * The projected block-production summary, or null when the artifact store
@@ -41,29 +61,12 @@ export async function loadBlocksSummaryFromArtifact(
   env: Env | null | undefined,
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
-): Promise<BlocksSummaryResult | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(BLOCKS_SUMMARY_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      summary?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a guess.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.summary !== "object" ||
-      body.summary === null
-    ) {
-      return null;
-    }
-    return body.summary as BlocksSummaryResult;
-  } catch {
-    return null;
-  }
+): Promise<BlocksSummaryArtifact | null> {
+  const body = await readArtifactObject(
+    env,
+    BLOCKS_SUMMARY_PROJECTION_KEY,
+    network,
+    BlocksSummaryEnvelopeSchema,
+  );
+  return body?.summary ?? null;
 }

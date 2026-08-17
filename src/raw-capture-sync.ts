@@ -470,10 +470,7 @@ export async function runRawCaptureSync(
   // tick cannot know where to resume, which is exactly how a gap forms.
   // the ownership check collapsed with the flag (#10051): Neon is the only
   // store, so durability is the BINDING question alone
-  const captureStateOnNeon = Boolean(
-    (env as { HYPERDRIVE?: { connectionString?: string } })?.HYPERDRIVE
-      ?.connectionString,
-  );
+  const captureStateOnNeon = Boolean(env?.HYPERDRIVE?.connectionString);
   if (!captureStateOnNeon) {
     return loud(
       "watermark_unavailable",

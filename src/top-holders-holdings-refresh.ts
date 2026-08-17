@@ -68,6 +68,8 @@
 // leaderboard, only to update its store-backed half; a bug that let it would
 // publish a body with no flow ranking and un-rank three sorts.
 
+import { artifactBucket } from "./projection-store.ts";
+
 import type { ChainNetworkId } from "./chain-network.ts";
 import { DEFAULT_CHAIN_NETWORK, projectionKey } from "./chain-network.ts";
 import type { ProjectionLane } from "./projection-lanes.ts";
@@ -79,10 +81,6 @@ import {
   topHoldersFlowRows,
 } from "./top-holders-flow-tier.ts";
 import { topHoldersHoldings } from "./top-holders-holdings.ts";
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
 
 /**
  * A published body's rows, projected back to the shape the row builder takes
@@ -158,9 +156,8 @@ export async function computeTopHoldersHoldingsRefresh(
   deps: HoldingsRefreshDeps = {},
 ): Promise<Record<string, unknown> | null> {
   if (network !== DEFAULT_CHAIN_NETWORK) return null;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
+  const bucket = artifactBucket(env);
+  if (!bucket) return null;
 
   let body: unknown;
   try {

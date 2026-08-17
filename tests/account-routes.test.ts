@@ -364,6 +364,10 @@ test("GET /accounts/{ss58}/deregistrations serves the slots where it was the PRE
     lookback_days: 30,
     window_registrations: 33386,
     unattributed_registrations: 11807,
+    // #9708: the lane always writes this (`unattributed_registrations > 0`).
+    // Absent here until #11418, when the reader started parsing the derivation
+    // instead of casting it through unchecked.
+    is_lower_bound: true,
   };
   const env = {
     METAGRAPH_ARCHIVE: {

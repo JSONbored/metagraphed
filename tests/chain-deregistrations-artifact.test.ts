@@ -25,11 +25,18 @@ import type { Row } from "./row-type.ts";
 
 const NEWEST = 1_785_784_392_000;
 
+// What the lane actually writes (src/projection-lanes.ts). `is_lower_bound`
+// was MISSING from this fixture until #11418: the reader cast the derivation
+// through unchecked, so nothing noticed that these tests were asserting
+// against a shape production does not produce. It is `true` here because the
+// lane computes it as `unattributed_registrations > 0`, and this fixture's is
+// 1726.
 const DERIVATION_7D = {
   method: "uid-reuse",
   lookback_days: 30,
   window_registrations: 8064,
   unattributed_registrations: 1726,
+  is_lower_bound: true,
 };
 
 function subnetRow(
@@ -439,6 +446,24 @@ describe("loadSubnetDeregistrationsFromArtifact", () => {
 });
 
 describe("loadAccountDeregistrationsFromArtifact", () => {
+  test("declines a window carrying no hotkey index at all", async () => {
+    // The account scope reads `hotkeys`; the ROLLUP object's windows carry
+    // `rows` instead. Pointing this reader at a window without the index must
+    // decline rather than answer every address with a measured zero.
+    const { env } = envWith({
+      [CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]: {
+        schema_version: 1,
+        windows: { "30d": { days: 30, derivation: DERIVATION_7D } },
+      },
+    });
+    assert.equal(
+      await loadAccountDeregistrationsFromArtifact(env, "5A", {
+        window: "30d",
+      }),
+      null,
+    );
+  });
+
   test("reads the slots where this hotkey was the PREVIOUS holder", async () => {
     const { env, keys } = envWith(HOTKEY_ENV);
     const out = await loadAccountDeregistrationsFromArtifact(env, "5A", {

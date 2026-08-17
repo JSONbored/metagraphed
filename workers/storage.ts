@@ -5,6 +5,11 @@
 // contract and a config key, and calls nothing back into api.ts, so handlers
 // and the response builders can share it without an import cycle.
 import {
+  asJsonObject,
+  JsonObjectArraySchema,
+} from "../schemas-src/json-request.ts";
+
+import {
   artifactStorageTierForPath,
   ARTIFACT_STORAGE_TIERS,
   isR2PreferredDualArtifactPath,
@@ -98,11 +103,10 @@ async function runManifestIndex(
     const object = archive
       ? await withTimeout(archive.get(manifestKey), r2TimeoutMs(env))
       : null;
-    const body = object
-      ? ((await object.json()) as { artifacts?: unknown })
-      : null;
-    const artifacts = Array.isArray(body?.artifacts)
-      ? (body.artifacts as RunManifestEntry[])
+    const body = object ? asJsonObject(await object.json()) : null;
+    const parsed = JsonObjectArraySchema.safeParse(body?.artifacts);
+    const artifacts = parsed.success
+      ? (parsed.data as RunManifestEntry[])
       : null;
     if (artifacts) {
       index = new Map();

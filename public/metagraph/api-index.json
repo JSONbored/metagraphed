@@ -2570,7 +2570,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 173,
+    "mainnet_only_route_count": 171,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -11887,10 +11887,13 @@
       "cache": "short",
       "description": "Fetch network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): a per-subnet leaderboard (distinct weight-setting validators, WeightsSet event count, and average updates per validator) ranked by total events, a network rollup with the true distinct setter count (a validator setting weights on several subnets counts once) and total events, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet update intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events WeightsSet stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
       "id": "chain-weights",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/weights",
       "public": true,
@@ -11937,10 +11940,13 @@
       "cache": "short",
       "description": "Fetch the network-wide weight-setter leaderboard over a 7d or 30d window: the individual validators driving consensus across every subnet ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time. `limit` caps the returned page (default 20, max 100); `distinct_setters` always reports the true network-wide total regardless of `limit`. The network-wide companion to GET /api/v1/subnets/{netuid}/weights/setters. Computed live from the account_events WeightsSet stream; schema-stable empty leaderboard when cold. Pass ?format=csv to download the leaderboard as CSV.",
       "id": "chain-weight-setters",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/weights/setters",
       "public": true,

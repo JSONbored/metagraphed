@@ -37,6 +37,8 @@
 // it. Verifying the output is `lakehouse-seam`'s job for decode and
 // `projection-staleness`'s for the Worker lanes; this answers the prior
 // question those two cannot -- did the producer run at all.
+import { type ArtifactStoreEnv, artifactBucket } from "./projection-store.ts";
+
 import { ContainerLaneStatusSchema } from "../schemas-src/artifacts/container-lane-status.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -44,7 +46,10 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { TelemetryEnv } from "./usage-telemetry.ts";
 
-type ContainerLaneWatchdogEnv = StoreEnv & TelemetryEnv;
+// `ArtifactStoreEnv` because this watchdog READS the lane status objects out
+// of the archive. It used to reach them through a cast, which left the env
+// type claiming the function touched no bucket at all.
+type ContainerLaneWatchdogEnv = StoreEnv & TelemetryEnv & ArtifactStoreEnv;
 
 /** One container-written lane: what to call it, and where it says how it went. */
 export interface ContainerLane {
@@ -284,10 +289,6 @@ export function evaluateContainerLanes(input: {
   };
 }
 
-interface StatusBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
-
 export interface ContainerLaneWatchdogDeps {
   now?: () => number;
   recordException?: typeof recordExceptionEvent;
@@ -303,9 +304,8 @@ export async function runContainerLaneWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const bucket = (env as { METAGRAPH_ARCHIVE?: StatusBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return { ok: false, reason: "r2 binding unavailable" };
+  const bucket = artifactBucket(env);
+  if (!bucket) return { ok: false, reason: "r2 binding unavailable" };
   const thresholdMs = deps.thresholdMs ?? CONTAINER_LANE_THRESHOLD_MS;
 
   const statuses: ContainerLaneStatus[] = [];

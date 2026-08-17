@@ -3400,6 +3400,23 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
   const laneRows = (sql: string) => {
     if (isBlocksLaneQuery(sql)) return [BLOCKS_ROW];
     if (isDeregistrationLaneQuery(sql)) return [REGISTRATION_ROW];
+    // The identity rollup's two ungrouped legs (#11418). Both always return
+    // exactly one row from a real engine, so an empty result there is a
+    // DECLINE by design -- feeding them is what makes chain-weight-setters
+    // exercise its store path here rather than its failure path.
+    if (sql.includes("ORDER BY weight_sets DESC")) {
+      // The identity rollup's GROUPED leg, matched on its ORDER BY rather than
+      // its GROUP BY: the DISTINCT leg wraps the same `GROUP BY netuid, uid`
+      // in a subquery, so the looser matcher answered that one too and the
+      // lane declined on a denominator it never got.
+      return [
+        { netuid: 3, uid: 1, weight_sets: 30, last_set: Date.now() - 1000 },
+      ];
+    }
+    if (sql.includes("AS newest_observed")) {
+      return [{ weight_sets: 0, newest_observed: null }];
+    }
+    if (sql.includes("AS distinct_setters")) return [{ distinct_setters: 0 }];
     return [];
   };
 

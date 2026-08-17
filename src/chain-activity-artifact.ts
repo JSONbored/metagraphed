@@ -8,12 +8,12 @@
 // handlers' own #8242 window trim applies AFTER this tier resolves, exactly
 // as it applies to a live Postgres answer.
 
+import { z } from "zod";
+
 import { buildChainActivity } from "./chain-analytics.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsSchema } from "../schemas-src/projection-artifact.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import {
   ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
@@ -21,6 +21,20 @@ import {
 
 export const CHAIN_ACTIVITY_PROJECTION_KEY =
   "metagraph/projections/chain-activity.json";
+
+/**
+ * TWO row sets per window, and both are required.
+ *
+ * The card joins extrinsic counts to block counts per day; a cell carrying only
+ * one of them cannot be halved into a partial answer, so it declines.
+ * `newest_observed` stays `unknown` because `newestObservedIso` already owns
+ * the coercion and returns null for anything unusable.
+ */
+const ChainActivityCellSchema = z.object({
+  extrinsic_rows: ProjectionRowsSchema,
+  block_rows: ProjectionRowsSchema,
+  newest_observed: z.unknown().optional(),
+});
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -44,10 +58,6 @@ export function epochDayIso(dayIndex: unknown): string | null {
     : null;
 }
 
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
-
 /** data-api's latestObservedIso over the stored blocks freshness read: the
  * queried rows' own MAX(observed_at) as ISO, or null. */
 function newestObservedIso(value: unknown): string | null {
@@ -67,45 +77,19 @@ export async function loadChainActivityFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainActivity> | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_ACTIVITY_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess — same contract as src/top-holders-artifact.ts.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_ANALYTICS_WINDOW;
-    // A window outside the route's set — or one this artifact does not carry
-    // — must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(ANALYTICS_WINDOW_DAYS, label)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      extrinsic_rows?: unknown;
-      block_rows?: unknown;
-      newest_observed?: unknown;
-    } | null;
-    if (!Array.isArray(win?.extrinsic_rows) || !Array.isArray(win?.block_rows))
-      return null;
-    return buildChainActivity({
-      window: label,
-      observedAt: newestObservedIso(win.newest_observed),
-      extrinsicRows: win.extrinsic_rows as Record<string, unknown>[],
-      blockRows: win.block_rows as Record<string, unknown>[],
-    });
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_ACTIVITY_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_ANALYTICS_WINDOW,
+    windows: ANALYTICS_WINDOW_DAYS,
+    cell: ChainActivityCellSchema,
+  });
+  if (!read) return null;
+  return buildChainActivity({
+    window: read.label,
+    observedAt: newestObservedIso(read.cell.newest_observed),
+    extrinsicRows: read.cell.extrinsic_rows,
+    blockRows: read.cell.block_rows,
+  });
 }

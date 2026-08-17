@@ -49,6 +49,14 @@
 // route faster, never wrong, and shipping it before the producer has backfilled
 // is safe by construction.
 
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
+import {
+  type ArtifactObjectStore,
+  type ArtifactStoreEnv,
+  artifactBucket,
+} from "./projection-store.ts";
+
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "./account-events.ts";
 import {
   type AccountSummaryRecentEvent,
@@ -205,28 +213,21 @@ export function accountSummaryShardKey(
   return `${ACCOUNT_SUMMARY_PROJECTION_PREFIX}/${generation}/${accountShard(account, shards)}.json`;
 }
 
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
-
 async function readJson(
-  bucket: ArtifactBucket,
+  bucket: ArtifactObjectStore,
   key: string,
 ): Promise<Record<string, unknown> | null> {
   return timed(TIMING_R2, () => readJsonOnce(bucket, key));
 }
 
 async function readJsonOnce(
-  bucket: ArtifactBucket,
+  bucket: ArtifactObjectStore,
   key: string,
 ): Promise<Record<string, unknown> | null> {
   try {
     const object = await bucket.get(key);
     if (!object) return null;
-    const body = await object.json();
-    return body && typeof body === "object"
-      ? (body as Record<string, unknown>)
-      : null;
+    return asJsonObject(await object.json());
   } catch {
     // Unfetchable or unparseable is not a fault to report: the caller reads the
     // lakehouse and answers correctly, just slower.
@@ -280,7 +281,7 @@ export function resetAccountSummaryPointerCache(): void {
 }
 
 async function resolvePointer(
-  bucket: ArtifactBucket,
+  bucket: ArtifactObjectStore,
   now: () => number,
 ): Promise<z.infer<typeof AccountSummaryPointerSchema> | null> {
   const at = now();
@@ -301,7 +302,7 @@ async function resolvePointer(
 }
 
 export async function loadAccountSummaryProjection(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   account: string,
   {
     now = Date.now,
@@ -321,9 +322,8 @@ export async function loadAccountSummaryProjection(
 ): Promise<
   AccountSummaryProjectionRead | AccountSummaryProjectionAbsent | null
 > {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get || !account) return null;
+  const bucket = artifactBucket(env);
+  if (!bucket || !account) return null;
 
   // PARSED, not indexed. The producer is in another repository, so the only
   // thing that can hold the two ends together is a written-down shape --
@@ -588,7 +588,7 @@ function readRecent(
  * safe to add to a route without re-arguing that route's correctness.
  */
 export async function accountHistoryFloorMs(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   account: string,
   network?: ChainNetworkId,
 ): Promise<number | null> {

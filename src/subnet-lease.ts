@@ -34,6 +34,8 @@
 // single hardcoded prefix, this file needs three different item prefixes so
 // they're computed via that shared module rather than each hardcoded here.
 
+import { chainRpcResult } from "./chain-rpc.ts";
+
 import { encodeAccountId32 } from "./ss58.ts";
 import { isU16Netuid } from "./subnet-recycled.ts";
 import type { FieldSources } from "./field-provenance.ts";
@@ -79,8 +81,7 @@ async function fetchStorageRaw(
       }),
     });
     if (!rpcResp.ok) return { ok: false, raw: undefined };
-    const rpcBody = (await rpcResp.json()) as Row;
-    return { ok: true, raw: rpcBody?.result };
+    return { ok: true, raw: chainRpcResult(await rpcResp.json()) };
   } catch {
     return { ok: false, raw: undefined };
   }

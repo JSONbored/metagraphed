@@ -283,7 +283,7 @@ describe("mainnet-only annotation (#8698)", () => {
   });
 
   test("a mainnet-only route gets no network variant", () => {
-    assert.equal(networkVariantPath("/api/v1/chain/weights"), null);
+    assert.equal(networkVariantPath("/api/v1/chain/axon-removals"), null);
     assert.equal(
       networkVariantPath("/api/v1/coverage"),
       "/api/v1/{network}/coverage",
@@ -321,7 +321,7 @@ describe("the published spec expresses network addressing", () => {
   });
 
   test("a mainnet-only route is annotated, not silently omitted", async () => {
-    // The issue's acceptance question: "Does /api/v1/chain/weights exist on
+    // The issue's acceptance question: "Does /api/v1/chain/axon-removals exist on
     // testnet?" must be answerable from the spec with no network call.
     // (/chain/calls was the original example and is served on testnet as of
     // #9412 -- the example moved, the property did not.)
@@ -331,11 +331,14 @@ describe("the published spec expresses network addressing", () => {
       await loadOpenApiComponentSchemas(generatedAt),
     ) as { paths: Record<string, Record<string, Row>> };
 
-    const operation = openapi.paths["/api/v1/chain/weights"].get;
+    const operation = openapi.paths["/api/v1/chain/axon-removals"].get;
     assert.equal(operation["x-metagraphed-mainnet-only"], true);
     assert.deepEqual(operation["x-metagraphed-networks"], ["mainnet"]);
     // ...and it has no network variant to mislead a client with.
-    assert.equal(openapi.paths["/api/v1/{network}/chain/weights"], undefined);
+    assert.equal(
+      openapi.paths["/api/v1/{network}/chain/axon-removals"],
+      undefined,
+    );
 
     // Conversely, an addressable route advertises every data alias.
     assert.deepEqual(
@@ -385,7 +388,7 @@ describe("the contracts artifact carries the network dimension", () => {
     assert.deepEqual(artifact.networks, contracts.networks);
 
     const gated = artifact.routes.find(
-      (route) => route.path === "/api/v1/chain/weights",
+      (route) => route.path === "/api/v1/chain/axon-removals",
     );
     assert.equal(gated?.mainnet_only, true);
     assert.deepEqual(gated?.networks, ["mainnet"]);

@@ -39,6 +39,8 @@ export const PROJECTION_ROUTE_PATHS: readonly string[] = [
   "/api/v1/chain/stake-transfers",
   "/api/v1/chain/transfer-pairs",
   "/api/v1/chain/transfers",
+  "/api/v1/chain/weights",
+  "/api/v1/chain/weights/setters",
 ];
 
 export const PROJECTION_ROUTE_SET: ReadonlySet<string> = new Set(

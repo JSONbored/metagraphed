@@ -17,6 +17,11 @@
 // unit-testable without a live runtime. Decoupled from the data build: a stale
 // structural snapshot can never freeze health again.
 
+import {
+  asJsonObject,
+  JsonObjectArraySchema,
+} from "../schemas-src/json-request.ts";
+
 import { botSignerFromEnv } from "./web-bot-auth.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
@@ -410,7 +415,7 @@ export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
         OPERATIONAL_SURFACES_R2_KEY,
       );
       if (object) {
-        const body = JSON.parse(await object.text()) as Row;
+        const body = asJsonObject(JSON.parse(await object.text()));
         if (Array.isArray(body?.surfaces) && body.surfaces.length) {
           return body.surfaces as Row[];
         }
@@ -426,8 +431,9 @@ export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
         new Request(`https://assets.local${OPERATIONAL_SURFACES_PATH}`),
       );
       if (response.ok) {
-        const body = (await response.json()) as Row;
-        if (Array.isArray(body?.surfaces)) return body.surfaces as Row[];
+        const body = asJsonObject(await response.json());
+        const surfaces = JsonObjectArraySchema.safeParse(body?.surfaces);
+        if (surfaces.success) return surfaces.data;
       }
     }
   } catch {
@@ -445,7 +451,7 @@ export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
       const key = `${prefix}operational-surfaces.json`;
       const object = await env.METAGRAPH_ARCHIVE.get(key);
       if (object) {
-        const body = JSON.parse(await object.text()) as Row;
+        const body = asJsonObject(JSON.parse(await object.text()));
         if (Array.isArray(body?.surfaces)) return body.surfaces as Row[];
       }
     }

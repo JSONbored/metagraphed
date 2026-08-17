@@ -5489,8 +5489,6 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/sudo",
   "/api/v1/governance/config-changes",
   "/api/v1/runtime",
-  "/api/v1/chain/weights",
-  "/api/v1/chain/weights/setters",
   "/api/v1/chain/axon-removals",
   "/api/v1/chain/concentration",
   "/api/v1/chain/performance",

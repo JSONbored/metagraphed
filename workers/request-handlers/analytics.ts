@@ -48,7 +48,9 @@ import {
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
 import { loadChainServingFromArtifact } from "../../src/chain-serving-artifact.ts";
 import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
+import { loadChainWeightsFromArtifact } from "../../src/chain-weights-artifact.ts";
 import { loadChainWeightSettersColdTier } from "../../src/chain-weight-setters-loader.ts";
+import { loadChainWeightSettersFromArtifact } from "../../src/chain-weight-setters-artifact.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
@@ -1911,6 +1913,8 @@ export async function handleChainWeights(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#11418). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
   const limit = pageLimit(url);
@@ -1924,7 +1928,7 @@ export async function handleChainWeights(
     cacheRequest,
     ctx,
     env,
-    "chain-weights",
+    edgeCacheScope("chain-weights", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a store query here would
@@ -1937,7 +1941,19 @@ export async function handleChainWeights(
         // Same shared loader MCP and GraphQL call, so all three surfaces
         // answer from one implementation. Declines (null) rather than
         // half-answering, leaving the empty payload below as the fallback.
-        (await loadChainWeightsColdTier(env, { window: label, limit })) ??
+        // THE PROJECTION TIER FIRST (#11418), same ladder as its serving and
+        // prometheus siblings. The cold tier below is MAINNET-ONLY and must
+        // decline off it: its SQL reaches `account_events` through a network
+        // now, but this route only has a card for chains whose lane has
+        // ticked, and answering from mainnet's rows would be undetectable.
+        (await loadChainWeightsFromArtifact(
+          env,
+          { window: label, limit },
+          network,
+        )) ??
+        (network === DEFAULT_CHAIN_NETWORK
+          ? await loadChainWeightsColdTier(env, { window: label, limit })
+          : null) ??
         unmeasured(
           buildChainWeights([], {
             window: label,
@@ -1987,6 +2003,8 @@ export async function handleChainWeightSetters(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#11418). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
   const limit = pageLimit(url);
@@ -2000,7 +2018,7 @@ export async function handleChainWeightSetters(
     cacheRequest,
     ctx,
     env,
-    "chain-weight-setters",
+    edgeCacheScope("chain-weight-setters", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a store query here would
@@ -2012,7 +2030,19 @@ export async function handleChainWeightSetters(
         // The same WeightsSet stream /chain/weights already reads, grouped one
         // level finer (#9249). Through the shared loader so MCP and GraphQL get
         // it too rather than being wired one surface at a time.
-        (await loadChainWeightSettersColdTier(env, { window: label, limit })) ??
+        // THE PROJECTION TIER FIRST (#11418), same ladder as its serving and
+        // prometheus siblings. The cold tier below is MAINNET-ONLY and must
+        // decline off it: its SQL reaches `account_events` through a network
+        // now, but this route only has a card for chains whose lane has
+        // ticked, and answering from mainnet's rows would be undetectable.
+        (await loadChainWeightSettersFromArtifact(
+          env,
+          { window: label, limit },
+          network,
+        )) ??
+        (network === DEFAULT_CHAIN_NETWORK
+          ? await loadChainWeightSettersColdTier(env, { window: label, limit })
+          : null) ??
         unmeasured(buildChainWeightSetters([], null, { window: label, limit }));
       if (csv) {
         return csvResponse(

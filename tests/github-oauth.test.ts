@@ -420,6 +420,47 @@ describe("handleGithubOAuthCallback", () => {
     assert.match(await res.text(), /no access_token/);
   });
 
+  test("502 when github's token body is valid JSON but not an object", async () => {
+    // `null` and `"gh-token"` are both valid JSON, so `response.json()`
+    // resolves and the cast this replaces typed them as an object. The read
+    // for `access_token` then produced undefined on a string and THREW on
+    // null -- a 500 out of a handler whose next line already answers 502.
+    for (const tokenBody of [null, "gh-token", 42] as unknown[]) {
+      const env = baseEnv();
+      await seedPendingState(env, "n1");
+      const deps = {
+        fetch: fakeGithubFetch({
+          tokenBody: tokenBody as Record<string, unknown>,
+        }),
+      };
+      const res = await handleGithubOAuthCallback(
+        new Request(githubCallbackUrl({ code: "c", state: "n1" })),
+        env,
+        deps,
+      );
+      assert.equal(res.status, 502, `${JSON.stringify(tokenBody)} must 502`);
+      assert.match(await res.text(), /no access_token/);
+    }
+  });
+
+  test("502 when github's user body is valid JSON but not an object", async () => {
+    for (const userBody of [null, "octocat"] as unknown[]) {
+      const env = baseEnv();
+      await seedPendingState(env, "n1");
+      const deps = {
+        fetch: fakeGithubFetch({
+          userBody: userBody as Record<string, unknown>,
+        }),
+      };
+      const res = await handleGithubOAuthCallback(
+        new Request(githubCallbackUrl({ code: "c", state: "n1" })),
+        env,
+        deps,
+      );
+      assert.equal(res.status, 502, `${JSON.stringify(userBody)} must 502`);
+    }
+  });
+
   test("502 when the github user profile fetch fails", async () => {
     const env = baseEnv();
     await seedPendingState(env, "n1");

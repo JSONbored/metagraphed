@@ -21,6 +21,8 @@
 // next one still sees the same moved head. Cost is one conditional request per
 // tick and nothing else: the sha is compared against KV before anything is
 // fetched, so an unchanged main is a single API call.
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import {
   buildRegistrySyncPayload,
@@ -114,7 +116,7 @@ export async function fileAt(
     ?.content;
   if (typeof content !== "string") return null;
   try {
-    return JSON.parse(atob(content.replace(/\n/g, ""))) as Row;
+    return asJsonObject(JSON.parse(atob(content.replace(/\n/g, ""))));
   } catch {
     // A registry file that does not parse is a real problem, but it is the
     // Gate's problem: skipping it here keeps the rest of the commit syncable

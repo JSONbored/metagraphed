@@ -9,6 +9,8 @@
 // stored full-window MAX by the full-window SUM, so it is limit-independent
 // either way).
 
+import { z } from "zod";
+
 import {
   buildChainTransferPairs,
   CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
@@ -17,18 +19,27 @@ import {
   CHAIN_TRANSFER_PAIR_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
 } from "./chain-transfer-pairs.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
 import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+  ProjectionAggregateSchema,
+  ProjectionRowsSchema,
+} from "../schemas-src/projection-artifact.ts";
 
 export const CHAIN_TRANSFER_PAIRS_PROJECTION_KEY =
   "metagraph/projections/chain-transfer-pairs.json";
 
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
+/**
+ * One cell holds both orders plus the window's totals row.
+ *
+ * The stored totals row is data-api's `totalsRows[0] ?? null`, so it is the
+ * nullable aggregate -- absent and null both mean the window had none, and the
+ * card reports observed_at as null rather than declining.
+ */
+const ChainTransferPairsCellSchema = z.object({
+  sorts: z.record(z.string(), z.unknown()),
+  totals: ProjectionAggregateSchema,
+});
 
 /** The route's limit contract re-applied at the reader: both callers pass
  * already-validated values, but a direct call must not page past the route's
@@ -58,58 +69,29 @@ export async function loadChainTransferPairsFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainTransferPairs> | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_TRANSFER_PAIRS_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess — same contract as src/top-holders-artifact.ts.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
-    // A window outside the route's set — or one this artifact does not carry
-    // — must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(CHAIN_TRANSFER_PAIR_WINDOWS, label)) return null;
-    const sort = query.sort ?? "volume";
-    // Only the two precomputed orders exist; an unknown sort must never be
-    // answered with a DIFFERENT order's rows.
-    if (!CHAIN_TRANSFER_PAIR_SORTS.includes(sort)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      totals?: unknown;
-      sorts?: unknown;
-    } | null;
-    const sorts = win?.sorts as Record<string, unknown> | null | undefined;
-    if (typeof sorts !== "object" || sorts === null) return null;
-    const pairs = sorts[sort];
-    if (!Array.isArray(pairs)) return null;
-    // The stored totals row is data-api's totalsRows[0] ?? null; anything
-    // else is not the artifact the lane wrote.
-    const totals = win?.totals ?? null;
-    if (totals !== null && typeof totals !== "object") return null;
-    const limit = normalizedLimit(query.limit);
-    return buildChainTransferPairs({
-      window: label,
-      sort,
-      observedAt: newestObservedIso(
-        (totals as Record<string, unknown> | null)?.["newest_observed"],
-      ),
-      totals: totals as Record<string, unknown> | null,
-      pairs: (pairs as Record<string, unknown>[]).slice(0, limit),
-    });
-  } catch {
-    return null;
-  }
+  const sort = query.sort ?? "volume";
+  // Only the two precomputed orders exist; an unknown sort must never be
+  // answered with a DIFFERENT order's rows.
+  if (!CHAIN_TRANSFER_PAIR_SORTS.includes(sort)) return null;
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_TRANSFER_PAIRS_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
+    windows: CHAIN_TRANSFER_PAIR_WINDOWS,
+    cell: ChainTransferPairsCellSchema,
+  });
+  if (!read) return null;
+  // Only the REQUESTED order is parsed, so a malformed order fails only the
+  // reads that would have served it.
+  const pairs = ProjectionRowsSchema.safeParse(read.cell.sorts[sort]);
+  if (!pairs.success) return null;
+  const limit = normalizedLimit(query.limit);
+  return buildChainTransferPairs({
+    window: read.label,
+    sort,
+    observedAt: newestObservedIso(read.cell.totals?.["newest_observed"]),
+    totals: read.cell.totals,
+    pairs: pairs.data.slice(0, limit),
+  });
 }

@@ -102,6 +102,25 @@ function lakeFetchWithBlocks(onFail?: (sql: string) => boolean) {
           observed_at: NOW - 12_000,
         },
       ];
+    } else if (sql.includes("ORDER BY weight_sets DESC")) {
+      // The identity rollup's GROUPED leg, matched on its ORDER BY rather than
+      // its GROUP BY: the DISTINCT leg wraps the same `GROUP BY netuid, uid`
+      // in a subquery, so the looser matcher answered that one too and the
+      // lane declined on a denominator it never got.
+      rows = [{ netuid: 3, uid: 1, weight_sets: 30, last_set: NOW - 1000 }];
+    } else if (sql.includes("AS newest_observed")) {
+      // The identity rollup's TOTALS leg (#11418). An ungrouped aggregate
+      // always returns exactly one row, so an empty result here means the
+      // engine gave nothing usable -- which `loadChainEventIdentityRollup`
+      // correctly treats as a decline. Feeding it the row a real engine would
+      // return is what makes chain-weight-setters exercise its STORE path
+      // rather than its decline path.
+      rows = [{ weight_sets: 0, newest_observed: null }];
+    } else if (sql.includes("AS distinct_setters")) {
+      // Its distinct leg, a GROUP BY subquery rather than an ungrouped
+      // COUNT(DISTINCT) -- see the reader for why the ungrouped form is
+      // rejected at this scale.
+      rows = [{ distinct_setters: 0 }];
     } else if (sql.includes("event_index")) {
       // chain-deregistrations is the one lane that reads RAW registration
       // rows, and it declines on an empty pull by design (30 days with no
@@ -183,6 +202,50 @@ describe("runProjectionLane", () => {
       "compute_declined",
       "the reason travels with the event, matching the returned result",
     );
+  });
+
+  test("chain-weight-setters stores a MEASURED quiet window, and does not decline it", async () => {
+    // #11418's `empty` branch. The identity rollup answers `empty` when the
+    // grouped leg returns no rows while the totals and distinct legs DID come
+    // back -- a week in which nobody set weights, read successfully. That is a
+    // measurement, so the lane stores `{ totals: {}, rows: [] }` and keeps
+    // running; treating it as a failure would leave the previous tick's
+    // numbers published as if they were current.
+    const { puts, bucket } = archiveBucket();
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init.body)).query);
+      let rows: Record<string, unknown>[] = [];
+      // The GROUPED leg finds nothing...
+      if (sql.includes("ORDER BY weight_sets DESC")) rows = [];
+      // ...while both aggregate legs answer, which is what separates a quiet
+      // window from a failed read.
+      else if (sql.includes("AS newest_observed"))
+        rows = [{ weight_sets: 0, newest_observed: null }];
+      else if (sql.includes("AS distinct_setters"))
+        rows = [{ distinct_setters: 0 }];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const result = await runProjectionLane(
+      { ...LAKE_ENV, METAGRAPH_ARCHIVE: bucket } as unknown as Env,
+      laneNamed("chain-weight-setters"),
+    );
+    assert.equal(result.ok, true, "a quiet window is not a lane failure");
+    assert.equal(puts.length, 1, "the artifact was written");
+    const body = JSON.parse(puts[0]!.value) as {
+      windows: Record<string, { totals: unknown; rows: unknown[] }>;
+    };
+    for (const [label, win] of Object.entries(body.windows)) {
+      assert.deepEqual(win.rows, [], `${label} stored no rows`);
+      // An empty denominator, NOT a missing one: the reader declines on a
+      // missing `totals`, so storing it absent here would make every quiet
+      // window unreadable.
+      assert.deepEqual(win.totals, {}, `${label} stored an empty totals`);
+    }
   });
 
   test("a non-null compute writes the body to the lane's key", async () => {

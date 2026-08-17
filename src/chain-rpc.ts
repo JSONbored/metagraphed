@@ -55,6 +55,29 @@ import {
 /** What a decline says when the node gave nothing to say it with. */
 export const UNDESCRIBED_RPC_ERROR = "rpc error with no description";
 
+/**
+ * The `result` member of a JSON-RPC body, or undefined when the body is not
+ * one (#11418).
+ *
+ * For the nine callers that issue `state_getStorage` with their own `fetch`
+ * and timeout rather than through `chainRpc`. They each wrote
+ * `(await rpcResp.json()) as Row` and then read `.result` -- #11194 built
+ * `ChainRpcEnvelopeSchema` to end exactly that, but only `chainRpc` itself was
+ * moved onto it.
+ *
+ * COLLAPSING "not an envelope" INTO undefined IS THE POINT. Every one of those
+ * callers treats an explicit `result: null` as "storage is genuinely unset"
+ * and reports a real zero for it. Under the cast, a body that was not an
+ * envelope at all also produced a nullish `.result` -- so a proxy answering
+ * 200 with `{"error": ...}`, or an array, could be read as a measured zero.
+ * Returning undefined keeps the unset case reachable only when the node
+ * actually said null.
+ */
+export function chainRpcResult(body: unknown): unknown {
+  const envelope = ChainRpcEnvelopeSchema.safeParse(body);
+  return envelope.success ? envelope.data.result : undefined;
+}
+
 export function describeRpcError(error: unknown): string {
   if (
     error !== null &&

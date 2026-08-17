@@ -33,6 +33,8 @@
 // (bittensor 10.4.0, substrate.create_storage_key("SubtensorModule",
 // "RAORecycledForRegistration", [netuid])) across netuid 0/1/4/101/65535.
 
+import { chainRpcResult } from "./chain-rpc.ts";
+
 import type { FieldSources } from "./field-provenance.ts";
 import {
   type ChainNetworkId,
@@ -156,8 +158,7 @@ async function loadSubnetRecycledSnapshot(
       }),
     });
     if (rpcResp.ok) {
-      const rpcBody = (await rpcResp.json()) as Row;
-      const raw = rpcBody?.result;
+      const raw = chainRpcResult(await rpcResp.json());
       const rao = decodeLeU64(raw);
       if (rao != null) {
         recycledTao = raoToTao(rao);

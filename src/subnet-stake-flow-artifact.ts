@@ -27,16 +27,10 @@ import {
   STAKE_FLOW_WINDOWS,
   STAKE_REMOVED_KIND,
 } from "./stake-flow.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  projectionKey,
-} from "./chain-network.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { readProjectionWindow } from "./projection-store.ts";
+import { ProjectionRowsCellSchema } from "../schemas-src/projection-artifact.ts";
 import { CHAIN_STAKE_FLOW_PROJECTION_KEY } from "./chain-stake-flow-artifact.ts";
-
-interface ArtifactBucket {
-  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
-}
 
 export interface SubnetStakeFlowFromArtifact {
   data: ReturnType<typeof buildStakeFlow>;
@@ -64,48 +58,27 @@ export async function loadSubnetStakeFlowFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<SubnetStakeFlowFromArtifact | null> {
-  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
-    ?.METAGRAPH_ARCHIVE;
-  if (!bucket?.get) return null;
-  try {
-    const object = await bucket.get(
-      projectionKey(CHAIN_STAKE_FLOW_PROJECTION_KEY, network),
-    );
-    if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      windows?: unknown;
-    } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a guess.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    const label = query.window ?? DEFAULT_STAKE_FLOW_WINDOW;
-    if (!Object.hasOwn(STAKE_FLOW_WINDOWS, label)) return null;
-    const win = (body.windows as Record<string, unknown>)[label] as {
-      rows?: unknown;
-    } | null;
-    if (!Array.isArray(win?.rows)) return null;
-
-    const wanted = kindForDirection(query.direction);
-    const rows = (win.rows as Record<string, unknown>[]).filter(
-      (row) =>
-        Number(row?.netuid) === netuid &&
-        (wanted === null || row?.event_kind === wanted),
-    );
-    // A subnet with no stake events in the window is a genuine zero, not a
-    // decline: the lane DID cover it, the answer is simply nothing moved.
-    return {
-      data: buildStakeFlow(rows, netuid, { window: label }),
-      generatedAt: latestObserved(rows),
-    };
-  } catch {
-    return null;
-  }
+  const read = await readProjectionWindow(env, {
+    key: CHAIN_STAKE_FLOW_PROJECTION_KEY,
+    network,
+    window: query.window,
+    defaultWindow: DEFAULT_STAKE_FLOW_WINDOW,
+    windows: STAKE_FLOW_WINDOWS,
+    cell: ProjectionRowsCellSchema,
+  });
+  if (!read) return null;
+  const wanted = kindForDirection(query.direction);
+  const rows = read.cell.rows.filter(
+    (row) =>
+      Number(row.netuid) === netuid &&
+      (wanted === null || row.event_kind === wanted),
+  );
+  // A subnet with no stake events in the window is a genuine zero, not a
+  // decline: the lane DID cover it, the answer is simply nothing moved.
+  return {
+    data: buildStakeFlow(rows, netuid, { window: read.label }),
+    generatedAt: latestObserved(rows),
+  };
 }
 
 /** Newest `last_observed` across the rows, as ISO, or null when absent. */
