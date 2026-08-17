@@ -17,6 +17,9 @@
 // (one lane's throw never skips the next) and each failure records exactly
 // one exception under `projection:<name>` so a silently dead lane is visible.
 
+import { CHAIN_OWNERSHIP_PROJECTION_KEY } from "./subnet-ownership-artifact.ts";
+import { fetchOwnershipChangeRows } from "./subnet-ownership-cold-tier.ts";
+
 import { artifactWriteBucket } from "./projection-store.ts";
 
 import {
@@ -165,6 +168,24 @@ export interface ProjectionLane {
    * dispatch branch. Every current lane runs on the shared
    * PROJECTION_LANES_CRON tick, so none sets this yet. */
   intervalCron?: string;
+  /**
+   * Names the reader that serves this artifact, for a lane that backs NO
+   * chain-scope projection route.
+   *
+   * Every lane above this one fills an artifact a `PROJECTION_ROUTE_HANDLERS`
+   * entry serves, and the invariant in tests/projection-networks.ts is what
+   * stops a lane filling an artifact nobody reads. `chain-ownership` is served
+   * instead by `loadOwnershipChangeRows`, behind
+   * `/accounts/{ss58}/entities` and `/subnets/{netuid}/ownership-history` --
+   * two routes that are not chain-scope and whose cold tier reads the stream
+   * directly.
+   *
+   * A POSITIVE DECLARATION, not an exemption: it says which consumer exists,
+   * so the invariant still fails for a lane that names none. An exemption list
+   * would only say the rule does not apply here, which is the shape that lets
+   * a genuinely unread artifact hide.
+   */
+  servedBy?: string;
   /** The artifact body ({schema_version, generated_at, row_count, windows}),
    * or null when the lakehouse could not answer EVERY query — a partial
    * artifact would serve one window's fresh numbers next to another's
@@ -890,6 +911,39 @@ async function computeChainWeights(
 }
 
 /**
+ * The SubnetOwnerChanged stream, whole (#11421).
+ *
+ * NOT WINDOWED, unlike every lane above it. Those serve routes that ask about a
+ * window; this serves two routes that ask about a HISTORY -- who has ever
+ * traded a subnet -- so a window would be the wrong shape and the artifact
+ * holds the entire stream. It can afford to: the 895M-row event table holds one
+ * such event, and a chain-wide ownership transfer does not arrive in volume.
+ *
+ * Reads through `fetchOwnershipChangeRows`, the SAME function the request path
+ * falls back to, so the stored rows are byte-for-byte what a live read would
+ * have produced -- including the `args` restoration from Iceberg's JSON string,
+ * which `decodeChainEventArgs` requires and would silently drop a row without.
+ *
+ * An EMPTY stream is a measured answer and stores as one. A chain on which
+ * nothing has been traded is the honest state for 127 of 128 subnets, so
+ * declining on it would leave both routes paying the 13-second read forever on
+ * exactly the networks where the answer is cheapest to state.
+ */
+async function computeChainOwnership(
+  env: Env,
+  network: ChainNetworkId,
+): Promise<Record<string, unknown> | null> {
+  const rows = await fetchOwnershipChangeRows(env, network);
+  if (rows === null) return null;
+  return {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    row_count: rows.length,
+    rows,
+  };
+}
+
+/**
  * GET /api/v1/chain/weights/setters, every supported window (#11418).
  *
  * The per-IDENTITY leaderboard, so it stores `{ rows, totals }` rather than the
@@ -1526,6 +1580,14 @@ export const PROJECTION_LANES: ProjectionLane[] = [
     name: "chain-weight-setters",
     artifactKey: CHAIN_WEIGHT_SETTERS_PROJECTION_KEY,
     compute: computeChainWeightSetters,
+  },
+  {
+    name: "chain-ownership",
+    artifactKey: CHAIN_OWNERSHIP_PROJECTION_KEY,
+    compute: computeChainOwnership,
+    // Not a chain-scope route: the stream is read by the ENTITIES and
+    // OWNERSHIP-HISTORY cold tiers, which narrow it per address and per subnet.
+    servedBy: "loadOwnershipChangeRows",
   },
 ];
 

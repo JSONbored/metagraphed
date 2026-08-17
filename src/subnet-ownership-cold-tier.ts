@@ -16,11 +16,17 @@
 // decoder for the same facts -- so parity means reading the same stream from
 // chain.chain_events and feeding the same formatter.
 //
-// The scan is pallet+method filtered over a large table with no index to
-// lean on, so it can be slow on a cold cache. That is acceptable here: the
-// route sits behind the edge cache, ownership changes are rare enough that
-// the match set is tiny, and a timeout declines to the caller's existing
-// schema-stable empty rather than failing the request.
+// THE SCAN IS NOW BEHIND A LANE (#11421). It is pallet+method filtered over a
+// large table with no index to lean on, and that was called "acceptable ...
+// can be slow on a cold cache" here until it was measured. Against production
+// 2026-08-16, `/accounts/{ss58}/entities` spent a MINIMUM of 10,420ms in r2sql
+// across five distinct subjects, median 13,711ms -- not a cold-cache tail but
+// a floor every caller pays, to return the one row this table holds.
+//
+// `loadOwnershipChangeRows` reads the projection first and falls through to
+// this query when the lane has not run, so the answer is unchanged either way
+// and the edge cache is no longer the only thing standing between a caller and
+// a 13-second read.
 
 import { buildAccountEntities } from "./entity-labels.ts";
 import {
@@ -29,6 +35,21 @@ import {
 } from "./subnet-ownership-history.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import {
+  chainTable,
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+} from "./chain-network.ts";
+import { loadOwnershipRowsFromArtifact } from "./subnet-ownership-artifact.ts";
+import type { ArtifactStoreEnv } from "./projection-store.ts";
+
+/**
+ * Both stores these readers touch: the lakehouse they fall back to, and the
+ * archive the lane writes. Declared rather than cast into -- `R2SqlEnv` names
+ * only the warehouse credentials, and widening it would tell every other
+ * `r2SqlQuery` caller it has a bucket.
+ */
+type OwnershipReadEnv = R2SqlEnv & ArtifactStoreEnv;
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -51,12 +72,13 @@ const OWNERSHIP_EVENT_COLUMNS =
  * The whole stream is small enough for that to be the right trade: automatic
  * ownership transfers are rare chain-wide events, not a feed.
  */
-async function loadOwnershipChangeRows(
+export async function fetchOwnershipChangeRows(
   env: R2SqlEnv | null | undefined,
+  network?: ChainNetworkId,
 ): Promise<Record<string, unknown>[] | null> {
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${OWNERSHIP_EVENT_COLUMNS} FROM chain.chain_events` +
+    `SELECT ${OWNERSHIP_EVENT_COLUMNS} FROM ${chainTable("chain_events", network)}` +
       ` WHERE pallet = 'SubtensorModule' AND method = '${OWNERSHIP_CHANGE_EVENT_METHOD}'` +
       ` ORDER BY block_number ASC`,
   );
@@ -84,6 +106,30 @@ async function loadOwnershipChangeRows(
 }
 
 /**
+ * The stream, from the LANE if it has run and from the lakehouse if it has not.
+ *
+ * The artifact is tried first because the read below is the expensive one:
+ * measured against production 2026-08-16, `/accounts/{ss58}/entities` spent a
+ * median of 13,711ms in r2sql with a MINIMUM of 10,420ms across five distinct
+ * subjects -- a floor every caller pays, not a tail some callers draw.
+ *
+ * Falling through on a miss is what makes this safe to ship before the lane has
+ * ever run: the answer is identical either way, because the lane stores exactly
+ * what `fetchOwnershipChangeRows` returned.
+ */
+async function loadOwnershipChangeRows(
+  env: OwnershipReadEnv | null | undefined,
+  network?: ChainNetworkId,
+): Promise<Record<string, unknown>[] | null> {
+  const projected = await loadOwnershipRowsFromArtifact(
+    env,
+    network ?? DEFAULT_CHAIN_NETWORK,
+  );
+  if (projected !== null) return projected;
+  return await fetchOwnershipChangeRows(env, network);
+}
+
+/**
  * GET /api/v1/accounts/{coldkey}/entities -- one address's subnet-ownership
  * ties. The coldkey filter happens in buildAccountEntities, in JS after
  * decoding, exactly as it does on the Postgres tier, so the address never
@@ -93,7 +139,7 @@ async function loadOwnershipChangeRows(
  * schema-stable empty-ties fallback.
  */
 export async function loadAccountEntitiesColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: OwnershipReadEnv | null | undefined,
   coldkey: string,
 ): Promise<ReturnType<typeof buildAccountEntities> | null> {
   const rows = await loadOwnershipChangeRows(env);
@@ -118,7 +164,7 @@ export async function loadAccountEntitiesColdTier(
  * echoing a nonsense value back into the payload.
  */
 export async function loadSubnetOwnershipHistoryColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: OwnershipReadEnv | null | undefined,
   netuid: unknown,
 ): Promise<ReturnType<typeof buildSubnetOwnershipHistory> | null> {
   const subnet = safeBlockNumber(netuid);

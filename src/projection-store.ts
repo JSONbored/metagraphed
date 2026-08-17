@@ -119,7 +119,7 @@ export function artifactWriteBucket(
  * tier cannot answer -- and none of them should reach a builder.
  */
 export async function readArtifactObject<T>(
-  env: Env | null | undefined,
+  env: ArtifactStoreEnv | null | undefined,
   key: string,
   network: ChainNetworkId,
   schema: z.ZodType<T>,
@@ -184,7 +184,7 @@ export interface ProjectionWindowQuery<T> {
  * has not computed 30d yet must not have its 7d numbers published as 30d.
  */
 export async function readProjectionWindow<T>(
-  env: Env | null | undefined,
+  env: ArtifactStoreEnv | null | undefined,
   query: ProjectionWindowQuery<T>,
 ): Promise<ProjectionWindowRead<T> | null> {
   const label = query.window ?? query.defaultWindow;
