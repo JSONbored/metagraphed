@@ -18,7 +18,17 @@ import {
   accountSummaryShardKey,
 } from "../src/account-summary-projection.ts";
 import { readFileSync } from "node:fs";
-import { describe, test, beforeEach } from "vitest";
+import { describe, test, beforeEach, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
+
+// The card's post-fold probe reads `chain_detail_account_events` through
+// src/read-store.ts, which builds `new Client(...)` itself -- so the module is
+// the seam. See tests/helpers/pg-mock.ts for why the controller is hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 import {
   foldSummaryGroups,
   loadAccountSummaryColdTier,
@@ -1318,3 +1328,293 @@ describe("mergeNewestEvents", () => {
     assert.equal(mergeNewestEvents([], [row(1, 1)], 10).length, 1);
   });
 });
+
+/**
+ * The card's post-fold probe, from Neon instead of R2 SQL.
+ *
+ * `Server-Timing` on the live card, 2026-08-16, with the projection and the
+ * pointer memo already in place:
+ *
+ *   r2;dur=87;desc="2 calls"       the projection: pointer + shard
+ *   neon;dur=143;desc="2 calls"    the hot tier
+ *   r2sql;dur=3210;desc="2 calls"  the post-fold probes
+ *
+ * R2 SQL was 87% of a 3,695ms request at ~1.6s per query. The probes were not
+ * badly bounded -- they asked the wrong store. `chain_detail_account_events`
+ * holds exactly that window and answers in milliseconds.
+ */
+/** The projection the card needs to reach its post-fold legs at all. */
+const cardArchive = () =>
+  accountSummaryArchive({
+    accounts: {
+      [SS58]: [
+        {
+          kind: "NeuronRegistered",
+          netuid: 105,
+          count: 2,
+          fb: 10,
+          lb: 90,
+          fo: 1_700_000_000_010,
+          lo: 1_700_000_000_090,
+        },
+      ],
+    },
+    // The PRODUCER's row shape, not the card's output shape:
+    // `AccountSummaryRecentEventSchema` is `.required().strict()`, so a
+    // payload missing a column is refused and the card silently takes
+    // the span branch instead -- which is what the first cut of this
+    // fixture did.
+    recent: {
+      [SS58]: [9_000_000, 8_999_999].map((block) => ({
+        block_number: block,
+        event_index: 0,
+        extrinsic_index: 1,
+        event_kind: "NeuronRegistered",
+        hotkey: SS58,
+        coldkey: null,
+        netuid: 105,
+        uid: 242,
+        amount_tao: null,
+        alpha_amount: null,
+        observed_at: Date.parse("2026-08-14T12:00:00.000Z"),
+      })),
+    },
+    pointer: { recent_limit: 10, recent_from: "2026-07-16" },
+    through: "2026-08-14",
+  });
+
+describe("the card's head probe -- Neon when the tiers overlap", () => {
+  const FOLD_FLOOR = Date.parse("2026-08-15T00:00:00.000Z");
+
+  /** A store answering the floor probe and the per-account read. */
+  function store(floorMs: number | null, rows: Record<string, unknown>[]) {
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = ({ text }) => {
+      pg.control.rows = text.includes("MIN(observed_at)")
+        ? floorMs === null
+          ? [{ floor_ms: null }]
+          : [{ floor_ms: floorMs }]
+        : rows;
+    };
+    return pgMockEnv();
+  }
+
+  const hotRow = (block: number) => ({
+    block_number: block,
+    event_index: 0,
+    extrinsic_index: 1,
+    event_kind: "NeuronRegistered",
+    hotkey: SS58,
+    coldkey: null,
+    netuid: 105,
+    uid: 242,
+    amount_tao: "12.5",
+    alpha_amount: null,
+    observed_at: Date.parse("2026-08-15T12:00:00.000Z"),
+  });
+
+  test("THE HEAD PROBE ASKS NEON, not the lakehouse", async () => {
+    const queries: string[] = [];
+    const probe = await headProbeForTest({
+      env: store(FOLD_FLOOR - 90 * 60_000, [hotRow(9_000_001)]),
+      queries,
+      floorMs: FOLD_FLOOR,
+    });
+    assert.ok(probe, "the probe answered");
+    assert.equal(
+      queries.length,
+      0,
+      `expected no R2 SQL:\n${queries.join("\n")}`,
+    );
+    assert.equal(probe[0]!.block_number, 9_000_001);
+  });
+
+  test("A GAP FALLS BACK to the bounded R2 SQL probe", async () => {
+    // Both edges move on their own schedules, so a gap is possible -- and a
+    // page built across one is silently missing every event in it.
+    const queries: string[] = [];
+    await headProbeForTest({
+      env: store(FOLD_FLOOR + 60 * 60_000, [hotRow(9_000_001)]),
+      queries,
+      floorMs: FOLD_FLOOR,
+    });
+    // BOTH legs fall back, not one: the aggregate and the head probe read the
+    // same post-fold window, so a gap disqualifies both.
+    assert.ok(queries.length >= 1, "expected the R2 SQL probes");
+    assert.ok(
+      queries.every((sql) => sql.includes(`observed_at >= ${FOLD_FLOOR}`)),
+      queries.join("\n"),
+    );
+  });
+
+  test("THE FOLD AGGREGATES like the SQL it replaces", async () => {
+    // FOUR rows, deliberately unordered and deliberately colliding: two share a
+    // (kind, netuid) so the merge path runs, and the second one moves BOTH ends
+    // outward so the running min and max are each exercised in both directions.
+    // One ordered pair would leave half of every comparison untaken -- the same
+    // argument the span test makes about its three groups.
+    //
+    // A NULL netuid is its own group, not a coalesced one: Transfer and Deposit
+    // are coldkey balance events with no subnet, and folding them onto a
+    // netuid-bearing kind would invent a subnet for them.
+    const at = (iso: string) => Date.parse(iso);
+    const row = (
+      kind: string,
+      netuid: number | null,
+      block: number,
+      iso: string,
+    ) => ({
+      block_number: block,
+      event_index: 0,
+      extrinsic_index: 1,
+      event_kind: kind,
+      hotkey: SS58,
+      coldkey: null,
+      netuid,
+      uid: 242,
+      amount_tao: null,
+      alpha_amount: null,
+      observed_at: at(iso),
+    });
+    const queries: string[] = [];
+    const card = await postFoldGroupsForTest({
+      env: store(FOLD_FLOOR - 90 * 60_000, [
+        row("StakeAdded", 7, 500, "2026-08-15T12:00:00.000Z"),
+        row("StakeAdded", 7, 100, "2026-08-15T20:00:00.000Z"),
+        row("StakeAdded", 9, 300, "2026-08-15T14:00:00.000Z"),
+        row("Transfer", null, 400, "2026-08-15T15:00:00.000Z"),
+      ]),
+      queries,
+    });
+    assert.equal(
+      queries.length,
+      0,
+      `expected no R2 SQL:\n${queries.join("\n")}`,
+    );
+    assert.ok("agg" in card, `the card declined: ${JSON.stringify(card)}`);
+
+    // `scanned` is `sum(count)` over the folded groups, which is the number the
+    // SQL aggregate returned. Two published events plus the four above -- and
+    // it is 6 rather than 3 only if the colliding pair was COUNTED twice while
+    // being GROUPED once, which is the whole property.
+    assert.equal(card.scanned, 6);
+
+    const byKind = new Map(card.kinds.map((k) => [String(k.kind), k]));
+    assert.deepEqual(
+      [...byKind.keys()].sort(),
+      ["NeuronRegistered", "StakeAdded", "Transfer"],
+      "a null-netuid kind is folded on its own, not onto a subnet-bearing one",
+    );
+    assert.equal(
+      Number(byKind.get("StakeAdded")!.count),
+      3,
+      "two netuid-7 rows plus one netuid-9",
+    );
+  });
+
+  test("A ROW MISSING ITS SORT COLUMNS folds without corrupting the bounds", async () => {
+    // REACHABLE for the reason `feedKey`'s own fallback is -- see "a row
+    // missing a sort column sorts LAST" above. These three columns are NOT
+    // NULL on `chain_detail_account_events`, but this fold takes
+    // `Record<string, unknown>` and the lakehouse's copy of the same table
+    // permits null in every one of them. A missing column must not throw and
+    // must not silently become NaN, which would poison every later min/max in
+    // its group.
+    const queries: string[] = [];
+    const card = await postFoldGroupsForTest({
+      env: store(FOLD_FLOOR - 90 * 60_000, [
+        {
+          event_kind: "StakeAdded",
+          netuid: 7,
+          block_number: 900,
+          observed_at: Date.parse("2026-08-15T18:00:00.000Z"),
+        },
+        // Same group, and carrying neither sort column.
+        { event_kind: "StakeAdded", netuid: 7 },
+      ]),
+      queries,
+    });
+    assert.equal(queries.length, 0);
+    assert.ok("agg" in card, "the card declined");
+    const stake = card.kinds.find((k) => k.kind === "StakeAdded");
+    assert.ok(stake, "the group survived");
+    assert.equal(Number(stake.count), 2, "both rows counted");
+    assert.ok(
+      Number.isFinite(Number(card.scanned)),
+      "a missing column must not turn the total into NaN",
+    );
+  });
+
+  test("AN UNREADABLE STORE falls back rather than declining", async () => {
+    const queries: string[] = [];
+    const probe = await headProbeForTest({
+      env: store(null, []),
+      queries,
+      floorMs: FOLD_FLOOR,
+    });
+    assert.ok(probe !== undefined);
+    assert.ok(queries.length >= 1, "expected the R2 SQL probes");
+  });
+});
+
+/** Drive the card down to its head-probe leg, recording any R2 SQL it issues. */
+async function headProbeForTest(input: {
+  env: Record<string, unknown>;
+  queries: string[];
+  floorMs: number;
+}) {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_u: string, init: RequestInit) => {
+    input.queries.push(String(JSON.parse(String(init.body)).query));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, result: { rows: [] } }),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+  try {
+    const out = await loadAccountSummaryColdTier(
+      {
+        ...input.env,
+        R2_SQL_TOKEN: "cfut_test",
+        // The projection is what produces the fold floor the probe bounds on;
+        // without it the card never reaches this leg at all.
+        ...cardArchive(),
+      } as never,
+      SS58,
+      { recentLimit: 2 },
+    );
+    return "recent" in out ? (out.recent ?? []) : [];
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+/** Drive the card down to its post-fold aggregate leg, returning the card. */
+async function postFoldGroupsForTest(input: {
+  env: Record<string, unknown>;
+  queries: string[];
+}) {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_u: string, init: RequestInit) => {
+    input.queries.push(String(JSON.parse(String(init.body)).query));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, result: { rows: [] } }),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+  try {
+    const out = await loadAccountSummaryColdTier(
+      { ...input.env, R2_SQL_TOKEN: "cfut_test", ...cardArchive() } as never,
+      SS58,
+      { recentLimit: 2 },
+    );
+    return out;
+  } finally {
+    globalThis.fetch = original;
+  }
+}
