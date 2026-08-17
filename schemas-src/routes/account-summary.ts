@@ -99,7 +99,7 @@ export const AccountSummaryArtifactSchema = z
       .boolean()
       .optional()
       .describe(
-        "True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null.",
+        "True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null. False means the totals are the account's complete history, at any magnitude: when the account-summary projection answers, the counts are running totals folded over the whole history rather than a scan of the newest N, so a large event_count here is exact rather than truncated.",
       ),
     event_kinds: z.array(AccountEventKindCountSchema).optional(),
     registrations: z

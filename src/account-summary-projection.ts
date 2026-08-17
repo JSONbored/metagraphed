@@ -57,7 +57,11 @@ import {
   artifactBucket,
 } from "./projection-store.ts";
 
-import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "./account-events.ts";
+// ACCOUNT_EVENT_SUMMARY_SCAN_CAP is deliberately NOT imported here (#11468).
+// The cap is a statement about what a lakehouse probe managed to read, and this
+// module reads an artifact whose totals are exact at any size -- so nothing here
+// has a decision to make with it. It moved to the caller, which owns the reads
+// it can actually bound: see `complete` in src/account-feeds-cold-tier.ts.
 import {
   type AccountSummaryRecentEvent,
   AccountSummaryGroupsSchema,
@@ -245,11 +249,15 @@ async function readJsonOnce(
  * generation too old to trust, a shard that will not parse, or an account the
  * projection has not seen.
  *
- * THE CAP KEEPS ITS MEANING. The caller derives `scanned` from the summed group
- * counts and clamps it, so an account over the cap reports `event_scan_capped`
- * and null `first_*` whichever tier answered. The projection knows the true
- * lifetime total and publishing it would be a better number -- but a route
- * whose meaning depends on its tier is worse than either.
+ * THE CAP IS THE CALLER'S, NOT THIS READER'S (#11468). `scanned` is the summed
+ * group counts -- the account's true lifetime total, because the producer folds
+ * running totals forward rather than sampling a window -- and it is published
+ * as such. What the cap decides is whether a LAKEHOUSE read may be described as
+ * complete, which is a claim about that read and not about this artifact; see
+ * `complete` in src/account-feeds-cold-tier.ts. This reader used to decline
+ * above the cap so both tiers would answer alike, which held the route to the
+ * degraded answer (clamped `event_count`, nulled `first_*`) and cost every
+ * over-cap account an unbounded scan to get it.
  */
 /**
  * How long a resolved pointer is reused inside one isolate.
@@ -476,24 +484,41 @@ export async function loadAccountSummaryProjection(
   // reads the lakehouse rather than publishing an empty card from a shard.
   if (!groups.length) return null;
 
-  // AN ACCOUNT OVER THE CAP IS NOT THIS TIER'S TO ANSWER.
+  // AN ACCOUNT OVER THE CAP IS EXACTLY THE ONE THIS TIER SHOULD ANSWER, and
+  // until #11468 this line declined it.
   //
-  // The projection aggregates an account's WHOLE history. The live path
-  // aggregates the newest ACCOUNT_EVENT_SUMMARY_SCAN_CAP events. Below the cap
-  // those are the same set, so the answers are identical -- above it they are
-  // not, and the difference is invisible in `event_count` (both clamp to CAP)
-  // while `event_kinds` and `subnet_count` silently widen to lifetime.
+  // The reasoning it replaced was about DISAGREEMENT, and that half was right:
+  // the projection aggregates an account's whole history, the live path
+  // aggregates the newest ACCOUNT_EVENT_SUMMARY_SCAN_CAP events, and above the
+  // cap those are different sets. Measured on 5Fv5t8frGG3MKt..., the live path
+  // reported 4 kinds across 2 subnets and the projection 10 across 3. One route
+  // must not answer two ways.
   //
-  // Measured on 5Fv5t8frGG3MKt...: the live path reports 4 kinds across 2
-  // subnets, the projection 10 across 3. Same route, different answer depending
-  // on which tier served it, which is worse than either answer alone.
+  // WHAT IT GOT BACKWARDS IS WHICH ANSWER TO KEEP. The capped one is not a
+  // second opinion, it is a DEGRADED one: `event_count` clamps to 5,000,
+  // `first_block` and `first_seen_at` are nulled outright because the window's
+  // floor is not the account's first event, and `event_kinds`/`subnet_count`
+  // are lower bounds. The projection's is the account's real history --
+  // persisted running totals folded forward from 2020-01-01, associatively, so
+  // it is exact rather than approximate (metagraphed-infra's
+  // account_summary_r2.py: "the card's aggregate is a lifetime question and no
+  // window answers it"). This is a block explorer; the complete history is the
+  // answer users come for.
   //
-  // So this declines above the cap and the lakehouse answers, exactly as it did
-  // before the projection existed. That is a small minority of accounts -- the
-  // cap is 5,000 lifetime events -- and it costs them nothing they were not
-  // already paying.
+  // AND DECLINING WAS NOT FREE, which the old comment's "it costs them nothing
+  // they were not already paying" assumed. A null here is not a slow path: it
+  // is the signal `loadAccountSummaryColdTier` reads to choose its arms, so
+  // declining sent BOTH legs to unbounded scattered scans. Measured on
+  // production 2026-08-17 across 16 accounts from the top 40 by stake, over-cap
+  // correlated with slow 16 of 16: under the cap 0.63-1.07s with no `r2sql` at
+  // all, over it 6.7-22.8s with 3-4 `r2sql` calls and 503s at the 15s ceiling.
+  // Seven of those sixteen were over the cap -- ~0.55% of all accounts by
+  // metagraphed-infra#575's sampling, but 44% of the ones people actually open.
+  //
+  // So the cap no longer decides whether this tier answers. It decides what the
+  // CALLER may claim about a lakehouse read, which is where it always belonged
+  // -- see `complete` in src/account-feeds-cold-tier.ts.
   const scanned = groups.reduce((n, g) => n + Number(g.count), 0);
-  if (scanned > ACCOUNT_EVENT_SUMMARY_SCAN_CAP) return null;
 
   return {
     groups,

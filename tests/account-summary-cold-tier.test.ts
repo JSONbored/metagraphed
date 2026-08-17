@@ -775,15 +775,21 @@ describe("the projection short-circuits the aggregate leg (#11131)", () => {
     assert.equal(buildAccountSummary(SS58, cold as never).event_count, 6);
   });
 
-  test("AN OVER-CAP ACCOUNT FALLS BACK -- the tiers must not disagree", async () => {
-    // I shipped this wrong and production caught it. The projection aggregates
-    // an account's WHOLE history; this leg aggregates the newest CAP events.
-    // `event_count` clamps to CAP either way, so the divergence hides there --
-    // but `event_kinds` and `subnet_count` widen to lifetime. Measured live:
-    // 4 kinds / 2 subnets from the lakehouse against 10 / 3 from the shard.
+  test("AN OVER-CAP ACCOUNT IS SERVED WHOLE, not sent to the lakehouse", async () => {
+    // THE INVERSION (#11468), and the previous version of this test asserted the
+    // opposite. Its premise -- one route must not have two answers -- still
+    // holds; what it got wrong is which answer to keep.
     //
-    // So above the cap the projection declines and this leg runs, which is what
-    // keeps one route from having two answers.
+    // The lakehouse's is the DEGRADED one: `event_count` clamped to 5,000,
+    // `first_block`/`first_seen_at` nulled because a window floor is not the
+    // account's first event, `event_kinds`/`subnet_count` lower bounds. The
+    // shard's is the account's real history, folded forward associatively from a
+    // 2020 floor. For a block explorer that is not a tie.
+    //
+    // And declining was never free: null is the signal this reader uses to pick
+    // its arms, so it sent BOTH legs to unbounded scans. Measured on production
+    // 2026-08-17, over-cap correlated with slow 16 of 16 -- 0.63-1.07s under the
+    // cap with no r2sql at all, 6.7-22.8s and 503s over it.
     const engine = fakeEngine();
     const cold = await loadAccountSummaryColdTier(
       archive([
@@ -800,13 +806,72 @@ describe("the projection short-circuits the aggregate leg (#11131)", () => {
       SS58,
       { query: engine.query as never },
     );
-    assert.ok(
+    assert.equal(
       engine.seen.some((s) => s.includes("GROUP BY event_kind, netuid")),
-      "the lakehouse leg must answer for an account the shard cannot",
+      false,
+      "the aggregate leg must NOT reach the lakehouse for an account the shard describes",
     );
     const card = buildAccountSummary(SS58, cold as never);
-    assert.equal(card.event_count, 6);
-    assert.equal(card.event_scan_capped, false);
+    assert.equal(
+      card.event_count,
+      ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 500,
+      "the lifetime total is published rather than clamped to the cap",
+    );
+    assert.equal(
+      card.event_scan_capped,
+      false,
+      "nothing was truncated, so nothing may claim it was",
+    );
+    assert.equal(
+      card.first_block,
+      1,
+      "and the account's real first event survives, instead of being nulled",
+    );
+  });
+
+  test("an ABSENT account whose bounded aggregate FAILS declines", async () => {
+    // The other arm that has to report completeness (#11468), and its failure
+    // path. Absence is a positive answer -- the shard exists and does not list
+    // this account, so there is provably nothing at or before the fold edge and
+    // the bounded read covers the account's whole history. When that read fails
+    // there is no history to describe, and the reader must DECLINE rather than
+    // publish a zero card: `event_count: 0` for an account that has events is
+    // the confidently-wrong outcome this family refuses.
+    const stamp = new Date().toISOString();
+    const absent = {
+      METAGRAPH_ARCHIVE: {
+        get: async (key: string) => {
+          if (key === ACCOUNT_SUMMARY_POINTER_KEY) {
+            return {
+              json: async () => ({
+                schema_version: 1,
+                generation: GEN,
+                shard_count: SHARDS,
+                generated_at: stamp,
+                account_count: 0,
+                // Needed for the floor -- without it absence cannot be bounded
+                // and the reader declines earlier, on a different path.
+                through: "2026-08-14",
+              }),
+            };
+          }
+          if (key === SHARD_KEY) {
+            return {
+              json: async () => ({ schema_version: 1, accounts: {} }),
+            };
+          }
+          return null;
+        },
+      },
+    } as never;
+    const engine = fakeEngine({ groups: null });
+    const cold = await loadAccountSummaryColdTier(absent, SS58, {
+      query: engine.query as never,
+    });
+    assert.ok(
+      cold.declined,
+      "a failed aggregate is a decline, not a zero card",
+    );
   });
 });
 

@@ -1047,10 +1047,53 @@ export type AccountSummaryColdTierResult =
       agg: Record<string, unknown>;
       kinds: Array<Record<string, unknown>>;
       scanned: number;
+      /**
+       * Whether `scanned` is the account's LIFETIME event count rather than a
+       * probe's lower bound (#11468).
+       *
+       * The distinction the card used to infer from `scanned > CAP` alone, which
+       * was only ever a proxy for "the lakehouse probe stopped at CAP + 1". It
+       * stopped being a valid proxy once the projection could answer above the
+       * cap: those totals are running sums folded forward from a 2020 floor, so
+       * a large one is exact rather than truncated, and inferring truncation
+       * from its SIZE nulls `first_block`/`first_seen_at` on the very accounts
+       * whose full history the projection actually knows.
+       *
+       * So the reader that assembled the aggregate says whether it is whole,
+       * instead of the formatter guessing from a number.
+       */
+      complete: boolean;
       recent: Array<Record<string, unknown>>;
       declined?: undefined;
     }
   | { declined: string[] };
+
+/**
+ * The post-fold aggregate, and whether anything was truncated building it.
+ *
+ * Two fields rather than a bare array because the two halves have different
+ * evidentiary weight: the projection's published groups are lifetime totals and
+ * cannot be short, while the post-fold probe reads CAP + 1 rows and can be. A
+ * caller handed only the concatenation cannot tell which it has.
+ */
+interface PostFoldGroups {
+  groups: Record<string, unknown>[];
+  complete: boolean;
+}
+
+/**
+ * A pure lakehouse aggregate, and whether its own probe overflowed.
+ *
+ * The CTE behind both callers reads `ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1` rows,
+ * so a sum at or above the cap means the account has more events than the probe
+ * looked at and every total here is a lower bound. That is the ONLY thing the
+ * cap decides now, and it is decided in one place so the two lakehouse arms
+ * cannot answer it differently.
+ */
+function withScanCompleteness(rows: Record<string, unknown>[]): PostFoldGroups {
+  const scanned = rows.reduce((n, row) => n + Number(row.count), 0);
+  return { groups: rows, complete: scanned <= ACCOUNT_EVENT_SUMMARY_SCAN_CAP };
+}
 
 /**
  * The feed's own sort key, as a comparable tuple.
@@ -1259,9 +1302,11 @@ async function postFoldGroups(
     /** The account, for the hot store's own indexed predicate. */
     ss58: string;
   },
-): Promise<Record<string, unknown>[] | null> {
+): Promise<PostFoldGroups | null> {
   const { query, scan, published, span, ss58 } = options;
-  if (span === null) return published;
+  // No fold edge, so there is nothing to add and nothing that could have been
+  // truncated: the published totals stand on their own and they are lifetime.
+  if (span === null) return { groups: published, complete: true };
 
   // NEON FIRST, folded here. This aggregate reads the SAME post-fold window the
   // head probe does, so when the hot store provably covers it the groups can be
@@ -1286,7 +1331,9 @@ async function postFoldGroups(
     ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   );
   if (hot !== null && hot.length < ACCOUNT_EVENT_SUMMARY_SCAN_CAP) {
-    return [...published, ...foldRowsToGroups(hot)];
+    // COMPLETE: the published half is lifetime by construction and the hot half
+    // did not fill its limit, so nothing was truncated at either end.
+    return { groups: [...published, ...foldRowsToGroups(hot)], complete: true };
   }
 
   const bound = ` AND observed_at >= ${Math.trunc(span.foldFloorMs)}`;
@@ -1301,7 +1348,17 @@ async function postFoldGroups(
   // caller would publish the same self-contradicting card this exists to fix,
   // and it would do it silently.
   if (!above) return null;
-  return [...published, ...above];
+  // THE DELTA IS THE ONLY THING THAT CAN BE SHORT HERE. `scan` reads CAP + 1
+  // rows of the POST-FOLD window, so a delta at or above the cap means that
+  // window alone overflowed the probe and its totals are a lower bound -- which
+  // makes the sum a lower bound too, however exact the published half is.
+  // Counted over the delta rather than the total for exactly that reason: the
+  // published half is lifetime and is not evidence of truncation at any size.
+  const delta = above.reduce((n, row) => n + Number(row.count), 0);
+  return {
+    groups: [...published, ...above],
+    complete: delta <= ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+  };
 }
 
 /**
@@ -1465,14 +1522,17 @@ export async function loadAccountSummaryColdTier(
 
   const [groupRows, recentRows] = await Promise.all([
     absentFloor !== null
-      ? query(
+      ? // The projection PROVED there is nothing at or before the fold edge, so
+        // this bounded read sees the account's entire history -- complete
+        // unless the read itself overflowed CAP + 1.
+        query(
           env,
           `WITH scan AS (${scan(absentBound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
             `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
             `min(observed_at) AS fo, max(observed_at) AS lo ` +
             `FROM scan GROUP BY event_kind, netuid`,
           { onError: track("summary-groups-bounded") },
-        )
+        ).then((rows) => (rows === null ? null : withScanCompleteness(rows)))
       : found
         ? postFoldGroups(env, {
             query: (e, sql) =>
@@ -1504,7 +1564,9 @@ export async function loadAccountSummaryColdTier(
             satisfied: (rows) =>
               rows.reduce((n, row) => n + Number(row.count), 0) >
               ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
-          }),
+          }).then((rows) =>
+            rows === null ? null : withScanCompleteness(rows),
+          ),
     // THE FEED LEG, and the read that actually times this route out
     // (#11222). `windowedRowRead` probes `now-2d` then `now-8d` and then reads
     // the WHOLE remainder -- and 95.8% of accounts are past both probes, so
@@ -1567,9 +1629,11 @@ export async function loadAccountSummaryColdTier(
   if (!groupRows || !recentRows) {
     return { declined: failures };
   }
-  const folded = foldSummaryGroups(groupRows);
+  const folded = foldSummaryGroups(groupRows.groups);
 
-  // The CTE read CAP + 1, so this is min(total, CAP + 1) -- the probe's number.
+  // The CTE read CAP + 1, so this is min(total, CAP + 1) -- the probe's number
+  // -- on a lakehouse read, and the account's true lifetime total on a
+  // projection-backed one. `groupRows.complete` is which.
   //
   // No `?? 0`: foldSummaryGroups starts `count` at 0 and only ever adds a
   // finite rowCount, so `agg.c` is always a number and the nullish half is a
@@ -1578,16 +1642,24 @@ export async function loadAccountSummaryColdTier(
   const scanned = Number(folded.agg.c);
 
   return {
-    // Clamped back to the PUBLISHED window so the payload is unchanged: an
-    // uncapped account (total <= CAP) is already below the clamp and untouched,
-    // and a capped one reported CAP before and still does. The extra row exists
-    // to answer the capped question, not to widen what is served.
+    // CLAMPED ONLY WHEN THE COUNT IS A PROBE'S. Clamping exists because the
+    // lakehouse CTE reads CAP + 1 and `sum(count)` over it is therefore
+    // min(total, CAP + 1) -- a number that means "at least this many", and
+    // publishing CAP + 1 of it would be publishing a scan artefact.
+    //
+    // A complete aggregate has no such artefact to hide: it is the account's
+    // lifetime total, and clamping it to 5,000 would replace a true 208,423
+    // with a smaller wrong one on precisely the accounts whose whole history
+    // this tier can now prove.
     agg: {
       ...folded.agg,
-      c: Math.min(scanned, ACCOUNT_EVENT_SUMMARY_SCAN_CAP),
+      c: groupRows.complete
+        ? scanned
+        : Math.min(scanned, ACCOUNT_EVENT_SUMMARY_SCAN_CAP),
     },
     kinds: folded.kinds,
     scanned,
+    complete: groupRows.complete,
     recent: recentRows,
   };
 }

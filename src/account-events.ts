@@ -388,6 +388,7 @@ export function buildAccountSummary(
     agg,
     kinds,
     scanned,
+    complete,
     registrations,
     recent,
     activity,
@@ -396,6 +397,22 @@ export function buildAccountSummary(
     agg?: Record<string, unknown> | null;
     kinds?: Array<Record<string, unknown>> | null;
     scanned?: unknown;
+    /**
+     * Whether the aggregate covers the account's whole history (#11468).
+     *
+     * The reader that built it says so, rather than this function inferring it
+     * from `scanned > CAP`. That inference was a proxy for "the lakehouse probe
+     * stopped at CAP + 1" and it stopped holding when the projection began
+     * answering above the cap: its totals are running sums folded forward from
+     * a 2020 floor, so a large one is EXACT, and treating size as evidence of
+     * truncation nulled `first_block`/`first_seen_at` on exactly the accounts
+     * whose full history was known.
+     *
+     * Defaults to `undefined`, which keeps the old inference for every caller
+     * that has no better evidence -- a bare `buildAccountSummary` over lakehouse
+     * rows still reports `event_scan_capped` the way it always did.
+     */
+    complete?: boolean;
     registrations?: Array<Record<string, unknown>> | null;
     recent?: Array<Record<string, unknown>> | null;
     activity?: Record<string, unknown> | null;
@@ -406,15 +423,24 @@ export function buildAccountSummary(
   const eventCount = toBlockNumber(a.c) ?? 0;
   const scannedCount =
     scanned != null ? (toBlockNumber(scanned) ?? 0) : eventCount;
-  // event_count / subnet_count / event_kinds are aggregated over exactly the
-  // account's newest ACCOUNT_EVENT_SUMMARY_SCAN_CAP events. `scanned` is a probe
-  // COUNT over CAP+1: when it exceeds CAP the account has more events than that
-  // window, so those totals are a lower bound and the window's MIN(block_number) /
-  // MIN(observed_at) are its floor, not the account's all-time first — flag it and
-  // null first_*. `> CAP` (not `>=`) means an account with EXACTLY CAP events is
-  // complete (the probe found no extra row), so its totals + first_* stay exact.
-  // last_* stay exact regardless (the newest events include the latest).
-  const eventScanCapped = scannedCount > ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
+  // event_count / subnet_count / event_kinds are aggregated over the account's
+  // newest ACCOUNT_EVENT_SUMMARY_SCAN_CAP events when a lakehouse probe answered,
+  // and over its WHOLE history when the projection did. `scanned` is a probe
+  // COUNT over CAP+1 in the first case: when it exceeds CAP the account has more
+  // events than that window, so those totals are a lower bound and the window's
+  // MIN(block_number) / MIN(observed_at) are its floor, not the account's all-time
+  // first — flag it and null first_*. `> CAP` (not `>=`) means an account with
+  // EXACTLY CAP events is complete (the probe found no extra row), so its totals +
+  // first_* stay exact. last_* stay exact regardless (the newest events include
+  // the latest).
+  //
+  // `complete` OVERRIDES THE SIZE TEST when the caller knows (#11468). The
+  // projection's totals are exact at any magnitude, so a 208,423-event account is
+  // not capped — it is fully counted, and its first_* are its real first event
+  // rather than a window floor. Inferring truncation from the count alone would
+  // discard the complete history on precisely the accounts that have one.
+  const eventScanCapped =
+    complete === true ? false : scannedCount > ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
   return {
     schema_version: 1,
     ss58,
