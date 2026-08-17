@@ -417,6 +417,89 @@ export function formatChainEvent(
 
 /** Every chain event in one covered block, in read order. The payload shape is
  * the one `/api/v1/blocks/{n}/chain-events` has always published. */
+/**
+ * The newest chain events at or below `ceiling`, from the hot store.
+ *
+ * ## The route this exists for was serving NOTHING
+ *
+ * Measured live 2026-08-17, `/api/v1/chain-events?limit=5` -- the explorer's
+ * "what is happening on chain" feed:
+ *
+ *   16.9s, 0 rows, x-metagraph-degraded: tier_unavailable
+ *   server-timing: r2sql;dur=15030;desc="1 call"
+ *
+ * 15,030ms is the lakehouse query ceiling. The read is already block-windowed
+ * (5,000 blocks, 18.6 MB measured) and still could not finish, so the feed
+ * answered an empty list with a degraded header on every request.
+ *
+ * The same rows are in Neon. `chain_detail_chain_events` carries every column
+ * the feed formats -- pallet, method, args, phase, extrinsic_index,
+ * observed_at -- and its PRIMARY KEY is `(block_number, event_index)`, which is
+ * this feed's exact sort order. No new index was needed:
+ *
+ *   Limit (actual time=0.018..0.020 rows=5)
+ *     -> Index Scan Backward using chain_detail_chain_events_pkey
+ *   Execution Time: 0.030 ms      Buffers: shared hit=4
+ *
+ * 0.030ms against a 15s timeout, and the answer is NEWER: this store tracks the
+ * chain head (37s behind, measured), while the lakehouse ceiling this feed read
+ * down from is the decode seam, ~50 minutes back.
+ *
+ * ## A SHORT PAGE MEANS THE ANSWER SPANS THE SEAM
+ *
+ * This store is contiguous from its own floor to the head, so a FULL page taken
+ * from it is provably the newest `limit` at or below the ceiling. A short one is
+ * not: the remainder lies below the floor, in the lakehouse. The caller must
+ * fall through in that case rather than publish a truncated feed -- which is
+ * also what keeps pagination honest, because the cursor a full page emits is
+ * the same three-part token the lakehouse leg reads, so the walk continues
+ * across the seam instead of stopping at it.
+ *
+ * `pallet`/`method` are applied here rather than filtered afterwards, for the
+ * same reason: a filter applied to a page already cut to `limit` would return
+ * fewer than the caller asked for while more matches existed.
+ */
+export async function loadChainEventsHeadHotTier(
+  env: unknown,
+  options: {
+    limit: number;
+    /** Read at or below this block; null starts at the head. */
+    ceiling: number | null;
+    pallet?: string | null;
+    method?: string | null;
+  },
+): Promise<Row[] | null> {
+  const need = safeBlockNumber(options.limit);
+  if (need === null || need <= 0) return null;
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (options.ceiling !== null) {
+    const ceiling = safeBlockNumber(options.ceiling);
+    if (ceiling === null) return null;
+    where.push("block_number <= ?");
+    params.push(ceiling);
+  }
+  for (const [value, column] of [
+    [options.pallet, "pallet"],
+    [options.method, "method"],
+  ] as [unknown, string][]) {
+    if (value == null) continue;
+    if (typeof value !== "string" || value === "") return null;
+    // BOUND, not interpolated: this store speaks parameters, unlike R2 SQL --
+    // see `safeNameLiteral`'s existence on the lakehouse side for what the
+    // absence of them costs.
+    where.push(`${column} = ?`);
+    params.push(value);
+  }
+  return query(
+    env,
+    `SELECT ${CHAIN_EVENT_COLUMNS} FROM chain_detail_chain_events` +
+      (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
+      " ORDER BY block_number DESC, event_index DESC LIMIT ?",
+    [...params, need],
+  );
+}
+
 export async function loadBlockChainEventsHotTier(
   env: unknown,
   height: number,
