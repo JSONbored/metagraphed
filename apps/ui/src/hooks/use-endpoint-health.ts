@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { applyNetworkPrefix } from "@/lib/metagraphed/client";
-import { useApiBase, useNetwork } from "./use-api-base";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { apiLatencySnapshot, subscribeApiLatency } from "@/lib/metagraphed/api-latency";
 
 export type EndpointHealth = "checking" | "ok" | "slow" | "bad" | "down";
 
@@ -12,7 +11,8 @@ export interface EndpointHealthState {
 // Round-trip latency tiers for the footer's API-endpoint health dot.
 const SLOW_MS = 300; // ok → slow (yellow)
 const BAD_MS = 800; // slow → bad (orange)
-const REFRESH_MS = 30_000;
+/** How often the hook re-checks whether its sample has aged out. */
+const STALE_TICK_MS = 30_000;
 
 /** Pure latency bucketing for the footer health dot; exported for unit tests. */
 export function classifyEndpointLatency(ms: number | null): EndpointHealth {
@@ -20,29 +20,6 @@ export function classifyEndpointLatency(ms: number | null): EndpointHealth {
   if (ms > BAD_MS) return "bad";
   if (ms > SLOW_MS) return "slow";
   return "ok";
-}
-
-/**
- * The URL the footer health dot probes, for the currently selected network.
- *
- * Exported and pure so the network scoping is testable in this suite's plain
- * node environment, mirroring buildChainStreamUrl in use-chain-stream.ts. The
- * bug this guards against is silent: an unprefixed probe still returns 200 and
- * still paints a green dot, it just measures the wrong partition.
- */
-export function buildEndpointHealthUrl(base: string): string {
-  return `${base.replace(/\/$/, "")}${applyNetworkPrefix("/api/v1/coverage")}`;
-}
-
-async function pingMs(url: string, signal: AbortSignal): Promise<number | null> {
-  const start = performance.now?.() ?? Date.now();
-  try {
-    const res = await fetch(url, { headers: { Accept: "application/json" }, signal });
-    if (!res.ok) return null;
-    return Math.round((performance.now?.() ?? Date.now()) - start);
-  } catch {
-    return null; // network error / abort → treated as down by the caller
-  }
 }
 
 /**
@@ -60,33 +37,59 @@ async function pingMs(url: string, signal: AbortSignal): Promise<number | null> 
  * mainnet one. `/api/v1/coverage` is served on every network, so prefixing it
  * is safe (unlike, say, /api/v1/feeds/watch, which genuinely 404s off mainnet).
  */
+/**
+ * How long ago a sample stops being evidence.
+ *
+ * A tab left open on a static page makes no API calls, and a five-minute-old
+ * number is not a claim about the API's health NOW. Past this the dot returns
+ * to "checking" rather than asserting a stale green -- the same distinction
+ * `unknown` vs `stale` draws in the API's own lane verdicts.
+ */
+const SAMPLE_MAX_AGE_MS = 5 * 60_000;
+
+/**
+ * The footer health dot, from the API calls the page ALREADY makes.
+ *
+ * IT USED TO PROBE. This hook fetched `/api/v1/coverage` itself every 30
+ * seconds, on every page, for as long as the tab stayed open -- and measured
+ * 2026-08-16, one account page load issued that URL TWICE: once for the data it
+ * renders and once more purely to time it. Over a ten-minute session the probe
+ * alone was ~20 requests that render nothing.
+ *
+ * The page was already issuing the measurement. `apiFetch` now records every
+ * round trip (see lib/metagraphed/api-latency.ts) and this subscribes, so the
+ * dot costs zero requests.
+ *
+ * IT IS ALSO A BETTER MEASUREMENT. A synthetic probe timed one endpoint nobody
+ * was waiting on; this times what the user is actually waiting for, which is
+ * what the dot claims to report. A page whose data reads are slow while
+ * `/coverage` happened to be warm used to show green. It cannot now.
+ *
+ * NETWORK SCOPING COMES FOR FREE, and that is worth stating because the old
+ * probe had to build its own prefixed URL to get it right (and did not, until
+ * it was fixed). Every recorded sample came from `apiFetch`, which resolves the
+ * network at call time -- so the samples ARE the selected network's, without
+ * this hook knowing that a network exists.
+ */
 export function useEndpointHealth(): EndpointHealthState {
-  const { base } = useApiBase();
-  // Subscribed, not merely read: applyNetworkPrefix resolves the network at
-  // call time, so without this the effect would not re-run when the user
-  // switches networks in place and the dot would keep probing the old one.
-  const { network } = useNetwork();
-  const [state, setState] = useState<EndpointHealthState>({ status: "checking", ms: null });
+  const sample = useSyncExternalStore(
+    subscribeApiLatency,
+    apiLatencySnapshot,
+    // SSR and the first client pass must agree, and the server has made no
+    // calls -- returning a sample here would hydrate a dot the client then
+    // changes, which React reports as a mismatch.
+    () => null,
+  );
+  const [now, setNow] = useState(() => Date.now());
 
+  // The dot has to go stale on its own, with no traffic to push it: a sample
+  // ages even when nothing else happens.
   useEffect(() => {
-    const url = buildEndpointHealthUrl(base);
-    let active = true;
-    const controller = new AbortController();
+    const id = window.setInterval(() => setNow(Date.now()), STALE_TICK_MS);
+    return () => window.clearInterval(id);
+  }, []);
 
-    async function check() {
-      const ms = await pingMs(url, controller.signal);
-      if (active) setState({ status: classifyEndpointLatency(ms), ms });
-    }
-
-    setState({ status: "checking", ms: null });
-    void check();
-    const id = window.setInterval(() => void check(), REFRESH_MS);
-    return () => {
-      active = false;
-      controller.abort();
-      window.clearInterval(id);
-    };
-  }, [base, network.id]);
-
-  return state;
+  if (!sample) return { status: "checking", ms: null };
+  if (now - sample.at > SAMPLE_MAX_AGE_MS) return { status: "checking", ms: null };
+  return { status: classifyEndpointLatency(sample.ms), ms: sample.ms };
 }
