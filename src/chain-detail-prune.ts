@@ -69,6 +69,48 @@ export const CHAIN_DETAIL_MIN_RETAINED_BLOCKS = 1_800;
 /** ~24h. The ceiling on how far a stalled decoder can push retention before the
  * prune resumes and the reads start declining. */
 export const CHAIN_DETAIL_MAX_RETAINED_BLOCKS = 7_200;
+
+/**
+ * `chain_detail_account_events` keeps ~30h, and it is the ONE table that does.
+ *
+ * ## Why this table answers a second question
+ *
+ * Every other table here exists to cover one gap: chain tip minus the decoded
+ * seam, which an hourly decode lane holds to ~2h. This one is also the hot tier
+ * for the ACCOUNT family, and that family asks something different -- "does this
+ * store reach back past the projection's fold edge", the overlap
+ * `loadAccountEventsAboveFloorHotTier` checks before it serves.
+ *
+ * The two questions have different answers because the fold edge moves in DAY
+ * steps. `through` is the last COMPLETE day the producer folded, so the edge sits
+ * up to 24h behind, plus the lane's hourly cadence -- ~25h at worst in normal
+ * operation. A 6h floor cannot reach it, ever.
+ *
+ * MEASURED, not assumed. Live on 2026-08-17 the overlap was BROKEN by 6.8h:
+ * `through` 2026-08-15 put the fold edge at 2026-08-16T00:00Z against a hot
+ * floor of 06:51Z. The fast path was correct, safe, and never taken -- it had
+ * held exactly once, right after the projection recovered with an unusual
+ * `through`, which is a lucky sample rather than the steady state.
+ *
+ * ## Why only this table, and what it costs
+ *
+ * Measured live the same day: `chain_detail_account_events` plus its index is
+ * 324 MiB over 5,175 blocks -- 64.1 KiB/block, a quarter of the four tables'
+ * combined weight. Deepening it alone to 9,000 blocks costs ~451 MiB over the
+ * 6h floor, and leaves `chain_events` (410 MiB) and `extrinsics` (220 MiB) --
+ * the actual bulk -- exactly where they are. Deepening all four would have cost
+ * roughly four times as much to fix one family's reads.
+ *
+ * ## Why 30h and not more
+ *
+ * ~5h of margin over the ~25h worst case, which absorbs a missed producer pass.
+ * It does NOT absorb an outage -- the lane was dark for 33h on 2026-08-16 -- and
+ * it deliberately does not try: past this, the overlap check fails and the
+ * account routes fall back to the bounded lakehouse read, correct and slower,
+ * while the container-lane watchdog pages within 6h. Sizing retention for an
+ * outage is how a hot tier becomes the archive this one refuses to be.
+ */
+export const ACCOUNT_EVENTS_MIN_RETAINED_BLOCKS = 9_000;
 /**
  * Blocks removed per run, at most.
  *
@@ -116,6 +158,15 @@ export interface PruneWindow {
   keepFrom: number;
   /** Retained depth in blocks, after the floor/ceiling clamp. */
   retainedBlocks: number;
+  /**
+   * The same, for `chain_detail_account_events` alone -- see
+   * ACCOUNT_EVENTS_MIN_RETAINED_BLOCKS for why one table needs its own.
+   *
+   * NEVER ABOVE `keepFrom`: a deeper floor may only keep MORE rows, so an
+   * adaptive window that has already grown past it (a lagging decoder) still
+   * governs. `Math.min` states that rather than leaving it to the caller.
+   */
+  accountEventsKeepFrom: number;
 }
 
 /**
@@ -138,7 +189,19 @@ export function chainDetailPruneWindow(input: {
     CHAIN_DETAIL_MAX_RETAINED_BLOCKS,
     Math.max(CHAIN_DETAIL_MIN_RETAINED_BLOCKS, uncovered),
   );
-  return { keepFrom: head - retainedBlocks + 1, retainedBlocks };
+  const keepFrom = head - retainedBlocks + 1;
+  // The ceiling is deliberately NOT applied here. It bounds how far a stalled
+  // DECODER can push retention, which is the runaway this tier guards against;
+  // this floor is a fixed depth chosen against the producer's fold cadence and
+  // cannot run away on its own.
+  return {
+    keepFrom,
+    retainedBlocks,
+    accountEventsKeepFrom: Math.min(
+      keepFrom,
+      head - ACCOUNT_EVENTS_MIN_RETAINED_BLOCKS + 1,
+    ),
+  };
 }
 
 export interface ChainDetailPruneResult {
@@ -217,7 +280,20 @@ export async function pruneChainDetail(
       window.keepFrom,
       floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
     );
-    const neon = await pruneChainDetailNeon(env, ctx, deletedBelow, deps);
+    // The account-events bound rides the SAME per-run cap, so a deeper floor
+    // cannot turn one run into an unbounded delete -- it only stops that table
+    // being taken as far as the others.
+    const accountEventsDeletedBelow = Math.min(
+      window.accountEventsKeepFrom,
+      floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
+    );
+    const neon = await pruneChainDetailNeon(
+      env,
+      ctx,
+      deletedBelow,
+      deps,
+      accountEventsDeletedBelow,
+    );
     return {
       ok: true,
       keep_from: window.keepFrom,
@@ -283,6 +359,8 @@ async function pruneChainDetailNeon(
   ctx: WaitUntilLike | undefined,
   deletedBelow: number,
   deps: ChainDetailPruneDeps,
+  /** The bound for `chain_detail_account_events`, which keeps more. */
+  accountEventsDeletedBelow: number,
 ): Promise<{ neon_pruned?: boolean; neon_detail?: string }> {
   const bag = env as Record<string, unknown> | null | undefined;
   const hyperdrive = bag?.HYPERDRIVE as HyperdriveLike | undefined;
@@ -298,9 +376,14 @@ async function pruneChainDetailNeon(
   try {
     const sql = injected ?? createPgSql(hyperdrive!, ctx!);
     for (const table of PRUNE_TABLES) {
-      await sql.unsafe(`DELETE FROM ${table} WHERE block_number < $1`, [
-        deletedBelow,
-      ]);
+      // ONE table keeps more, and the bound is chosen per table rather than by
+      // running the loop twice: two DELETE passes over the same list is where a
+      // future table gets added to one and not the other.
+      const below =
+        table === "chain_detail_account_events"
+          ? accountEventsDeletedBelow
+          : deletedBelow;
+      await sql.unsafe(`DELETE FROM ${table} WHERE block_number < $1`, [below]);
     }
     return { neon_pruned: true };
   } catch (err) {

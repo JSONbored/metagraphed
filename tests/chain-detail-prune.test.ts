@@ -33,6 +33,7 @@ import {
   CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
   chainDetailPruneWindow,
   pruneChainDetail,
+  ACCOUNT_EVENTS_MIN_RETAINED_BLOCKS,
 } from "../src/chain-detail-prune.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
@@ -153,8 +154,39 @@ describe("pruneChainDetail", () => {
       // short list rather than a decline.
       "chain_detail_blocks",
     ]);
-    for (const { values } of del.seen)
-      assert.deepEqual(values, [head - 6_000 + 120]);
+    // THREE TABLES AT ONE BOUND, and account_events at a deeper one -- see
+    // ACCOUNT_EVENTS_MIN_RETAINED_BLOCKS. It is the only table that also has to
+    // reach back past the projection's fold edge, which moves in DAY steps and
+    // so sits up to ~25h behind; the 6h floor the others use cannot reach it.
+    for (const { text, values } of del.seen) {
+      const expected = text.includes("chain_detail_account_events")
+        ? head - ACCOUNT_EVENTS_MIN_RETAINED_BLOCKS + 1
+        : head - 6_000 + 120;
+      assert.deepEqual(values, [expected], text);
+    }
+  });
+
+  test("THE DEEPER FLOOR ONLY EVER KEEPS MORE, never less", async () => {
+    // A lagging decoder pushes the adaptive window PAST the fixed floor, and
+    // when it does the window must still govern: a floor that could raise the
+    // bound would drop blocks the hot tier is expected to serve, which is the
+    // coverage hole this whole module exists to prevent.
+    const head = SEAM + 20_000;
+    const window = chainDetailPruneWindow({ head, seam: SEAM });
+    assert.ok(
+      window.accountEventsKeepFrom <= window.keepFrom,
+      `${window.accountEventsKeepFrom} > ${window.keepFrom}`,
+    );
+    // And in the normal case -- a seam close behind -- it keeps strictly more.
+    const near = chainDetailPruneWindow({ head: SEAM + 200, seam: SEAM });
+    assert.ok(
+      near.accountEventsKeepFrom < near.keepFrom,
+      "the deeper floor did not bind when the seam was close",
+    );
+    assert.equal(
+      near.keepFrom - near.accountEventsKeepFrom,
+      ACCOUNT_EVENTS_MIN_RETAINED_BLOCKS - CHAIN_DETAIL_MIN_RETAINED_BLOCKS,
+    );
   });
 
   test("a tier already inside its window deletes nothing", async () => {
