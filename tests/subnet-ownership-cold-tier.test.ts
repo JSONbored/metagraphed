@@ -66,6 +66,82 @@ function sqlFetch(...responses: unknown[][]) {
   return queries;
 }
 
+describe("the projection short-circuits the scan (#11421)", () => {
+  /**
+   * A stored row carries args PARSED -- the lane restores Iceberg's JSON string
+   * before writing, so the artifact holds the driver shape `decodeChainEventArgs`
+   * needs. A stored row that still held the string would be one this reader
+   * silently drops.
+   */
+  function storedRow() {
+    return {
+      ...ownershipRow(),
+      args: {
+        netuid: 7,
+        old_coldkey: OLD_COLDKEY_BYTES,
+        new_coldkey: NEW_COLDKEY_BYTES,
+      },
+    };
+  }
+
+  /** An archive that answers the ownership key with `body`. */
+  function archive(body: unknown) {
+    return {
+      ...TOKEN,
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return body === null
+            ? null
+            : {
+                async json() {
+                  return body;
+                },
+              };
+        },
+      },
+    };
+  }
+
+  test("an artifact HIT issues no lakehouse query at all", async () => {
+    // The whole point. This read is a measured floor -- minimum 10,420ms in
+    // r2sql across five distinct subjects against production 2026-08-16 -- so
+    // "the artifact answered" has to mean the scan did not run, not that it ran
+    // and was discarded.
+    const q = sqlFetch([ownershipRow()]);
+    const data = (await loadAccountEntitiesColdTier(
+      archive({ schema_version: 1, rows: [storedRow()] }) as never,
+      NEW_COLDKEY_SS58,
+    )) as Row;
+    assert.deepEqual(q, [], "no query reached the warehouse");
+    assert.ok(data, "and the route was still answered");
+  });
+
+  test("an artifact MISS falls through to the scan, unchanged", async () => {
+    // What makes this safe to ship before the lane has ever run: the answer is
+    // identical either way, because the lane stores exactly what this returns.
+    const q = sqlFetch([ownershipRow()]);
+    const data = (await loadAccountEntitiesColdTier(
+      archive(null) as never,
+      NEW_COLDKEY_SS58,
+    )) as Row;
+    assert.equal(q.length, 1, "the lakehouse answered instead");
+    assert.match(q[0]!, /FROM chain\.chain_events/);
+    assert.ok(data);
+  });
+
+  test("an EMPTY stored stream is served, not treated as a miss", async () => {
+    // A chain on which nothing has been traded is the honest state for 127 of
+    // 128 subnets. Falling through on it would leave the scan running forever
+    // on exactly the networks whose answer is cheapest to state.
+    const q = sqlFetch([ownershipRow()]);
+    await loadAccountEntitiesColdTier(
+      archive({ schema_version: 1, rows: [] }) as never,
+      NEW_COLDKEY_SS58,
+    );
+    assert.deepEqual(q, [], "an empty artifact still short-circuits");
+  });
+});
+
 describe("loadAccountEntitiesColdTier", () => {
   test("reads the SubnetOwnerChanged stream with data-api's exact predicate", async () => {
     const q = sqlFetch([ownershipRow()]);
@@ -155,9 +231,14 @@ describe("loadSubnetOwnershipHistoryColdTier", () => {
       TOKEN as never,
       7,
     )) as Row;
-    assert.match(q[0]!, /FROM chain\.chain_events/);
+    // Matched by CONTENT, not by index. The two reads are concurrent, and
+    // since #11421 the stream read awaits the projection artifact before
+    // falling through to SQL -- so which of them reaches the warehouse first is
+    // scheduling, not contract, and pinning `q[0]` asserted the scheduling.
+    const streamQuery = q.find((sql) => /FROM chain\.chain_events/.test(sql));
+    assert.ok(streamQuery, "the stream is still read from chain_events");
     assert.ok(
-      !/netuid/.test(q[0]!),
+      !/netuid/.test(streamQuery),
       "the netuid predicate is not expressible against a JSON-string args column",
     );
     assert.equal(data.netuid, 7);

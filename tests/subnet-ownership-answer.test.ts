@@ -30,13 +30,21 @@ afterEach(() => {
   globalThis.fetch = realFetch;
 });
 
-function sqlFetch(...responses: unknown[][]) {
+/**
+ * Answer by WHICH TABLE the query names, not by call order.
+ *
+ * The two reads are concurrent, so their arrival order is scheduling rather
+ * than contract -- and it changed in #11421, when the stream read started
+ * awaiting the projection artifact before falling through to SQL. An
+ * order-keyed stub silently handed each query the OTHER one's rows, which
+ * reads as a wrong answer rather than a reordering.
+ */
+function sqlFetch(streamRows: unknown[] = [], ledgerRows: unknown[] = []) {
   const queries: string[] = [];
-  let call = 0;
   globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query);
-    const rows = responses[Math.min(call, responses.length - 1)] ?? [];
-    call += 1;
+    const sql = String(JSON.parse(String(init.body)).query);
+    queries.push(sql);
+    const rows = /subnet_ownership_history/.test(sql) ? ledgerRows : streamRows;
     return {
       ok: true,
       status: 200,
@@ -48,10 +56,13 @@ function sqlFetch(...responses: unknown[][]) {
 
 describe("loadSubnetOwnerObservations", () => {
   test("reads one subnet's captures oldest first, narrowed in SQL", async () => {
-    const q = sqlFetch([
-      { owner_coldkey: OWNER_A, captured_at: 1 },
-      { owner_coldkey: OWNER_B, captured_at: 2 },
-    ]);
+    const q = sqlFetch(
+      [],
+      [
+        { owner_coldkey: OWNER_A, captured_at: 1 },
+        { owner_coldkey: OWNER_B, captured_at: 2 },
+      ],
+    );
     const rows = await loadSubnetOwnerObservations(TOKEN, 18);
     assert.match(q[0]!, /FROM chain\.subnet_ownership_history/);
     // The ledger carries netuid as a real column, so unlike the event stream
@@ -76,7 +87,8 @@ describe("loadSubnetOwnerObservations", () => {
 
 describe("answerSubnetOwnershipHistory", () => {
   test("merges both sources into one labelled history", async () => {
-    // The event stream first (it is issued first), then the ledger slice.
+    // Keyed by table, so this says WHICH source carries what rather than
+    // which query happened to be issued first.
     sqlFetch(
       [],
       [

@@ -78,14 +78,28 @@ describe("the projection route list is derived from the router", () => {
     }
   });
 
-  // The other direction: one route per lane, plus the split's extra reader.
-  // A lane whose route is missing here would fill an artifact nobody serves.
-  test("every lane's route is listed", () => {
+  // The other direction: a lane whose consumer is missing would fill an
+  // artifact nobody serves.
+  //
+  // This used to be a bare count equality, which reads as "one route per lane"
+  // but only actually checks that two lists are the same LENGTH -- two lanes
+  // sharing a route and one lane with none would satisfy it exactly as well.
+  // #11421 added the first lane with no chain-scope route at all
+  // (`chain-ownership`, read by the entities and ownership-history cold tiers),
+  // so the count stopped matching and the rule had to be stated properly.
+  test("every lane has a consumer: a chain-scope route, or a named reader", () => {
+    const routeBacked = PROJECTION_LANES.filter((lane) => !lane.servedBy);
     assert.equal(
       PROJECTION_ROUTE_PATHS.length,
-      PROJECTION_LANES.length,
-      "each lane backs exactly one chain-scope route",
+      routeBacked.length,
+      "each route-backed lane backs exactly one chain-scope route",
     );
+    for (const lane of PROJECTION_LANES) {
+      assert.ok(
+        lane.servedBy === undefined || lane.servedBy.length > 0,
+        `${lane.name} declares an empty consumer, which names nothing`,
+      );
+    }
   });
 });
 
