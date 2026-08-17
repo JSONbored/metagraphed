@@ -36,9 +36,16 @@
 // `block=` needs no window at all: it is a single-block lookup and already
 // cheap, so it is passed straight through and stays exact.
 
-import { formatChainEvent } from "./chain-detail-hot-tier.ts";
+import {
+  formatChainEvent,
+  loadChainEventsHeadHotTier,
+} from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { type ChainNetworkId, chainTable } from "./chain-network.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  chainTable,
+} from "./chain-network.ts";
 import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
 import { CHAIN_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { ChainEventsRow } from "../generated/lakehouse/types.ts";
@@ -215,6 +222,55 @@ export async function loadChainEventsColdTier(
     if (cursor) {
       // Within the ceiling block, resume strictly after the cursor's event.
       where.push(`(block_number < ${cursor[1]} OR event_index < ${cursor[2]})`);
+    }
+  }
+
+  // THE HOT STORE FIRST, and it answers this feed's common case entirely.
+  //
+  // Measured live 2026-08-17 before this: `?limit=5` took 16.9s, returned ZERO
+  // rows and set `x-metagraph-degraded` -- the lakehouse read hit its 15s
+  // ceiling even though it was already windowed to 5,000 blocks. The same rows
+  // in Neon answer in 0.030ms off the primary key, and they are NEWER: that
+  // store tracks the chain head while the ceiling above is the decode seam,
+  // ~50 minutes back.
+  //
+  // A SHORT PAGE FALLS THROUGH. The hot store is contiguous from its floor to
+  // the head, so a FULL page is provably the newest `limit` at or below the
+  // ceiling; a short one means the rest lies below that floor and only the
+  // lakehouse has it. Serving the short page would truncate the feed silently,
+  // and would also break the walk -- the cursor below is the same three-part
+  // token this function's own pages emit, so falling through is what lets
+  // pagination cross the seam instead of stopping at it.
+  //
+  // Only for the DEFAULT NETWORK: `chain_detail_*` is mainnet's hot tier and
+  // carries no network column, so another chain's feed must not read it.
+  if (
+    block === null &&
+    (network === undefined || network === DEFAULT_CHAIN_NETWORK)
+  ) {
+    const hot = await loadChainEventsHeadHotTier(env, {
+      limit,
+      ceiling: cursor
+        ? (cursor[1] as number)
+        : before !== null
+          ? before - 1
+          : null,
+      pallet: typeof query.pallet === "string" ? query.pallet : null,
+      method: typeof query.method === "string" ? query.method : null,
+    });
+    if (hot !== null && hot.length === limit) {
+      const page = hot as ChainEventsRow[];
+      const tail = page[page.length - 1]!;
+      return {
+        count: page.length,
+        next_before: safeBlockNumber(tail.block_number),
+        next_cursor: encodeCursor([
+          safeBlockNumber(tail.observed_at),
+          safeBlockNumber(tail.block_number),
+          safeBlockNumber(tail.event_index),
+        ]),
+        events: formatEvents(page),
+      };
     }
   }
 

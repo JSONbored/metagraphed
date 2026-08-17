@@ -8,7 +8,17 @@
 // That case gets its own tests.
 
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { loadChainEventsHeadHotTier } from "../src/chain-detail-hot-tier.ts";
+
+// The head leg reads `chain_detail_chain_events` through src/read-store.ts,
+// which builds `new Client(...)` itself -- so the module is the seam. See
+// tests/helpers/pg-mock.ts for why the controller is hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 import {
   CHAIN_EVENTS_BLOCK_WINDOW,
   CHAIN_EVENTS_STATS_BLOCKS_DEFAULT,
@@ -600,5 +610,167 @@ describe("an unformattable row is passed through, never dropped", () => {
     sqlFetch([null as unknown as Record<string, unknown>]);
     const page = await loadChainEventsColdTier(TOKEN, { limit: 50 });
     assert.equal(page, null, "a corrupt row declines, never half-serves");
+  });
+});
+
+/**
+ * The head of this feed, from Neon instead of the lakehouse.
+ *
+ * Measured live 2026-08-17, `/api/v1/chain-events?limit=5` -- the explorer's
+ * "what is happening on chain" feed:
+ *
+ *   16.9s, 0 rows, x-metagraph-degraded: tier_unavailable
+ *   server-timing: r2sql;dur=15030;desc="1 call"
+ *
+ * 15,030ms is the lakehouse query ceiling. The read was already windowed to
+ * 5,000 blocks and still could not finish, so the feed served an empty list
+ * with a degraded header on every request. The same rows answer in 0.030ms off
+ * `chain_detail_chain_events`'s primary key, which IS this feed's sort order.
+ */
+describe("loadChainEventsColdTier -- the Neon head", () => {
+  const hotRow = (block: number, index = 0, pallet = "SubtensorModule") => ({
+    block_number: block,
+    event_index: index,
+    pallet,
+    method: "NeuronRegistered",
+    args: "{}",
+    phase: "ApplyExtrinsic",
+    extrinsic_index: 1,
+    observed_at: 1_700_000_000_000 + block,
+  });
+
+  /** A store answering the head read with `rows`. */
+  function store(rows: Record<string, unknown>[]) {
+    const seen: string[] = [];
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = ({ text }) => {
+      seen.push(text);
+      pg.control.rows = rows;
+    };
+    return { seen, env: { ...TOKEN, ...pgMockEnv() } as unknown as Env };
+  }
+
+  test("A FULL PAGE COMES FROM NEON, with no lakehouse query at all", async () => {
+    const q = sqlFetch([]);
+    const { seen, env } = store([hotRow(900), hotRow(899), hotRow(898)]);
+    const page = await loadChainEventsColdTier(env, { limit: 3 });
+    assert.ok(page);
+    assert.equal(page.count, 3);
+    assert.equal(q.length, 0, `expected no R2 SQL:\n${q.join("\n")}`);
+    assert.equal(page.events[0]!.block_number, 900, "newest first");
+    assert.match(seen[0]!, /ORDER BY block_number DESC, event_index DESC/);
+  });
+
+  test("A SHORT PAGE FALLS THROUGH -- it does not truncate the feed", async () => {
+    // The hot store is contiguous from its floor to the head, so a FULL page is
+    // provably the newest N; a short one means the rest lies below that floor,
+    // where only the lakehouse has it. Serving the short page would silently
+    // truncate the feed AND break the walk.
+    const q = sqlFetch([]);
+    const { env } = store([hotRow(900)]);
+    await loadChainEventsColdTier(env, { limit: 5 });
+    assert.ok(q.length > 0, "expected the lakehouse read");
+  });
+
+  test("THE CURSOR IS THE SAME TOKEN the lakehouse leg reads", async () => {
+    // What lets the walk cross the seam: page 1 from Neon, page 2 from
+    // whichever tier holds the next rows. A cursor of a different shape would
+    // strand the caller at the boundary.
+    const { env } = store([hotRow(900), hotRow(899)]);
+    sqlFetch([]);
+    const page = await loadChainEventsColdTier(env, { limit: 2 });
+    assert.ok(page?.next_cursor, "a full page must paginate");
+    assert.equal(page.next_before, 899);
+
+    // Feed it back: the ceiling now comes from the cursor, not the head.
+    const second = store([hotRow(898), hotRow(897)]);
+    sqlFetch([]);
+    const next = await loadChainEventsColdTier(second.env, {
+      limit: 2,
+      cursor: page.next_cursor,
+    });
+    assert.ok(next);
+    // `$1`, not `?`: `toPositionalPlaceholders` rewrites the placeholders on
+    // the way to pg, so the recorded text is the converted form.
+    assert.match(second.seen[0]!, /block_number <= \$\d/);
+  });
+
+  test("A PALLET FILTER IS APPLIED IN THE QUERY, not to a cut page", async () => {
+    // A filter applied after the page was already cut to `limit` would return
+    // fewer than the caller asked for while more matches existed.
+    const { seen, env } = store([hotRow(900, 0, "Balances")]);
+    sqlFetch([]);
+    await loadChainEventsColdTier(env, { limit: 1, pallet: "Balances" });
+    assert.match(seen[0]!, /pallet = \$\d/);
+  });
+
+  test("A SINGLE-BLOCK LOOKUP still goes to the lakehouse", async () => {
+    // `?block=` is exact and already cheap, and the hot store holds only a
+    // rolling window -- answering a historical block from it would 404 a block
+    // the lakehouse has.
+    const q = sqlFetch([]);
+    const { env } = store([hotRow(900)]);
+    await loadChainEventsColdTier(env, { limit: 5, block: 900 });
+    assert.ok(q.length > 0, "expected the lakehouse read");
+  });
+
+  test("ANOTHER NETWORK never reads mainnet's hot store", async () => {
+    // `chain_detail_*` carries no network column.
+    sqlFetch([]);
+    const { seen, env } = store([hotRow(900), hotRow(899)]);
+    await loadChainEventsColdTier(env, { limit: 2 }, "testnet");
+    // The hot store is never touched -- that is the whole assertion. Whether
+    // the lakehouse leg then answers or declines is that tier's business (with
+    // no resolvable testnet head it declines), and asserting on it here would
+    // pin an unrelated contract.
+    assert.equal(seen.length, 0, "mainnet's hot store was asked for testnet");
+  });
+
+  test("AN UNUSABLE ARGUMENT REFUSES, and issues no query", async () => {
+    // `loadChainEventsHeadHotTier` is EXPORTED, so "the one caller already
+    // validated it" is a property of today's code and not of the function. A
+    // bad argument must refuse rather than emit `LIMIT 0`, an unbounded read,
+    // or a `pallet = ''` that quietly matches nothing.
+    pg.control.queries.length = 0;
+    pg.control.onQuery = () => {
+      pg.control.rows = [];
+    };
+    const env = pgMockEnv();
+    for (const [label, opts] of [
+      ["zero limit", { limit: 0, ceiling: null }],
+      ["negative limit", { limit: -1, ceiling: null }],
+      ["NaN limit", { limit: Number.NaN, ceiling: null }],
+      ["unusable ceiling", { limit: 5, ceiling: Number.NaN }],
+      ["empty pallet", { limit: 5, ceiling: null, pallet: "" }],
+      ["non-string method", { limit: 5, ceiling: null, method: 7 as never }],
+    ] as [string, Parameters<typeof loadChainEventsHeadHotTier>[1]][]) {
+      assert.equal(
+        await loadChainEventsHeadHotTier(env, opts),
+        null,
+        `${label} must be refused`,
+      );
+    }
+    assert.equal(
+      pg.control.queries.length,
+      0,
+      "an unusable argument reached the store",
+    );
+  });
+
+  test("AN UNREADABLE STORE falls through rather than declining", async () => {
+    const q = sqlFetch([]);
+    pg.control.queries.length = 0;
+    pg.control.onQuery = () => {
+      pg.control.failNext = new Error("store down");
+    };
+    const page = await loadChainEventsColdTier(
+      { ...TOKEN, ...pgMockEnv() } as unknown as Env,
+      { limit: 2 },
+    );
+    assert.ok(page, "the lakehouse still answers");
+    assert.ok(q.length > 0);
   });
 });
