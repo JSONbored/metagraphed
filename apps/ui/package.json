@@ -89,7 +89,7 @@
   "overrides": {
     "@babel/core": "^7.29.7",
     "@tanstack/start-server-core": "1.169.23",
-    "esbuild": "^0.28.1",
+    "esbuild": "^0.28.2",
     "js-yaml": "^4.3.1"
   }
 }
