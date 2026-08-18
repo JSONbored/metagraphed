@@ -50,6 +50,31 @@ function sqlFetch(rows: unknown[]) {
   return { impl, queries };
 }
 
+/**
+ * `sqlFetch` for a loader that issues MORE THAN ONE query.
+ *
+ * The shared helper replays one row set for every query, which cannot express
+ * "the resolve returned this and the neighbour read returned that" -- and a
+ * double that replays the same answer would let a two-query path pass while
+ * reading the wrong result for the second. `null` in the sequence is a failed
+ * query (a non-2xx), so the degradation path is reachable too.
+ */
+function sqlFetchSeq(responses: readonly (unknown[] | null)[]) {
+  const queries: string[] = [];
+  const impl = (async (_u: string, init: RequestInit) => {
+    queries.push(JSON.parse(String(init.body)).query);
+    const rows = responses[queries.length - 1];
+    if (rows === null || rows === undefined) {
+      return new Response("upstream said no", { status: 500 });
+    }
+    return new Response(JSON.stringify({ success: true, result: { rows } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof fetch;
+  return { impl, queries };
+}
+
 describe("safeAuthorLiteral", () => {
   test("accepts an SS58 address, refuses anything else", () => {
     assert.equal(safeAuthorLiteral(AUTHOR), AUTHOR);
@@ -301,12 +326,63 @@ describe("loadBlockFeedFromR2Sql", () => {
 });
 
 describe("loadBlockFromR2Sql", () => {
-  test("resolves by height", async () => {
-    const { impl, queries } = sqlFetch([row(8755000)]);
+  test("resolves by height, and its neighbours ride the SAME query", async () => {
+    // #11462. `prev_block_number`/`next_block_number` were permanently null on
+    // this tier, so #1853's chain-walk nav was structurally present and dead on
+    // the tier that answers the route. The Postgres tier gets them from a
+    // second query; here the ref IS the height, so widening `= N` to
+    // `N-1 .. N+1` returns the block and both neighbours in one read -- no
+    // extra warehouse query on a route that has been rate-limited before.
+    const { impl, queries } = sqlFetch([
+      row(8754999),
+      row(8755000),
+      row(8755001),
+    ]);
     globalThis.fetch = impl;
     const data = await loadBlockFromR2Sql(mockEnv(TOKEN), "8755000");
-    assert.match(queries[0]!, /block_number = 8755000/);
-    assert.equal(data!.block!.block_number, 8755000);
+    assert.equal(queries.length, 1, "one query, not two");
+    assert.match(
+      queries[0]!,
+      /block_number >= 8754999 AND block_number <= 8755001/,
+    );
+    assert.equal(data!.block!.block_number, 8755000, "the asked-for height");
+    assert.equal(data!.prev_block_number, 8754999);
+    assert.equal(data!.next_block_number, 8755001);
+  });
+
+  test("a neighbour this tier does NOT hold is null, not arithmetic", async () => {
+    // PRESENCE, never `height +/- 1`. Arithmetic would advertise a block at a
+    // coverage edge that the API cannot then serve, and a chain-walk link into
+    // a gap is worse than a null saying the walk stops here. The head has no
+    // next and genesis no prev, and both fall out of the same rule.
+    const { impl } = sqlFetch([row(8754999), row(8755000)]);
+    globalThis.fetch = impl;
+    const data = await loadBlockFromR2Sql(mockEnv(TOKEN), "8755000");
+    assert.equal(data!.prev_block_number, 8754999);
+    assert.equal(data!.next_block_number, null, "absent means null");
+  });
+
+  test("the range never asks for a negative height at genesis", async () => {
+    const { impl, queries } = sqlFetch([row(0)]);
+    globalThis.fetch = impl;
+    const data = await loadBlockFromR2Sql(mockEnv(TOKEN), "0");
+    assert.match(queries[0]!, /block_number >= 0 AND block_number <= 1/);
+    assert.equal(data!.prev_block_number, null);
+  });
+
+  test("a range that does NOT contain the asked height is still an absence", async () => {
+    // The neighbours can come back without the block itself -- a gap at exactly
+    // N. Picking `rows[0]` would then serve block N-1 under a ref for N, which
+    // is a wrong answer rather than a missing one.
+    const { impl } = sqlFetch([row(8754999), row(8755001)]);
+    globalThis.fetch = impl;
+    const data = await loadBlockFromR2Sql(mockEnv(TOKEN), "8755000");
+    assert.equal(data!.block, null, "no row for N is no block");
+    assert.equal(
+      data!.prev_block_number,
+      null,
+      "and buildBlock withholds nav without a block to walk from",
+    );
   });
 
   test("resolves by hash, lowercased", async () => {
@@ -314,6 +390,55 @@ describe("loadBlockFromR2Sql", () => {
     globalThis.fetch = impl;
     await loadBlockFromR2Sql(mockEnv(TOKEN), "0xABCDEF");
     assert.match(queries[0]!, /block_hash = '0xabcdef'/);
+  });
+
+  test("a hash ref gets nav too, from a second read of its heights", async () => {
+    // The one path that cannot fold the neighbours in: the height is unknown
+    // until the row returns. It pays the extra query rather than leaving nav
+    // null on half the ref forms -- intermittent nav reads as data rather than
+    // as a tier limit, which is worse than none.
+    const { impl, queries } = sqlFetchSeq([
+      [row(42)],
+      [{ block_number: 41 }, { block_number: 42 }, { block_number: 43 }],
+    ]);
+    globalThis.fetch = impl;
+    const data = await loadBlockFromR2Sql(mockEnv(TOKEN), "0xABCDEF");
+    assert.equal(queries.length, 2);
+    assert.match(queries[1]!, /block_number >= 41 AND block_number <= 43/);
+    assert.match(
+      queries[1]!,
+      /SELECT block_number FROM/,
+      "one column, the cheapest shape this engine has",
+    );
+    assert.equal(data!.block!.block_number, 42);
+    assert.equal(data!.prev_block_number, 41);
+    assert.equal(data!.next_block_number, 43);
+  });
+
+  test("a hash row with an unusable height serves the block and asks no more", async () => {
+    // The height is what the neighbour read is keyed on, so an unreadable one
+    // means there is nothing to ask for. Issuing the second query anyway would
+    // spend a warehouse read to bound a range around NaN.
+    const { impl, queries } = sqlFetchSeq([
+      [{ ...row(42), block_number: null }],
+    ]);
+    globalThis.fetch = impl;
+    const data = await loadBlockFromR2Sql(mockEnv(TOKEN), "0xABCDEF");
+    assert.equal(queries.length, 1, "no neighbour read without a height");
+    assert.equal(data!.prev_block_number, null);
+    assert.equal(data!.next_block_number, null);
+  });
+
+  test("a failed neighbour read still serves the block", async () => {
+    // Nav is a hint; the block is the answer. Declining the whole payload
+    // because a navigation aid could not be read would trade the thing the
+    // caller asked for against the thing it did not.
+    const { impl } = sqlFetchSeq([[row(42)], null]);
+    globalThis.fetch = impl;
+    const data = await loadBlockFromR2Sql(mockEnv(TOKEN), "0xABCDEF");
+    assert.equal(data!.block!.block_number, 42, "the block still lands");
+    assert.equal(data!.prev_block_number, null);
+    assert.equal(data!.next_block_number, null);
   });
 
   test("a confirmed absence is the shared no-such-block payload, not null", async () => {

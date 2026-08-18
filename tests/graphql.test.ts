@@ -5705,7 +5705,9 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
       assert.equal(body.data.block.ref, "123");
       assert.equal(body.data.block.block.block_number, 123);
       assert.equal(body.data.block.block.spec_version, 200);
-      assert.match(lake.queries[0], /block_number = 123/);
+      // #11462 widened this to the block plus its two neighbours, so the
+      // chain-walk fields are populated from the same read.
+      assert.match(lake.queries[0], /block_number >= 122/);
     } finally {
       lake.restore();
     }
