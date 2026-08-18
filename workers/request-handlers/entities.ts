@@ -428,6 +428,7 @@ import {
   resolveLiveEconomics,
   subnetEconomicsRow,
 } from "../../src/health-serving.ts";
+import { mapLimit } from "../../src/health-probe-core.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import {
@@ -7712,6 +7713,19 @@ export async function handleSubnetRevenue(
 /** Every subnet's coverage in one response. Subnets with no observed revenue
  * are INCLUDED with null ratios rather than dropped: omitting them would make
  * the covered set look like the whole network. */
+/**
+ * How many subnet artifacts the revenue-coverage route reads at once.
+ *
+ * SIXTEEN, against 129 subnets: eight waves rather than one burst. The cron
+ * prober's own pool runs at eight and it talks to third-party origins; these
+ * are first-party artifact GETs, so a wider pool is fair, and the ceiling that
+ * matters is the runtime's simultaneous-connection cap rather than any per-read
+ * cost. Sized to collapse the wall clock without ever being the thing that
+ * trips a limit -- the account has been rate-limited before (#9465), and a
+ * latency fix that trades one failure mode for another is not a fix.
+ */
+const REVENUE_COVERAGE_SURFACE_READS = 16;
+
 export async function handleChainRevenueCoverage(
   request: Request,
   env: Env,
@@ -7739,8 +7753,44 @@ export async function handleChainRevenueCoverage(
     readStore(env, REVENUE_OBSERVATION_TABLES) as RevenueStoreDb | undefined,
     null,
   );
+  // THE SAME ARGUMENT THE OBSERVATIONS READ ABOVE ALREADY MAKES, applied to the
+  // read that was still doing it per subnet (#11422).
+  //
+  // `surfaces: await subnetSurfacesFor(env, netuid)` sat INSIDE this loop, so
+  // one artifact read per subnet ran strictly one after another -- 129 round
+  // trips in series. Measured live 2026-08-17, four consecutive samples of
+  // /api/v1/chain/revenue-coverage: 13.9s, 13.9s, 14.3s, 14.4s wall, with
+  // `neon` at 210ms and NO `r2sql` at all. Nearly all of a fourteen-second
+  // request was unattributable to any instrumented storage boundary because it
+  // was not one read being slow, it was a hundred and twenty-nine being
+  // sequential.
+  //
+  // BOUNDED, not `Promise.all`. `mapLimit` is what the cron prober already uses
+  // "to respect the runtime's simultaneous-connection cap", and firing 129
+  // artifact GETs at once to fix a latency problem is how a rate limit becomes
+  // the next one (#9465). It preserves INPUT ORDER, which is what lets the
+  // results be indexed against `rows` below.
+  //
+  // STILL READS EVERY SUBNET, deliberately. Only five subnets carry an
+  // `external-revenue` surface today (51, 64, 75, 93, 110), and the published
+  // `/metagraph/surfaces.json` does carry `revenue`, so the list could be
+  // narrowed to those five. That would make this route's correctness depend on
+  // the bulk artifact agreeing with the per-subnet ones -- and if it ever
+  // lagged, a newly declared revenue surface would vanish from coverage
+  // silently, which is a worse failure than a slower read. The sequencing was
+  // the defect; the source is not.
+  const surfacesByRow = await mapLimit(
+    rows,
+    REVENUE_COVERAGE_SURFACE_READS,
+    async (row: Record<string, unknown>) => {
+      const netuid = Number(row?.netuid);
+      if (!Number.isInteger(netuid)) return null;
+      return subnetSurfacesFor(env, netuid);
+    },
+  );
+
   const subnets = [];
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
     const netuid = Number(row?.netuid);
     if (!Number.isInteger(netuid)) continue;
     subnets.push(
@@ -7748,7 +7798,7 @@ export async function handleChainRevenueCoverage(
         netuid,
         window_days: windowDays,
         economics: row,
-        surfaces: await subnetSurfacesFor(env, netuid),
+        surfaces: surfacesByRow[index] ?? null,
         usd_per_tao: usd,
         observations: allObservations ?? null,
       }),
