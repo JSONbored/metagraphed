@@ -2344,6 +2344,23 @@ export function canonicalSubnetOwnerCaptureCachePath(url: URL) {
   return `${url.pathname}?window=${encodeURIComponent(label)}`;
 }
 
+/**
+ * Canonical edge-cache key for the chain-wide revenue-coverage route.
+ *
+ * `?window=` (one of SUBNET_REVENUE_WINDOWS) is the only parameter the handler
+ * reads, so an omitted window and an explicit `?window=1d` must share one slot
+ * rather than recomputing all 129 subnets twice.
+ */
+export function canonicalChainRevenueCoverageCachePath(url: URL) {
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = resolveWindow(
+    url,
+    SUBNET_REVENUE_WINDOW_DAYS,
+    DEFAULT_SUBNET_REVENUE_WINDOW,
+  );
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
 // Canonical edge-cache key for the subnet-turnover route (?window= via
 // parseHistoryWindow). Distinct from canonicalSubnetConcentrationHistoryCachePath
 // which uses a different parse function (parseConcentrationHistoryWindow).
