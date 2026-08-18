@@ -282,26 +282,135 @@ export async function loadBlockFromR2Sql(
   const asNumber = safeBlockNumber(ref);
   const asHash = asNumber === null ? safeHexLiteral(ref) : null;
   if (asNumber === null && asHash === null) return null;
-  const predicate =
-    asNumber !== null
-      ? `block_number = ${asNumber}`
-      : `block_hash = '${asHash}'`;
+  const table = chainTable("blocks", network);
+
+  // CHAIN-WALK NAV, AT NO EXTRA QUERY (#11462). This tier served
+  // `prev_block_number`/`next_block_number` as permanently null, so #1853's
+  // navigation was structurally present and dead on the tier that answers this
+  // route -- a client walking the chain got null and stopped, with nothing in
+  // the payload saying the tier simply did not populate them.
+  //
+  // The Postgres tier gets them from a SECOND query for its nearest stored
+  // neighbours, and copying that here was the option this was parked on: one
+  // more warehouse query per read, on a route measured at a 3,647ms median
+  // against an account that has been rate-limited before (#9465).
+  //
+  // It does not need one. The ref IS the height, so the block and both
+  // neighbours are three adjacent values of the column this table is ordered
+  // by -- widening `= N` to `N-1 .. N+1` returns all three in the SAME query.
+  // R2 SQL prunes columns well and files poorly (src/r2-sql.ts), and a
+  // three-height range opens exactly the parts the point lookup already did.
+  //
+  // PRESENCE, NOT ARITHMETIC. A neighbour is reported only when this tier
+  // actually holds it, so nav never links to a block the API cannot then
+  // serve. That is the Postgres tier's own rule -- nearest STORED neighbour --
+  // narrowed to +/-1, which is the same answer on a contiguous chain and an
+  // honest null at a coverage edge instead of a link into a gap.
+  if (asNumber !== null) {
+    const rows = await r2SqlQuery<BlocksRow>(
+      env,
+      `SELECT ${BLOCK_COLUMNS} FROM ${table} ` +
+        `WHERE block_number >= ${Math.max(asNumber - 1, 0)} ` +
+        `AND block_number <= ${asNumber + 1} ` +
+        `ORDER BY block_number ASC LIMIT 3`,
+    );
+    // A CONFIGURED lakehouse that could not answer is a decline, not "no such
+    // block" (#11424). This route was measured at 15,085ms -- AT the 15s
+    // `QUERY_TIMEOUT_MS` -- on 2026-08-16, and the bare null reached the caller
+    // as the same payload a confirmed absence produces, which is the one
+    // distinction the comment below already insists on. With NO lakehouse bound
+    // the null stands: there is nothing to read and the caller's own floor is
+    // correct.
+    if (rows === null) {
+      return isR2SqlConfigured(env) ? declineBlock(ref) : null;
+    }
+    // A confirmed absence is an ANSWER: buildBlock(undefined, ref) is the same
+    // "no such block" payload the Postgres tier produces, and returning it here
+    // (rather than null) stops the caller re-deriving it.
+    return buildBlock(
+      recordOrNull(rows.find((row) => blockHeight(row) === asNumber)),
+      ref,
+      neighboursOf(rows, asNumber),
+    );
+  }
+
   const rows = await r2SqlQuery<BlocksRow>(
     env,
-    `SELECT ${BLOCK_COLUMNS} FROM ${chainTable("blocks", network)} WHERE ${predicate} LIMIT 1`,
+    `SELECT ${BLOCK_COLUMNS} FROM ${table} WHERE block_hash = '${asHash}' LIMIT 1`,
   );
-  // A CONFIGURED lakehouse that could not answer is a decline, not "no such
-  // block" (#11424). This route was measured at 15,085ms -- AT the 15s
-  // `QUERY_TIMEOUT_MS` -- on 2026-08-16, and the bare null reached the caller
-  // as the same payload a confirmed absence produces, which is the one
-  // distinction the comment below already insists on. With NO lakehouse bound
-  // the null stands: there is nothing to read and the caller's own floor is
-  // correct.
   if (rows === null) {
     return isR2SqlConfigured(env) ? declineBlock(ref) : null;
   }
-  // A confirmed absence is an ANSWER: buildBlock(undefined, ref) is the same
-  // "no such block" payload the Postgres tier produces, and returning it here
-  // (rather than null) stops the caller re-deriving it.
-  return buildBlock(recordOrNull(rows[0]), ref);
+  const row = recordOrNull(rows[0]);
+  // From the ROW, not from `recordOrNull`'s widened copy: `blockHeight` reads a
+  // typed column, and going through `Record<string, unknown>` would put this
+  // back on the untyped-read ratchet the generated catalog types exist to keep
+  // at zero.
+  const height = blockHeight(rows[0]);
+  if (row === null || height === null) return buildBlock(row, ref);
+
+  // A HASH REF CANNOT FOLD ITS NEIGHBOURS IN, because the height is not known
+  // until the row comes back -- so this is the one path that pays a second
+  // query, and it pays it for parity rather than leaving nav null on half the
+  // ref forms. Intermittent nav is worse than none: it reads as data rather
+  // than as a tier limit.
+  //
+  // ONE COLUMN over three heights, which is the cheapest shape this engine
+  // has, and it lands on a route the edge already holds for 600s (#11016), so
+  // it is paid on a cache miss by a minority ref form.
+  //
+  // A FAILED NEIGHBOUR READ STILL SERVES THE BLOCK. Nav is a hint; the block
+  // is the answer. Declining the whole payload because a navigation aid could
+  // not be read would trade the thing the caller asked for against the thing
+  // it did not.
+  const neighbours = await r2SqlQuery<BlocksRow>(
+    env,
+    `SELECT block_number FROM ${table} ` +
+      `WHERE block_number >= ${Math.max(height - 1, 0)} ` +
+      `AND block_number <= ${height + 1} ` +
+      `ORDER BY block_number ASC LIMIT 3`,
+  );
+  return buildBlock(
+    row,
+    ref,
+    neighbours === null ? undefined : neighboursOf(neighbours, height),
+  );
+}
+
+/**
+ * One row's height, coerced -- the engine can hand back a numeric string.
+ *
+ * Takes a ROW, not `unknown`, and carries no shape guard: `r2SqlQuery`
+ * validates every row against the catalog schema and throws on one that does
+ * not match, so a non-object can never arrive here. A `typeof row === "object"`
+ * check would be an unreachable branch, which is not safety -- the same reading
+ * src/account-feeds-cold-tier.ts applies to its own `?? 0`.
+ *
+ * The null it DOES return is reachable and load-bearing: every catalog column is
+ * nullable, so `block_number` can legitimately arrive null.
+ */
+function blockHeight(row: BlocksRow | undefined): number | null {
+  return safeBlockNumber(row?.block_number);
+}
+
+/**
+ * `prev`/`next` from the heights actually returned, never from `height +/- 1`.
+ *
+ * The distinction is the whole point of reading the range: arithmetic would
+ * advertise a neighbour at a coverage edge that this tier cannot serve, and a
+ * chain-walk link into a gap is worse than a null that says "the walk stops
+ * here". Genesis has no prev and the head has no next, and both fall out of
+ * presence without being special-cased.
+ */
+function neighboursOf(
+  rows: readonly BlocksRow[],
+  height: number,
+): { prev: number | null; next: number | null } {
+  const heights = new Set(
+    rows.map(blockHeight).filter((n): n is number => n !== null),
+  );
+  return {
+    prev: heights.has(height - 1) ? height - 1 : null,
+    next: heights.has(height + 1) ? height + 1 : null,
+  };
 }

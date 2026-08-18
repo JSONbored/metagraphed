@@ -197,7 +197,10 @@ describe("the resolved seam actually routes the request", () => {
       String(above),
     );
     assert.deepEqual(sql, [], "D1 must not be asked for a decoded block");
-    assert.match(queries[0]!, new RegExp(`block_number = ${above}`));
+    // The range #11462 widened the point lookup to -- the block and both
+    // neighbours in one query. Matched on the lower bound so this keeps
+    // asserting WHICH height was asked for, which is what this test is about.
+    assert.match(queries[0]!, new RegExp(`block_number >= ${above - 1}`));
     assert.equal(data!.block!.author, lakeRow(above).author);
   });
 
@@ -603,7 +606,7 @@ describe("loadBlockColdTier", () => {
     );
     assert.equal(data!.block!.block_number, SEAM);
     assert.equal(sql.length, 0, "D1 cannot own this height, so is not asked");
-    assert.match(queries[0]!, new RegExp(`block_number = ${SEAM}`));
+    assert.match(queries[0]!, new RegExp(`block_number >= ${SEAM - 1}`));
   });
 
   test("a height above the seam that D1 lacks is a real absence, not a scan", async () => {
