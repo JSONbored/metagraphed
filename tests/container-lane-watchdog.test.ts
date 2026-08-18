@@ -161,13 +161,47 @@ describe("evaluateContainerLanes", () => {
       statuses: [
         { lane: "a", body: { updated_at: FRESH, ok: true } },
         { lane: "b", body: { checked_at: FRESH, ok: true } },
+        // THE THIRD, and its absence made a lane read `unknown` for the whole
+        // of every pass. Measured 2026-08-18: account-summary publishes
+        // `{"phase":"scanning","started_at":...}` mid-scan with neither other
+        // spelling, so `container:account-summary` reported "status carries no
+        // readable timestamp" while its producer was demonstrably healthy.
+        { lane: "c", body: { started_at: FRESH, ok: null } },
       ],
       nowMs: NOW,
       thresholdMs: CONTAINER_LANE_THRESHOLD_MS,
     });
     assert.deepEqual(
       verdict.entries.map((e) => e.verdict),
-      ["ok", "ok"],
+      ["ok", "ok", "ok"],
+    );
+  });
+
+  test("a pass that STARTED too long ago is stale, not unknown", () => {
+    // `started_at` is the right freshness signal during a pass, not merely a
+    // third field to accept: a scan still scanning long past the threshold is
+    // exactly what this watchdog exists to report, and reading it as `unknown`
+    // would file it as unreadable instead.
+    const verdict = evaluateContainerLanes({
+      statuses: [
+        {
+          lane: "slow",
+          body: {
+            started_at: new Date(
+              NOW - CONTAINER_LANE_THRESHOLD_MS * 2,
+            ).toISOString(),
+            ok: null,
+            phase: "scanning",
+          },
+        },
+      ],
+      nowMs: NOW,
+      thresholdMs: CONTAINER_LANE_THRESHOLD_MS,
+    });
+    assert.equal(verdict.entries[0]!.verdict, "stale");
+    assert.ok(
+      (verdict.entries[0]!.age_ms ?? 0) > CONTAINER_LANE_THRESHOLD_MS,
+      "the age is measured from the start, not discarded",
     );
   });
 
