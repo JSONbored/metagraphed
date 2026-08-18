@@ -428,12 +428,12 @@ import {
   resolveLiveEconomics,
   subnetEconomicsRow,
 } from "../../src/health-serving.ts";
-import { mapLimit } from "../../src/health-probe-core.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import {
-  REVENUE_COVERAGE_SURFACE_READS,
+  ALL_SURFACES_ARTIFACT,
   SUBNET_REVENUE_FIELD_SOURCES,
+  groupSurfacesByNetuid,
   loadSubnetRevenue,
 } from "../../src/revenue-load.ts";
 import {
@@ -7741,44 +7741,25 @@ export async function handleChainRevenueCoverage(
     readStore(env, REVENUE_OBSERVATION_TABLES) as RevenueStoreDb | undefined,
     null,
   );
-  // THE SAME ARGUMENT THE OBSERVATIONS READ ABOVE ALREADY MAKES, applied to the
-  // read that was still doing it per subnet (#11422).
+  // ONE READ FOR THE WHOLE NETWORK, which is what the observations read above
+  // has always done and what the surfaces read now does too (#11422).
   //
-  // `surfaces: await subnetSurfacesFor(env, netuid)` sat INSIDE this loop, so
-  // one artifact read per subnet ran strictly one after another -- 129 round
-  // trips in series. Measured live 2026-08-17, four consecutive samples of
-  // /api/v1/chain/revenue-coverage: 13.9s, 13.9s, 14.3s, 14.4s wall, with
-  // `neon` at 210ms and NO `r2sql` at all. Nearly all of a fourteen-second
-  // request was unattributable to any instrumented storage boundary because it
-  // was not one read being slow, it was a hundred and twenty-nine being
-  // sequential.
-  //
-  // BOUNDED, not `Promise.all`. `mapLimit` is what the cron prober already uses
-  // "to respect the runtime's simultaneous-connection cap", and firing 129
-  // artifact GETs at once to fix a latency problem is how a rate limit becomes
-  // the next one (#9465). It preserves INPUT ORDER, which is what lets the
-  // results be indexed against `rows` below.
-  //
-  // STILL READS EVERY SUBNET, deliberately. Only five subnets carry an
-  // `external-revenue` surface today (51, 64, 75, 93, 110), and the published
-  // `/metagraph/surfaces.json` does carry `revenue`, so the list could be
-  // narrowed to those five. That would make this route's correctness depend on
-  // the bulk artifact agreeing with the per-subnet ones -- and if it ever
-  // lagged, a newly declared revenue surface would vanish from coverage
-  // silently, which is a worse failure than a slower read. The sequencing was
-  // the defect; the source is not.
-  const surfacesByRow = await mapLimit(
-    rows,
-    REVENUE_COVERAGE_SURFACE_READS,
-    async (row: Record<string, unknown>) => {
-      const netuid = Number(row?.netuid);
-      if (!Number.isInteger(netuid)) return null;
-      return subnetSurfacesFor(env, netuid);
-    },
+  // #11477 made the 129 per-subnet reads concurrent (14.4s -> 1.7s); this
+  // removes them. `surfaces.json` carries every subnet's surfaces in 3.5 MB
+  // against ~35 MB for 129 per-subnet artifacts, is published by the same build
+  // (identical `generated_at`), and matches field for field on every
+  // external-revenue surface. See `groupSurfacesByNetuid` for the parity
+  // measurement.
+  const allSurfaces = await readArtifact(env, ALL_SURFACES_ARTIFACT);
+  const surfacesByNetuid = groupSurfacesByNetuid(
+    allSurfaces.ok
+      ? ((allSurfaces.data as Record<string, unknown> | undefined)?.surfaces as
+          Array<Record<string, unknown>> | undefined)
+      : null,
   );
 
   const subnets = [];
-  for (const [index, row] of rows.entries()) {
+  for (const row of rows) {
     const netuid = Number(row?.netuid);
     if (!Number.isInteger(netuid)) continue;
     subnets.push(
@@ -7786,7 +7767,7 @@ export async function handleChainRevenueCoverage(
         netuid,
         window_days: windowDays,
         economics: row,
-        surfaces: surfacesByRow[index] ?? null,
+        surfaces: surfacesByNetuid.get(netuid) ?? null,
         usd_per_tao: usd,
         observations: allObservations ?? null,
       }),

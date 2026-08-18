@@ -36,7 +36,6 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import { asJsonObject } from "../schemas-src/json-request.ts";
-import { mapLimit } from "./health-probe-core.ts";
 
 import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
 import { GraphqlResponsePayloadSchema } from "../schemas-src/internal-wire.ts";
@@ -1714,8 +1713,9 @@ import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import {
-  REVENUE_COVERAGE_SURFACE_READS,
+  ALL_SURFACES_ARTIFACT,
   SUBNET_REVENUE_FIELD_SOURCES,
+  groupSurfacesByNetuid,
   loadSubnetRevenue,
   revenueWindowDays,
 } from "./revenue-load.ts";
@@ -9850,22 +9850,29 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ),
       );
       const allObservations = await mcpRevenueObservations(ctx, null);
-      // AND THE SURFACE READ TOO (#11422). The comment above says "ONE read for
-      // every subnet, matching the REST handler" -- it matched the REST handler
-      // in the defect as well, awaiting one artifact per subnet inside the
-      // loop. Same bounded pool, same constant, so all three surfaces move
-      // together.
-      const surfacesByRow = await mapLimit(
-        rows,
-        REVENUE_COVERAGE_SURFACE_READS,
-        async (row: Record<string, unknown>) => {
-          const netuid = Number(row?.netuid);
-          if (!Number.isInteger(netuid)) return null;
-          return mcpSubnetSurfaces(ctx, netuid);
-        },
-      );
+      // ONE READ (#11422). #11478 made the 129 per-subnet reads concurrent;
+      // this removes them, matching REST and GraphQL. See
+      // `groupSurfacesByNetuid` for why the bulk artifact is an exact
+      // substitute.
+      //
+      // CAUGHT, exactly as `mcpSubnetSurfaces` catches: `loadArtifactData`
+      // THROWS on a missing artifact rather than answering `{ ok: false }` the
+      // way `readArtifact` does, so an unpublished or unreadable surfaces.json
+      // would take the whole tool down instead of costing it the declarations.
+      // No surfaces is the same answer the per-subnet read gave when a subnet
+      // artifact was absent: no revenue sources, not an error.
+      let surfacesByNetuid: Map<number, Array<Record<string, unknown>>>;
+      try {
+        const allSurfaces = await loadArtifactData(ctx, ALL_SURFACES_ARTIFACT);
+        surfacesByNetuid = groupSurfacesByNetuid(
+          allSurfaces?.surfaces as Array<Record<string, unknown>> | undefined,
+        );
+      } catch {
+        surfacesByNetuid = new Map();
+      }
+
       const subnets = [];
-      for (const [index, row] of rows.entries()) {
+      for (const row of rows) {
         const netuid = Number(row?.netuid);
         if (!Number.isInteger(netuid)) continue;
         subnets.push(
@@ -9873,7 +9880,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             netuid,
             window_days: windowDays,
             economics: row,
-            surfaces: surfacesByRow[index] ?? null,
+            surfaces: surfacesByNetuid.get(netuid) ?? null,
             usd_per_tao: usd,
             observations: allObservations,
           }),

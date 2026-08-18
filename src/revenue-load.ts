@@ -81,22 +81,62 @@ export function taoTotalPerBlock(economics: Row | null): number {
  * series is src/revenue-serving.ts's job, because that is where the grain and
  * `supersedes` rules live.
  */
+/** The one published artifact carrying every subnet's surfaces. */
+export const ALL_SURFACES_ARTIFACT = "/metagraph/surfaces.json";
+
 /**
- * How many subnet artifacts a network-wide revenue read fetches at once.
+ * Every subnet's surfaces, grouped by netuid, from the ONE artifact that
+ * carries all of them.
  *
- * DECLARED HERE because all three surfaces compose the same answer -- REST's
- * `handleChainRevenueCoverage`, GraphQL's `chain_revenue_coverage` and the MCP
- * tool -- and each one had its own `await` inside its own loop. Fixing one and
- * leaving two is how the REST route ended up eight times faster than the field
- * serving the identical data (#11422).
+ * ## Why one read replaces a hundred and twenty-nine
  *
- * SIXTEEN, against 129 subnets: eight waves rather than one burst. `mapLimit`
- * rather than `Promise.all` for the reason the cron prober uses it -- to
- * respect the runtime's simultaneous-connection cap. Firing every read at once
- * to fix a latency problem is how a rate limit becomes the next one, and this
- * account has been rate-limited before (#9465).
+ * The three surfaces composing network-wide revenue each read
+ * `/metagraph/subnets/{netuid}.json` per subnet. #11477 and #11478 made those
+ * reads concurrent, taking REST from 14.4s to 1.7s and GraphQL from 7.5s to
+ * 1.0s -- but 129 reads of a ~271 KB artifact is ~35 MB per request however it
+ * is scheduled, and that is the floor those changes hit. `surfaces.json` is
+ * 3.5 MB and carries the same surfaces.
+ *
+ * ## Why substituting it is safe -- which #11478 argued the opposite of
+ *
+ * That PR declined this on the grounds it "would make this route's correctness
+ * depend on the bulk artifact agreeing with the per-subnet ones". Measured,
+ * they cannot disagree: `surfaces.json`, `subnets/64.json` and
+ * `economics.json` all carry the SAME `generated_at`
+ * (2026-08-14T12:14:17.177Z), because one build publishes all of them. There is
+ * no window in which one is newer than another.
+ *
+ * And they agree where it counts. All ten `external-revenue` surfaces across
+ * the five subnets that declare them (51, 64, 75, 93, 110) match field for
+ * field between the two sources -- `revenue`, `url`, `source_urls`, `kind`,
+ * `id`, `netuid` -- verified 2026-08-18. `loadSubnetRevenue` consumes
+ * `surfaces` through `revenueSourcesFor` and nothing else, so those are the
+ * fields that decide the answer.
+ *
+ * GROUPED WHOLE, not filtered to revenue surfaces. Returning every surface for
+ * a netuid keeps this exactly what the per-subnet read returned, so a future
+ * change to what `revenueSourcesFor` looks for cannot quietly outgrow it.
  */
-export const REVENUE_COVERAGE_SURFACE_READS = 16;
+export function groupSurfacesByNetuid(
+  all: Row[] | null | undefined,
+): Map<number, Row[]> {
+  const out = new Map<number, Row[]>();
+  for (const surface of Array.isArray(all) ? all : []) {
+    const raw = (surface as Row | undefined)?.netuid;
+    // `typeof raw === "number"` BEFORE the integer check, because `Number(null)`
+    // is 0 and `Number("")` is 0 -- a surface with a null netuid would be filed
+    // under subnet ZERO, which exists. The per-subnet read this replaces could
+    // not reach that case: the netuid was the path it fetched, so an unusable
+    // one produced no artifact rather than a wrong bucket. Reading them out of
+    // one artifact makes the value reachable, so it has to be checked.
+    if (typeof raw !== "number" || !Number.isInteger(raw)) continue;
+    const netuid = raw;
+    const bucket = out.get(netuid);
+    if (bucket) bucket.push(surface);
+    else out.set(netuid, [surface]);
+  }
+  return out;
+}
 
 export function revenueSourcesFor(
   surfaces: Row[] | null | undefined,

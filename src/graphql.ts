@@ -1,5 +1,4 @@
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
-import { mapLimit } from "./health-probe-core.ts";
 import { asJsonObject } from "../schemas-src/json-request.ts";
 
 import { observationsReadDb } from "./observations-read-runner.ts";
@@ -944,8 +943,9 @@ import type {
 } from "../generated/graphql/types.ts";
 import { readStore } from "./read-store.ts";
 import {
-  REVENUE_COVERAGE_SURFACE_READS,
+  ALL_SURFACES_ARTIFACT,
   SUBNET_REVENUE_FIELD_SOURCES,
+  groupSurfacesByNetuid,
   loadSubnetRevenue,
   revenueWindowDays,
 } from "./revenue-load.ts";
@@ -7553,24 +7553,18 @@ const rootValue = {
       readStore(context.env, REVENUE_OBSERVATION_TABLES),
       null,
     );
-    // THE SAME ARGUMENT THE OBSERVATIONS READ ABOVE MAKES (#11422). The surface
-    // read was left inside the loop, so this field paid 129 artifact reads in
-    // series -- measured 6.6s and 7.5s live, against a 5s budget, while the
-    // REST route serving identical data had just been fixed to 1.7s. Hoisted
-    // onto the same bounded pool, from the same constant, so the three surfaces
-    // cannot drift again.
-    const surfacesByRow = await mapLimit(
-      rows as Row[],
-      REVENUE_COVERAGE_SURFACE_READS,
-      async (row: Row) => {
-        const netuid = Number(row?.netuid);
-        if (!Number.isInteger(netuid)) return null;
-        return surfacesForNetuid(context, netuid);
-      },
+    // ONE READ, matching the observations read above (#11422). #11478 made the
+    // 129 per-subnet reads concurrent (7.5s -> 1.0s); this removes them. See
+    // `groupSurfacesByNetuid` for why the bulk artifact is an exact substitute.
+    const allSurfaces = await readArtifact(context.env, ALL_SURFACES_ARTIFACT);
+    const surfacesByNetuid = groupSurfacesByNetuid(
+      allSurfaces.ok
+        ? ((allSurfaces.data as Row | undefined)?.surfaces as Row[] | undefined)
+        : null,
     );
 
     const subnets = [];
-    for (const [index, row] of (rows as Row[]).entries()) {
+    for (const row of rows as Row[]) {
       const netuid = Number(row?.netuid);
       if (!Number.isInteger(netuid)) continue;
       subnets.push(
@@ -7578,7 +7572,7 @@ const rootValue = {
           netuid,
           window_days: windowDays,
           economics: row,
-          surfaces: surfacesByRow[index] ?? null,
+          surfaces: surfacesByNetuid.get(netuid) ?? null,
           usd_per_tao: usd,
           observations: observations ?? null,
         }),
