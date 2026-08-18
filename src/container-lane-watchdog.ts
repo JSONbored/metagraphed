@@ -139,6 +139,9 @@ export interface ContainerLaneStatus {
   body: {
     checked_at?: string | null;
     updated_at?: string | null;
+    /** Published by a script reporting an IN-PROGRESS pass, where the other two
+     * spellings appear only once it finishes. */
+    started_at?: string | null;
     ok?: boolean | null;
     status?: string | null;
     detail?: string | null;
@@ -230,9 +233,29 @@ export function evaluateContainerLanes(input: {
         age_ms: null,
       };
     }
-    // Either spelling. Which word the producing script chose is not a fact
-    // about lane health, so the reader takes whichever is there.
-    const stampedAt = body.checked_at ?? body.updated_at ?? null;
+    // ANY OF THE THREE SPELLINGS. Which word the producing script chose is not
+    // a fact about lane health, so the reader takes whichever is there.
+    //
+    // `started_at` was the missing one, and its absence made a lane read
+    // `unknown` for the whole of every pass it ran. Measured 2026-08-18: the
+    // account-summary container publishes
+    //
+    //   {"phase":"scanning","started_at":"2026-08-18T07:27:19Z","ok":null,
+    //    "rows_scanned":2125318,...}
+    //
+    // mid-scan -- no `checked_at`, no `updated_at` -- so `container:account-
+    // summary` sat at "status carries no readable timestamp" while its producer
+    // was demonstrably healthy (generation 20260818T072733Z, ten minutes old).
+    // A verdict that cannot be cleared while a lane is WORKING is the opposite
+    // of what this watchdog is for.
+    //
+    // AND IT IS THE RIGHT FRESHNESS SIGNAL, not merely a third field to accept:
+    // during a pass, when that pass STARTED is exactly the age that matters --
+    // a scan still scanning three hours later is stale, and this is the field
+    // that says so. Ordered last so a script publishing both keeps reporting
+    // its most recent stamp rather than its oldest.
+    const stampedAt =
+      body.checked_at ?? body.updated_at ?? body.started_at ?? null;
     const at = stampedAt === null ? Number.NaN : Date.parse(stampedAt);
     if (!Number.isFinite(at)) {
       return {
