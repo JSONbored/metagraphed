@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resetSurfacesMemo } from "../src/revenue-load.ts";
 import { markedChainEventsPayload } from "../src/chain-events-degraded.ts";
 import { MIN_INCIDENT_SAMPLES } from "../src/health-serving.ts";
 import { visibleInWindow } from "./helpers/scan-window.ts";
@@ -81,6 +82,12 @@ import {
   PROMETHEUS_DEGRADED_NOT_CURATED,
 } from "../src/uncurated-event-streams.ts";
 import type { AnyFn, Row } from "./row-type.ts";
+
+// The surfaces map is memoized per ISOLATE and the registry resets module state
+// between test FILES, not between tests -- so without this a fixture from one
+// case would answer the next one's read. Same reason
+// tests/account-summary-projection.test.ts resets its pointer cache.
+beforeEach(() => resetSurfacesMemo());
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv: Row = {};

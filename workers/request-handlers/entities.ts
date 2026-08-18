@@ -433,8 +433,8 @@ import { readArtifact, readHealthKv } from "../storage.ts";
 import {
   ALL_SURFACES_ARTIFACT,
   SUBNET_REVENUE_FIELD_SOURCES,
-  groupSurfacesByNetuid,
   loadSubnetRevenue,
+  surfacesByNetuidMemoized,
 } from "../../src/revenue-load.ts";
 import {
   loadSweepRecord,
@@ -7750,13 +7750,13 @@ export async function handleChainRevenueCoverage(
   // (identical `generated_at`), and matches field for field on every
   // external-revenue surface. See `groupSurfacesByNetuid` for the parity
   // measurement.
-  const allSurfaces = await readArtifact(env, ALL_SURFACES_ARTIFACT);
-  const surfacesByNetuid = groupSurfacesByNetuid(
-    allSurfaces.ok
+  const surfacesByNetuid = await surfacesByNetuidMemoized(async () => {
+    const allSurfaces = await readArtifact(env, ALL_SURFACES_ARTIFACT);
+    return allSurfaces.ok
       ? ((allSurfaces.data as Record<string, unknown> | undefined)?.surfaces as
           Array<Record<string, unknown>> | undefined)
-      : null,
-  );
+      : null;
+  });
 
   const subnets = [];
   for (const row of rows) {
