@@ -114,6 +114,7 @@ import {
   handleExtrinsics,
   handleExtrinsic,
   canonicalSubnetHistoryCachePath,
+  canonicalChainRevenueCoverageCachePath,
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
   canonicalSubnetWeightsCachePath,
@@ -1641,6 +1642,29 @@ describe("handleSubnetTurnover", () => {
       body.meta.artifact_path,
       `/metagraph/subnets/${NETUID}/turnover.json`,
     );
+  });
+
+  describe("canonicalChainRevenueCoverageCachePath", () => {
+    const PATH = "/api/v1/chain/revenue-coverage";
+    const at = (search = "") =>
+      canonicalChainRevenueCoverageCachePath(
+        new URL(`https://api.metagraph.sh${PATH}${search}`),
+      );
+
+    test("omitted window canonicalises to the default, so both share one entry", () => {
+      // This route folds all 129 subnets together. Two keys for one answer
+      // means folding them twice.
+      assert.equal(at(), `${PATH}?window=1d`);
+      assert.equal(at("?window=1d"), `${PATH}?window=1d`);
+      assert.equal(at("?window=30d"), `${PATH}?window=30d`);
+    });
+
+    test("a REJECTED query passes through verbatim, never onto a valid key", () => {
+      // Canonicalising an invalid query onto the default key would file the
+      // 400 under the slot the good answer lives in -- and, worse, let the
+      // rejected request be answered from a warm entry.
+      assert.equal(at("?window=nonsense"), `${PATH}?window=nonsense`);
+    });
   });
 
   describe("canonicalSubnetTurnoverCachePath", () => {

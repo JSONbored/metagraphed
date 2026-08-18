@@ -30,6 +30,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import { resetObservedThroughCache } from "../src/lakehouse-observed-through.ts";
+import { resetSurfacesMemo } from "../src/revenue-load.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 // Edge-cache coverage for the store-backed analytics routes (audit #6). These four
@@ -269,6 +270,9 @@ afterEach(() => {
 beforeEach(() => {
   resetDecodeWatermarkCache();
   resetObservedThroughCache();
+  // The revenue-coverage fold memoizes the surfaces artifact for five minutes,
+  // and registerModuleStateReset fires between test FILES, not between tests.
+  resetSurfacesMemo();
 });
 
 describe("analytics edge cache", () => {
@@ -715,6 +719,44 @@ describe("analytics edge cache", () => {
     assert.deepEqual(cache.putKeys, [
       expectedKey("subnet-owner-cut", "/api/v1/subnets/7/owner-cut"),
     ]);
+  });
+
+  test("chain revenue-coverage caches under the canonical window", async () => {
+    // A whole-network fold -- 129 subnets joined from the economics blob, the
+    // observation table and the surfaces artifact -- that ran on every request.
+    // Measured against production 2026-08-18 it answered in 0.69s and 1.10s on
+    // two consecutive requests, i.e. it was not caching at all.
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/revenue-coverage"),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(res.status, 200);
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "chain-revenue-coverage",
+        "/api/v1/chain/revenue-coverage",
+        "?window=1d",
+      ),
+    ]);
+
+    // The omitted window and its explicit default are the SAME answer, so they
+    // must share the slot rather than folding 129 subnets a second time.
+    const hit = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/chain/revenue-coverage?window=1d",
+      ),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(cache.store.size, 1);
   });
 
   test("subnet weights routes through the worker and caches at the default window", async () => {

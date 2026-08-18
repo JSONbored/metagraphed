@@ -345,6 +345,7 @@ import {
   handleSubnetTurnover,
   canonicalSubnetTurnoverCachePath,
   handleSubnetStakeFlow,
+  canonicalChainRevenueCoverageCachePath,
   canonicalSubnetStakeFlowCachePath,
   handleSubnetAlphaVolume,
   handleSubnetOhlc,
@@ -8606,7 +8607,19 @@ async function dispatchLiveChainRoute(
     return handleSubnetRevenue(request, env, Number(revenueMatch[1]), url);
   }
   if (pathname === CHAIN_REVENUE_COVERAGE_PATH) {
-    return handleChainRevenueCoverage(request, env, url);
+    // 129 subnets folded together from the economics blob, the observation
+    // table and the surfaces artifact -- a whole-network recomputation that
+    // was running on EVERY request. #11480 removed the per-request artifact
+    // read (1.72s -> 0.69s); the rest is the fold itself, and the fold is the
+    // same answer for every caller until the health cron stamps a new one.
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      edgeCacheScope("chain-revenue-coverage", chain),
+      () => handleChainRevenueCoverage(request, env, url),
+      canonicalChainRevenueCoverageCachePath(url),
+    );
   }
   const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(pathname);
   if (recycledMatch) {
