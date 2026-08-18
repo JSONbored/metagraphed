@@ -81,6 +81,23 @@ export function taoTotalPerBlock(economics: Row | null): number {
  * series is src/revenue-serving.ts's job, because that is where the grain and
  * `supersedes` rules live.
  */
+/**
+ * How many subnet artifacts a network-wide revenue read fetches at once.
+ *
+ * DECLARED HERE because all three surfaces compose the same answer -- REST's
+ * `handleChainRevenueCoverage`, GraphQL's `chain_revenue_coverage` and the MCP
+ * tool -- and each one had its own `await` inside its own loop. Fixing one and
+ * leaving two is how the REST route ended up eight times faster than the field
+ * serving the identical data (#11422).
+ *
+ * SIXTEEN, against 129 subnets: eight waves rather than one burst. `mapLimit`
+ * rather than `Promise.all` for the reason the cron prober uses it -- to
+ * respect the runtime's simultaneous-connection cap. Firing every read at once
+ * to fix a latency problem is how a rate limit becomes the next one, and this
+ * account has been rate-limited before (#9465).
+ */
+export const REVENUE_COVERAGE_SURFACE_READS = 16;
+
 export function revenueSourcesFor(
   surfaces: Row[] | null | undefined,
 ): RevenueSourceRow[] {

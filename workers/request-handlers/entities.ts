@@ -432,6 +432,7 @@ import { mapLimit } from "../../src/health-probe-core.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import {
+  REVENUE_COVERAGE_SURFACE_READS,
   SUBNET_REVENUE_FIELD_SOURCES,
   loadSubnetRevenue,
 } from "../../src/revenue-load.ts";
@@ -7713,19 +7714,6 @@ export async function handleSubnetRevenue(
 /** Every subnet's coverage in one response. Subnets with no observed revenue
  * are INCLUDED with null ratios rather than dropped: omitting them would make
  * the covered set look like the whole network. */
-/**
- * How many subnet artifacts the revenue-coverage route reads at once.
- *
- * SIXTEEN, against 129 subnets: eight waves rather than one burst. The cron
- * prober's own pool runs at eight and it talks to third-party origins; these
- * are first-party artifact GETs, so a wider pool is fair, and the ceiling that
- * matters is the runtime's simultaneous-connection cap rather than any per-read
- * cost. Sized to collapse the wall clock without ever being the thing that
- * trips a limit -- the account has been rate-limited before (#9465), and a
- * latency fix that trades one failure mode for another is not a fix.
- */
-const REVENUE_COVERAGE_SURFACE_READS = 16;
-
 export async function handleChainRevenueCoverage(
   request: Request,
   env: Env,

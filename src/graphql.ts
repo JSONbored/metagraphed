@@ -1,4 +1,5 @@
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
+import { mapLimit } from "./health-probe-core.ts";
 import { asJsonObject } from "../schemas-src/json-request.ts";
 
 import { observationsReadDb } from "./observations-read-runner.ts";
@@ -943,9 +944,10 @@ import type {
 } from "../generated/graphql/types.ts";
 import { readStore } from "./read-store.ts";
 import {
+  REVENUE_COVERAGE_SURFACE_READS,
+  SUBNET_REVENUE_FIELD_SOURCES,
   loadSubnetRevenue,
   revenueWindowDays,
-  SUBNET_REVENUE_FIELD_SOURCES,
 } from "./revenue-load.ts";
 import { loadRevenueObservations } from "./revenue-observations.ts";
 import { REVENUE_OBSERVATION_TABLES } from "./read-store-tables.ts";
@@ -7551,8 +7553,24 @@ const rootValue = {
       readStore(context.env, REVENUE_OBSERVATION_TABLES),
       null,
     );
+    // THE SAME ARGUMENT THE OBSERVATIONS READ ABOVE MAKES (#11422). The surface
+    // read was left inside the loop, so this field paid 129 artifact reads in
+    // series -- measured 6.6s and 7.5s live, against a 5s budget, while the
+    // REST route serving identical data had just been fixed to 1.7s. Hoisted
+    // onto the same bounded pool, from the same constant, so the three surfaces
+    // cannot drift again.
+    const surfacesByRow = await mapLimit(
+      rows as Row[],
+      REVENUE_COVERAGE_SURFACE_READS,
+      async (row: Row) => {
+        const netuid = Number(row?.netuid);
+        if (!Number.isInteger(netuid)) return null;
+        return surfacesForNetuid(context, netuid);
+      },
+    );
+
     const subnets = [];
-    for (const row of rows as Row[]) {
+    for (const [index, row] of (rows as Row[]).entries()) {
       const netuid = Number(row?.netuid);
       if (!Number.isInteger(netuid)) continue;
       subnets.push(
@@ -7560,7 +7578,7 @@ const rootValue = {
           netuid,
           window_days: windowDays,
           economics: row,
-          surfaces: await surfacesForNetuid(context, netuid),
+          surfaces: surfacesByRow[index] ?? null,
           usd_per_tao: usd,
           observations: observations ?? null,
         }),
