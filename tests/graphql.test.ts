@@ -24839,6 +24839,15 @@ describe("revenue coverage over GraphQL (#10476)", () => {
         "/metagraph/subnets/64.json": SUBNET_64,
         "/metagraph/network/tao-usd.json": TAO_USD,
         "/metagraph/economics.json": ECONOMICS,
+        // The ONE artifact chain_revenue_coverage reads since #11422, in place
+        // of 129 per-subnet ones. `subnet_revenue` still reads the per-subnet
+        // artifact above -- only the network-wide field moved.
+        "/metagraph/surfaces.json": {
+          surfaces: ((SUBNET_64 as Row).surfaces as Row[]).map((surface) => ({
+            ...surface,
+            netuid: 64,
+          })),
+        },
       },
       { kv: { [KV_ECONOMICS_CURRENT]: JSON.stringify(ECONOMICS) } },
     );
@@ -24938,6 +24947,33 @@ describe("revenue coverage over GraphQL (#10476)", () => {
       revenueEnv(),
     );
     assert.ok(bad.body.errors, "90d was accepted on the coverage field");
+  });
+
+  test("an unreadable surfaces artifact costs the declarations, not the field", async () => {
+    // The other arm of the bulk read (#11422). `readArtifact` answers
+    // `{ ok: false }` for an unpublished artifact, and the field has to keep
+    // serving the emission side for all 129 subnets rather than erroring --
+    // exactly what a missing per-subnet artifact used to cost, which was that
+    // subnet's declarations and nothing else.
+    const { body } = await gql(
+      `query { chain_revenue_coverage(window: "30d") {
+         window_days subnet_count observed_count } }`,
+      fixtureEnv(
+        {
+          "/metagraph/network/tao-usd.json": TAO_USD,
+          "/metagraph/economics.json": ECONOMICS,
+        },
+        { kv: { [KV_ECONOMICS_CURRENT]: JSON.stringify(ECONOMICS) } },
+      ),
+    );
+    assert.equal(body.errors, undefined, "an absent artifact is not an error");
+    const view = body.data.chain_revenue_coverage as Row;
+    assert.equal(view.window_days, 30);
+    assert.equal(
+      view.observed_count,
+      0,
+      "no declarations can be read, so nothing is observed",
+    );
   });
 
   test("a surface with no revenue block is not listed as a source", () => {

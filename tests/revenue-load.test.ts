@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  groupSurfacesByNetuid,
   loadSubnetRevenue,
   revenueSourcesFor,
   taoTotalPerBlock,
@@ -217,5 +218,59 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
     assert.ok((r.emission.usd ?? 0) > 0, `${r.emission.usd}`);
     assert.ok((r.emission.alternates.owner_take.usd ?? 0) > 0);
     assert.ok((r.emission.alternates.alpha_out_priced?.usd ?? 0) > 0);
+  });
+});
+
+describe("groupSurfacesByNetuid — one bulk read in place of 129 (#11422)", () => {
+  test("groups every surface under its own netuid", () => {
+    // The `bucket ? push : set` pair, both arms: SN7 arrives twice so the
+    // second surface must join the first rather than replace it. A map that
+    // kept only the last surface per subnet would silently drop revenue
+    // declarations on any subnet declaring more than one -- SN64 has three.
+    const grouped = groupSurfacesByNetuid([
+      { id: "a", netuid: 7 },
+      { id: "b", netuid: 9 },
+      { id: "c", netuid: 7 },
+    ]);
+    assert.deepEqual(
+      [...grouped.keys()].sort((x, y) => x - y),
+      [7, 9],
+    );
+    assert.deepEqual(
+      grouped.get(7)?.map((s) => s.id),
+      ["a", "c"],
+    );
+    assert.deepEqual(
+      grouped.get(9)?.map((s) => s.id),
+      ["b"],
+    );
+  });
+
+  test("a surface with no usable netuid is skipped, never bucketed", () => {
+    // The per-subnet read this replaces could not produce one -- the netuid was
+    // the path. Reading them out of the bulk artifact makes an unusable value
+    // reachable, and bucketing it under NaN would put surfaces on a subnet
+    // nobody can ask for.
+    const grouped = groupSurfacesByNetuid([
+      { id: "ok", netuid: 3 },
+      { id: "missing" },
+      { id: "text", netuid: "seven" },
+      { id: "fractional", netuid: 3.5 },
+      { id: "null", netuid: null },
+    ]);
+    assert.deepEqual([...grouped.keys()], [3]);
+    assert.deepEqual(
+      grouped.get(3)?.map((s) => s.id),
+      ["ok"],
+    );
+  });
+
+  test("an absent or unreadable artifact is an empty map, not a throw", () => {
+    // `readArtifact` answers `{ ok: false }` and MCP's loader throws; both
+    // arrive here as nothing to group. Empty means "no declarations", which is
+    // the same answer a missing per-subnet artifact gave.
+    for (const input of [null, undefined, []]) {
+      assert.equal(groupSurfacesByNetuid(input).size, 0, JSON.stringify(input));
+    }
   });
 });

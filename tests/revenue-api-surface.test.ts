@@ -86,6 +86,11 @@ function seedTaoUsd(usd: number | null, ageMs = 60_000) {
 const ECONOMICS_PATH = "/metagraph/economics.json";
 const TAO_USD_PATH = "/metagraph/network/tao-usd.json";
 const SUBNET_PATH = (netuid: number) => `/metagraph/subnets/${netuid}.json`;
+// The ONE artifact the network-wide reads take since #11422: every subnet's
+// surfaces in a single object, keyed by `netuid` on each surface rather than by
+// path. Declared beside SUBNET_PATH because the per-subnet artifact is still
+// what /subnets/{netuid}/revenue reads -- only the network-wide composers moved.
+const ALL_SURFACES_PATH = "/metagraph/surfaces.json";
 
 /** One economics row shaped like the published blob's entries. */
 const SN64_ECONOMICS = {
@@ -268,6 +273,9 @@ describe("GET /api/v1/subnets/{netuid}/revenue", () => {
       artifactEnv({
         [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] },
         [SUBNET_PATH(64)]: { surfaces: [REVENUE_SURFACE] },
+        [ALL_SURFACES_PATH]: {
+          surfaces: [{ ...REVENUE_SURFACE, netuid: 64 }],
+        },
         [TAO_USD_PATH]: { latest: { usd_per_tao: 204.03 } },
       }),
     );
@@ -441,6 +449,9 @@ describe("GET /api/v1/chain/revenue-coverage", () => {
           subnets: [SN64_ECONOMICS, { ...SN64_ECONOMICS, netuid: 1 }],
         },
         [SUBNET_PATH(64)]: { surfaces: [REVENUE_SURFACE] },
+        [ALL_SURFACES_PATH]: {
+          surfaces: [{ ...REVENUE_SURFACE, netuid: 64 }],
+        },
       }),
     );
     assert.equal(res.status, 200);
@@ -558,6 +569,9 @@ describe("the get_subnet_revenue MCP tool", () => {
       mcpCtx({
         [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] },
         [SUBNET_PATH(64)]: { surfaces: [REVENUE_SURFACE] },
+        [ALL_SURFACES_PATH]: {
+          surfaces: [{ ...REVENUE_SURFACE, netuid: 64 }],
+        },
         [TAO_USD_PATH]: { latest: { usd_per_tao: 204.03 } },
       }),
     )) as Row;
@@ -631,6 +645,9 @@ describe("the list_revenue_coverage MCP tool", () => {
           subnets: [SN64_ECONOMICS, { ...SN64_ECONOMICS, netuid: 1 }],
         },
         [SUBNET_PATH(64)]: { surfaces: [REVENUE_SURFACE] },
+        [ALL_SURFACES_PATH]: {
+          surfaces: [{ ...REVENUE_SURFACE, netuid: 64 }],
+        },
       }),
     )) as Row;
     assert.equal(out.subnet_count, 2);
