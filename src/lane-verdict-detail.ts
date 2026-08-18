@@ -32,20 +32,54 @@
 // an unmeasured mechanism (#11381).
 
 /**
- * `reason (key=value, ...)`, or the bare reason when nothing is measurable.
+ * `reason (key=value, ...)`, the bare reason when nothing is measurable, or the
+ * bare facts when there is no reason.
  *
- * Returns null for a healthy lane, matching the `detail` column's existing
- * meaning -- an `ok` verdict has no reason and gains no facts.
+ * ## A HEALTHY LANE PUBLISHES ITS COUNTS TOO (#11390)
+ *
+ * This used to return null the moment `reason` was absent, on the reading that
+ * "an `ok` verdict has no reason and gains no facts". The first half is right;
+ * the second turned out to be the thing blocking its own sibling issue.
+ *
+ * #11384 published these counts so a verdict could be triaged from the durable
+ * record. #11390 then wants to replace `NOMINATOR_POSITIONS_EXPECTED_COLDKEYS`
+ * -- a pinned constant that has gone stale three times -- with a floor derived
+ * from a trailing median of the lane's own coverage, and named these counts as
+ * "the only place a trailing baseline can come from".
+ *
+ * They could not be. Measured 2026-08-18: of 658 `nominator-positions-staleness`
+ * verdicts only 20 carried counts, spanning 27 hours and then stopping -- not
+ * because the lane stopped ticking, but because it RECOVERED. A baseline
+ * sampled only while a lane is unhealthy is a median of bad passes, which is
+ * the same error as the pinned constant approached from the other side.
+ *
+ * The pass-tally table is not a substitute either: `received_rows` counts rows
+ * POSTED, and `nominator_positions` upserts on `(coldkey, hotkey, netuid)`, so
+ * a pass posting 108,306 rows lands 95,086 -- 12% of the posted rows are
+ * duplicate keys collapsing. It cannot be compared against a count read from
+ * the table.
+ *
+ * So the facts are published whether or not there is a reason, and the baseline
+ * exists by construction from the next tick onward.
+ *
+ * ## What did not change
+ *
+ * A verdict with neither a reason nor a measurable fact is still null -- the
+ * column's meaning for "nothing to say" is unchanged, and every lane with no
+ * coverage leg keeps writing null exactly as before.
  */
 export function laneVerdictDetail(
   reason: string | null | undefined,
   facts: Readonly<Record<string, number | null | undefined>> = {},
 ): string | null {
-  if (typeof reason !== "string" || reason === "") return null;
+  const named = typeof reason === "string" && reason !== "" ? reason : null;
   const parts: string[] = [];
   for (const [key, value] of Object.entries(facts ?? {})) {
     if (typeof value !== "number" || !Number.isFinite(value)) continue;
     parts.push(`${key}=${value}`);
   }
-  return parts.length === 0 ? reason : `${reason} (${parts.join(", ")})`;
+  if (parts.length === 0) return named;
+  // Bare, without an empty `()` in front of them: a healthy lane's detail reads
+  // as the measurement it is, not as a reason that went missing.
+  return named === null ? parts.join(", ") : `${named} (${parts.join(", ")})`;
 }

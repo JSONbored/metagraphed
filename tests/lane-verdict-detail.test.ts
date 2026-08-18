@@ -4,6 +4,35 @@ import assert from "node:assert/strict";
 import { laneVerdictDetail } from "../src/lane-verdict-detail.ts";
 
 describe("laneVerdictDetail — the counts the verdict was decided on (#11384)", () => {
+  test("A HEALTHY LANE PUBLISHES ITS COUNTS (#11390)", () => {
+    // The change that unblocks deriving a coverage floor from history. These
+    // counts used to be dropped the moment `reason` was absent, so they were
+    // recorded ONLY while a lane was unhealthy -- measured 2026-08-18, 20 of
+    // 658 `nominator-positions-staleness` verdicts carried them, and they
+    // stopped the moment the lane recovered. A trailing median over that is a
+    // median of bad passes.
+    //
+    // Bare, with no empty `()` in front: a healthy lane's detail reads as the
+    // measurement it is.
+    assert.equal(
+      laneVerdictDetail(null, { covered: 19851, total: 19873, floor: 17010 }),
+      "covered=19851, total=19873, floor=17010",
+    );
+    // And a reason still wins the prefix when there is one.
+    assert.equal(
+      laneVerdictDetail("partial", { covered: 16988, total: 19873 }),
+      "partial (covered=16988, total=19873)",
+    );
+  });
+
+  test("nothing to say is still null", () => {
+    // The column's meaning for "no reason and nothing measurable" is unchanged,
+    // so every lane with no coverage leg keeps writing null exactly as before.
+    assert.equal(laneVerdictDetail(null, {}), null);
+    assert.equal(laneVerdictDetail(null, { covered: undefined }), null);
+    assert.equal(laneVerdictDetail(null, { covered: Number.NaN }), null);
+  });
+
   test("a healthy lane has no detail", () => {
     // `ok` verdicts pass `reason: null`, and the column's existing meaning for
     // that is null rather than an empty string.
