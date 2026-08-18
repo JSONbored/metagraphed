@@ -583,7 +583,30 @@ export async function runAxonAnnouncementWatchdog(
     // `stale` is the vocabulary `lane_health` has for "this lane has a finding";
     // there is no `finding` verdict, and inventing one would drift from the
     // published enum every other reader shares.
-    verdict: findings.length > 0 ? "stale" : "ok",
+    //
+    // PURE CHURN IS NOT ONE OF THEM (#11367). The paging decision above already
+    // concluded that churn-only means "nobody went dark, and there is nobody to
+    // go looking for" -- and `stale` is not a neutral word for that, it is this
+    // enum's assertion of a FAULT. Writing it for a measured non-event made two
+    // components disagree: the watchdog decided not to page, and `src/lane-alarm.ts`
+    // raised anyway, because its finding set is `Exclude<LaneVerdict, "ok">` and
+    // it never sees the paging decision.
+    //
+    // The cost of that disagreement is an issue that cannot close. lane-alarm
+    // closes on the first `ok`, so a lane held at `stale` by ordinary
+    // deregistration churn keeps its alarm open for as long as the churn lasts
+    // -- #11367 has been open since 2026-08-15 on exactly this. A verdict that
+    // cannot be cleared is not a health signal; the neurons sub-lanes were the
+    // same shape (#11466).
+    //
+    // THE FINDING IS NOT SUPPRESSED, which is the point the block above makes
+    // and this keeps: `detail` still carries the subnet, the ratio, the
+    // mechanism and the counts, on /self-health and in history, exactly as
+    // before. What changes is only whether that record asserts a fault. A
+    // withdrawal, a fleet-wide flag, an unread mechanism or any MIXED set are
+    // all still `stale` -- `churnOnly` is the same `every` bar the page uses,
+    // so one non-churn finding restores it.
+    verdict: findings.length > 0 && !churnOnly ? "stale" : "ok",
     age_ms: null,
     detail,
     checked_at: now(),
