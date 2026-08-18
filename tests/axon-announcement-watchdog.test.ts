@@ -922,6 +922,15 @@ describe("the tick reports the mechanism it measured", () => {
     return String(insert.values[3]);
   };
 
+  /** The VERDICT column, where `verdict()` above returns the detail. */
+  const verdictValue = () => {
+    const insert = pg.control.queries.find((q) =>
+      q.text.includes("INSERT INTO lane_health"),
+    );
+    assert.ok(insert);
+    return String(insert.values[1]);
+  };
+
   test("PURE CHURN records its verdict and does NOT page (#11386)", async () => {
     // SN25's real shape. Churn means the announcing miners were deregistered
     // and their UIDs reused by miners that never served -- nobody went dark and
@@ -953,6 +962,47 @@ describe("the tick reports the mechanism it measured", () => {
     assert.equal(result.flagged, true);
     assert.equal(result.churn_only, true);
     assert.match(verdict(), /churn-replaced: 67 of 67/);
+    // AND THE VERDICT MATCHES THE PAGING DECISION (#11367). `stale` is this
+    // enum's word for a fault, and the block above just concluded there is no
+    // fault and nobody to go looking for. Writing it anyway made lane-alarm --
+    // whose finding set is `Exclude<LaneVerdict, "ok">` and which never sees
+    // the paging decision -- open an issue that then could not close, because
+    // it closes on the first `ok` and churn keeps the lane off it.
+    assert.equal(verdictValue(), "ok");
+  });
+
+  test("CHURN MIXED WITH A WITHDRAWAL is still stale, and still pages", async () => {
+    // The bar that keeps #11367's change from suppressing a real fault. Churn
+    // clears the verdict only when it is ALL of it -- `every`, the same bar the
+    // page uses -- so one subnet whose miners actually went dark restores both
+    // the exception and the `stale` verdict, even alongside a churning one.
+    //
+    // Without this, "no page for churn" would quietly become "no page whenever
+    // any churn is present", which is the opposite reading.
+    answer(
+      [
+        ...rowsFor(25, then(flat(8, 80), [14, 256])),
+        ...rowsFor(101, then(flat(8, 223), [129, 256])),
+      ],
+      [
+        { netuid: 25, via_reuse: 67, same_hotkey: 0 },
+        { netuid: 101, via_reuse: 0, same_hotkey: 94 },
+      ],
+    );
+    let captured: Record<string, unknown> | null = null;
+    const result = (await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-08-16T00:00:00Z"),
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured = ev;
+        return true;
+      }) as never,
+    })) as { alerted: boolean; churn_only: boolean; flagged: boolean };
+
+    assert.equal(result.flagged, true);
+    assert.equal(result.churn_only, false, "one non-churn finding is enough");
+    assert.equal(result.alerted, true, "the withdrawal still pages");
+    assert.ok(captured, "and still records an exception");
+    assert.equal(verdictValue(), "stale");
   });
 
   test("SN126's REAL shape: moved to an unroutable address, not gone dark", async () => {
