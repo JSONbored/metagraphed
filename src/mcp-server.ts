@@ -36,6 +36,7 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import { asJsonObject } from "../schemas-src/json-request.ts";
+import { mapLimit } from "./health-probe-core.ts";
 
 import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
 import { GraphqlResponsePayloadSchema } from "../schemas-src/internal-wire.ts";
@@ -1713,6 +1714,7 @@ import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import {
+  REVENUE_COVERAGE_SURFACE_READS,
   SUBNET_REVENUE_FIELD_SOURCES,
   loadSubnetRevenue,
   revenueWindowDays,
@@ -9848,8 +9850,22 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ),
       );
       const allObservations = await mcpRevenueObservations(ctx, null);
+      // AND THE SURFACE READ TOO (#11422). The comment above says "ONE read for
+      // every subnet, matching the REST handler" -- it matched the REST handler
+      // in the defect as well, awaiting one artifact per subnet inside the
+      // loop. Same bounded pool, same constant, so all three surfaces move
+      // together.
+      const surfacesByRow = await mapLimit(
+        rows,
+        REVENUE_COVERAGE_SURFACE_READS,
+        async (row: Record<string, unknown>) => {
+          const netuid = Number(row?.netuid);
+          if (!Number.isInteger(netuid)) return null;
+          return mcpSubnetSurfaces(ctx, netuid);
+        },
+      );
       const subnets = [];
-      for (const row of rows) {
+      for (const [index, row] of rows.entries()) {
         const netuid = Number(row?.netuid);
         if (!Number.isInteger(netuid)) continue;
         subnets.push(
@@ -9857,7 +9873,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             netuid,
             window_days: windowDays,
             economics: row,
-            surfaces: await mcpSubnetSurfaces(ctx, netuid),
+            surfaces: surfacesByRow[index] ?? null,
             usd_per_tao: usd,
             observations: allObservations,
           }),
