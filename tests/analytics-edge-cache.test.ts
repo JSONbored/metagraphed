@@ -648,6 +648,75 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  // #11422: the owner-cut route reads account_events over a 30-day window --
+  // the same read its /stake-flow sibling makes -- and was the only one of them
+  // dispatched without this wrapper. Measured against production 2026-08-18,
+  // /subnets/64/stake-flow answered in 0.28s on every request while
+  // /subnets/64/owner-cut paid 2.4-7.9s of R2 SQL on every one.
+  test("subnet owner-cut routes through the worker and caches on the bare path", async () => {
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/owner-cut"),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, 7);
+    assert.deepEqual(cache.putKeys, [
+      expectedKey("subnet-owner-cut", "/api/v1/subnets/7/owner-cut"),
+    ]);
+    assert.equal(cache.store.size, 1);
+  });
+
+  test("a warm owner-cut entry cannot launder an unknown parameter into a 200", async () => {
+    // The key is the PATHNAME alone, because this route takes no query
+    // parameters at all -- #10925 removed the `?window=` it could not honour,
+    // and ATTRIBUTION_WINDOW_DAYS is a fixed property of the surface. Keying on
+    // `${pathname}${search}` instead would let any link carrying a tracking
+    // parameter turn a 0.28s hit into a multi-second R2 SQL miss, unboundedly.
+    //
+    // That collapse is only safe because parameter validation runs BEFORE the
+    // cache lookup: an unknown parameter still 400s against a warm entry rather
+    // than being answered from it. If that order ever inverts, this route would
+    // start returning 200 to requests it is supposed to reject -- so assert the
+    // rejection, not just the entry count.
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+
+    const miss = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/owner-cut"),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    assert.equal(miss.status, 200);
+    assert.equal(cache.store.size, 1);
+
+    const rejected = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/owner-cut?utm_source=x",
+      ),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    assert.equal(rejected.status, 400);
+    assert.equal(
+      cache.store.size,
+      1,
+      "a rejected request must not seed a second entry",
+    );
+    assert.deepEqual(cache.putKeys, [
+      expectedKey("subnet-owner-cut", "/api/v1/subnets/7/owner-cut"),
+    ]);
+  });
+
   test("subnet weights routes through the worker and caches at the default window", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();

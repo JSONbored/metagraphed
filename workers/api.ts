@@ -7333,6 +7333,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       env,
       resolved.url,
+      ctx,
     );
     if (liveChainResponse) return liveChainResponse;
     const weightSettersMatch = SUBNET_WEIGHT_SETTERS_PATH_PATTERN.exec(
@@ -8567,6 +8568,7 @@ async function dispatchLiveChainRoute(
   request: Request,
   env: Env,
   url: URL,
+  ctx: Ctx = {},
   network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
 ): Promise<Response | null> {
   const chain = chainNetworkId(network.id);
@@ -8578,7 +8580,25 @@ async function dispatchLiveChainRoute(
   }
   const ownerCutMatch = SUBNET_OWNER_CUT_PATH_PATTERN.exec(pathname);
   if (ownerCutMatch) {
-    return handleSubnetOwnerCut(request, env, Number(ownerCutMatch[1]));
+    // The owner accrual and its disposition, the second summed live from
+    // account_events over a 30-day window -- the same read shape as the
+    // sibling /stake-flow route, and until now the only one of them serving it
+    // uncached. Measured 2026-08-18 against production: /subnets/64/stake-flow
+    // answered in 0.28s on every request while /subnets/64/owner-cut paid
+    // 2.4-7.9s of R2 SQL on every one, because it alone skipped this wrapper.
+    //
+    // The response is a pure function of the netuid and the backing stores --
+    // the handler reads no query parameters at all -- so the canonical key is
+    // the pathname, and a caller appending `?anything` shares the one entry
+    // rather than minting a fresh 8-second miss.
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      edgeCacheScope("subnet-owner-cut", chain),
+      () => handleSubnetOwnerCut(request, env, Number(ownerCutMatch[1])),
+      url.pathname,
+    );
   }
 
   const revenueMatch = SUBNET_REVENUE_PATH_PATTERN.exec(pathname);
@@ -9091,6 +9111,7 @@ async function handleNetworkScopedRequest(
       request,
       env,
       resolved.url,
+      ctx,
       network,
     );
     if (liveChainResponse) return liveChainResponse;
