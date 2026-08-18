@@ -16,6 +16,7 @@ import {
   DEFAULT_SUBNET_REVENUE_WINDOW,
   SUBNET_REVENUE_WINDOW_DAYS,
 } from "./route-limits.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 import {
   type SubnetRevenueView,
   buildSubnetRevenue,
@@ -117,6 +118,67 @@ export const ALL_SURFACES_ARTIFACT = "/metagraph/surfaces.json";
  * a netuid keeps this exactly what the per-subnet read returned, so a future
  * change to what `revenueSourcesFor` looks for cannot quietly outgrow it.
  */
+/**
+ * How long a parsed surfaces map is reused inside one isolate.
+ *
+ * FIVE MINUTES, the same figure and the same argument as
+ * `ACCOUNT_SUMMARY_POINTER_TTL_MS`: the artifact changes only when a build
+ * publishes, and a registry change reaching a card five minutes late is not a
+ * correctness problem -- serving it is what this whole file is for.
+ */
+export const SURFACES_MEMO_TTL_MS = 5 * 60_000;
+
+/** The grouped map and when it expires. The PROMISE is memoized, not the value,
+ * so concurrent requests on a cold isolate share one read rather than racing to
+ * issue several -- three surfaces compose this answer and they can arrive
+ * together. */
+let surfacesMemo: {
+  expiresAt: number;
+  value: Promise<Map<number, Row[]>>;
+} | null = null;
+
+registerModuleStateReset("src/revenue-load.ts", () => {
+  surfacesMemo = null;
+});
+
+/** Drop the memo so the next call re-reads. Exported for tests. */
+export function resetSurfacesMemo(): void {
+  surfacesMemo = null;
+}
+
+/**
+ * The grouped surfaces, read at most once per isolate per TTL.
+ *
+ * ## Why the read had to be memoized as well as collapsed
+ *
+ * Collapsing 129 per-subnet reads into one bulk read cut the bytes tenfold and
+ * did NOT cut the latency: measured on production, REST stayed at ~1.7s and
+ * GraphQL went from 1.0s to 2.0s. One 3.5 MB read parsed serially costs about
+ * what eight waves of concurrent small reads cost, and the parse is on the
+ * critical path where the waves at least overlapped.
+ *
+ * `Server-Timing` put the whole request at 1.57-1.82s with `neon` at ~200ms, so
+ * ~1.4s of it was the artifact. That is the thing to stop doing per request,
+ * not to schedule differently -- the artifact is immutable between publishes,
+ * which is exactly the case a memo is for.
+ *
+ * A FAILED READ IS NOT MEMOIZED for the TTL: it is stored so concurrent callers
+ * share the in-flight request, then cleared, so a transient miss costs one read
+ * rather than five minutes of empty declarations.
+ */
+export async function surfacesByNetuidMemoized(
+  load: () => Promise<Row[] | null | undefined>,
+  now: () => number = Date.now,
+): Promise<Map<number, Row[]>> {
+  const at = now();
+  if (surfacesMemo && surfacesMemo.expiresAt > at) return surfacesMemo.value;
+  const value = (async () => groupSurfacesByNetuid(await load()))();
+  surfacesMemo = { expiresAt: at + SURFACES_MEMO_TTL_MS, value };
+  const resolved = await value;
+  if (resolved.size === 0) surfacesMemo = null;
+  return resolved;
+}
+
 export function groupSurfacesByNetuid(
   all: Row[] | null | undefined,
 ): Map<number, Row[]> {

@@ -433,8 +433,8 @@ import { readArtifact, readHealthKv } from "../storage.ts";
 import {
   ALL_SURFACES_ARTIFACT,
   SUBNET_REVENUE_FIELD_SOURCES,
-  groupSurfacesByNetuid,
   loadSubnetRevenue,
+  surfacesByNetuidMemoized,
 } from "../../src/revenue-load.ts";
 import {
   loadSweepRecord,
@@ -7593,16 +7593,24 @@ export async function handleSubnetOwnerCut(
       400,
     );
   }
-  const { row } = await resolveSubnetEconomicsRow(env, netuid);
-  // THE LIVE READ, NOT THE ARTIFACT. `/metagraph/network/parameters.json`
-  // publishes no owner-cut field at all -- verified in production, where it
-  // carries no key matching /owner/ -- so reading it here returned undefined
-  // for all 129 subnets and every accrual served `owner cut share not read`.
-  // That is the #10566 shape exactly: a correct-looking decline standing in
-  // for a read that never happened. `/api/v1/network/parameters` computes the
-  // effective share (0.17999...) and is KV-cached, so this costs a cache hit
-  // rather than an RPC per request.
-  const parameters = await (deps.loadParams ?? loadNetworkParameters)(env);
+  // THE THREE INDEPENDENT READS RUN TOGETHER. Only the flow read depends on
+  // anything here (it needs the economics row's owner coldkey); the parameter
+  // and price reads were simply sequenced behind a ~175ms Neon call for no
+  // reason. Measured 2026-08-18 against production, the serial prefix was
+  // ~175ms of a ~2.9s response.
+  const [{ row }, parameters, usdPerTao] = await Promise.all([
+    resolveSubnetEconomicsRow(env, netuid),
+    // THE LIVE READ, NOT THE ARTIFACT. `/metagraph/network/parameters.json`
+    // publishes no owner-cut field at all -- verified in production, where it
+    // carries no key matching /owner/ -- so reading it here returned undefined
+    // for all 129 subnets and every accrual served `owner cut share not read`.
+    // That is the #10566 shape exactly: a correct-looking decline standing in
+    // for a read that never happened. `/api/v1/network/parameters` computes the
+    // effective share (0.17999...) and is KV-cached, so this costs a cache hit
+    // rather than an RPC per request.
+    (deps.loadParams ?? loadNetworkParameters)(env),
+    usdPerTaoOrNull(env),
+  ]);
   const ownerCut = parameters?.subnet_owner_cut_effective;
   // #10930: THE FLOW STREAMS, FINALLY READ. The disposition classifier has been
   // complete since #10485 and was handed nothing, so every subnet answered
@@ -7637,7 +7645,7 @@ export async function handleSubnetOwnerCut(
     window_days: ATTRIBUTION_WINDOW_DAYS,
     economics: row,
     owner_cut: typeof ownerCut === "number" ? ownerCut : null,
-    usd_per_tao: await usdPerTaoOrNull(env),
+    usd_per_tao: usdPerTao,
     unstaked_alpha: legs.observed ? legs.unstaked_alpha : null,
     flows_observed: legs.observed,
   });
@@ -7750,13 +7758,13 @@ export async function handleChainRevenueCoverage(
   // (identical `generated_at`), and matches field for field on every
   // external-revenue surface. See `groupSurfacesByNetuid` for the parity
   // measurement.
-  const allSurfaces = await readArtifact(env, ALL_SURFACES_ARTIFACT);
-  const surfacesByNetuid = groupSurfacesByNetuid(
-    allSurfaces.ok
+  const surfacesByNetuid = await surfacesByNetuidMemoized(async () => {
+    const allSurfaces = await readArtifact(env, ALL_SURFACES_ARTIFACT);
+    return allSurfaces.ok
       ? ((allSurfaces.data as Record<string, unknown> | undefined)?.surfaces as
           Array<Record<string, unknown>> | undefined)
-      : null,
-  );
+      : null;
+  });
 
   const subnets = [];
   for (const row of rows) {

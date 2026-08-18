@@ -1715,9 +1715,9 @@ import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import {
   ALL_SURFACES_ARTIFACT,
   SUBNET_REVENUE_FIELD_SOURCES,
-  groupSurfacesByNetuid,
   loadSubnetRevenue,
   revenueWindowDays,
+  surfacesByNetuidMemoized,
 } from "./revenue-load.ts";
 import {
   loadSubnetOwnerCut,
@@ -9861,15 +9861,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // would take the whole tool down instead of costing it the declarations.
       // No surfaces is the same answer the per-subnet read gave when a subnet
       // artifact was absent: no revenue sources, not an error.
-      let surfacesByNetuid: Map<number, Array<Record<string, unknown>>>;
-      try {
-        const allSurfaces = await loadArtifactData(ctx, ALL_SURFACES_ARTIFACT);
-        surfacesByNetuid = groupSurfacesByNetuid(
-          allSurfaces?.surfaces as Array<Record<string, unknown>> | undefined,
-        );
-      } catch {
-        surfacesByNetuid = new Map();
-      }
+      const surfacesByNetuid = await surfacesByNetuidMemoized(async () => {
+        try {
+          const allSurfaces = await loadArtifactData(
+            ctx,
+            ALL_SURFACES_ARTIFACT,
+          );
+          return allSurfaces?.surfaces as
+            Array<Record<string, unknown>> | undefined;
+        } catch {
+          return null;
+        }
+      });
 
       const subnets = [];
       for (const row of rows) {

@@ -1,13 +1,22 @@
 // #10447: what the route does when a piece is missing, which is the normal
 // case rather than the edge case.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test } from "vitest";
 import {
+  SURFACES_MEMO_TTL_MS,
   groupSurfacesByNetuid,
   loadSubnetRevenue,
+  resetSurfacesMemo,
   revenueSourcesFor,
+  surfacesByNetuidMemoized,
   taoTotalPerBlock,
 } from "../src/revenue-load.ts";
+
+// The surfaces map is memoized per ISOLATE and the registry resets module state
+// between test FILES, not between tests -- so without this a fixture from one
+// case would answer the next one's read. Same reason
+// tests/account-summary-projection.test.ts resets its pointer cache.
+beforeEach(() => resetSurfacesMemo());
 
 const ECONOMICS = {
   netuid: 64,
@@ -272,5 +281,65 @@ describe("groupSurfacesByNetuid — one bulk read in place of 129 (#11422)", () 
     for (const input of [null, undefined, []]) {
       assert.equal(groupSurfacesByNetuid(input).size, 0, JSON.stringify(input));
     }
+  });
+});
+
+describe("surfacesByNetuidMemoized — the read, not the schedule (#11422)", () => {
+  test("reads once inside the TTL and again after it", async () => {
+    // Collapsing 129 reads into one bulk read cut the BYTES tenfold and not the
+    // latency -- REST stayed at ~1.7s and GraphQL went 1.0s -> 2.0s, because one
+    // 3.5 MB read parsed serially costs about what eight waves of concurrent
+    // small reads cost. The artifact is immutable between publishes, so the fix
+    // is to stop doing it per request.
+    let reads = 0;
+    const load = async () => {
+      reads += 1;
+      return [{ id: "a", netuid: 7 }];
+    };
+    let now = 1_000_000;
+    const clock = () => now;
+
+    assert.equal((await surfacesByNetuidMemoized(load, clock)).size, 1);
+    assert.equal(reads, 1);
+    await surfacesByNetuidMemoized(load, clock);
+    await surfacesByNetuidMemoized(load, clock);
+    assert.equal(reads, 1, "inside the TTL the artifact is not re-read");
+
+    now += SURFACES_MEMO_TTL_MS + 1;
+    await surfacesByNetuidMemoized(load, clock);
+    assert.equal(reads, 2, "past the TTL it re-reads");
+  });
+
+  test("concurrent callers on a cold isolate share ONE read", async () => {
+    // The PROMISE is memoized, not the value. Three surfaces compose this
+    // answer and can arrive together, so memoizing the resolved map would still
+    // let them race to issue three reads of a 3.5 MB artifact.
+    let reads = 0;
+    const load = async () => {
+      reads += 1;
+      return [{ id: "a", netuid: 7 }];
+    };
+    const clock = () => 1_000_000;
+    await Promise.all([
+      surfacesByNetuidMemoized(load, clock),
+      surfacesByNetuidMemoized(load, clock),
+      surfacesByNetuidMemoized(load, clock),
+    ]);
+    assert.equal(reads, 1);
+  });
+
+  test("a read that yields nothing is NOT memoized for the TTL", async () => {
+    // Otherwise a transient miss costs five minutes of empty declarations,
+    // which is the shape #11467 fixed on the account-summary pointer: a failure
+    // held for a TTL turns one bad read into an outage.
+    let reads = 0;
+    const load = async () => {
+      reads += 1;
+      return reads === 1 ? null : [{ id: "a", netuid: 7 }];
+    };
+    const clock = () => 1_000_000;
+    assert.equal((await surfacesByNetuidMemoized(load, clock)).size, 0);
+    assert.equal((await surfacesByNetuidMemoized(load, clock)).size, 1);
+    assert.equal(reads, 2, "the empty answer was retried, not cached");
   });
 });

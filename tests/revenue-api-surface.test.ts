@@ -16,6 +16,7 @@
 // A test that only walks the happy path here would prove nothing: the happy
 // path is the rare one.
 import assert from "node:assert/strict";
+import { resetSurfacesMemo } from "../src/revenue-load.ts";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
@@ -35,6 +36,12 @@ import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { TAO_USD_MAX_AGE_MS } from "../src/alpha-usd.ts";
+
+// The surfaces map is memoized per ISOLATE and the registry resets module state
+// between test FILES, not between tests -- so without this a fixture from one
+// case would answer the next one's read. Same reason
+// tests/account-summary-projection.test.ts resets its pointer cache.
+beforeEach(() => resetSurfacesMemo());
 
 // The real DDL, so the CHECK pairing a null price with `insufficient_pools` is
 // enforced here too -- a fixture that could store a null price under

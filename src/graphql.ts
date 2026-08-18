@@ -945,9 +945,9 @@ import { readStore } from "./read-store.ts";
 import {
   ALL_SURFACES_ARTIFACT,
   SUBNET_REVENUE_FIELD_SOURCES,
-  groupSurfacesByNetuid,
   loadSubnetRevenue,
   revenueWindowDays,
+  surfacesByNetuidMemoized,
 } from "./revenue-load.ts";
 import { loadRevenueObservations } from "./revenue-observations.ts";
 import { REVENUE_OBSERVATION_TABLES } from "./read-store-tables.ts";
@@ -7556,12 +7556,15 @@ const rootValue = {
     // ONE READ, matching the observations read above (#11422). #11478 made the
     // 129 per-subnet reads concurrent (7.5s -> 1.0s); this removes them. See
     // `groupSurfacesByNetuid` for why the bulk artifact is an exact substitute.
-    const allSurfaces = await readArtifact(context.env, ALL_SURFACES_ARTIFACT);
-    const surfacesByNetuid = groupSurfacesByNetuid(
-      allSurfaces.ok
+    const surfacesByNetuid = await surfacesByNetuidMemoized(async () => {
+      const allSurfaces = await readArtifact(
+        context.env,
+        ALL_SURFACES_ARTIFACT,
+      );
+      return allSurfaces.ok
         ? ((allSurfaces.data as Row | undefined)?.surfaces as Row[] | undefined)
-        : null,
-    );
+        : null;
+    });
 
     const subnets = [];
     for (const row of rows as Row[]) {
