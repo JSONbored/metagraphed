@@ -124,6 +124,32 @@ describe("evaluateChainDetailStaleness", () => {
   });
 });
 
+describe("the threshold itself", () => {
+  test("is five minutes, and that number is measured", () => {
+    // Pinned as a literal so a change is deliberate, with the basis written
+    // down -- the same rule the sibling coverage floors follow.
+    //
+    // Measured on production 2026-08-18 over the lane's full retained window
+    // (1,858 writes, 6.2h): inter-write gaps p50 12.0s, p99 22.3s, p99.9 23.3s,
+    // and EXACTLY ONE gap above 60s -- a 15m 06s stall that reached 15m 30s of
+    // head age. Nothing at all falls between 23.3s and 906.6s.
+    //
+    // So the bound has to sit above the worst normal head age (~63s: p95 write
+    // latency 40s plus a p99.9 gap) and below the stall it exists to report.
+    // Five minutes is 4.8x clear of the first and well under the second; twenty
+    // was above the stall entirely, which is why that stall never fired.
+    assert.equal(CHAIN_DETAIL_STALENESS_THRESHOLD_MS, 5 * 60 * 1000);
+    assert.ok(
+      CHAIN_DETAIL_STALENESS_THRESHOLD_MS > 63_000,
+      "must clear the worst normal head age, or it fires on healthy ticks",
+    );
+    assert.ok(
+      CHAIN_DETAIL_STALENESS_THRESHOLD_MS < 906_600,
+      "must sit below the measured stall, or it cannot report one",
+    );
+  });
+});
+
 describe("runChainDetailStalenessWatchdog", () => {
   test("a fresh lane reports quiet and records nothing", async () => {
     const { env, queries } = fakeDb(NOW - 60_000);
@@ -152,7 +178,12 @@ describe("runChainDetailStalenessWatchdog", () => {
     assert.equal(recorded[0].route, "watchdog:chain-detail-staleness");
     assert.equal(recorded[0].errorCode, "stale_lane");
     assert.match(String(recorded[0].error?.message), /90\.0 min behind/);
-    assert.match(String(recorded[0].error?.message), /threshold 20 min/);
+    assert.match(
+      String(recorded[0].error?.message),
+      new RegExp(
+        `threshold ${CHAIN_DETAIL_STALENESS_THRESHOLD_MS / 60_000} min`,
+      ),
+    );
     assert.match(String(recorded[0].error?.message), new RegExp(String(HEAD)));
     assert.match(String(recorded[0].error?.message), /declining drill-down/);
   });

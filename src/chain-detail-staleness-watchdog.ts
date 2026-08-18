@@ -51,14 +51,48 @@ type ChainDetailStalenessWatchdogEnv = StoreEnv &
 /**
  * How far behind the lane may fall before this is a stall.
  *
- * The lane's own cadence is ~24s (2 blocks per POST at 12s blocks), so a
- * threshold near it would fire on every container restart and every transient
- * RPC hiccup -- noise that trains people to ignore the channel. 20 minutes is
- * instead sized against the thing that MATTERS: the hourly decode lane means
- * the lakehouse is up to ~1h behind, and the hot tier is what covers that gap.
- * A lane 20 minutes behind still has the gap covered and is merely late; a lane
- * further behind than that is on its way to a coverage hole, and this is the
- * only warning before recent blocks start declining.
+ * ## Why this is five minutes and not twenty (metagraphed-infra#492)
+ *
+ * Twenty was sized against the DOWNSTREAM consumer, and that argument is still
+ * sound: the hourly decode lane leaves the lakehouse up to ~1h behind, the hot
+ * tier covers that gap, and a lane further behind than twenty minutes is on its
+ * way to a coverage hole. Nothing here contradicts it -- five minutes fires
+ * strictly earlier, so the coverage bound is still honoured.
+ *
+ * What twenty could not do is REPORT A STALL. Measured on production
+ * 2026-08-18 over the lane's full retained window (1,858 writes, 6.2h): the
+ * chain-detail lane stopped dead for 15m 06s -- last write 01:23:36Z, nothing
+ * until 01:38:42Z, then ~76 blocks drained in 167s. Head age reached 15m 30s.
+ * Against a twenty-minute floor that stall could not fire, and did not. A
+ * caller asking for a fifteen-minute-old block got a confident "not found"
+ * and nothing recorded it.
+ *
+ * ## The noise argument was the right question and now has an answer
+ *
+ * The bound this replaces feared that a tighter threshold "would fire on every
+ * container restart and every transient RPC hiccup". Measured rather than
+ * assumed, over the same window:
+ *
+ *   inter-write gap   p50 12.0s   p99 22.3s   p99.9 23.3s   max 906.6s
+ *   gaps over 60s     EXACTLY ONE, and it is the stall above
+ *
+ * The distribution is bimodal with nothing at all between 23.3s and 906.6s.
+ * Worst normal head age is ~63s (p95 write latency 40s plus a p99.9 gap), so
+ * five minutes is 4.8x clear of it and had zero false positives across the
+ * window. Transients do not reach it; the one thing that did was a real stall.
+ *
+ * ## What five minutes does NOT buy, stated so it is not mistaken for more
+ *
+ * `staleness-watchdog-heartbeat.ts` runs this on a QUARTER-HOURLY grid and
+ * `everyMinutes` quantises UP to it, so detection is bounded by the tick, not
+ * by this number. Head age exceeds five minutes for roughly ten of a fifteen
+ * minute stall, so a tick catches it about two thirds of the time -- against
+ * never, at twenty. Catching a stall SHORTER than the grid reliably is a
+ * question about the grid, and the grid is quarter-hourly for reasons
+ * documented in that file. This is the half that was free.
+ *
+ * Env-overridable via CHAIN_DETAIL_STALENESS_THRESHOLD_MS, so returning to
+ * twenty needs no deploy.
  */
 // NOT DERIVED FROM THIS PRODUCER'S CADENCE, deliberately -- see
 // src/producer-cadence.ts. The lane ticks every ~24s; this bound is a
@@ -66,7 +100,7 @@ type ChainDetailStalenessWatchdogEnv = StoreEnv &
 // that the hot tier covers), so expressing it as N missed ticks of a 24s
 // cadence would be arithmetic that means nothing. Left explicit so "not
 // cadence-derived" reads as a decision rather than an oversight.
-export const CHAIN_DETAIL_STALENESS_THRESHOLD_MS = 20 * 60 * 1000;
+export const CHAIN_DETAIL_STALENESS_THRESHOLD_MS = 5 * 60 * 1000;
 
 export interface ChainDetailStalenessVerdict {
   stale: boolean;
