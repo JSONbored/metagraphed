@@ -19,6 +19,37 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [2.2.0](https://github.com/JSONbored/metagraphed/compare/platform-v2.1.0...platform-v2.2.0) (2026-08-19)
+
+
+### Features
+
+* **lane-health:** publish the coverage counts on a healthy tick too ([#11474](https://github.com/JSONbored/metagraphed/issues/11474)) ([8c340e5](https://github.com/JSONbored/metagraphed/commit/8c340e58aceef92fb349aac45c343f4faba4004f))
+* **rpc:** serve latency percentiles again — R2 SQL accepts PERCENTILE_CONT now ([#11491](https://github.com/JSONbored/metagraphed/issues/11491)) ([1c7e352](https://github.com/JSONbored/metagraphed/commit/1c7e352a49c04afb10436ea00e06584ed6afe387))
+
+
+### Bug Fixes
+
+* **blocks:** chain-walk nav was dead on the tier that answers the route ([#11469](https://github.com/JSONbored/metagraphed/issues/11469)) ([1825aac](https://github.com/JSONbored/metagraphed/commit/1825aac08351e9f33844246bce67d460a8e2123e)), closes [#11462](https://github.com/JSONbored/metagraphed/issues/11462)
+* **chain-events:** the explorer's own event feed timed out and served an empty list ([#11464](https://github.com/JSONbored/metagraphed/issues/11464)) ([ea8d0b7](https://github.com/JSONbored/metagraphed/commit/ea8d0b73ec814e3c48c5e004e19f611522f79972))
+* **observability:** two neurons sub-lanes went silent when a refactor dropped one argument ([#11466](https://github.com/JSONbored/metagraphed/issues/11466)) ([0cac37a](https://github.com/JSONbored/metagraphed/commit/0cac37a51eacb104a9538100611249036f0b21e4)), closes [#11451](https://github.com/JSONbored/metagraphed/issues/11451) [#11452](https://github.com/JSONbored/metagraphed/issues/11452)
+* **watchdog:** a container reporting an in-progress pass is not unreadable ([#11476](https://github.com/JSONbored/metagraphed/issues/11476)) ([7731c8d](https://github.com/JSONbored/metagraphed/commit/7731c8d0051960764c5df68affb270603a2df1b6))
+* **watchdog:** chain-prometheus is permanently empty by declaration, so stop alarming on it ([#11489](https://github.com/JSONbored/metagraphed/issues/11489)) ([3d2ee62](https://github.com/JSONbored/metagraphed/commit/3d2ee623eb80e1c8f7f7e9af31515bfbd9408b6a)), closes [#11484](https://github.com/JSONbored/metagraphed/issues/11484)
+* **watchdog:** pure churn is a measurement, and `stale` is this enum's word for a fault ([#11470](https://github.com/JSONbored/metagraphed/issues/11470)) ([50f81a3](https://github.com/JSONbored/metagraphed/commit/50f81a369fa6c77657b6cddf5f29b0828115f26f)), closes [#11367](https://github.com/JSONbored/metagraphed/issues/11367)
+* **watchdog:** the chain-detail stall floor sat above every stall it could see ([#11472](https://github.com/JSONbored/metagraphed/issues/11472)) ([39e4980](https://github.com/JSONbored/metagraphed/commit/39e49807fe51e1c37d14645734ad131924c5abe8))
+
+
+### Performance
+
+* **accounts:** a rotated generation sent the card to the lakehouse instead of the shard beside it ([#11467](https://github.com/JSONbored/metagraphed/issues/11467)) ([61e4afc](https://github.com/JSONbored/metagraphed/commit/61e4afc89dac2f6ca829518478c088786782a4ed)), closes [#11222](https://github.com/JSONbored/metagraphed/issues/11222)
+* **accounts:** the card declined the complete history to serve a truncated one, slowly ([#11468](https://github.com/JSONbored/metagraphed/issues/11468)) ([de73a59](https://github.com/JSONbored/metagraphed/commit/de73a59d0c56e683e08efdaae1f965dd21dd2ed0))
+* **extrinsics:** the recent-extrinsic feed asked the lakehouse for rows Neon holds at the head ([#11465](https://github.com/JSONbored/metagraphed/issues/11465)) ([3aa5643](https://github.com/JSONbored/metagraphed/commit/3aa5643575f52c5f1c49021c72031d4dcc4da34c))
+* **revenue-coverage:** 129 artifact reads ran in series inside the loop ([#11477](https://github.com/JSONbored/metagraphed/issues/11477)) ([604279c](https://github.com/JSONbored/metagraphed/commit/604279c98d4e9b95cec33a46f8d7b7c103fcd5be)), closes [#11422](https://github.com/JSONbored/metagraphed/issues/11422)
+* **revenue-coverage:** one artifact read for the whole network, not 129 ([#11479](https://github.com/JSONbored/metagraphed/issues/11479)) ([23a967b](https://github.com/JSONbored/metagraphed/commit/23a967b5b1c669c356788394fbc73b081d480451)), closes [#11422](https://github.com/JSONbored/metagraphed/issues/11422)
+* **revenue-coverage:** the GraphQL and MCP surfaces had the same loop ([#11478](https://github.com/JSONbored/metagraphed/issues/11478)) ([b0da801](https://github.com/JSONbored/metagraphed/commit/b0da801191fbfdbc9454e6e4d93e2ed9eb09360b)), closes [#11422](https://github.com/JSONbored/metagraphed/issues/11422)
+* **revenue-coverage:** the whole-network fold ran on every request ([#11481](https://github.com/JSONbored/metagraphed/issues/11481)) ([0d20877](https://github.com/JSONbored/metagraphed/commit/0d208770afdcd32e14103e4b21b3627804d812e8))
+* stop re-reading two immutable things per request (revenue-coverage, owner-cut) ([#11480](https://github.com/JSONbored/metagraphed/issues/11480)) ([a82faec](https://github.com/JSONbored/metagraphed/commit/a82faec717a8f9dfbce566fb6f5575265036e45e))
+
 ## [2.1.0](https://github.com/JSONbored/metagraphed/compare/platform-v2.0.0...platform-v2.1.0) (2026-08-17)
 
 
