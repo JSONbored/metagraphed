@@ -4,6 +4,8 @@ import { handleRequest } from "../workers/api.ts";
 import { mockEnv } from "./row-type.ts";
 import {
   accountFacts,
+  fetchLogoBytes,
+  cardText,
   r2CardCache,
   cardKey,
   factsDigest,
@@ -21,12 +23,18 @@ const INDEX = {
       integration_readiness: 96,
       surface_count: 76,
       coverage_level: "deep",
+      logo_url: "https://metagraph.sh/logos/cache/x.png",
+      symbol: "ش",
     },
     { netuid: 7, name: "Nameless" },
   ],
 };
 
 const OK_ARTIFACT = async () => ({ ok: true, data: INDEX });
+/** Explicit "this subnet's logo did not load". Without it these tests reach the
+ * real `fetch`, where the outbound-fetch guard refuses them -- which happens to
+ * exercise the right path, but by accident and only while that guard exists. */
+const NO_LOGO = async () => null;
 const PNG = new Uint8Array([137, 80, 78, 71]).buffer;
 
 describe("which paths are entity cards", () => {
@@ -64,6 +72,14 @@ describe("which paths are entity cards", () => {
 });
 
 describe("the facts a card draws", () => {
+  test("the subnet's own logo and a netuid mark are carried", () => {
+    const facts = subnetFacts(INDEX, 64)!;
+    assert.equal(facts.logoUrl, "https://metagraph.sh/logos/cache/x.png");
+    // The NETUID, not the alpha symbol: those symbols are Greek, Cyrillic and
+    // Arabic and Space Grotesk is Latin-only, so subnet 1's α rendered as `?`.
+    assert.equal(facts.mark, "64");
+  });
+
   test("a subnet's published facts, and only the ones it has", () => {
     const facts = subnetFacts(INDEX, 64);
     assert.equal(facts?.title, "Chutes");
@@ -182,6 +198,7 @@ describe("the handler never fails a crawler", () => {
       {
         assets,
         readArtifact: OK_ARTIFACT,
+        fetchLogo: NO_LOGO,
         render: async () => {
           throw new Error("wasm exploded");
         },
@@ -214,6 +231,7 @@ describe("the handler never fails a crawler", () => {
       {
         assets,
         readArtifact: OK_ARTIFACT,
+        fetchLogo: NO_LOGO,
         readCard: async () => {
           throw new Error("cache unreadable");
         },
@@ -235,6 +253,7 @@ describe("the handler never fails a crawler", () => {
       {
         assets,
         readArtifact: OK_ARTIFACT,
+        fetchLogo: NO_LOGO,
         render: async () => PNG,
         writeCard: async () => {
           throw new Error("bucket full");
@@ -253,6 +272,7 @@ describe("the handler never fails a crawler", () => {
       {
         assets,
         readArtifact: OK_ARTIFACT,
+        fetchLogo: NO_LOGO,
         readCard: async () => PNG,
         render: async () => {
           rendered += 1;
@@ -273,6 +293,7 @@ describe("the handler never fails a crawler", () => {
       {
         assets,
         readArtifact: OK_ARTIFACT,
+        fetchLogo: NO_LOGO,
         render: async () => PNG,
         writeCard: async (key) => {
           written.push(key);
@@ -371,5 +392,281 @@ describe("the route, through the worker's own dispatch", () => {
       { waitUntil: () => {} } as never,
     );
     assert.notEqual(res.headers.get("content-type"), "image/png");
+  });
+});
+
+describe("the font subset", () => {
+  test("covers every glyph the card draws", () => {
+    // loadGoogleFont subsets to `text`. A glyph missing from it renders as a
+    // blank box, so the subset has to be derived from the card rather than
+    // guessed at -- the title is a third-party subnet name and can contain
+    // anything.
+    const facts = {
+      kind: "Bittensor subnet 64",
+      title: "Chutes",
+      stats: [{ label: "Readiness", value: "96/100" }],
+    };
+    const text = cardText(facts);
+    for (const glyph of "Chutes96/100") {
+      assert.ok(text.includes(glyph), `missing glyph: ${glyph}`);
+    }
+    // The card draws labels uppercased, so the subset must carry that form.
+    assert.ok(text.includes("READINESS"));
+  });
+});
+
+describe("the logo is inlined, and only from our own cache", () => {
+  const url = (p: string) => new URL(`https://api.metagraph.sh${p}`);
+  const assets = { fetch: async () => new Response("png", { status: 200 }) };
+  const artifact = async () => ({ ok: true, data: INDEX });
+
+  test("a logo on our cache is fetched and inlined", async () => {
+    let asked: string | null = null;
+    let markup = "";
+    await handleEntityOgImage(
+      new Request("https://api.metagraph.sh/og/subnets/64.png"),
+      {},
+      url("/og/subnets/64.png"),
+      {
+        assets,
+        readArtifact: artifact,
+        fetchLogo: async (u) => {
+          asked = u;
+          return new Uint8Array([1, 2, 3]).buffer;
+        },
+        render: async (m) => {
+          markup = m;
+          return new Uint8Array([137]).buffer;
+        },
+      },
+    );
+    assert.equal(asked, "https://metagraph.sh/logos/cache/x.png");
+    assert.ok(markup.includes("data:image/png;base64,"));
+  });
+
+  test("a logo that will not load falls back to the mark, not to failure", async () => {
+    // The subnet still has a name and a number. A dead logo host must not cost
+    // the unfurl.
+    let markup = "";
+    const res = await handleEntityOgImage(
+      new Request("https://api.metagraph.sh/og/subnets/64.png"),
+      {},
+      url("/og/subnets/64.png"),
+      {
+        assets,
+        readArtifact: artifact,
+        fetchLogo: async () => {
+          throw new Error("logo host down");
+        },
+        render: async (m) => {
+          markup = m;
+          return new Uint8Array([137]).buffer;
+        },
+      },
+    );
+    assert.equal(res?.status, 200);
+    assert.ok(!markup.includes("data:image/png"));
+    assert.ok(markup.includes(">64<"), "the netuid badge is drawn instead");
+  });
+
+  test("the digest keys on the logo URL, not on its bytes", async () => {
+    // The URL is already content-addressed by the logo cache, so a new logo is
+    // a new URL. Hashing megabytes of PNG per request to learn the same thing
+    // would be absurd.
+    const a = subnetFacts(INDEX, 64)!;
+    const b = { ...a, logo: "data:image/png;base64,DIFFERENT" };
+    assert.equal(factsDigest(a), factsDigest(b));
+    const c = { ...a, logoUrl: "https://metagraph.sh/logos/cache/y.png" };
+    assert.notEqual(factsDigest(a), factsDigest(c));
+  });
+});
+
+describe("the font subset", () => {
+  test("covers the mark, or the subnets without logos render a blank box", () => {
+    const facts = subnetFacts(INDEX, 7)!;
+    assert.ok(cardText(facts).includes("7"), "the netuid badge glyph");
+  });
+
+  test("covers the UPPERCASED labels the card actually draws", () => {
+    // The card uppercases kind and labels. A subset built from the lowercase
+    // form leaves every label a row of blank boxes.
+    const facts = subnetFacts(INDEX, 64)!;
+    const text = cardText(facts);
+    assert.ok(text.includes("BITTENSOR"));
+    assert.ok(text.includes("READINESS"));
+  });
+});
+
+describe("the logo fetch is allowlisted", () => {
+  // `logo_url` is a registry row a contributor can edit. Without this, that row
+  // points the Worker at any host it likes and the render inlines whatever
+  // comes back -- an SSRF with an image on the end of it.
+  const withFetch = async (fn: () => Promise<unknown>) => {
+    const original = globalThis.fetch;
+    const seen: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      seen.push(String(input));
+      return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const result = await fn();
+      return { result, seen };
+    } finally {
+      globalThis.fetch = original;
+    }
+  };
+
+  test("our own logo cache over https is fetched", async () => {
+    const { result, seen } = await withFetch(() =>
+      fetchLogoBytes("https://metagraph.sh/logos/cache/x.png"),
+    );
+    assert.ok(result instanceof ArrayBuffer);
+    assert.deepEqual(seen, ["https://metagraph.sh/logos/cache/x.png"]);
+  });
+
+  test("another host is refused WITHOUT being fetched", async () => {
+    const { result, seen } = await withFetch(() =>
+      fetchLogoBytes("https://evil.example/x.png"),
+    );
+    assert.equal(result, null);
+    assert.deepEqual(seen, [], "the request must never leave");
+  });
+
+  test("http is refused even on our own host", async () => {
+    const { result, seen } = await withFetch(() =>
+      fetchLogoBytes("http://metagraph.sh/logos/cache/x.png"),
+    );
+    assert.equal(result, null);
+    assert.deepEqual(seen, []);
+  });
+
+  test("a subdomain is not our host", async () => {
+    const { result, seen } = await withFetch(() =>
+      fetchLogoBytes("https://metagraph.sh.evil.example/x.png"),
+    );
+    assert.equal(result, null);
+    assert.deepEqual(seen, []);
+  });
+
+  test("a non-200 is a miss, not a broken card", async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response("gone", { status: 404 })) as typeof fetch;
+    try {
+      assert.equal(
+        await fetchLogoBytes("https://metagraph.sh/logos/cache/x.png"),
+        null,
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+describe("the badge", () => {
+  test("a wide netuid gets the smaller face so it fits the square", () => {
+    const three = renderEntityMarkup({
+      kind: "k",
+      title: "t",
+      stats: [],
+      mark: "128",
+    });
+    const one = renderEntityMarkup({
+      kind: "k",
+      title: "t",
+      stats: [],
+      mark: "1",
+    });
+    assert.ok(three.includes("font-size:56px"));
+    assert.ok(one.includes("font-size:72px"));
+  });
+
+  test("no logo and no mark draws no badge rather than an empty square", () => {
+    const markup = renderEntityMarkup({ kind: "k", title: "t", stats: [] });
+    assert.ok(!markup.includes("border-radius:30px"));
+  });
+});
+
+describe("the remaining defaults", () => {
+  test("the digest handles facts with no logo and no mark", () => {
+    // accountFacts carries neither; the digest must still be stable rather
+    // than keying on `undefined`.
+    const a = { kind: "k", title: "t", stats: [] };
+    const b = { kind: "k", title: "t", stats: [], logoUrl: null, mark: null };
+    assert.equal(factsDigest(a), factsDigest(b));
+  });
+
+  test("without an injected fetcher the handler uses the allowlisted one", async () => {
+    // The default path: no `fetchLogo` dep, so the real fetchLogoBytes runs and
+    // its allowlist applies. Proven by pointing the row off-host -- the render
+    // still happens and no request leaves.
+    const original = globalThis.fetch;
+    const seen: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      seen.push(String(input));
+      return new Response(new Uint8Array([1]), { status: 200 });
+    }) as typeof fetch;
+    let markup = "";
+    try {
+      const res = await handleEntityOgImage(
+        new Request("https://api.metagraph.sh/og/subnets/64.png"),
+        {},
+        new URL("https://api.metagraph.sh/og/subnets/64.png"),
+        {
+          assets: { fetch: async () => new Response("png", { status: 200 }) },
+          readArtifact: async () => ({
+            ok: true,
+            data: {
+              subnets: [
+                {
+                  netuid: 64,
+                  name: "Chutes",
+                  logo_url: "https://evil.example/x.png",
+                },
+              ],
+            },
+          }),
+          render: async (m) => {
+            markup = m;
+            return new Uint8Array([137]).buffer;
+          },
+        },
+      );
+      assert.equal(res?.status, 200);
+      assert.deepEqual(seen, [], "an off-host logo is never requested");
+      assert.ok(!markup.includes("data:image/png"), "and is not inlined");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+describe("account cards", () => {
+  test("an account renders without any logo lookup at all", async () => {
+    // An account has no logo_url, so the fetch branch must be skipped rather
+    // than entered with an empty URL.
+    let markup = "";
+    let logoAsked = false;
+    const ss58 = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
+    const res = await handleEntityOgImage(
+      new Request(`https://api.metagraph.sh/og/accounts/${ss58}.png`),
+      {},
+      new URL(`https://api.metagraph.sh/og/accounts/${ss58}.png`),
+      {
+        assets: { fetch: async () => new Response("png", { status: 200 }) },
+        fetchLogo: async () => {
+          logoAsked = true;
+          return null;
+        },
+        render: async (m) => {
+          markup = m;
+          return new Uint8Array([137]).buffer;
+        },
+      },
+    );
+    assert.equal(res?.status, 200);
+    assert.equal(logoAsked, false, "no logo lookup for an account");
+    assert.ok(markup.includes("5F4tQy"), "the address is drawn");
+    assert.ok(!markup.includes("border-radius:30px"), "and no badge");
   });
 });
