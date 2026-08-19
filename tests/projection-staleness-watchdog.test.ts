@@ -749,3 +749,57 @@ describe("the watchdog lane, as the heartbeat runs it", () => {
     assert.equal(result.checked, reads.length);
   });
 });
+
+describe("a lane whose empty is DECLARED (#11484)", () => {
+  test("chain-prometheus is exempt from the zero-rows rule, and says why", () => {
+    const lane = PROJECTION_LANES.find((l) => l.name === "chain-prometheus");
+    assert.ok(lane, "chain-prometheus must still be a watched lane");
+    assert.equal(
+      lane?.emptyIsExpected,
+      true,
+      "the chain emits PrometheusServed and account_events curation drops it, " +
+        "so zero rows is the correct answer and not a stall",
+    );
+  });
+
+  test("no OTHER lane is exempt — this is a named exception, not a loosened rule", () => {
+    // The watchdog's own comment asks for exemption by name rather than a rule
+    // that cannot fire. If this list grows, each entry needs its own reason.
+    const exempt = PROJECTION_LANES.filter(
+      (l) => l.emptyIsExpected === true,
+    ).map((l) => l.name);
+    assert.deepEqual(exempt, ["chain-prometheus"]);
+  });
+
+  test("an exempt lane still faults on absent, unreadable and stale", () => {
+    // The exemption is scoped to ONE reason. A lane that stops being written
+    // at all, or whose artifact goes stale, must still alarm -- otherwise this
+    // trades noise for blindness, which is the worse trade.
+    const nowMs = Date.UTC(2026, 7, 19, 12, 0, 0);
+    const one = (generatedAt: string | null, rowCount: number | null) =>
+      evaluateProjectionStaleness({
+        artifacts: [
+          {
+            lane: "chain-prometheus",
+            generatedAt,
+            rowCount,
+            emptyIsFault: false,
+          },
+        ],
+        nowMs,
+        thresholdMs: HOUR,
+      }).entries[0];
+
+    const absent = one(null, null);
+    assert.equal(absent.stale, true);
+    assert.equal(absent.reason, "absent");
+
+    const stale = one(new Date(nowMs - 5 * HOUR).toISOString(), 12);
+    assert.equal(stale.stale, true);
+    assert.equal(stale.reason, "stale");
+
+    // ...and the one reason it IS exempt from.
+    const empty = one(new Date(nowMs - 60_000).toISOString(), 0);
+    assert.equal(empty.stale, false);
+  });
+});

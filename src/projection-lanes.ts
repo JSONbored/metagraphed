@@ -169,6 +169,23 @@ export interface ProjectionLane {
    * PROJECTION_LANES_CRON tick, so none sets this yet. */
   intervalCron?: string;
   /**
+   * A lane whose EMPTY answer is correct and permanent, so zero rows is not a
+   * fault for it.
+   *
+   * `projection-staleness` treats zero rows as broken because on mainnet a
+   * block every 12s means an empty window cannot be real. That claim is right
+   * for every lane but this kind: `chain-prometheus` reads `PrometheusServed`
+   * from `account_events`, and our curation drops that variant, so the card is
+   * empty whatever tier answers -- which the route already states permanently
+   * via PROMETHEUS_DEGRADED_NOT_CURATED.
+   *
+   * Set only with the reason written down. The watchdog's own comment asks for
+   * exactly this -- exemption by NAME rather than weakening the rule into one
+   * that cannot fire -- and every OTHER rule still applies: absent, unreadable
+   * and stale-by-age all still fault for an exempted lane.
+   */
+  emptyIsExpected?: boolean;
+  /**
    * Names the reader that serves this artifact, for a lane that backs NO
    * chain-scope projection route.
    *
@@ -1570,6 +1587,12 @@ export const PROJECTION_LANES: ProjectionLane[] = [
     name: "chain-prometheus",
     artifactKey: CHAIN_PROMETHEUS_PROJECTION_KEY,
     compute: computeChainPrometheus,
+    // The chain emits PrometheusServed and `account_events` curation drops it,
+    // so this card is empty whatever tier answers -- stated permanently on the
+    // route as PROMETHEUS_DEGRADED_NOT_CURATED. Alarming on it every tick made
+    // the projection-staleness lane permanent noise (#11484) without ever
+    // describing a condition anyone could act on.
+    emptyIsExpected: true,
   },
   {
     name: "chain-weights",

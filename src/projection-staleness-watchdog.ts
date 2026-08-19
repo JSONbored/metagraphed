@@ -305,7 +305,11 @@ function watchedLanes(): {
       // Testnet keeps every OTHER rule: absent, unreadable and stale-by-age all
       // still fire, and `chain-stake-moves:testnet` was correctly flagged for
       // age in that same tick.
-      emptyIsFault: network === DEFAULT_CHAIN_NETWORK,
+      // ...unless the LANE says its empty is correct and permanent. That is a
+      // narrower claim than the network rule and is made per lane, with the
+      // reason at the declaration -- see ProjectionLane.emptyIsExpected.
+      emptyIsFault:
+        network === DEFAULT_CHAIN_NETWORK && lane.emptyIsExpected !== true,
     })),
   );
 }
