@@ -13,15 +13,25 @@
 // projection it needs per query, and a JS re-aggregation of 578k rows would
 // not fit a request either way.
 //
-// PERCENTILES ARE DECLINED, NOT SYNTHESIZED. The Postgres route reported
-// latency p50/p95. R2 SQL has no percentile function -- `approx_percentile`
-// is rejected outright (measured 2026-08-03) -- and computing them in JS
-// needs every latency in the window, 578,507 rows for 7d, which is not a
-// request-time read. So `latency` is left undefined and the formatter
-// reports p50/p95 as null: "we did not measure this", which is true.
-// Deriving them from the average would put a number there that no percentile
-// of the data supports, and a caller cannot tell a made-up p95 from a real
-// one.
+// PERCENTILES ARE MEASURED AGAIN. They were declined here from 2026-08-03,
+// when `approx_percentile` was rejected outright and computing them in JS
+// meant pulling every latency in the window -- 578,507 rows for 7d, not a
+// request-time read. So the route reported p50/p95 as null, honestly.
+//
+// `PERCENTILE_CONT(x) WITHIN GROUP (ORDER BY ...)` is accepted now. Verified
+// against a positive control before it was trusted: p50 over a contiguous
+// 8000000..8000100 block range returns exactly 8000050, so the engine is
+// computing the percentile rather than approximating something near it.
+//
+// They ride on the totals query rather than adding a fifth: measured on the
+// live table, adding both percentiles left the scan at 2.46 MB across 15
+// files -- byte for byte what the same query cost without them, because the
+// column is already being read for `avg(latency_ms)`. At the widest window
+// the route offers (90d, 1,467,264 rows) the whole statement is 7.21 MB.
+//
+// EXACT, not approximate, for the reason `distinct_registrants` is exact
+// elsewhere in this codebase: a published percentile that is quietly an
+// estimate is a data defect wearing a performance argument.
 //
 // THE TABLE IS FROZEN, and the window is still honest about it. The proxy
 // that wrote these rows died with the box, so the newest row is fixed at the
@@ -131,6 +141,10 @@ export async function loadRpcUsageColdTier(
           ` sum(CASE WHEN attempts > 1 THEN 1 ELSE 0 END) AS failover_count,` +
           ` sum(CASE WHEN cache = 'hit' THEN 1 ELSE 0 END) AS cache_hits,` +
           ` avg(latency_ms) AS avg_latency_ms,` +
+          // Free: `latency_ms` is already projected for the average above, so
+          // the engine reads no extra column and the scan is unchanged.
+          ` PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50,` +
+          ` PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95,` +
           // Both ends of the measured span. The newest reading has always been
           // published as `observed_at`; the oldest is what `coverage` needs so
           // a merged answer can say where the lakehouse's half of it stops and
@@ -176,10 +190,8 @@ export async function loadRpcUsageColdTier(
     window: windowLabel,
     observedAt: totals.observed_at ?? null,
     totals,
-    // Deliberately absent -- see the header. Not a TODO.
-    latency: undefined,
-    // What this tier measured. `latency` is omitted for the same reason
-    // p50/p95 are: there is no percentile here to scope.
+    // From the totals row, which now carries them.
+    latency: totals,
     coverage: {
       segments: [
         {
@@ -188,6 +200,14 @@ export async function loadRpcUsageColdTier(
           end: totals.observed_at ?? null,
         },
       ],
+      // The percentiles describe THIS store's span and no other. Scoped
+      // explicitly so a cold-only answer says which sub-range its p50/p95
+      // covers, rather than letting a reader assume it covers the window they
+      // asked for -- the same discipline the hot tier's own scope carries.
+      latency: {
+        start: totals.observed_from ?? null,
+        end: totals.observed_at ?? null,
+      },
     },
     // endpoints/networks derive their own error_rate from requests - ok
     // inside the formatter; only the bucket mapping reads a literal `errors`,

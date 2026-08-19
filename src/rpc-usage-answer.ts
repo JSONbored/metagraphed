@@ -30,11 +30,18 @@
 // with them -- and `coverage` publishes the span each store actually
 // contributed, including the hole between them that no store covers.
 //
-// PERCENTILES ARE NOT SUMMED, because they are not additive.
-// `quantileExactWeighted` cannot be merged with a store that has no percentile
-// function at all, and reporting AE's p50 as the whole window's p50 would be a
-// claim about a sub-range. They stay AE-only and `coverage.latency_percentiles`
-// says which sub-range they describe. Null still means "not measured".
+// PERCENTILES ARE NOT SUMMED, because they are not additive. Reporting AE's
+// p50 as the whole window's p50 would be a claim about a sub-range, so the
+// merged answer keeps the hot tier's and `coverage.latency_percentiles` says
+// which sub-range it describes. Null still means "not measured".
+//
+// The ORIGINAL reason given here -- that the lakehouse "has no percentile
+// function at all" -- stopped being true: `PERCENTILE_CONT(x) WITHIN GROUP`
+// is accepted now and the cold tier measures p50/p95 on its own span. That
+// changes nothing about this merge, because two exact percentiles over two
+// disjoint ranges still cannot be combined into one. It does mean a COLD-ONLY
+// answer now carries percentiles where it used to report null, which is the
+// case this route lost when Postgres went away.
 //
 // WHEN THE LAKEHOUSE IS READ AT ALL. Only when the hot tier does not already
 // cover the requested window back to its cutoff. That is what keeps this from

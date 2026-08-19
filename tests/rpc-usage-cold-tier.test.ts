@@ -149,8 +149,16 @@ describe("what the tier refuses to publish", () => {
 describe("the SQL it emits", () => {
   test("no rollup uses a function the engine rejects", async () => {
     // Measured against the live engine 2026-08-03: count_if and
-    // approx_percentile are both rejected outright. A refactor reaching for
-    // either would fail every query at runtime, not at build.
+    // approx_percentile are both rejected outright, and re-verified
+    // 2026-08-19 -- count_if still returns `40004: Invalid function`. A
+    // refactor reaching for either would fail every query at runtime, not at
+    // build.
+    //
+    // PERCENTILE_CONT is a different function and IS accepted (verified
+    // against a positive control: p50 over a contiguous 8000000..8000100
+    // range returns exactly 8000050), so it is allowed here by name while
+    // `approx_percentile` stays banned -- an approximate percentile on a
+    // published figure would be a data defect wearing a performance argument.
     const engine = fakeEngine({
       totals: [{ total: 1, ok_count: 1 }],
       endpoints: [],
@@ -168,7 +176,11 @@ describe("the SQL it emits", () => {
     assert.ok(engine.seen.length >= 4, "expected all four rollups");
     for (const sql of engine.seen) {
       assert.doesNotMatch(sql, /count_if/i, "count_if is rejected by R2 SQL");
-      assert.doesNotMatch(sql, /percentile/i, "no percentile function exists");
+      assert.doesNotMatch(
+        sql,
+        /approx_percentile/i,
+        "approx_percentile is rejected by R2 SQL, and would be approximate anyway",
+      );
     }
   });
 
@@ -385,7 +397,7 @@ describe("the rows it hands the shared formatter", () => {
     }
   });
 
-  test("publishes the span it measured, with no percentile range to scope", async () => {
+  test("publishes the span it measured, and scopes its percentiles to it", async () => {
     const oldest = 1_784_000_000_000;
     const newest = 1_784_900_000_000;
     const engine = fakeEngine({
@@ -406,9 +418,81 @@ describe("the rows it hands the shared formatter", () => {
     assert.deepEqual(coverage.segments, [
       { source: "lakehouse", start: oldest, end: newest },
     ]);
-    // Nothing measured a percentile here, and the payload says exactly that.
-    assert.equal(coverage.latency_percentiles, null);
+    // The percentiles this tier measures describe THIS span and no other, so
+    // the payload scopes them rather than letting a reader assume they cover
+    // the window they asked for.
+    assert.deepEqual(coverage.latency_percentiles, {
+      start: oldest,
+      end: newest,
+    });
     assert.ok(engine.seen[0].includes("min(observed_at) AS observed_from"));
+  });
+
+  test("measures p50/p95 and serves them, which this route lost with Postgres", async () => {
+    // The route reported percentiles on Postgres and went null when that box
+    // went away, because R2 SQL rejected approx_percentile and a JS
+    // computation needs every latency in the window (578,507 rows for 7d).
+    // PERCENTILE_CONT is accepted now, so the answer is measured again.
+    const engine = fakeEngine({
+      totals: [
+        {
+          total: 415494,
+          ok_count: 415493,
+          avg_latency_ms: 156.18,
+          p50: 141,
+          p95: 435,
+          observed_from: 1_786_525_607_000,
+          observed_at: 1_787_097_599_000,
+        },
+      ],
+      endpoints: [],
+      networks: [],
+      buckets: [],
+    });
+    const result = (await loadRpcUsageColdTier(
+      {} as never,
+      { window: "7d", now: NOW, query: engine.query } as never,
+    )) as Record<string, unknown>;
+    const latency = (result.summary as Record<string, unknown>)
+      .latency_ms as Record<string, unknown>;
+    assert.equal(latency.p50, 141);
+    assert.equal(latency.p95, 435);
+    assert.equal(
+      latency.avg,
+      156,
+      "the average is unchanged and still rounded",
+    );
+  });
+
+  test("percentiles ride the totals query rather than adding a fifth scan", async () => {
+    // The whole reason this is affordable: `latency_ms` is already projected
+    // for avg(), so the engine reads no extra column. Measured on the live
+    // table, adding both percentiles left the scan at 2.46 MB across 15 files
+    // -- byte for byte what the same query cost without them. A refactor that
+    // split them into their own statement would double the scan for nothing.
+    const engine = fakeEngine({
+      totals: [{ total: 1, ok_count: 1 }],
+      endpoints: [],
+      networks: [],
+      buckets: [],
+    });
+    await loadRpcUsageColdTier(
+      {} as never,
+      { window: "7d", now: NOW, query: engine.query } as never,
+    );
+    const withPercentiles = engine.seen.filter((sql) =>
+      /percentile_cont/i.test(sql),
+    );
+    assert.equal(
+      withPercentiles.length,
+      1,
+      "exactly one statement computes percentiles",
+    );
+    assert.ok(
+      withPercentiles[0].includes("count(*) AS total"),
+      "and it is the totals statement, not a new one",
+    );
+    assert.equal(engine.seen.length, 4, "still four rollups, not five");
   });
 
   test("a bucket row missing its counts reads as zero, not NaN", async () => {
