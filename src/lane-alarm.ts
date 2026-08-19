@@ -84,6 +84,7 @@ type LaneAlarmEnv = StoreEnv &
     GITHUB_TOKEN?: unknown;
     LANE_ALARM_GITHUB_TOKEN?: unknown;
     LANE_ALARM_MIN_STALE_MS?: unknown;
+    LANE_ALARM_RATE_WINDOW_MS?: unknown;
     LANE_ALARM_REPO?: unknown;
   };
 
@@ -113,6 +114,47 @@ export const LANE_ALARM_MIN_STALE_MS = 60 * 60 * 1000;
  * something whose whole job is to act on its own without supervision.
  */
 export const LANE_ALARM_MAX_OPENS_PER_TICK = 4;
+
+/**
+ * How far back the FLAPPING rule looks (#11488).
+ *
+ * A run is the unbroken tail of one verdict, so a lane that goes stale,
+ * recovers, and goes stale again never accumulates one -- and this file's
+ * one-hour minimum is measured on that run. Measured 2026-08-19,
+ * `chain-detail-staleness` spent 12.5 minutes at 851s behind against a 300s
+ * threshold, recorded `stale` in lane_health, and opened nothing, because no
+ * single episode lasted the 45 minutes three consecutive quarter-hourly ticks
+ * would need. `chain_detail`'s own write-latency tail says that is not rare:
+ * p95 718s, p99 969s.
+ *
+ * A lane that is broken a third of the time is broken. Twenty-four hours is
+ * long enough that a deploy's one-tick blip cannot dominate the ratio, and
+ * short enough that a lane which recovered yesterday stops alarming today.
+ */
+export const LANE_ALARM_RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The share of ticks in that window that must be faulty.
+ *
+ * A THIRD. Deliberately well above the noise floor this file already
+ * documents -- `chain-detail` flicked stale 64 times in one day while being
+ * fundamentally healthy, which on a quarter-hourly cadence is 96 ticks and
+ * about 67%... and that lane WAS the one with the real fault. The number has
+ * to sit below the case it was written for and above a deploy, and a third is
+ * the widest gap between those two.
+ */
+export const LANE_ALARM_RATE_THRESHOLD = 1 / 3;
+
+/**
+ * The fewest ticks a lane must have written in the window to be rated at all.
+ *
+ * TWELVE. A ratio over three samples is not a rate, it is an anecdote: a daily
+ * lane that happens to have logged twice, once badly, would read as 50%
+ * faulty. Twelve is half a day of quarter-hourly ticks, so a lane too slow to
+ * reach it is left to the run rule, which is the right rule for a lane whose
+ * episodes are longer than its cadence anyway.
+ */
+export const LANE_ALARM_RATE_MIN_SAMPLES = 12;
 
 /**
  * How much history the cadence estimate reads.
@@ -237,7 +279,7 @@ export function laneAlarmTitle(lane: string): string {
 /** `stale` and `unknown` are VERDICTS the watchdog wrote; `silent` is this
  * module's own finding -- the absence of any verdict at all -- so it is the one
  * member not derived from the schema. */
-export type LaneAlarmKind = LaneFindingVerdict | "silent";
+export type LaneAlarmKind = LaneFindingVerdict | "silent" | "flapping";
 
 export interface LaneAlarm {
   lane: string;
@@ -245,8 +287,12 @@ export interface LaneAlarm {
   /** When the fault started: the first tick of the stale run, or the last
    * verdict written before the lane went quiet. */
   since: number;
-  /** Consecutive stale ticks. Always 0 for `silent` -- there were none. */
+  /** Consecutive stale ticks. Always 0 for `silent` -- there were none. For
+   * `flapping` this is the FAULTY tick count in the window, not a run. */
   ticks: number;
+  /** `flapping` only: how many ticks the lane wrote in the window, so the
+   * share is reported rather than asserted. */
+  sampled?: number;
   /** The watchdog's own reason string, verbatim. Null when it wrote none. */
   detail: string | null;
   /** How far behind the lane itself was, as the watchdog measured it. */
@@ -322,6 +368,78 @@ export const LANE_STALE_RUN_SQL = VERDICT_RUN_SQL.stale;
  * verdict means.
  */
 export const LANE_UNKNOWN_RUN_SQL = VERDICT_RUN_SQL.unknown;
+
+/**
+ * Faulty-tick RATE per lane over the rate window (#11488).
+ *
+ * COUNTS BOTH FAULT VERDICTS, because the question this answers is "is this
+ * lane reliable", and a lane alternating `stale` and `unknown` is no more
+ * trustworthy than one doing either consistently -- while the run rule, which
+ * keys on a single verdict, would see two short runs and alarm on neither.
+ *
+ * The window bound is a parameter rather than interpolated: it is a timestamp
+ * computed at call time, which is exactly what placeholders are for. The
+ * verdict list is not -- it is the same closed, schema-derived union
+ * `laneRunSql` interpolates, for the same reason.
+ */
+export const LANE_FAULT_RATE_SQL =
+  "SELECT lane, COUNT(*) AS sampled, " +
+  "SUM(CASE WHEN verdict IN ('stale','unknown') THEN 1 ELSE 0 END) AS faulty, " +
+  "MIN(checked_at) AS since " +
+  "FROM lane_health WHERE checked_at >= ? GROUP BY lane";
+
+export interface LaneFaultRate {
+  sampled: number;
+  faulty: number;
+  since: number;
+}
+
+/** Faulty-tick rates keyed by lane. `{}` on any failure -- a reader that
+ * throws is a reader that stops reading. */
+export async function loadLaneFaultRates(
+  db: LaneHealthDb | null | undefined,
+  windowStartMs: number,
+): Promise<Record<string, LaneFaultRate>> {
+  if (!db?.query) return {};
+  try {
+    const rows = (await db.query(LANE_FAULT_RATE_SQL, [
+      windowStartMs,
+    ])) as Record<string, unknown>[];
+    const out: Record<string, LaneFaultRate> = {};
+    for (const row of rows) {
+      const lane = row.lane == null ? "" : String(row.lane);
+      if (!lane) continue;
+      out[lane] = {
+        sampled: countOrZero(row.sampled),
+        faulty: countOrZero(row.faulty),
+        since: countOrZero(row.since),
+      };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Is this lane flapping badly enough to open on?
+ *
+ * Three gates, and all of them exist to keep this from becoming noise: enough
+ * samples to be a rate at all, a share above the threshold, and -- the one
+ * that matters most -- NOT already covered by the run rule. A lane in a long
+ * unbroken stale run is also 100% faulty by this measure, and opening a second
+ * issue about it would be the same fault twice.
+ */
+export function isFlapping(
+  rate: LaneFaultRate | undefined,
+  hasOpenRun: boolean,
+  threshold: number = LANE_ALARM_RATE_THRESHOLD,
+  minSamples: number = LANE_ALARM_RATE_MIN_SAMPLES,
+): boolean {
+  if (!rate || hasOpenRun) return false;
+  if (rate.sampled < minSamples) return false;
+  return rate.faulty / rate.sampled >= threshold;
+}
 
 /* LANE_CADENCE_SQL / laneCadenceMs / loadLaneCadence were REMOVED here (#10723).
  *
@@ -479,6 +597,12 @@ export interface LaneAlarmPlanInput {
   /** Current unbroken `unknown` runs, keyed by lane (#10695). */
   unknownRuns: LaneVerdictRuns;
   /**
+   * Faulty-tick rate per lane over the rate window (#11488). Optional so every
+   * existing caller and fixture keeps compiling: absent means the flapping rule
+   * simply does not fire, which is the same behaviour as before it existed.
+   */
+  faultRates?: Record<string, LaneFaultRate>;
+  /**
    * Observed MAXIMUM gap per lane, keyed by lane. Null where uncalibrated.
    *
    * The max, not the mean (#10232, and this file's own LANE_MAX_GAP_SQL comment
@@ -595,6 +719,7 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     latest,
     runs,
     unknownRuns,
+    faultRates = {},
     observedMaxGap,
     openAlarms,
     // Defaulted, and the default suppresses NOTHING. A caller that cannot read
@@ -668,6 +793,37 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
       age_ms: record.age_ms,
       cadence_ms: cadenceFor(record.lane),
     });
+  }
+
+  // FLAPPING (#11488). A lane that recovers between episodes never builds a run
+  // the minimum can reach, however often it breaks: `chain-detail-staleness`
+  // sat 851s behind a 300s threshold for 12.5 minutes, recorded `stale`, and
+  // opened nothing, because no single episode lasted the 45 minutes three
+  // consecutive quarter-hourly ticks would need.
+  //
+  // AFTER the run loops and gated on their output, so a lane in a long unbroken
+  // run -- which is also 100% faulty by this measure -- reports once as `stale`
+  // rather than twice. The run rule is the better description when it applies;
+  // this only speaks where it cannot.
+  const alreadyQualified = new Set(qualified.map((alarm) => alarm.lane));
+  for (const [lane, rate] of Object.entries(faultRates)) {
+    if (!isFlapping(rate, alreadyQualified.has(lane))) continue;
+    const record = latest[lane];
+    // No latest verdict for a lane with rows in the window means the two reads
+    // disagree; the silence loop below is the right reporter for that.
+    if (!record) continue;
+    if (nowMs - record.checked_at > LANE_ALARM_MAX_VERDICT_AGE_MS) continue;
+    qualified.push({
+      lane,
+      kind: "flapping",
+      since: rate.since,
+      ticks: rate.faulty,
+      sampled: rate.sampled,
+      detail: record.detail,
+      age_ms: record.age_ms,
+      cadence_ms: cadenceFor(lane),
+    });
+    alreadyQualified.add(lane);
   }
 
   for (const record of Object.values(latest)) {
@@ -835,6 +991,15 @@ function issueOpening(alarm: LaneAlarm, forHow: string): string {
       );
     case "silent":
       return `\`${alarm.lane}\` has written **no verdict at all** for **${forHow}**. Its watchdog appears to have stopped running -- the last verdict it did write said \`${alarm.detail ?? "ok"}\`, so nothing else will report this.`;
+    case "flapping": {
+      const sampled = alarm.sampled ?? 0;
+      const share = sampled ? Math.round((alarm.ticks / sampled) * 100) : 0;
+      return (
+        `\`${alarm.lane}\` has been **faulty on ${alarm.ticks} of its last ${sampled} ticks (${share}%)** over **${forHow}**, ` +
+        "recovering between each one. No single episode lasted long enough for the run rule to reach it, which is why nothing opened until now -- " +
+        "a lane that is broken a third of the time is broken, however short each individual break is."
+      );
+    }
   }
 }
 
@@ -1204,18 +1369,25 @@ export async function runLaneAlarm(
   const minStaleMs =
     Number(env?.LANE_ALARM_MIN_STALE_MS) || LANE_ALARM_MIN_STALE_MS;
 
-  const [latest, runs, unknownRuns, observedMaxGap] = await Promise.all([
-    loadLatestLaneHealth(db),
-    loadLaneStaleRuns(db),
-    loadLaneUnknownRuns(db),
-    // THE MAX GAP, not the mean (#10723). This file already owned both queries
-    // and already documented why the max is the only column that survives a
-    // container reboot and a many-rows-per-pass mirror lane -- but the alarm path
-    // kept reading the mean, so `neon:account-balances` was judged against a
-    // ONE-MINUTE cadence and alarmed on every gap between its six-hourly passes.
-    // src/self-health.ts and src/self-health-mcp.ts already read it this way.
-    loadLaneMaxGap(db, nowMs - LANE_ALARM_CADENCE_WINDOW_MS),
-  ]);
+  const rateWindowMs =
+    Number(env?.LANE_ALARM_RATE_WINDOW_MS) || LANE_ALARM_RATE_WINDOW_MS;
+
+  const [latest, runs, unknownRuns, faultRates, observedMaxGap] =
+    await Promise.all([
+      loadLatestLaneHealth(db),
+      loadLaneStaleRuns(db),
+      loadLaneUnknownRuns(db),
+      // #11488: the rate, for lanes that recover between episodes and so never
+      // build a run the minimum can reach.
+      loadLaneFaultRates(db, nowMs - rateWindowMs),
+      // THE MAX GAP, not the mean (#10723). This file already owned both queries
+      // and already documented why the max is the only column that survives a
+      // container reboot and a many-rows-per-pass mirror lane -- but the alarm path
+      // kept reading the mean, so `neon:account-balances` was judged against a
+      // ONE-MINUTE cadence and alarmed on every gap between its six-hourly passes.
+      // src/self-health.ts and src/self-health-mcp.ts already read it this way.
+      loadLaneMaxGap(db, nowMs - LANE_ALARM_CADENCE_WINDOW_MS),
+    ]);
 
   // Read the open alarms BEFORE planning: without them every tick would open a
   // duplicate of every alarm still outstanding, which is the failure that makes
@@ -1243,6 +1415,7 @@ export async function runLaneAlarm(
     latest,
     runs,
     unknownRuns,
+    faultRates,
     observedMaxGap,
     openAlarms: openAlarms ?? {},
     acknowledged,
@@ -1270,7 +1443,12 @@ export async function runLaneAlarm(
       error: new Error(laneAlarmSummary(alarm, nowMs)),
       route: "watchdog:lane-alarm",
       fingerprintDetail: alarm.lane,
-      errorCode: alarm.kind === "stale" ? "lane_stale" : "lane_silent",
+      errorCode:
+        alarm.kind === "stale"
+          ? "lane_stale"
+          : alarm.kind === "flapping"
+            ? "lane_flapping"
+            : "lane_silent",
     }).catch(() => false);
     if (!github || listUnavailable) continue;
     const number = await github

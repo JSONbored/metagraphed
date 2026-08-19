@@ -38,6 +38,11 @@ import {
   LANE_ALARM_TITLE_PREFIX,
   LANE_MAX_GAP_SQL,
   LANE_STALE_RUN_SQL,
+  LANE_ALARM_RATE_MIN_SAMPLES,
+  LANE_ALARM_RATE_THRESHOLD,
+  LANE_FAULT_RATE_SQL,
+  isFlapping,
+  loadLaneFaultRates,
   laneAlarmGitHub,
   laneAlarmIssueBody,
   laneAlarmLossComment,
@@ -1267,12 +1272,19 @@ describe("runLaneAlarm", () => {
     /** LANE_MAX_GAP_SQL rows: `{ lane, n, max_gap }` (#10723). The alarm reads the
      * MAX gap now, not the mean, so this bucket answers that query's shape. */
     maxGap?: Record<string, unknown>[];
+    /** LANE_FAULT_RATE_SQL rows: `{ lane, sampled, faulty, since }` (#11488). */
+    rates?: Record<string, unknown>[];
   }) {
     const written: Record<string, unknown>[] = [];
     pg.control.queries.length = 0;
     pg.control.rows = null;
     pg.control.failNext = null;
     pg.control.answers = [
+      // BEFORE the runs match, which is a substring of this query too: the rate
+      // SQL also selects `MIN(checked_at) AS since`, so a fixture that matched
+      // on that alone would hand run rows to the rate reader and quietly make
+      // every flapping test a no-op.
+      { match: "AS sampled", rows: rows.rates ?? [] },
       { match: "MIN(checked_at) AS since", rows: rows.runs ?? [] },
       { match: "COUNT(*) AS n", rows: rows.maxGap ?? [] },
       {
@@ -1998,6 +2010,54 @@ describe("runLaneAlarm", () => {
     assert.equal(out.ok, true);
     assert.equal(out.alarming, 1);
   });
+
+  test("a flapping lane opens with its own error code, not lane_stale", async () => {
+    // `lane_flapping` is its own code because it is a different finding: the
+    // lane is not down, it is unreliable, and a dashboard that folds the two
+    // together cannot tell a broken producer from a flaky one.
+    const db = healthDb({
+      latest: [
+        {
+          lane: "chain-detail-staleness",
+          verdict: "ok",
+          age_ms: 30_000,
+          detail: null,
+          checked_at: NOW - 60_000,
+        },
+      ],
+      runs: [],
+      maxGap: [{ lane: "chain-detail-staleness", n: 96, max_gap: 15 * 60_000 }],
+      rates: [
+        {
+          lane: "chain-detail-staleness",
+          sampled: 96,
+          faulty: 32,
+          since: NOW - 24 * HOUR,
+        },
+      ],
+    });
+    const github = fakeGitHub({});
+    const seen: Array<{ errorCode?: string }> = [];
+    const out = await runLaneAlarm(
+      { ...TOKEN, ...db.env },
+      {
+        github,
+        now: () => NOW,
+        recordException: async (_env, payload) => {
+          seen.push(payload as { errorCode?: string });
+          return true;
+        },
+      },
+    );
+    assert.equal(out.opened, 1);
+    assert.deepEqual(
+      seen.map((p) => p.errorCode),
+      ["lane_flapping"],
+    );
+    // The double records the lane it was asked to open; the body itself is
+    // asserted directly against laneAlarmIssueBody in the plan tests above.
+    assert.deepEqual(github.opened, ["chain-detail-staleness"]);
+  });
 });
 
 describe("laneAlarmTitle", () => {
@@ -2181,5 +2241,257 @@ describe("a closed dead-letter alarm is an acknowledgement", () => {
       plan.open.map((a) => a.lane),
       ["chain-detail"],
     );
+  });
+});
+
+describe("flapping: a lane that recovers between episodes (#11488)", () => {
+  const base = {
+    latest: {},
+    runs: {},
+    unknownRuns: {},
+    observedMaxGap: {},
+    openAlarms: {},
+    nowMs: NOW,
+    minStaleMs: LANE_ALARM_MIN_STALE_MS,
+  };
+
+  test("the case this exists for: broken a third of the time, never for an hour", () => {
+    // chain-detail-staleness, measured 2026-08-19: 851s behind a 300s threshold
+    // for 12.5 minutes, recorded `stale`, opened nothing -- no episode lasted
+    // the 45 minutes three consecutive quarter-hourly ticks would need.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        "chain-detail-staleness": record({ lane: "chain-detail-staleness" }),
+      },
+      runs: {},
+      faultRates: {
+        "chain-detail-staleness": {
+          sampled: 96,
+          faulty: 32,
+          since: NOW - 24 * HOUR,
+        },
+      },
+      observedMaxGap: { "chain-detail-staleness": 15 * 60_000 },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].kind, "flapping");
+    assert.equal(plan.open[0].ticks, 32);
+    assert.equal(plan.open[0].sampled, 96);
+  });
+
+  test("a lane already alarming as STALE is not ALSO reported as flapping", () => {
+    // A long unbroken run is 100% faulty by this measure too. The run rule is
+    // the better description when it applies; two issues for one fault is the
+    // noise this whole file exists to end.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a" }) },
+      runs: { a: { since: NOW - 28 * HOUR, ticks: 112 } },
+      faultRates: { a: { sampled: 96, faulty: 96, since: NOW - 24 * HOUR } },
+      observedMaxGap: { a: 15 * 60_000 },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].kind, "stale");
+  });
+
+  test("below the threshold does not alarm", () => {
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a", verdict: "ok" }) },
+      faultRates: { a: { sampled: 96, faulty: 8, since: NOW - 24 * HOUR } },
+      observedMaxGap: { a: 15 * 60_000 },
+    });
+    assert.equal(plan.open.length, 0);
+  });
+
+  test("too few samples is an anecdote, not a rate", () => {
+    // A daily lane that logged twice, once badly, reads as 50% faulty. That is
+    // not a rate and must not open an issue.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a", verdict: "ok" }) },
+      faultRates: { a: { sampled: 2, faulty: 1, since: NOW - 24 * HOUR } },
+      observedMaxGap: { a: 24 * HOUR },
+    });
+    assert.equal(plan.open.length, 0);
+  });
+
+  test("absent rates behave exactly as before this rule existed", () => {
+    // Every existing caller omits `faultRates`. That must be a no-op, not a
+    // silent change of behaviour for lanes this rule was never asked about.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a", verdict: "ok" }) },
+      observedMaxGap: { a: 15 * 60_000 },
+    });
+    assert.equal(plan.open.length, 0);
+  });
+
+  test("the issue body reports the share rather than asserting it", () => {
+    const body = laneAlarmIssueBody(
+      {
+        lane: "chain-detail-staleness",
+        kind: "flapping",
+        since: NOW - 24 * HOUR,
+        ticks: 32,
+        sampled: 96,
+        detail: "stale (head_block=8877513)",
+        age_ms: 762178,
+        cadence_ms: 15 * 60_000,
+      },
+      NOW,
+    );
+    assert.ok(body.includes("32 of its last 96 ticks (33%)"));
+    assert.ok(body.includes("recovering between each one"));
+  });
+});
+
+describe("the flapping predicate", () => {
+  const rate = (faulty: number, sampled: number) => ({
+    faulty,
+    sampled,
+    since: NOW - 24 * HOUR,
+  });
+
+  test("an open run suppresses it", () => {
+    assert.equal(isFlapping(rate(96, 96), true), false);
+    assert.equal(isFlapping(rate(96, 96), false), true);
+  });
+
+  test("exactly at the threshold alarms", () => {
+    const sampled = 96;
+    const faulty = Math.ceil(sampled * LANE_ALARM_RATE_THRESHOLD);
+    assert.equal(isFlapping(rate(faulty, sampled), false), true);
+  });
+
+  test("exactly at the minimum sample count is enough", () => {
+    const n = LANE_ALARM_RATE_MIN_SAMPLES;
+    assert.equal(isFlapping(rate(n, n), false), true);
+    assert.equal(isFlapping(rate(n - 1, n - 1), false), false);
+  });
+
+  test("an absent rate is not a fault", () => {
+    assert.equal(isFlapping(undefined, false), false);
+  });
+});
+
+describe("the fault-rate reader", () => {
+  test("counts BOTH fault verdicts, and bounds the window with a parameter", async () => {
+    // A lane alternating stale and unknown is no more trustworthy than one
+    // doing either consistently -- and the run rule, keyed on a single verdict,
+    // sees two short runs and alarms on neither.
+    assert.ok(LANE_FAULT_RATE_SQL.includes("'stale'"));
+    assert.ok(LANE_FAULT_RATE_SQL.includes("'unknown'"));
+    assert.ok(LANE_FAULT_RATE_SQL.includes("checked_at >= ?"));
+
+    const seen: { sql?: string; values?: unknown[] } = {};
+    const rates = await loadLaneFaultRates(
+      {
+        query: async (sql: string, values?: unknown[]) => {
+          seen.sql = sql;
+          seen.values = values;
+          return [{ lane: "a", sampled: 96, faulty: 32, since: NOW - HOUR }];
+        },
+        run: async () => ({ changes: 0 }),
+      },
+      NOW - 24 * HOUR,
+    );
+    assert.deepEqual(seen.values, [NOW - 24 * HOUR]);
+    assert.deepEqual(rates.a, { sampled: 96, faulty: 32, since: NOW - HOUR });
+  });
+
+  test("a reader that throws returns {} rather than stopping the tick", async () => {
+    const rates = await loadLaneFaultRates(
+      {
+        query: async () => {
+          throw new Error("db down");
+        },
+        run: async () => ({ changes: 0 }),
+      },
+      NOW - 24 * HOUR,
+    );
+    assert.deepEqual(rates, {});
+  });
+
+  test("no db is {}", async () => {
+    assert.deepEqual(await loadLaneFaultRates(null, NOW), {});
+  });
+});
+
+describe("flapping edge cases", () => {
+  const base = {
+    latest: {},
+    runs: {},
+    unknownRuns: {},
+    observedMaxGap: {},
+    openAlarms: {},
+    nowMs: NOW,
+    minStaleMs: LANE_ALARM_MIN_STALE_MS,
+  };
+
+  test('a rate row with no lane name is skipped, not stored under ""', async () => {
+    const rates = await loadLaneFaultRates(
+      {
+        query: async () => [
+          { lane: null, sampled: 96, faulty: 96, since: NOW },
+          { lane: "a", sampled: 96, faulty: 32, since: NOW },
+        ],
+        run: async () => ({ changes: 0 }),
+      },
+      NOW - 24 * HOUR,
+    );
+    assert.deepEqual(Object.keys(rates), ["a"]);
+  });
+
+  test("a rate with no matching latest verdict is left to the silence loop", () => {
+    // The two reads disagree -- rows in the window but no newest verdict. This
+    // loop must not invent one; a lane that stopped reporting is the silence
+    // loop's finding.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {},
+      faultRates: {
+        ghost: { sampled: 96, faulty: 96, since: NOW - 24 * HOUR },
+      },
+    });
+    assert.equal(plan.open.filter((a) => a.kind === "flapping").length, 0);
+  });
+
+  test("a stale-dated verdict is residue, not a flap", () => {
+    // Same bound the stale loop applies: a verdict older than the max age is
+    // left over from a lane nobody reads any more.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        a: record({
+          lane: "a",
+          verdict: "ok",
+          checked_at: NOW - 30 * 24 * HOUR,
+        }),
+      },
+      faultRates: { a: { sampled: 96, faulty: 96, since: NOW - 24 * HOUR } },
+      observedMaxGap: { a: 15 * 60_000 },
+    });
+    assert.equal(plan.open.filter((a) => a.kind === "flapping").length, 0);
+  });
+
+  test("a flapping alarm with no sample count reports 0%, never NaN", () => {
+    // `sampled` is optional on the shape, so the body must not divide by
+    // undefined and publish `NaN%` into an issue title someone reads at 3am.
+    const body = laneAlarmIssueBody(
+      {
+        lane: "a",
+        kind: "flapping",
+        since: NOW - 24 * HOUR,
+        ticks: 3,
+        detail: null,
+        age_ms: null,
+        cadence_ms: null,
+      },
+      NOW,
+    );
+    assert.ok(body.includes("(0%)"));
+    assert.ok(!body.includes("NaN"));
   });
 });
