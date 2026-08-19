@@ -611,6 +611,7 @@ import {
 } from "../src/feeds.ts";
 import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.ts";
+import { handleEntityOgImage, r2CardCache } from "../src/og-entity-card.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { sampleEmissionGateWithFailover } from "../src/emission-gate-sampler.ts";
@@ -6689,6 +6690,21 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   // src/og-image.ts's own header for the full rationale.
   if (url.pathname === "/og.png" || url.pathname === "/og") {
     return handleOgImage(request, env, url, { readR2Object });
+  }
+
+  // Per-entity cards (#11075): /og/subnets/{netuid}.png, /og/accounts/{ss58}.png.
+  // Unlike the landing card above these ARE rendered here, because the argument
+  // that moved that one out does not apply: its key was constant so it
+  // re-rendered an unchanged image, where an entity card differs by
+  // construction and is cached under a digest of its own facts. The wasm is
+  // imported inside the handler and its startup cost was measured -- see
+  // src/og-entity-card.ts's header.
+  {
+    const entityCard = await handleEntityOgImage(request, env, url, {
+      readArtifact,
+      ...r2CardCache(env),
+    });
+    if (entityCard) return entityCard;
   }
 
   // Brand-icon favicon proxy (binary, not a JSON contract route). Implements the
