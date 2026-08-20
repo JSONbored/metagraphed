@@ -30,7 +30,7 @@
 // difference between "this read is slow" and "this read was slow once", which
 // is the claim every issue filed off this sweep actually needs.
 //
-// The confirmation pass is deliberately narrow -- see `confirmOverBudget`.
+// The confirmation pass is deliberately narrow -- see `confirmDecisiveDraws`.
 //
 // SERIAL AND SPACED, for the reason the MCP sweep records: the endpoint
 // rate-limits per client, and a parallel run turns healthy operations into
@@ -64,7 +64,7 @@ const REQUEST_TIMEOUT_MS = 45000;
  * rather than waits.
  *
  * Still loose on purpose, but it is no longer the ONLY defence against noise:
- * `confirmOverBudget` re-draws anything that crosses this line, so a budget
+ * `confirmDecisiveDraws` re-draws anything that crosses this line, so a budget
  * that used to have to absorb a 16.7x spread now only has to sit above the
  * median of one.
  */
@@ -119,21 +119,68 @@ const STALE_MARGIN = 0.5;
  * spread is the evidence that one sample per surface is noise around one
  * underlying cost, not three independent measurements.
  *
- * All 22 belong to #10312, and they are not 22 independent problems: the
+ * All 33 belong to #10312 or a sub-issue of it, and they are not 33 independent
+ * problems: the
  * account family and the extrinsics/chain-event reads are the lakehouse
  * access path (#9789), one root cause wearing most of these hats.
  *
- * NOTHING HAS BEEN RETIRED FROM THIS LIST YET, and the 2026-08-19 run is why.
- * It reported five entries as stale -- `/api/v1/accounts/{ss58}`,
- * `.../weight-setters`, `/api/v1/blocks/{ref}/extrinsics`, `/api/v1/extrinsics`
- * and `/api/v1/subnets/{netuid}/ownership-history` -- on numbers its own
- * confirmation pass had read out of the edge cache (see `Served`). Those five
- * may well be genuinely fixed; the point is that THAT run could not tell, and
- * retiring an exemption is the one move this gate cannot take back. The
- * re-measurement happens once `x-metagraph-cache` is live, which is what makes
- * the next run able to say.
+ * TWO WERE RETIRED 2026-08-20, and how they were checked is the point.
+ * `/api/v1/accounts/{ss58}` and `/api/v1/extrinsics` were re-measured on cold
+ * keys with the cache label live -- 585/667/1267ms across three distinct
+ * accounts, and 298-1740ms across five distinct limits, every draw a confirmed
+ * miss or an uncached feed. Those are fixed reads and their exemptions are gone.
+ *
+ * `/api/v1/blocks/{ref}/extrinsics` was reported stale by the SAME run and
+ * kept, because the same treatment said otherwise: six cold draws ran
+ * 1466/3561/4455/8150/13813/15412ms, a median of 6303ms, against the sweep's
+ * one lucky 2432ms. That gap is what `confirmDecisiveDraws` now closes.
+ *
+ * The 2026-08-19 run had also called `.../weight-setters` and
+ * `.../ownership-history` stale on cache-served numbers; both are back under
+ * measurement rather than retired on that evidence.
  */
 const DECLARED: Record<string, string> = {
+  // Added 2026-08-20, from the first sweep that measured all three surfaces and
+  // refused to score a cache hit (#11509). Twelve of these were INVISIBLE to the
+  // runs before it -- the mcp legs because that surface was never asked, the
+  // rest legs because a warm edge cache answered the re-draw. None of them is a
+  // regression that day; they are what the sweep had been failing to see.
+  //
+  // Owner named where an issue already claims the read. The rest say #10312 and
+  // nothing more: the cost has not been isolated, and a guessed mechanism in
+  // this file would be read later as a finding.
+  "/api/v1/subnets/{netuid}/weights":
+    "#10312 -- 10947ms worst of 3 surface(s) on 2026-08-20 (rest 10947ms, mcp 8003ms, graphql 6709ms)",
+  "/api/v1/subnets/{netuid}/serving":
+    "#10312 -- 9713ms worst of 3 surface(s) on 2026-08-20 (graphql 9713ms, mcp 9315ms, rest 9197ms)",
+  "/api/v1/subnets/{netuid}/prometheus":
+    "#10312 -- 14569ms worst of 3 surface(s) on 2026-08-20 (graphql 14569ms, mcp 8346ms, rest 5952ms)",
+  "/api/v1/subnets/{netuid}/axon-removals":
+    "#10312 -- 6137ms worst of 3 surface(s) on 2026-08-20 (rest 6137ms)",
+  "/api/v1/subnets/{netuid}/owner-cut":
+    "#10312 -- 8950ms worst of 3 surface(s) on 2026-08-20 (rest 8950ms)",
+  "/api/v1/subnets/{netuid}/stake-transfers":
+    "#11421 -- 8802ms worst of 3 surface(s) on 2026-08-20 (graphql 8802ms, mcp 8660ms); " +
+    "was 10026ms on 2026-08-16, so the read is not getting worse, it is not getting better",
+  "/api/v1/validators/{hotkey}/history":
+    "#11421 -- 15236ms worst of 3 surface(s) on 2026-08-20 (rest 15236ms, mcp 9417ms); " +
+    "the rest leg is at QUERY_TIMEOUT_MS, i.e. declining rather than answering slowly (#11416)",
+  "/api/v1/accounts/{ss58}/prometheus":
+    "#11421 -- 10597ms worst of 3 surface(s) on 2026-08-20 (graphql 10597ms)",
+  "/api/v1/accounts/{ss58}/serving":
+    "#11421 -- 9112ms worst of 3 surface(s) on 2026-08-20 (graphql 9112ms)",
+  "/api/v1/extrinsics/{hash}":
+    "#11420 -- 9327ms worst of 3 surface(s) on 2026-08-20 (rest 9327ms); " +
+    "a point lookup against the 894M-row chain.chain_events, which R2 SQL prunes by column well and by file poorly",
+  "/api/v1/blocks/{ref}":
+    "#11420 -- MEDIAN 6303ms of 8 cold draws on 2026-08-20, every one confirmed x-metagraph-cache: miss " +
+    "(2126/2319/5017/5984/6532/8415/9988/13863ms). The sweep's own single draw was 1100ms; this read is " +
+    "the reason a one-sample verdict is not trusted in either direction -- see confirmDecisiveDraws",
+  "/api/v1/runtime":
+    "#10312 -- 8893ms worst of 3 surface(s) on 2026-08-20 (graphql 8893ms, mcp 6480ms, rest 5317ms)",
+  "mcp:get_subnet_snapshot":
+    "#10312 -- 6143ms on 2026-08-20 (mcp 6143ms); the only entry keyed to ONE surface, because " +
+    "get_subnet_snapshot has no REST or GraphQL sibling to be slow on",
   // Added 2026-08-19. Both are GRAPHQL medians, so both are uncontaminated by
   // the cache correction that landed with them: the POST surfaces never reach
   // `withEdgeCache`, which consults the cache for GET only (see `Served`).
@@ -143,8 +190,6 @@ const DECLARED: Record<string, string> = {
   "/api/v1/chain-events/stats":
     "#10312 -- 5952ms worst of 3 surface(s) on 2026-08-19 (graphql 5952ms, rest 2121ms, mcp 1509ms); " +
     "graphql drew [5952, 1313, 15046] -- an 11.4x spread around the 15s ceiling",
-  "/api/v1/accounts/{ss58}":
-    "#10312 -- 8832ms worst of 3 surface(s) on 2026-08-10 (graphql 8832ms, mcp 5717ms, rest 5205ms)",
   "/api/v1/accounts/{ss58}/counterparties":
     "#10312 -- 11541ms worst of 3 surface(s) on 2026-08-10 (rest 11541ms, mcp 7921ms, graphql 6753ms)",
   "/api/v1/accounts/{ss58}/events":
@@ -161,8 +206,6 @@ const DECLARED: Record<string, string> = {
     "#10312 -- 8366ms worst of 3 surface(s) on 2026-08-10 (rest 8366ms, graphql 1878ms, mcp 1600ms)",
   "/api/v1/blocks/{ref}/extrinsics":
     "#10312 -- 12789ms worst of 3 surface(s) on 2026-08-10 (graphql 12789ms, rest 1611ms, mcp 743ms)",
-  "/api/v1/extrinsics":
-    "#10312 -- 11320ms worst of 3 surface(s) on 2026-08-10 (mcp 11320ms, graphql 6413ms, rest 4897ms)",
   "/api/v1/governance/config-changes":
     "#10312 -- 11201ms worst of 3 surface(s) on 2026-08-10 (graphql 11201ms, rest 7767ms, mcp 3648ms)",
   "/api/v1/subnets/{netuid}/event-summary":
@@ -205,7 +248,7 @@ type Answer = "ok" | "unaskable" | "failed";
  * Whether a draw measured the READ, or a cache sitting in front of it.
  *
  * The distinction is the difference between this gate working and this gate
- * lying. `confirmOverBudget` re-times an over-budget call to reject a one-off
+ * lying. `confirmDecisiveDraws` re-times an over-budget call to reject a one-off
  * outlier -- but its own first draw FILLS the edge cache that the retries then
  * read, so the retries are not redraws of the same distribution at all.
  *
@@ -586,7 +629,7 @@ export async function run(): Promise<LatencyReport> {
     await sleep(CALL_SPACING_MS);
   }
 
-  await confirmOverBudget(timings, retime);
+  await confirmDecisiveDraws(timings, retime);
   return summarise(timings);
 }
 
@@ -610,18 +653,46 @@ export async function run(): Promise<LatencyReport> {
  * mid-run, not the operation declining, and `failed`/`unaskable` are counted
  * elsewhere precisely so they cannot be read as slowness.
  */
-export async function confirmOverBudget(
+/**
+ * A draw fast enough to RETIRE a declared exemption on its own.
+ *
+ * The counterpart to "over budget", and it decides just as much: an entry that
+ * looks this fast is deleted, and the read it was covering stops being watched.
+ */
+function retiresAnExemption(timing: Timing): boolean {
+  return (
+    DECLARED[family(timing)] !== undefined &&
+    timing.ms <= BUDGET_MS * STALE_MARGIN
+  );
+}
+
+export async function confirmDecisiveDraws(
   timings: Timing[],
   retime: Map<string, () => Promise<Draw>>,
   /** Overridable so the unit test does not sit through the real pacing. */
   spacingMs: number = CALL_SPACING_MS,
 ): Promise<void> {
+  // BOTH directions, because a single draw of this distribution decides either
+  // verdict equally badly and only one of them was being checked.
+  //
+  // The over-budget half has been re-drawn since #11420. The acquitting half
+  // was not, and it is the one that cannot be taken back: measured 2026-08-20,
+  // the sweep drew 2432ms for `/api/v1/blocks/{ref}/extrinsics` and reported
+  // its exemption stale -- while six cold draws of that same read, every one
+  // confirmed `x-metagraph-cache: miss`, ran 1466/3561/4455/8150/13813/15412ms
+  // for a median of 6303ms. One lucky draw was retiring a read that is 6.3s at
+  // the middle of its own distribution.
+  //
+  // So a draw that would delete an entry now earns the same three samples a
+  // draw that would report one does.
   const suspects = timings.filter(
-    (timing) => timing.answer === "ok" && timing.ms > BUDGET_MS,
+    (timing) =>
+      timing.answer === "ok" &&
+      (timing.ms > BUDGET_MS || retiresAnExemption(timing)),
   );
   if (suspects.length === 0) return;
   process.stderr.write(
-    `\nconfirming ${suspects.length} over-budget call(s) with ` +
+    `\nconfirming ${suspects.length} decisive call(s) with ` +
       `${CONFIRM_SAMPLES - 1} more sample(s) each\n`,
   );
   let cached = 0;
