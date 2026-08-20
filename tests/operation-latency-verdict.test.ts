@@ -15,7 +15,11 @@ import { describe, test } from "vitest";
 import {
   confirmOverBudget,
   family,
+  formatReport,
+  servedFrom,
   summarise,
+  type Draw,
+  type Served,
   type Timing,
 } from "../scripts/check-operation-latency.ts";
 
@@ -32,8 +36,26 @@ const timing = (over: Partial<Timing> = {}): Timing => ({
   operation: "/api/v1/subnets",
   ms: 100,
   answer: "ok",
+  served: "origin",
   ...over,
 });
+
+/** A retime map whose draws are scripted, and which counts what it served. */
+function draws(script: Record<string, (number | [number, Served])[]>) {
+  const calls: string[] = [];
+  const map = new Map<string, () => Promise<Draw>>();
+  for (const [key, values] of Object.entries(script)) {
+    let i = 0;
+    map.set(key, async () => {
+      calls.push(key);
+      const value = values[Math.min(i++, values.length - 1)]!;
+      const [ms, served] =
+        typeof value === "number" ? ([value, "origin"] as const) : value;
+      return [ms, "ok", served];
+    });
+  }
+  return { map, calls };
+}
 
 describe("what the latency sweep rules on", () => {
   test("an undeclared operation over budget is reported", () => {
@@ -180,26 +202,13 @@ describe("a read is one entry, not three", () => {
 // and "at the 15s ceiling" are ordinary draws from that, so a single sample
 // decided the verdict by when the sweep happened to call.
 describe("confirming an over-budget draw before believing it", () => {
-  /** A retime map whose draws are scripted, and which counts what it served. */
-  function draws(script: Record<string, number[]>) {
-    const calls: string[] = [];
-    const map = new Map<string, () => Promise<[number, "ok"]>>();
-    for (const [key, values] of Object.entries(script)) {
-      let i = 0;
-      map.set(key, async () => {
-        calls.push(key);
-        return [values[Math.min(i++, values.length - 1)]!, "ok"];
-      });
-    }
-    return { map, calls };
-  }
-
   test("an operation that was slow ONCE is scored on its median, not that draw", async () => {
     const timing: Timing = {
       surface: "rest",
       operation: "/api/v1/blocks/{ref}",
       ms: 15032,
       answer: "ok",
+      served: "origin",
       samples: [15032],
     };
     const { map, calls } = draws({ "rest:/api/v1/blocks/{ref}": [898, 3647] });
@@ -223,6 +232,7 @@ describe("confirming an over-budget draw before believing it", () => {
       operation: "/api/v1/blocks/{ref}",
       ms: 12000,
       answer: "ok",
+      served: "origin",
       samples: [12000],
     };
     const { map } = draws({ "rest:/api/v1/blocks/{ref}": [11500, 13000] });
@@ -240,6 +250,7 @@ describe("confirming an over-budget draw before believing it", () => {
       operation: "/api/v1/subnets",
       ms: 300,
       answer: "ok",
+      served: "origin",
       samples: [300],
     };
     const { map, calls } = draws({ "rest:/api/v1/subnets": [9000, 9000] });
@@ -257,15 +268,18 @@ describe("confirming an over-budget draw before believing it", () => {
       operation: "/api/v1/blocks/{ref}",
       ms: 9000,
       answer: "ok",
+      served: "origin",
       samples: [9000],
     };
     const calls: string[] = [];
-    const map = new Map<string, () => Promise<[number, "ok" | "unaskable"]>>([
+    const map = new Map<string, () => Promise<Draw>>([
       [
         "rest:/api/v1/blocks/{ref}",
         async () => {
           calls.push("x");
-          return calls.length === 1 ? [12, "unaskable"] : [8000, "ok"];
+          return calls.length === 1
+            ? [12, "unaskable", "origin"]
+            : [8000, "ok", "origin"];
         },
       ],
     ]);
@@ -280,5 +294,144 @@ describe("confirming an over-budget draw before believing it", () => {
     // fixed on the other half is how a regression hides behind one lucky call.
     assert.equal(timing.ms, 9000, "the upper median, conservatively");
     assert.equal(summarise([timing]).overBudget.length, 1);
+  });
+});
+
+// The edge cache (#10312). `confirmOverBudget`'s first draw FILLS the cache its
+// retries then read, so before this the retries were not redraws of the same
+// distribution -- they were reads of the answer the first draw had just stored.
+describe("a draw that measured the cache instead of the read", () => {
+  const BLOCK_EXTRINSICS = "/api/v1/blocks/{ref}/extrinsics";
+
+  test("a confirmation draw served from cache is not a sample", async () => {
+    // The exact production draw, 2026-08-19: [7290, 63, 43] scored a median of
+    // 63ms -- the CDN. The read still takes 7.3s cold, and five distinct block
+    // refs (five cold keys) measured 1.3-5.6s while a repeat of one returned in
+    // 0.12s with `cf-cache-status: HIT`.
+    const timing: Timing = {
+      surface: "rest",
+      operation: BLOCK_EXTRINSICS,
+      ms: 7290,
+      answer: "ok",
+      served: "origin",
+      samples: [7290],
+    };
+    const { map } = draws({
+      [`rest:${BLOCK_EXTRINSICS}`]: [
+        [63, "cache"],
+        [43, "cache"],
+      ],
+    });
+    await confirmOverBudget([timing], map, 0);
+    assert.deepEqual(timing.samples, [7290], "neither cache hit became a time");
+    assert.equal(timing.ms, 7290, "it keeps the one draw that measured it");
+  });
+
+  test("a genuinely faster redraw still counts", async () => {
+    // The control. Without it, "discard cache draws" could be satisfied by
+    // discarding everything, and the confirmation pass would stop working.
+    const timing: Timing = {
+      surface: "rest",
+      operation: BLOCK_EXTRINSICS,
+      ms: 7290,
+      answer: "ok",
+      served: "origin",
+      samples: [7290],
+    };
+    const { map } = draws({ [`rest:${BLOCK_EXTRINSICS}`]: [900, 1100] });
+    await confirmOverBudget([timing], map, 0);
+    assert.deepEqual(timing.samples, [7290, 900, 1100]);
+    assert.equal(timing.ms, 1100, "the median of three real draws");
+  });
+
+  test("a cache-served draw cannot retire a declared exemption", () => {
+    // The failure this whole change exists to stop: the 2026-08-19 run reported
+    // five exemptions as "now comfortably under budget, delete them", and this
+    // was one of them -- on 63ms that never reached the warehouse.
+    const report = summarise([
+      timing({ operation: BLOCK_EXTRINSICS, ms: 63, served: "cache" }),
+    ]);
+    assert.ok(
+      !report.stale.includes(BLOCK_EXTRINSICS),
+      "a cache hit is not evidence the read got faster",
+    );
+  });
+
+  test("an ORIGIN draw that fast still retires it", () => {
+    // The positive control for the rule above: the exemption list must still be
+    // able to shrink, or it stops being a list that can ever empty.
+    const report = summarise([
+      timing({ operation: BLOCK_EXTRINSICS, ms: 63, served: "origin" }),
+    ]);
+    assert.ok(
+      report.stale.includes(BLOCK_EXTRINSICS),
+      "a measured 63ms read IS a fixed read",
+    );
+  });
+
+  test("which header says a cache answered", () => {
+    const served = (headers: Record<string, string>) =>
+      servedFrom(new Response(null, { headers }));
+    // Our own header is authoritative: it is the only one that sees a
+    // `caches.default` hit inside the Worker.
+    assert.equal(served({ "x-metagraph-cache": "hit" }), "cache");
+    assert.equal(served({ "x-metagraph-cache": "miss" }), "origin");
+    // ...and it OVERRIDES the zone's, which reports its own layer only.
+    assert.equal(
+      served({ "x-metagraph-cache": "miss", "cf-cache-status": "HIT" }),
+      "origin",
+      "our miss beats the zone's hit -- the zone cached a response we built",
+    );
+    // The fallback, for any route that never reaches those wrappers.
+    assert.equal(served({ "cf-cache-status": "HIT" }), "cache");
+    assert.equal(served({ "cf-cache-status": "MISS" }), "origin");
+    // A miss stamps no header at all, as measured against production.
+    assert.equal(served({}), "origin");
+  });
+});
+
+// A surface that vanishes from the sweep (#10312). Measured 2026-08-19: the run
+// timed `rest: 217` and `graphql: 200` and printed no mcp line whatsoever,
+// because #9644 had made an argument required that no subject satisfied. The
+// report looked clean.
+describe("a surface the sweep never asked", () => {
+  test("is reported, and fails the run", () => {
+    const report = summarise([
+      timing({ surface: "rest" }),
+      timing({ surface: "graphql" }),
+    ]);
+    assert.deepEqual(report.missingSurfaces, ["mcp"]);
+    assert.match(formatReport(report), /produced NO timings/);
+  });
+
+  test("a complete run reports none", () => {
+    // The positive control: this must not fire on every ordinary sweep.
+    const report = summarise([
+      timing({ surface: "rest" }),
+      timing({ surface: "mcp" }),
+      timing({ surface: "graphql" }),
+    ]);
+    assert.deepEqual(report.missingSurfaces, []);
+    assert.doesNotMatch(formatReport(report), /produced NO timings/);
+  });
+
+  test("a missing surface cannot be the reason an exemption looks fixed", () => {
+    // The consequence that makes this worth failing over rather than warning:
+    // the read below is comfortably under budget on the two surfaces that ran,
+    // and its exemption still must not be retired on a two-thirds sweep.
+    const report = summarise([
+      timing({ operation: "/api/v1/extrinsics", surface: "rest", ms: 260 }),
+      timing({ operation: "extrinsics", surface: "graphql", ms: 230 }),
+    ]);
+    assert.ok(report.missingSurfaces.includes("mcp"));
+    assert.ok(
+      report.stale.includes("/api/v1/extrinsics"),
+      "the staleness rule itself is unchanged...",
+    );
+    assert.match(
+      formatReport(report),
+      /every ruling above was decided without it/,
+      "...but the report says out loud that it was decided on a partial sweep",
+    );
   });
 });

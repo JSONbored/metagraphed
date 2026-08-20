@@ -52,7 +52,8 @@ function mockCaches() {
 
 const env = {} as unknown as Parameters<typeof chainDetailCacheKey>[0];
 const url = new URL("https://api.metagraph.sh/api/v1/blocks/8803541");
-const get = () => new Request(url.toString());
+const get = (headers: Record<string, string> = {}) =>
+  new Request(url.toString(), { headers });
 
 /** A handler response carrying `profile`, shaped like envelopeResponse's. */
 function answer(profile: "static" | "short", body = '{"ok":true}') {
@@ -131,6 +132,61 @@ describe("chain-detail edge cache (#11001)", () => {
     await Promise.all(waits);
     const stored = [...cache.store.values()][0];
     assert.equal(stored.headers.get("cache-control"), "public, s-maxage=3600");
+  });
+
+  test("labels which side of the cache answered, and never labels the stored copy", async () => {
+    // #10312: this cache is invisible from outside -- Cloudflare stamps
+    // `cf-cache-status` on its own zone cache, but a `caches.default` hit here
+    // returns the stored response verbatim. Measured against production
+    // 2026-08-19, /api/v1/blocks/6100011 went 15,222ms then 2,216ms with no
+    // cache header of any kind, and the latency gate scored the second number
+    // as the read getting faster.
+    const cache = mockCaches();
+    cache.install();
+    const waits: Promise<unknown>[] = [];
+    const ctx = { waitUntil: (p: Promise<unknown>) => waits.push(p) };
+    const handler = producer(() => answer("static"));
+
+    const miss = await withChainDetailEdgeCache(
+      get(),
+      env,
+      url,
+      "mainnet",
+      ctx,
+      handler.produce,
+    );
+    assert.equal(miss.headers.get("x-metagraph-cache"), "miss");
+    assert.equal(await miss.text(), '{"ok":true}', "still readable");
+    await Promise.all(waits);
+
+    // The label describes a delivery, not a payload, so the stored copy is
+    // taken before the stamp. The hit path re-stamps, so a stored label would
+    // be overwritten rather than served -- this pins the intent, not a live
+    // failure.
+    const stored = [...cache.store.values()][0];
+    assert.equal(stored.headers.get("x-metagraph-cache"), null);
+
+    const hit = await withChainDetailEdgeCache(
+      get(),
+      env,
+      url,
+      "mainnet",
+      ctx,
+      handler.produce,
+    );
+    assert.equal(hit.headers.get("x-metagraph-cache"), "hit");
+    assert.equal(handler.calls, 1, "served without re-running the scan");
+
+    const conditional = await withChainDetailEdgeCache(
+      get({ "if-none-match": hit.headers.get("etag") ?? "" }),
+      env,
+      url,
+      "mainnet",
+      ctx,
+      handler.produce,
+    );
+    assert.equal(conditional.status, 304);
+    assert.equal(conditional.headers.get("x-metagraph-cache"), "hit");
   });
 
   test("does NOT store an unsettled (short) answer", async () => {

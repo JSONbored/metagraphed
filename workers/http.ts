@@ -21,6 +21,56 @@ export const X_METAGRAPH_ARTIFACT_SOURCE_HEADER = "x-metagraph-artifact-source";
 export const X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER =
   "x-metagraph-artifact-resolution";
 
+/**
+ * Which side of an edge cache produced this response: `hit` | `miss`.
+ *
+ * The Worker's Cache API is INVISIBLE from outside. Cloudflare stamps
+ * `cf-cache-status` on its own zone cache, but a `caches.default` hit served by
+ * `withEdgeCache` / `withChainDetailEdgeCache` returns the stored response
+ * verbatim, so a caller cannot tell a 120 ms cache hit from a 15 s lakehouse
+ * read -- they differ only in a duration nobody records.
+ *
+ * That blindness is not hypothetical. `scripts/check-operation-latency.ts`
+ * re-times an over-budget call to reject a one-off outlier, and its own first
+ * draw fills the cache the retries then read: measured 2026-08-19,
+ * `/api/v1/blocks/{ref}/extrinsics` drew [7290, 63, 43] ms and scored the
+ * MEDIAN, 63 ms -- the CDN, not the read. Scored that way the gate reported
+ * five exemptions as "now comfortably under budget, delete them", which would
+ * have retired live 7-second reads on the evidence of its own cache.
+ *
+ * Named `hit`/`miss` after `x-metagraph-rpc-cache`, which answers exactly this
+ * question for the RPC proxy and is the reason that one is not guessing.
+ */
+export const X_METAGRAPH_CACHE_HEADER = "x-metagraph-cache";
+
+/** Statuses the Response constructor forbids a body on (null body only). */
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
+/**
+ * Copy `response`, labelled with which side of the cache produced it.
+ *
+ * A COPY, because `Response.headers` from `cache.match()` is immutable and
+ * `set` on it throws.
+ *
+ * Stamped on the way OUT, after the caller has stored its `response.clone()`,
+ * because the label describes ONE DELIVERY and a cache entry outlives the
+ * request that produced it. Every return path re-stamps today, so a label
+ * baked into the stored copy would be overwritten rather than served -- this
+ * is not load-bearing, it is keeping a header that means "how you got this"
+ * out of a body that will be handed to someone who got it another way.
+ */
+export function withCacheStatus(
+  response: Response,
+  status: "hit" | "miss",
+): Response {
+  const headers = new Headers(response.headers);
+  headers.set(X_METAGRAPH_CACHE_HEADER, status);
+  return new Response(
+    NULL_BODY_STATUSES.has(response.status) ? null : response.body,
+    { status: response.status, statusText: response.statusText, headers },
+  );
+}
+
 const EXPOSED_RESPONSE_HEADERS = [
   "etag", // conditional-request validator (If-None-Match → 304)
   "link", // RFC 8288 pagination links (next/prev/first/last) on list routes
@@ -49,6 +99,7 @@ const EXPOSED_RESPONSE_HEADERS = [
   // measured one -- the whole point of the header is that it reaches the
   // consumer, and an unexposed header does not.
   "x-metagraph-degraded",
+  X_METAGRAPH_CACHE_HEADER,
   "x-metagraph-rpc-cache",
   "x-metagraph-rpc-endpoint-id",
   "x-metagraph-rpc-provider",
