@@ -58,93 +58,97 @@ const OPENAPI_SNAPSHOT_LIMITS = {
   ),
 };
 
-const subnets = await loadSubnets();
-const surfaces = flattenSurfaces(subnets).filter(
-  (surface) => surface.kind === "openapi" && surface.public_safe,
-);
-const existingBySurface = await loadExistingSchemaIndex();
-const results: Row[] = [];
+let existingBySurface = new Map<string, Row>();
 
-await mapLimit(surfaces, 8, async (surface) => {
-  const result = await snapshotSurface(surface);
-  results.push(result);
-});
+async function runSchemaSnapshot(): Promise<void> {
+  const subnets = await loadSubnets();
+  const surfaces = flattenSurfaces(subnets).filter(
+    (surface) => surface.kind === "openapi" && surface.public_safe,
+  );
+  existingBySurface = await loadExistingSchemaIndex();
+  const results: Row[] = [];
 
-results.sort(
-  (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
-);
+  await mapLimit(surfaces, 8, async (surface) => {
+    const result = await snapshotSurface(surface);
+    results.push(result);
+  });
 
-const index = {
-  schema_version: 1,
-  contract_version: contractVersion,
-  generated_at: generatedAt,
-  observed_at: observedAt,
-  source: "openapi-snapshot",
-  notes:
-    "Machine-readable OpenAPI/Swagger JSON snapshots only. HTML Swagger UI pages are not treated as schema-backed.",
-  summary: {
-    surface_count: surfaces.length,
-    schema_count: results.filter((result) => result.status === "captured")
-      .length,
-    by_status: countBy(results, "status"),
-    by_drift_status: countBy(results, "drift_status"),
-  },
-  // The full `document` lives only in the per-surface schema file, never in the
-  // index (which would balloon to many MB).
-  schemas: results.map(({ document: _document, ...rest }) => rest),
-};
+  results.sort(
+    (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
+  );
 
-const capturedSchemaCount = results.filter(
-  (result) => result.status === "captured",
-).length;
-const drift = {
-  schema_version: 1,
-  contract_version: contractVersion,
-  generated_at: generatedAt,
-  observed_at: observedAt,
-  source: "openapi-snapshot",
-  status: capturedSchemaCount > 0 ? "captured" : "not-found",
-  openapi_surface_count: surfaces.length,
-  schema_backed_surface_count: capturedSchemaCount,
-  summary: index.summary,
-  surfaces: results.map((result) => ({
-    netuid: result.netuid,
-    subnet_slug: result.subnet_slug,
-    surface_id: result.surface_id,
-    url: result.url,
-    schema_url: result.schema_url,
-    status: result.status,
-    drift_status: result.drift_status,
-    hash: result.hash,
-    previous_hash: result.previous_hash,
-    error: result.error || null,
-  })),
-};
+  const index = {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    observed_at: observedAt,
+    source: "openapi-snapshot",
+    notes:
+      "Machine-readable OpenAPI/Swagger JSON snapshots only. HTML Swagger UI pages are not treated as schema-backed.",
+    summary: {
+      surface_count: surfaces.length,
+      schema_count: results.filter((result) => result.status === "captured")
+        .length,
+      by_status: countBy(results, "status"),
+      by_drift_status: countBy(results, "drift_status"),
+    },
+    // The full `document` lives only in the per-surface schema file, never in the
+    // index (which would balloon to many MB).
+    schemas: results.map(({ document: _document, ...rest }) => rest),
+  };
 
-if (!dryRun) {
-  for (const result of results) {
-    if (result.status !== "captured") {
-      continue;
-    }
-    await writeJson(artifactOutputPath(`schemas/${result.surface_id}.json`), {
-      ...result.snapshot,
-      // The real OpenAPI/Swagger spec — paths + components + securitySchemes —
-      // so consumers (get_api_schema) can build a client, not just read a hash.
-      document: result.document,
-    });
-  }
-  await writeJson(artifactOutputPath("schemas/index.json"), index);
-  await writeJson(artifactOutputPath("schema-drift.json"), drift);
-  await updateFreshnessSchemaSnapshot(drift);
-}
-
-console.log(
-  stableStringify({
-    mode: dryRun ? "dry-run" : "write",
-    surface_count: surfaces.length,
+  const capturedSchemaCount = results.filter(
+    (result) => result.status === "captured",
+  ).length;
+  const drift = {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    observed_at: observedAt,
+    source: "openapi-snapshot",
+    status: capturedSchemaCount > 0 ? "captured" : "not-found",
+    openapi_surface_count: surfaces.length,
+    schema_backed_surface_count: capturedSchemaCount,
     summary: index.summary,
-  }),
-);
+    surfaces: results.map((result) => ({
+      netuid: result.netuid,
+      subnet_slug: result.subnet_slug,
+      surface_id: result.surface_id,
+      url: result.url,
+      schema_url: result.schema_url,
+      status: result.status,
+      drift_status: result.drift_status,
+      hash: result.hash,
+      previous_hash: result.previous_hash,
+      error: result.error || null,
+    })),
+  };
+
+  if (!dryRun) {
+    for (const result of results) {
+      if (result.status !== "captured") {
+        continue;
+      }
+      await writeJson(artifactOutputPath(`schemas/${result.surface_id}.json`), {
+        ...result.snapshot,
+        // The real OpenAPI/Swagger spec — paths + components + securitySchemes —
+        // so consumers (get_api_schema) can build a client, not just read a hash.
+        document: result.document,
+      });
+    }
+    await writeJson(artifactOutputPath("schemas/index.json"), index);
+    await writeJson(artifactOutputPath("schema-drift.json"), drift);
+    await updateFreshnessSchemaSnapshot(drift);
+  }
+
+  console.log(
+    stableStringify({
+      mode: dryRun ? "dry-run" : "write",
+      surface_count: surfaces.length,
+      summary: index.summary,
+    }),
+  );
+}
 
 async function snapshotSurface(surface: Row): Promise<Row> {
   const candidates = candidateSchemaUrls(surface);
@@ -622,3 +626,5 @@ function nonPlaceholderTimestamp(value: unknown): string | null {
   }
   return date.toISOString();
 }
+
+await runSchemaSnapshot();
