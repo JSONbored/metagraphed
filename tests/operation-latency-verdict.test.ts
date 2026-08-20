@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
-  confirmOverBudget,
+  confirmDecisiveDraws,
   family,
   formatReport,
   servedFrom,
@@ -28,6 +28,17 @@ import {
  * below name something real on every surface.
  */
 const DECLARED_OPERATION = "/api/v1/accounts/{ss58}/counterparties";
+
+/**
+ * A read this file can rely on being UNDECLARED.
+ *
+ * The two over-budget controls below used `/api/v1/blocks/{ref}`, which was
+ * undeclared until 2026-08-20 and then was not -- so they started asserting
+ * "an over-budget call is reported" against a read whose whole point is that
+ * it is exempt. Naming the assumption keeps the next declaration from silently
+ * turning a control into a tautology.
+ */
+const UNDECLARED_OPERATION = "/api/v1/subnets/{netuid}/history";
 const [DECLARED_SURFACE, DECLARED_NAME] = ["mcp", "get_account_counterparties"];
 const DECLARED_GRAPHQL_FIELD = "account_counterparties";
 
@@ -56,6 +67,23 @@ function draws(script: Record<string, (number | [number, Served])[]>) {
   }
   return { map, calls };
 }
+
+describe("the fixtures this file rests on", () => {
+  test("the undeclared fixture really is undeclared", () => {
+    // Guards the two over-budget controls below. `/api/v1/blocks/{ref}` was
+    // undeclared until 2026-08-20 and then was not, which quietly turned those
+    // controls into assertions about an exempt read. If this one ever gets an
+    // exemption, fail HERE rather than let them pass for the wrong reason.
+    const report = summarise([
+      timing({ operation: UNDECLARED_OPERATION, ms: 9000 }),
+    ]);
+    assert.equal(
+      report.overBudget.length,
+      1,
+      "an over-budget draw of it must be REPORTED, not exempted",
+    );
+  });
+});
 
 describe("what the latency sweep rules on", () => {
   test("an undeclared operation over budget is reported", () => {
@@ -212,7 +240,7 @@ describe("confirming an over-budget draw before believing it", () => {
       samples: [15032],
     };
     const { map, calls } = draws({ "rest:/api/v1/blocks/{ref}": [898, 3647] });
-    await confirmOverBudget([timing], map, 0);
+    await confirmDecisiveDraws([timing], map, 0);
     assert.deepEqual(timing.samples, [15032, 898, 3647]);
     assert.equal(
       timing.ms,
@@ -229,14 +257,14 @@ describe("confirming an over-budget draw before believing it", () => {
     // anything that lowers the number, and a real regression would vanish.
     const timing: Timing = {
       surface: "rest",
-      operation: "/api/v1/blocks/{ref}",
+      operation: UNDECLARED_OPERATION,
       ms: 12000,
       answer: "ok",
       served: "origin",
       samples: [12000],
     };
-    const { map } = draws({ "rest:/api/v1/blocks/{ref}": [11500, 13000] });
-    await confirmOverBudget([timing], map, 0);
+    const { map } = draws({ [`rest:${UNDECLARED_OPERATION}`]: [11500, 13000] });
+    await confirmDecisiveDraws([timing], map, 0);
     assert.equal(timing.ms, 12000);
     assert.equal(summarise([timing]).overBudget.length, 1);
   });
@@ -254,7 +282,7 @@ describe("confirming an over-budget draw before believing it", () => {
       samples: [300],
     };
     const { map, calls } = draws({ "rest:/api/v1/subnets": [9000, 9000] });
-    await confirmOverBudget([timing], map, 0);
+    await confirmDecisiveDraws([timing], map, 0);
     assert.deepEqual(calls, [], "no confirmation calls for a fast operation");
     assert.equal(timing.ms, 300);
   });
@@ -265,7 +293,7 @@ describe("confirming an over-budget draw before believing it", () => {
     // verdict -- the exact conflation `answer` exists to prevent.
     const timing: Timing = {
       surface: "rest",
-      operation: "/api/v1/blocks/{ref}",
+      operation: UNDECLARED_OPERATION,
       ms: 9000,
       answer: "ok",
       served: "origin",
@@ -274,7 +302,7 @@ describe("confirming an over-budget draw before believing it", () => {
     const calls: string[] = [];
     const map = new Map<string, () => Promise<Draw>>([
       [
-        "rest:/api/v1/blocks/{ref}",
+        `rest:${UNDECLARED_OPERATION}`,
         async () => {
           calls.push("x");
           return calls.length === 1
@@ -283,7 +311,7 @@ describe("confirming an over-budget draw before believing it", () => {
         },
       ],
     ]);
-    await confirmOverBudget([timing], map, 0);
+    await confirmDecisiveDraws([timing], map, 0);
     assert.deepEqual(
       timing.samples,
       [9000, 8000],
@@ -297,7 +325,7 @@ describe("confirming an over-budget draw before believing it", () => {
   });
 });
 
-// The edge cache (#10312). `confirmOverBudget`'s first draw FILLS the cache its
+// The edge cache (#10312). `confirmDecisiveDraws`'s first draw FILLS the cache its
 // retries then read, so before this the retries were not redraws of the same
 // distribution -- they were reads of the answer the first draw had just stored.
 describe("a draw that measured the cache instead of the read", () => {
@@ -322,7 +350,7 @@ describe("a draw that measured the cache instead of the read", () => {
         [43, "cache"],
       ],
     });
-    await confirmOverBudget([timing], map, 0);
+    await confirmDecisiveDraws([timing], map, 0);
     assert.deepEqual(timing.samples, [7290], "neither cache hit became a time");
     assert.equal(timing.ms, 7290, "it keeps the one draw that measured it");
   });
@@ -339,7 +367,7 @@ describe("a draw that measured the cache instead of the read", () => {
       samples: [7290],
     };
     const { map } = draws({ [`rest:${BLOCK_EXTRINSICS}`]: [900, 1100] });
-    await confirmOverBudget([timing], map, 0);
+    await confirmDecisiveDraws([timing], map, 0);
     assert.deepEqual(timing.samples, [7290, 900, 1100]);
     assert.equal(timing.ms, 1100, "the median of three real draws");
   });
@@ -420,12 +448,16 @@ describe("a surface the sweep never asked", () => {
     // the read below is comfortably under budget on the two surfaces that ran,
     // and its exemption still must not be retired on a two-thirds sweep.
     const report = summarise([
-      timing({ operation: "/api/v1/extrinsics", surface: "rest", ms: 260 }),
-      timing({ operation: "extrinsics", surface: "graphql", ms: 230 }),
+      timing({ operation: DECLARED_OPERATION, surface: "rest", ms: 260 }),
+      timing({
+        operation: DECLARED_GRAPHQL_FIELD,
+        surface: "graphql",
+        ms: 230,
+      }),
     ]);
     assert.ok(report.missingSurfaces.includes("mcp"));
     assert.ok(
-      report.stale.includes("/api/v1/extrinsics"),
+      report.stale.includes(DECLARED_OPERATION),
       "the staleness rule itself is unchanged...",
     );
     assert.match(
@@ -433,5 +465,94 @@ describe("a surface the sweep never asked", () => {
       /every ruling above was decided without it/,
       "...but the report says out loud that it was decided on a partial sweep",
     );
+  });
+});
+
+// Confirming the ACQUITTAL, not just the conviction (#11420 follow-up).
+//
+// The over-budget half of this pass has been re-drawn since #11420; the half
+// that DELETES an entry was still decided on one draw. Measured 2026-08-20, the
+// sweep drew 2432ms for /api/v1/blocks/{ref}/extrinsics and reported its
+// exemption stale, while six cold draws of the same read -- every one confirmed
+// `x-metagraph-cache: miss` -- ran 1466/3561/4455/8150/13813/15412ms, a median
+// of 6303ms.
+describe("a draw fast enough to delete an exemption", () => {
+  const DECLARED_READ = "/api/v1/blocks/{ref}/extrinsics";
+
+  test("is re-drawn, and the median keeps the entry", async () => {
+    const timing: Timing = {
+      surface: "rest",
+      operation: DECLARED_READ,
+      ms: 2432,
+      answer: "ok",
+      served: "origin",
+      samples: [2432],
+    };
+    const { map, calls } = draws({
+      [`rest:${DECLARED_READ}`]: [8150, 13813],
+    });
+    await confirmDecisiveDraws([timing], map, 0);
+    assert.equal(
+      calls.length,
+      2,
+      "an acquitting draw earns the same 3 samples",
+    );
+    assert.equal(timing.ms, 8150, "the median of three, not the lucky draw");
+    assert.ok(
+      !summarise([timing]).stale.includes(DECLARED_READ),
+      "a read whose median is 8.1s does not get its exemption deleted",
+    );
+  });
+
+  test("a read that IS fixed still loses its exemption", async () => {
+    // The positive control. The list must still be able to empty, or the
+    // ratchet stops being a ratchet.
+    const timing: Timing = {
+      surface: "rest",
+      operation: DECLARED_READ,
+      ms: 210,
+      answer: "ok",
+      served: "origin",
+      samples: [210],
+    };
+    const { map } = draws({ [`rest:${DECLARED_READ}`]: [190, 240] });
+    await confirmDecisiveDraws([timing], map, 0);
+    assert.equal(timing.ms, 210);
+    assert.ok(
+      summarise([timing]).stale.includes(DECLARED_READ),
+      "three fast draws is evidence, where one was not",
+    );
+  });
+
+  test("an UNDECLARED fast operation is still never re-drawn", async () => {
+    // The cost control this pass has always had: re-timing all ~630 operations
+    // would triple a sweep that already runs the better part of an hour.
+    const timing: Timing = {
+      surface: "rest",
+      operation: "/api/v1/subnets",
+      ms: 300,
+      answer: "ok",
+      served: "origin",
+      samples: [300],
+    };
+    const { map, calls } = draws({ "rest:/api/v1/subnets": [9000, 9000] });
+    await confirmDecisiveDraws([timing], map, 0);
+    assert.deepEqual(calls, [], "nothing rests on this draw, so it stands");
+  });
+
+  test("a declared read sitting between the two thresholds is left alone", async () => {
+    // Above the stale margin, below budget: it neither reports nor retires, so
+    // there is no verdict for a re-draw to protect.
+    const timing: Timing = {
+      surface: "rest",
+      operation: DECLARED_READ,
+      ms: 4000,
+      answer: "ok",
+      served: "origin",
+      samples: [4000],
+    };
+    const { map, calls } = draws({ [`rest:${DECLARED_READ}`]: [100, 100] });
+    await confirmDecisiveDraws([timing], map, 0);
+    assert.deepEqual(calls, []);
   });
 });
