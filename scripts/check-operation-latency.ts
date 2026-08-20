@@ -119,11 +119,30 @@ const STALE_MARGIN = 0.5;
  * spread is the evidence that one sample per surface is noise around one
  * underlying cost, not three independent measurements.
  *
- * All 20 belong to #10312, and they are not 20 independent problems: the
+ * All 22 belong to #10312, and they are not 22 independent problems: the
  * account family and the extrinsics/chain-event reads are the lakehouse
  * access path (#9789), one root cause wearing most of these hats.
+ *
+ * NOTHING HAS BEEN RETIRED FROM THIS LIST YET, and the 2026-08-19 run is why.
+ * It reported five entries as stale -- `/api/v1/accounts/{ss58}`,
+ * `.../weight-setters`, `/api/v1/blocks/{ref}/extrinsics`, `/api/v1/extrinsics`
+ * and `/api/v1/subnets/{netuid}/ownership-history` -- on numbers its own
+ * confirmation pass had read out of the edge cache (see `Served`). Those five
+ * may well be genuinely fixed; the point is that THAT run could not tell, and
+ * retiring an exemption is the one move this gate cannot take back. The
+ * re-measurement happens once `x-metagraph-cache` is live, which is what makes
+ * the next run able to say.
  */
 const DECLARED: Record<string, string> = {
+  // Added 2026-08-19. Both are GRAPHQL medians, so both are uncontaminated by
+  // the cache correction that landed with them: the POST surfaces never reach
+  // `withEdgeCache`, which consults the cache for GET only (see `Served`).
+  "/api/v1/accounts/{ss58}/subnets/{netuid}/history":
+    "#10312 -- 7687ms worst of 3 surface(s) on 2026-08-19 (rest 7687ms, graphql 6060ms, mcp 1673ms); " +
+    "over budget on BOTH heavy surfaces -- graphql drew [6060, 975, 15124], rest [7687, cache, cache]",
+  "/api/v1/chain-events/stats":
+    "#10312 -- 5952ms worst of 3 surface(s) on 2026-08-19 (graphql 5952ms, rest 2121ms, mcp 1509ms); " +
+    "graphql drew [5952, 1313, 15046] -- an 11.4x spread around the 15s ceiling",
   "/api/v1/accounts/{ss58}":
     "#10312 -- 8832ms worst of 3 surface(s) on 2026-08-10 (graphql 8832ms, mcp 5717ms, rest 5205ms)",
   "/api/v1/accounts/{ss58}/counterparties":
@@ -182,8 +201,63 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 type Answer = "ok" | "unaskable" | "failed";
 
+/**
+ * Whether a draw measured the READ, or a cache sitting in front of it.
+ *
+ * The distinction is the difference between this gate working and this gate
+ * lying. `confirmOverBudget` re-times an over-budget call to reject a one-off
+ * outlier -- but its own first draw FILLS the edge cache that the retries then
+ * read, so the retries are not redraws of the same distribution at all.
+ *
+ * Measured against production 2026-08-19, the same run, split by method:
+ *
+ *   GET   /api/v1/blocks/{ref}/extrinsics  [7290, 63, 43] -> median 63ms
+ *   GET   /api/v1/extrinsics/{hash}        [8703, 78, 66] -> median 78ms
+ *   GET   /api/v1/accounts/{ss58}/history  [17714, 10341, 51] -> median 10341ms
+ *   POST  graphql account_transfers        [17386, 14281, 11017]
+ *   POST  graphql subnet_ohlc              [9554, 5893, 5104]
+ *
+ * Every GET collapses to double digits; no POST does. That is not two
+ * populations of route, it is `withEdgeCache` consulting the cache only for
+ * GET -- so the POST surfaces are structurally uncacheable here and the REST
+ * surface is where a draw can measure the CDN instead of the warehouse.
+ *
+ * Scored the naive way this cost real exemptions: the 2026-08-19 run reported
+ * five DECLARED entries as "now comfortably under budget, delete them", among
+ * them `/api/v1/blocks/{ref}/extrinsics`, whose read still takes 7.3s cold.
+ * Deleting an exemption on the strength of the sweep's own cache is how a live
+ * regression gets retired by the gate that exists to catch it.
+ */
+export type Served = "origin" | "cache";
+
+/** One draw: how long it took, what came back, and whether it counted. */
+export type Draw = [ms: number, answer: Answer, served: Served];
+
+/**
+ * A cache hit is only sometimes visible, which is why the header exists.
+ *
+ * Cloudflare stamps `cf-cache-status` on its own zone cache, but a
+ * `caches.default` hit inside the Worker returns the stored response verbatim:
+ * `/api/v1/blocks/{ref}` measured 15,222ms then 2,216ms with NO cache header of
+ * any kind. `x-metagraph-cache` (#10312) is our own answer to that, set by
+ * `withEdgeCache` and `withChainDetailEdgeCache`; `cf-cache-status` stays as the
+ * fallback so this still detects the zone cache on any route that never reaches
+ * those wrappers.
+ */
+export function servedFrom(res: Response): Served {
+  const own = (res.headers.get("x-metagraph-cache") ?? "").toLowerCase();
+  if (own) return own === "hit" ? "cache" : "origin";
+  return (res.headers.get("cf-cache-status") ?? "").toUpperCase() === "HIT"
+    ? "cache"
+    : "origin";
+}
+
+/** Every surface this sweep is responsible for covering. */
+export const SURFACES = ["rest", "mcp", "graphql"] as const;
+export type SurfaceName = (typeof SURFACES)[number];
+
 export interface Timing {
-  surface: "rest" | "mcp" | "graphql";
+  surface: SurfaceName;
   operation: string;
   /**
    * The operation's SCORED time -- the median of `samples`, not one draw.
@@ -209,6 +283,16 @@ export interface Timing {
    * against a warehouse this account has been rate-limited on (#9465).
    */
   samples?: number[];
+  /**
+   * Whether the FIRST draw measured the read or the cache.
+   *
+   * Kept because a cache-served draw is not evidence of anything about the
+   * read, in either direction -- see `Served`. A first pass can land on a warm
+   * entry (an earlier sweep, or any caller, inside the same 15-minute health
+   * stamp), come in at 60ms, never qualify for the confirmation pass, and be
+   * scored as a fixed operation on one number that never touched the store.
+   */
+  served: Served;
 }
 
 export interface LatencyReport {
@@ -218,6 +302,15 @@ export interface LatencyReport {
   /** Calls the sweep could not pose properly -- its problem, not the API's. */
   unaskable: Timing[];
   stale: string[];
+  /**
+   * Surfaces that produced NO timing at all.
+   *
+   * A sweep that quietly measures two of three surfaces is worse than one that
+   * fails: the staleness rule retires an exemption when its read is under
+   * budget on EVERY surface, so a surface nobody asked is a surface that can
+   * never object. That is not hypothetical either -- see `SWEEP_CONTEXT`.
+   */
+  missingSurfaces: SurfaceName[];
 }
 
 export const key = (timing: Pick<Timing, "surface" | "operation">): string =>
@@ -290,17 +383,25 @@ async function timed(run: () => Promise<Answer>): Promise<[number, Answer]> {
   return [Date.now() - started, answer];
 }
 
+/** `timed` for a surface the edge cache structurally cannot answer. */
+async function originDraw(run: () => Promise<Answer>): Promise<Draw> {
+  const [ms, answer] = await timed(run);
+  return [ms, answer, "origin"];
+}
+
 function withTimeout(): [AbortSignal, () => void] {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   return [controller.signal, () => clearTimeout(timer)];
 }
 
-async function timeRest(path: string): Promise<[number, Answer]> {
-  return timed(async () => {
+async function timeRest(path: string): Promise<Draw> {
+  let served: Served = "origin";
+  const [ms, answer] = await timed(async () => {
     const [signal, done] = withTimeout();
     try {
       const res = await fetch(`${REST_ORIGIN}${path}`, { signal });
+      served = servedFrom(res);
       // Drain the body: a route is not "done" until its bytes are, and the
       // biggest answers here are the whole point (#10318 was 486 KB).
       await res.arrayBuffer();
@@ -309,6 +410,7 @@ async function timeRest(path: string): Promise<[number, Answer]> {
       done();
     }
   });
+  return [ms, answer, served];
 }
 
 /**
@@ -323,8 +425,10 @@ async function timeRest(path: string): Promise<[number, Answer]> {
 const UNASKABLE_MCP_CODES = new Set(["invalid_params", "not_found"]);
 
 let rpcId = 0;
-async function timeMcp(name: string, args: Row): Promise<[number, Answer]> {
-  return timed(async () => {
+// POST, so `withEdgeCache` never consults the cache for it -- see `Served` for
+// the measurement that pinned GET/POST as the line the cache falls on.
+async function timeMcp(name: string, args: Row): Promise<Draw> {
+  return originDraw(async () => {
     const [signal, done] = withTimeout();
     try {
       const res = await fetch(MCP_ENDPOINT, {
@@ -355,8 +459,9 @@ async function timeMcp(name: string, args: Row): Promise<[number, Answer]> {
   });
 }
 
-async function timeGraphql(plan: FieldPlan): Promise<[number, Answer]> {
-  return timed(async () => {
+// POST likewise -- see `timeMcp`.
+async function timeGraphql(plan: FieldPlan): Promise<Draw> {
+  return originDraw(async () => {
     const [signal, done] = withTimeout();
     try {
       const res = await fetch(GRAPHQL_ENDPOINT, {
@@ -425,7 +530,7 @@ async function listLiveTools(): Promise<{ name: string; args: Row }[]> {
 export async function run(): Promise<LatencyReport> {
   const timings: Timing[] = [];
   /** How to draw the same operation again, for the confirmation pass below. */
-  const retime = new Map<string, () => Promise<[number, Answer]>>();
+  const retime = new Map<string, () => Promise<Draw>>();
 
   for (const route of [...API_ROUTES, ...FEED_ROUTES]) {
     // GET only. `/api/v1/ask` is the one POST route in the table, and asking it
@@ -433,12 +538,13 @@ export async function run(): Promise<LatencyReport> {
     if (route.method !== "GET") continue;
     const path = concreteRoute(route.path);
     if (path === null) continue;
-    const [ms, answer] = await timeRest(path);
+    const [ms, answer, served] = await timeRest(path);
     const timing: Timing = {
       surface: "rest",
       operation: route.path,
       ms,
       answer,
+      served,
       samples: [ms],
     };
     timings.push(timing);
@@ -448,12 +554,13 @@ export async function run(): Promise<LatencyReport> {
   }
 
   for (const tool of await listLiveTools()) {
-    const [ms, answer] = await timeMcp(tool.name, tool.args);
+    const [ms, answer, served] = await timeMcp(tool.name, tool.args);
     const timing: Timing = {
       surface: "mcp",
       operation: tool.name,
       ms,
       answer,
+      served,
       samples: [ms],
     };
     timings.push(timing);
@@ -464,12 +571,13 @@ export async function run(): Promise<LatencyReport> {
 
   const { plans } = planAll(buildSchema(SDL));
   for (const plan of plans) {
-    const [ms, answer] = await timeGraphql(plan);
+    const [ms, answer, served] = await timeGraphql(plan);
     const timing: Timing = {
       surface: "graphql",
       operation: plan.field,
       ms,
       answer,
+      served,
       samples: [ms],
     };
     timings.push(timing);
@@ -504,7 +612,7 @@ export async function run(): Promise<LatencyReport> {
  */
 export async function confirmOverBudget(
   timings: Timing[],
-  retime: Map<string, () => Promise<[number, Answer]>>,
+  retime: Map<string, () => Promise<Draw>>,
   /** Overridable so the unit test does not sit through the real pacing. */
   spacingMs: number = CALL_SPACING_MS,
 ): Promise<void> {
@@ -516,6 +624,7 @@ export async function confirmOverBudget(
     `\nconfirming ${suspects.length} over-budget call(s) with ` +
       `${CONFIRM_SAMPLES - 1} more sample(s) each\n`,
   );
+  let cached = 0;
   for (const timing of suspects) {
     const draw = retime.get(key(timing));
     if (!draw) continue;
@@ -528,8 +637,19 @@ export async function confirmOverBudget(
       // fires. The first version of these tests passed alone and timed out at
       // 30s in CI for exactly that reason.
       if (spacingMs > 0) await sleep(spacingMs);
-      const [ms, answer] = await draw();
+      const [ms, answer, served] = await draw();
       if (answer !== "ok") continue;
+      // A CACHE HIT IS NOT A REDRAW. The draw above filled the edge cache, so
+      // this one can be answered without the read ever running -- 63ms against
+      // the 7290ms that seeded it. Folding that into the samples does not
+      // reduce noise, it replaces the measurement: the median of
+      // [cold, warm, warm] IS a warm number, and the operation gets scored as
+      // fixed. Discarded exactly like a non-`ok` answer, and for the same
+      // reason -- neither one is a draw of the thing being measured.
+      if (served === "cache") {
+        cached += 1;
+        continue;
+      }
       timing.samples = [...(timing.samples ?? [timing.ms]), ms];
     }
     // The upper median, which matters only when a draw was DISCARDED above and
@@ -543,6 +663,12 @@ export async function confirmOverBudget(
     process.stderr.write(
       `confirm ${timing.surface} ${timing.operation}` +
         ` [${timing.samples?.join(", ")}] -> median ${timing.ms}ms\n`,
+    );
+  }
+  if (cached > 0) {
+    process.stderr.write(
+      `\n${cached} confirmation draw(s) came from the edge cache and were ` +
+        `discarded -- those operations keep their uncached sample(s)\n`,
     );
   }
 }
@@ -566,7 +692,16 @@ export function summarise(timings: Timing[]): LatencyReport {
     timings
       .filter(
         (timing) =>
-          timing.answer !== "ok" || timing.ms > BUDGET_MS * STALE_MARGIN,
+          timing.answer !== "ok" ||
+          // A cache-served draw is not evidence the read got faster -- it is
+          // not evidence about the read at all. Same standing as the 4xx
+          // above: the sweep did not measure the operation, so it has nothing
+          // to say about whether the exemption is still warranted, and the
+          // exemption stays. Deleting one on this evidence is strictly worse
+          // than keeping a stale one, because the deletion is what lets the
+          // next real regression through unreported.
+          timing.served === "cache" ||
+          timing.ms > BUDGET_MS * STALE_MARGIN,
       )
       .map(family)
       .filter((name) => DECLARED[name]),
@@ -579,6 +714,9 @@ export function summarise(timings: Timing[]): LatencyReport {
     failed: timings.filter((timing) => timing.answer === "failed"),
     unaskable: timings.filter((timing) => timing.answer === "unaskable"),
     stale: Object.keys(DECLARED).filter((name) => !stillSlow.has(name)),
+    missingSurfaces: SURFACES.filter(
+      (surface) => !timings.some((timing) => timing.surface === surface),
+    ),
   };
 }
 
@@ -593,7 +731,7 @@ function percentile(sorted: number[], p: number): number {
 
 export function formatReport(report: LatencyReport): string {
   const lines: string[] = [];
-  for (const surface of ["rest", "mcp", "graphql"] as const) {
+  for (const surface of SURFACES) {
     const ms = report.timings
       .filter((timing) => timing.surface === surface && timing.answer === "ok")
       .map((timing) => timing.ms)
@@ -660,11 +798,27 @@ export function formatReport(report: LatencyReport): string {
     );
     for (const name of report.stale) lines.push(`  ${name}`);
   }
+  if (report.missingSurfaces.length > 0) {
+    lines.push(
+      "",
+      `${report.missingSurfaces.join(", ")} produced NO timings -- this run ` +
+        `covered ${SURFACES.length - report.missingSurfaces.length} of ` +
+        `${SURFACES.length} surfaces and its verdicts are not trustworthy. ` +
+        `A surface that was never asked cannot be over budget, so every ` +
+        `ruling above was decided without it.`,
+    );
+  }
   return lines.join("\n");
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const report = await run();
   console.log(formatReport(report));
-  if (report.overBudget.length > 0 || report.stale.length > 0) process.exit(1);
+  if (
+    report.overBudget.length > 0 ||
+    report.stale.length > 0 ||
+    report.missingSurfaces.length > 0
+  ) {
+    process.exit(1);
+  }
 }

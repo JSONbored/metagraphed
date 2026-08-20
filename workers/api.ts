@@ -233,6 +233,7 @@ import {
   ifNoneMatchSatisfied,
   isPathUnder,
   weakEtag,
+  withCacheStatus,
   X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   type CacheProfile,
@@ -4435,9 +4436,12 @@ export async function withChainDetailEdgeCache(
     // polling agent gets a 304 off a warm edge rather than the whole payload
     // (mirrors envelopeResponse and the artifact cache's own hit path).
     if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
-      return new Response(null, { status: 304, headers: hit.headers });
+      return withCacheStatus(
+        new Response(null, { status: 304, headers: hit.headers }),
+        "hit",
+      );
     }
-    return hit;
+    return withCacheStatus(hit, "hit");
   }
 
   const response = await produce();
@@ -4459,7 +4463,9 @@ export async function withChainDetailEdgeCache(
     );
     cacheWrite(ctx, () => cacheable.store.put(cacheable.key, stored));
   }
-  return response;
+  // Stamped on the returned response only -- `stored` above is the cache's own
+  // copy and must not carry this request's verdict. See `withCacheStatus`.
+  return withCacheStatus(response, "miss");
 }
 
 /**

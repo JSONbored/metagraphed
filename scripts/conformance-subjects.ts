@@ -43,9 +43,31 @@ const ACCOUNT_FIXTURE = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
  * with a made-up subject and then reported as slow or divergent when the only
  * thing wrong was the question.
  */
+/**
+ * Why a sweep is calling, for the `context` argument every MCP tool requires.
+ *
+ * #9644 made `context` required on ALL 242 tools to capture agent intent. Both
+ * sweeps read a tool's own `required` list and skip any tool naming an argument
+ * they have no subject for -- which, from that commit on, was every tool. The
+ * failure was silent in both: `check-operation-latency` reported `rest: 217
+ * timed` and `graphql: 200 timed` and simply printed no mcp line at all, and a
+ * surface that is absent cannot be over budget, so the sweep's own staleness
+ * rule ("comfortably under budget on EVERY surface") was being decided on two
+ * thirds of the evidence.
+ *
+ * The value is what this genuinely is. The argument is "analytics only; does
+ * not affect the result", so nothing depends on it being convincing -- and a
+ * fabricated user goal would put ~440 calls a run of fake intent into the
+ * telemetry the argument exists to collect.
+ */
+export const SWEEP_CONTEXT =
+  "Automated API conformance and latency sweep (metagraphed CI), not a user request";
+
 export const SUBJECTS: Readonly<
   Record<string, string | number | readonly number[]>
 > = {
+  // Required by every MCP tool since #9644 -- see SWEEP_CONTEXT.
+  context: SWEEP_CONTEXT,
   netuid: 64,
   uid: 0,
   ref: "4200000",
@@ -112,7 +134,10 @@ export function concreteRoute(template: string): string | null {
 
 /** Arguments for the MCP tool that mirrors this route template. */
 export function toolArguments(template: string): Row {
-  const args: Row = {};
+  // `context` is required by every tool but is not a path placeholder, so it
+  // can never come from the template -- see SWEEP_CONTEXT for what its absence
+  // cost the cross-surface sweep.
+  const args: Row = { context: SWEEP_CONTEXT };
   for (const name of placeholders(template)) {
     if (SUBJECTS[name] !== undefined) args[name] = SUBJECTS[name];
   }

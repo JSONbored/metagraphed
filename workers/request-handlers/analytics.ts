@@ -52,7 +52,11 @@ import { loadChainWeightsFromArtifact } from "../../src/chain-weights-artifact.t
 import { loadChainWeightSettersColdTier } from "../../src/chain-weight-setters-loader.ts";
 import { loadChainWeightSettersFromArtifact } from "../../src/chain-weight-setters-artifact.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
-import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
+import {
+  errorResponse,
+  ifNoneMatchSatisfied,
+  withCacheStatus,
+} from "../http.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import {
   contractVersion,
@@ -596,11 +600,17 @@ export async function withEdgeCache(
       // Honour conditional requests against the cached body's weak ETag so
       // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
       if (ifNoneMatchSatisfied(request, hit.headers.get("etag") || "")) {
-        return new Response(null, { status: 304, headers: hit.headers });
+        return withCacheStatus(
+          new Response(null, { status: 304, headers: hit.headers }),
+          "hit",
+        );
       }
-      return normalizesHead
-        ? new Response(null, { status: hit.status, headers: hit.headers })
-        : hit;
+      return withCacheStatus(
+        normalizesHead
+          ? new Response(null, { status: hit.status, headers: hit.headers })
+          : hit,
+        "hit",
+      );
     }
   }
   const before = degradedSnapshot();
@@ -651,9 +661,17 @@ export async function withEdgeCache(
   ) {
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
   }
-  return normalizesHead
-    ? new Response(null, { status: response.status, headers: response.headers })
-    : response;
+  // Stamped AFTER the `cache.put` above, which stores `response.clone()`, so
+  // the stored copy stays unlabelled. See `withCacheStatus`.
+  return withCacheStatus(
+    normalizesHead
+      ? new Response(null, {
+          status: response.status,
+          headers: response.headers,
+        })
+      : response,
+    "miss",
+  );
 }
 
 // Postgres-backed 7d/30d daily uptime + latency trends across all subnets

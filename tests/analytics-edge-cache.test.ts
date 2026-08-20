@@ -398,6 +398,56 @@ describe("analytics edge cache", () => {
     assert.equal(mismatch.status, 200);
   });
 
+  test("every answer says which side of the cache produced it", async () => {
+    // #10312: a `caches.default` hit returns the STORED response verbatim, so
+    // before this a caller could not tell a 120ms cache hit from a 15s
+    // lakehouse read -- they differ only in a duration nobody records.
+    // `scripts/check-operation-latency.ts` was scoring the difference as the
+    // operation getting faster: measured 2026-08-19, /api/v1/blocks/{ref}
+    // drew [6034, 93, 91] and was reported as a fixed read.
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = storeUpstreamEnv([]);
+    const target =
+      "https://api.metagraph.sh/api/v1/subnets/9/health/percentiles?window=30d";
+
+    const miss = await handleRequest(
+      new Request(target),
+      env as unknown as Env,
+      ctx,
+    );
+    assert.equal(miss.status, 200);
+    assert.equal(miss.headers.get("x-metagraph-cache"), "miss");
+    assert.ok(await miss.text(), "a miss still carries its body");
+
+    const hit = await handleRequest(
+      new Request(target),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(hit.headers.get("x-metagraph-cache"), "hit");
+
+    // The 304 path is stamped too: it is served off the cached entry, and a
+    // polling agent that only ever gets 304s would otherwise never see one.
+    const conditional = await handleRequest(
+      new Request(target, {
+        headers: { "if-none-match": hit.headers.get("etag")! },
+      }),
+      mockEnv(env) as unknown as Env,
+      ctx,
+    );
+    assert.equal(conditional.status, 304);
+    assert.equal(conditional.headers.get("x-metagraph-cache"), "hit");
+
+    // And the label reaches a browser, or it is a header nobody can read.
+    assert.ok(
+      EXPOSED_RESPONSE_HEADERS_VALUE.includes("x-metagraph-cache"),
+      "the cache label is exposed cross-origin",
+    );
+  });
+
   test("INVARIANT: a different window and a different netuid key separately", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
