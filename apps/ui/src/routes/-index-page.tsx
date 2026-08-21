@@ -1,845 +1,117 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useState } from "react";
-import { ArrowUpRight, ChevronDown, Search, Terminal } from "lucide-react";
+import { Suspense } from "react";
+import { ArrowUpRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { HomeWatchedModule } from "@/components/metagraphed/home-watched-module";
-import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
-import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
+import { HomeNetworkSignalField } from "@/components/metagraphed/home-network-signal-field";
+import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
+import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
+import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { Skeleton } from "@/components/metagraphed/states";
 import {
-  AsyncPanel,
   DataPageCanvas,
+  DataPageDisclosure,
   DataPageHero,
+  DataPageHeroTitleLine,
   DataPageModule,
   DataPageStage,
-  Panel,
 } from "@/components/metagraphed/primitives";
-import {
-  AccentBand,
-  BrandIcon,
-  TimeAgo,
-  CurationChip,
-  HealthPill,
-  CopyableCode,
-  CopyButton,
-  ClaudeIcon,
-  OpenAIIcon,
-  ExternalLink,
-  ScrollReveal,
-  Sparkline,
-} from "@jsonbored/ui-kit";
-import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
-import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
-import { MoversBand } from "@/components/metagraphed/movers-band";
-import { useRegistryEvents } from "@/hooks/use-registry-events";
-import { CoverageFunnel } from "@/components/metagraphed/analytics/coverage-funnel";
-import { NetworkPulseBand } from "@/components/metagraphed/analytics/network-pulse-band";
-import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
-import {
-  RegistryScoreHistogram,
-  DimensionCoverageHeatmap,
-  EnrichmentQueueTable,
-} from "@/components/metagraphed/analytics/registry-depth";
-import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
-import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
-import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
-import { RecentIdentityChanges } from "@/components/metagraphed/recent-identity-changes";
-import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
-import { useHydrated } from "@/hooks/use-hydrated";
-
-import {
-  blocksQuery,
-  coverageQuery,
-  freshnessQuery,
-  healthQuery,
-  subnetsQuery,
-  registrySummaryQuery,
-  coverageDepthQuery,
-  changelogQuery,
-  endpointIncidentsQuery,
-  agentResourcesQuery,
-} from "@/lib/metagraphed/queries";
 import { HubSections } from "@/components/metagraphed/hub-prose";
-import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
-import { CLAUDE_URL, CHATGPT_URL } from "@/lib/metagraphed/agent-prompt";
-import type { Subnet } from "@/lib/metagraphed/types";
+import { useRegistryEvents } from "@/hooks/use-registry-events";
 
+/**
+ * The public landing page is a data document, not a compressed explorer
+ * dashboard. It gives a visitor one immediate visual truth, then routes them
+ * to the dedicated tools that answer a specific follow-up question.
+ */
 export function OverviewPage() {
-  // #1117: live registry pulse — refresh the homepage's live data on each publish.
+  // Keep the one live homepage visual current when a registry snapshot lands.
+  // Secondary analysis is lazy below, so its data does not compete with first
+  // paint or generate background work on an ordinary visit.
   useRegistryEvents();
-  // #5327: the homepage stacked 15+ equal-weight sections (~14,000px tall on
-  // mobile). Keep the hero + KPIs and the "what's tracked" overview always
-  // visible; everything past it is the deeper registry dive, collapsed behind a
-  // single "show more" disclosure so it's reachable but not forced into the
-  // initial scroll. Collapsed sections don't mount, so their queries don't fire
-  // until opened.
-  const [showMore, setShowMore] = useState(false);
+
   return (
-    <AppShell flushTop>
-      <DataPageStage>
-        <HomeHero />
+    <AppShell chrome="landing" fullBleedMain flushTop>
+      <HomeHero />
 
-        <DataPageCanvas>
-          <DataPageModule
-            title="What changed today."
-            caption="New subnets, ownership transfers, runtime upgrades, notable stake moves, and resolved incidents — newest first."
-          >
-            <TimeRangeProvider>
-              <QueryErrorBoundary fallback={() => null}>
-                <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-                  <WhatChangedFeed limit={7} />
-                </Suspense>
-              </QueryErrorBoundary>
-            </TimeRangeProvider>
+      <DataPageStage variant="landing">
+        <DataPageCanvas variant="landing">
+          <DataPageModule kind="navigation">
+            <HomeNetworkSignalField />
           </DataPageModule>
 
-          <DataPageModule
-            title="Start with the question."
-            caption="Choose the part of Bittensor you need to inspect; each destination keeps the primary task in view."
-          >
-            <TrackedGrid />
+          <DataPageModule kind="question" title="Choose a path">
+            <HomeRouteRail />
           </DataPageModule>
 
-          <DataPageModule
-            title="Your workspace."
-            caption="Watch entities locally, continue a recent investigation, or connect an agent without an account."
-          >
-            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-              <div className="min-w-0">
-                <h3 className="mg-type-label text-ink-muted">Watched entities</h3>
-                <div className="mt-3">
-                  <HomeWatchedModule />
-                </div>
-                <ContinueExploring />
-              </div>
-              <div className="min-w-0">
-                <h3 className="mg-type-label text-ink-muted">For agents</h3>
-                <p className="mt-2 mg-type-caption text-ink-muted">
-                  Point any agent at this registry over MCP — no key, no account.
-                </p>
-                <div className="mt-3">
-                  <QueryErrorBoundary fallback={() => null}>
-                    <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-                      <HomeForAgentsModule />
-                    </Suspense>
-                  </QueryErrorBoundary>
-                </div>
-              </div>
-            </div>
+          <DataPageModule kind="operations">
+            <DataPageDisclosure label="Recent registry activity" lazy>
+              <TimeRangeProvider>
+                <QueryErrorBoundary fallback={() => null}>
+                  <Suspense fallback={<Skeleton className="h-56 w-full" />}>
+                    <WhatChangedFeed limit={3} />
+                  </Suspense>
+                </QueryErrorBoundary>
+              </TimeRangeProvider>
+            </DataPageDisclosure>
+
+            <DataPageDisclosure label="Continue your research" lazy>
+              <ContinueExploring />
+            </DataPageDisclosure>
+
+            <HubSections path="/" embedded />
           </DataPageModule>
         </DataPageCanvas>
-
-        {!showMore && (
-          <div className="mt-section-gap flex justify-center">
-            <button
-              type="button"
-              onClick={() => setShowMore(true)}
-              aria-expanded={false}
-              className="inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
-            >
-              Show more of the registry
-              <ChevronDown className="size-4" />
-            </button>
-          </div>
-        )}
-        {showMore && (
-          <>
-            <LivePerformance />
-
-            {/* #1124: live registry signal band — curation funnel + network pulse +
-          what-changed feed, scoped to a shared time range. Wired to real coverage/
-          health/changelog/incident data. */}
-            <ScrollReveal>
-              <section className="mt-section-gap">
-                <TimeRangeProvider>
-                  <div className="mb-3 flex items-end justify-between gap-3">
-                    <SectionHeader
-                      inline
-                      eyebrow="Signal"
-                      live
-                      title="Live registry signal."
-                      description="Curation depth, network pulse, and the latest changes."
-                    />
-                    <TimeRangeScrub />
-                  </div>
-                  <div className="grid gap-4 lg:grid-cols-12">
-                    <AsyncPanel
-                      context="coverage funnel"
-                      fallback={<Skeleton className="h-72 lg:col-span-5" />}
-                      retryQueryKeys={[coverageQuery().queryKey]}
-                    >
-                      <div className="min-w-0 lg:col-span-5">
-                        <CoverageFunnel />
-                      </div>
-                    </AsyncPanel>
-                    <AsyncPanel
-                      context="network pulse"
-                      fallback={<Skeleton className="h-72 lg:col-span-7" />}
-                    >
-                      <div className="min-w-0 lg:col-span-7">
-                        <NetworkPulseBand />
-                      </div>
-                    </AsyncPanel>
-                    <AsyncPanel
-                      context="what changed"
-                      fallback={<Skeleton className="h-64 lg:col-span-12" />}
-                      retryQueryKeys={[
-                        changelogQuery().queryKey,
-                        endpointIncidentsQuery().queryKey,
-                      ]}
-                    >
-                      <div className="min-w-0 lg:col-span-12">
-                        <WhatChangedFeed />
-                      </div>
-                    </AsyncPanel>
-                  </div>
-                </TimeRangeProvider>
-              </section>
-            </ScrollReveal>
-
-            {/* #5: registry depth — completeness score distribution, surface-dimension
-          coverage, and the ranked enrichment queue. Wired to /api/v1/registry/summary
-          + /api/v1/coverage-depth. Each module renders inside its own error boundary
-          so a single artifact gap never blanks the whole section. */}
-            <ScrollReveal>
-              <section className="mt-section-gap">
-                <SectionHeader
-                  eyebrow="Registry depth"
-                  title="How complete is the registry?"
-                  description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
-                />
-                <div className="grid gap-4 lg:grid-cols-12">
-                  <AsyncPanel
-                    context="registry score histogram"
-                    fallback={<Skeleton className="h-64 lg:col-span-7" />}
-                    retryQueryKeys={[registrySummaryQuery().queryKey]}
-                  >
-                    <div className="min-w-0 lg:col-span-7">
-                      <RegistryScoreHistogram className="h-full" />
-                    </div>
-                  </AsyncPanel>
-                  <AsyncPanel
-                    context="dimension coverage heatmap"
-                    fallback={<Skeleton className="h-64 lg:col-span-5" />}
-                    retryQueryKeys={[registrySummaryQuery().queryKey]}
-                  >
-                    <div className="min-w-0 lg:col-span-5">
-                      <DimensionCoverageHeatmap className="h-full" />
-                    </div>
-                  </AsyncPanel>
-                  <div className="min-w-0 lg:col-span-12">
-                    <div className="mb-3 mg-type-caption text-ink-muted">Enrichment queue</div>
-                    <AsyncPanel
-                      context="enrichment queue"
-                      fallback={<Skeleton className="h-64 w-full" />}
-                      retryQueryKeys={[coverageDepthQuery().queryKey]}
-                    >
-                      <EnrichmentQueueTable />
-                    </AsyncPanel>
-                  </div>
-                </div>
-              </section>
-            </ScrollReveal>
-
-            <LeaderboardsModule />
-            <QueryErrorBoundary fallback={() => null}>
-              <Suspense fallback={<Skeleton className="h-48 w-full mt-section-gap" />}>
-                <MoversBand />
-              </Suspense>
-            </QueryErrorBoundary>
-
-            <QuickActionsRow />
-
-            <section className="mt-section-gap">
-              <div className="flex items-end justify-between mb-6">
-                <SectionHeader inline eyebrow="Active subnets" live title="The live registry." />
-                <Link
-                  to="/subnets"
-                  className="inline-flex items-center gap-1 text-xs font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-accent transition-colors group"
-                >
-                  View all
-                  <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </Link>
-              </div>
-              <AsyncPanel
-                context="subnets"
-                fallback={<TableSkeleton />}
-                retryQueryKeys={[subnetsQuery({ limit: 12 }).queryKey]}
-              >
-                <SubnetPreviewTable />
-              </AsyncPanel>
-            </section>
-
-            {/* #3474: live network-wide feed of recent subnet-identity changes. */}
-            <section className="mt-section-gap">
-              <SectionHeader
-                eyebrow="Network activity"
-                title="Recent identity changes."
-                description="Subnet name, symbol, and profile edits observed on-chain across the network, newest first."
-              />
-              <QueryErrorBoundary>
-                <RecentIdentityChanges />
-              </QueryErrorBoundary>
-            </section>
-
-            <section className="mt-section-gap">
-              <SectionHeader
-                eyebrow="For developers"
-                title="Public, read-only, JSON-Schema canonical."
-                description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
-              />
-              <Panel as="div" className="max-w-2xl">
-                <div className="mg-type-caption text-ink-muted mb-2">Try it</div>
-                <CopyableCode
-                  value={`curl ${API_BASE}/api/v1/subnets`}
-                  className="w-full mg-type-caption"
-                  truncate={false}
-                />
-                <div className="mt-3 flex gap-4 text-xs">
-                  <Link to="/apis/schemas" className="text-accent-text hover:underline">
-                    API reference →
-                  </Link>
-                  <ExternalLink
-                    href={`${API_BASE}/api/v1/openapi.json`}
-                    className="text-ink-muted hover:text-ink-strong"
-                  >
-                    OpenAPI spec
-                  </ExternalLink>
-                </div>
-              </Panel>
-            </section>
-
-            <div className="mt-section-gap flex justify-center">
-              <button
-                type="button"
-                onClick={() => setShowMore(false)}
-                aria-expanded
-                className="inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 mg-type-caption font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-accent"
-              >
-                Show less
-                <ChevronDown className="size-4 rotate-180" />
-              </button>
-            </div>
-          </>
-        )}
-
-        <section className="mg-page-callout">
-          <div>
-            <span className="mg-page-kicker">Public chain data</span>
-            <h2>Browse the full Bittensor registry.</h2>
-          </div>
-          <Link to="/subnets" className="mg-page-primary-action">
-            Open subnets
-            <ArrowUpRight className="size-3.5" />
-          </Link>
-        </section>
-        {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
-        <HubSections path="/" />
       </DataPageStage>
     </AppShell>
   );
 }
 
-/* ----------------------------- hero ----------------------------- */
-
-// #3372: a compact chain-head tip in the hero — "head #NNNN · N ago" from the
-// live /api/v1/blocks feed (limit 1), linking to that block. Plain useQuery so a
-// cold/failed fetch silently renders null and never disrupts the primary hero.
-//
-// Hydration-gated like nav-status-dot.tsx's health dot (#8241) and its
-// -explorer-page.tsx twin: `enabled` only once hydrated, so SSR and the first
-// client paint both render `null` and the live link only ever appears in a
-// client-only render after that. Without this, a block landing between the
-// SSR snapshot and the client's own fetch resolving (blocks land ~every 12s)
-// made the two sides disagree on `head.block_number` (or null vs the Link),
-// throwing React's hydration-mismatch error (#418).
-// Exported for the hydration-guard regression test (#8524); rendered only here.
-export function ChainHeadTip() {
-  const hydrated = useHydrated();
-  const { data } = useQuery({ ...blocksQuery({ limit: 1 }), enabled: hydrated });
-  // `enabled` keeps the query from fetching until hydrated, AND the render
-  // itself checks `hydrated` before ever reading `data` -- registry-ticker.tsx
-  // queries this exact same key, so `enabled: false` alone isn't enough (it
-  // only blocks a new fetch, not a read of whatever's already in the shared
-  // cache from that other consumer). Mirrors -explorer-page.tsx:97.
-  if (!hydrated) return null;
-  const head = data?.data?.[0];
-  if (!head || head.block_number == null) return null;
-  return (
-    <Link
-      to="/blocks/$ref"
-      params={{ ref: String(head.block_number) }}
-      className="mg-fade-in mg-fade-in-delay-3 inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-accent transition-colors"
-    >
-      <span className="mg-live-dot" />
-      head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
-    </Link>
-  );
-}
-
-function openCommandPalette() {
-  if (typeof window === "undefined") return;
-  // The app shell listens on window for ⌘/Ctrl+K — dispatching a real
-  // KeyboardEvent triggers the same open path, no shell changes needed.
-  window.dispatchEvent(
-    new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true, bubbles: true }),
-  );
-}
-
 function HomeHero() {
-  const hydrated = useHydrated();
-  const { data: subnetsData } = useQuery({
-    ...subnetsQuery({ limit: 128 }),
-    enabled: hydrated,
-  });
-  const subnetCount =
-    hydrated && Array.isArray(subnetsData?.data)
-      ? (subnetsData?.data as Subnet[]).filter((s) => s.netuid > 0).length
-      : 128;
-
   return (
     <DataPageHero
       id="home-title"
       variant="landing"
-      live
-      eyebrow="Finney · public registry"
+      ambient="document"
+      eyebrow="Explorer / agent toolkit"
       title={
         <>
-          Find the signal.
-          <br />
-          Verify the surface.
+          <DataPageHeroTitleLine>Bittensor,</DataPageHeroTitleLine>
+          <DataPageHeroTitleLine emphasis="focus">in focus.</DataPageHeroTitleLine>
         </>
       }
-      description="A public map of Bittensor subnets, chain activity, and interfaces — built to show what is live, credible, and ready to use."
-      footer={
+      description="Live chain context for people and agents."
+      primaryActions={
         <>
-          <span>
-            <strong className="font-medium text-ink-strong tabular-nums">
-              {formatNumber(subnetCount)}
-            </strong>{" "}
-            active subnets
-          </span>
-          <ChainHeadTip />
+          <Link to="/subnets" className="mg-focus-ring mg-page-primary-action">
+            Explore subnets
+            <ArrowUpRight className="size-3.5" />
+          </Link>
         </>
       }
-    >
-      <button
-        type="button"
-        onClick={openCommandPalette}
-        aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
-        className="mg-focus-ring mg-page-command"
-      >
-        <Search className="size-4 shrink-0" aria-hidden="true" />
-        <span className="min-w-0 truncate">Search subnets, validators, endpoints, accounts…</span>
-        <kbd className="hidden shrink-0 border border-border px-1.5 py-0.5 mg-type-caption text-ink-muted sm:inline-flex">
-          ⌘K
-        </kbd>
-        <span className="mg-page-command-mark" aria-hidden="true">
-          <ArrowUpRight className="size-4" />
-        </span>
-      </button>
-      <div className="mg-page-action-row">
-        <Link to="/subnets" className="mg-focus-ring mg-page-primary-action">
-          Explore {subnetCount} subnets
-          <ArrowUpRight className="size-3.5" />
-        </Link>
-        <Link to="/apis/schemas" className="mg-focus-ring mg-page-quiet-action">
-          Read the API
-        </Link>
-      </div>
-    </DataPageHero>
+    />
   );
 }
 
-/* ----------------------------- for agents ----------------------------- */
+const HOME_DESTINATIONS = [
+  { label: "Subnets", detail: "Live markets and public surfaces", to: "/subnets" },
+  { label: "Validators", detail: "Stake, weights, and performance", to: "/validators" },
+  { label: "Blocks", detail: "Recent chain activity", to: "/blocks" },
+  { label: "Accounts", detail: "Identity, holdings, and events", to: "/accounts" },
+  { label: "Public APIs", detail: "Verified interfaces and schemas", to: "/apis" },
+] as const;
 
-// #8249: the MCP one-liner + Open-in-Claude/ChatGPT buttons + tool-count/
-// no-key line, lifted from /agents (AgentsBody's "Connect over MCP" +
-// "drop into a chat" sections) into a single compact home module. Reuses the
-// exact same query + CLAUDE_URL/CHATGPT_URL/AGENT_PROMPT definitions as
-// /agents (lib/metagraphed/agent-prompt.ts) rather than a second copy.
-function HomeForAgentsModule() {
-  const { data } = useSuspenseQuery(agentResourcesQuery());
-  const mcp = data.data.mcp;
+/** Five direct explorer jobs, deliberately ruled rather than described as cards. */
+function HomeRouteRail() {
   return (
-    <Panel as="div" className="max-w-2xl">
-      <div className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent-surface px-4 py-3.5">
-        <Terminal className="size-4 shrink-0 text-accent" aria-hidden />
-        <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono mg-type-caption-lg text-ink-strong">
-          {mcp.install}
-        </code>
-        <CopyButton value={mcp.install} label="MCP install command" />
-      </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <span className="mg-type-data text-ink-muted">
-          {mcp.tools.length} tools · {mcp.transport} · no key
-        </span>
-        <div className="flex flex-wrap gap-2">
-          <ExternalLink
-            href={CLAUDE_URL}
-            bare
-            className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 mg-type-data font-medium text-accent hover:bg-accent/15"
-          >
-            <ClaudeIcon className="size-3.5" aria-hidden /> Open in Claude
-          </ExternalLink>
-          <ExternalLink
-            href={CHATGPT_URL}
-            bare
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 mg-type-data font-medium text-ink-strong hover:border-ink/30"
-          >
-            <OpenAIIcon className="size-3.5" aria-hidden /> Open in ChatGPT
-          </ExternalLink>
-        </div>
-      </div>
-      <div className="mt-3">
-        <Link to="/agents" className="mg-type-data-sm text-ink-muted hover:text-accent">
-          Every agent surface →
-        </Link>
-      </div>
-    </Panel>
-  );
-}
-
-/* ----------------------------- shared ----------------------------- */
-
-function SectionHeader({
-  eyebrow,
-  title,
-  description,
-  live,
-  link,
-  inline,
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string;
-  live?: boolean;
-  link?: { to: string; label: string };
-  inline?: boolean;
-}) {
-  if (inline) {
-    return (
-      <div>
-        <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
-          {live ? <span className="mg-live-dot" /> : null}
-          {eyebrow}
-        </div>
-        <h2 className="mt-1 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
-          {title}
-        </h2>
-      </div>
-    );
-  }
-  return (
-    <div className="mb-8 max-w-2xl">
-      <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
-        {live ? <span className="mg-live-dot" /> : null}
-        {eyebrow}
-      </div>
-      <h2 className="mt-2 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
-        {title}
-      </h2>
-      {description ? (
-        <p className="mt-2 text-sm text-ink-muted leading-relaxed">{description}</p>
-      ) : null}
-      {link ? (
-        <Link
-          to={link.to}
-          className="mt-3 inline-flex items-center gap-1 text-xs font-mono uppercase tracking-[0.18em] text-accent hover:underline group"
-        >
-          {link.label}
-          <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-function TrackedGrid() {
-  // #5312: navigation cards only — subnet/endpoint/surface/provider counts
-  // already surface in the global registry ticker; freshness/health deep-dive
-  // lives in LivePerformance below.
-  const items = [
-    {
-      label: "Subnets",
-      to: "/subnets",
-      desc: "Active Finney netuids with curated overlays, identity, and health.",
-    },
-    {
-      label: "Surfaces",
-      to: "/apis",
-      desc: "Verified public APIs, schemas, docs, dashboards, and SDKs.",
-    },
-    {
-      label: "Endpoints",
-      to: "/apis/endpoints",
-      desc: "Tracked endpoint resources including root RPC pools.",
-    },
-    {
-      label: "Providers",
-      to: "/apis/providers",
-      desc: "Subnet teams and infrastructure operators behind the registry.",
-    },
-  ];
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {items.map((item) => (
-        <Link key={item.label} to={item.to} className="mg-page-route-link group flex flex-col">
-          <div className="mg-type-caption text-ink-muted">{item.label}</div>
-          <p className="mt-3 text-sm text-ink-strong leading-relaxed flex-1">{item.desc}</p>
-          <span className="mt-4 inline-flex items-center gap-1 mg-type-caption text-ink-muted group-hover:text-accent transition-colors">
-            Explore
-            <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </span>
+    <nav className="mg-home-route-rail" aria-label="Explore Metagraphed">
+      {HOME_DESTINATIONS.map((destination) => (
+        <Link key={destination.to} to={destination.to} className="mg-home-route-link">
+          <span className="mg-home-route-name">{destination.label}</span>
+          <span className="mg-home-route-detail">{destination.detail}</span>
+          <ArrowUpRight className="mg-home-route-arrow" aria-hidden="true" />
         </Link>
       ))}
-    </div>
+    </nav>
   );
-}
-
-function LivePerformance() {
-  // #5312: canonical homepage deep-dive for freshness + health — the only place
-  // on `/` these numbers appear (glance counts live in RegistryTicker).
-  const freshnessResult = useQuery(freshnessQuery());
-  const healthResult = useQuery(healthQuery());
-  const freshness = freshnessResult.data?.data;
-  const health = healthResult.data?.data;
-
-  const ages = (freshness?.sources ?? [])
-    .map((s) => (s.last_seen ? (Date.now() - new Date(s.last_seen).getTime()) / 1000 : null))
-    .filter((v): v is number => typeof v === "number");
-
-  const total =
-    (health?.ok ?? 0) + (health?.warn ?? 0) + (health?.down ?? 0) + (health?.unknown ?? 0);
-  const okPct = total > 0 ? Math.round(((health?.ok ?? 0) / total) * 100) : 0;
-
-  return (
-    <AccentBand className="mt-20">
-      <div className="mb-8 flex items-end justify-between">
-        <div>
-          <div className="mg-type-caption text-ink-strong/70 inline-flex items-center gap-2">
-            <span className="mg-live-dot" />
-            Live performance
-          </div>
-          <h2 className="mt-2 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
-            Probed every 30 seconds.
-          </h2>
-        </div>
-        <Link
-          to="/health"
-          className="text-xs font-mono uppercase tracking-[0.18em] text-ink-strong/70 hover:text-ink-strong"
-        >
-          View health →
-        </Link>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <PerfCard
-          label="Source freshness"
-          value={
-            freshness?.avg_age_seconds != null ? humaniseSeconds(freshness.avg_age_seconds) : "—"
-          }
-          hint="avg poll lag"
-          phase={statPhase(freshnessResult)}
-          series={ages.length ? ages : undefined}
-        />
-        <PerfCard
-          label="Global health"
-          value={`${okPct}%`}
-          hint={`${health?.ok ?? 0}/${total} OK`}
-          phase={statPhase(healthResult)}
-          accent
-        />
-      </div>
-    </AccentBand>
-  );
-}
-
-function PerfCard({
-  label,
-  value,
-  hint,
-  phase = "ready",
-  series,
-  accent,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  /** Loading/error/ready phase of the card's source query (#3964). */
-  phase?: StatPhase;
-  /** Real data series. When absent, no sparkline is rendered (no fabrication). */
-  series?: number[];
-  accent?: boolean;
-}) {
-  const hasSeries = phase === "ready" && !!series && series.length > 1;
-  return (
-    <Panel as="div" flush>
-      <div className="p-4">
-        <div className="flex items-baseline justify-between mb-3">
-          <div className="mg-type-caption text-ink-muted">{label}</div>
-          <div className="mg-type-data-sm text-ink-muted">{hint}</div>
-        </div>
-        <div
-          className={`font-display text-3xl md:text-4xl font-semibold leading-none tabular-nums ${accent ? "text-accent" : "text-ink-strong"}`}
-        >
-          {phase === "pending" ? (
-            <Skeleton className="h-9 w-24" />
-          ) : phase === "error" ? (
-            <StatUnavailable iconClassName="size-4" />
-          ) : (
-            value
-          )}
-        </div>
-        {hasSeries ? (
-          <div className="mt-4">
-            <Sparkline
-              values={series}
-              width={520}
-              height={56}
-              color={accent ? "var(--accent)" : "var(--ink-strong)"}
-              ariaLabel={label}
-            />
-          </div>
-        ) : null}
-      </div>
-    </Panel>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <Panel as="div" flush className="overflow-hidden">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="border-b border-border last:border-b-0 px-4 py-3">
-          <Skeleton className="h-4 w-full" />
-        </div>
-      ))}
-    </Panel>
-  );
-}
-
-function SubnetPreviewTable() {
-  const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
-  // Best-effort overlays: the subnet list is the hard dependency for this table,
-  // but health and coverage failures should degrade to Unknown/dash values rather
-  // than replace the entire table via the surrounding QueryErrorBoundary.
-  const { data: healthRes } = useQuery({ ...healthQuery(), retry: 0 });
-  const coverage = useQuery({ ...coverageQuery(), retry: 0 }).data?.data;
-  const subnets = (data.data ?? []) as Subnet[];
-  const healthBySubnet = new Map<number, "ok" | "warn" | "down" | "unknown">();
-  const hsubs = (
-    healthRes?.data as { subnets?: Array<{ netuid: number; status?: string }> } | undefined
-  )?.subnets;
-  if (Array.isArray(hsubs)) {
-    for (const s of hsubs) {
-      const st = s.status;
-      const mapped: "ok" | "warn" | "down" | "unknown" =
-        st === "ok" ? "ok" : st === "degraded" ? "warn" : st === "failed" ? "down" : "unknown";
-      healthBySubnet.set(s.netuid, mapped);
-    }
-  }
-
-  if (!Array.isArray(subnets) || subnets.length === 0) {
-    return (
-      <EmptyState
-        title="No subnets returned"
-        description="The API responded but returned an empty list."
-      />
-    );
-  }
-
-  const total = coverage?.netuids_active ?? coverage?.netuids_total;
-
-  return (
-    <Panel as="div" flush className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/40 mg-type-micro text-ink-muted">
-            <tr>
-              <th className="px-4 py-3 font-medium">UID</th>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Symbol</th>
-              <th className="px-4 py-3 font-medium text-right">Participants</th>
-              <th className="px-4 py-3 font-medium">Curation</th>
-              <th className="px-4 py-3 font-medium text-right">Surfaces</th>
-              <th className="px-4 py-3 font-medium">Health</th>
-              <th className="px-4 py-3 font-medium text-right">Updated</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {subnets.slice(0, 12).map((s) => (
-              <tr key={s.netuid} className="mg-row-hover">
-                <td className="px-4 py-3 font-mono mg-type-caption text-ink-muted">
-                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="hover:text-accent transition-colors"
-                    >
-                      {String(s.netuid).padStart(3, "0")}
-                    </Link>
-                  </EntityHoverCard>
-                </td>
-                <td className="px-4 py-3">
-                  <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="inline-flex items-center gap-2 font-medium text-ink-strong hover:text-accent transition-colors"
-                    >
-                      <BrandIcon
-                        size={20}
-                        name={s.name ?? `Subnet ${s.netuid}`}
-                        fallback={s.netuid}
-                        url={s.website}
-                        netuid={s.netuid}
-                      />
-                      <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                    </Link>
-                  </EntityHoverCard>
-                </td>
-                <td className="px-4 py-3 mg-type-data text-ink-muted">{s.symbol ?? "—"}</td>
-                <td className="px-4 py-3 text-right font-mono mg-type-caption text-ink">
-                  {formatNumber(s.participants)}
-                </td>
-                <td className="px-4 py-3">
-                  <CurationChip level={s.curation_level} />
-                </td>
-                <td className="px-4 py-3 text-right font-mono mg-type-caption">
-                  {s.surfaces_count ?? "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <HealthPill state={healthBySubnet.get(s.netuid) ?? s.health ?? "unknown"} />
-                </td>
-                <td className="px-4 py-3 text-right mg-type-data text-ink-muted">
-                  <TimeAgo at={s.updated_at ?? s.freshness} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="border-t border-border bg-surface/30 px-4 py-2.5 flex justify-between mg-type-data text-ink-muted">
-        <span>
-          Showing {Math.min(12, subnets.length)}
-          {total ? ` of ${formatNumber(total)}` : ""} ·{" "}
-          <Link to="/subnets" className="hover:text-accent underline underline-offset-2">
-            view all
-          </Link>
-        </span>
-        <button onClick={() => refetch()} className="hover:text-accent transition-colors">
-          refresh
-        </button>
-      </div>
-    </Panel>
-  );
-}
-
-// Not currently wired to any error boundary (no route/component references
-// it) -- kept as-is (zero behavior change) while relocating this file's
-// components out of index.tsx for fast-refresh compliance (#7850).
-export function ErrorBoundaryFallback({ error }: { error: unknown }) {
-  return <ErrorState error={error} />;
 }

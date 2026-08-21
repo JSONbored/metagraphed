@@ -404,7 +404,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
   return (
     <div
       ref={wrapRef}
-      className="hidden md:block relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
+      className="hidden lg:block relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
     >
       {/* Input */}
       <Panel
@@ -426,7 +426,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Explore Bittensor…"
+          placeholder="Search blocks, accounts, and subnets…"
           role="combobox"
           aria-label="Search the registry"
           aria-autocomplete="list"

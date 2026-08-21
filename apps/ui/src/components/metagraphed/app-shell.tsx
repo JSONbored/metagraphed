@@ -1,6 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { captureEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -63,6 +71,23 @@ import { useHydrated } from "@/hooks/use-hydrated";
 const GITHUB_HREF = safeExternalUrl(GITHUB_REPO) ?? DEFAULT_GITHUB_REPO;
 const DISCORD_HREF = safeExternalUrl(DISCORD_URL) ?? DEFAULT_DISCORD_URL;
 
+type CommandPaletteTrigger = (trigger: HTMLElement | null) => void;
+
+const CommandPaletteTriggerContext = createContext<CommandPaletteTrigger | null>(null);
+
+/**
+ * Opens the shell-owned command palette from page content while retaining the
+ * actual invoking control. Unlike a synthetic keyboard event, this lets the
+ * dialog restore focus correctly when a keyboard or screen-reader user closes it.
+ */
+export function useCommandPaletteTrigger(): CommandPaletteTrigger {
+  const openPaletteFrom = useContext(CommandPaletteTriggerContext);
+  if (!openPaletteFrom) {
+    throw new Error("useCommandPaletteTrigger must be used within AppShell.");
+  }
+  return openPaletteFrom;
+}
+
 function Brand({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <Link
@@ -84,6 +109,7 @@ export function AppShell({
   flushTop = false,
   afterHeader,
   crumbLabel,
+  chrome = "default",
 }: {
   children: ReactNode;
   // Fumadocs' DocsLayout manages its own full-height sidebar/content grid
@@ -106,6 +132,10 @@ export function AppShell({
   // instead of standing up a second, redundant breadcrumb trail of their own
   // (#7853). Only ever the last crumb; every ancestor segment stays generic.
   crumbLabel?: string;
+  // Landing pages retain the complete navigational header but suppress the
+  // dense live ticker, giving a primary visual story room to establish itself
+  // before someone opts into network telemetry.
+  chrome?: "default" | "landing";
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -217,222 +247,233 @@ export function AppShell({
   }, []);
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <ApiSourceProvider>
-        {/* Deliberately no background here. The page plane is intentionally
+    <CommandPaletteTriggerContext.Provider value={openPaletteFrom}>
+      <TooltipProvider delayDuration={150}>
+        <ApiSourceProvider>
+          {/* Deliberately no background here. The page plane is intentionally
             quiet; routes add the one structural cue they need instead of a
             decorative texture being forced behind every explorer table. */}
-        <div className="min-h-dvh text-ink flex flex-col">
-          {/* Skip link: first focusable element, visible only on keyboard focus. */}
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[var(--mg-z-skip-link)] focus:rounded focus:bg-ink-strong focus:px-4 focus:py-2 focus:text-paper"
+          <div
+            className={classNames(
+              "min-h-dvh text-ink flex flex-col",
+              chrome === "landing" && "mg-shell--landing",
+            )}
           >
-            Skip to main content
-          </a>
-          {/* Top bar */}
-          <header
-            data-scrolled={scrolled ? "true" : "false"}
-            className="mg-header sticky top-0 z-[var(--mg-z-nav)] border-b border-border bg-paper"
-          >
-            <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
-              <button
-                ref={hamburgerRef}
-                className="lg:hidden p-2 text-ink hover:bg-surface-2 min-h-11 min-w-11 inline-flex items-center justify-center transition-colors"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Open menu"
-              >
-                <Menu className="size-4" />
-              </button>
-              <Brand />
-              <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
-              <NavMegaMenu />
-              <div className="flex-1 min-w-0 flex justify-end items-center gap-1">
-                <NavOmnibox
-                  onOpenPalette={() =>
-                    openPaletteFrom(
-                      document.activeElement instanceof HTMLElement ? document.activeElement : null,
-                    )
-                  }
-                />
-                {/* Below md the omnibox is hidden (#5034), which left the palette
-                    reachable only via ⌘K / Ctrl+K / "/" — none of which exist on a
-                    touch device, so mobile had no way into global search at all.
-                    This is that missing entry point: same setPaletteOpen the
-                    keyboard shortcuts use, shown exactly where the omnibox isn't
-                    (#5319). */}
+            {/* Skip link: first focusable element, visible only on keyboard focus. */}
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[var(--mg-z-skip-link)] focus:rounded focus:bg-ink-strong focus:px-4 focus:py-2 focus:text-paper"
+            >
+              Skip to main content
+            </a>
+            {/* Top bar */}
+            <header
+              data-scrolled={scrolled ? "true" : "false"}
+              className={classNames(
+                "mg-header sticky top-0 z-[var(--mg-z-nav)] border-b border-border bg-paper",
+                chrome === "landing" && "mg-header--landing",
+              )}
+            >
+              <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
                 <button
-                  type="button"
-                  onClick={(e) => openPaletteFrom(e.currentTarget)}
-                  aria-label="Open search"
-                  title="Search"
-                  className="md:hidden inline-flex items-center justify-center p-1.5 min-h-11 min-w-11 text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors"
+                  ref={hamburgerRef}
+                  className="lg:hidden p-2 text-ink hover:bg-surface-2 min-h-11 min-w-11 inline-flex items-center justify-center transition-colors"
+                  onClick={() => setMobileOpen(true)}
+                  aria-label="Open menu"
                 >
-                  <Search className="size-4" aria-hidden="true" />
+                  <Menu className="size-4" />
                 </button>
-              </div>
-              {/* min-w-0 matches the omnibox wrapper above (#8531): without
+                <Brand />
+                <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
+                <NavMegaMenu />
+                <div className="flex-1 min-w-0 flex justify-end items-center gap-1">
+                  <NavOmnibox
+                    onOpenPalette={() =>
+                      openPaletteFrom(
+                        document.activeElement instanceof HTMLElement
+                          ? document.activeElement
+                          : null,
+                      )
+                    }
+                  />
+                  {/* The compact shell runs through tablet width. Keeping the full
+                    omnibox alongside a menu, network switcher, and utility actions
+                    made the 768px header a clipped desktop row rather than an
+                    intentional touch-first control strip. The search trigger opens
+                    the same palette without sacrificing that breathing room. */}
+                  <button
+                    type="button"
+                    onClick={(e) => openPaletteFrom(e.currentTarget)}
+                    aria-label="Open search"
+                    title="Search"
+                    className="lg:hidden inline-flex items-center justify-center p-1.5 min-h-11 min-w-11 text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors"
+                  >
+                    <Search className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
+                {/* min-w-0 matches the omnibox wrapper above (#8531): without
                   it this cluster's min-width is its content width, so any
                   future growth in the trailing actions would push it past
                   the right viewport edge instead of letting flex shrink it. */}
-              <div className="flex items-center gap-1 min-w-0">
-                <ApiDrawerTrigger />
+                <div className="flex items-center gap-1 min-w-0">
+                  <ApiDrawerTrigger />
 
-                <NetworkSwitcher />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to="/settings"
-                      aria-label="Developer settings"
-                      className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center p-1.5 min-h-11 min-w-11 text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors"
-                    >
-                      <Webhook className="size-3.5" aria-hidden="true" />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="mg-type-caption">
-                    Developer settings — webhook subscriptions
-                  </TooltipContent>
-                </Tooltip>
-                <div className="hidden md:inline-flex lg:hidden xl:inline-flex">
-                  <SettingsPopover />
-                </div>
-                {/* Wallet-connect (#5236) is a secondary action for now (read-only,
+                  <NetworkSwitcher />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to="/settings"
+                        aria-label="Developer settings"
+                        className="hidden xl:inline-flex items-center justify-center p-1.5 min-h-11 min-w-11 text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors"
+                      >
+                        <Webhook className="size-3.5" aria-hidden="true" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="mg-type-caption">
+                      Developer settings — webhook subscriptions
+                    </TooltipContent>
+                  </Tooltip>
+                  <div className="hidden xl:inline-flex">
+                    <SettingsPopover />
+                  </div>
+                  {/* Wallet-connect (#5236) is a secondary action for now (read-only,
                     no signing yet) — same responsive treatment as the developer-
                     settings link/SettingsPopover above, not a fourth unconditional
                     icon alongside ApiDrawerTrigger/NetworkSwitcher. */}
-                <div className="hidden md:inline-flex lg:hidden xl:inline-flex">
-                  <WalletConnectButton />
-                </div>
-                {/* At lg the mega-menu appears and the trailing icons no longer
+                  <div className="hidden xl:inline-flex">
+                    <WalletConnectButton />
+                  </div>
+                  {/* At lg the mega-menu appears and the trailing icons no longer
                     fit; fold the secondary actions into one popover until xl
                     restores the room (#3985). */}
-                <div className="hidden lg:inline-flex xl:hidden">
-                  <HeaderActionsMenu />
+                  <div className="hidden lg:inline-flex xl:hidden">
+                    <HeaderActionsMenu />
+                  </div>
                 </div>
               </div>
-            </div>
-            <RegistryTicker />
-            {/* Secondary breadcrumb row (desktop) / compact back affordance (mobile), hidden on home */}
-            {crumbs.length > 1 ? (
-              <>
-                {parent ? (
-                  <div className="md:hidden border-t border-border/70 bg-paper/60">
-                    <div className="max-w-shell-max mx-auto px-4 h-9 flex items-center">
-                      <Link
-                        to={parent.to}
-                        className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink-strong transition-colors mg-type-caption"
+              {chrome === "default" ? <RegistryTicker /> : null}
+              {/* Secondary breadcrumb row (desktop) / compact back affordance (mobile), hidden on home */}
+              {crumbs.length > 1 ? (
+                <>
+                  {parent ? (
+                    <div className="md:hidden border-t border-border/70 bg-paper/60">
+                      <div className="max-w-shell-max mx-auto px-4 h-9 flex items-center">
+                        <Link
+                          to={parent.to}
+                          className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink-strong transition-colors mg-type-caption"
+                        >
+                          <ChevronLeft className="size-3" />
+                          {parent.label}
+                        </Link>
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="hidden md:block border-t border-border/70 bg-paper/60">
+                    <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center">
+                      <nav
+                        aria-label="Breadcrumb"
+                        className="flex items-center gap-1.5 text-xs text-ink-muted min-w-0"
                       >
-                        <ChevronLeft className="size-3" />
-                        {parent.label}
-                      </Link>
+                        {crumbs.map((c, i) => (
+                          <span key={c.to} className="flex items-center gap-1.5 min-w-0">
+                            {i > 0 ? <ChevronRight className="size-3 opacity-50" /> : null}
+                            <Link
+                              to={c.to}
+                              className={classNames(
+                                "truncate hover:text-ink-strong transition-colors mg-type-caption",
+                                i === crumbs.length - 1 && "text-ink-strong",
+                              )}
+                            >
+                              {c.label}
+                            </Link>
+                          </span>
+                        ))}
+                      </nav>
                     </div>
                   </div>
-                ) : null}
-                <div className="hidden md:block border-t border-border/70 bg-paper/60">
-                  <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center">
-                    <nav
-                      aria-label="Breadcrumb"
-                      className="flex items-center gap-1.5 text-xs text-ink-muted min-w-0"
-                    >
-                      {crumbs.map((c, i) => (
-                        <span key={c.to} className="flex items-center gap-1.5 min-w-0">
-                          {i > 0 ? <ChevronRight className="size-3 opacity-50" /> : null}
-                          <Link
-                            to={c.to}
-                            className={classNames(
-                              "truncate hover:text-ink-strong transition-colors mg-type-caption",
-                              i === crumbs.length - 1 && "text-ink-strong",
-                            )}
-                          >
-                            {c.label}
-                          </Link>
-                        </span>
-                      ))}
-                    </nav>
-                  </div>
-                </div>
-              </>
-            ) : null}
-            {afterHeader}
-          </header>
+                </>
+              ) : null}
+              {afterHeader}
+            </header>
 
-          <IncidentStrip />
+            <IncidentStrip />
 
-          {/* Mobile navigation sheet. Using the shared Sheet (Radix Dialog)
+            {/* Mobile navigation sheet. Using the shared Sheet (Radix Dialog)
               primitive — the one ApiDrawer already uses — gives it a focus
               trap, Escape-to-close, and role="dialog" for free, instead of the
               previous hand-rolled <aside> a keyboard user could Tab out of (#5336). */}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetContent
-              side="left"
-              className="flex w-72 max-w-[82vw] flex-col gap-4 border-r border-border bg-paper p-4"
-              onCloseAutoFocus={(event) => {
-                // #6416: restore focus to the hamburger, which Radix can't do on
-                // its own here (no in-tree SheetTrigger).
-                const el = hamburgerRef.current;
-                if (el && el.isConnected) {
-                  event.preventDefault();
-                  el.focus();
-                }
-              }}
-            >
-              <SheetTitle className="sr-only">Site navigation</SheetTitle>
-              <Brand onNavigate={() => setMobileOpen(false)} />
-              <div className="mg-label inline-flex items-center gap-1">
-                <Compass className="size-3" /> Unofficial registry
-              </div>
-              <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/settings"
-                  onClick={() => setMobileOpen(false)}
-                  className="inline-flex flex-1 items-center gap-2 rounded border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
-                >
-                  <Webhook className="size-3.5" aria-hidden="true" /> Developer settings
-                </Link>
-                <SettingsPopover />
-                {/* #5236: mobile has no other wallet-connect entry point (the
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetContent
+                side="left"
+                className="flex w-72 max-w-[82vw] flex-col gap-4 border-r border-border bg-paper p-4"
+                onCloseAutoFocus={(event) => {
+                  // #6416: restore focus to the hamburger, which Radix can't do on
+                  // its own here (no in-tree SheetTrigger).
+                  const el = hamburgerRef.current;
+                  if (el && el.isConnected) {
+                    event.preventDefault();
+                    el.focus();
+                  }
+                }}
+              >
+                <SheetTitle className="sr-only">Site navigation</SheetTitle>
+                <Brand onNavigate={() => setMobileOpen(false)} />
+                <div className="mg-label inline-flex items-center gap-1">
+                  <Compass className="size-3" /> Unofficial registry
+                </div>
+                <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/settings"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex flex-1 items-center gap-2 rounded border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                  >
+                    <Webhook className="size-3.5" aria-hidden="true" /> Developer settings
+                  </Link>
+                  <SettingsPopover />
+                  {/* #5236: mobile has no other wallet-connect entry point (the
                     header trigger is `hidden` below `md`, and folding it into
                     HeaderActionsMenu doesn't help either -- that's ALSO
                     `hidden` below `lg`) -- without this it would be
                     unreachable below `md` entirely. */}
-                <WalletConnectButton />
-              </div>
-              <div className="mt-auto border-t border-border pt-3">
-                <div className="mg-type-caption text-ink-muted mb-1.5">API base</div>
-                <ApiBaseRow />
-              </div>
-            </SheetContent>
-          </Sheet>
+                  <WalletConnectButton />
+                </div>
+                <div className="mt-auto border-t border-border pt-3">
+                  <div className="mg-type-caption text-ink-muted mb-1.5">API base</div>
+                  <ApiBaseRow />
+                </div>
+              </SheetContent>
+            </Sheet>
 
-          <main
-            id="main-content"
-            key={pathname}
-            className={classNames(
-              // Keep route content visible by default. The previous
-              // `mg-route-enter` animation started at opacity: 0; when the
-              // embedded preview paused CSS animations, the entire route
-              // remained permanently transparent even though it had rendered.
-              "flex-1 w-full",
-              fullBleedMain
-                ? ""
-                : classNames(
-                    "px-4 md:px-10 max-w-shell-max mx-auto pb-10 md:pb-12",
-                    flushTop ? "pt-0" : "pt-10 md:pt-12",
-                  ),
-            )}
-          >
-            {fullBleedMain ? children : <div className="mg-route-frame">{children}</div>}
-          </main>
+            <main
+              id="main-content"
+              key={pathname}
+              className={classNames(
+                // Keep route content visible by default. The previous
+                // `mg-route-enter` animation started at opacity: 0; when the
+                // embedded preview paused CSS animations, the entire route
+                // remained permanently transparent even though it had rendered.
+                "flex-1 w-full",
+                fullBleedMain
+                  ? ""
+                  : classNames(
+                      "px-4 md:px-10 max-w-shell-max mx-auto pb-10 md:pb-12",
+                      flushTop ? "pt-0" : "pt-10 md:pt-12",
+                    ),
+              )}
+            >
+              {fullBleedMain ? children : <div className="mg-route-frame">{children}</div>}
+            </main>
 
-          <SiteFooter />
-          <ApiDrawer />
-          <CommandPalette open={paletteOpen} onOpenChange={handlePaletteOpenChange} />
-          <ShortcutsPopover />
-          <BackToTop />
-        </div>
-      </ApiSourceProvider>
-    </TooltipProvider>
+            <SiteFooter compact={chrome === "landing"} />
+            <ApiDrawer />
+            <CommandPalette open={paletteOpen} onOpenChange={handlePaletteOpenChange} />
+            <ShortcutsPopover showLauncher={chrome === "default"} />
+            {chrome === "default" ? <BackToTop /> : null}
+          </div>
+        </ApiSourceProvider>
+      </TooltipProvider>
+    </CommandPaletteTriggerContext.Provider>
   );
 }
 
@@ -447,9 +488,16 @@ function ApiBaseRow() {
   );
 }
 
-function SiteFooter() {
+function SiteFooter({ compact = false }: { compact?: boolean }) {
+  if (compact) return <LandingSiteFooter />;
+
   return (
-    <footer className="mt-20 border-t border-border bg-surface/30 relative overflow-hidden">
+    <footer
+      className={classNames(
+        "mt-20",
+        "border-t border-border bg-surface/30 relative overflow-hidden",
+      )}
+    >
       <div className="max-w-shell-max mx-auto px-4 md:px-10 py-12 grid gap-10 md:grid-cols-5 mg-type-caption text-ink-muted">
         <div className="md:col-span-2">
           <div className="font-display text-base font-semibold text-ink-strong inline-flex items-baseline gap-1">
@@ -545,6 +593,117 @@ function SiteFooter() {
             © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
           </span>
           <EndpointHealthPill />
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/**
+ * The landing is a concise entry point, not a sitemap. Its route rail already
+ * carries the primary exploration decision, so repeating the entire guide tree
+ * in the footer made the last third of the page feel like a wall of text—most
+ * noticeably on a phone. Keep the complete operational footer on explorer
+ * routes, and give the landing a small, deliberate departure point instead.
+ */
+function LandingSiteFooter() {
+  return (
+    <footer className="mt-10 border-t border-border bg-surface/30 relative overflow-hidden">
+      <div className="max-w-shell-max mx-auto px-4 md:px-10 py-10 md:py-12 grid grid-cols-2 gap-x-8 gap-y-8 md:grid-cols-[minmax(0,1.45fr)_minmax(0,0.7fr)_minmax(0,0.7fr)] mg-type-caption text-ink-muted">
+        <div className="col-span-2 md:col-span-1">
+          <div className="font-display text-base font-semibold text-ink-strong inline-flex items-baseline gap-1">
+            Metagraphed
+            <span
+              aria-hidden
+              className="inline-block size-1.5 rounded-full bg-accent translate-y-[-0.15em]"
+            />
+          </div>
+          <p className="mt-2 leading-relaxed max-w-sm">
+            A public, verifiable window into Bittensor.
+          </p>
+          <div className="mt-4 flex items-center gap-1">
+            <ExternalLink
+              bare
+              href={GITHUB_HREF}
+              ariaLabel="GitHub repository"
+              title="Open source on GitHub"
+              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-surface-2 transition-colors"
+            >
+              <Github className="size-4" />
+            </ExternalLink>
+            <ExternalLink
+              bare
+              href={DISCORD_HREF}
+              ariaLabel="Discord community"
+              title="Join us on Discord"
+              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-surface-2 transition-colors"
+            >
+              <DiscordIcon className="size-4" />
+            </ExternalLink>
+            <ExternalLink
+              bare
+              href={`${API_BASE}/api/v1/feeds/registry.rss`}
+              ariaLabel="Registry changes RSS feed"
+              title="Subscribe to the registry-changes feed (RSS)"
+              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-surface-2 transition-colors"
+            >
+              <Rss className="size-4" />
+            </ExternalLink>
+          </div>
+        </div>
+        <div className="col-span-2 grid gap-0 md:hidden">
+          <LandingFooterDisclosure title="Explore">
+            <FooterLink className="inline-flex min-h-11 items-center" to="/subnets">
+              Subnets
+            </FooterLink>
+            <FooterLink className="inline-flex min-h-11 items-center" to="/validators">
+              Validators
+            </FooterLink>
+            <FooterLink className="inline-flex min-h-11 items-center" to="/blocks">
+              Blocks
+            </FooterLink>
+            <FooterLink className="inline-flex min-h-11 items-center" to="/accounts">
+              Accounts
+            </FooterLink>
+          </LandingFooterDisclosure>
+          <LandingFooterDisclosure title="Build">
+            <FooterLink className="inline-flex min-h-11 items-center" to="/apis">
+              Public APIs
+            </FooterLink>
+            <FooterLink className="inline-flex min-h-11 items-center" to="/docs/mcp">
+              MCP
+            </FooterLink>
+            <FooterLink className="inline-flex min-h-11 items-center" to="/docs">
+              Documentation
+            </FooterLink>
+            <FooterLink className="inline-flex min-h-11 items-center" to="/contribute">
+              Contribute
+            </FooterLink>
+          </LandingFooterDisclosure>
+        </div>
+        <div className="hidden md:block">
+          <FooterCol title="Explore">
+            <FooterLink to="/subnets">Subnets</FooterLink>
+            <FooterLink to="/validators">Validators</FooterLink>
+            <FooterLink to="/blocks">Blocks</FooterLink>
+            <FooterLink to="/accounts">Accounts</FooterLink>
+          </FooterCol>
+        </div>
+        <div className="hidden md:block">
+          <FooterCol title="Build">
+            <FooterLink to="/apis">Public APIs</FooterLink>
+            <FooterLink to="/docs/mcp">MCP</FooterLink>
+            <FooterLink to="/docs">Documentation</FooterLink>
+            <FooterLink to="/contribute">Contribute</FooterLink>
+          </FooterCol>
+        </div>
+      </div>
+      <div className="border-t border-border/70">
+        <div className="max-w-shell-max mx-auto px-4 md:px-10 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mg-type-data text-ink-muted">
+          <span>
+            © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
+          </span>
+          <RegistryPulseStrip />
         </div>
       </div>
     </footer>
@@ -667,9 +826,35 @@ function FooterCol({ title, children }: { title: string; children: ReactNode }) 
   );
 }
 
-function FooterLink({ to, children }: { to: string; children: ReactNode }) {
+function LandingFooterDisclosure({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Link to={to} className="hover:text-ink-strong transition-colors w-fit">
+    <details className="group border-t border-border last:border-b">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between text-ink-strong [&::-webkit-details-marker]:hidden">
+        <span className="mg-type-caption">{title}</span>
+        <ChevronRight
+          aria-hidden
+          className="size-3.5 text-ink-muted transition-transform duration-150 motion-reduce:transition-none group-open:rotate-90"
+        />
+      </summary>
+      <div className="flex flex-col pb-2">{children}</div>
+    </details>
+  );
+}
+
+function FooterLink({
+  to,
+  children,
+  className,
+}: {
+  to: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className={classNames("hover:text-ink-strong transition-colors w-fit", className)}
+    >
       {children}
     </Link>
   );

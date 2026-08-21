@@ -26,6 +26,14 @@ export function findOverflowViolations(viewportWidth) {
     return rect.right > viewportWidth + 1 || rect.left < -1;
   }
 
+  // A visually clipped, aria-hidden ambient surface is not an interactive
+  // layout box. Its parent still needs to contain it, but reporting each
+  // deliberately overdrawn grid plane as a viewport escape would turn this
+  // checker into a false-positive machine and train contributors to ignore it.
+  function isHiddenDecoration(el) {
+    return el.closest('[aria-hidden="true"]') !== null;
+  }
+
   function isContainedByScroll(el) {
     let node = el.parentElement;
     while (node && node !== document.body) {
@@ -51,6 +59,7 @@ export function findOverflowViolations(viewportWidth) {
 
   const out = [];
   for (const el of document.querySelectorAll("body *")) {
+    if (isHiddenDecoration(el)) continue;
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
     if (!violates(rect)) continue;

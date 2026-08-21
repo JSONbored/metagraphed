@@ -113,17 +113,17 @@
   --curation-seeded: #b46b00;
   --curation-machine: #7562c6;
   --curation-adapter: #b24f8c;
-  --chart-1: #a82ab7;
-  --chart-2: #785cd0;
-  --chart-3: #556ad4;
-  --chart-4: #1e78bc;
-  --chart-5: #0089a1;
-  --chart-6: #007a6a;
-  --chart-7: #057353;
-  --chart-8: #5d9200;
-  --chart-9: #a96d00;
-  --chart-10: #c55600;
-  --chart-11: #bf4b55;
+  --chart-1: #ed6aff;
+  --chart-2: #a684ff;
+  --chart-3: #7c86ff;
+  --chart-4: #51a2ff;
+  --chart-5: #00d3f2;
+  --chart-6: #00d5be;
+  --chart-7: #00bc7d;
+  --chart-8: #9ae600;
+  --chart-9: #ffb900;
+  --chart-10: #ff8904;
+  --chart-11: #ff6467;
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
   --mg-cadence-color: color-mix(in oklab, var(--ink-strong) 13%, transparent);
   --claude-brand: oklch(0.67 0.13 39);
@@ -1259,6 +1259,8 @@ html[data-density=compact] .bg-card > table td {
   --mg-page-rule: color-mix(in oklab, var(--ink-strong) 8%, transparent);
   --mg-page-field-dot: color-mix(in oklab, var(--ink-strong) 16%, transparent);
   --mg-page-command-height: 3rem;
+  --mg-landing-max: 80rem;
+  --mg-landing-gutter: clamp(1.5rem, 4vw, 4rem);
 }
 .mg-page-stage {
   width: min(100%, var(--mg-page-max));
@@ -1266,6 +1268,13 @@ html[data-density=compact] .bg-card > table td {
   padding-bottom: var(--mg-space-3xl);
 }
 .mg-page-stage--tabs {
+  padding-bottom: 0;
+}
+.mg-page-stage--landing {
+  --mg-page-max: var(--mg-landing-max);
+  --mg-page-gutter: var(--mg-landing-gutter);
+  --mg-page-module-y: clamp(1.75rem, 3.25vw, 3rem);
+  --mg-page-anchor-offset: 6.5rem;
   padding-bottom: 0;
 }
 .mg-page-kicker {
@@ -1306,6 +1315,10 @@ html[data-density=compact] .bg-card > table td {
   min-height: 15.5rem;
   padding: clamp(2.5rem, 6vw, 4.5rem) var(--mg-page-gutter) clamp(2rem, 4vw, 3rem);
   overflow: hidden;
+}
+.mg-page-hero-frame {
+  position: relative;
+  z-index: 1;
 }
 .mg-page-hero-field {
   position: absolute;
@@ -1578,26 +1591,315 @@ html[data-density=compact] .bg-card > table td {
   }
 }
 .mg-page-hero--landing {
-  min-height: 22.5rem;
-  padding-top: clamp(2.75rem, 6vw, 4.75rem);
+  --paper: #0d1210;
+  --ink-strong: #f1fbf6;
+  --ink-muted: #a9bbb1;
+  --ink-subtle: #718178;
+  --border: rgb(231 255 243 / 14%);
+  --mg-page-rule: rgb(231 255 243 / 13%);
+  --mg-page-field-dot: rgb(231 255 243 / 23%);
+  background: #080b0a;
 }
-.mg-page-hero--landing .mg-page-hero-content {
+.mg-page-hero--landing[data-ambient=document] {
+  min-height: 42rem;
+  padding: 0;
+  overflow: clip;
+}
+.mg-page-hero--landing[data-ambient=document][data-height=content] {
+  min-height: clamp(33.5rem, 40vw, 37rem);
+}
+.mg-page-hero--landing[data-ambient=document][data-height=viewport] {
+  min-height: max(42rem, calc(100svh - var(--mg-sticky-offset, var(--spacing-nav))));
+}
+@supports (height: 100dvh) {
+  .mg-page-hero--landing[data-ambient=document][data-height=viewport] {
+    min-height: max(42rem, calc(100dvh - var(--mg-sticky-offset, var(--spacing-nav))));
+  }
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-frame {
+  box-sizing: border-box;
+  display: grid;
+  width: min(100%, var(--mg-landing-max));
+  min-height: inherit;
+  align-content: center;
+  margin-inline: auto;
+  padding: clamp(4.5rem, 8vw, 7rem) var(--mg-landing-gutter) clamp(2.5rem, 4vw, 3.75rem);
+  text-align: left;
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-content {
   display: block;
-  min-height: 17rem;
+  min-height: 0;
 }
-.mg-page-hero--landing .mg-page-hero-copy {
-  max-width: 43rem;
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-copy {
+  display: grid;
+  max-width: none;
+  grid-template-columns: minmax(0, 1.18fr) minmax(15rem, 0.62fr);
+  column-gap: clamp(2.5rem, 8vw, 8rem);
+  row-gap: 0;
 }
-.mg-page-hero--landing h1 {
-  max-width: 12ch;
-  font-size: clamp(3rem, 5.8vw, 4.9rem);
-  letter-spacing: -0.078em;
-  line-height: 0.88;
+.mg-page-hero--landing[data-ambient=document] .mg-page-kicker {
+  grid-column: 1;
+  justify-content: flex-start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: color-mix(in oklab, var(--ink-muted) 88%, #ffffff);
 }
-.mg-page-hero--landing .mg-page-hero-field {
-  top: clamp(4.5rem, 9vw, 6.5rem);
-  width: min(72%, 46rem);
-  height: min(16rem, 48%);
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-heading {
+  grid-column: 1;
+  justify-content: flex-start;
+}
+.mg-page-hero--landing[data-ambient=document] h1 {
+  max-width: 13ch;
+  margin-top: clamp(1.15rem, 2.6vw, 1.75rem);
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: clamp(4rem, 5.4vw, 5rem);
+  font-weight: 500;
+  letter-spacing: -0.065em;
+  line-height: 0.93;
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line {
+  display: block;
+  animation: mg-page-hero-title-reveal 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line:nth-child(2) {
+  animation-delay: 70ms;
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line[data-emphasis=focus] {
+  position: relative;
+  width: fit-content;
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line[data-emphasis=focus]::after {
+  position: absolute;
+  right: 0.08em;
+  bottom: 0.06em;
+  left: 0.02em;
+  height: 2px;
+  background: var(--brand-green);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: mg-page-hero-focus-lock 620ms 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-description {
+  align-self: start;
+  max-width: 20rem;
+  grid-column: 2;
+  grid-row: 2;
+  margin: clamp(0.25rem, 0.8vw, 0.65rem) 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in oklab, var(--ink-muted) 92%, #ffffff);
+  font-family: var(--font-mono);
+  font-size: clamp(0.9rem, 1.5vw, 1rem);
+  line-height: 1.65;
+  animation: mg-page-hero-copy-reveal 560ms 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-primary-actions {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
+  justify-content: flex-start;
+  margin-top: 0;
+  animation: mg-page-hero-copy-reveal 560ms 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-hero-footer {
+  width: min(100%, 32rem);
+  justify-content: flex-start;
+  border-color: color-mix(in oklab, var(--ink-strong) 14%, transparent);
+}
+.mg-page-hero--landing[data-ambient=document] .mg-page-primary-action {
+  color: #07110d;
+}
+@keyframes mg-page-hero-title-reveal {
+  from {
+    opacity: 0.82;
+    filter: blur(0.35px);
+    transform: translateY(0.08em);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+@keyframes mg-page-hero-copy-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes mg-page-hero-focus-lock {
+  to {
+    transform: scaleX(1);
+  }
+}
+.mg-page-hero-document {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  background: #080b0a;
+  pointer-events: none;
+}
+.mg-page-hero-document::after {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 22%;
+  background:
+    linear-gradient(
+      to bottom,
+      transparent,
+      #080b0a 88%);
+  content: "";
+}
+.mg-page-hero-document-lattice {
+  position: absolute;
+  z-index: 0;
+  top: -14%;
+  right: -10%;
+  width: 82%;
+  height: 68%;
+  border: 1px solid color-mix(in oklab, var(--ink-strong) 10%, transparent);
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--ink-strong) 13%, transparent) 1px,
+      transparent 1px),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--ink-strong) 13%, transparent) 1px,
+      transparent 1px);
+  background-size: clamp(2.6rem, 4.2vw, 4.7rem) clamp(2.6rem, 4.2vw, 4.7rem);
+  mask-image:
+    linear-gradient(
+      118deg,
+      transparent 0%,
+      #000 35%,
+      #000 84%);
+  -webkit-mask-image:
+    linear-gradient(
+      118deg,
+      transparent 0%,
+      #000 35%,
+      #000 84%);
+  opacity: 0.56;
+  transform: perspective(90rem) rotateX(64deg) rotateZ(-6deg) scale(1.12);
+  transform-origin: 80% 14%;
+}
+.mg-page-hero-document-lattice--near {
+  z-index: 1;
+  top: 3%;
+  right: -5%;
+  width: 34%;
+  height: 66%;
+  border-color: color-mix(in oklab, var(--chart-5) 26%, transparent);
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--chart-5) 24%, transparent) 1px,
+      transparent 1px),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--chart-2) 18%, transparent) 1px,
+      transparent 1px);
+  background-size: clamp(1.9rem, 3.2vw, 3.4rem) clamp(1.9rem, 3.2vw, 3.4rem);
+  clip-path: polygon(13% 0%, 100% 0%, 100% 100%, 0% 91%);
+  mask-image:
+    linear-gradient(
+      115deg,
+      transparent 0%,
+      #000 26%,
+      #000 90%);
+  -webkit-mask-image:
+    linear-gradient(
+      115deg,
+      transparent 0%,
+      #000 26%,
+      #000 90%);
+  opacity: 0.42;
+  transform: perspective(90rem) rotateY(-38deg) rotateX(14deg) rotateZ(-6deg);
+  transform-origin: 100% 0;
+}
+.mg-page-hero-document-stipple {
+  position: absolute;
+  z-index: 2;
+  top: clamp(9rem, 16vw, 14rem);
+  right: max(3rem, 5.5vw);
+  width: min(60%, 47rem);
+  height: clamp(12rem, 28vh, 17rem);
+  background-image:
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in oklab, var(--ink-strong) 17%, transparent) 1px,
+      transparent 1.15px);
+  background-size: 5px 5px;
+  clip-path: polygon(12% 0%, 100% 0%, 100% 73%, 66% 100%, 0% 88%);
+  mask-image:
+    linear-gradient(
+      124deg,
+      transparent 0%,
+      #000 29%,
+      #000 83%);
+  -webkit-mask-image:
+    linear-gradient(
+      124deg,
+      transparent 0%,
+      #000 29%,
+      #000 83%);
+}
+.mg-page-hero-document-scan {
+  position: absolute;
+  z-index: 3;
+  top: clamp(9rem, 16vw, 14rem);
+  right: max(3rem, 5.5vw);
+  width: min(11%, 6.5rem);
+  height: clamp(12rem, 28vh, 17rem);
+  border-right: 1px solid color-mix(in oklab, var(--brand-green) 64%, transparent);
+  background-image:
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in oklab, var(--brand-green) 74%, transparent) 1px,
+      transparent 1.2px);
+  background-size: 5px 5px;
+  box-shadow: 0 0 1.5rem color-mix(in oklab, var(--brand-green) 14%, transparent);
+  mask-image:
+    linear-gradient(
+      90deg,
+      transparent,
+      #000 38%,
+      #000 74%,
+      transparent);
+  -webkit-mask-image:
+    linear-gradient(
+      90deg,
+      transparent,
+      #000 38%,
+      #000 74%,
+      transparent);
+  opacity: 0.58;
+  transform: scaleX(0.92);
+  will-change: transform, opacity;
+  animation: mg-page-hero-document-scan 6s ease-in-out -3s infinite;
+}
+@keyframes mg-page-hero-document-scan {
+  0%, 100% {
+    opacity: 0.14;
+    transform: scaleX(0.92);
+  }
+  42%, 56% {
+    opacity: 0.78;
+    transform: scaleX(1);
+  }
 }
 .mg-page-hero--analytics {
   min-height: 20rem;
@@ -1704,6 +2006,12 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-page-canvas--profile {
   border-top: 1px solid var(--border);
+}
+.mg-page-canvas--landing {
+  border-top: 1px solid var(--border);
+}
+.mg-page-canvas--landing .mg-page-module--navigation {
+  border-top: 0;
 }
 .mg-page-canvas--operations > * {
   padding: clamp(1.25rem, 3.5vw, 2.5rem) var(--mg-page-gutter);
@@ -1826,6 +2134,290 @@ html[data-density=compact] .bg-card > table td {
   display: grid;
   gap: var(--mg-space-xl);
   padding: var(--mg-space-xs) 0 var(--mg-space-md);
+}
+.mg-interactive-data-field {
+  --mg-data-field-tooltip: #fafafa;
+  margin: 0;
+}
+.dark .mg-interactive-data-field {
+  --mg-data-field-tooltip: #242424;
+}
+.mg-interactive-data-field-plot {
+  position: relative;
+  min-height: clamp(14rem, 28vw, 22rem);
+  padding: var(--mg-space-lg) 0 var(--mg-space-md);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background-image:
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in srgb, var(--ink-strong) 15%, transparent) 0.7px,
+      transparent 0.8px);
+  background-size: 6px 6px;
+}
+.mg-interactive-data-field-scroll {
+  height: clamp(11rem, 24vw, 18rem);
+  min-width: 0;
+}
+.mg-interactive-data-field-bars {
+  display: grid;
+  grid-template-columns: repeat(var(--mg-data-field-count), minmax(0, 1fr));
+  align-items: stretch;
+  gap: clamp(1px, 0.22vw, 3px);
+  height: 100%;
+}
+.mg-interactive-data-field-bar,
+.mg-interactive-data-field-inspector {
+  --mg-data-field-color: var(--chart-5);
+}
+.mg-interactive-data-field-bar[data-tone=chart-1],
+.mg-interactive-data-field-inspector[data-tone=chart-1] {
+  --mg-data-field-color: var(--chart-1);
+}
+.mg-interactive-data-field-bar[data-tone=chart-2],
+.mg-interactive-data-field-inspector[data-tone=chart-2] {
+  --mg-data-field-color: var(--chart-2);
+}
+.mg-interactive-data-field-bar[data-tone=chart-3],
+.mg-interactive-data-field-inspector[data-tone=chart-3] {
+  --mg-data-field-color: var(--chart-3);
+}
+.mg-interactive-data-field-bar[data-tone=chart-4],
+.mg-interactive-data-field-inspector[data-tone=chart-4] {
+  --mg-data-field-color: var(--chart-4);
+}
+.mg-interactive-data-field-bar[data-tone=chart-5],
+.mg-interactive-data-field-inspector[data-tone=chart-5] {
+  --mg-data-field-color: var(--chart-5);
+}
+.mg-interactive-data-field-bar[data-tone=chart-6],
+.mg-interactive-data-field-inspector[data-tone=chart-6] {
+  --mg-data-field-color: var(--chart-6);
+}
+.mg-interactive-data-field-bar[data-tone=chart-7],
+.mg-interactive-data-field-inspector[data-tone=chart-7] {
+  --mg-data-field-color: var(--chart-7);
+}
+.mg-interactive-data-field-bar[data-tone=chart-8],
+.mg-interactive-data-field-inspector[data-tone=chart-8] {
+  --mg-data-field-color: var(--chart-8);
+}
+.mg-interactive-data-field-bar[data-tone=chart-9],
+.mg-interactive-data-field-inspector[data-tone=chart-9] {
+  --mg-data-field-color: var(--chart-9);
+}
+.mg-interactive-data-field-bar[data-tone=chart-10],
+.mg-interactive-data-field-inspector[data-tone=chart-10] {
+  --mg-data-field-color: var(--chart-10);
+}
+.mg-interactive-data-field-bar[data-tone=chart-11],
+.mg-interactive-data-field-inspector[data-tone=chart-11] {
+  --mg-data-field-color: var(--chart-11);
+}
+.mg-interactive-data-field-bar {
+  appearance: none;
+  position: relative;
+  display: block;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  cursor: crosshair;
+  isolation: isolate;
+  scroll-snap-align: center;
+  transition: background 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mg-interactive-data-field-bar-fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: var(--mg-data-field-bar-height);
+  min-height: 0.25rem;
+  background: var(--mg-data-field-color);
+  box-shadow: inset 0 -1px color-mix(in srgb, #000 28%, transparent);
+  transform-origin: bottom;
+  transition:
+    background 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mg-interactive-data-field[data-has-active=true] .mg-interactive-data-field-bar:not([data-active=true]) .mg-interactive-data-field-bar-fill {
+  opacity: 0.48;
+  filter: saturate(0.86);
+}
+.mg-interactive-data-field-bar[data-active=true] {
+  z-index: 1;
+  background: color-mix(in srgb, var(--brand-green) 10%, transparent);
+  box-shadow: inset 1px 0 var(--brand-green), inset -1px 0 var(--brand-green);
+}
+.mg-interactive-data-field-bar[data-active=true]::before {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--brand-green);
+  box-shadow: 0 0 0.75rem color-mix(in oklab, var(--brand-green) 68%, transparent);
+  content: "";
+  pointer-events: none;
+}
+.mg-interactive-data-field-bar[data-active=true] .mg-interactive-data-field-bar-fill {
+  box-shadow: inset 0 -1px color-mix(in srgb, #000 25%, transparent), 0 0 1rem color-mix(in srgb, var(--mg-data-field-color) 42%, transparent);
+  filter: brightness(1.13) saturate(1.14);
+  transform: scaleX(1.08);
+}
+.mg-interactive-data-field-bar:hover .mg-interactive-data-field-bar-fill {
+  filter: brightness(1.08) saturate(1.08);
+}
+.mg-interactive-data-field-bar:focus-visible {
+  z-index: 2;
+  outline: 2px solid var(--brand-green);
+  outline-offset: -2px;
+}
+.mg-interactive-data-field-inspector {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(var(--mg-space-md) + 1.25rem);
+  display: grid;
+  width: min(13.5rem, calc(100% - 1.5rem));
+  gap: 0.18rem;
+  border: 1px solid color-mix(in oklab, var(--mg-data-field-color) 40%, var(--border));
+  border-left: 2px solid var(--mg-data-field-color);
+  padding: var(--mg-space-sm) var(--mg-space-md);
+  background: var(--mg-data-field-tooltip);
+  box-shadow: 0 0.75rem 2.5rem color-mix(in oklab, #000 28%, transparent);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  line-height: 1.45;
+  pointer-events: none;
+  animation: mg-data-field-inspector-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mg-interactive-data-field-inspector[data-align=start] {
+  left: var(--mg-space-sm);
+}
+.mg-interactive-data-field-inspector[data-align=center] {
+  left: var(--mg-data-field-inspector-position);
+  transform: translateX(-50%);
+}
+.mg-interactive-data-field-inspector[data-align=end] {
+  right: var(--mg-space-sm);
+}
+.mg-interactive-data-field-inspector strong {
+  color: var(--ink-strong);
+  font-size: var(--mg-type-caption-lg);
+  font-weight: 600;
+}
+.mg-interactive-data-field-inspector-dismiss {
+  display: none;
+}
+.mg-interactive-data-field-axis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-lg);
+  padding-top: var(--mg-space-sm);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  letter-spacing: var(--mg-tracking-label);
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+@keyframes mg-data-field-inspector-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 63.99rem) {
+  .mg-interactive-data-field-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    padding-inline: var(--mg-space-md);
+    scroll-padding-inline: var(--mg-space-md);
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+  .mg-interactive-data-field-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .mg-interactive-data-field-bars {
+    --mg-data-field-mobile-point-width: 1.5rem;
+    --mg-data-field-mobile-gap: 2px;
+    grid-template-columns: repeat(var(--mg-data-field-count), var(--mg-data-field-mobile-point-width));
+    gap: var(--mg-data-field-mobile-gap);
+    width: calc(var(--mg-data-field-count) * (var(--mg-data-field-mobile-point-width) + var(--mg-data-field-mobile-gap)));
+    min-width: max(100%, calc(var(--mg-data-field-count) * (var(--mg-data-field-mobile-point-width) + var(--mg-data-field-mobile-gap))));
+  }
+  .mg-interactive-data-field-bar {
+    cursor: pointer;
+  }
+}
+@media (max-width: 47.99rem) {
+  .mg-interactive-data-field-plot {
+    min-height: 18rem;
+    padding-top: var(--mg-space-md);
+  }
+  .mg-interactive-data-field-scroll {
+    height: 16rem;
+  }
+  .mg-interactive-data-field-axis {
+    padding-inline: var(--mg-space-md);
+  }
+  .mg-interactive-data-field-inspector {
+    position: fixed;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-height: min(22rem, 48vh);
+    overflow: auto;
+    transform: none;
+  }
+  .mg-interactive-data-field-inspector-dismiss {
+    position: fixed;
+    z-index: 4;
+    right: 1rem;
+    bottom: 1rem;
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: var(--mg-data-field-tooltip);
+    color: var(--ink-strong);
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+  .mg-interactive-data-field-inspector-dismiss:focus-visible {
+    outline: 2px solid var(--brand-green);
+    outline-offset: 2px;
+  }
+  .mg-interactive-data-field-inspector[data-align=center] {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-interactive-data-field-bar,
+  .mg-interactive-data-field-bar-fill,
+  .mg-interactive-data-field-inspector {
+    animation: none;
+    transition: none;
+  }
 }
 .mg-list-filter-bar--canvas {
   margin-inline: var(--mg-list-canvas-bleed);
@@ -2028,9 +2620,89 @@ html[data-density=compact] .bg-card > table td {
     padding-inline: var(--mg-gutter-x, 1rem);
   }
 }
+@media (max-width: 47.99rem) {
+  .mg-page-hero--landing[data-ambient=document] {
+    min-height: max(36rem, calc(100svh - var(--mg-sticky-offset, var(--spacing-nav))));
+  }
+  .mg-page-hero--landing[data-ambient=document][data-height=content] {
+    min-height: clamp(34rem, 140vw, 39rem);
+  }
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-frame {
+    display: block;
+    min-height: inherit;
+    padding: clamp(6rem, 17svh, 8rem) var(--mg-landing-gutter) clamp(3.5rem, 9svh, 5rem);
+  }
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-copy {
+    display: block;
+  }
+  .mg-page-hero--landing[data-ambient=document] h1 {
+    font-size: clamp(3.25rem, 14vw, 4.4rem);
+    letter-spacing: -0.06em;
+    line-height: 0.93;
+  }
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-description {
+    max-width: 20rem;
+    margin-top: clamp(1.8rem, 7vw, 2.5rem);
+    padding-top: var(--mg-space-md);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-primary-actions {
+    margin-top: var(--mg-space-lg);
+  }
+  .mg-page-hero-document-lattice--far {
+    top: -7%;
+    right: -36%;
+    width: 132%;
+    height: 53%;
+    opacity: 0.45;
+    transform: perspective(50rem) rotateX(62deg) rotateZ(-7deg) scale(1.04);
+  }
+  .mg-page-hero-document-lattice--near {
+    display: none;
+  }
+  .mg-page-hero-document-stipple {
+    top: 4.5rem;
+    right: -10rem;
+    width: min(118%, 33rem);
+    height: 12rem;
+    opacity: 0.74;
+    clip-path: polygon(18% 0%, 100% 0%, 100% 74%, 62% 100%, 0% 82%);
+  }
+  .mg-page-hero-document-scan {
+    top: 4.5rem;
+    right: -7rem;
+    height: 12rem;
+    opacity: 0.5;
+  }
+  .mg-page-canvas--landing {
+    margin-inline: 0;
+    border-right: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+  }
+  .mg-page-canvas--landing .mg-page-module {
+    padding-right: var(--mg-page-gutter);
+    padding-left: var(--mg-page-gutter);
+  }
+  .mg-page-canvas--landing .mg-page-module--navigation {
+    padding-right: 0;
+    padding-left: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .mg-page-kicker-dot {
     animation: none;
+  }
+  .mg-page-hero-document-scan,
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line,
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-description,
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-primary-actions {
+    animation: none;
+    will-change: auto;
+  }
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line[data-emphasis=focus]::after {
+    animation: none;
+    transform: scaleX(1);
   }
   .mg-page-command,
   .mg-page-primary-action,
@@ -2038,6 +2710,19 @@ html[data-density=compact] .bg-card > table td {
   .mg-page-route-link,
   .mg-page-disclosure > summary::after {
     transition: none;
+  }
+}
+@media (update: slow), (forced-colors: active) {
+  .mg-page-hero-document-scan,
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line,
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-description,
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-primary-actions {
+    animation: none;
+    will-change: auto;
+  }
+  .mg-page-hero--landing[data-ambient=document] .mg-page-hero-title-line[data-emphasis=focus]::after {
+    animation: none;
+    transform: scaleX(1);
   }
 }
 .mg-data-stage {

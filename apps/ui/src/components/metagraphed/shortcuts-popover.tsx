@@ -22,7 +22,7 @@ const GOTO: Array<{ keys: string; to: string; label: string }> = [
   { keys: "g g", to: "/contribute", label: "Contribute" },
 ];
 
-export function ShortcutsPopover() {
+export function ShortcutsPopover({ showLauncher = true }: { showLauncher?: boolean }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const lastG = useRef<number>(0);
@@ -59,25 +59,32 @@ export function ShortcutsPopover() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label="Keyboard shortcuts"
-              className={classNames(
-                "hidden md:inline-flex fixed z-[var(--mg-z-overlay)] bottom-5 left-5 md:bottom-7 md:left-7",
-                "items-center justify-center rounded-full border border-border mg-glass",
-                "size-10 text-ink-muted shadow-[var(--mg-shadow-pop)]",
-                "hover:border-accent/60 hover:text-accent transition-colors",
-              )}
-            >
-              <Keyboard className="size-4" />
-            </button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent side="right" className="mg-type-caption">
-          Keyboard shortcuts (?)
-        </TooltipContent>
+        {showLauncher ? (
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Keyboard shortcuts"
+                className={classNames(
+                  // A floating utility control must live in an actual desktop rail.
+                  // At tablet widths the content canvas reaches far enough left that
+                  // this used to sit directly on top of charts and data rows.
+                  "hidden xl:inline-flex fixed z-[var(--mg-z-overlay)] bottom-7 left-7",
+                  "items-center justify-center rounded-full border border-border mg-glass",
+                  "size-10 text-ink-muted shadow-[var(--mg-shadow-pop)]",
+                  "hover:border-accent/60 hover:text-accent transition-colors",
+                )}
+              >
+                <Keyboard className="size-4" />
+              </button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+        ) : null}
+        {showLauncher ? (
+          <TooltipContent side="right" className="mg-type-caption">
+            Keyboard shortcuts (?)
+          </TooltipContent>
+        ) : null}
       </Tooltip>
       <PopoverContent align="start" side="top" className="w-80 p-4">
         <div className="mg-type-caption text-ink-muted mb-3">Shortcuts</div>

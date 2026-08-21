@@ -44,10 +44,17 @@ export function hubLede(path: HubPath): string {
  * With the headings each hub already has, this brings every one of them to the
  * three-plus a scannable page needs.
  */
-export function HubSections({ path }: { path: HubPath }) {
+export function HubSections({
+  path,
+  embedded = false,
+}: {
+  path: HubPath;
+  /** Share a surrounding data module's rhythm instead of adding a second section gap. */
+  embedded?: boolean;
+}) {
   const { sections } = HUB_COPY[path].intro;
   return (
-    <div className="mt-10">
+    <div className={embedded ? undefined : "mt-10"}>
       <DataPageDisclosure label="How this data is measured">
         <div className="space-y-section">
           {sections.map((section) => (

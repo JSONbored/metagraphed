@@ -127,6 +127,7 @@ export { PageHero } from "@/components/metagraphed/page-hero";
 export {
   DataPageStage,
   DataPageHero,
+  DataPageHeroTitleLine,
   DataPageCanvas,
   DataPageModule,
   DataPageDisclosure,
@@ -135,6 +136,10 @@ export {
   DataPageTaskPaths,
   DataPageWindowTabs,
   type DataPageStageVariant,
+  type DataPageHeroAmbient,
+  type DataPageHeroTitleLineEmphasis,
+  type DataPageHeroHeight,
+  type DataPageHeroProps,
   type DataPageHeroVariant,
   type DataPageCanvasVariant,
   type DataPageModuleKind,
@@ -144,6 +149,13 @@ export {
   type DataPageHandoffProps,
   type DataPageWindowOption,
 } from "@/components/metagraphed/data-page";
+export {
+  INTERACTIVE_DATA_FIELD_TONES,
+  InteractiveDataField,
+  type InteractiveDataFieldDatum,
+  type InteractiveDataFieldProps,
+  type InteractiveDataFieldTone,
+} from "@/components/metagraphed/interactive-data-field";
 export {
   type EntityHeroProps,
   type EntityHeroStat,

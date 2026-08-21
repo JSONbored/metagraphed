@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { classNames } from "@/lib/format";
 
 /**
@@ -7,10 +8,15 @@ import { classNames } from "@/lib/format";
  * These are deliberately structural primitives: they establish the same
  * reading rhythm without forcing every route into the same content template.
  */
-export type DataPageStageVariant = "default" | "profile" | "tabs";
+export type DataPageStageVariant = "default" | "profile" | "tabs" | "landing";
 export type DataPageHeroVariant =
   "directory" | "landing" | "analytics" | "profile";
-export type DataPageCanvasVariant = "default" | "profile" | "operations";
+/** The visual field behind a page title. Kept structural so routes never own backdrop CSS. */
+export type DataPageHeroAmbient = "lattice" | "document" | "none";
+/** Content heroes read like a document; viewport heroes establish a landing-stage moment. */
+export type DataPageHeroHeight = "content" | "viewport";
+export type DataPageCanvasVariant =
+  "default" | "profile" | "operations" | "landing";
 export type DataPageModuleKind =
   "task" | "question" | "operations" | "profile" | "navigation";
 
@@ -51,6 +57,23 @@ export interface DataPageWindowOption<T extends string> {
   label: ReactNode;
 }
 
+export type DataPageHeroTitleLineEmphasis = "focus";
+
+/** A semantic title line that can reveal independently or carry a named visual emphasis. */
+export function DataPageHeroTitleLine({
+  children,
+  emphasis,
+}: {
+  children: ReactNode;
+  emphasis?: DataPageHeroTitleLineEmphasis;
+}) {
+  return (
+    <span className="mg-page-hero-title-line" data-emphasis={emphasis}>
+      {children}
+    </span>
+  );
+}
+
 export function DataPageStage({
   children,
   className,
@@ -73,7 +96,7 @@ export function DataPageStage({
   );
 }
 
-interface DataPageHeroProps {
+export interface DataPageHeroProps {
   eyebrow?: ReactNode;
   /** Entity icon or compact identifier used by profile-like title fields. */
   identity?: ReactNode;
@@ -97,6 +120,32 @@ interface DataPageHeroProps {
   id?: string;
   className?: string;
   variant?: DataPageHeroVariant;
+  /** A shared visual treatment, rendered outside the accessibility tree. */
+  ambient?: DataPageHeroAmbient;
+  /** Makes the hero occupy the visible page plane beneath the application chrome. */
+  height?: DataPageHeroHeight;
+}
+
+/**
+ * An original document field for immersive landing moments. It gives the
+ * opening title a quiet, dimensional reading plane without pretending to be
+ * live data or delaying first paint.
+ */
+function DataPageHeroDocumentAmbient() {
+  return (
+    <div className="mg-page-hero-document" aria-hidden="true">
+      <div className="mg-page-hero-document-lattice mg-page-hero-document-lattice--far" />
+      <div className="mg-page-hero-document-lattice mg-page-hero-document-lattice--near" />
+      <div className="mg-page-hero-document-stipple" />
+      <div className="mg-page-hero-document-scan" />
+    </div>
+  );
+}
+
+function DataPageHeroAmbient({ ambient }: { ambient: DataPageHeroAmbient }) {
+  if (ambient === "none") return null;
+  if (ambient === "document") return <DataPageHeroDocumentAmbient />;
+  return <div className="mg-page-hero-field" aria-hidden="true" />;
 }
 
 /**
@@ -120,6 +169,8 @@ export function DataPageHero({
   id,
   className,
   variant = "directory",
+  ambient = "lattice",
+  height = "content",
 }: DataPageHeroProps) {
   return (
     <section
@@ -129,44 +180,50 @@ export function DataPageHero({
         className,
       )}
       aria-labelledby={id}
+      data-ambient={ambient}
+      data-height={height}
     >
-      <div className="mg-page-hero-field" aria-hidden="true" />
-      {banner ? <div className="mg-page-hero-banner">{banner}</div> : null}
-      <div className="mg-page-hero-content">
-        <div className="mg-page-hero-copy">
-          {eyebrow ? (
-            <span className="mg-page-kicker">
-              {live ? (
-                <span className="mg-page-kicker-dot" aria-hidden="true" />
-              ) : null}
-              {eyebrow}
-            </span>
-          ) : null}
-          <div className="mg-page-hero-heading">
-            {identity ? (
-              <div className="mg-page-hero-identity">{identity}</div>
+      <DataPageHeroAmbient ambient={ambient} />
+      <div className="mg-page-hero-frame">
+        {banner ? <div className="mg-page-hero-banner">{banner}</div> : null}
+        <div className="mg-page-hero-content">
+          <div className="mg-page-hero-copy">
+            {eyebrow ? (
+              <span className="mg-page-kicker">
+                {live ? (
+                  <span className="mg-page-kicker-dot" aria-hidden="true" />
+                ) : null}
+                {eyebrow}
+              </span>
             ) : null}
-            <h1 id={id}>{title}</h1>
+            <div className="mg-page-hero-heading">
+              {identity ? (
+                <div className="mg-page-hero-identity">{identity}</div>
+              ) : null}
+              <h1 id={id}>{title}</h1>
+            </div>
+            {description ? (
+              <div className="mg-page-hero-description">{description}</div>
+            ) : null}
+            {children ? (
+              <div className="mg-page-hero-body">{children}</div>
+            ) : null}
+            {summary ? (
+              <div className="mg-page-hero-summary">{summary}</div>
+            ) : null}
+            {primaryActions ? (
+              <div className="mg-page-hero-primary-actions">
+                {primaryActions}
+              </div>
+            ) : null}
           </div>
-          {description ? (
-            <div className="mg-page-hero-description">{description}</div>
-          ) : null}
-          {children ? (
-            <div className="mg-page-hero-body">{children}</div>
-          ) : null}
-          {summary ? (
-            <div className="mg-page-hero-summary">{summary}</div>
-          ) : null}
-          {primaryActions ? (
-            <div className="mg-page-hero-primary-actions">{primaryActions}</div>
+          {aside ? <aside className="mg-page-hero-aside">{aside}</aside> : null}
+          {!aside && actions ? (
+            <div className="mg-page-hero-actions">{actions}</div>
           ) : null}
         </div>
-        {aside ? <aside className="mg-page-hero-aside">{aside}</aside> : null}
-        {!aside && actions ? (
-          <div className="mg-page-hero-actions">{actions}</div>
-        ) : null}
+        {footer ? <div className="mg-page-hero-footer">{footer}</div> : null}
       </div>
-      {footer ? <div className="mg-page-hero-footer">{footer}</div> : null}
     </section>
   );
 }
@@ -360,13 +417,20 @@ export function DataPageModule({
   );
 }
 
-/** A quiet, keyboard-native disclosure for methodology and advanced context. */
+/**
+ * A quiet, keyboard-native disclosure for methodology and advanced context.
+ *
+ * `lazy` preserves the native details control while deferring expensive
+ * children until someone asks for them. Once revealed, the content remains
+ * mounted so closing and reopening does not refetch or reset an active tool.
+ */
 export function DataPageDisclosure({
   id,
   label,
   children,
   className,
   open = false,
+  lazy = false,
 }: {
   /** Optional canonical destination for a deep-linked disclosed record. */
   id?: string;
@@ -374,7 +438,11 @@ export function DataPageDisclosure({
   children: ReactNode;
   className?: string;
   open?: boolean;
+  /** Mount children only after this disclosure is first opened. */
+  lazy?: boolean;
 }) {
+  const [hasOpened, setHasOpened] = useState(open);
+
   return (
     <details
       id={id}
@@ -383,9 +451,14 @@ export function DataPageDisclosure({
       // reveal one imperatively without a later render forcing it closed;
       // explicit `open` still makes a saved URL's initial destination visible.
       open={open || undefined}
+      onToggle={(event) => {
+        if (event.currentTarget.open) setHasOpened(true);
+      }}
     >
       <summary>{label}</summary>
-      <div className="mg-page-disclosure-content">{children}</div>
+      {!lazy || hasOpened ? (
+        <div className="mg-page-disclosure-content">{children}</div>
+      ) : null}
     </details>
   );
 }

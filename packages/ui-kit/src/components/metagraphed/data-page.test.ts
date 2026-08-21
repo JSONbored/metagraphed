@@ -6,6 +6,7 @@ import {
   DataPageDisclosure,
   DataPageHandoff,
   DataPageHero,
+  DataPageHeroTitleLine,
   DataPageModule,
   DataPageSignalRail,
   DataPageStage,
@@ -65,6 +66,28 @@ describe("data page primitives", () => {
     expect(html).toContain("Methodology");
   });
 
+  it("defers lazy disclosure content until a reader opens it", () => {
+    const closed = renderToStaticMarkup(
+      createElement(DataPageDisclosure, {
+        label: "Open network analysis",
+        children: "Deferred analysis",
+        lazy: true,
+      }),
+    );
+    const open = renderToStaticMarkup(
+      createElement(DataPageDisclosure, {
+        label: "Open network analysis",
+        children: "Deferred analysis",
+        lazy: true,
+        open: true,
+      }),
+    );
+
+    expect(closed).toContain("Open network analysis");
+    expect(closed).not.toContain("Deferred analysis");
+    expect(open).toContain("Deferred analysis");
+  });
+
   it("offers an operations canvas without forcing routes to own a layout class", () => {
     const html = renderToStaticMarkup(
       createElement(DataPageCanvas, {
@@ -74,6 +97,52 @@ describe("data page primitives", () => {
     );
 
     expect(html).toContain("mg-page-canvas--operations");
+  });
+
+  it("offers landing variants without requiring route-owned layout classes", () => {
+    const html = renderToStaticMarkup(
+      createElement(DataPageStage, {
+        variant: "landing",
+        children: createElement(DataPageCanvas, {
+          variant: "landing",
+          children: "Network signal",
+        }),
+      }),
+    );
+
+    expect(html).toContain("mg-page-stage--landing");
+    expect(html).toContain("mg-page-canvas--landing");
+  });
+
+  it("keeps an immersive document field inside the shared hero primitive", () => {
+    const html = renderToStaticMarkup(
+      createElement(DataPageHero, {
+        variant: "landing",
+        ambient: "document",
+        height: "viewport",
+        title: "Bittensor, in focus.",
+      }),
+    );
+
+    expect(html).toContain('data-ambient="document"');
+    expect(html).toContain('data-height="viewport"');
+    expect(html).toContain("mg-page-hero-document");
+    expect(html).toContain("mg-page-hero-document-stipple");
+    expect(html).toContain("mg-page-hero-frame");
+  });
+
+  it("keeps title-line emphasis semantic and available to every hero", () => {
+    const html = renderToStaticMarkup(
+      createElement(DataPageHero, {
+        title: createElement(DataPageHeroTitleLine, {
+          emphasis: "focus",
+          children: "In focus.",
+        }),
+      }),
+    );
+
+    expect(html).toContain("mg-page-hero-title-line");
+    expect(html).toContain('data-emphasis="focus"');
   });
 
   it("keeps a time-window choice inside the analytical module grammar", () => {

@@ -2240,6 +2240,12 @@ function PageHero({
     }
   );
 }
+function DataPageHeroTitleLine({
+  children,
+  emphasis
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-page-hero-title-line", "data-emphasis": emphasis, children });
+}
 function DataPageStage({
   children,
   className,
@@ -2257,6 +2263,19 @@ function DataPageStage({
     }
   );
 }
+function DataPageHeroDocumentAmbient() {
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-document", "aria-hidden": "true", children: [
+    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-document-lattice mg-page-hero-document-lattice--far" }),
+    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-document-lattice mg-page-hero-document-lattice--near" }),
+    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-document-stipple" }),
+    /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-document-scan" })
+  ] });
+}
+function DataPageHeroAmbient({ ambient }) {
+  if (ambient === "none") return null;
+  if (ambient === "document") return /* @__PURE__ */ jsxRuntime.jsx(DataPageHeroDocumentAmbient, {});
+  return /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-field", "aria-hidden": "true" });
+}
 function DataPageHero({
   eyebrow,
   identity,
@@ -2272,7 +2291,9 @@ function DataPageHero({
   live = false,
   id,
   className,
-  variant = "directory"
+  variant = "directory",
+  ambient = "lattice",
+  height = "content"
 }) {
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "section",
@@ -2283,28 +2304,32 @@ function DataPageHero({
         className
       ),
       "aria-labelledby": id,
+      "data-ambient": ambient,
+      "data-height": height,
       children: [
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-field", "aria-hidden": "true" }),
-        banner ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-banner", children: banner }) : null,
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-content", children: [
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-copy", children: [
-            eyebrow ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-page-kicker", children: [
-              live ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-page-kicker-dot", "aria-hidden": "true" }) : null,
-              eyebrow
-            ] }) : null,
-            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-heading", children: [
-              identity ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-identity", children: identity }) : null,
-              /* @__PURE__ */ jsxRuntime.jsx("h1", { id, children: title })
+        /* @__PURE__ */ jsxRuntime.jsx(DataPageHeroAmbient, { ambient }),
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-frame", children: [
+          banner ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-banner", children: banner }) : null,
+          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-content", children: [
+            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-copy", children: [
+              eyebrow ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-page-kicker", children: [
+                live ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-page-kicker-dot", "aria-hidden": "true" }) : null,
+                eyebrow
+              ] }) : null,
+              /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-heading", children: [
+                identity ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-identity", children: identity }) : null,
+                /* @__PURE__ */ jsxRuntime.jsx("h1", { id, children: title })
+              ] }),
+              description ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-description", children: description }) : null,
+              children ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-body", children }) : null,
+              summary ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-summary", children: summary }) : null,
+              primaryActions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-primary-actions", children: primaryActions }) : null
             ] }),
-            description ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-description", children: description }) : null,
-            children ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-body", children }) : null,
-            summary ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-summary", children: summary }) : null,
-            primaryActions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-primary-actions", children: primaryActions }) : null
+            aside ? /* @__PURE__ */ jsxRuntime.jsx("aside", { className: "mg-page-hero-aside", children: aside }) : null,
+            !aside && actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-actions", children: actions }) : null
           ] }),
-          aside ? /* @__PURE__ */ jsxRuntime.jsx("aside", { className: "mg-page-hero-aside", children: aside }) : null,
-          !aside && actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-actions", children: actions }) : null
-        ] }),
-        footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-footer", children: footer }) : null
+          footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-footer", children: footer }) : null
+        ] })
       ]
     }
   );
@@ -2442,17 +2467,22 @@ function DataPageDisclosure({
   label,
   children,
   className,
-  open = false
+  open = false,
+  lazy = false
 }) {
+  const [hasOpened, setHasOpened] = React3.useState(open);
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "details",
     {
       id,
       className: classNames("mg-page-disclosure", className),
       open: open || void 0,
+      onToggle: (event) => {
+        if (event.currentTarget.open) setHasOpened(true);
+      },
       children: [
         /* @__PURE__ */ jsxRuntime.jsx("summary", { children: label }),
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-disclosure-content", children })
+        !lazy || hasOpened ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-disclosure-content", children }) : null
       ]
     }
   );
@@ -2488,6 +2518,193 @@ function DataPageWindowTabs({
           option.value
         );
       })
+    }
+  );
+}
+var INTERACTIVE_DATA_FIELD_TONES = [
+  "chart-1",
+  "chart-2",
+  "chart-3",
+  "chart-4",
+  "chart-5",
+  "chart-6",
+  "chart-7",
+  "chart-8",
+  "chart-9",
+  "chart-10",
+  "chart-11"
+];
+function InteractiveDataField({
+  ariaLabel,
+  data,
+  activeId: controlledActiveId,
+  onActiveChange,
+  onHoverChange,
+  axisStart,
+  axisEnd,
+  renderInspector,
+  className
+}) {
+  const inspectorId = React3.useId();
+  const buttonRefs = React3.useRef({});
+  const [uncontrolledActiveId, setUncontrolledActiveId] = React3.useState(null);
+  const [hoveredId, setHoveredId] = React3.useState(null);
+  const activeId = controlledActiveId === void 0 ? uncontrolledActiveId : controlledActiveId;
+  const inspectedId = hoveredId ?? activeId;
+  const inspectedIndex = data.findIndex((datum) => datum.id === inspectedId);
+  const inspectedDatum = inspectedIndex >= 0 ? data[inspectedIndex] : null;
+  const max = Math.max(
+    0,
+    ...data.map((datum) => Number.isFinite(datum.value) ? datum.value : 0)
+  );
+  function setActive(id) {
+    if (controlledActiveId === void 0) setUncontrolledActiveId(id);
+    onActiveChange?.(id);
+  }
+  function setHovered(id) {
+    setHoveredId(id);
+    onHoverChange?.(id);
+  }
+  function focusDatum(index) {
+    const datum = data[index];
+    if (!datum) return;
+    setHovered(null);
+    setActive(datum.id);
+    buttonRefs.current[datum.id]?.focus();
+  }
+  function handleBarKeyDown(event, index) {
+    let nextIndex = null;
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        nextIndex = Math.min(index + 1, data.length - 1);
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        nextIndex = Math.max(index - 1, 0);
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = data.length - 1;
+        break;
+      case "Escape":
+        setHovered(null);
+        setActive(null);
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
+    focusDatum(nextIndex);
+  }
+  if (data.length === 0) return null;
+  const inspectorAlignment = inspectedIndex < Math.ceil(data.length * 0.18) ? "start" : inspectedIndex > Math.floor(data.length * 0.82) ? "end" : "center";
+  const inspectorPosition = `${(inspectedIndex + 0.5) / data.length * 100}%`;
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "figure",
+    {
+      className: classNames("mg-interactive-data-field", className),
+      "aria-label": ariaLabel,
+      "data-has-active": inspectedDatum ? "true" : void 0,
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-interactive-data-field-plot", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-interactive-data-field-scroll", children: /* @__PURE__ */ jsxRuntime.jsx(
+            "div",
+            {
+              className: "mg-interactive-data-field-bars",
+              role: "group",
+              "aria-label": `${ariaLabel} Hover, focus, or tap a data column to inspect it. Use arrow keys after focus to move between columns.`,
+              style: { "--mg-data-field-count": data.length },
+              children: data.map((datum, index) => {
+                const height = max > 0 ? Math.max(2, Math.max(0, datum.value) / max * 100) : 2;
+                const inspected = datum.id === inspectedId;
+                return /* @__PURE__ */ jsxRuntime.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    className: "mg-interactive-data-field-bar",
+                    "data-tone": datum.tone ?? "chart-5",
+                    "data-active": inspected || void 0,
+                    "aria-label": datum.ariaLabel,
+                    "aria-describedby": inspected ? inspectorId : void 0,
+                    "aria-pressed": inspected,
+                    tabIndex: datum.id === (activeId ?? data[0]?.id) ? 0 : -1,
+                    style: {
+                      "--mg-data-field-index": index
+                    },
+                    ref: (node) => {
+                      buttonRefs.current[datum.id] = node;
+                    },
+                    onFocus: () => {
+                      setHovered(null);
+                      setActive(datum.id);
+                    },
+                    onPointerEnter: (event) => {
+                      if (event.pointerType !== "touch") setHovered(datum.id);
+                    },
+                    onPointerLeave: (event) => {
+                      if (event.pointerType !== "touch") setHovered(null);
+                    },
+                    onClick: () => {
+                      setHovered(null);
+                      setActive(datum.id);
+                    },
+                    onKeyDown: (event) => handleBarKeyDown(event, index),
+                    children: /* @__PURE__ */ jsxRuntime.jsx(
+                      "span",
+                      {
+                        className: "mg-interactive-data-field-bar-fill",
+                        "aria-hidden": "true",
+                        style: {
+                          "--mg-data-field-bar-height": `${height}%`
+                        }
+                      }
+                    )
+                  },
+                  datum.id
+                );
+              })
+            }
+          ) }),
+          inspectedDatum ? /* @__PURE__ */ jsxRuntime.jsx(
+            "div",
+            {
+              id: inspectorId,
+              className: "mg-interactive-data-field-inspector",
+              "data-align": inspectorAlignment,
+              "data-tone": inspectedDatum.tone ?? "chart-5",
+              role: "status",
+              "aria-live": "polite",
+              style: {
+                "--mg-data-field-inspector-position": inspectorPosition
+              },
+              children: renderInspector ? renderInspector(inspectedDatum, inspectedIndex) : /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+                /* @__PURE__ */ jsxRuntime.jsx("span", { children: inspectedDatum.label }),
+                /* @__PURE__ */ jsxRuntime.jsx("strong", { children: inspectedDatum.valueLabel })
+              ] })
+            }
+          ) : null,
+          inspectedDatum ? /* @__PURE__ */ jsxRuntime.jsx(
+            "button",
+            {
+              type: "button",
+              className: "mg-interactive-data-field-inspector-dismiss",
+              onClick: () => {
+                setHovered(null);
+                setActive(null);
+              },
+              "aria-label": "Dismiss chart readout",
+              children: /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-hidden": "true", children: "\xD7" })
+            }
+          ) : null
+        ] }),
+        axisStart || axisEnd ? /* @__PURE__ */ jsxRuntime.jsxs("figcaption", { className: "mg-interactive-data-field-axis", children: [
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: axisStart }),
+          /* @__PURE__ */ jsxRuntime.jsx("span", { children: axisEnd })
+        ] }) : null
+      ]
     }
   );
 }
@@ -6899,6 +7116,7 @@ exports.DataPageCanvas = DataPageCanvas;
 exports.DataPageDisclosure = DataPageDisclosure;
 exports.DataPageHandoff = DataPageHandoff;
 exports.DataPageHero = DataPageHero;
+exports.DataPageHeroTitleLine = DataPageHeroTitleLine;
 exports.DataPageModule = DataPageModule;
 exports.DataPageSignalRail = DataPageSignalRail;
 exports.DataPageStage = DataPageStage;
@@ -6940,8 +7158,10 @@ exports.HoverCard = HoverCard;
 exports.HoverCardContent = HoverCardContent;
 exports.HoverCardTrigger = HoverCardTrigger;
 exports.HoverPreview = HoverPreview;
+exports.INTERACTIVE_DATA_FIELD_TONES = INTERACTIVE_DATA_FIELD_TONES;
 exports.Indicator = Indicator;
 exports.InfoTooltip = InfoTooltip;
+exports.InteractiveDataField = InteractiveDataField;
 exports.Kbd = Kbd;
 exports.KeyChip = KeyChip;
 exports.ListShell = ListShell;
