@@ -8,7 +8,14 @@ import { Skeleton } from "@/components/metagraphed/states";
 import { TopActiveAccounts } from "@/components/metagraphed/top-active-accounts";
 import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-active-accounts-ranking";
 import { ActionBar, ShareButton } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
+  Panel,
+} from "@/components/metagraphed/primitives";
 import { Ss58Inspector } from "@/components/metagraphed/ss58-inspector";
 import { TopHoldersPanel } from "@/components/metagraphed/top-holders-panel";
 import { YourPositionsPanel } from "@/components/metagraphed/your-positions-panel";
@@ -50,135 +57,133 @@ export function AccountsPage() {
 
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Accounts"
-        description="Look up a Bittensor account by ss58 address (hotkey or coldkey) — its balance, staked positions, cross-subnet activity, and first-party chain-event history."
-        actions={
-          <ActionBar>
-            <ShareButton bare />
-          </ActionBar>
-        }
-      />
-      <EvmAddressRedirect />
-      <form onSubmit={submit} className="mx-auto w-full max-w-2xl">
-        <label htmlFor="ss58" className="mb-2 block mg-type-caption text-ink-muted">
-          Account address (ss58 or EVM)
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-            <input
-              id="ss58"
-              type="text"
-              inputMode="text"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
-              className="w-full rounded border border-border bg-card py-2.5 pl-10 pr-3 font-mono text-sm text-ink-strong placeholder:text-ink-muted/60 focus:border-ink/30 focus:outline-none min-h-11"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={!valid}
-            className="inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-4 py-2.5 text-sm font-medium hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-40 min-h-11"
+      <DataPageStage>
+        <DataPageHero
+          id="accounts-title"
+          eyebrow="Account explorer"
+          live
+          title="Accounts."
+          description="Look up a Bittensor account by ss58 address or EVM address — then inspect balances, stake, and first-party chain activity."
+          actions={
+            <ActionBar>
+              <ShareButton bare />
+            </ActionBar>
+          }
+        />
+        <DataPageCanvas>
+          <DataPageModule
+            title="Find an account."
+            caption="Paste a hotkey, coldkey, or EVM address to jump directly to the on-chain record."
           >
-            Look up
-          </button>
-        </div>
-        <p className="mt-2 mg-type-data text-ink-muted">
-          {touched && !valid
-            ? "That doesn't look like a valid ss58 or EVM address."
-            : "Paste a hotkey or coldkey ss58 address — or an EVM (0x) address — to view its activity."}
-        </p>
-      </form>
+            <EvmAddressRedirect />
+            <form onSubmit={submit} className="w-full max-w-2xl">
+              <label htmlFor="ss58" className="mb-2 block mg-type-caption text-ink-muted">
+                Account address (ss58 or EVM)
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
+                  <input
+                    id="ss58"
+                    type="text"
+                    inputMode="text"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+                    className="w-full border border-border bg-card py-2.5 pl-10 pr-3 font-mono text-sm text-ink-strong placeholder:text-ink-muted/60 focus:border-ink/30 focus:outline-none min-h-11"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!valid}
+                  className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-border bg-card px-4 py-2.5 mg-type-caption font-medium hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Look up
+                </button>
+              </div>
+              <p className="mt-2 mg-type-data text-ink-muted">
+                {touched && !valid
+                  ? "That doesn't look like a valid ss58 or EVM address."
+                  : "Paste a hotkey or coldkey ss58 address — or an EVM (0x) address — to view its activity."}
+              </p>
+            </form>
+          </DataPageModule>
 
-      {/* #8252: /portfolio folded in as "Your wallet" -- a whole route for a
-          connect prompt was the thing the redesign removed. Read-only
-          connect + flows unchanged. */}
-      <YourWalletPanel />
+          <DataPageModule
+            title="Your wallet."
+            caption="Read-only positions for a connected browser wallet; no transaction is constructed or signed here."
+          >
+            <YourWalletPanel />
+          </DataPageModule>
 
-      {/* #8252: the two new leaderboards the issue asks for, wired to the
-          already-shipped /api/v1/accounts sorts (which had no frontend
-          consumer until now). Stake and emission are the two aggregates that
-          endpoint actually ranks by -- there is no balance-ranked tier on it
-          (balance is a per-account live RPC call, not an indexed column), so
-          "Top by balance" would have to fabricate a ranking it can't compute.
-          Ranking by what the data really supports instead. */}
-      <div className="mx-auto mt-10 grid w-full max-w-4xl gap-4 md:grid-cols-2">
-        <AsyncPanel
-          context="top accounts by stake"
-          fallback={<Skeleton className="h-64 w-full" />}
-          retryQueryKeys={[accountsListQuery({ sort: "total_stake" }).queryKey]}
-        >
-          <AccountsLeaderboard
-            sort="total_stake"
-            title="Top by stake"
-            blurb="Accounts holding the most stake across every subnet."
-            metric={(a) => `${taoCompact(a.total_stake_tao)} τ`}
-          />
-        </AsyncPanel>
-        <AsyncPanel
-          context="top accounts by emission"
-          fallback={<Skeleton className="h-64 w-full" />}
-          retryQueryKeys={[accountsListQuery({ sort: "total_emission" }).queryKey]}
-        >
-          <AccountsLeaderboard
-            sort="total_emission"
-            title="Top by emission"
-            blurb="Accounts earning the most emission across every subnet."
-            metric={(a) => `${taoCompact(a.total_emission_tao)} τ`}
-          />
-        </AsyncPanel>
-      </div>
+          <DataPageModule
+            title="Account leaders."
+            caption="Compare the accounts holding the most stake or earning the most emission, then inspect current chain activity."
+          >
+            <div className="grid gap-6 md:grid-cols-2">
+              <AsyncPanel
+                context="top accounts by stake"
+                fallback={<Skeleton className="h-64 w-full" />}
+                retryQueryKeys={[accountsListQuery({ sort: "total_stake" }).queryKey]}
+              >
+                <AccountsLeaderboard
+                  sort="total_stake"
+                  title="Top by stake"
+                  blurb="Accounts holding the most stake across every subnet."
+                  metric={(a) => `${taoCompact(a.total_stake_tao)} τ`}
+                />
+              </AsyncPanel>
+              <AsyncPanel
+                context="top accounts by emission"
+                fallback={<Skeleton className="h-64 w-full" />}
+                retryQueryKeys={[accountsListQuery({ sort: "total_emission" }).queryKey]}
+              >
+                <AccountsLeaderboard
+                  sort="total_emission"
+                  title="Top by emission"
+                  blurb="Accounts earning the most emission across every subnet."
+                  metric={(a) => `${taoCompact(a.total_emission_tao)} τ`}
+                />
+              </AsyncPanel>
+            </div>
+            <section className="mt-8" data-testid="top-active-accounts-section">
+              <h3 className="mg-type-label text-ink-muted">Most active accounts</h3>
+              <p className="mt-1 mb-4 mg-type-data text-ink-muted">
+                Ranked by extrinsics signed on-chain in the last {TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS}{" "}
+                days — jump straight to an account below.
+              </p>
+              <AsyncPanel
+                context="active accounts"
+                fallback={<Skeleton className="h-40 w-full" />}
+                retryQueryKeys={[chainSignersQuery().queryKey]}
+              >
+                <TopActiveAccounts />
+              </AsyncPanel>
+            </section>
+          </DataPageModule>
 
-      <Panel
-        dense
-        className="mx-auto mt-10 w-full max-w-2xl"
-        data-testid="top-active-accounts-section"
-      >
-        <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Most active accounts</h2>
-        <p className="mb-4 mg-type-data text-ink-muted">
-          Ranked by extrinsics signed on-chain in the last {TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS} days —
-          jump straight to an account below.
-        </p>
-        <AsyncPanel
-          context="active accounts"
-          fallback={<Skeleton className="h-40 w-full" />}
-          retryQueryKeys={[chainSignersQuery().queryKey]}
-        >
-          <TopActiveAccounts />
-        </AsyncPanel>
-      </Panel>
-
-      {/* #8252: /tools/ss58 folded in as an "Inspect address" utility. */}
-      <Panel dense className="mx-auto mt-10 w-full max-w-2xl">
-        <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Inspect an address</h2>
-        <p className="mb-4 mg-type-data text-ink-muted">
-          Decode any SS58 address&apos;s network prefix and public key, and verify its checksum —
-          useful for catching a mistyped or wrong-network address before sending to it.
-        </p>
-        {/* #10300: the network-wide holder leaderboard was published and
-            rendered nowhere. */}
-        <section className="mt-8">
-          <TopHoldersPanel />
-        </section>
-
-        <Ss58Inspector />
-      </Panel>
-
-      <ApiSourceFooter
-        paths={[
-          "/api/v1/accounts/{ss58}",
-          "/api/v1/accounts",
-          "/api/v1/chain/signers",
-          "/api/v1/accounts/top-holders",
-        ]}
-      />
+          <DataPageModule
+            title="Inspect an address."
+            caption="Decode SS58 prefixes, verify checksums, and compare the current holder leaderboard before you act elsewhere."
+          >
+            <TopHoldersPanel />
+            <div className="mt-8">
+              <Ss58Inspector />
+            </div>
+          </DataPageModule>
+        </DataPageCanvas>
+        <ApiSourceFooter
+          paths={[
+            "/api/v1/accounts/{ss58}",
+            "/api/v1/accounts",
+            "/api/v1/chain/signers",
+            "/api/v1/accounts/top-holders",
+          ]}
+        />
+      </DataPageStage>
     </AppShell>
   );
 }
@@ -191,12 +196,7 @@ function YourWalletPanel() {
     // exactly that reason (see REPLAY_BLOCKED_ROUTES in lib/analytics.ts);
     // /accounts is a public any-address lookup page, so the protection moves
     // to this element rather than blocking the whole route.
-    <Panel dense className="ph-no-capture mx-auto mt-10 w-full max-w-4xl">
-      <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Your wallet</h2>
-      <p className="mb-4 mg-type-data text-ink-muted">
-        Your staking positions across every subnet for the connected wallet — hotkey-owned and
-        delegated. Read-only: this app never constructs or signs a transaction.
-      </p>
+    <Panel dense className="ph-no-capture w-full max-w-4xl">
       {wallet ? (
         <AsyncPanel context="your positions" fallback={<Skeleton className="h-64 w-full" />}>
           <YourPositionsPanel address={wallet.address} />

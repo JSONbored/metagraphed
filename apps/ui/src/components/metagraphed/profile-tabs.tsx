@@ -71,7 +71,7 @@ export function ProfileTabs({
     <nav
       ref={navRef}
       aria-label="Profile sections"
-      className="sticky z-[var(--mg-z-sticky)] -mx-4 md:mx-0 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
+      className="mg-profile-tabs sticky z-[var(--mg-z-sticky)] -mx-4 md:mx-0 mb-8 border-y border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
       style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
     >
       {/*

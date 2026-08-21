@@ -22,6 +22,9 @@ import {
 import {
   AsyncPanel,
   CopyLinkButton,
+  DataPageCanvas,
+  DataPageModule,
+  DataPageStage,
   MobileCollapse,
   Panel,
   ResponsiveTable,
@@ -267,61 +270,64 @@ function ProfileShell({ netuid }: { netuid: number }) {
   ].filter(Boolean).length;
 
   return (
-    <TimeRangeProvider>
-      <SubnetWindowProvider>
-        <SubnetFilterProvider>
-          <SubnetMasthead
-            netuid={netuid}
-            profile={profile}
-            generatedAt={meta?.generated_at}
-            stale={stale}
-            evidenceCount={evidenceCount}
-            refreshQueryKeys={[
-              subnetProfileQuery(netuid).queryKey,
-              subnetSurfacesQuery(netuid).queryKey,
-              subnetEndpointsQuery(netuid).queryKey,
-              subnetHealthQuery(netuid).queryKey,
-              subnetCandidatesQuery(netuid).queryKey,
-            ]}
-            refreshLabel="Refresh health now"
-          />
+    <DataPageStage variant="profile">
+      <TimeRangeProvider>
+        <SubnetWindowProvider>
+          <SubnetFilterProvider>
+            <SubnetMasthead
+              netuid={netuid}
+              profile={profile}
+              generatedAt={meta?.generated_at}
+              stale={stale}
+              evidenceCount={evidenceCount}
+              refreshQueryKeys={[
+                subnetProfileQuery(netuid).queryKey,
+                subnetSurfacesQuery(netuid).queryKey,
+                subnetEndpointsQuery(netuid).queryKey,
+                subnetHealthQuery(netuid).queryKey,
+                subnetCandidatesQuery(netuid).queryKey,
+              ]}
+              refreshLabel="Refresh health now"
+            />
 
-          <SubnetValidatorsPreview netuid={netuid} />
+            <DataPageCanvas variant="profile">
+              <DataPageModule kind="profile">
+                <SubnetValidatorsPreview netuid={netuid} />
 
-          <div className="mt-4">
-            <MethodologyCallout generatedAt={meta?.generated_at} windowLabel="7d" />
-          </div>
+                <div className="mt-4">
+                  <MethodologyCallout generatedAt={meta?.generated_at} windowLabel="7d" />
+                </div>
 
-          <div className="mt-2">
-            <ProfileTabs
-              tabs={tabsWithCounts}
-              defaultTab="overview"
-              trailing={
-                <>
-                  {/* Star (#8256) pins this subnet to your homepage; Follow
+                <div className="mt-2">
+                  <ProfileTabs
+                    tabs={tabsWithCounts}
+                    defaultTab="overview"
+                    trailing={
+                      <>
+                        {/* Star (#8256) pins this subnet to your homepage; Follow
                       (#8257) hands you a feed or webhook. Complementary, not
                       alternatives: one is for you, the other is for a machine. */}
-                  <WatchStarButton kind="subnet" id={netuid} label={`SN${netuid}`} />
-                  <WatchEntitySheet netuid={netuid} name={profile?.name ?? undefined} />
-                  <SubnetWindowToggle />
-                  {/* Restored, not removed: CopyLinkButton was imported here and
+                        <WatchStarButton kind="subnet" id={netuid} label={`SN${netuid}`} />
+                        <WatchEntitySheet netuid={netuid} name={profile?.name ?? undefined} />
+                        <SubnetWindowToggle />
+                        {/* Restored, not removed: CopyLinkButton was imported here and
                       never rendered, and subnet detail had NO share affordance at
                       all while every comparable page has one (#8294). */}
-                  <CopyLinkButton />
-                  <SubnetCompareDrawer netuid={netuid} />
-                </>
-              }
-            />
-          </div>
+                        <CopyLinkButton />
+                        <SubnetCompareDrawer netuid={netuid} />
+                      </>
+                    }
+                  />
+                </div>
 
-          <div className="mt-6 min-w-0 space-y-8">
-            {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
-            {tab === "api" ? <ApiEndpointsPanel netuid={netuid} /> : null}
-            {tab === "metagraph" ? <MetagraphPanel netuid={netuid} /> : null}
-            {tab === "economics" ? <EconomicsTabPanel netuid={netuid} /> : null}
-            {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
-            {tab === "governance" ? <GovernancePanel netuid={netuid} /> : null}
-            {/*
+                <div className="mt-6 min-w-0 space-y-8">
+                  {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
+                  {tab === "api" ? <ApiEndpointsPanel netuid={netuid} /> : null}
+                  {tab === "metagraph" ? <MetagraphPanel netuid={netuid} /> : null}
+                  {tab === "economics" ? <EconomicsTabPanel netuid={netuid} /> : null}
+                  {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
+                  {tab === "governance" ? <GovernancePanel netuid={netuid} /> : null}
+                  {/*
               #11351: the badge embed also renders here, on the DEFAULT view.
               It has lived inside ApiEndpointsPanel since #8329 — reachable only
               at ?tab=api, behind a tab bar that is not even in the server-
@@ -333,40 +339,43 @@ function ProfileShell({ netuid }: { netuid: number }) {
               deliberately not being done, discoverability is the only lever
               left, so it goes where an operator actually lands.
             */}
-            {tab === "overview" ? <UptimeBadgeEmbed entity="subnets" id={netuid} /> : null}
-            {tab === "about" ? <AboutPanel netuid={netuid} profile={profile} /> : null}
-          </div>
+                  {tab === "overview" ? <UptimeBadgeEmbed entity="subnets" id={netuid} /> : null}
+                  {tab === "about" ? <AboutPanel netuid={netuid} profile={profile} /> : null}
+                </div>
 
-          {/* #6558: the backend accepts netuid-scoped alert triggers, but only the
+                {/* #6558: the backend accepts netuid-scoped alert triggers, but only the
               validator page exposed a Watch UI. Extend the same pattern here.
               Outside the tab switch, so it's reachable from any tab -- same as the
               "Watch this validator" section on the validator page. */}
-          <div className="mt-8">
-            <SectionAnchor
-              id="watch"
-              title="Watch this subnet"
-              subtitle="Alert on on-chain activity for this subnet, via the existing chain alert-triggers API."
-              tone="accent"
-            >
-              <WatchSubnetAlert netuid={netuid} />
-            </SectionAnchor>
-          </div>
+                <div className="mt-8">
+                  <SectionAnchor
+                    id="watch"
+                    title="Watch this subnet"
+                    subtitle="Alert on on-chain activity for this subnet, via the existing chain alert-triggers API."
+                    tone="accent"
+                  >
+                    <WatchSubnetAlert netuid={netuid} />
+                  </SectionAnchor>
+                </div>
 
-          {/* #6432: outside the tab switch, so the way back is there whichever
+                {/* #6432: outside the tab switch, so the way back is there whichever
               tab a reader ends on -- this profile is the longest page in the app
               and the masthead breadcrumb is far behind by the time they finish.
               Same placement/styling as blocks.$ref.tsx and extrinsics.$hash.tsx. */}
-          <div className="mt-6">
-            <Link
-              to="/subnets"
-              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
-            >
-              ← All subnets
-            </Link>
-          </div>
-        </SubnetFilterProvider>
-      </SubnetWindowProvider>
-    </TimeRangeProvider>
+                <div className="mt-6">
+                  <Link
+                    to="/subnets"
+                    className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
+                  >
+                    ← All subnets
+                  </Link>
+                </div>
+              </DataPageModule>
+            </DataPageCanvas>
+          </SubnetFilterProvider>
+        </SubnetWindowProvider>
+      </TimeRangeProvider>
+    </DataPageStage>
   );
 }
 

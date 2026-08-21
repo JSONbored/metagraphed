@@ -23,50 +23,42 @@ export const CHAIN_TABS: readonly ChainTab[] = [
   {
     to: "/chain",
     label: "Overview",
-    blurb:
-      "The network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers.",
+    blurb: "Live activity, fees, call mix, and active accounts.",
   },
   {
     to: "/chain/blocks",
     label: "Blocks",
-    blurb:
-      "Recent blocks indexed directly from the chain — newest first, with author, extrinsic and event counts.",
+    blurb: "Newest blocks with authors, extrinsics, and events.",
   },
   {
     to: "/chain/extrinsics",
     label: "Extrinsics",
-    blurb:
-      "Recent transactions indexed directly from the chain — newest first, with call, signer and result.",
+    blurb: "Newest transactions with calls, signers, and outcomes.",
   },
   {
     to: "/chain/events",
     label: "Events",
-    blurb:
-      "Individual pallet events indexed directly from the chain, distinct from the aggregate activity stats.",
+    blurb: "Runtime events, newest first.",
   },
   {
     to: "/chain/governance",
     label: "Governance",
-    blurb:
-      "Root-origin activity: Sudo calls and the AdminUtils config changes that tune subnet hyperparameters.",
+    blurb: "Root calls and parameter changes.",
   },
   {
     to: "/chain/emissions",
     label: "Emissions",
-    blurb:
-      "Where each block's TAO goes — every subnet's share decomposed from price share through the gate, and the split between pool liquidity and chain buys.",
+    blurb: "How each block's rewards move through the network.",
   },
   {
     to: "/chain/analytics",
     label: "Analytics",
-    blurb:
-      "Stake-flow sankey, concentration & emission trends, and registration economics — computed live from the chain-direct tiers.",
+    blurb: "Stake flow, concentration, emissions, and registration economics.",
   },
   {
     to: "/chain/runtime",
     label: "Runtime",
-    blurb:
-      "Spec-version upgrade history from the first-party blocks tier — every upgrade observed, newest first.",
+    blurb: "Runtime upgrade history, newest first.",
   },
 ] as const;
 
@@ -74,8 +66,8 @@ export function activeChainTab(pathname: string): ChainTab {
   return activeHubTab(CHAIN_TABS, pathname);
 }
 
-export function ChainTabs() {
-  return <HubTabs tabs={CHAIN_TABS} ariaLabel="Chain sections" />;
+export function ChainTabs({ className }: { className?: string }) {
+  return <HubTabs tabs={CHAIN_TABS} ariaLabel="Chain sections" className={className} />;
 }
 
 export const ChainTabActions = HubTabActions;

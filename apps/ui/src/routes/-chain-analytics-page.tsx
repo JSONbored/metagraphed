@@ -1,9 +1,15 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQueries } from "@tanstack/react-query";
-import type { ReactNode } from "react";
 import { Skeleton } from "@jsonbored/ui-kit";
 import type { AnalyticsSearch } from "./chain.analytics";
-import { AsyncPanel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
+  DataPageWindowTabs,
+} from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ChainStakeFlowSankey } from "@/components/metagraphed/chain-stake-flow-sankey";
 import { ChainConcentrationSnapshot } from "@/components/metagraphed/chain-concentration-snapshot";
@@ -11,7 +17,6 @@ import { ChainIdleStakeSnapshot } from "@/components/metagraphed/chain-idle-stak
 import { ChainEmissionTrend } from "@/components/metagraphed/chain-emission-trend";
 import { ChainRegistrationEconomics } from "@/components/metagraphed/chain-registration-economics";
 import { ChainNetworkConcentration } from "@/components/metagraphed/chain-network-concentration";
-import { classNames } from "@/lib/metagraphed/format";
 import {
   chainStakeFlowQuery,
   validatorsQuery,
@@ -21,8 +26,10 @@ import {
   economicsQuery,
 } from "@/lib/metagraphed/queries";
 
-type Window = "7d" | "30d";
-const WINDOWS: Window[] = ["7d", "30d"];
+const WINDOW_OPTIONS = [
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+] as const;
 
 /**
  * This route intentionally holds the core view to six requests: root →
@@ -62,13 +69,14 @@ function AnalyticsBody() {
       <ChainIdleStakeSnapshot idleStake={idleStakeRes.data} />
       <ChainEmissionTrend days={trendsRes.data.days} window={win} />
       <ChainConcentrationSnapshot concentration={concentrationRes.data} />
-      <DataModule
+      <DataPageModule
         id="analytics-registration"
         title="Registration economics"
         caption="The spread of current cost to open a subnet, from the least to the most expensive."
+        kind="question"
       >
         <ChainRegistrationEconomics subnets={economicsRes.data} />
-      </DataModule>
+      </DataPageModule>
     </div>
   );
 }
@@ -78,49 +86,30 @@ export function ChainAnalyticsPage() {
   const navigate = useNavigate({ from: "/chain/analytics" });
 
   return (
-    <div className="mg-data-stage">
-      <section className="mg-data-hero" aria-labelledby="network-data-title">
-        <div className="mg-data-hero-field" aria-hidden="true" />
-        <div className="mg-data-hero-content">
-          <div>
-            <span className="mg-data-kicker">
-              <span className="mg-data-kicker-dot" aria-hidden="true" />
-              live chain data
-            </span>
-            <h1 id="network-data-title">Network Data.</h1>
-          </div>
-          <div className="mg-data-hero-detail">
-            <p>
-              Follow where stake moves, where alpha concentrates, and what it costs to enter — one
-              clean question at a time.
-            </p>
-            <div role="tablist" aria-label="Analytics time window" className="mg-data-window">
-              {WINDOWS.map((w) => (
-                <button
-                  key={w}
-                  type="button"
-                  role="tab"
-                  aria-selected={w === search.window}
-                  onClick={() =>
-                    navigate({
-                      search: (prev: Record<string, unknown>) => ({ ...prev, window: w }),
-                      resetScroll: false,
-                    })
-                  }
-                  className={classNames(
-                    "mg-data-window-button mg-focus-ring",
-                    w === search.window && "is-active",
-                  )}
-                >
-                  {w === "7d" ? "7 days" : "30 days"}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+    <DataPageStage>
+      <DataPageHero
+        id="network-data-title"
+        variant="analytics"
+        eyebrow="live chain data"
+        live
+        title="Network Data."
+        description="Follow where stake moves, where alpha concentrates, and what it costs to enter — one clean question at a time."
+        actions={
+          <DataPageWindowTabs
+            label="Analytics time window"
+            options={WINDOW_OPTIONS}
+            value={search.window}
+            onValueChange={(window) =>
+              navigate({
+                search: (prev: Record<string, unknown>) => ({ ...prev, window }),
+                resetScroll: false,
+              })
+            }
+          />
+        }
+      />
 
-      <div className="mg-data-canvas">
+      <DataPageCanvas>
         <AsyncPanel context="chain analytics" fallback={<AnalyticsSkeleton />}>
           <AnalyticsBody />
         </AsyncPanel>
@@ -130,7 +119,7 @@ export function ChainAnalyticsPage() {
             back the movement view. They share the same data canvas rather than
             becoming a second wall of dashboard cards. */}
         <ChainNetworkConcentration />
-      </div>
+      </DataPageCanvas>
 
       <ApiSourceFooter
         paths={[
@@ -146,7 +135,7 @@ export function ChainAnalyticsPage() {
           "/api/v1/chain/concentration/history",
         ]}
       />
-    </div>
+    </DataPageStage>
   );
 }
 
@@ -157,29 +146,5 @@ function AnalyticsSkeleton() {
       <Skeleton className="mt-6 h-56 w-full" />
       <Skeleton className="mt-6 h-48 w-full" />
     </div>
-  );
-}
-
-function DataModule({
-  id,
-  title,
-  caption,
-  children,
-}: {
-  id?: string;
-  title: string;
-  caption: string;
-  children: ReactNode;
-}) {
-  return (
-    <section id={id} className="mg-data-module">
-      <header className="mg-data-module-heading">
-        <h2 className="mg-data-module-title">
-          <strong>{title}.</strong>
-          <span>{caption}</span>
-        </h2>
-      </header>
-      <div className="mg-data-module-body">{children}</div>
-    </section>
   );
 }

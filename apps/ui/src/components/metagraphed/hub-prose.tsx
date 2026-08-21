@@ -1,4 +1,5 @@
 import { SectionHeading } from "@jsonbored/ui-kit";
+import { DataPageDisclosure } from "@/components/metagraphed/primitives";
 import { HUB_COPY, type HubPath } from "@/lib/metagraphed/hub-copy";
 
 /**
@@ -26,7 +27,7 @@ import { HUB_COPY, type HubPath } from "@/lib/metagraphed/hub-copy";
  */
 
 /**
- * The one-or-two-sentence answer, for the masthead's `description`.
+ * The single-sentence answer, for the masthead's `description`.
  *
  * Every hub had a hand-written masthead description AND a separately written
  * `<meta name="description">` saying nearly the same thing in different words —
@@ -34,7 +35,7 @@ import { HUB_COPY, type HubPath } from "@/lib/metagraphed/hub-copy";
  * `og:title` naming the page differently. One source now.
  */
 export function hubLede(path: HubPath): string {
-  return HUB_COPY[path].intro.lede.body;
+  return HUB_COPY[path].description;
 }
 
 /**
@@ -46,12 +47,16 @@ export function hubLede(path: HubPath): string {
 export function HubSections({ path }: { path: HubPath }) {
   const { sections } = HUB_COPY[path].intro;
   return (
-    <div className="mt-10 space-y-section">
-      {sections.map((section) => (
-        <section key={section.heading}>
-          <SectionHeading title={section.heading} intro={section.body} />
-        </section>
-      ))}
+    <div className="mt-10">
+      <DataPageDisclosure label="How this data is measured">
+        <div className="space-y-section">
+          {sections.map((section) => (
+            <section key={section.heading}>
+              <SectionHeading title={section.heading} intro={section.body} />
+            </section>
+          ))}
+        </div>
+      </DataPageDisclosure>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
-import { Panel } from "@/components/metagraphed/primitives";
 import { Sparkline, TimeAgo } from "@jsonbored/ui-kit";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { useChainStream } from "@/hooks/use-chain-stream";
@@ -68,14 +67,18 @@ export function LiveBlockRail() {
   const dailyPts = chrono.map((d) => ({ t: d.day, v: d.block_count }));
 
   return (
-    <Panel
-      as="div"
-      dense
-      className="mb-3"
-      bodyClassName="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]"
-      role="status"
-      aria-live="polite"
+    <section
+      className="mg-live-block-rail mb-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]"
+      aria-labelledby="live-block-rail-title"
     >
+      {/* The feed refreshes every block. Announce the one fact that changed,
+          rather than re-reading the whole visual rail to screen readers. */}
+      <span id="live-block-rail-title" className="sr-only">
+        Live block activity
+      </span>
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        Latest indexed block {formatNumber(latest.block_number)}
+      </span>
       {/* LATEST BLOCK. Not a single wrapping <Link>: AddressDisplay below
           renders its own <a>/<button> (account link + copy button), and an
           anchor/button can't contain another without invalid HTML nesting
@@ -198,6 +201,6 @@ export function LiveBlockRail() {
           />
         ) : null}
       </div>
-    </Panel>
+    </section>
   );
 }

@@ -7,7 +7,14 @@ import { HomeWatchedModule } from "@/components/metagraphed/home-watched-module"
 import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
+  Panel,
+} from "@/components/metagraphed/primitives";
 import {
   AccentBand,
   BrandIcon,
@@ -71,283 +78,266 @@ export function OverviewPage() {
   const [showMore, setShowMore] = useState(false);
   return (
     <AppShell flushTop>
-      <HomeHero />
+      <DataPageStage>
+        <HomeHero />
 
-      {/* #8249: the two new always-visible modules the redesign asked for --
-          "what's actually happening" and "how do I automate this" -- sit
-          right after the hero's throughput/live-subnets row, ahead of the
-          calmer "keep exploring" content below. Neither needs `showMore`:
-          they're small, single-panel, and exactly the kind of glance content
-          a first-time visitor benefits from seeing without an extra click. */}
-      <section className="mt-section-gap">
-        <SectionHeader
-          eyebrow="What changed"
-          live
-          title="What changed today."
-          description="New subnets, ownership transfers, runtime upgrades, notable stake moves, and resolved incidents — newest first."
-        />
-        <TimeRangeProvider>
-          <QueryErrorBoundary fallback={() => null}>
-            <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-              <WhatChangedFeed limit={7} />
-            </Suspense>
-          </QueryErrorBoundary>
-        </TimeRangeProvider>
-      </section>
-
-      <section className="mt-section-gap">
-        <SectionHeader
-          eyebrow="For agents"
-          title="Built for agents first."
-          description="Point any agent at this registry over MCP -- no key, no account."
-        />
-        <QueryErrorBoundary fallback={() => null}>
-          <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-            <HomeForAgentsModule />
-          </Suspense>
-        </QueryErrorBoundary>
-      </section>
-
-      {/* #8256: the watchlist is the site's only personalization, and until
-          now starring a subnet on /subnets had no payoff anywhere the user
-          actually lands. This sits above "keep exploring" because a returning
-          visitor's own stars beat a generic browse prompt -- and below the
-          two live modules, which a first-time visitor (no stars yet) needs
-          more. The module renders a one-line nudge, not a framed panel, when
-          nothing is starred. */}
-      <section className="mt-section-gap">
-        <SectionHeader
-          eyebrow="Watched"
-          title="Your watchlist."
-          description="Stars live in this browser — no account, nothing sent to us."
-        />
-        <HomeWatchedModule />
-      </section>
-
-      <ContinueExploring />
-
-      <section className="mt-section-gap">
-        <SectionHeader
-          eyebrow="What's tracked"
-          title="Every public surface, in one registry."
-          description="Glance counts live in the registry pulse ticker above — these are the sections to explore."
-          link={{ to: "/subnets", label: "Browse the registry" }}
-        />
-        <TrackedGrid />
-      </section>
-
-      {!showMore && (
-        <div className="mt-section-gap flex justify-center">
-          <button
-            type="button"
-            onClick={() => setShowMore(true)}
-            aria-expanded={false}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+        <DataPageCanvas>
+          <DataPageModule
+            title="What changed today."
+            caption="New subnets, ownership transfers, runtime upgrades, notable stake moves, and resolved incidents — newest first."
           >
-            Show more of the registry
-            <ChevronDown className="size-4" />
-          </button>
-        </div>
-      )}
-      {showMore && (
-        <>
-          <LivePerformance />
+            <TimeRangeProvider>
+              <QueryErrorBoundary fallback={() => null}>
+                <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                  <WhatChangedFeed limit={7} />
+                </Suspense>
+              </QueryErrorBoundary>
+            </TimeRangeProvider>
+          </DataPageModule>
 
-          {/* #1124: live registry signal band — curation funnel + network pulse +
-          what-changed feed, scoped to a shared time range. Wired to real coverage/
-          health/changelog/incident data. */}
-          <ScrollReveal>
-            <section className="mt-section-gap">
-              <TimeRangeProvider>
-                <div className="mb-3 flex items-end justify-between gap-3">
-                  <SectionHeader
-                    inline
-                    eyebrow="Signal"
-                    live
-                    title="Live registry signal."
-                    description="Curation depth, network pulse, and the latest changes."
-                  />
-                  <TimeRangeScrub />
-                </div>
-                <div className="grid gap-4 lg:grid-cols-12">
-                  <AsyncPanel
-                    context="coverage funnel"
-                    fallback={<Skeleton className="h-72 lg:col-span-5" />}
-                    retryQueryKeys={[coverageQuery().queryKey]}
-                  >
-                    <div className="min-w-0 lg:col-span-5">
-                      <CoverageFunnel />
-                    </div>
-                  </AsyncPanel>
-                  <AsyncPanel
-                    context="network pulse"
-                    fallback={<Skeleton className="h-72 lg:col-span-7" />}
-                  >
-                    <div className="min-w-0 lg:col-span-7">
-                      <NetworkPulseBand />
-                    </div>
-                  </AsyncPanel>
-                  <AsyncPanel
-                    context="what changed"
-                    fallback={<Skeleton className="h-64 lg:col-span-12" />}
-                    retryQueryKeys={[changelogQuery().queryKey, endpointIncidentsQuery().queryKey]}
-                  >
-                    <div className="min-w-0 lg:col-span-12">
-                      <WhatChangedFeed />
-                    </div>
-                  </AsyncPanel>
-                </div>
-              </TimeRangeProvider>
-            </section>
-          </ScrollReveal>
+          <DataPageModule
+            title="Start with the question."
+            caption="Choose the part of Bittensor you need to inspect; each destination keeps the primary task in view."
+          >
+            <TrackedGrid />
+          </DataPageModule>
 
-          {/* #5: registry depth — completeness score distribution, surface-dimension
-          coverage, and the ranked enrichment queue. Wired to /api/v1/registry/summary
-          + /api/v1/coverage-depth. Each module renders inside its own error boundary
-          so a single artifact gap never blanks the whole section. */}
-          <ScrollReveal>
-            <section className="mt-section-gap">
-              <SectionHeader
-                eyebrow="Registry depth"
-                title="How complete is the registry?"
-                description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
-              />
-              <div className="grid gap-4 lg:grid-cols-12">
-                <AsyncPanel
-                  context="registry score histogram"
-                  fallback={<Skeleton className="h-64 lg:col-span-7" />}
-                  retryQueryKeys={[registrySummaryQuery().queryKey]}
-                >
-                  <div className="min-w-0 lg:col-span-7">
-                    <RegistryScoreHistogram className="h-full" />
-                  </div>
-                </AsyncPanel>
-                <AsyncPanel
-                  context="dimension coverage heatmap"
-                  fallback={<Skeleton className="h-64 lg:col-span-5" />}
-                  retryQueryKeys={[registrySummaryQuery().queryKey]}
-                >
-                  <div className="min-w-0 lg:col-span-5">
-                    <DimensionCoverageHeatmap className="h-full" />
-                  </div>
-                </AsyncPanel>
-                <div className="min-w-0 lg:col-span-12">
-                  <div className="mb-3 mg-type-caption text-ink-muted">Enrichment queue</div>
-                  <AsyncPanel
-                    context="enrichment queue"
-                    fallback={<Skeleton className="h-64 w-full" />}
-                    retryQueryKeys={[coverageDepthQuery().queryKey]}
-                  >
-                    <EnrichmentQueueTable />
-                  </AsyncPanel>
+          <DataPageModule
+            title="Your workspace."
+            caption="Watch entities locally, continue a recent investigation, or connect an agent without an account."
+          >
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+              <div className="min-w-0">
+                <h3 className="mg-type-label text-ink-muted">Watched entities</h3>
+                <div className="mt-3">
+                  <HomeWatchedModule />
+                </div>
+                <ContinueExploring />
+              </div>
+              <div className="min-w-0">
+                <h3 className="mg-type-label text-ink-muted">For agents</h3>
+                <p className="mt-2 mg-type-caption text-ink-muted">
+                  Point any agent at this registry over MCP — no key, no account.
+                </p>
+                <div className="mt-3">
+                  <QueryErrorBoundary fallback={() => null}>
+                    <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+                      <HomeForAgentsModule />
+                    </Suspense>
+                  </QueryErrorBoundary>
                 </div>
               </div>
-            </section>
-          </ScrollReveal>
-
-          <LeaderboardsModule />
-          <QueryErrorBoundary fallback={() => null}>
-            <Suspense fallback={<Skeleton className="h-48 w-full mt-section-gap" />}>
-              <MoversBand />
-            </Suspense>
-          </QueryErrorBoundary>
-
-          <QuickActionsRow />
-
-          <section className="mt-section-gap">
-            <div className="flex items-end justify-between mb-6">
-              <SectionHeader inline eyebrow="Active subnets" live title="The live registry." />
-              <Link
-                to="/subnets"
-                className="inline-flex items-center gap-1 text-xs font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-accent transition-colors group"
-              >
-                View all
-                <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </Link>
             </div>
-            <AsyncPanel
-              context="subnets"
-              fallback={<TableSkeleton />}
-              retryQueryKeys={[subnetsQuery({ limit: 12 }).queryKey]}
-            >
-              <SubnetPreviewTable />
-            </AsyncPanel>
-          </section>
+          </DataPageModule>
+        </DataPageCanvas>
 
-          {/* #3474: live network-wide feed of recent subnet-identity changes. */}
-          <section className="mt-section-gap">
-            <SectionHeader
-              eyebrow="Network activity"
-              title="Recent identity changes."
-              description="Subnet name, symbol, and profile edits observed on-chain across the network, newest first."
-            />
-            <QueryErrorBoundary>
-              <RecentIdentityChanges />
-            </QueryErrorBoundary>
-          </section>
-
-          <section className="mt-section-gap">
-            <SectionHeader
-              eyebrow="For developers"
-              title="Public, read-only, JSON-Schema canonical."
-              description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
-            />
-            <Panel as="div" className="max-w-2xl">
-              <div className="mg-type-caption text-ink-muted mb-2">Try it</div>
-              <CopyableCode
-                value={`curl ${API_BASE}/api/v1/subnets`}
-                className="w-full mg-type-caption"
-                truncate={false}
-              />
-              <div className="mt-3 flex gap-4 text-xs">
-                <Link to="/apis/schemas" className="text-accent-text hover:underline">
-                  API reference →
-                </Link>
-                <ExternalLink
-                  href={`${API_BASE}/api/v1/openapi.json`}
-                  className="text-ink-muted hover:text-ink-strong"
-                >
-                  OpenAPI spec
-                </ExternalLink>
-              </div>
-            </Panel>
-          </section>
-
+        {!showMore && (
           <div className="mt-section-gap flex justify-center">
             <button
               type="button"
-              onClick={() => setShowMore(false)}
-              aria-expanded
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-accent"
+              onClick={() => setShowMore(true)}
+              aria-expanded={false}
+              className="inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
             >
-              Show less
-              <ChevronDown className="size-4 rotate-180" />
+              Show more of the registry
+              <ChevronDown className="size-4" />
             </button>
           </div>
-        </>
-      )}
+        )}
+        {showMore && (
+          <>
+            <LivePerformance />
 
-      <AccentBand pattern className="mt-20">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <div className="max-w-xl">
-            <div className="mg-type-caption text-ink-strong/70 mb-2">
-              All registry data is public
+            {/* #1124: live registry signal band — curation funnel + network pulse +
+          what-changed feed, scoped to a shared time range. Wired to real coverage/
+          health/changelog/incident data. */}
+            <ScrollReveal>
+              <section className="mt-section-gap">
+                <TimeRangeProvider>
+                  <div className="mb-3 flex items-end justify-between gap-3">
+                    <SectionHeader
+                      inline
+                      eyebrow="Signal"
+                      live
+                      title="Live registry signal."
+                      description="Curation depth, network pulse, and the latest changes."
+                    />
+                    <TimeRangeScrub />
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-12">
+                    <AsyncPanel
+                      context="coverage funnel"
+                      fallback={<Skeleton className="h-72 lg:col-span-5" />}
+                      retryQueryKeys={[coverageQuery().queryKey]}
+                    >
+                      <div className="min-w-0 lg:col-span-5">
+                        <CoverageFunnel />
+                      </div>
+                    </AsyncPanel>
+                    <AsyncPanel
+                      context="network pulse"
+                      fallback={<Skeleton className="h-72 lg:col-span-7" />}
+                    >
+                      <div className="min-w-0 lg:col-span-7">
+                        <NetworkPulseBand />
+                      </div>
+                    </AsyncPanel>
+                    <AsyncPanel
+                      context="what changed"
+                      fallback={<Skeleton className="h-64 lg:col-span-12" />}
+                      retryQueryKeys={[
+                        changelogQuery().queryKey,
+                        endpointIncidentsQuery().queryKey,
+                      ]}
+                    >
+                      <div className="min-w-0 lg:col-span-12">
+                        <WhatChangedFeed />
+                      </div>
+                    </AsyncPanel>
+                  </div>
+                </TimeRangeProvider>
+              </section>
+            </ScrollReveal>
+
+            {/* #5: registry depth — completeness score distribution, surface-dimension
+          coverage, and the ranked enrichment queue. Wired to /api/v1/registry/summary
+          + /api/v1/coverage-depth. Each module renders inside its own error boundary
+          so a single artifact gap never blanks the whole section. */}
+            <ScrollReveal>
+              <section className="mt-section-gap">
+                <SectionHeader
+                  eyebrow="Registry depth"
+                  title="How complete is the registry?"
+                  description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
+                />
+                <div className="grid gap-4 lg:grid-cols-12">
+                  <AsyncPanel
+                    context="registry score histogram"
+                    fallback={<Skeleton className="h-64 lg:col-span-7" />}
+                    retryQueryKeys={[registrySummaryQuery().queryKey]}
+                  >
+                    <div className="min-w-0 lg:col-span-7">
+                      <RegistryScoreHistogram className="h-full" />
+                    </div>
+                  </AsyncPanel>
+                  <AsyncPanel
+                    context="dimension coverage heatmap"
+                    fallback={<Skeleton className="h-64 lg:col-span-5" />}
+                    retryQueryKeys={[registrySummaryQuery().queryKey]}
+                  >
+                    <div className="min-w-0 lg:col-span-5">
+                      <DimensionCoverageHeatmap className="h-full" />
+                    </div>
+                  </AsyncPanel>
+                  <div className="min-w-0 lg:col-span-12">
+                    <div className="mb-3 mg-type-caption text-ink-muted">Enrichment queue</div>
+                    <AsyncPanel
+                      context="enrichment queue"
+                      fallback={<Skeleton className="h-64 w-full" />}
+                      retryQueryKeys={[coverageDepthQuery().queryKey]}
+                    >
+                      <EnrichmentQueueTable />
+                    </AsyncPanel>
+                  </div>
+                </div>
+              </section>
+            </ScrollReveal>
+
+            <LeaderboardsModule />
+            <QueryErrorBoundary fallback={() => null}>
+              <Suspense fallback={<Skeleton className="h-48 w-full mt-section-gap" />}>
+                <MoversBand />
+              </Suspense>
+            </QueryErrorBoundary>
+
+            <QuickActionsRow />
+
+            <section className="mt-section-gap">
+              <div className="flex items-end justify-between mb-6">
+                <SectionHeader inline eyebrow="Active subnets" live title="The live registry." />
+                <Link
+                  to="/subnets"
+                  className="inline-flex items-center gap-1 text-xs font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-accent transition-colors group"
+                >
+                  View all
+                  <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </Link>
+              </div>
+              <AsyncPanel
+                context="subnets"
+                fallback={<TableSkeleton />}
+                retryQueryKeys={[subnetsQuery({ limit: 12 }).queryKey]}
+              >
+                <SubnetPreviewTable />
+              </AsyncPanel>
+            </section>
+
+            {/* #3474: live network-wide feed of recent subnet-identity changes. */}
+            <section className="mt-section-gap">
+              <SectionHeader
+                eyebrow="Network activity"
+                title="Recent identity changes."
+                description="Subnet name, symbol, and profile edits observed on-chain across the network, newest first."
+              />
+              <QueryErrorBoundary>
+                <RecentIdentityChanges />
+              </QueryErrorBoundary>
+            </section>
+
+            <section className="mt-section-gap">
+              <SectionHeader
+                eyebrow="For developers"
+                title="Public, read-only, JSON-Schema canonical."
+                description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
+              />
+              <Panel as="div" className="max-w-2xl">
+                <div className="mg-type-caption text-ink-muted mb-2">Try it</div>
+                <CopyableCode
+                  value={`curl ${API_BASE}/api/v1/subnets`}
+                  className="w-full mg-type-caption"
+                  truncate={false}
+                />
+                <div className="mt-3 flex gap-4 text-xs">
+                  <Link to="/apis/schemas" className="text-accent-text hover:underline">
+                    API reference →
+                  </Link>
+                  <ExternalLink
+                    href={`${API_BASE}/api/v1/openapi.json`}
+                    className="text-ink-muted hover:text-ink-strong"
+                  >
+                    OpenAPI spec
+                  </ExternalLink>
+                </div>
+              </Panel>
+            </section>
+
+            <div className="mt-section-gap flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowMore(false)}
+                aria-expanded
+                className="inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 mg-type-caption font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-accent"
+              >
+                Show less
+                <ChevronDown className="size-4 rotate-180" />
+              </button>
             </div>
-            <h2 className="font-display text-2xl md:text-3xl font-semibold text-ink-strong tracking-tight">
-              Browse the full Bittensor registry.
-            </h2>
+          </>
+        )}
+
+        <section className="mg-page-callout">
+          <div>
+            <span className="mg-page-kicker">Public chain data</span>
+            <h2>Browse the full Bittensor registry.</h2>
           </div>
-          <Link
-            to="/subnets"
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2.5 text-sm font-medium text-paper hover:opacity-90 transition-opacity self-start md:self-auto"
-          >
+          <Link to="/subnets" className="mg-page-primary-action">
             Open subnets
             <ArrowUpRight className="size-3.5" />
           </Link>
-        </div>
-      </AccentBand>
-      {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
-      <HubSections path="/" />
+        </section>
+        {/* #11320: below the data on purpose -- see hub-prose.tsx. */}
+        <HubSections path="/" />
+      </DataPageStage>
     </AppShell>
   );
 }
@@ -410,74 +400,56 @@ function HomeHero() {
       : 128;
 
   return (
-    <section className="mg-hero-slab relative overflow-hidden px-4 sm:px-6">
-      <div className="relative z-[var(--mg-z-sticky)] mx-auto max-w-6xl py-12 md:py-24">
-        <div className="relative max-w-4xl">
-          <div className="mg-hero-caption mg-fade-in">Finney · public registry</div>
-          {/* eslint-disable-next-line no-restricted-syntax -- display-size hero heading (38/52/64px responsive); the mg-type-* scale deliberately tops out at caption-lg, so there is no matching token (#8717 req 2 exception) */}
-          <h1 className="mg-fade-in mt-5 font-display text-[38px] sm:text-[52px] md:text-[64px] font-medium leading-[1.02] tracking-[-0.055em] text-ink-strong">
-            Find the signal.
-            <br />
-            Verify the surface.
-          </h1>
-
-          {/* One reference field establishes the page's data character. It is
-              deliberately structural rather than another card, metric, or CTA. */}
-          <div aria-hidden className="mg-hero-dot-field" />
-
-          <div className="mg-fade-in mg-fade-in-delay-1 mt-16 max-w-xl md:mt-20">
-            <p className="text-sm leading-relaxed text-ink-muted md:text-base">
-              A public map of Bittensor subnets, chain activity, and interfaces — built to show what
-              is live, credible, and ready to use.
-            </p>
-
-            <button
-              type="button"
-              onClick={openCommandPalette}
-              aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
-              className="mg-focus-ring mt-8 flex min-h-12 w-full items-center gap-3 border-b border-ink-strong/30 pb-3 text-left text-sm text-ink-muted transition-colors hover:border-primary hover:text-ink-strong"
-            >
-              <Search className="size-4 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate">
-                Search subnets, validators, endpoints, accounts…
-              </span>
-              <kbd className="hidden shrink-0 border border-border px-1.5 py-0.5 mg-type-caption text-ink-muted sm:inline-flex">
-                ⌘K
-              </kbd>
-              <span className="inline-flex size-8 shrink-0 items-center justify-center bg-primary text-primary-foreground">
-                <ArrowUpRight className="size-4" aria-hidden="true" />
-              </span>
-            </button>
-
-            <div className="mg-fade-in mg-fade-in-delay-2 mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 mg-type-caption-lg">
-              <Link
-                to="/subnets"
-                className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 bg-primary px-4 py-2 font-medium text-primary-foreground transition-opacity hover:opacity-85"
-              >
-                Explore {subnetCount} subnets
-                <ArrowUpRight className="size-3.5" />
-              </Link>
-              <Link
-                to="/apis/schemas"
-                className="mg-focus-ring inline-flex min-h-11 items-center text-accent-text underline decoration-current/40 underline-offset-4 transition-colors hover:text-ink-strong"
-              >
-                Read the API
-              </Link>
-            </div>
-          </div>
-
-          <div className="mg-fade-in mg-fade-in-delay-3 mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 mg-type-data text-ink-muted">
-            <span>
-              <strong className="font-medium text-ink-strong tabular-nums">
-                {formatNumber(subnetCount)}
-              </strong>{" "}
-              active subnets
-            </span>
-            <ChainHeadTip />
-          </div>
-        </div>
+    <DataPageHero
+      id="home-title"
+      variant="landing"
+      live
+      eyebrow="Finney · public registry"
+      title={
+        <>
+          Find the signal.
+          <br />
+          Verify the surface.
+        </>
+      }
+      description="A public map of Bittensor subnets, chain activity, and interfaces — built to show what is live, credible, and ready to use."
+      footer={
+        <>
+          <span>
+            <strong className="font-medium text-ink-strong tabular-nums">
+              {formatNumber(subnetCount)}
+            </strong>{" "}
+            active subnets
+          </span>
+          <ChainHeadTip />
+        </>
+      }
+    >
+      <button
+        type="button"
+        onClick={openCommandPalette}
+        aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
+        className="mg-focus-ring mg-page-command"
+      >
+        <Search className="size-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 truncate">Search subnets, validators, endpoints, accounts…</span>
+        <kbd className="hidden shrink-0 border border-border px-1.5 py-0.5 mg-type-caption text-ink-muted sm:inline-flex">
+          ⌘K
+        </kbd>
+        <span className="mg-page-command-mark" aria-hidden="true">
+          <ArrowUpRight className="size-4" />
+        </span>
+      </button>
+      <div className="mg-page-action-row">
+        <Link to="/subnets" className="mg-focus-ring mg-page-primary-action">
+          Explore {subnetCount} subnets
+          <ArrowUpRight className="size-3.5" />
+        </Link>
+        <Link to="/apis/schemas" className="mg-focus-ring mg-page-quiet-action">
+          Read the API
+        </Link>
       </div>
-    </section>
+    </DataPageHero>
   );
 }
 
@@ -614,11 +586,7 @@ function TrackedGrid() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {items.map((item) => (
-        <Link
-          key={item.label}
-          to={item.to}
-          className="mg-hover-lift group rounded border border-border bg-card p-6 flex flex-col"
-        >
+        <Link key={item.label} to={item.to} className="mg-page-route-link group flex flex-col">
           <div className="mg-type-caption text-ink-muted">{item.label}</div>
           <p className="mt-3 text-sm text-ink-strong leading-relaxed flex-1">{item.desc}</p>
           <span className="mt-4 inline-flex items-center gap-1 mg-type-caption text-ink-muted group-hover:text-accent transition-colors">

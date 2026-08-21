@@ -58,7 +58,7 @@ export function SectionAnchor({
       id={id}
       data-section-anchor
       className={classNames(
-        "mg-section scroll-mt-32",
+        "mg-section mg-detail-section scroll-mt-32",
         tone &&
           classNames(
             "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:opacity-70",

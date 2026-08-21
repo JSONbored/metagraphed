@@ -11,6 +11,8 @@ const RANK_COLORS = [
   "var(--chart-4)",
   "var(--chart-5)",
   "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
 ];
 
 /** Also a current snapshot — /api/v1/chain/idle-stake has no `window` param. */

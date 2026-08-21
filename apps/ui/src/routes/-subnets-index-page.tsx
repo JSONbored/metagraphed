@@ -24,10 +24,14 @@ import {
   StickyToolbar,
   TableSkeleton,
   useColumnVisibility,
+  DataPageCanvas,
+  DataPageDisclosure,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
   type ColumnDef,
   type FilterChipItem,
   type HealthStatus,
-  PageMasthead,
 } from "@/components/metagraphed/primitives";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -58,12 +62,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useInView } from "@/hooks/use-in-view";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
-import {
-  ariaSort,
-  FilterChip,
-  ResetFiltersButton,
-  SortHeader,
-} from "@/components/metagraphed/table-controls";
+import { ariaSort, FilterChip, SortHeader } from "@/components/metagraphed/table-controls";
 import { SubnetsSavedViews } from "@/components/metagraphed/subnets-saved-views";
 import {
   SubnetsCompareDrawer,
@@ -90,7 +89,7 @@ import {
   formatSubnetAge,
 } from "@/lib/metagraphed/format";
 import { SubnetCategoryLinks } from "@/components/metagraphed/subnet-category-links";
-import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
+import { HubSections } from "@/components/metagraphed/hub-prose";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { joinEconomics, joinHealth, matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -190,31 +189,12 @@ function joinCatalog(
 export function SubnetsPage() {
   const search = useSearch({ from: "/subnets/" }) as SubnetsSearch;
   const navigate = useNavigate({ from: "/subnets/" });
-  const filtersActive =
-    !!search.q ||
-    !!search.sort ||
-    !!search.curation ||
-    !!search.health ||
-    !!search.serviceKind ||
-    !!search.readiness ||
-    !!search.kind ||
-    !!search.stale ||
-    !!search.domain ||
-    !!search.watched ||
-    // #6270: defaults to true, so hiding the root is what makes it "active" —
-    // without this the Reset button stays disabled while a filter is applied.
-    !search.includeRoot;
-  const onReset = () =>
-    navigate({
-      search: { view: search.view },
-      replace: true,
-    });
   const setView = (v: ViewMode) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, view: v }),
       replace: true,
     });
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(1024);
   const effectiveDensity: Density =
     search.density === "compact" || search.density === "comfortable"
       ? search.density
@@ -237,146 +217,126 @@ export function SubnetsPage() {
       replace: true,
       resetScroll: false,
     });
-  const subnetsCsvUrl = buildUrl("/api/v1/subnets", { limit: SUBNETS_ALL_LIMIT });
   return (
     <AppShell>
-      <PageMasthead
-        live
-        title="Subnets"
-        // #11320: from HUB_COPY, not a second hand-written string. This slot
-        // and <meta name="description"> were separately authored copies of the
-        // same fact -- the shape that let /apis ship a title and an og:title
-        // naming the page differently.
-        description={hubLede("/subnets")}
-        actions={
-          /* Display/export are useful desktop controls, but on phone and
-             tablet they previously became an unexplained row of icons before
-             the directory task. Narrow layouts expose the same choices as
-             named controls in the Filters sheet below. */
-          <div className="hidden lg:flex flex-wrap items-center gap-2">
-            {search.section === "registry" ? (
-              <>
-                <ViewModeToggle value={search.view} onChange={setView} />
-                {search.view === "table" ? (
-                  <DensityToggle value={effectiveDensity} onChange={setDensity} />
-                ) : null}
-              </>
-            ) : null}
-            <ActionBar>
-              {search.section === "rankings" ? (
-                <LeaderboardsCsvExportMenu win={search.window} />
-              ) : (
-                <>
-                  <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
-                  <DownloadCsvButton url={subnetsCsvUrl} bare />
-                </>
-              )}
-              <ShareButton bare />
-            </ActionBar>
-          </div>
-        }
-      />
-      {/* #8248: masthead trim -- the old nine meta-cards (SubnetsHighlights +
-          a 5-tile SubnetsStatStrip) pushed the table ~1,700px down on mobile
-          and led with an incident card, before any actionable content. Ops
-          signals (incidents/drift/pilot counts) now live only on their owning
-          pages (/apis/endpoints, /status); this page keeps at most 4 inline
-          facts a reader of a SUBNET list actually wants first. */}
-      {/* #8311: /leaderboards folded in here. Every board ranks subnets, so a
-          separate top-level route for them was an IA accident. A section tab
-          rather than a `view` mode -- see subnets.index.tsx for why. */}
-      <SectionTabs section={search.section} onChange={setSection} />
+      <DataPageStage>
+        <DataPageHero
+          id="subnets-title"
+          eyebrow="Network registry"
+          live
+          title="Subnets."
+          description="Live subnet economics, public surfaces, and probe health."
+          footer={
+            <AsyncPanel context="subnets summary" fallback={<PanelSkeleton height="xs" />}>
+              <SubnetsCompactStats />
+            </AsyncPanel>
+          }
+        />
 
-      {search.section === "rankings" ? (
-        <LeaderboardsSection win={search.window} onWindowChange={setWindow} />
-      ) : (
-        <>
-          <AsyncPanel
-            context="subnets summary"
-            fallback={<PanelSkeleton height="xs" className="mb-4" />}
-          >
-            <SubnetsCompactStats />
-          </AsyncPanel>
-          <SubnetsSavedViews />
-          <AsyncPanel
-            context="subnets"
-            fallback={
-              <TableSkeleton
-                rows={search.view === "table" ? 10 : 6}
-                columns={search.view === "table" ? 8 : 4}
-                density={effectiveDensity}
-              />
-            }
-          >
-            <SubnetsTable
-              view={search.view}
-              density={effectiveDensity}
-              onViewChange={setView}
-              onDensityChange={setDensity}
-            />
-          </AsyncPanel>
-          <AsyncPanel
-            context="domains rollup"
-            fallback={<PanelSkeleton height="sm" className="mt-6" />}
-          >
-            <SubnetsDomainsRollup />
-          </AsyncPanel>
-          {/* #8311: /domains folded in. The chips above are a filter; this is
-              the taxonomy itself -- members, stake, emission share and
-              within-domain concentration per domain. Collapsed by default so
-              it costs nothing to the reader who came for the table, and its
-              query doesn't fire until opened. */}
-          <SubnetsDomainsTaxonomy />
-          {/* #10300: network-wide registration/deregistration was published
-              and rendered nowhere. It belongs beside the registry table --
-              "which subnets came and went" is the same question the table
-              answers as a snapshot. */}
-          <section className="mt-8">
-            <h2 className="mb-2 mg-type-label text-ink-muted">Registration churn</h2>
-            <NetworkSubnetLifecycle />
-          </section>
-          {/* #11204: the table above virtualizes, so its server-rendered HTML
-              carries anchors for ~30 of 129 subnets and the other 99 pages had
-              no internal link anywhere on the site. This is the complete index
-              — see the component for why it is not a duplicate of the table. */}
-          <AsyncPanel
-            context="subnet index"
-            fallback={<PanelSkeleton height="sm" className="mt-8" />}
-          >
-            <SubnetIndexDirectory />
-          </AsyncPanel>
-        </>
-      )}
-      <ApiSourceFooter
-        paths={
-          search.section === "rankings"
-            ? [
-                "/api/v1/registry/leaderboards",
-                "/api/v1/chain/weights",
-                "/api/v1/chain/deregistrations",
-                "/api/v1/economics",
-              ]
-            : ["/api/v1/subnets", "/api/v1/domains", "/api/v1/chain/subnet-lifecycle"]
-        }
-        artifacts={search.section === "rankings" ? undefined : ["/metagraph/subnets.json"]}
-      />
-      {/*
-        #11316 / #11342: REAL anchors, not prose naming a path. Sitemap-only is
-        the profile that lands a URL in "Crawled - currently not indexed"
-        (#11277), and every faceted page needs an inbound link from the hub it
-        filters. The category list is derived from the rendered rows, so a
-        category the registry stops deriving stops being linked.
-      */}
-      <SubnetCategoryLinks />
-      <p className="mt-8 mg-type-caption text-ink-muted">
-        Looking for the ones you can integrate with?{" "}
-        <Link to="/subnets/with-api" className="text-accent-text hover:underline">
-          Subnets publishing a machine-readable API spec
-        </Link>
-        .
-      </p>
-      {/* Below the table on purpose -- see hub-prose.tsx. */}
-      <HubSections path="/subnets" />
+        <DataPageCanvas>
+          {/* Rankings is a sibling task, not a separate destination. */}
+          <SectionTabs
+            className="mg-directory-tabs"
+            section={search.section}
+            onChange={setSection}
+          />
+
+          {search.section === "rankings" ? (
+            <DataPageModule
+              title="Subnet rankings."
+              caption="Compare live subnet leaders without leaving the registry."
+              actions={
+                <ActionBar>
+                  <LeaderboardsCsvExportMenu win={search.window} />
+                  <ShareButton bare />
+                </ActionBar>
+              }
+            >
+              <LeaderboardsSection win={search.window} onWindowChange={setWindow} />
+            </DataPageModule>
+          ) : (
+            <>
+              <DataPageModule
+                title="Live registry."
+                caption="Search, compare, and open a subnet dossier."
+              >
+                <SubnetsSavedViews />
+                <AsyncPanel
+                  context="subnets"
+                  fallback={
+                    <TableSkeleton
+                      rows={search.view === "table" ? 10 : 6}
+                      columns={search.view === "table" ? 8 : 4}
+                      density={effectiveDensity}
+                    />
+                  }
+                >
+                  <SubnetsTable
+                    view={search.view}
+                    density={effectiveDensity}
+                    onViewChange={setView}
+                    onDensityChange={setDensity}
+                  />
+                </AsyncPanel>
+              </DataPageModule>
+
+              {/* Secondary context is available when useful, but no longer
+                  delays the directory task or turns the first scroll into a
+                  wall of equal-weight cards. */}
+              <DataPageModule
+                title="Registry context."
+                caption="Domain coverage, churn, and the complete linked index."
+              >
+                <DataPageDisclosure label="Explore registry context">
+                  <AsyncPanel context="domains rollup" fallback={<PanelSkeleton height="sm" />}>
+                    <SubnetsDomainsRollup />
+                  </AsyncPanel>
+                  <SubnetsDomainsTaxonomy />
+                  <section className="mt-8">
+                    <h3 className="mb-2 mg-type-label text-ink-muted">Registration churn</h3>
+                    <NetworkSubnetLifecycle />
+                  </section>
+                  {/* The virtualized table intentionally only mounts visible
+                      rows. This complete link index preserves access to every
+                      subnet detail URL without duplicating the primary list. */}
+                  <AsyncPanel
+                    context="subnet index"
+                    fallback={<PanelSkeleton height="sm" className="mt-8" />}
+                  >
+                    <SubnetIndexDirectory />
+                  </AsyncPanel>
+                </DataPageDisclosure>
+              </DataPageModule>
+            </>
+          )}
+        </DataPageCanvas>
+
+        <ApiSourceFooter
+          paths={
+            search.section === "rankings"
+              ? [
+                  "/api/v1/registry/leaderboards",
+                  "/api/v1/chain/weights",
+                  "/api/v1/chain/deregistrations",
+                  "/api/v1/economics",
+                ]
+              : ["/api/v1/subnets", "/api/v1/domains", "/api/v1/chain/subnet-lifecycle"]
+          }
+          artifacts={search.section === "rankings" ? undefined : ["/metagraph/subnets.json"]}
+        />
+        {/* Real anchors for faceted routes remain in the document for readers
+            and crawlers, but follow the main directory rather than competing
+            with it above the fold. */}
+        <SubnetCategoryLinks />
+        <p className="mt-8 mg-type-caption text-ink-muted">
+          Looking for the ones you can integrate with?{" "}
+          <Link to="/subnets/with-api" className="text-accent-text hover:underline">
+            Subnets publishing a machine-readable API spec
+          </Link>
+          .
+        </p>
+        <HubSections path="/subnets" />
+      </DataPageStage>
       <SubnetsCompareDrawer />
       <BackToTop />
     </AppShell>
@@ -424,7 +384,7 @@ function SubnetsCompactStats() {
       </>
     );
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 mg-type-data text-ink-muted">
+    <div className="mg-directory-summary">
       <span>
         <span className="font-medium text-ink-strong">{formatNumber(active)}</span> active
         {total ? ` of ${formatNumber(total)}` : ""}
@@ -982,9 +942,8 @@ function SubnetsTable({
     </div>
   );
 
-  // The filter-sheet badge needs to represent every refinement it now owns at
-  // phone/tablet widths — not just the five dropdowns it originally held.
-  // Search remains outside the sheet, so it deliberately is not counted here.
+  // The control sheet owns both display and filter refinements. Search stays
+  // in the command rail, so it deliberately is not counted in its badge.
   const filterSheetCount =
     (search.health ? 1 : 0) +
     (search.curation ? 1 : 0) +
@@ -1000,8 +959,8 @@ function SubnetsTable({
     : "Root subnet hidden — click to show it again";
   const subnetsCsvUrl = buildUrl("/api/v1/subnets", { limit: SUBNETS_ALL_LIMIT });
 
-  const mobileRefinements = (
-    <div className="flex flex-col gap-3 border-b border-border pb-4 lg:hidden">
+  const directoryRefinements = (
+    <div className="flex flex-col gap-3 border-b border-border pb-4">
       <div className="flex flex-col gap-2">
         <span className="mg-type-label uppercase text-ink-muted">Display</span>
         <ViewModeToggle
@@ -1166,10 +1125,10 @@ function SubnetsTable({
         </QueryBar>
         <FilterSheet
           className="mg-subnets-filter-sheet shrink-0 [&>button]:min-h-11"
-          label="Filters"
+          label="Controls"
           activeCount={filterSheetCount}
         >
-          {mobileRefinements}
+          {directoryRefinements}
           {secondaryFilters}
         </FilterSheet>
       </div>
@@ -1312,6 +1271,8 @@ function SubnetsTable({
     <div id="subnets-list" className="relative">
       <QueryProgress active={isFetching} position="sticky" />
       <ListShell
+        presentation="canvas"
+        responsiveAt="lg"
         filters={filters}
         isEmpty={rows.length === 0}
         isStale={isFetching}
@@ -2346,15 +2307,17 @@ function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; den
 function SectionTabs({
   section,
   onChange,
+  className,
 }: {
   section: "registry" | "rankings";
   onChange: (s: "registry" | "rankings") => void;
+  className?: string;
 }) {
   return (
     <div
       role="tablist"
       aria-label="Subnets sections"
-      className="mb-4 flex items-center gap-1 border-b border-border"
+      className={classNames("mb-4 flex items-center gap-1 border-b border-border", className)}
     >
       {(
         [

@@ -9,7 +9,6 @@ import {
   ExternalLink,
   TableState,
   PageSection,
-  SectionHeading,
   MethodologyCallout,
   BrandIcon,
   CurationChip,
@@ -18,7 +17,14 @@ import {
   MiniRadial,
   MobileCollapse,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageDisclosure,
+  DataPageHero,
+  DataPageStage,
+  Panel,
+} from "@/components/metagraphed/primitives";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import { X, Search } from "lucide-react";
 import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
@@ -52,170 +58,183 @@ const GAP_PAGE = 25;
 export function GapsPage() {
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Operations"
-        live
-        title="Contribute"
-        description="The contributor work queue — which subnets are missing which public interfaces, and where a correction or addition helps most. Submit through the GitHub repo."
-        actions={
-          <ExternalLink href={GITHUB_REPO} className="text-xs">
-            github
-          </ExternalLink>
-        }
-      />
+      <DataPageStage>
+        <DataPageHero
+          id="contribute-title"
+          eyebrow="Operations"
+          live
+          title="Contribute."
+          description="A prioritized evidence queue for improving public Bittensor interfaces."
+          footer={
+            <>
+              <span>Changes are submitted through the public registry repository.</span>
+              <ExternalLink href={GITHUB_REPO} className="mg-page-quiet-action">
+                Open GitHub
+              </ExternalLink>
+            </>
+          }
+        />
 
-      <main className="space-y-20 md:space-y-24">
-        <AsyncPanel height="sm">
-          <GapsKpiStrip />
-        </AsyncPanel>
+        <DataPageCanvas variant="operations">
+          <AsyncPanel height="sm">
+            <GapsKpiStrip />
+          </AsyncPanel>
 
-        <AsyncPanel height="md">
-          <MissingKindsAtAGlance />
-        </AsyncPanel>
+          <AsyncPanel height="md">
+            <MissingKindsAtAGlance />
+          </AsyncPanel>
 
-        <AsyncPanel height="sm">
-          <GapsMethodology />
-        </AsyncPanel>
+          <DataPageDisclosure label="How priorities are calculated">
+            <AsyncPanel height="sm">
+              <GapsMethodology />
+            </AsyncPanel>
+          </DataPageDisclosure>
 
-        <section>
-          <SectionHeading title="Integrability scoreboard" />
+          <PageSection
+            id="integrability"
+            eyebrow="Readiness"
+            title="Integrability scoreboard"
+            description="A concise view of where a maintained interface will help most."
+          >
+            <AsyncPanel height="lg">
+              <IntegrabilityBoard />
+            </AsyncPanel>
+          </PageSection>
+
+          <PageSection
+            id="coverage-matrix"
+            eyebrow="Coverage"
+            title="What's actually missing"
+            description="Subnets × required public-interface kinds. Cells link straight to that subnet's surfaces tab."
+          >
+            <AsyncPanel height="lg">
+              <CoverageMatrix />
+            </AsyncPanel>
+          </PageSection>
+
           <AsyncPanel height="lg">
-            <IntegrabilityBoard />
+            <OpenGapsSection />
           </AsyncPanel>
-        </section>
 
-        <PageSection
-          id="coverage-matrix"
-          eyebrow="Coverage"
-          title="What's actually missing"
-          description="Subnets × required public-interface kinds. Cells link straight to that subnet's surfaces tab."
-        >
-          <AsyncPanel height="lg">
-            <CoverageMatrix />
-          </AsyncPanel>
-        </PageSection>
+          {/* These are valuable working queues, but are intentionally behind one
+              progressive-disclosure seam so they do not compete with the
+              contributor's first decision: what should I help with now? */}
+          <DataPageDisclosure label="Open detailed queues, intake, and evidence">
+            <PageSection
+              id="completeness-distribution"
+              eyebrow="Distribution"
+              title="Registry shape"
+              description="Histogram of completeness across every scored profile."
+            >
+              <AsyncPanel height="md">
+                <CompletenessHistogram />
+              </AsyncPanel>
+            </PageSection>
 
-        <PageSection
-          id="completeness-distribution"
-          eyebrow="Distribution"
-          title="Registry shape"
-          description="Histogram of completeness across every scored profile. Median and quartile markers show where the registry sits today."
-        >
-          <AsyncPanel height="md">
-            <CompletenessHistogram />
-          </AsyncPanel>
-        </PageSection>
+            {/* #10300: /candidates, /curation, /profiles and /source-snapshots
+                are the stages of registry intake, gathered here for people
+                working beyond the primary queue. */}
+            <PageSection
+              id="registry-pipeline"
+              eyebrow="Intake"
+              title="Registry pipeline"
+              description="Discovered, curated, profiled — and what each source actually said."
+            >
+              <RegistryPipelinePanel />
+            </PageSection>
 
-        <AsyncPanel height="lg">
-          <OpenGapsSection />
-        </AsyncPanel>
+            <PageSection
+              id="profile-completeness"
+              eyebrow="Coverage"
+              title="Profile completeness"
+              description="Per-subnet completeness across required public-interface kinds."
+            >
+              <AsyncPanel height="md">
+                <CompletenessList />
+              </AsyncPanel>
+            </PageSection>
 
-        {/* #10300: /candidates, /curation, /profiles and /source-snapshots were
-            all published and rendered nowhere. The issue listed them as
-            "plausibly API-only... but it should be a recorded decision, because
-            right now 'no page exists' and 'no page should exist' are
-            indistinguishable from the outside". This is that decision, made the
-            other way -- they are the four stages of registry intake, and this
-            is the console where someone asks where it has stalled. */}
-        <PageSection
-          id="registry-pipeline"
-          eyebrow="Intake"
-          title="Registry pipeline"
-          description="Discovered, curated, profiled — and the snapshot of what each source actually said."
-        >
-          <RegistryPipelinePanel />
-        </PageSection>
+            <PageSection
+              id="adapter-candidates"
+              eyebrow="Pilots"
+              title="Adapter candidates"
+              description="Subnets where a maintained adapter would unlock the most value."
+            >
+              <AsyncPanel height="md">
+                <AdapterCandidates />
+              </AsyncPanel>
+            </PageSection>
 
-        <PageSection
-          id="profile-completeness"
-          eyebrow="Coverage"
-          title="Profile completeness"
-          description="Per-subnet completeness across required public-interface kinds."
-        >
-          <AsyncPanel height="md">
-            <CompletenessList />
-          </AsyncPanel>
-        </PageSection>
+            <PageSection
+              id="enrichment-queue"
+              eyebrow="Queue"
+              title="Enrichment queue"
+              description="Registry entries awaiting verification or enrichment."
+            >
+              <AsyncPanel height="md">
+                <EnrichmentQueue />
+              </AsyncPanel>
+            </PageSection>
 
-        <PageSection
-          id="adapter-candidates"
-          eyebrow="Pilots"
-          title="Adapter candidates"
-          description="Subnets where a maintained adapter would unlock the highest registry value."
-        >
-          <AsyncPanel height="md">
-            <AdapterCandidates />
-          </AsyncPanel>
-        </PageSection>
+            <PageSection
+              id="enrichment-targets"
+              eyebrow="Targets"
+              title="Enrichment targets"
+              description="Specific surfaces to add per subnet, ranked by priority."
+            >
+              <AsyncPanel height="md">
+                <EnrichmentTargets />
+              </AsyncPanel>
+            </PageSection>
 
-        <PageSection
-          id="enrichment-queue"
-          eyebrow="Queue"
-          title="Enrichment queue"
-          description="Prioritized list of registry entries awaiting verification or enrichment."
-        >
-          <AsyncPanel height="md">
-            <EnrichmentQueue />
-          </AsyncPanel>
-        </PageSection>
+            <PageSection
+              id="enrichment-evidence"
+              eyebrow="Evidence"
+              title="Enrichment evidence"
+              description="Candidate evidence behind the enrichment queue."
+            >
+              <AsyncPanel height="md">
+                <EnrichmentEvidence />
+              </AsyncPanel>
+            </PageSection>
 
-        <PageSection
-          id="enrichment-targets"
-          eyebrow="Targets"
-          title="Enrichment targets"
-          description="Per-target contributor task board — the specific surfaces to add per subnet, ranked by priority."
-        >
-          <AsyncPanel height="md">
-            <EnrichmentTargets />
-          </AsyncPanel>
-        </PageSection>
+            <PageSection
+              id="attribution-candidates"
+              eyebrow="Unjudged"
+              title="Attribution candidates"
+              description="Unverified address leads found in published subnet pages."
+            >
+              <AsyncPanel height="md">
+                <AttributionCandidates />
+              </AsyncPanel>
+            </PageSection>
 
-        <PageSection
-          id="enrichment-evidence"
-          eyebrow="Evidence"
-          title="Enrichment evidence"
-          description="The detailed candidate evidence behind the enrichment queue — one level down from the summary above."
-        >
-          <AsyncPanel height="md">
-            <EnrichmentEvidence />
-          </AsyncPanel>
-        </PageSection>
+            <PageSection
+              id="gap-priorities"
+              eyebrow="Priorities"
+              title="Gap priorities"
+              description="Priority-scored per-subnet gaps, separate from the interface-facet queue."
+            >
+              <AsyncPanel height="md">
+                <GapPriorityList />
+              </AsyncPanel>
+            </PageSection>
+          </DataPageDisclosure>
+        </DataPageCanvas>
 
-        <PageSection
-          id="attribution-candidates"
-          eyebrow="Unjudged"
-          title="Attribution candidates"
-          description="Addresses the sweep found in the text of pages subnets publish, which nobody has judged yet. Each row is a LEAD, not an attribution — open the source and decide."
-        >
-          <AsyncPanel height="md">
-            <AttributionCandidates />
-          </AsyncPanel>
-        </PageSection>
-
-        <PageSection
-          id="gap-priorities"
-          eyebrow="Priorities"
-          title="Gap priorities"
-          description="Priority-scored per-subnet gap board — ranked separately from the interface-facet gaps above."
-        >
-          <AsyncPanel height="md">
-            <GapPriorityList />
-          </AsyncPanel>
-        </PageSection>
-      </main>
-
-      <ApiSourceFooter
-        paths={[
-          "/api/v1/gaps",
-          "/api/v1/review/profile-completeness",
-          "/api/v1/review/adapter-candidates",
-          "/api/v1/review/enrichment-queue",
-          "/api/v1/review/enrichment-targets",
-          "/api/v1/review/attribution-candidates",
-          "/api/v1/review/enrichment-evidence",
-          "/api/v1/review/gaps",
-        ]}
-      />
+        <ApiSourceFooter
+          paths={[
+            "/api/v1/gaps",
+            "/api/v1/review/profile-completeness",
+            "/api/v1/review/adapter-candidates",
+            "/api/v1/review/enrichment-queue",
+            "/api/v1/review/enrichment-targets",
+            "/api/v1/review/attribution-candidates",
+            "/api/v1/review/enrichment-evidence",
+            "/api/v1/review/gaps",
+          ]}
+        />
+      </DataPageStage>
     </AppShell>
   );
 }

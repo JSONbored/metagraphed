@@ -422,7 +422,7 @@ export function AppShell({
                   ),
             )}
           >
-            {children}
+            {fullBleedMain ? children : <div className="mg-route-frame">{children}</div>}
           </main>
 
           <SiteFooter />

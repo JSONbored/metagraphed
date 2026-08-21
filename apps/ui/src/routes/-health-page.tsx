@@ -10,12 +10,18 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CaptureCurrencyPanel } from "@/components/metagraphed/capture-currency-panel";
 import { StaleBanner } from "@/components/metagraphed/states";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageHero,
+  DataPageStage,
+  Panel,
+} from "@/components/metagraphed/primitives";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import {
   HealthPill,
   TableState,
-  ActionBar,
+  MetaStrip,
   PageSection,
   TimeAgo,
   AnimatedNumber,
@@ -88,20 +94,11 @@ export function HealthPage() {
 
   return (
     <AppShell>
-      <AsyncPanel height="xl">
-        <HealthHero
-          interval={effectiveInterval}
-          controls={
-            <>
-              <ActionBar>
-                <Link
-                  to="/status"
-                  className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                >
-                  Public status
-                  <ArrowUpRight className="size-3" aria-hidden="true" />
-                </Link>
-              </ActionBar>
+      <DataPageStage>
+        <AsyncPanel height="xl">
+          <HealthHero
+            interval={effectiveInterval}
+            controls={
               <AutoRefreshControl
                 enabled={enabled}
                 visible={visible}
@@ -109,109 +106,109 @@ export function HealthPage() {
                 onToggle={() => setEnabled((v) => !v)}
                 onIntervalChange={setIntervalMs}
               />
-            </>
-          }
-        />
-      </AsyncPanel>
+            }
+          />
+        </AsyncPanel>
 
-      <main className="space-y-20 md:space-y-24">
-        <TimeRangeProvider>
+        <DataPageCanvas variant="operations">
+          <TimeRangeProvider>
+            <PageSection
+              id="status-board"
+              eyebrow="Status board"
+              title="Global health, at a glance"
+              description="Probe-derived state across every monitored surface."
+              toolbar={<TimeRangeScrub />}
+              className={sectionRing("status-board")}
+            >
+              <AsyncPanel height="lg">
+                <StatusBoard interval={effectiveInterval} />
+              </AsyncPanel>
+            </PageSection>
+
+            <PageSection
+              id="network-pulse"
+              eyebrow="Network pulse"
+              title="ok / warn / down distribution"
+              description="Aggregate status over the selected range, with incident markers per bucket."
+            >
+              <AsyncPanel height="lg">
+                <NetworkPulseBand />
+              </AsyncPanel>
+            </PageSection>
+
+            <PageSection
+              id="status-mosaic"
+              eyebrow="Endpoints"
+              title="Live status mosaic"
+              description="Every monitored endpoint, colored by latest probe state. Filter by state; click a tile to open."
+            >
+              <AsyncPanel height="lg">
+                <StatusMosaic />
+              </AsyncPanel>
+            </PageSection>
+          </TimeRangeProvider>
+
           <PageSection
-            id="status-board"
-            eyebrow="Status board"
-            title="Global health, at a glance"
-            description="Probe-derived state across every monitored surface."
-            toolbar={<TimeRangeScrub />}
-            className={sectionRing("status-board")}
+            id="subnet-matrix"
+            eyebrow="Coverage"
+            title="Subnet health matrix"
+            description="Every active subnet, colored by latest probe state. Click a cell to open."
+            className={sectionRing("subnet-matrix")}
           >
-            <AsyncPanel height="lg">
-              <StatusBoard interval={effectiveInterval} />
-            </AsyncPanel>
+            <SubnetHealthMatrix />
           </PageSection>
 
           <PageSection
-            id="network-pulse"
-            eyebrow="Network pulse"
-            title="ok / warn / down distribution"
-            description="Aggregate status over the selected range, with incident markers per bucket."
+            id="source-health"
+            eyebrow="Sources"
+            title="Source freshness"
+            description="Where the registry pulls evidence from and how fresh each source is."
+            className={sectionRing("source-health")}
           >
-            <AsyncPanel height="lg">
-              <NetworkPulseBand />
+            <AsyncPanel height="md">
+              <SourceHealth interval={effectiveInterval} />
             </AsyncPanel>
           </PageSection>
 
-          <PageSection
-            id="status-mosaic"
-            eyebrow="Endpoints"
-            title="Live status mosaic"
-            description="Every monitored endpoint, colored by latest probe state. Filter by state; click a tile to open."
-          >
-            <AsyncPanel height="lg">
-              <StatusMosaic />
-            </AsyncPanel>
-          </PageSection>
-        </TimeRangeProvider>
-
-        <PageSection
-          id="subnet-matrix"
-          eyebrow="Coverage"
-          title="Subnet health matrix"
-          description="Every active subnet, colored by latest probe state. Click a cell to open."
-          className={sectionRing("subnet-matrix")}
-        >
-          <SubnetHealthMatrix />
-        </PageSection>
-
-        <PageSection
-          id="source-health"
-          eyebrow="Sources"
-          title="Source freshness"
-          description="Where the registry pulls evidence from and how fresh each source is."
-          className={sectionRing("source-health")}
-        >
-          <AsyncPanel height="md">
-            <SourceHealth interval={effectiveInterval} />
-          </AsyncPanel>
-        </PageSection>
-
-        {/* #10300: /chain/indexer-lag and /health/failure-reasons were both
+          {/* #10300: /chain/indexer-lag and /health/failure-reasons were both
             published and rendered nowhere. The ops console is their home --
             "how current is our capture, and what is failing behind it" is the
             question this page exists to answer. */}
-        <PageSection
-          id="capture-currency"
-          eyebrow="Capture"
-          title="Capture currency & failure mix"
-          description="How far behind the chain head our indexing is, and what is actually going wrong with the probes."
-          className={sectionRing("capture-currency")}
-        >
-          <AsyncPanel height="md">
-            <CaptureCurrencyPanel />
-          </AsyncPanel>
-        </PageSection>
+          <PageSection
+            id="capture-currency"
+            eyebrow="Capture"
+            title="Capture currency & failure mix"
+            description="How far behind the chain head our indexing is, and what is actually going wrong with the probes."
+            className={sectionRing("capture-currency")}
+          >
+            <AsyncPanel height="md">
+              <CaptureCurrencyPanel />
+            </AsyncPanel>
+          </PageSection>
 
-        <PageSection
-          id="incidents"
-          eyebrow="Incidents"
-          title="Live & recent incidents"
-          description="Grouped by host. Ongoing incidents bubble to the top."
-          className={sectionRing("incidents")}
-        >
-          <AsyncPanel height="md">
-            <Incidents interval={effectiveInterval} />
-          </AsyncPanel>
-        </PageSection>
-      </main>
+          <PageSection
+            id="incidents"
+            eyebrow="Incidents"
+            title="Live & recent incidents"
+            description="Grouped by host. Ongoing incidents bubble to the top."
+            className={sectionRing("incidents")}
+          >
+            <AsyncPanel height="md">
+              <Incidents interval={effectiveInterval} />
+            </AsyncPanel>
+          </PageSection>
+        </DataPageCanvas>
 
-      <ApiSourceFooter
-        paths={[
-          "/api/v1/health",
-          "/api/v1/freshness",
-          "/api/v1/endpoint-incidents",
-          "/api/v1/chain/indexer-lag",
-          "/api/v1/health/failure-reasons",
-        ]}
-      />
+        <ApiSourceFooter
+          paths={[
+            "/api/v1/health",
+            "/api/v1/freshness",
+            "/api/v1/endpoint-incidents",
+            "/api/v1/chain/indexer-lag",
+            "/api/v1/health/failure-reasons",
+          ]}
+        />
+      </DataPageStage>
     </AppShell>
   );
 }
@@ -243,41 +240,42 @@ function HealthHero({
   const ongoing = incidents.filter((i) => !i.ended_at).length;
 
   return (
-    <PageMasthead
+    <DataPageHero
+      id="health-title"
       eyebrow="Operations"
       live
-      title="Health & freshness"
-      description={
+      title="Health & freshness."
+      description="Probe-derived status across monitored network surfaces."
+      actions={controls}
+      summary={
+        <MetaStrip
+          items={[
+            {
+              label: "24h uptime",
+              value: uptimePct != null ? uptimePct.toFixed(2) + "%" : "—",
+            },
+            { label: "Surfaces", value: <AnimatedNumber value={h?.total} /> },
+            { label: "Incidents", value: <AnimatedNumber value={ongoing} /> },
+            {
+              label: "Stale sources",
+              value: <AnimatedNumber value={f?.stale_count} />,
+              title: f?.sources ? `of ${f.sources.length} sources` : undefined,
+            },
+          ]}
+        />
+      }
+      footer={
         <>
-          Operational drill-down for maintainers — subnet matrix, endpoint mosaic, source freshness,
-          and live incidents. Probe-derived only; submissions cannot set uptime or incident state.
-          For plain-language uptime, see{" "}
-          <Link to="/status" className="text-accent-text underline-offset-2 hover:underline">
-            System status
+          <span>Submissions cannot set uptime or incident state.</span>
+          <Link
+            to="/status"
+            className="inline-flex items-center gap-1 text-accent hover:text-ink-strong hover:underline"
+          >
+            Public status
+            <ArrowUpRight className="size-3" aria-hidden="true" />
           </Link>
-          .
         </>
       }
-      actions={controls}
-      caption={<>health · {h?.total ?? "—"} surfaces</>}
-      kpis={[
-        {
-          label: "Uptime · 24h",
-          value: uptimePct != null ? uptimePct.toFixed(2) + "%" : "—",
-        },
-        { label: "OK", value: <AnimatedNumber value={h?.ok} />, hint: "surfaces" },
-        { label: "Warn", value: <AnimatedNumber value={h?.warn} /> },
-        { label: "Down", value: <AnimatedNumber value={h?.down} /> },
-        {
-          label: "Stale sources",
-          value: <AnimatedNumber value={f?.stale_count} />,
-          hint: f?.sources ? `of ${f.sources.length}` : undefined,
-        },
-        {
-          label: "Ongoing incidents",
-          value: <AnimatedNumber value={ongoing} />,
-        },
-      ]}
     />
   );
 }

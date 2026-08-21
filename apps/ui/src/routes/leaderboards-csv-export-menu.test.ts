@@ -35,13 +35,19 @@ function csvMenuSource() {
 
 describe("leaderboards ActionBar CSV export", () => {
   it("renders exactly one CSV-export trigger in the rankings ActionBar, not one per board", () => {
-    const actionBar = host.slice(host.indexOf("<ActionBar>"), host.indexOf("</ActionBar>"));
+    const rankingsStart = host.indexOf('{search.section === "rankings" ? (');
+    const rankingsBranch = host.slice(rankingsStart, host.indexOf(") : (", rankingsStart));
+    const actionBar = rankingsBranch.slice(
+      rankingsBranch.indexOf("<ActionBar>"),
+      rankingsBranch.indexOf("</ActionBar>"),
+    );
     expect(actionBar).toContain("<LeaderboardsCsvExportMenu");
     // Exactly one menu element -- not one per board.
     expect(actionBar.match(/<LeaderboardsCsvExportMenu/g)?.length).toBe(1);
-    // The subnets CSV button is the registry section's, and must not render
-    // alongside the menu in the rankings section.
-    expect(actionBar).toContain('search.section === "rankings"');
+    // The rankings branch owns this single menu; the registry's export lives
+    // in its local Controls sheet instead of alongside the rankings action.
+    expect(rankingsBranch).toContain('search.section === "rankings"');
+    expect(actionBar).not.toContain("DownloadCsvButton");
   });
 
   it("no longer imports DownloadCsvButton -- replaced entirely by the menu", () => {

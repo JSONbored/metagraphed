@@ -1,11 +1,11 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Timer, Activity, Users } from "lucide-react";
 import {
   AsyncPanel,
+  DataPageDisclosure,
+  DataPageModule,
   TableSkeleton,
   PagerFooter,
-  MetricGrid,
   PanelSkeleton,
   QueryBar,
   FilterSheet,
@@ -22,7 +22,6 @@ import {
   ShareButton,
   DownloadCsvButton,
   ActionBar,
-  StatTile,
   CopyButton,
   CopyableCode,
   BackToTop,
@@ -34,10 +33,8 @@ import { AuthorSharePanel } from "@/components/metagraphed/blocks/author-share-p
 import { blocksQuery, blocksSummaryQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { ChainTabActions } from "./-chain-hub";
 import type { Block } from "@/lib/metagraphed/types";
 import type { BlocksSearch } from "./chain.blocks";
 
@@ -56,21 +53,10 @@ function blocksQueryParams(search: BlocksSearch): Record<string, string | number
 }
 
 export function BlocksPage() {
-  const search = useSearch({ from: "/chain/blocks" }) as BlocksSearch;
-  const blocksCsvUrl = buildUrl("/api/v1/blocks", blocksQueryParams(search));
-
   return (
     <>
-      {/* The hub owns the shell, title and description now (#8290). These
-          actions came off this page's own masthead and render above the tab
-          content rather than beside the tab strip — a shrink-0 sibling there is
-          exactly what starved the profile tabs to 196px on mobile (#8254). */}
-      <ChainTabActions>
-        <ActionBar>
-          <DownloadCsvButton url={blocksCsvUrl} bare />
-          <ShareButton bare />
-        </ActionBar>
-      </ChainTabActions>
+      {/* Exporting and sharing belong with the result controls in BlocksTable,
+          not in the hub chrome. The data task stays the first thing visible. */}
       <AsyncPanel
         context="Live block rail"
         retryQueryKeys={[metagraphedQueryKey("blocks"), metagraphedQueryKey("chain-activity")]}
@@ -79,25 +65,13 @@ export function BlocksPage() {
         <LiveBlockRail />
       </AsyncPanel>
       <AsyncPanel
-        context="Block production"
-        retryQueryKeys={[metagraphedQueryKey("blocks-summary")]}
-        fallback={
-          <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3">
-            <PanelSkeleton height="sm" />
-            <PanelSkeleton height="sm" />
-            <PanelSkeleton height="sm" />
-          </div>
-        }
-      >
-        <BlockProductionHeader />
-      </AsyncPanel>
-      <AsyncPanel
         context="Blocks table"
         retryQueryKeys={[metagraphedQueryKey("blocks")]}
         fallback={<TableSkeleton rows={10} columns={6} />}
       >
         <BlocksTable />
       </AsyncPanel>
+      <BlockProductionContext />
       <ApiSourceFooter
         paths={["/api/v1/blocks", "/api/v1/blocks/summary", "/api/v1/chain/activity"]}
         artifacts={["/metagraph/blocks.json", "/metagraph/blocks/summary.json"]}
@@ -107,42 +81,73 @@ export function BlocksPage() {
   );
 }
 
-// #3488: point-in-time block-production health above the raw blocks feed —
-// inter-block cadence, per-block throughput, and block-author decentralization
-// from /api/v1/blocks/summary, in its own Suspense/error boundary so a slow or
-// failed summary never blocks the table below.
+/** Secondary context loads independently and stays behind a native disclosure.
+ * That lets the newest-block feed remain the page's primary task on every viewport. */
+function BlockProductionContext() {
+  return (
+    <DataPageDisclosure label="Block production" className="mt-6">
+      <AsyncPanel
+        context="Block production"
+        retryQueryKeys={[metagraphedQueryKey("blocks-summary")]}
+        fallback={
+          <DataPageModule
+            kind="question"
+            title="Production summary"
+            caption="Cadence, throughput, and block-author distribution."
+          >
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              <PanelSkeleton height="sm" />
+              <PanelSkeleton height="sm" />
+              <PanelSkeleton height="sm" />
+            </div>
+          </DataPageModule>
+        }
+      >
+        <DataPageModule
+          kind="question"
+          title="Production summary"
+          caption="Cadence, throughput, and block-author distribution."
+        >
+          <BlockProductionHeader />
+        </DataPageModule>
+      </AsyncPanel>
+    </DataPageDisclosure>
+  );
+}
+
+// Point-in-time production health belongs in one lean measurement rail above
+// the feed — not another row of card-shaped KPIs competing with the data.
 function BlockProductionHeader() {
   const summary = useSuspenseQuery(blocksSummaryQuery()).data.data;
   const blockTime = summary.block_time;
   const throughput = summary.throughput;
   const nakamoto = summary.author_concentration?.nakamoto_coefficient;
-  const nakamotoStatTone = nakamotoTone(nakamoto);
   return (
-    <MetricGrid cols={{ base: 1, sm: 2, md: 3 }} gap="md" className="mb-8">
-      <StatTile
-        icon={Timer}
-        eyebrow="Inter-block time"
-        value={blockTime ? humaniseSeconds(blockTime.mean_ms / 1000) : "—"}
-        hint={blockTime ? `p90 ${humaniseSeconds(blockTime.p90_ms / 1000)}` : undefined}
-      />
-      <StatTile
-        icon={Activity}
-        eyebrow="Throughput"
-        value={throughput ? formatNumber(throughput.mean_extrinsics_per_block) : "—"}
-        hint={
-          throughput
-            ? `ext/block · ${formatNumber(throughput.mean_events_per_block)} events/block`
-            : undefined
-        }
-      />
-      <StatTile
-        icon={Users}
-        eyebrow="Author decentralization"
-        value={nakamoto != null ? formatNumber(nakamoto) : "—"}
-        hint="Nakamoto coefficient"
-        tone={nakamotoStatTone}
-      />
-    </MetricGrid>
+    <dl className="mg-data-measure-grid">
+      <div className="mg-data-measure">
+        <dt>Inter-block time</dt>
+        <dd>
+          {blockTime ? humaniseSeconds(blockTime.mean_ms / 1000) : "—"}
+          {blockTime ? <small>p90 {humaniseSeconds(blockTime.p90_ms / 1000)}</small> : null}
+        </dd>
+      </div>
+      <div className="mg-data-measure">
+        <dt>Throughput</dt>
+        <dd>
+          {throughput ? formatNumber(throughput.mean_extrinsics_per_block) : "—"}
+          {throughput ? (
+            <small>{formatNumber(throughput.mean_events_per_block)} events/block</small>
+          ) : null}
+        </dd>
+      </div>
+      <div className="mg-data-measure">
+        <dt>Author decentralization</dt>
+        <dd>
+          {nakamoto != null ? formatNumber(nakamoto) : "—"}
+          <small>Nakamoto coefficient</small>
+        </dd>
+      </div>
+    </dl>
   );
 }
 
@@ -182,6 +187,7 @@ function BlocksTable() {
 
   // Only send filters the user actually set, so an empty bar is the plain feed.
   const queryParams = blocksQueryParams(search);
+  const blocksCsvUrl = buildUrl("/api/v1/blocks", queryParams);
 
   // Blocks turn over fast (~12s/block) — poll the first page only, so paging
   // through older blocks (offset > 0) isn't yanked or reflowed mid-read.
@@ -306,7 +312,7 @@ function BlocksTable() {
             />
           </QueryBar.Utility>
         </QueryBar>
-        <FilterSheet label="Filters" activeCount={secondaryFilterCount}>
+        <FilterSheet label="Controls" activeCount={activeCount}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
               <span className="mg-type-caption text-ink-muted">Spec version</span>
@@ -395,6 +401,13 @@ function BlocksTable() {
               </button>
             </div>
           ) : null}
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+            <span className="mg-type-caption text-ink-muted">Current result</span>
+            <ActionBar>
+              <DownloadCsvButton url={blocksCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
+          </div>
         </FilterSheet>
       </div>
       <QueryBar.MetaRow
@@ -441,13 +454,9 @@ function BlocksTable() {
 
   return (
     <>
-      {rows.length > 0 ? (
-        <>
-          <CadenceHeatmap rows={rows} />
-          <AuthorSharePanel rows={rows} />
-        </>
-      ) : null}
       <ListShell
+        presentation="canvas"
+        responsiveAt="lg"
         filters={filters}
         isEmpty={rows.length === 0}
         empty={emptyNode}
@@ -484,11 +493,6 @@ function BlocksTable() {
                       : gapSec > 24
                         ? "text-health-warn-text"
                         : "text-ink-subtle";
-                // Free decentralization tell: count how often this author appears
-                // on the current page. A repeat on a short window is worth flagging.
-                const authorRepeat = b.author
-                  ? rows.reduce((n, r) => (r.author === b.author ? n + 1 : n), 0)
-                  : 0;
                 return (
                   <tr
                     key={b.block_hash || b.block_number}
@@ -544,22 +548,13 @@ function BlocksTable() {
                             )
                           }
                         />
-                        {authorRepeat > 1 ? (
-                          <span
-                            /* eslint-disable-next-line no-restricted-syntax -- micro-chip repeat badge (9px); the mg-type-* scale bottoms out at caption-lg (13px) with no nano tier, so there is no matching token (#9343 req 1 exception) */
-                            className="mg-chip h-4 px-1.5 text-[9px] text-accent-text border-accent/40"
-                            title={`Produced ${authorRepeat} blocks on this page`}
-                          >
-                            ×{authorRepeat}
-                          </span>
-                        ) : null}
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink align-top">
-                      <ActivityCell value={b.extrinsic_count ?? 0} max={maxExt} tone="accent" />
+                      <ActivityCell value={b.extrinsic_count ?? 0} max={maxExt} tone="extrinsics" />
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink align-top">
-                      <ActivityCell value={b.event_count ?? 0} max={maxEvt} tone="ink" />
+                      <ActivityCell value={b.event_count ?? 0} max={maxEvt} tone="events" />
                     </td>
                     <td
                       className="px-4 py-2.5 text-right mg-type-data text-ink-muted align-top"
@@ -575,6 +570,12 @@ function BlocksTable() {
         }
         footer={footerNode}
       />
+      {rows.length > 0 ? (
+        <DataPageDisclosure label="Page context" className="mt-6">
+          <CadenceHeatmap rows={rows} />
+          <AuthorSharePanel rows={rows} />
+        </DataPageDisclosure>
+      ) : null}
     </>
   );
 }
@@ -582,7 +583,8 @@ function BlocksTable() {
 /**
  * Right-aligned number with a thin horizontal bar underneath, normalized
  * against the page-max so busy blocks are visually obvious at a glance.
- * `tone="accent"` (extrinsics) uses mint; `tone="ink"` (events) uses ink.
+ * Extrinsics and events are two comparable, non-semantic series, so the
+ * chart prism distinguishes them. Mint stays reserved for interactive focus.
  */
 function ActivityCell({
   value,
@@ -591,10 +593,10 @@ function ActivityCell({
 }: {
   value: number;
   max: number;
-  tone: "accent" | "ink";
+  tone: "extrinsics" | "events";
 }) {
   const pct = max > 0 ? Math.max(2, Math.round((value / max) * 100)) : 0;
-  const barCls = tone === "accent" ? "bg-accent/70" : "bg-ink-strong/40";
+  const barCls = tone === "extrinsics" ? "bg-chart-4/80" : "bg-chart-6/80";
   return (
     <span className="inline-flex flex-col items-end gap-1 min-w-[3.5rem]">
       <span>{formatNumber(value)}</span>

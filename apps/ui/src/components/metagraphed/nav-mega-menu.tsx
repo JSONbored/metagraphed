@@ -254,7 +254,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
               aria-haspopup="true"
               onKeyDown={(e) => onTriggerKeyDown(e, p.key)}
               className={classNames(
-                "relative inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 h-9 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                "relative inline-flex min-h-11 items-center px-2 py-1.5 mg-type-caption-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
                 active || isOpen
                   ? "text-ink-strong font-medium"
                   : "text-ink-muted hover:text-ink-strong",
@@ -265,7 +265,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
               }}
               preload="intent"
             >
-              <Icon className={classNames("size-3.5", active ? "text-accent" : "opacity-70")} />
+              <Icon className="hidden" aria-hidden="true" />
               <span>{p.label}</span>
               {active ? (
                 <span
@@ -286,7 +286,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
           params={{ _splat: "mcp" }}
           aria-current={pathname === "/docs/mcp" ? "page" : undefined}
           className={classNames(
-            "relative inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 h-9 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+            "relative inline-flex min-h-11 items-center px-2 py-1.5 mg-type-caption-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
             pathname === "/docs/mcp"
               ? "text-ink-strong font-medium"
               : "text-ink-muted hover:text-ink-strong",
@@ -297,12 +297,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
           }}
           preload="intent"
         >
-          <Plug
-            className={classNames(
-              "size-3.5",
-              pathname === "/docs/mcp" ? "text-accent" : "opacity-70",
-            )}
-          />
+          <Plug className="hidden" aria-hidden="true" />
           <span>MCP</span>
           {pathname === "/docs/mcp" ? (
             <span

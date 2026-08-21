@@ -49,9 +49,11 @@ describe("ListShell sticky table wrappers", () => {
     );
   });
 
-  it("keeps the card wrapper's rounded-corner clipping the same for both modes", () => {
-    expect(source).toContain(
-      'const tableCard = "rounded border border-border bg-card overflow-hidden";',
-    );
+  it("owns canvas presentation and the mobile-to-table breakpoint in the primitive", () => {
+    expect(source).toContain('presentation = "panel"');
+    expect(source).toContain('responsiveAt = "md"');
+    expect(source).toContain('presentation === "canvas"');
+    expect(source).toContain('"mg-list-table-card--canvas"');
+    expect(source).toContain("RESPONSIVE_CLASSES[responsiveAt]");
   });
 });

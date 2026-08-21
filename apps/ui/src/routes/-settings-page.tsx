@@ -1,5 +1,10 @@
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import {
+  DataPageCanvas,
+  DataPageModule,
+  DataPageStage,
+  PageMasthead,
+} from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { WebhookSubscriptionManager } from "@/components/metagraphed/webhook-subscription-manager";
 import { ApiKeysManager } from "@/components/metagraphed/api-keys-manager";
@@ -14,35 +19,44 @@ export function SettingsPage() {
   const kpis = buildSettingsHeroKpis();
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Developer"
-        live
-        title="Developer settings"
-        description="Your watchlist's export/import, self-service webhook subscription management against the public subscription API (no account model), wallet-connected API key management for gated fullnode access, and your own verified chain alert triggers."
-        caption={<>webhooks / v1</>}
-        kpis={kpis}
-      />
-      {/* #8384: install affordance renders nothing when there's nothing to
+      <DataPageStage>
+        <PageMasthead
+          eyebrow="Developer"
+          live
+          title="Developer settings"
+          description="Your watchlist's export/import, self-service webhook subscription management against the public subscription API (no account model), wallet-connected API key management for gated fullnode access, and your own verified chain alert triggers."
+          caption={<>webhooks / v1</>}
+          kpis={kpis}
+        />
+        <DataPageCanvas>
+          <DataPageModule
+            title="Your local workspace."
+            caption="Portable browser-local state, developer credentials, webhooks, and the alerts you have configured."
+          >
+            {/* #8384: install affordance renders nothing when there's nothing to
           offer (already installed, dismissed, unsupported browser). */}
-      <InstallAppRow />
-      {/* #8256: no account model means stars live in one browser. A JSON
+            <InstallAppRow />
+            {/* #8256: no account model means stars live in one browser. A JSON
           file is the whole portability story -- no server, no sync. */}
-      <WatchlistPortability />
-      {/* #8484: private, local-first labels for your own addresses —
+            <WatchlistPortability />
+            {/* #8484: private, local-first labels for your own addresses —
           distinct store from the watchlist, same portability posture. */}
-      <AddressLabelPortability />
-      <ApiKeysManager />
-      <AlertsManager />
-      {/* #10300: the UI could always CREATE an alert trigger and never read one
+            <AddressLabelPortability />
+            <ApiKeysManager />
+            <AlertsManager />
+            {/* #10300: the UI could always CREATE an alert trigger and never read one
           back, so "is it still active, and has it ever fired" had no answer.
           GET /api/v1/alerts/triggers/{id} was published and rendered nowhere. */}
-      <div className="mt-6">
-        <AlertTriggerLookup />
-      </div>
-      <WebhookSubscriptionManager />
-      <ApiSourceFooter
-        paths={["/api/v1/webhooks/subscriptions", "/api/v1/keys", "/api/v1/watch/triggers"]}
-      />
+            <div className="mt-6">
+              <AlertTriggerLookup />
+            </div>
+            <WebhookSubscriptionManager />
+          </DataPageModule>
+        </DataPageCanvas>
+        <ApiSourceFooter
+          paths={["/api/v1/webhooks/subscriptions", "/api/v1/keys", "/api/v1/watch/triggers"]}
+        />
+      </DataPageStage>
     </AppShell>
   );
 }

@@ -7,18 +7,18 @@ export function isMobileWidth(width: number, breakpoint: number = MOBILE_BREAKPO
   return width < breakpoint;
 }
 
-export function useIsMobile() {
+export function useIsMobile(breakpoint: number = MOBILE_BREAKPOINT) {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
     const onChange = () => {
-      setIsMobile(isMobileWidth(window.innerWidth));
+      setIsMobile(isMobileWidth(window.innerWidth, breakpoint));
     };
     mql.addEventListener("change", onChange);
-    setIsMobile(isMobileWidth(window.innerWidth));
+    setIsMobile(isMobileWidth(window.innerWidth, breakpoint));
     return () => mql.removeEventListener("change", onChange);
-  }, []);
+  }, [breakpoint]);
 
   return !!isMobile;
 }

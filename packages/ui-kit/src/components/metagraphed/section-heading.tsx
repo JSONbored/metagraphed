@@ -32,7 +32,7 @@ export function SectionHeading({
   return (
     <div
       className={classNames(
-        "mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
+        "mg-route-heading mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
         className,
       )}
     >

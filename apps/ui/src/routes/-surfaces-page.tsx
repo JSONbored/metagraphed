@@ -352,12 +352,15 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
             debounceMs={200}
           />
           <QueryBar.Divider />
-          <div className="hidden md:contents">{secondaryFilters}</div>
+          {/* A ruled data canvas is intentionally narrower than the old
+              full-page toolbar. Keep the three selectors in the shared sheet
+              through tablet so the search task retains usable width. */}
+          <div className="hidden lg:contents">{secondaryFilters}</div>
           <QueryBar.Utility className="ml-auto">
             <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
           </QueryBar.Utility>
         </QueryBar>
-        <FilterSheet className="md:hidden" label="Filters" activeCount={secondaryFilterCount}>
+        <FilterSheet className="lg:hidden" label="Filters" activeCount={secondaryFilterCount}>
           {secondaryFilters}
         </FilterSheet>
       </div>

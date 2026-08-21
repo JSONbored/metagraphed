@@ -8,15 +8,16 @@ import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { SelfHealthVerdict } from "@/components/metagraphed/self-health-verdict";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import {
-  CopyableCode,
-  ExternalLink,
-  SectionHeading,
-  TimeAgo,
-  AnimatedNumber,
-} from "@jsonbored/ui-kit";
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
+  Panel,
+} from "@/components/metagraphed/primitives";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { CopyableCode, ExternalLink, TimeAgo, AnimatedNumber } from "@jsonbored/ui-kit";
 import { healthQuery, globalIncidentsQuery, incidentsFeedQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -46,95 +47,101 @@ export function StatusPage() {
   useRegistryEvents();
   return (
     <AppShell>
-      <PageHeading
-        eyebrow="Public status"
-        title="System status"
-        description="Is Metagraphed up? That question, answered first — then what we're seeing across the subnet surfaces we track. Probe-derived only; nobody can self-report their own health here."
-        right={
-          <Link
-            to="/health"
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
+      <DataPageStage>
+        <DataPageHero
+          id="status-title"
+          eyebrow="Public status"
+          live
+          title="System status."
+          description="Is Metagraphed up? That question is answered first, followed by the probe-derived state of the subnet surfaces we track."
+          actions={
+            <Link
+              to="/health"
+              className="inline-flex min-h-11 items-center gap-1 border border-border px-3 py-1.5 mg-type-caption font-medium text-ink-muted transition-colors hover:border-accent/50 hover:text-ink-strong"
+            >
+              Ops console
+              <ArrowUpRight className="size-3" aria-hidden="true" />
+            </Link>
+          }
+        />
+        <DataPageCanvas>
+          <DataPageModule
+            title="Current operating state."
+            caption="Metagraphed's own components only — third-party endpoint trouble cannot turn this into a false platform outage."
           >
-            Ops console
-            <ArrowUpRight className="size-3" aria-hidden="true" />
-          </Link>
-        }
-      />
-      <div className="space-y-section">
-        {/* #8250: the verdict is scoped to OUR components and nothing else.
+            {/* #8250: the verdict is scoped to OUR components and nothing else.
             The old one derived "Partial outage" from the third-party surface
             counts below, so 3 of 617 someone-else's endpoints being down
             painted a red banner that read as "metagraphed is down" -- on the
             one page whose entire job is answering that accurately. */}
-        <AsyncPanel
-          context="status verdict"
-          fallback={<Skeleton className="h-40 w-full" />}
-          retryQueryKeys={[healthQuery().queryKey]}
-        >
-          <SelfHealthVerdict />
-        </AsyncPanel>
+            <AsyncPanel
+              context="status verdict"
+              fallback={<Skeleton className="h-40 w-full" />}
+              retryQueryKeys={[healthQuery().queryKey]}
+            >
+              <SelfHealthVerdict />
+            </AsyncPanel>
+          </DataPageModule>
 
-        <section>
-          <SectionHeading
-            title="Recent incidents"
-            intro="Probe-detected downtime across the subnet surfaces we track, newest first."
-          />
-          <AsyncPanel context="recent incidents" fallback={<Skeleton className="h-32 w-full" />}>
-            <RecentIncidents />
-          </AsyncPanel>
-        </section>
-
-        <section>
-          <SectionHeading
-            title="Subscribe"
-            intro="The same downtime stream as a feed — RSS, Atom, or JSON Feed."
-          />
-          <AsyncPanel
-            context="incidents feed"
-            fallback={<Skeleton className="h-32 w-full" />}
-            retryQueryKeys={[incidentsFeedQuery().queryKey]}
+          <DataPageModule
+            title="Recent incidents."
+            caption="Probe-detected downtime across the subnet surfaces we track, newest first."
           >
-            <IncidentsFeedSubscribe />
-          </AsyncPanel>
-        </section>
+            <AsyncPanel context="recent incidents" fallback={<Skeleton className="h-32 w-full" />}>
+              <RecentIncidents />
+            </AsyncPanel>
+          </DataPageModule>
 
-        {/* #8250: the per-day probe drill-down (96,395px) and the per-provider
+          <DataPageModule
+            title="Subscribe."
+            caption="The same downtime stream as RSS, Atom, or JSON Feed."
+          >
+            <AsyncPanel
+              context="incidents feed"
+              fallback={<Skeleton className="h-32 w-full" />}
+              retryQueryKeys={[incidentsFeedQuery().queryKey]}
+            >
+              <IncidentsFeedSubscribe />
+            </AsyncPanel>
+          </DataPageModule>
+
+          {/* #8250: the per-day probe drill-down (96,395px) and the per-provider
             source-health rollup (11,251px) left this page -- together they were
             94% of its 115,233px height, and neither answers "is it up". Both
             are operational drill-downs and now live only on the ops console
             they were always duplicating. The per-subnet view lives on each
             subnet's own API tab. */}
-        <section>
-          <SectionHeading
-            title="Go deeper"
-            intro="Per-day probe results, per-provider verification, the live mosaic and the full surface ledger are operational views — they live on the ops console."
-          />
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to="/health"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-accent/40"
-            >
-              Ops console
-              <ArrowUpRight className="size-3" aria-hidden="true" />
-            </Link>
-            <Link
-              to="/apis/endpoints"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-accent/40"
-            >
-              Browse all surfaces
-              <ArrowUpRight className="size-3" aria-hidden="true" />
-            </Link>
-          </div>
-        </section>
-      </div>
-      <ApiSourceFooter
-        paths={[
-          "/api/v1/self-health",
-          "/api/v1/health",
-          "/api/v1/incidents",
-          "/api/v1/feeds/incidents",
-        ]}
-      />
+          <DataPageModule
+            title="Go deeper."
+            caption="Per-day probe results, verification, the live mosaic, and the surface ledger live in the operational console."
+          >
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/health"
+                className="inline-flex min-h-11 items-center gap-1.5 border border-border px-3 py-1.5 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50"
+              >
+                Ops console
+                <ArrowUpRight className="size-3" aria-hidden="true" />
+              </Link>
+              <Link
+                to="/apis/endpoints"
+                className="inline-flex min-h-11 items-center gap-1.5 border border-border px-3 py-1.5 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50"
+              >
+                Browse all surfaces
+                <ArrowUpRight className="size-3" aria-hidden="true" />
+              </Link>
+            </div>
+          </DataPageModule>
+        </DataPageCanvas>
+        <ApiSourceFooter
+          paths={[
+            "/api/v1/self-health",
+            "/api/v1/health",
+            "/api/v1/incidents",
+            "/api/v1/feeds/incidents",
+          ]}
+        />
+      </DataPageStage>
     </AppShell>
   );
 }

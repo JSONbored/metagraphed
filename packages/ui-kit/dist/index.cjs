@@ -536,7 +536,7 @@ function Panel({
     {
       ...rest,
       className: classNames(
-        "rounded-sm border",
+        "mg-panel rounded-sm border",
         toneStyle.border,
         tintBorderOnly ? "bg-card" : toneStyle.bg,
         interactive ? "mg-hover-lift" : null,
@@ -2035,6 +2035,20 @@ function KeyChip({
     ] })
   );
 }
+var RESPONSIVE_CLASSES = {
+  md: {
+    filter: "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5",
+    cards: "md:hidden space-y-2",
+    table: "hidden md:block",
+    footer: "md:hidden mt-3"
+  },
+  lg: {
+    filter: "sticky lg:static z-[var(--mg-z-raised)] -mx-4 lg:mx-0 mb-3 border-b border-border lg:border lg:rounded lg:bg-card px-3 py-2 lg:p-2.5",
+    cards: "lg:hidden space-y-2",
+    table: "hidden lg:block",
+    footer: "lg:hidden mt-3"
+  }
+};
 function ListShell({
   filters,
   cards,
@@ -2044,16 +2058,23 @@ function ListShell({
   isEmpty,
   isStale,
   viewportRef,
-  stickyHeader = true
+  stickyHeader = true,
+  presentation = "panel",
+  responsiveAt = "md"
 }) {
-  const tableCard = "rounded border border-border bg-card overflow-hidden";
+  const responsive = RESPONSIVE_CLASSES[responsiveAt];
+  const tableCard = classNames(
+    "mg-list-table-card overflow-hidden",
+    presentation === "canvas" ? "mg-list-table-card--canvas" : "rounded border border-border bg-card"
+  );
   const viewportClass = stickyHeader ? "mg-table-scroll mg-list-viewport" : "mg-table-scroll overflow-x-auto";
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { "data-mg-list-shell": true, "data-presentation": presentation, children: [
     /* @__PURE__ */ jsxRuntime.jsx(
       "div",
       {
         className: classNames(
-          // Sticky below `md`, in normal flow at and above it. Offset reads
+          // Sticky below the responsive breakpoint, in normal flow at and
+          // above it. Offset reads
           // --mg-sticky-offset (published by AppShell to match real header +
           // ticker height) with a fallback.
           //
@@ -2072,10 +2093,9 @@ function ListShell({
           // (`#subnets-list > div > div:first-child { position: static }`,
           // at >=1024px only, which is why tablet still showed the overlap).
           // That override is deleted; this is the general rule.
-          "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
+          responsive.filter,
           "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
-          "border-b border-border md:border md:rounded md:bg-card",
-          "px-3 py-2 md:p-2.5"
+          presentation === "canvas" ? "mg-list-filter-bar--canvas" : void 0
         ),
         style: {
           top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-tabs-h, 0px))"
@@ -2092,12 +2112,12 @@ function ListShell({
       // attribute is what makes that state observable.
       /* @__PURE__ */ jsxRuntime.jsx("div", { "data-mg-list-empty": "", children: empty })
     ) : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
-      cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: tableCard, children: [
+      cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: responsive.cards, children: cards }) : null,
+      /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? responsive.table : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: tableCard, children: [
         /* @__PURE__ */ jsxRuntime.jsx("div", { ref: viewportRef, className: viewportClass, children: table }),
         footer
       ] }) }),
-      cards && footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden mt-3", children: footer }) : null
+      cards && footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: responsive.footer, children: footer }) : null
     ] })
   ] });
 }
@@ -2217,6 +2237,165 @@ function PageHero({
           k.chart ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mt-2.5 -ml-0.5", children: k.chart }) : null
         ] }, k.label)) }) : null
       ]
+    }
+  );
+}
+function DataPageStage({
+  children,
+  className,
+  variant = "default"
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      className: classNames(
+        "mg-page-stage",
+        variant !== "default" ? `mg-page-stage--${variant}` : void 0,
+        className
+      ),
+      children
+    }
+  );
+}
+function DataPageHero({
+  eyebrow,
+  title,
+  description,
+  summary,
+  actions,
+  children,
+  footer,
+  live = false,
+  id,
+  className,
+  variant = "directory"
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "section",
+    {
+      className: classNames(
+        "mg-page-hero",
+        `mg-page-hero--${variant}`,
+        className
+      ),
+      "aria-labelledby": id,
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-field", "aria-hidden": "true" }),
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-content", children: [
+          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-page-hero-copy", children: [
+            eyebrow ? /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "mg-page-kicker", children: [
+              live ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-page-kicker-dot", "aria-hidden": "true" }) : null,
+              eyebrow
+            ] }) : null,
+            /* @__PURE__ */ jsxRuntime.jsx("h1", { id, children: title }),
+            description ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-description", children: description }) : null,
+            children ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-body", children }) : null,
+            summary ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-summary", children: summary }) : null
+          ] }),
+          actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-actions", children: actions }) : null
+        ] }),
+        footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-hero-footer", children: footer }) : null
+      ]
+    }
+  );
+}
+function DataPageCanvas({
+  children,
+  className,
+  variant = "default"
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      className: classNames(
+        "mg-page-canvas",
+        variant !== "default" ? `mg-page-canvas--${variant}` : void 0,
+        className
+      ),
+      children
+    }
+  );
+}
+function DataPageModule({
+  title,
+  caption,
+  actions,
+  children,
+  className,
+  id,
+  kind = "task"
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "section",
+    {
+      id,
+      className: classNames(
+        "mg-page-module",
+        `mg-page-module--${kind}`,
+        className
+      ),
+      children: [
+        title || caption || actions ? /* @__PURE__ */ jsxRuntime.jsxs("header", { className: "mg-page-module-heading", children: [
+          /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
+            title ? /* @__PURE__ */ jsxRuntime.jsx("h2", { className: "mg-page-module-title", children: title }) : null,
+            caption ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mg-page-module-caption", children: caption }) : null
+          ] }),
+          actions ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-module-actions", children: actions }) : null
+        ] }) : null,
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-page-module-body", children })
+      ]
+    }
+  );
+}
+function DataPageDisclosure({
+  label,
+  children,
+  className,
+  open = false
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "details",
+    {
+      className: classNames("mg-page-disclosure", className),
+      open,
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx("summary", { children: label }),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { children })
+      ]
+    }
+  );
+}
+function DataPageWindowTabs({
+  label,
+  options,
+  value,
+  onValueChange,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      role: "tablist",
+      "aria-label": label,
+      className: classNames("mg-data-window", className),
+      children: options.map((option) => {
+        const selected = option.value === value;
+        return /* @__PURE__ */ jsxRuntime.jsx(
+          "button",
+          {
+            type: "button",
+            role: "tab",
+            "aria-selected": selected,
+            onClick: () => onValueChange(option.value),
+            className: classNames(
+              "mg-data-window-button mg-focus-ring",
+              selected && "is-active"
+            ),
+            children: option.label
+          },
+          option.value
+        );
+      })
     }
   );
 }
@@ -2357,7 +2536,7 @@ function PageSection({
       id,
       "data-section-anchor": id ? "" : void 0,
       className: classNames(
-        "mg-section",
+        "mg-section mg-route-section",
         tone === "muted" && "rounded-xl bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
         className
       ),
@@ -2465,7 +2644,7 @@ function SectionAnchor({
       id,
       "data-section-anchor": true,
       className: classNames(
-        "mg-section scroll-mt-32",
+        "mg-section mg-detail-section scroll-mt-32",
         tone && classNames(
           "relative pl-3 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:opacity-70",
           TONE_CLASS[tone]
@@ -2516,7 +2695,7 @@ function SectionHeading({
     "div",
     {
       className: classNames(
-        "mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
+        "mg-route-heading mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
         className
       ),
       children: [
@@ -5409,6 +5588,7 @@ var GhostButton = React3.forwardRef(
   function GhostButton2({
     size = "sm",
     tone = "default",
+    appearance = "soft",
     icon,
     iconRight,
     className,
@@ -5422,7 +5602,8 @@ var GhostButton = React3.forwardRef(
         ref,
         type: type ?? "button",
         className: cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-md border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex items-center justify-center gap-1.5 border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          appearance === "terminal" ? "rounded-none bg-transparent" : "rounded-md bg-card",
           SIZE[size],
           TONE2[tone],
           className
@@ -6622,6 +6803,12 @@ exports.CopyIconToggle = CopyIconToggle;
 exports.CopyableCode = CopyableCode;
 exports.CurationChip = CurationChip;
 exports.DailyRollupFreshness = DailyRollupFreshness;
+exports.DataPageCanvas = DataPageCanvas;
+exports.DataPageDisclosure = DataPageDisclosure;
+exports.DataPageHero = DataPageHero;
+exports.DataPageModule = DataPageModule;
+exports.DataPageStage = DataPageStage;
+exports.DataPageWindowTabs = DataPageWindowTabs;
 exports.DefinitionList = DefinitionList;
 exports.DensityToggle = DensityToggle;
 exports.Dialog = Dialog;

@@ -55,6 +55,7 @@ export {
   type GhostButtonProps,
   type GhostButtonSize,
   type GhostButtonTone,
+  type GhostButtonAppearance,
   PagerFooter,
   type PagerFooterProps,
   MetaStrip,
@@ -94,6 +95,17 @@ export {
   type FilterChipItem,
   RoutePending,
   type RoutePendingProps,
+  DataPageCanvas,
+  DataPageDisclosure,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
+  DataPageWindowTabs,
+  type DataPageCanvasVariant,
+  type DataPageHeroVariant,
+  type DataPageModuleKind,
+  type DataPageStageVariant,
+  type DataPageWindowOption,
 } from "@jsonbored/ui-kit";
 
 /* Still local: genuinely coupled to apps/ui's router, query, or hooks. */

@@ -478,7 +478,7 @@ export function SubnetMasthead({
     ) : null;
 
   return (
-    <header className="mb-6">
+    <header className="mg-subnet-masthead mb-6">
       {/* Top accent rail — color = current health state. Subtle but
           gives every subnet a recognizable identity colour. */}
       <div
@@ -654,7 +654,7 @@ export function SubnetMasthead({
       <Panel
         as="div"
         flush
-        className="mt-4"
+        className="mg-subnet-kpi-grid mt-4"
         bodyClassName="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden sm:grid-cols-3 sm:divide-y-0 xl:grid-cols-6"
       >
         <StatWithSpark

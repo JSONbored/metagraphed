@@ -8,15 +8,21 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import {
   ShareButton,
   DownloadCsvButton,
-  ActionBar,
   DensityToggle,
   MiniStack,
   type Density,
 } from "@jsonbored/ui-kit";
 import {
   AsyncPanel,
-  PageMasthead,
+  DataPageCanvas,
+  DataPageDisclosure,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
+  FilterSheet,
+  GhostButton,
   Panel,
+  QueryBar,
   TableSkeleton,
 } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -25,7 +31,7 @@ import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/stat
 import { API_BASE } from "@/lib/metagraphed/config";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { formatNumber, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
+import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
 import { groupByOperator } from "@/lib/metagraphed/group-validators";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
@@ -38,8 +44,8 @@ import {
   ValidatorsCompareDrawer,
   ValidatorCompareToggle,
 } from "@/components/metagraphed/validators-compare-drawer";
-import { HubSections, hubLede } from "@/components/metagraphed/hub-prose";
-import { SortHeader, ariaSort, SearchInput } from "@/components/metagraphed/table-controls";
+import { HubSections } from "@/components/metagraphed/hub-prose";
+import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import { TableColGroup } from "@jsonbored/ui-kit";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
@@ -59,13 +65,6 @@ export function ValidatorsPage() {
   const search = useSearch({ from: "/validators/" }) as ValidatorsSearch;
   const navigate = useNavigate({ from: "/validators/" });
   const density = search.density ?? "comfortable";
-  // Mirror the sibling ranked-list pages (subnets/blocks/surfaces): export the
-  // current view as CSV. DownloadCsvButton appends `format=csv`; the backend's
-  // handleGlobalValidators already serves it (#5482).
-  const validatorsCsvUrl = buildUrl("/api/v1/validators", {
-    sort: "total_stake",
-    limit: ALL_VALIDATORS_LIMIT,
-  });
   const onDensityChange = (d: Density) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, density: d }),
@@ -73,42 +72,44 @@ export function ValidatorsPage() {
     });
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="Directory"
-        live
-        title="Validators"
-        // #11320: from HUB_COPY -- this slot and the meta description were two
-        // separately written copies of the same fact.
-        description={hubLede("/validators")}
-        actions={
-          <>
-            <ActionBar>
-              <DownloadCsvButton url={validatorsCsvUrl} bare />
-              <ShareButton bare />
-            </ActionBar>
-          </>
-        }
-      />
-      <ValidatorGuide />
-      <AsyncPanel
-        context="validators"
-        fallback={<TableSkeleton rows={10} columns={8} />}
-        retryQueryKeys={[
-          validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT, subnets: false })
-            .queryKey,
-        ]}
-      >
-        <ValidatorsDirectory density={density} onDensityChange={onDensityChange} />
-      </AsyncPanel>
-      {/* #10300: the cross-subnet "where is it cheapest to start validating"
-          ranking was published and rendered nowhere. */}
-      <section className="mt-8">
-        <ValidatorEconomicsRanking />
-      </section>
-      <ApiSourceFooter paths={["/api/v1/validators", "/api/v1/validators/economics"]} />
+      <DataPageStage>
+        <DataPageHero
+          id="validators-title"
+          eyebrow="Network operators"
+          live
+          title="Validators."
+          description="Search the live validator set by operator or key."
+        />
+        <DataPageCanvas>
+          <DataPageModule title="Directory." caption="Stake, ownership, and on-chain economics.">
+            <AsyncPanel
+              context="validators"
+              fallback={<TableSkeleton rows={10} columns={8} />}
+              retryQueryKeys={[
+                validatorsQuery({
+                  sort: "total_stake",
+                  limit: ALL_VALIDATORS_LIMIT,
+                  subnets: false,
+                }).queryKey,
+              ]}
+            >
+              <ValidatorsDirectory density={density} onDensityChange={onDensityChange} />
+            </AsyncPanel>
+            <DataPageDisclosure label="How to read this directory">
+              <ValidatorGuide />
+            </DataPageDisclosure>
+          </DataPageModule>
+          <DataPageModule
+            title="Entry economics."
+            caption="Current stake thresholds across the network."
+          >
+            <ValidatorEconomicsRanking />
+          </DataPageModule>
+        </DataPageCanvas>
+        <ApiSourceFooter paths={["/api/v1/validators", "/api/v1/validators/economics"]} />
+        <HubSections path="/validators" />
+      </DataPageStage>
       <ValidatorsCompareDrawer />
-      {/* Below the table on purpose -- see hub-prose.tsx. */}
-      <HubSections path="/validators" />
     </AppShell>
   );
 }
@@ -141,6 +142,14 @@ function ValidatorsDirectory({
   // permanently was the wrong default.
   const columns = useColumnVisibility("validators", VALIDATOR_COLUMNS);
   const visibleColumns = VALIDATOR_COLUMNS.filter((c) => columns.isVisible(c.id));
+  // Keep the route-level actions local to the directory instrument. The hero
+  // names the page; the command rail is where a reader searches, adjusts the
+  // table, exports, or shares the exact view they are looking at.
+  const validatorsCsvUrl = buildUrl("/api/v1/validators", {
+    sort: "total_stake",
+    limit: ALL_VALIDATORS_LIMIT,
+  });
+  const activeFilterCount = search.watched ? 1 : 0;
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
@@ -209,6 +218,68 @@ function ValidatorsDirectory({
       ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1]!.end
       : 0;
 
+  const directoryRefinements = (
+    <>
+      <div className="flex flex-col gap-2">
+        <span className="mg-type-label uppercase text-ink-muted">Directory</span>
+        <GhostButton
+          onClick={() => setSearch({ grouped: !grouped })}
+          aria-pressed={grouped}
+          title="Cluster an operator's validator keys under one entry"
+          tone={grouped ? "accent" : "default"}
+          appearance="terminal"
+          className="w-full justify-between"
+        >
+          Group by operator
+        </GhostButton>
+        {watchlist.count > 0 ? (
+          <GhostButton
+            onClick={() => setSearch({ watched: !search.watched })}
+            aria-pressed={search.watched}
+            tone={search.watched ? "accent" : "default"}
+            appearance="terminal"
+            className="w-full justify-between"
+            icon={
+              <Star
+                className={classNames("size-3.5", search.watched && "fill-accent text-accent")}
+                aria-hidden
+              />
+            }
+          >
+            Watched · {watchlist.count}
+          </GhostButton>
+        ) : null}
+      </div>
+
+      <div className="hidden flex-col gap-2 border-t border-border pt-4 lg:flex">
+        <span className="mg-type-label uppercase text-ink-muted">Table</span>
+        <DensityToggle
+          value={density}
+          onChange={onDensityChange}
+          className="w-full [&>div]:w-full [&>div>button]:flex-1 [&>div>button>span]:inline"
+        />
+        <ColumnCustomizer
+          columns={VALIDATOR_COLUMNS}
+          isVisible={columns.isVisible}
+          onToggle={columns.toggle}
+          onReset={columns.reset}
+          className="[&>button]:w-full [&>button]:justify-between"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <span className="mg-type-label uppercase text-ink-muted">Export &amp; share</span>
+        <div className="grid grid-cols-2 gap-2">
+          <DownloadCsvButton
+            url={validatorsCsvUrl}
+            className="w-full justify-center rounded [&>span]:!inline"
+          />
+          <ShareButton className="w-full justify-center rounded [&>span]:!inline" />
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="space-y-3">
       {isStaleFreshness(generatedAt) ? (
@@ -221,64 +292,36 @@ function ValidatorsDirectory({
         />
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <SearchInput
-          value={search.q}
-          onChange={(v) => setSearch({ q: v })}
-          placeholder="Search by operator, hotkey, or coldkey"
-          className="w-full sm:w-80"
-        />
-        {/* #8256: only offered once something is starred -- an always-visible
-            filter that can only ever return nothing is furniture. */}
-        <button
-          type="button"
-          onClick={() => setSearch({ grouped: !grouped })}
-          aria-pressed={grouped}
-          title="Cluster an operator's validator keys under one entry"
-          className={classNames(
-            "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 mg-type-caption font-medium transition-colors",
-            grouped
-              ? "border-accent/40 bg-accent/10 text-accent-text"
-              : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
-          )}
-        >
-          Group by operator
-        </button>
-        {watchlist.count > 0 ? (
-          <button
-            type="button"
-            onClick={() => setSearch({ watched: !search.watched })}
-            aria-pressed={search.watched}
-            className={classNames(
-              "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 mg-type-caption font-medium transition-colors",
-              search.watched
-                ? "border-accent/40 bg-accent/10 text-accent-text"
-                : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
-            )}
-          >
-            <Star
-              className={classNames("size-3.5", search.watched && "fill-accent text-accent")}
-              aria-hidden
+      <div className="mg-directory-toolbar flex w-full flex-col gap-0 min-w-0">
+        <div className="flex w-full items-center gap-2 min-w-0">
+          <QueryBar className="min-h-11 lg:min-h-0" ariaLabel="Search validators">
+            <QueryBar.Search
+              value={search.q}
+              onChange={(v) => setSearch({ q: v })}
+              placeholder="Search operator, hotkey, or coldkey"
+              debounceMs={150}
+              className="min-h-11 lg:min-h-0"
             />
-            Watched · {watchlist.count}
-          </button>
-        ) : null}
-        <span className="mg-type-data text-ink-muted">
-          {formatNumber(rows.length)} of {formatNumber(all.length)} validators
-        </span>
-        <div className="ml-auto flex items-center gap-2">
-          <ColumnCustomizer
-            columns={VALIDATOR_COLUMNS}
-            isVisible={columns.isVisible}
-            onToggle={columns.toggle}
-            onReset={columns.reset}
-          />
-          <DensityToggle value={density} onChange={onDensityChange} />
+          </QueryBar>
+          <FilterSheet
+            className="shrink-0 [&>button]:min-h-11 lg:[&>button]:min-h-9"
+            label="Controls"
+            activeCount={activeFilterCount}
+          >
+            {directoryRefinements}
+          </FilterSheet>
         </div>
+        <QueryBar.MetaRow
+          count={rows.length}
+          total={all.length}
+          noun="validators"
+          activeCount={activeFilterCount}
+          onReset={search.watched ? () => setSearch({ watched: false }) : undefined}
+        />
       </div>
 
       {rows.length > 0 ? (
-        <div className="hidden md:block rounded-md border border-border">
+        <div className="mg-directory-table hidden lg:block border border-border">
           {/* ONE scroll container carrying BOTH sets of styling.
               This was split into single-axis wrappers (#8314) because a
               combined overflow-auto div left the extra columns
@@ -415,7 +458,7 @@ function ValidatorsDirectory({
       {rows.length > 0 ? (
         <ValidatorCardList
           validators={rows.slice(0, 50)}
-          className="grid gap-3 sm:grid-cols-2 md:hidden"
+          className="grid gap-3 sm:grid-cols-2 lg:hidden"
         />
       ) : null}
 
@@ -424,11 +467,10 @@ function ValidatorsDirectory({
   );
 }
 
-// #8251: the concentration story, calmed. The old full-bleed flat-mint
-// treemap (the loudest visual element on the site) retires; in its place, ONE
-// accent moment — a top-10 stacked horizontal dominance bar — and the
-// stake-intensity heatmap matrix survives behind a collapsed "Concentration
-// detail" disclosure instead of rendering unconditionally.
+// #8251: the concentration story stays calm, but each top operator needs a
+// stable categorical color. Mint remains an interface/focus signal; a single
+// mint stack for ten different operators makes the chart impossible to scan.
+// The stake-intensity heatmap remains behind an explicit disclosure.
 function ConcentrationSection({ validators }: { validators: GlobalValidator[] }) {
   const [showDetail, setShowDetail] = useState(false);
   const ranked = useMemo(
@@ -446,13 +488,23 @@ function ConcentrationSection({ validators }: { validators: GlobalValidator[] })
     v.coldkey_identity?.has_identity && v.coldkey_identity.name
       ? v.coldkey_identity.name
       : (v.hotkey.slice(0, 6) ?? "validator");
+  const seriesColors = [
+    "var(--chart-1)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--chart-4)",
+    "var(--chart-5)",
+    "var(--chart-6)",
+    "var(--chart-7)",
+    "var(--chart-8)",
+    "var(--chart-9)",
+    "var(--chart-10)",
+  ];
   const segments = [
     ...top.map((v, i) => ({
       label: label(v),
       value: (v.stake_dominance ?? 0) * 100,
-      // One accent moment: interpolate opacity down the ranking rather than
-      // introducing a second hue.
-      color: `color-mix(in oklab, var(--accent) ${100 - i * 8}%, var(--border))`,
+      color: seriesColors[i % seriesColors.length]!,
     })),
     { label: "everyone else", value: rest * 100, color: "var(--border)" },
   ];

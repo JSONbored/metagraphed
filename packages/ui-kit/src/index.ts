@@ -125,6 +125,19 @@ export { KeyChip } from "@/components/metagraphed/key-chip";
 export { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 export { PageHero } from "@/components/metagraphed/page-hero";
 export {
+  DataPageStage,
+  DataPageHero,
+  DataPageCanvas,
+  DataPageModule,
+  DataPageDisclosure,
+  DataPageWindowTabs,
+  type DataPageStageVariant,
+  type DataPageHeroVariant,
+  type DataPageCanvasVariant,
+  type DataPageModuleKind,
+  type DataPageWindowOption,
+} from "@/components/metagraphed/data-page";
+export {
   type EntityHeroProps,
   type EntityHeroStat,
   EntityHero,
@@ -306,6 +319,7 @@ export {
   type GhostButtonProps,
   type GhostButtonSize,
   type GhostButtonTone,
+  type GhostButtonAppearance,
 } from "@/components/metagraphed/ghost-button";
 export {
   PagerFooter,

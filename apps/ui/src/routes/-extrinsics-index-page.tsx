@@ -258,6 +258,8 @@ function ExtrinsicsTable() {
 
   return (
     <ListShell
+      presentation="canvas"
+      responsiveAt="lg"
       filters={filters}
       isEmpty={rows.length === 0}
       empty={emptyNode}

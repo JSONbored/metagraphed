@@ -22,26 +22,22 @@ export const APIS_TABS: readonly ApisTab[] = [
   {
     to: "/apis",
     label: "Catalog",
-    blurb:
-      "Every verified public interface across subnets — APIs, schemas, docs, dashboards and SDKs, filterable by kind, provider and netuid.",
+    blurb: "Public APIs, schemas, docs, dashboards, and SDKs by subnet.",
   },
   {
     to: "/apis/endpoints",
     label: "Live endpoints",
-    blurb:
-      "Callable Subtensor and subnet endpoints — health, latency and pool eligibility, plus the managed RPC proxy.",
+    blurb: "Network and subnet endpoints with live health and latency.",
   },
   {
     to: "/apis/schemas",
     label: "Schemas",
-    blurb:
-      "JSON Schema is canonical truth. Drift compares the current snapshot against the previous published version.",
+    blurb: "Published JSON Schema snapshots and drift.",
   },
   {
     to: "/apis/providers",
     label: "Providers",
-    blurb:
-      "The teams, infra operators, docs registries and community sources behind these public interfaces.",
+    blurb: "Teams and operators behind public interfaces.",
   },
 ] as const;
 
@@ -49,8 +45,8 @@ export function activeApisTab(pathname: string): ApisTab {
   return activeHubTab(APIS_TABS, pathname);
 }
 
-export function ApisTabs() {
-  return <HubTabs tabs={APIS_TABS} ariaLabel="API sections" />;
+export function ApisTabs({ className }: { className?: string }) {
+  return <HubTabs tabs={APIS_TABS} ariaLabel="API sections" className={className} />;
 }
 
 export const ApisTabActions = HubTabActions;

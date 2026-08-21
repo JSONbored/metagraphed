@@ -3,7 +3,10 @@ import { Link, useParams } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
   AsyncPanel,
-  PageMasthead,
+  DataPageCanvas,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
   Panel,
   TableSkeleton,
 } from "@/components/metagraphed/primitives";
@@ -121,15 +124,25 @@ export function SubnetCategoryPage() {
   const copy = categoryCopy(slug);
   return (
     <AppShell>
-      <PageMasthead
-        live
-        eyebrow="Category"
-        title={`${copy.label} subnets`}
-        description={copy.summary}
-      />
-      <AsyncPanel context="subnet-category" fallback={<TableSkeleton rows={8} columns={4} />}>
-        <CategoryTable slug={slug} />
-      </AsyncPanel>
+      <DataPageStage>
+        <DataPageHero
+          id="subnet-category-title"
+          eyebrow="Registry category"
+          live
+          title={`${copy.label} subnets.`}
+          description={copy.summary}
+        />
+        <DataPageCanvas>
+          <DataPageModule
+            title={`Compare ${copy.label.toLowerCase()} work.`}
+            caption="The category view turns a registry label into a compact, evidence-backed comparison."
+          >
+            <AsyncPanel context="subnet-category" fallback={<TableSkeleton rows={8} columns={4} />}>
+              <CategoryTable slug={slug} />
+            </AsyncPanel>
+          </DataPageModule>
+        </DataPageCanvas>
+      </DataPageStage>
     </AppShell>
   );
 }

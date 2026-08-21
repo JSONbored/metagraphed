@@ -51,12 +51,18 @@ import {
   SectionAnchor,
   StatTile,
   BarMini,
-  Chip,
   DownloadCsvButton,
   ExternalLink,
   BackToTop,
 } from "@jsonbored/ui-kit";
-import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageDisclosure,
+  DataPageModule,
+  DataPageStage,
+  PageMasthead,
+} from "@/components/metagraphed/primitives";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
 import { AccountHoldingsHistory } from "@/components/metagraphed/account-holdings-history";
@@ -286,278 +292,290 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
     return { ...t };
   });
 
+  const accountDescription =
+    identity?.has_identity && identity.description
+      ? identity.description
+      : "Positions, transfers, and first-party chain activity for this Bittensor account.";
+
   return (
-    <>
-      <PageMasthead
-        eyebrow="Explorer · account"
-        live
-        title={resolvedTitle.display}
-        description={
-          <div className="space-y-4">
-            <p className="max-w-2xl">
-              {identity?.has_identity && identity.description
-                ? identity.description
-                : "Cross-subnet registrations, first-party chain events, and daily activity rollups for one Bittensor account."}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              {/* eslint-disable-next-line no-restricted-syntax -- genuinely 80% (#8554): this tier is 95%; .mg-glass would add blur(8px), a real visual change */}
-              <div className="max-w-full sm:max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 mg-card-glow">
-                <CopyableCode value={ss58} truncate={false} className="max-w-full" />
-              </div>
-              <RoleChip role={detectedRole} dual={dualRole} />
-              {resolvedTitle.source === "nametag" && resolvedTitle.category ? (
-                <Chip tone="muted" title={`Curated nametag · ${resolvedTitle.category}`}>
-                  {resolvedTitle.category}
-                </Chip>
+    <DataPageStage variant="profile">
+      <PageMasthead live title={resolvedTitle.display} description={accountDescription} />
+
+      <DataPageCanvas variant="profile">
+        <DataPageModule
+          kind="profile"
+          title="Account state"
+          caption="The current on-chain picture. Use the sections below for history, transfers, activity, and raw API access."
+          actions={
+            <div className="flex flex-wrap items-center gap-3">
+              {isStaleFreshness(generatedAt) ? (
+                <StaleBanner
+                  compact
+                  generatedAt={generatedAt}
+                  refreshQueryKeys={[accountQuery(ss58).queryKey]}
+                />
               ) : null}
+              <ActionBar>
+                <WatchStarButton kind="account" id={ss58} label="this account" iconOnly />
+                <ShareButton bare iconOnly />
+              </ActionBar>
             </div>
+          }
+        >
+          <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0 max-w-2xl">
+              <p className="mg-type-label uppercase text-ink-muted">On-chain address</p>
+              <CopyableCode value={ss58} truncate={false} className="mt-2 max-w-full" />
+            </div>
+            <dl className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:justify-end">
+              <div className="inline-flex items-center gap-2">
+                <dt className="mg-type-label uppercase text-ink-muted">Role</dt>
+                <dd>
+                  <RoleChip role={detectedRole} dual={dualRole} />
+                </dd>
+              </div>
+              {resolvedTitle.source === "nametag" && resolvedTitle.category ? (
+                <div className="inline-flex items-center gap-2">
+                  <dt className="mg-type-label uppercase text-ink-muted">Category</dt>
+                  <dd className="mg-type-caption text-ink-strong">{resolvedTitle.category}</dd>
+                </div>
+              ) : null}
+            </dl>
           </div>
-        }
-        actions={
-          <>
-            <ActionBar>
-              <WatchStarButton kind="account" id={ss58} label="this account" iconOnly />
-              <ShareButton bare iconOnly />
-            </ActionBar>
-            {/* #8484: outside the ActionBar (its children need their own
-                `bare` variant for the segmented look) but still in `actions`
-                -- unlike `description`, this row isn't `line-clamp`-collapsed,
-                so the entry point stays reachable regardless of how long the
-                description text runs. */}
-            <AddressLabelEditor ss58={ss58} />
-            {isStaleFreshness(generatedAt) ? (
-              <StaleBanner
-                compact
-                generatedAt={generatedAt}
-                refreshQueryKeys={[accountQuery(ss58).queryKey]}
-              />
-            ) : null}
-          </>
-        }
-        caption="explorer / v1"
-      />
 
-      <AccountKpiBand
-        role={dualRole ? roleView : detectedRole}
-        dual={dualRole}
-        onRoleChange={setRoleView}
-        account={account}
-        balance={balance}
-        balanceError={balanceResult.isError}
-        balanceImplausible={balanceImplausible}
-        onRetryBalance={() => void balanceResult.refetch()}
-        portfolio={portfolio}
-        portfolioPhase={statPhase(portfolioResult)}
-        stakeFlow={stakeFlow}
-        validator={validator}
-        estApyPct={estApyPct}
-        lastAnnouncedAt={lastAnnouncedAt}
-      />
+          <AccountKpiBand
+            role={dualRole ? roleView : detectedRole}
+            dual={dualRole}
+            onRoleChange={setRoleView}
+            account={account}
+            balance={balance}
+            balanceError={balanceResult.isError}
+            balanceImplausible={balanceImplausible}
+            onRetryBalance={() => void balanceResult.refetch()}
+            portfolio={portfolio}
+            portfolioPhase={statPhase(portfolioResult)}
+            stakeFlow={stakeFlow}
+            validator={validator}
+            estApyPct={estApyPct}
+            lastAnnouncedAt={lastAnnouncedAt}
+          />
 
-      <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
+          <DataPageDisclosure label="Personal label">
+            <div className="max-w-xs">
+              <AddressLabelEditor ss58={ss58} trigger="button" />
+            </div>
+          </DataPageDisclosure>
+        </DataPageModule>
 
-      {!hasActivity ? (
-        <EmptyState
-          title="No activity indexed for this account"
-          description="The chain poller indexes first-party events for recent blocks. Cold accounts or those without recent on-chain activity won't appear yet."
-          action={{ label: "Back to accounts", href: "/accounts" }}
-        />
-      ) : null}
+        <DataPageModule kind="profile">
+          <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
 
-      {tab === "overview" && (
-        <>
-          {identity?.has_identity ? <AccountIdentitySection ss58={ss58} /> : null}
-          <AccountRecentActivityPreview events={account.recent_events} />
-          <AccountEntitiesSection ss58={ss58} />
-        </>
-      )}
+          {!hasActivity ? (
+            <EmptyState
+              title="No activity indexed for this account"
+              description="The chain poller indexes first-party events for recent blocks. Cold accounts or those without recent on-chain activity won't appear yet."
+              action={{ label: "Back to accounts", href: "/accounts" }}
+            />
+          ) : null}
 
-      {tab === "positions" && (
-        <>
-          {/* #8252: coldkey leads with what it holds; hotkey leads with its
-              registrations. Both render the same section set within this tab. */}
-          {detectedRole === "coldkey" ? (
+          {tab === "overview" && (
             <>
-              <AccountPortfolioSection ss58={ss58} />
-              <AccountStakeFlowSection ss58={ss58} />
-              <AccountStakeMovesSection ss58={ss58} />
-              <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
-            </>
-          ) : (
-            <>
-              <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
-              <AccountStakeFlowSection ss58={ss58} />
-              <AccountPortfolioSection ss58={ss58} />
-              <AccountStakeMovesSection ss58={ss58} />
+              {identity?.has_identity ? <AccountIdentitySection ss58={ss58} /> : null}
+              <AccountRecentActivityPreview events={account.recent_events} />
+              <AccountEntitiesSection ss58={ss58} />
             </>
           )}
-          {/* #6723: live child/parent-hotkey stake-weight delegation graph. */}
-          <AccountDelegationSection ss58={ss58} />
-        </>
-      )}
 
-      {tab === "holdings" && (
-        <SectionAnchor
-          id="holdings-history"
-          title="Holdings over time"
-          subtitle="Staked τ by subnet from daily position snapshots — free balance stays a live read in the band above."
-          tone="accent"
-          info="Depth is limited by how far back daily snapshots reach; it grows as the genesis backfill (#8368) lands."
-        >
-          <AccountHoldingsHistory ss58={ss58} />
-        </SectionAnchor>
-      )}
+          {tab === "positions" && (
+            <>
+              {/* #8252: coldkey leads with what it holds; hotkey leads with its
+              registrations. Both render the same section set within this tab. */}
+              {detectedRole === "coldkey" ? (
+                <>
+                  <AccountPortfolioSection ss58={ss58} />
+                  <AccountStakeFlowSection ss58={ss58} />
+                  <AccountStakeMovesSection ss58={ss58} />
+                  <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+                </>
+              ) : (
+                <>
+                  <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+                  <AccountStakeFlowSection ss58={ss58} />
+                  <AccountPortfolioSection ss58={ss58} />
+                  <AccountStakeMovesSection ss58={ss58} />
+                </>
+              )}
+              {/* #6723: live child/parent-hotkey stake-weight delegation graph. */}
+              <AccountDelegationSection ss58={ss58} />
+            </>
+          )}
 
-      {tab === "holdings" && (
-        <SectionAnchor
-          id="root-claim"
-          title="Root claim"
-          subtitle="What this account's root stake would do in a swap, and which hotkeys it reaches."
-          info="GET /api/v1/accounts/{ss58}/root-claim — the payload's own `field_sources` marks the claim type as MEASURED (read from SubtensorModule.RootClaimType) and the hotkey list as RECONSTRUCTED (inferred from other state). The panel shows that provenance beside the figure it qualifies rather than rendering an inference with the authority of a reading."
-        >
-          <AccountRootClaim ss58={ss58} />
-        </SectionAnchor>
-      )}
+          {tab === "holdings" && (
+            <SectionAnchor
+              id="holdings-history"
+              title="Holdings over time"
+              subtitle="Staked τ by subnet from daily position snapshots — free balance stays a live read in the band above."
+              tone="accent"
+              info="Depth is limited by how far back daily snapshots reach; it grows as the genesis backfill (#8368) lands."
+            >
+              <AccountHoldingsHistory ss58={ss58} />
+            </SectionAnchor>
+          )}
 
-      {tab === "transfers" && (
-        <>
-          <AccountTransfersSection
-            ss58={ss58}
-            rows={transfers}
-            isPending={transfersResult.isPending}
-            isError={transfersResult.isError}
-            error={transfersResult.error}
-            onRetry={() => void transfersResult.refetch()}
-          />
-          {/* #3340: the aggregated fund-flow view over the same transfer data. */}
-          <AccountCounterpartiesSection ss58={ss58} />
-        </>
-      )}
+          {tab === "holdings" && (
+            <SectionAnchor
+              id="root-claim"
+              title="Root claim"
+              subtitle="What this account's root stake would do in a swap, and which hotkeys it reaches."
+              info="GET /api/v1/accounts/{ss58}/root-claim — the payload's own `field_sources` marks the claim type as MEASURED (read from SubtensorModule.RootClaimType) and the hotkey list as RECONSTRUCTED (inferred from other state). The panel shows that provenance beside the figure it qualifies rather than rendering an inference with the authority of a reading."
+            >
+              <AccountRootClaim ss58={ss58} />
+            </SectionAnchor>
+          )}
 
-      {tab === "activity" && (
-        <>
-          {/* Daily activity is a hotkey-keyed rollup -- rendering it for a
+          {tab === "transfers" && (
+            <>
+              <AccountTransfersSection
+                ss58={ss58}
+                rows={transfers}
+                isPending={transfersResult.isPending}
+                isError={transfersResult.isError}
+                error={transfersResult.error}
+                onRetry={() => void transfersResult.refetch()}
+              />
+              {/* #3340: the aggregated fund-flow view over the same transfer data. */}
+              <AccountCounterpartiesSection ss58={ss58} />
+            </>
+          )}
+
+          {tab === "activity" && (
+            <>
+              {/* Daily activity is a hotkey-keyed rollup -- rendering it for a
               coldkey guarantees the framed "No daily hotkey activity yet"
               panel the redesign removes, so it's hotkey-only by construction
               rather than relying on an empty state to explain itself. */}
-          {detectedRole === "hotkey" ? (
-            <SectionAnchor
-              id="history"
-              title="Daily activity"
-              subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
-              tone="accent"
-              info="History is keyed by hotkey activity only."
-              right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
-            >
-              <AccountHistoryChart ss58={ss58} />
-            </SectionAnchor>
-          ) : null}
-          <AccountTeardownActivitySection ss58={ss58} />
-          <AccountRegistrationActivitySection ss58={ss58} />
-          <AccountDeregistrationActivitySection ss58={ss58} />
-          <AccountWeightSettingSection ss58={ss58} />
-          <AccountEndpointAnnouncementSection ss58={ss58} />
-          {account.event_kinds.length > 0 ? (
-            <SectionAnchor
-              id="kinds"
-              title="Activity by kind"
-              subtitle="Relative event mix across the indexed sample for this account."
-              tone="accent"
-              right={<SectionBadge>{formatNumber(account.event_kinds.length)} kinds</SectionBadge>}
-            >
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {account.event_kinds.map((entry) => (
-                  <div
-                    key={entry.kind}
-                    className="rounded-2xl border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
-                  >
-                    <div className="mg-type-caption text-ink-muted">event kind</div>
-                    <div className="mt-2 flex items-end justify-between gap-3">
-                      <span className="min-w-0 truncate font-mono mg-type-caption text-ink-strong">
-                        {entry.kind}
-                      </span>
-                      <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
-                        {formatNumber(entry.count)}
-                      </span>
-                    </div>
+              {detectedRole === "hotkey" ? (
+                <SectionAnchor
+                  id="history"
+                  title="Daily activity"
+                  subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
+                  tone="accent"
+                  info="History is keyed by hotkey activity only."
+                  right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
+                >
+                  <AccountHistoryChart ss58={ss58} />
+                </SectionAnchor>
+              ) : null}
+              <AccountTeardownActivitySection ss58={ss58} />
+              <AccountRegistrationActivitySection ss58={ss58} />
+              <AccountDeregistrationActivitySection ss58={ss58} />
+              <AccountWeightSettingSection ss58={ss58} />
+              <AccountEndpointAnnouncementSection ss58={ss58} />
+              {account.event_kinds.length > 0 ? (
+                <SectionAnchor
+                  id="kinds"
+                  title="Activity by kind"
+                  subtitle="Relative event mix across the indexed sample for this account."
+                  tone="accent"
+                  right={
+                    <SectionBadge>{formatNumber(account.event_kinds.length)} kinds</SectionBadge>
+                  }
+                >
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {account.event_kinds.map((entry) => (
+                      <div
+                        key={entry.kind}
+                        className="rounded-2xl border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
+                      >
+                        <div className="mg-type-caption text-ink-muted">event kind</div>
+                        <div className="mt-2 flex items-end justify-between gap-3">
+                          <span className="min-w-0 truncate font-mono mg-type-caption text-ink-strong">
+                            {entry.kind}
+                          </span>
+                          <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
+                            {formatNumber(entry.count)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SectionAnchor>
+              ) : null}
+              <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
+            </>
+          )}
+
+          {tab === "extrinsics" && (
+            <AccountExtrinsicsSection
+              ss58={ss58}
+              rows={signedExtrinsics}
+              isPending={extrinsicsResult.isPending}
+              isError={extrinsicsResult.isError}
+              error={extrinsicsResult.error}
+              onRetry={() => void extrinsicsResult.refetch()}
+            />
+          )}
+
+          {tab === "api" && (
+            <SectionAnchor
+              id="call"
+              title="Call this endpoint"
+              subtitle="Copy a ready-to-run request for this account."
+            >
+              <EndpointSnippet
+                rows={[
+                  { label: "summary", path: `/api/v1/accounts/${sourceRef}` },
+                  { label: "balance", path: `/api/v1/accounts/${sourceRef}/balance` },
+                  { label: "identity", path: `/api/v1/accounts/${sourceRef}/identity` },
+                  { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
+                  { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
+                  { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
+                  { label: "counterparties", path: `/api/v1/accounts/${sourceRef}/counterparties` },
+                  { label: "children", path: `/api/v1/accounts/${sourceRef}/children` },
+                  { label: "parents", path: `/api/v1/accounts/${sourceRef}/parents` },
+                  { label: "entities", path: `/api/v1/accounts/${sourceRef}/entities` },
+                  { label: "stake-flow", path: `/api/v1/accounts/${sourceRef}/stake-flow` },
+                  { label: "serving", path: `/api/v1/accounts/${sourceRef}/serving` },
+                  { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
+                ]}
+              />
             </SectionAnchor>
-          ) : null}
-          <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
-        </>
-      )}
+          )}
 
-      {tab === "extrinsics" && (
-        <AccountExtrinsicsSection
-          ss58={ss58}
-          rows={signedExtrinsics}
-          isPending={extrinsicsResult.isPending}
-          isError={extrinsicsResult.isError}
-          error={extrinsicsResult.error}
-          onRetry={() => void extrinsicsResult.refetch()}
-        />
-      )}
-
-      {tab === "api" && (
-        <SectionAnchor
-          id="call"
-          title="Call this endpoint"
-          subtitle="Copy a ready-to-run request for this account."
-        >
-          <EndpointSnippet
-            rows={[
-              { label: "summary", path: `/api/v1/accounts/${sourceRef}` },
-              { label: "balance", path: `/api/v1/accounts/${sourceRef}/balance` },
-              { label: "identity", path: `/api/v1/accounts/${sourceRef}/identity` },
-              { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
-              { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
-              { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
-              { label: "counterparties", path: `/api/v1/accounts/${sourceRef}/counterparties` },
-              { label: "children", path: `/api/v1/accounts/${sourceRef}/children` },
-              { label: "parents", path: `/api/v1/accounts/${sourceRef}/parents` },
-              { label: "entities", path: `/api/v1/accounts/${sourceRef}/entities` },
-              { label: "stake-flow", path: `/api/v1/accounts/${sourceRef}/stake-flow` },
-              { label: "serving", path: `/api/v1/accounts/${sourceRef}/serving` },
-              { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
-            ]}
-          />
-        </SectionAnchor>
-      )}
-
-      {/* #6432: deliberately NOT "← All accounts" like the other detail pages'
+          {/* #6432: deliberately NOT "← All accounts" like the other detail pages'
           back-links. /accounts is a lookup form, not an index -- there is no
           list of every chain account to go back to -- so the label names what
           the destination actually is. Sibling pages (blocks, extrinsics,
           validators, subnets) do point at real directories and use "← All X". */}
-      <div className="mt-6">
-        <Link
-          to="/accounts"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-data font-medium hover:border-ink/30"
-        >
-          ← Account lookup
-        </Link>
-      </div>
+          <div className="mt-6">
+            <Link
+              to="/accounts"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-data font-medium hover:border-ink/30"
+            >
+              ← Account lookup
+            </Link>
+          </div>
 
-      <ApiSourceFooter
-        paths={[
-          `/api/v1/accounts/${sourceRef}`,
-          `/api/v1/accounts/${sourceRef}/identity`,
-          `/api/v1/accounts/${sourceRef}/history`,
-          `/api/v1/accounts/${sourceRef}/events`,
-          `/api/v1/accounts/${sourceRef}/subnets`,
-          `/api/v1/accounts/${sourceRef}/counterparties`,
-          `/api/v1/accounts/${sourceRef}/children`,
-          `/api/v1/accounts/${sourceRef}/parents`,
-          `/api/v1/accounts/${sourceRef}/entities`,
-          `/api/v1/accounts/${sourceRef}/stake-flow`,
-          `/api/v1/accounts/${sourceRef}/serving`,
-          `/api/v1/accounts/${sourceRef}/prometheus`,
-        ]}
-      />
-      <BackToTop />
-    </>
+          <ApiSourceFooter
+            paths={[
+              `/api/v1/accounts/${sourceRef}`,
+              `/api/v1/accounts/${sourceRef}/identity`,
+              `/api/v1/accounts/${sourceRef}/history`,
+              `/api/v1/accounts/${sourceRef}/events`,
+              `/api/v1/accounts/${sourceRef}/subnets`,
+              `/api/v1/accounts/${sourceRef}/counterparties`,
+              `/api/v1/accounts/${sourceRef}/children`,
+              `/api/v1/accounts/${sourceRef}/parents`,
+              `/api/v1/accounts/${sourceRef}/entities`,
+              `/api/v1/accounts/${sourceRef}/stake-flow`,
+              `/api/v1/accounts/${sourceRef}/serving`,
+              `/api/v1/accounts/${sourceRef}/prometheus`,
+            ]}
+          />
+          <BackToTop />
+        </DataPageModule>
+      </DataPageCanvas>
+    </DataPageStage>
   );
 }
 
@@ -566,7 +584,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 function RoleChip({ role, dual }: { role: AccountRole; dual: boolean }) {
   const label = dual ? "coldkey + hotkey" : role;
   return (
-    <span className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1.5 mg-type-caption text-ink-muted">
+    <span className="inline-flex items-center gap-1.5 mg-type-caption text-ink-muted">
+      <span aria-hidden className="size-1.5 rounded-full bg-accent" />
       {label}
     </span>
   );
@@ -657,7 +676,7 @@ function AccountKpiBand({
     netFlow == null ? "—" : `${netFlow >= 0 ? "+" : "−"}${fmtTaoCompact(Math.abs(netFlow))}`;
 
   return (
-    <div className="mb-8">
+    <div>
       {dual ? (
         <div className="mb-3 flex items-center gap-2">
           <span className="mg-type-caption text-ink-muted">Showing:</span>

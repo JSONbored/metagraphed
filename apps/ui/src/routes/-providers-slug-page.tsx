@@ -3,7 +3,6 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, RECOVERY, StaleBanner } from "@/components/metagraphed/states";
-import { Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
   BrandIcon,
@@ -12,7 +11,15 @@ import {
   SectionAnchor,
   ShareButton,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, TabStrip } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageModule,
+  DataPageStage,
+  PageMasthead,
+  Panel,
+  TabStrip,
+} from "@/components/metagraphed/primitives";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
@@ -80,7 +87,7 @@ function ProviderShell({ slug }: { slug: string }) {
     });
 
   return (
-    <>
+    <DataPageStage>
       {/* No breadcrumb row here: the app-shell's own row is the single
           canonical trail (#7853). AppShell's `crumbLabel` prop carries the
           provider's display name this used to render redundantly. */}
@@ -107,52 +114,68 @@ function ProviderShell({ slug }: { slug: string }) {
           </Panel>
         }
       />
-      {shouldShowProviderSlugSubtitle(p?.name, slug) ? (
-        <div className="-mt-2 mb-3 mg-type-data text-ink-muted">{slug}</div>
-      ) : null}
+      <DataPageCanvas>
+        <DataPageModule
+          title="Provider footprint."
+          caption="Endpoints, ownership context, and evidence stay in one reading flow; use the tabs to narrow the task without losing the operational summary."
+        >
+          {shouldShowProviderSlugSubtitle(p?.name, slug) ? (
+            <div className="-mt-2 mb-3 mg-type-data text-ink-muted">{slug}</div>
+          ) : null}
 
-      <div className="mg-kpi-strip">
-        <ProviderPulseTile label="Endpoints" value={formatNumber(summary?.endpoint_count)} />
-        <ProviderPulseTile label="Monitored" value={formatNumber(summary?.monitored_count)} />
-        <ProviderPulseTile label="Healthy" value={formatNumber(summary?.by_status?.ok)} tone="ok" />
-        <ProviderPulseTile
-          label="Pool eligible"
-          value={formatNumber(summary?.pool_eligible_count)}
-        />
-      </div>
-      {stale ? (
-        <StaleBanner
-          generatedAt={meta?.generated_at}
-          refreshQueryKeys={[providerQuery(slug).queryKey, providerEndpointsQuery(slug).queryKey]}
-        />
-      ) : null}
+          <div className="mg-kpi-strip">
+            <ProviderPulseTile label="Endpoints" value={formatNumber(summary?.endpoint_count)} />
+            <ProviderPulseTile label="Monitored" value={formatNumber(summary?.monitored_count)} />
+            <ProviderPulseTile
+              label="Healthy"
+              value={formatNumber(summary?.by_status?.ok)}
+              tone="ok"
+            />
+            <ProviderPulseTile
+              label="Pool eligible"
+              value={formatNumber(summary?.pool_eligible_count)}
+            />
+          </div>
+          {stale ? (
+            <StaleBanner
+              generatedAt={meta?.generated_at}
+              refreshQueryKeys={[
+                providerQuery(slug).queryKey,
+                providerEndpointsQuery(slug).queryKey,
+              ]}
+            />
+          ) : null}
 
-      <TabStrip
-        items={TABS.map((item) =>
-          item.id === "endpoints" ? { ...item, meta: summary?.endpoint_count } : item,
-        )}
-        value={tab}
-        onChange={setTab}
-        ariaLabel="Provider profile sections"
-        className="mt-4 overflow-x-auto"
-      />
+          <TabStrip
+            items={TABS.map((item) =>
+              item.id === "endpoints" ? { ...item, meta: summary?.endpoint_count } : item,
+            )}
+            value={tab}
+            onChange={setTab}
+            ariaLabel="Provider profile sections"
+            className="mt-4 overflow-x-auto"
+          />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
-        <div className="min-w-0 space-y-6">
-          {tab === "overview" ? <OverviewPanel slug={slug} /> : null}
-          {tab === "endpoints" ? <EndpointsPanel slug={slug} /> : null}
-          {tab === "subnets" ? <SubnetsServedPanel slug={slug} /> : null}
-          {tab === "evidence" ? <EvidencePanel provider={p} /> : null}
-        </div>
+          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
+            <div className="min-w-0 space-y-6">
+              {tab === "overview" ? <OverviewPanel slug={slug} /> : null}
+              {tab === "endpoints" ? <EndpointsPanel slug={slug} /> : null}
+              {tab === "subnets" ? <SubnetsServedPanel slug={slug} /> : null}
+              {tab === "evidence" ? <EvidencePanel provider={p} /> : null}
+            </div>
 
-        <aside className="space-y-3 border-t border-border pt-4 lg:sticky lg:top-32 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 self-start">
-          {summary?.by_kind ? <BreakdownCard title="By kind" data={summary.by_kind} /> : null}
-          {summary?.by_status ? <BreakdownCard title="By status" data={summary.by_status} /> : null}
-          {summary?.by_layer ? <BreakdownCard title="By layer" data={summary.by_layer} /> : null}
-        </aside>
-      </div>
+            <aside className="space-y-3 border-t border-border pt-4 lg:sticky lg:top-32 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 self-start">
+              {summary?.by_kind ? <BreakdownCard title="By kind" data={summary.by_kind} /> : null}
+              {summary?.by_status ? (
+                <BreakdownCard title="By status" data={summary.by_status} />
+              ) : null}
+              {summary?.by_layer ? (
+                <BreakdownCard title="By layer" data={summary.by_layer} />
+              ) : null}
+            </aside>
+          </div>
 
-      {/*
+          {/*
         #11351: the same flywheel #8329 built for subnet teams, on the 138
         provider pages that never had it. /api/v1/providers/{slug}/badge.svg has
         always existed and nothing pointed an operator at it.
@@ -161,12 +184,14 @@ function ProviderShell({ slug }: { slug: string }) {
         earns an inbound link -- measured 2026-08-15, 0 of 115 reachable subnet
         READMEs mention metagraph.sh.
       */}
-      <UptimeBadgeEmbed entity="providers" id={slug} name={p.name ?? undefined} />
+          <UptimeBadgeEmbed entity="providers" id={slug} name={p.name ?? undefined} />
+        </DataPageModule>
+      </DataPageCanvas>
 
       <ApiSourceFooter
         paths={[`/api/v1/providers/${slug}`, `/api/v1/providers/${slug}/endpoints`]}
       />
-    </>
+    </DataPageStage>
   );
 }
 

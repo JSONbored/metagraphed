@@ -42,7 +42,7 @@ export function PageSection({
       id={id}
       data-section-anchor={id ? "" : undefined}
       className={classNames(
-        "mg-section",
+        "mg-section mg-route-section",
         tone === "muted" &&
           "rounded-xl bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
         className,

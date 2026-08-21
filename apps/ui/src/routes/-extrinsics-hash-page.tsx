@@ -16,7 +16,14 @@ import {
   StatTile,
   TableState,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageModule,
+  DataPageStage,
+  PageMasthead,
+  Panel,
+} from "@/components/metagraphed/primitives";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -121,7 +128,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
 
   if (!extrinsic) {
     return (
-      <>
+      <DataPageStage>
         <PageHeading
           eyebrow="Explorer"
           title={`Extrinsic ${shortHash(hash) ?? hash}`}
@@ -136,7 +143,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           paths={[`/api/v1/extrinsics/${sourceRef}`]}
           artifacts={[`/metagraph/extrinsics/${sourceRef}.json`]}
         />
-      </>
+      </DataPageStage>
     );
   }
 
@@ -150,7 +157,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
   });
 
   return (
-    <>
+    <DataPageStage>
       <PageMasthead
         eyebrow="Explorer · extrinsic"
         live
@@ -182,119 +189,125 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         caption="explorer / v1"
       />
 
-      <RelatedEntityChipRow>
-        {extrinsic.signer ? (
-          <Link
-            to="/accounts/$ss58"
-            params={{ ss58: extrinsic.signer }}
-            className={relatedEntityChipLinkClass}
-          >
-            <RelatedEntityChip label="signer" title="Signer account">
-              {shortSs58Chip(extrinsic.signer)}
-            </RelatedEntityChip>
-          </Link>
-        ) : null}
-        {extrinsic.block_number != null ? (
-          <Link
-            to="/blocks/$ref"
-            params={{ ref: String(extrinsic.block_number) }}
-            className={relatedEntityChipLinkClass}
-          >
-            <RelatedEntityChip label="block" title="Including block">
-              #{formatNumber(extrinsic.block_number)}
-            </RelatedEntityChip>
-          </Link>
-        ) : null}
-        {relatedNetuid != null ? (
-          <Link
-            to="/subnets/$netuid"
-            params={{ netuid: relatedNetuid }}
-            className={relatedEntityChipLinkClass}
-          >
-            <RelatedEntityChip label="subnet" title={`Subnet ${relatedNetuid}`}>
-              SN{relatedNetuid}
-            </RelatedEntityChip>
-          </Link>
-        ) : null}
-      </RelatedEntityChipRow>
+      <DataPageCanvas>
+        <DataPageModule>
+          <RelatedEntityChipRow>
+            {extrinsic.signer ? (
+              <Link
+                to="/accounts/$ss58"
+                params={{ ss58: extrinsic.signer }}
+                className={relatedEntityChipLinkClass}
+              >
+                <RelatedEntityChip label="signer" title="Signer account">
+                  {shortSs58Chip(extrinsic.signer)}
+                </RelatedEntityChip>
+              </Link>
+            ) : null}
+            {extrinsic.block_number != null ? (
+              <Link
+                to="/blocks/$ref"
+                params={{ ref: String(extrinsic.block_number) }}
+                className={relatedEntityChipLinkClass}
+              >
+                <RelatedEntityChip label="block" title="Including block">
+                  #{formatNumber(extrinsic.block_number)}
+                </RelatedEntityChip>
+              </Link>
+            ) : null}
+            {relatedNetuid != null ? (
+              <Link
+                to="/subnets/$netuid"
+                params={{ netuid: relatedNetuid }}
+                className={relatedEntityChipLinkClass}
+              >
+                <RelatedEntityChip label="subnet" title={`Subnet ${relatedNetuid}`}>
+                  SN{relatedNetuid}
+                </RelatedEntityChip>
+              </Link>
+            ) : null}
+          </RelatedEntityChipRow>
 
-      {realAccount ? (
-        <div className="mb-8 flex flex-wrap items-center gap-3 rounded border border-accent/30 bg-accent-surface px-4 py-3">
-          <UserCog className="size-4 shrink-0 text-accent" aria-hidden="true" />
-          <span className="text-sm text-ink">
-            Executed on behalf of{" "}
-            {/* #8372: inline prose, not a table cell/field row -- stays a plain
+          {realAccount ? (
+            <div className="mb-8 flex flex-wrap items-center gap-3 rounded border border-accent/30 bg-accent-surface px-4 py-3">
+              <UserCog className="size-4 shrink-0 text-accent" aria-hidden="true" />
+              <span className="text-sm text-ink">
+                Executed on behalf of{" "}
+                {/* #8372: inline prose, not a table cell/field row -- stays a plain
                 Link (resolveAddress, not AddressDisplay) so it doesn't grow a
                 CopyButton + hover-card here. That combination pushed this
                 banner past the 375px viewport (caught by
                 tests/e2e/responsive-overflow.spec.ts); the full address is
                 still one tap away via the account page this links to. */}
-            <Link
-              to="/accounts/$ss58"
-              params={{ ss58: realAccount }}
-              className="font-mono text-ink-strong hover:underline"
-            >
-              {resolveAddress(realAccount).display}
-            </Link>{" "}
-            — the account below only relayed this <code className="font-mono">Proxy.proxy</code>{" "}
-            call, it isn't the account the inner call actually acts as.
-          </span>
-        </div>
-      ) : null}
+                <Link
+                  to="/accounts/$ss58"
+                  params={{ ss58: realAccount }}
+                  className="font-mono text-ink-strong hover:underline"
+                >
+                  {resolveAddress(realAccount).display}
+                </Link>{" "}
+                — the account below only relayed this <code className="font-mono">Proxy.proxy</code>{" "}
+                call, it isn't the account the inner call actually acts as.
+              </span>
+            </div>
+          ) : null}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
-        <StatTile
-          icon={Boxes}
-          eyebrow="Block"
-          value={extrinsic.block_number != null ? `#${formatNumber(extrinsic.block_number)}` : "—"}
-        />
-        <StatTile icon={FileText} eyebrow="Result" value={result} />
-        <StatTile
-          icon={Clock}
-          eyebrow="Observed"
-          value={<TimeAgo at={extrinsic.observed_at} />}
-          tone="accent"
-        />
-      </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+            <StatTile
+              icon={Boxes}
+              eyebrow="Block"
+              value={
+                extrinsic.block_number != null ? `#${formatNumber(extrinsic.block_number)}` : "—"
+              }
+            />
+            <StatTile icon={FileText} eyebrow="Result" value={result} />
+            <StatTile
+              icon={Clock}
+              eyebrow="Observed"
+              value={<TimeAgo at={extrinsic.observed_at} />}
+              tone="accent"
+            />
+          </div>
 
-      <SectionAnchor id="details" title="Extrinsic details" tone="accent">
-        <dl className="rounded border border-border bg-card divide-y divide-border">
-          <FieldRow label="Extrinsic hash">
-            {extrinsic.extrinsic_hash ? (
-              <CopyableCode
-                value={extrinsic.extrinsic_hash}
-                truncate={false}
-                className="max-w-full"
-              />
-            ) : (
-              <span className="text-ink-muted">—</span>
-            )}
-          </FieldRow>
-          <FieldRow label="Block">
-            {extrinsic.block_number != null ? (
-              <Link
-                to="/blocks/$ref"
-                params={{ ref: String(extrinsic.block_number) }}
-                className="font-mono text-sm text-ink-strong hover:underline tabular-nums"
-              >
-                #{formatNumber(extrinsic.block_number)}
-              </Link>
-            ) : (
-              <span className="text-ink-muted">—</span>
-            )}
-          </FieldRow>
-          <FieldRow label="Index in block">
-            <span className="font-mono text-sm text-ink tabular-nums">
-              {extrinsic.extrinsic_index != null ? formatNumber(extrinsic.extrinsic_index) : "—"}
-            </span>
-          </FieldRow>
-          <FieldRow label="Call">
-            <span className="font-mono text-sm text-ink-strong break-all">
-              {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
-            </span>
-          </FieldRow>
-          <FieldRow label="Signer">
-            {/* #6424: linked like every other ss58 on this page (see the events
+          <SectionAnchor id="details" title="Extrinsic details" tone="accent">
+            <dl className="rounded border border-border bg-card divide-y divide-border">
+              <FieldRow label="Extrinsic hash">
+                {extrinsic.extrinsic_hash ? (
+                  <CopyableCode
+                    value={extrinsic.extrinsic_hash}
+                    truncate={false}
+                    className="max-w-full"
+                  />
+                ) : (
+                  <span className="text-ink-muted">—</span>
+                )}
+              </FieldRow>
+              <FieldRow label="Block">
+                {extrinsic.block_number != null ? (
+                  <Link
+                    to="/blocks/$ref"
+                    params={{ ref: String(extrinsic.block_number) }}
+                    className="font-mono text-sm text-ink-strong hover:underline tabular-nums"
+                  >
+                    #{formatNumber(extrinsic.block_number)}
+                  </Link>
+                ) : (
+                  <span className="text-ink-muted">—</span>
+                )}
+              </FieldRow>
+              <FieldRow label="Index in block">
+                <span className="font-mono text-sm text-ink tabular-nums">
+                  {extrinsic.extrinsic_index != null
+                    ? formatNumber(extrinsic.extrinsic_index)
+                    : "—"}
+                </span>
+              </FieldRow>
+              <FieldRow label="Call">
+                <span className="font-mono text-sm text-ink-strong break-all">
+                  {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
+                </span>
+              </FieldRow>
+              <FieldRow label="Signer">
+                {/* #6424: linked like every other ss58 on this page (see the events
                 table below) -- untruncated, so the full value stays readable and
                 copyable exactly as it was. valueClassName="truncate min-w-0"
                 inside a min-w-0 flex row (#6427's convention, mirrored from
@@ -302,194 +315,196 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                 to the row's actual width instead of forcing the page wide --
                 the full address stays available via the copy button and the
                 link's title. */}
-            <span className="flex w-full min-w-0 items-center">
-              <AddressDisplay
-                ss58={extrinsic.signer}
-                truncate={false}
-                valueClassName="truncate min-w-0"
-                fallback={<span className="text-ink-muted">—</span>}
-                editable
-              />
-            </span>
-          </FieldRow>
-          <FieldRow label="Result">
-            <span className="font-mono text-sm text-ink">{result}</span>
-          </FieldRow>
-          <FieldRow label="Inclusion fee">
-            <TaoValue amount={extrinsic.fee_tao} precision={4} align="left" />
-          </FieldRow>
-          <FieldRow label="Tip">
-            <TaoValue amount={extrinsic.tip_tao} precision={4} align="left" />
-          </FieldRow>
-          <FieldRow label="Observed at">
-            <span className="font-mono mg-type-caption text-ink-muted">
-              <TimeAgo at={extrinsic.observed_at} />
-            </span>
-          </FieldRow>
-        </dl>
-      </SectionAnchor>
+                <span className="flex w-full min-w-0 items-center">
+                  <AddressDisplay
+                    ss58={extrinsic.signer}
+                    truncate={false}
+                    valueClassName="truncate min-w-0"
+                    fallback={<span className="text-ink-muted">—</span>}
+                    editable
+                  />
+                </span>
+              </FieldRow>
+              <FieldRow label="Result">
+                <span className="font-mono text-sm text-ink">{result}</span>
+              </FieldRow>
+              <FieldRow label="Inclusion fee">
+                <TaoValue amount={extrinsic.fee_tao} precision={4} align="left" />
+              </FieldRow>
+              <FieldRow label="Tip">
+                <TaoValue amount={extrinsic.tip_tao} precision={4} align="left" />
+              </FieldRow>
+              <FieldRow label="Observed at">
+                <span className="font-mono mg-type-caption text-ink-muted">
+                  <TimeAgo at={extrinsic.observed_at} />
+                </span>
+              </FieldRow>
+            </dl>
+          </SectionAnchor>
 
-      <SectionAnchor
-        id="call-args"
-        title="Call arguments"
-        subtitle="The decoded parameters passed to this extrinsic."
-      >
-        {renderCallArgs(callArgs, extrinsic.call_module, extrinsic.call_function)}
-        {callArgsOmitted > 0 ? (
-          <p className="mt-2 mg-type-data text-ink-muted">
-            Showing 64 of {formatNumber(callArgsTotal)} call args — {formatNumber(callArgsOmitted)}{" "}
-            more omitted.
-          </p>
-        ) : null}
-      </SectionAnchor>
+          <SectionAnchor
+            id="call-args"
+            title="Call arguments"
+            subtitle="The decoded parameters passed to this extrinsic."
+          >
+            {renderCallArgs(callArgs, extrinsic.call_module, extrinsic.call_function)}
+            {callArgsOmitted > 0 ? (
+              <p className="mt-2 mg-type-data text-ink-muted">
+                Showing 64 of {formatNumber(callArgsTotal)} call args —{" "}
+                {formatNumber(callArgsOmitted)} more omitted.
+              </p>
+            ) : null}
+          </SectionAnchor>
 
-      {callHash ? (
-        <SectionAnchor
-          id="multisig-chain"
-          title="Related Multisig calls"
-          subtitle="Other extrinsics approving or executing this same call_hash."
-          tone="accent"
-        >
-          {relatedQuery.isLoading ? (
-            <Skeleton className="h-16 w-full" />
-          ) : relatedQuery.isError ? (
-            // Without this branch a failed lookup left `data` undefined, so
-            // `relatedCalls` fell through to [] and rendered the same "no other
-            // extrinsics" copy as a genuinely empty result -- the one case where
-            // this page asserted something it hadn't actually learned (#6426).
-            <TableState
-              variant="error"
-              title="Couldn't load related Multisig calls"
-              description="The related-calls lookup is optional enrichment — the rest of this extrinsic's detail is unaffected."
-              error={relatedQuery.error}
-              onRetry={() => relatedQuery.refetch()}
-            />
-          ) : relatedCalls.length > 0 ? (
-            <ul className="flex flex-col gap-2">
-              {relatedCalls.map((e) => (
-                <li key={e.extrinsic_hash ?? `${e.block_number}-${e.extrinsic_index}`}>
-                  <Link
-                    to="/extrinsics/$hash"
-                    params={{ hash: e.extrinsic_hash ?? "" }}
-                    className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2 text-sm hover:border-ink/30"
-                  >
-                    <Link2 className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
-                    <span className="font-mono text-ink-strong">
-                      {extrinsicCall(e.call_module, e.call_function)}
-                    </span>
-                    <span className="text-ink-muted">·</span>
-                    <span className="mg-type-data text-ink-muted">
-                      #{formatNumber(e.block_number ?? 0)}
-                    </span>
-                    <TimeAgo
-                      at={e.observed_at}
-                      className="ml-auto mg-type-caption text-ink-muted"
-                    />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-ink-muted">
-              No other extrinsics reference this call_hash yet.
-            </p>
-          )}
-        </SectionAnchor>
-      ) : null}
+          {callHash ? (
+            <SectionAnchor
+              id="multisig-chain"
+              title="Related Multisig calls"
+              subtitle="Other extrinsics approving or executing this same call_hash."
+              tone="accent"
+            >
+              {relatedQuery.isLoading ? (
+                <Skeleton className="h-16 w-full" />
+              ) : relatedQuery.isError ? (
+                // Without this branch a failed lookup left `data` undefined, so
+                // `relatedCalls` fell through to [] and rendered the same "no other
+                // extrinsics" copy as a genuinely empty result -- the one case where
+                // this page asserted something it hadn't actually learned (#6426).
+                <TableState
+                  variant="error"
+                  title="Couldn't load related Multisig calls"
+                  description="The related-calls lookup is optional enrichment — the rest of this extrinsic's detail is unaffected."
+                  error={relatedQuery.error}
+                  onRetry={() => relatedQuery.refetch()}
+                />
+              ) : relatedCalls.length > 0 ? (
+                <ul className="flex flex-col gap-2">
+                  {relatedCalls.map((e) => (
+                    <li key={e.extrinsic_hash ?? `${e.block_number}-${e.extrinsic_index}`}>
+                      <Link
+                        to="/extrinsics/$hash"
+                        params={{ hash: e.extrinsic_hash ?? "" }}
+                        className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2 text-sm hover:border-ink/30"
+                      >
+                        <Link2 className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
+                        <span className="font-mono text-ink-strong">
+                          {extrinsicCall(e.call_module, e.call_function)}
+                        </span>
+                        <span className="text-ink-muted">·</span>
+                        <span className="mg-type-data text-ink-muted">
+                          #{formatNumber(e.block_number ?? 0)}
+                        </span>
+                        <TimeAgo
+                          at={e.observed_at}
+                          className="ml-auto mg-type-caption text-ink-muted"
+                        />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-ink-muted">
+                  No other extrinsics reference this call_hash yet.
+                </p>
+              )}
+            </SectionAnchor>
+          ) : null}
 
-      <SectionAnchor id="events" title="Emitted events" tone="accent">
-        {events.length > 0 ? (
-          <Panel as="div" flush className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface/40">
-                <tr>
-                  <th className="px-4 py-2.5">Block</th>
-                  <th className="px-4 py-2.5">Kind</th>
-                  <th className="px-4 py-2.5">Hotkey</th>
-                  <th className="px-4 py-2.5 text-right">Amount</th>
-                  <th className="px-4 py-2.5 text-right">Observed</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {events.map((ev, i) => (
-                  <tr
-                    key={`${ev.block_number}-${ev.event_index}-${i}`}
-                    className="hover:bg-surface/40"
-                  >
-                    <td className="px-4 py-2.5 font-mono mg-type-caption">
-                      {ev.block_number != null ? (
-                        <Link
-                          to="/blocks/$ref"
-                          params={{ ref: String(ev.block_number) }}
-                          className="text-ink hover:underline"
+          <SectionAnchor id="events" title="Emitted events" tone="accent">
+            {events.length > 0 ? (
+              <Panel as="div" flush className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-surface/40">
+                    <tr>
+                      <th className="px-4 py-2.5">Block</th>
+                      <th className="px-4 py-2.5">Kind</th>
+                      <th className="px-4 py-2.5">Hotkey</th>
+                      <th className="px-4 py-2.5 text-right">Amount</th>
+                      <th className="px-4 py-2.5 text-right">Observed</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {events.map((ev, i) => (
+                      <tr
+                        key={`${ev.block_number}-${ev.event_index}-${i}`}
+                        className="hover:bg-surface/40"
+                      >
+                        <td className="px-4 py-2.5 font-mono mg-type-caption">
+                          {ev.block_number != null ? (
+                            <Link
+                              to="/blocks/$ref"
+                              params={{ ref: String(ev.block_number) }}
+                              className="text-ink hover:underline"
+                            >
+                              #{formatNumber(ev.block_number)}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td
+                          className="px-4 py-2.5 mg-type-data text-ink-strong"
+                          title={ev.event_kind ?? undefined}
                         >
-                          #{formatNumber(ev.block_number)}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td
-                      className="px-4 py-2.5 mg-type-data text-ink-strong"
-                      title={ev.event_kind ?? undefined}
-                    >
-                      {eventKindLabel(ev.event_kind)}
-                    </td>
-                    <td className="px-4 py-2.5 mg-type-data text-ink-muted">
-                      <AddressDisplay ss58={ev.hotkey} compact fallback="—" />
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <TaoValue amount={ev.amount_tao} precision={4} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
-                      <TimeAgo at={ev.observed_at} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Panel>
-        ) : (
-          <EmptyState
-            title="No emitted events"
-            description="No emitted events were indexed for this extrinsic."
+                          {eventKindLabel(ev.event_kind)}
+                        </td>
+                        <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                          <AddressDisplay ss58={ev.hotkey} compact fallback="—" />
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <TaoValue amount={ev.amount_tao} precision={4} />
+                        </td>
+                        <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
+                          <TimeAgo at={ev.observed_at} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Panel>
+            ) : (
+              <EmptyState
+                title="No emitted events"
+                description="No emitted events were indexed for this extrinsic."
+              />
+            )}
+            {eventsOmitted > 0 ? (
+              <p className="mt-2 mg-type-data text-ink-muted">
+                Showing 100 of {formatNumber(eventsTotal)} events — {formatNumber(eventsOmitted)}{" "}
+                more omitted.
+              </p>
+            ) : null}
+          </SectionAnchor>
+
+          <div className="mt-6">
+            <Link
+              to="/chain/extrinsics"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
+            >
+              ← All extrinsics
+            </Link>
+          </div>
+
+          <SectionAnchor
+            id="call"
+            title="Call this endpoint"
+            subtitle="Copy a ready-to-run request for this extrinsic."
+          >
+            <EndpointSnippet
+              rows={[
+                { label: "extrinsic", path: `/api/v1/extrinsics/${sourceRef}` },
+                { label: "artifact", path: `/metagraph/extrinsics/${sourceRef}.json` },
+              ]}
+            />
+          </SectionAnchor>
+
+          <ApiSourceFooter
+            paths={[`/api/v1/extrinsics/${sourceRef}`]}
+            artifacts={[`/metagraph/extrinsics/${sourceRef}.json`]}
           />
-        )}
-        {eventsOmitted > 0 ? (
-          <p className="mt-2 mg-type-data text-ink-muted">
-            Showing 100 of {formatNumber(eventsTotal)} events — {formatNumber(eventsOmitted)} more
-            omitted.
-          </p>
-        ) : null}
-      </SectionAnchor>
-
-      <div className="mt-6">
-        <Link
-          to="/chain/extrinsics"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
-        >
-          ← All extrinsics
-        </Link>
-      </div>
-
-      <SectionAnchor
-        id="call"
-        title="Call this endpoint"
-        subtitle="Copy a ready-to-run request for this extrinsic."
-      >
-        <EndpointSnippet
-          rows={[
-            { label: "extrinsic", path: `/api/v1/extrinsics/${sourceRef}` },
-            { label: "artifact", path: `/metagraph/extrinsics/${sourceRef}.json` },
-          ]}
-        />
-      </SectionAnchor>
-
-      <ApiSourceFooter
-        paths={[`/api/v1/extrinsics/${sourceRef}`]}
-        artifacts={[`/metagraph/extrinsics/${sourceRef}.json`]}
-      />
-    </>
+        </DataPageModule>
+      </DataPageCanvas>
+    </DataPageStage>
   );
 }
 

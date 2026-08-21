@@ -1,6 +1,11 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import {
+  DataPageCanvas,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
+} from "@/components/metagraphed/primitives";
 import { ChainTabs, activeChainTab } from "./-chain-hub";
 
 /**
@@ -8,9 +13,9 @@ import { ChainTabs, activeChainTab } from "./-chain-hub";
  * top-level routes (/explorer, /blocks, /extrinsics, /events, /sudo,
  * /admin-changes, /runtime, plus their shared preamble duplication).
  *
- * The masthead and tab strip render once here rather than per page, which is
- * most of the point: each old route rebuilt its own heading, breadcrumb and
- * stat preamble, and several rebuilt each other's stats too.
+ * The title field and tab strip render once here rather than per page. Every
+ * tab gets the same reading order: orient, choose a chain task, then inspect
+ * its data — rather than rebuilding a heading and a card wall on every route.
  *
  * Detail routes (/blocks/$ref, /extrinsics/$hash) deliberately keep their own
  * URLs — only the index pages consolidate, so every existing deep link, share
@@ -23,13 +28,34 @@ function ChainHubLayout() {
   // compact Chain masthead above it creates two competing introductions.
   const hasDedicatedHero = pathname === "/chain/analytics";
 
+  if (hasDedicatedHero) {
+    return (
+      <AppShell>
+        <DataPageStage variant="tabs">
+          <ChainTabs className="mg-data-hub-tabs" />
+        </DataPageStage>
+        <Outlet />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
-      {!hasDedicatedHero ? (
-        <PageMasthead title="Chain" description={tab.blurb} pathname={pathname} live />
-      ) : null}
-      <ChainTabs />
-      <Outlet />
+      <DataPageStage>
+        <DataPageHero
+          id="chain-title"
+          eyebrow="Chain explorer"
+          live
+          title={`${tab.label}.`}
+          description={tab.blurb}
+        />
+        <DataPageCanvas>
+          <ChainTabs className="mg-data-hub-tabs" />
+          <DataPageModule>
+            <Outlet />
+          </DataPageModule>
+        </DataPageCanvas>
+      </DataPageStage>
     </AppShell>
   );
 }

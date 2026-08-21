@@ -343,6 +343,8 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
     // exactly the case a per-row timer adds up for.
     <LiveTickerProvider>
       <ListShell
+        presentation="canvas"
+        responsiveAt="lg"
         filters={filters}
         table={table}
         cards={cards}

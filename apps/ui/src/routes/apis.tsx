@@ -1,6 +1,11 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import {
+  DataPageCanvas,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
+} from "@/components/metagraphed/primitives";
 import { ApisTabs, activeApisTab } from "./-apis-hub";
 
 /**
@@ -8,8 +13,8 @@ import { ApisTabs, activeApisTab } from "./-apis-hub";
  * public-interface surface, which was split across /surfaces, /endpoints,
  * /schemas and /providers.
  *
- * The masthead and tab strip render once here rather than per page, the same
- * shape the Chain hub established (#8244).
+ * The shared title field and tab strip establish one clear entry point before
+ * each data task, rather than giving every API route its own competing intro.
  *
  * Provider detail (/providers/$slug) deliberately keeps its own URL — only
  * index pages consolidate.
@@ -20,9 +25,21 @@ function ApisHubLayout() {
 
   return (
     <AppShell>
-      <PageMasthead title="APIs" description={tab.blurb} pathname={pathname} live />
-      <ApisTabs />
-      <Outlet />
+      <DataPageStage>
+        <DataPageHero
+          id="apis-title"
+          eyebrow="Public interfaces"
+          live
+          title={`${tab.label}.`}
+          description={tab.blurb}
+        />
+        <DataPageCanvas>
+          <ApisTabs className="mg-data-hub-tabs" />
+          <DataPageModule>
+            <Outlet />
+          </DataPageModule>
+        </DataPageCanvas>
+      </DataPageStage>
     </AppShell>
   );
 }

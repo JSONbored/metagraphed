@@ -3,10 +3,13 @@ import { cn } from "@/lib/utils";
 
 export type GhostButtonSize = "sm" | "md" | "lg";
 export type GhostButtonTone = "default" | "accent" | "warn" | "down";
+export type GhostButtonAppearance = "soft" | "terminal";
 
 export type GhostButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: GhostButtonSize;
   tone?: GhostButtonTone;
+  /** `terminal` is the square-edged control treatment for data rails. */
+  appearance?: GhostButtonAppearance;
   icon?: ReactNode;
   iconRight?: ReactNode;
 };
@@ -37,6 +40,7 @@ export const GhostButton = forwardRef<HTMLButtonElement, GhostButtonProps>(
     {
       size = "sm",
       tone = "default",
+      appearance = "soft",
       icon,
       iconRight,
       className,
@@ -51,7 +55,10 @@ export const GhostButton = forwardRef<HTMLButtonElement, GhostButtonProps>(
         ref={ref}
         type={type ?? "button"}
         className={cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-md border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex items-center justify-center gap-1.5 border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          appearance === "terminal"
+            ? "rounded-none bg-transparent"
+            : "rounded-md bg-card",
           SIZE[size],
           TONE[tone],
           className,

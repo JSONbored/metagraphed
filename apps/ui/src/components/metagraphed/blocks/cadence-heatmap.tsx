@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Panel } from "@/components/metagraphed/primitives";
+import { DataPageModule } from "@/components/metagraphed/primitives";
 import { InfoTooltip } from "@jsonbored/ui-kit";
 import { classNames, formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import type { Block } from "@/lib/metagraphed/types";
@@ -39,15 +39,16 @@ export function CadenceHeatmap({ rows }: { rows: Block[] }) {
   const stalled = measured.filter((c) => (c.gapSec ?? 0) > 48).length;
 
   return (
-    <Panel
-      className="mb-8"
+    <DataPageModule
+      kind="question"
       title={
         <span className="inline-flex items-center gap-1.5">
-          Cadence heatmap
+          Cadence
           <InfoTooltip label="Seconds between consecutive blocks on this page. Subtensor targets ~12s; deeper mint = faster, amber = slow, red = stalled slot." />
         </span>
       }
-      action={
+      caption="Inter-block intervals in this page window."
+      actions={
         <div className="flex items-center gap-3 mg-type-caption text-ink-muted">
           {mean != null ? <span>mean {humaniseSeconds(mean)}</span> : null}
           <span className={slow ? "text-health-warn-text" : ""}>slow {slow}</span>
@@ -84,7 +85,7 @@ export function CadenceHeatmap({ rows }: { rows: Block[] }) {
         })}
       </ol>
       <Legend />
-    </Panel>
+    </DataPageModule>
   );
 }
 

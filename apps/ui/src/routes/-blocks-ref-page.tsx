@@ -18,7 +18,14 @@ import { PalletMethodBreakdown } from "@/components/metagraphed/blocks/pallet-me
 import { ShortcutsDialog } from "@/components/metagraphed/blocks/shortcuts-dialog";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageModule,
+  DataPageStage,
+  PageMasthead,
+  Panel,
+} from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
@@ -153,7 +160,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
 
   if (!block) {
     return (
-      <>
+      <DataPageStage>
         <PageHeading
           eyebrow="Explorer"
           title={`Block ${refValue}`}
@@ -168,12 +175,12 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           paths={[`/api/v1/blocks/${sourceRef}`]}
           artifacts={[`/metagraph/blocks/${sourceRef}.json`]}
         />
-      </>
+      </DataPageStage>
     );
   }
 
   return (
-    <>
+    <DataPageStage>
       <ShortcutsDialog blockRef={refValue} />
       <PageMasthead
         eyebrow="Explorer · block"
@@ -208,462 +215,484 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         caption="explorer / v1"
       />
 
-      <RelatedEntityChipRow>
-        {block.author ? (
-          <Link
-            to="/accounts/$ss58"
-            params={{ ss58: block.author }}
-            className={relatedEntityChipLinkClass}
-          >
-            <RelatedEntityChip label="author" title="Block author">
-              {shortSs58Chip(block.author)}
-            </RelatedEntityChip>
-          </Link>
-        ) : null}
-        {(block.extrinsic_count ?? 0) > 0 ? (
-          <RelatedEntityChipHash
-            label="extrinsics"
-            title="Jump to extrinsics in this block"
-            hash="extrinsics"
-          >
-            {formatNumber(block.extrinsic_count ?? 0)}
-          </RelatedEntityChipHash>
-        ) : null}
-      </RelatedEntityChipRow>
+      <DataPageCanvas>
+        <DataPageModule>
+          <RelatedEntityChipRow>
+            {block.author ? (
+              <Link
+                to="/accounts/$ss58"
+                params={{ ss58: block.author }}
+                className={relatedEntityChipLinkClass}
+              >
+                <RelatedEntityChip label="author" title="Block author">
+                  {shortSs58Chip(block.author)}
+                </RelatedEntityChip>
+              </Link>
+            ) : null}
+            {(block.extrinsic_count ?? 0) > 0 ? (
+              <RelatedEntityChipHash
+                label="extrinsics"
+                title="Jump to extrinsics in this block"
+                hash="extrinsics"
+              >
+                {formatNumber(block.extrinsic_count ?? 0)}
+              </RelatedEntityChipHash>
+            ) : null}
+          </RelatedEntityChipRow>
 
-      <div className="space-y-10">
-        {(() => {
-          const withResult = extrinsics.filter((e) => e.success != null);
-          const successful = withResult.filter((e) => e.success).length;
-          const successRate = withResult.length > 0 ? (successful / withResult.length) * 100 : null;
-          const rateTone: "accent" | "warn" | "down" | "default" =
-            successRate == null
-              ? "default"
-              : successRate >= 99
-                ? "accent"
-                : successRate >= 90
-                  ? "warn"
-                  : "down";
-          // Sum of τ moved by economically-relevant events in this block.
-          // Only events that expose an `amount_tao` contribute — this is a
-          // signal, not a settlement total.
-          const valueMoved = events.reduce(
-            (sum, ev) => sum + (typeof ev.amount_tao === "number" ? ev.amount_tao : 0),
-            0,
-          );
-          const valueMovedNode = eventsQuery.isPending ? (
-            <span className="text-ink-muted">…</span>
-          ) : valueMoved > 0 ? (
-            <TaoValue amount={valueMoved} layout="stacked" precision={2} align="left" size="md" />
-          ) : (
-            "—"
-          );
-          return (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* `?? 0` here reported "0 events" for any block whose count is
+          <div className="space-y-10">
+            {(() => {
+              const withResult = extrinsics.filter((e) => e.success != null);
+              const successful = withResult.filter((e) => e.success).length;
+              const successRate =
+                withResult.length > 0 ? (successful / withResult.length) * 100 : null;
+              const rateTone: "accent" | "warn" | "down" | "default" =
+                successRate == null
+                  ? "default"
+                  : successRate >= 99
+                    ? "accent"
+                    : successRate >= 90
+                      ? "warn"
+                      : "down";
+              // Sum of τ moved by economically-relevant events in this block.
+              // Only events that expose an `amount_tao` contribute — this is a
+              // signal, not a settlement total.
+              const valueMoved = events.reduce(
+                (sum, ev) => sum + (typeof ev.amount_tao === "number" ? ev.amount_tao : 0),
+                0,
+              );
+              const valueMovedNode = eventsQuery.isPending ? (
+                <span className="text-ink-muted">…</span>
+              ) : valueMoved > 0 ? (
+                <TaoValue
+                  amount={valueMoved}
+                  layout="stacked"
+                  precision={2}
+                  align="left"
+                  size="md"
+                />
+              ) : (
+                "—"
+              );
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {/* `?? 0` here reported "0 events" for any block whose count is
                   merely unknown -- true for every block newer than the decode
                   sync's head. A count we do not have is not a count of zero,
                   and the Success tile below already renders that distinction
                   correctly. */}
-              <StatTile
-                icon={FileText}
-                eyebrow="Extrinsics"
-                value={block.extrinsic_count == null ? "—" : formatNumber(block.extrinsic_count)}
-                tooltip={BLOCK_TERM_HINTS.extrinsic}
-              />
-              <StatTile
-                icon={Zap}
-                eyebrow="Events"
-                value={block.event_count == null ? "—" : formatNumber(block.event_count)}
-                tooltip={BLOCK_TERM_HINTS.event}
-              />
-              <StatTile
-                icon={CheckCircle2}
-                eyebrow="Success"
-                value={
-                  successRate == null ? "—" : `${successRate.toFixed(successRate === 100 ? 0 : 1)}%`
-                }
-                tone={rateTone}
-                tooltip={BLOCK_TERM_HINTS.successRate}
-              />
-              <StatTile
-                icon={DollarSign}
-                eyebrow="Value moved"
-                value={valueMovedNode}
-                tone={valueMoved > 0 ? "accent" : "default"}
-                tooltip={BLOCK_TERM_HINTS.valueMoved}
-              />
+                  <StatTile
+                    icon={FileText}
+                    eyebrow="Extrinsics"
+                    value={
+                      block.extrinsic_count == null ? "—" : formatNumber(block.extrinsic_count)
+                    }
+                    tooltip={BLOCK_TERM_HINTS.extrinsic}
+                  />
+                  <StatTile
+                    icon={Zap}
+                    eyebrow="Events"
+                    value={block.event_count == null ? "—" : formatNumber(block.event_count)}
+                    tooltip={BLOCK_TERM_HINTS.event}
+                  />
+                  <StatTile
+                    icon={CheckCircle2}
+                    eyebrow="Success"
+                    value={
+                      successRate == null
+                        ? "—"
+                        : `${successRate.toFixed(successRate === 100 ? 0 : 1)}%`
+                    }
+                    tone={rateTone}
+                    tooltip={BLOCK_TERM_HINTS.successRate}
+                  />
+                  <StatTile
+                    icon={DollarSign}
+                    eyebrow="Value moved"
+                    value={valueMovedNode}
+                    tone={valueMoved > 0 ? "accent" : "default"}
+                    tooltip={BLOCK_TERM_HINTS.valueMoved}
+                  />
+                </div>
+              );
+            })()}
+
+            <div className="flex items-center justify-end -mb-6">
+              <span className="mg-label inline-flex items-center gap-1.5">
+                Observed <TimeAgo at={block.observed_at} />
+              </span>
             </div>
-          );
-        })()}
 
-        <div className="flex items-center justify-end -mb-6">
-          <span className="mg-label inline-flex items-center gap-1.5">
-            Observed <TimeAgo at={block.observed_at} />
-          </span>
-        </div>
-
-        <SectionAnchor id="chain" title="Chain walk" info={BLOCK_SECTION_HINTS.chain}>
-          <div className="space-y-3">
-            <ChainWalkRibbon current={block} radius={3} />
-            <NeighborCompare current={block} />
-          </div>
-        </SectionAnchor>
-
-        <SectionAnchor id="details" title="Block details" info={BLOCK_SECTION_HINTS.details}>
-          <dl className="rounded border border-border bg-card divide-y divide-border">
-            <FieldRow label="Block number">
-              <span className="font-mono text-sm text-ink-strong tabular-nums">
-                {formatNumber(block.block_number)}
-              </span>
-            </FieldRow>
-            <FieldRow label="Block hash" hint={BLOCK_TERM_HINTS.blockHash}>
-              {block.block_hash ? (
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span
-                    className="font-mono mg-type-caption text-ink-strong break-all md:hidden"
-                    title={block.block_hash}
-                  >
-                    {shortHash(block.block_hash, 10)}
-                  </span>
-                  <span className="hidden md:inline font-mono mg-type-caption text-ink-strong break-all">
-                    {block.block_hash}
-                  </span>
-                  <CopyButton value={block.block_hash} label="block hash" compact />
-                </div>
-              ) : (
-                <span className="text-ink-muted">—</span>
-              )}
-            </FieldRow>
-            <FieldRow label="Parent hash" hint={BLOCK_TERM_HINTS.parentHash}>
-              {block.parent_hash ? (
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Link
-                    to="/blocks/$ref"
-                    params={{ ref: block.parent_hash }}
-                    className="font-mono mg-type-caption text-ink-strong hover:underline break-all md:hidden"
-                    title={block.parent_hash}
-                  >
-                    {shortHash(block.parent_hash, 10)}
-                  </Link>
-                  <Link
-                    to="/blocks/$ref"
-                    params={{ ref: block.parent_hash }}
-                    className="hidden md:inline font-mono mg-type-caption text-ink-strong hover:underline break-all"
-                  >
-                    {block.parent_hash}
-                  </Link>
-                  <CopyButton value={block.parent_hash} label="parent hash" compact />
-                </div>
-              ) : (
-                <span className="text-ink-muted">—</span>
-              )}
-            </FieldRow>
-            <FieldRow label="Author" hint={BLOCK_TERM_HINTS.author}>
-              {/* #6424: full ss58 on desktop for readability; on mobile use the
-                  shortened form so it fits without wrapping ugly on 393px. */}
-              <div className="min-w-0">
-                <div className="md:hidden">
-                  <AddressDisplay
-                    ss58={block.author}
-                    keep={8}
-                    compact
-                    fallback={<span className="text-ink-muted">—</span>}
-                  />
-                </div>
-                <div className="hidden md:block">
-                  <AddressDisplay
-                    ss58={block.author}
-                    truncate={false}
-                    fallback={<span className="text-ink-muted">—</span>}
-                  />
-                </div>
+            <SectionAnchor id="chain" title="Chain walk" info={BLOCK_SECTION_HINTS.chain}>
+              <div className="space-y-3">
+                <ChainWalkRibbon current={block} radius={3} />
+                <NeighborCompare current={block} />
               </div>
-            </FieldRow>
-            <FieldRow label="Extrinsics">
-              <span className="font-mono text-sm text-ink tabular-nums">
-                {block.extrinsic_count == null ? "—" : formatNumber(block.extrinsic_count)}
-              </span>
-            </FieldRow>
-            <FieldRow label="Events">
-              <span className="font-mono text-sm text-ink tabular-nums">
-                {block.event_count == null ? "—" : formatNumber(block.event_count)}
-              </span>
-            </FieldRow>
-            <FieldRow label="Observed at">
-              <span className="font-mono mg-type-caption text-ink-muted">
-                <TimeAgo at={block.observed_at} />
-              </span>
-            </FieldRow>
-          </dl>
-        </SectionAnchor>
+            </SectionAnchor>
 
-        <SectionAnchor
-          id="metadata"
-          title="Block metadata"
-          info="Extended header fields (runtime version, storage roots) returned by the block API."
-        >
-          <BlockMetadataPanel block={block} />
-        </SectionAnchor>
-
-        <SectionAnchor
-          id="extrinsics"
-          title="Extrinsics"
-          info={BLOCK_SECTION_HINTS.extrinsics}
-          right={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/extrinsics`)} />}
-        >
-          {extrinsicsQuery.isPending ? (
-            <Skeleton className="h-44" />
-          ) : extrinsicsQuery.error ? (
-            <TableState
-              variant="error"
-              title="Couldn't load block extrinsics"
-              description="This section is optional — the rest of the block detail is unaffected."
-              error={extrinsicsQuery.error}
-              onRetry={() => {
-                void extrinsicsQuery.refetch();
-              }}
-            />
-          ) : extrinsics.length === 0 ? (
-            <EmptyState
-              title="No block extrinsics"
-              description="This block has no indexed extrinsics (or the poller window for this shard is still catching up)."
-            />
-          ) : (
-            <Panel as="div" flush className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-surface/40">
-                  <tr>
-                    <th className="px-4 py-2.5 text-right">Index</th>
-                    <th className="px-4 py-2.5">Extrinsic</th>
-                    <th className="px-4 py-2.5">Call</th>
-                    <th className="px-4 py-2.5">Result</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {extrinsics.map((extrinsic) => {
-                    const result =
-                      extrinsic.success == null ? "—" : extrinsic.success ? "Success" : "Failed";
-                    // This table spells the result out ("Success"/"Failed")
-                    // rather than the feeds' "ok"/"fail", so it keeps its own
-                    // rendering instead of the shared SuccessBadge -- swapping it
-                    // in would silently reword the page. What it borrows is the
-                    // token pair: the fail branch already used --health-down
-                    // while success stayed on raw emerald, so the two halves of
-                    // one ternary disagreed (#6403).
-                    const resultClass =
-                      extrinsic.success == null
-                        ? "text-ink-muted"
-                        : extrinsic.success
-                          ? "text-health-ok"
-                          : "text-health-down";
-
-                    return (
-                      <tr
-                        key={
-                          extrinsic.extrinsic_hash ||
-                          `${extrinsic.block_number}-${extrinsic.extrinsic_index}`
-                        }
-                        className="mg-row-accent hover:bg-surface/40"
+            <SectionAnchor id="details" title="Block details" info={BLOCK_SECTION_HINTS.details}>
+              <dl className="rounded border border-border bg-card divide-y divide-border">
+                <FieldRow label="Block number">
+                  <span className="font-mono text-sm text-ink-strong tabular-nums">
+                    {formatNumber(block.block_number)}
+                  </span>
+                </FieldRow>
+                <FieldRow label="Block hash" hint={BLOCK_TERM_HINTS.blockHash}>
+                  {block.block_hash ? (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span
+                        className="font-mono mg-type-caption text-ink-strong break-all md:hidden"
+                        title={block.block_hash}
                       >
-                        <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
-                          {extrinsic.extrinsic_index != null
-                            ? formatNumber(extrinsic.extrinsic_index)
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 mg-type-data text-ink-muted break-all">
-                          {extrinsic.extrinsic_hash ? (
-                            <Link
-                              to="/extrinsics/$hash"
-                              params={{ hash: extrinsic.extrinsic_hash }}
-                              className="font-medium text-ink-strong hover:underline"
-                            >
-                              {shortHash(extrinsic.extrinsic_hash, 10)}
-                            </Link>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 mg-type-data text-ink-strong">
-                          {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
-                        </td>
-                        <td className={`px-4 py-2.5 mg-type-data ${resultClass}`}>{result}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Panel>
-          )}
-        </SectionAnchor>
+                        {shortHash(block.block_hash, 10)}
+                      </span>
+                      <span className="hidden md:inline font-mono mg-type-caption text-ink-strong break-all">
+                        {block.block_hash}
+                      </span>
+                      <CopyButton value={block.block_hash} label="block hash" compact />
+                    </div>
+                  ) : (
+                    <span className="text-ink-muted">—</span>
+                  )}
+                </FieldRow>
+                <FieldRow label="Parent hash" hint={BLOCK_TERM_HINTS.parentHash}>
+                  {block.parent_hash ? (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <Link
+                        to="/blocks/$ref"
+                        params={{ ref: block.parent_hash }}
+                        className="font-mono mg-type-caption text-ink-strong hover:underline break-all md:hidden"
+                        title={block.parent_hash}
+                      >
+                        {shortHash(block.parent_hash, 10)}
+                      </Link>
+                      <Link
+                        to="/blocks/$ref"
+                        params={{ ref: block.parent_hash }}
+                        className="hidden md:inline font-mono mg-type-caption text-ink-strong hover:underline break-all"
+                      >
+                        {block.parent_hash}
+                      </Link>
+                      <CopyButton value={block.parent_hash} label="parent hash" compact />
+                    </div>
+                  ) : (
+                    <span className="text-ink-muted">—</span>
+                  )}
+                </FieldRow>
+                <FieldRow label="Author" hint={BLOCK_TERM_HINTS.author}>
+                  {/* #6424: full ss58 on desktop for readability; on mobile use the
+                  shortened form so it fits without wrapping ugly on 393px. */}
+                  <div className="min-w-0">
+                    <div className="md:hidden">
+                      <AddressDisplay
+                        ss58={block.author}
+                        keep={8}
+                        compact
+                        fallback={<span className="text-ink-muted">—</span>}
+                      />
+                    </div>
+                    <div className="hidden md:block">
+                      <AddressDisplay
+                        ss58={block.author}
+                        truncate={false}
+                        fallback={<span className="text-ink-muted">—</span>}
+                      />
+                    </div>
+                  </div>
+                </FieldRow>
+                <FieldRow label="Extrinsics">
+                  <span className="font-mono text-sm text-ink tabular-nums">
+                    {block.extrinsic_count == null ? "—" : formatNumber(block.extrinsic_count)}
+                  </span>
+                </FieldRow>
+                <FieldRow label="Events">
+                  <span className="font-mono text-sm text-ink tabular-nums">
+                    {block.event_count == null ? "—" : formatNumber(block.event_count)}
+                  </span>
+                </FieldRow>
+                <FieldRow label="Observed at">
+                  <span className="font-mono mg-type-caption text-ink-muted">
+                    <TimeAgo at={block.observed_at} />
+                  </span>
+                </FieldRow>
+              </dl>
+            </SectionAnchor>
 
-        <SectionAnchor
-          id="events"
-          title="Events"
-          info={BLOCK_SECTION_HINTS.events}
-          subtitle="Grouped by parent extrinsic. System events (fees, deposits, ExtrinsicSuccess) are collapsed by default."
-          right={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/events`)} />}
-        >
-          {eventsQuery.isPending ? (
-            <Skeleton className="h-44" />
-          ) : eventsQuery.error ? (
-            <TableState
-              variant="error"
-              title="Couldn't load block events"
-              description="This section is optional — the rest of the block detail is unaffected."
-              error={eventsQuery.error}
-              onRetry={() => {
-                void eventsQuery.refetch();
-              }}
-            />
-          ) : events.length === 0 ? (
-            <EmptyState
-              title="No block events"
-              description="This block has no decoded on-chain events indexed yet."
-            />
-          ) : (
-            <GroupedEvents events={events} extrinsics={extrinsics} />
-          )}
-        </SectionAnchor>
+            <SectionAnchor
+              id="metadata"
+              title="Block metadata"
+              info="Extended header fields (runtime version, storage roots) returned by the block API."
+            >
+              <BlockMetadataPanel block={block} />
+            </SectionAnchor>
 
-        {chainEvents.length > 0 ? (
-          <SectionAnchor
-            id="pallets"
-            title="Pallet · method breakdown"
-            info="Ranked runtime pallet.method calls emitted by this block."
-          >
-            <PalletMethodBreakdown events={chainEvents} />
-          </SectionAnchor>
-        ) : null}
-
-        <SectionAnchor
-          id="chain-events"
-          title="Chain events (raw)"
-          info={BLOCK_SECTION_HINTS.chainEventsRaw}
-          subtitle="Curated events above are grouped by extrinsic; this table is the raw per-event stream — every pallet-level event in the block, decoded from the chain."
-        >
-          <details className="group rounded border border-border bg-card">
-            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span>
-                {chainEventsQuery.isPending
-                  ? "Loading raw events…"
-                  : `${formatNumber(chainEvents.length)} raw pallet events`}
-              </span>
-              <span className="mg-type-caption">
-                <span className="group-open:hidden">Show</span>
-                <span className="hidden group-open:inline">Hide</span>
-              </span>
-            </summary>
-            <div className="border-t border-border p-2">
-              {chainEventsQuery.isPending ? (
+            <SectionAnchor
+              id="extrinsics"
+              title="Extrinsics"
+              info={BLOCK_SECTION_HINTS.extrinsics}
+              right={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/extrinsics`)} />}
+            >
+              {extrinsicsQuery.isPending ? (
                 <Skeleton className="h-44" />
-              ) : chainEventsQuery.error ? (
+              ) : extrinsicsQuery.error ? (
                 <TableState
                   variant="error"
-                  title="Couldn't load block chain events"
+                  title="Couldn't load block extrinsics"
                   description="This section is optional — the rest of the block detail is unaffected."
-                  error={chainEventsQuery.error}
+                  error={extrinsicsQuery.error}
                   onRetry={() => {
-                    void chainEventsQuery.refetch();
+                    void extrinsicsQuery.refetch();
                   }}
                 />
-              ) : chainEvents.length === 0 ? (
+              ) : extrinsics.length === 0 ? (
                 <EmptyState
-                  title="No chain events"
-                  description="This block has no decoded pallet events indexed yet, or the all-events backfill hasn't reached it."
+                  title="No block extrinsics"
+                  description="This block has no indexed extrinsics (or the poller window for this shard is still catching up)."
                 />
               ) : (
                 <Panel as="div" flush className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-surface/40">
                       <tr>
-                        <th className="px-4 py-2.5">Pallet.method</th>
-                        <th className="px-4 py-2.5">Phase</th>
-                        <th className="px-4 py-2.5 text-right">Extrinsic</th>
-                        <th className="px-4 py-2.5">Args</th>
+                        <th className="px-4 py-2.5 text-right">Index</th>
+                        <th className="px-4 py-2.5">Extrinsic</th>
+                        <th className="px-4 py-2.5">Call</th>
+                        <th className="px-4 py-2.5">Result</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {chainEvents.map((event) => (
-                        <tr
-                          key={`${event.block_number}-${event.event_index}`}
-                          className="mg-row-accent hover:bg-surface/40"
-                        >
-                          <td className="px-4 py-2.5 mg-type-data text-ink-strong">
-                            {extrinsicCall(event.pallet, event.method)}
-                          </td>
-                          <td className="px-4 py-2.5 mg-type-data text-ink-muted">
-                            {event.phase ?? "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
-                            {event.extrinsic_index != null
-                              ? formatNumber(event.extrinsic_index)
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-2.5 mg-type-data text-ink-muted">
-                            <div className="flex max-w-xs items-center gap-1.5">
-                              <span className="truncate" title={formatChainEventArgs(event.args)}>
-                                {formatChainEventArgs(event.args)}
-                              </span>
-                              <CopyButton
-                                value={formatChainEventArgs(event.args)}
-                                label="args"
-                                compact
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {extrinsics.map((extrinsic) => {
+                        const result =
+                          extrinsic.success == null
+                            ? "—"
+                            : extrinsic.success
+                              ? "Success"
+                              : "Failed";
+                        // This table spells the result out ("Success"/"Failed")
+                        // rather than the feeds' "ok"/"fail", so it keeps its own
+                        // rendering instead of the shared SuccessBadge -- swapping it
+                        // in would silently reword the page. What it borrows is the
+                        // token pair: the fail branch already used --health-down
+                        // while success stayed on raw emerald, so the two halves of
+                        // one ternary disagreed (#6403).
+                        const resultClass =
+                          extrinsic.success == null
+                            ? "text-ink-muted"
+                            : extrinsic.success
+                              ? "text-health-ok"
+                              : "text-health-down";
+
+                        return (
+                          <tr
+                            key={
+                              extrinsic.extrinsic_hash ||
+                              `${extrinsic.block_number}-${extrinsic.extrinsic_index}`
+                            }
+                            className="mg-row-accent hover:bg-surface/40"
+                          >
+                            <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
+                              {extrinsic.extrinsic_index != null
+                                ? formatNumber(extrinsic.extrinsic_index)
+                                : "—"}
+                            </td>
+                            <td className="px-4 py-2.5 mg-type-data text-ink-muted break-all">
+                              {extrinsic.extrinsic_hash ? (
+                                <Link
+                                  to="/extrinsics/$hash"
+                                  params={{ hash: extrinsic.extrinsic_hash }}
+                                  className="font-medium text-ink-strong hover:underline"
+                                >
+                                  {shortHash(extrinsic.extrinsic_hash, 10)}
+                                </Link>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 mg-type-data text-ink-strong">
+                              {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
+                            </td>
+                            <td className={`px-4 py-2.5 mg-type-data ${resultClass}`}>{result}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </Panel>
               )}
-            </div>
-          </details>
-        </SectionAnchor>
+            </SectionAnchor>
 
-        <SectionAnchor
-          id="call"
-          title="Call this endpoint"
-          info={BLOCK_SECTION_HINTS.call}
-          subtitle="Copy a ready-to-run request for this block."
-        >
-          <details className="group rounded border border-border bg-card">
-            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span>API &amp; artifact URLs</span>
-              <span className="mg-type-caption">
-                <span className="group-open:hidden">Show</span>
-                <span className="hidden group-open:inline">Hide</span>
-              </span>
-            </summary>
-            <div className="border-t border-border p-3">
-              <EndpointSnippet
-                rows={[
-                  { label: "block", path: `/api/v1/blocks/${sourceRef}` },
-                  { label: "extrinsics", path: `/api/v1/blocks/${sourceRef}/extrinsics` },
-                  { label: "events", path: `/api/v1/blocks/${sourceRef}/events` },
-                  {
-                    label: "chain events",
-                    path: `/api/v1/blocks/${sourceRef}/chain-events`,
-                  },
-                  { label: "artifact", path: `/metagraph/blocks/${sourceRef}.json` },
-                ]}
-              />
-            </div>
-          </details>
-        </SectionAnchor>
+            <SectionAnchor
+              id="events"
+              title="Events"
+              info={BLOCK_SECTION_HINTS.events}
+              subtitle="Grouped by parent extrinsic. System events (fees, deposits, ExtrinsicSuccess) are collapsed by default."
+              right={<DownloadCsvButton url={buildUrl(`/api/v1/blocks/${sourceRef}/events`)} />}
+            >
+              {eventsQuery.isPending ? (
+                <Skeleton className="h-44" />
+              ) : eventsQuery.error ? (
+                <TableState
+                  variant="error"
+                  title="Couldn't load block events"
+                  description="This section is optional — the rest of the block detail is unaffected."
+                  error={eventsQuery.error}
+                  onRetry={() => {
+                    void eventsQuery.refetch();
+                  }}
+                />
+              ) : events.length === 0 ? (
+                <EmptyState
+                  title="No block events"
+                  description="This block has no decoded on-chain events indexed yet."
+                />
+              ) : (
+                <GroupedEvents events={events} extrinsics={extrinsics} />
+              )}
+            </SectionAnchor>
 
-        <ApiSourceFooter
-          paths={[
-            `/api/v1/blocks/${sourceRef}`,
-            `/api/v1/blocks/${sourceRef}/extrinsics`,
-            `/api/v1/blocks/${sourceRef}/events`,
-            `/api/v1/blocks/${sourceRef}/chain-events`,
-          ]}
-          artifacts={[`/metagraph/blocks/${sourceRef}.json`]}
-        />
-      </div>
-    </>
+            {chainEvents.length > 0 ? (
+              <SectionAnchor
+                id="pallets"
+                title="Pallet · method breakdown"
+                info="Ranked runtime pallet.method calls emitted by this block."
+              >
+                <PalletMethodBreakdown events={chainEvents} />
+              </SectionAnchor>
+            ) : null}
+
+            <SectionAnchor
+              id="chain-events"
+              title="Chain events (raw)"
+              info={BLOCK_SECTION_HINTS.chainEventsRaw}
+              subtitle="Curated events above are grouped by extrinsic; this table is the raw per-event stream — every pallet-level event in the block, decoded from the chain."
+            >
+              <details className="group rounded border border-border bg-card">
+                <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <span>
+                    {chainEventsQuery.isPending
+                      ? "Loading raw events…"
+                      : `${formatNumber(chainEvents.length)} raw pallet events`}
+                  </span>
+                  <span className="mg-type-caption">
+                    <span className="group-open:hidden">Show</span>
+                    <span className="hidden group-open:inline">Hide</span>
+                  </span>
+                </summary>
+                <div className="border-t border-border p-2">
+                  {chainEventsQuery.isPending ? (
+                    <Skeleton className="h-44" />
+                  ) : chainEventsQuery.error ? (
+                    <TableState
+                      variant="error"
+                      title="Couldn't load block chain events"
+                      description="This section is optional — the rest of the block detail is unaffected."
+                      error={chainEventsQuery.error}
+                      onRetry={() => {
+                        void chainEventsQuery.refetch();
+                      }}
+                    />
+                  ) : chainEvents.length === 0 ? (
+                    <EmptyState
+                      title="No chain events"
+                      description="This block has no decoded pallet events indexed yet, or the all-events backfill hasn't reached it."
+                    />
+                  ) : (
+                    <Panel as="div" flush className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-surface/40">
+                          <tr>
+                            <th className="px-4 py-2.5">Pallet.method</th>
+                            <th className="px-4 py-2.5">Phase</th>
+                            <th className="px-4 py-2.5 text-right">Extrinsic</th>
+                            <th className="px-4 py-2.5">Args</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {chainEvents.map((event) => (
+                            <tr
+                              key={`${event.block_number}-${event.event_index}`}
+                              className="mg-row-accent hover:bg-surface/40"
+                            >
+                              <td className="px-4 py-2.5 mg-type-data text-ink-strong">
+                                {extrinsicCall(event.pallet, event.method)}
+                              </td>
+                              <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                                {event.phase ?? "—"}
+                              </td>
+                              <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
+                                {event.extrinsic_index != null
+                                  ? formatNumber(event.extrinsic_index)
+                                  : "—"}
+                              </td>
+                              <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                                <div className="flex max-w-xs items-center gap-1.5">
+                                  <span
+                                    className="truncate"
+                                    title={formatChainEventArgs(event.args)}
+                                  >
+                                    {formatChainEventArgs(event.args)}
+                                  </span>
+                                  <CopyButton
+                                    value={formatChainEventArgs(event.args)}
+                                    label="args"
+                                    compact
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </Panel>
+                  )}
+                </div>
+              </details>
+            </SectionAnchor>
+
+            <SectionAnchor
+              id="call"
+              title="Call this endpoint"
+              info={BLOCK_SECTION_HINTS.call}
+              subtitle="Copy a ready-to-run request for this block."
+            >
+              <details className="group rounded border border-border bg-card">
+                <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <span>API &amp; artifact URLs</span>
+                  <span className="mg-type-caption">
+                    <span className="group-open:hidden">Show</span>
+                    <span className="hidden group-open:inline">Hide</span>
+                  </span>
+                </summary>
+                <div className="border-t border-border p-3">
+                  <EndpointSnippet
+                    rows={[
+                      { label: "block", path: `/api/v1/blocks/${sourceRef}` },
+                      { label: "extrinsics", path: `/api/v1/blocks/${sourceRef}/extrinsics` },
+                      { label: "events", path: `/api/v1/blocks/${sourceRef}/events` },
+                      {
+                        label: "chain events",
+                        path: `/api/v1/blocks/${sourceRef}/chain-events`,
+                      },
+                      { label: "artifact", path: `/metagraph/blocks/${sourceRef}.json` },
+                    ]}
+                  />
+                </div>
+              </details>
+            </SectionAnchor>
+
+            <ApiSourceFooter
+              paths={[
+                `/api/v1/blocks/${sourceRef}`,
+                `/api/v1/blocks/${sourceRef}/extrinsics`,
+                `/api/v1/blocks/${sourceRef}/events`,
+                `/api/v1/blocks/${sourceRef}/chain-events`,
+              ]}
+              artifacts={[`/metagraph/blocks/${sourceRef}.json`]}
+            />
+          </div>
+        </DataPageModule>
+      </DataPageCanvas>
+    </DataPageStage>
   );
 }
 

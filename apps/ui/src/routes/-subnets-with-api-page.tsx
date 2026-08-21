@@ -3,7 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
   AsyncPanel,
-  PageMasthead,
+  DataPageCanvas,
+  DataPageHero,
+  DataPageModule,
+  DataPageStage,
   Panel,
   TableSkeleton,
 } from "@/components/metagraphed/primitives";
@@ -126,16 +129,29 @@ function WithApiTable() {
 export function SubnetsWithApiPage() {
   return (
     <AppShell>
-      <PageMasthead
-        live
-        eyebrow="Capability"
-        title="Subnets with an API spec"
-        description={hubLede("/subnets/with-api")}
-      />
-      <AsyncPanel context="subnets-with-api" fallback={<TableSkeleton rows={10} columns={4} />}>
-        <WithApiTable />
-      </AsyncPanel>
-      <HubSections path="/subnets/with-api" />
+      <DataPageStage>
+        <DataPageHero
+          id="subnets-api-spec-title"
+          eyebrow="Capability index"
+          live
+          title="Subnets with an API spec."
+          description={hubLede("/subnets/with-api")}
+        />
+        <DataPageCanvas>
+          <DataPageModule
+            title="Integrate from a real contract."
+            caption="Each row has a published machine-readable specification; readiness and probe status remain visible without a crowded dashboard."
+          >
+            <AsyncPanel
+              context="subnets-with-api"
+              fallback={<TableSkeleton rows={10} columns={4} />}
+            >
+              <WithApiTable />
+            </AsyncPanel>
+          </DataPageModule>
+        </DataPageCanvas>
+        <HubSections path="/subnets/with-api" />
+      </DataPageStage>
     </AppShell>
   );
 }

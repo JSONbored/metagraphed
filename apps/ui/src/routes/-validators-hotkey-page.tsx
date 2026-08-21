@@ -15,7 +15,13 @@ import {
   SegmentedToggle,
   Chip,
 } from "@jsonbored/ui-kit";
-import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageModule,
+  DataPageStage,
+  PageMasthead,
+} from "@/components/metagraphed/primitives";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
@@ -383,7 +389,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
   );
 
   return (
-    <>
+    <DataPageStage variant="profile">
       <PageMasthead
         eyebrow="Explorer · validator"
         live
@@ -486,157 +492,161 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         caption="explorer / v1"
       />
 
-      {/* #6430: the endpoint is schema-stable, so a mistyped or never-registered
+      <DataPageCanvas variant="profile">
+        <DataPageModule kind="profile">
+          {/* #6430: the endpoint is schema-stable, so a mistyped or never-registered
           hotkey resolves to a zeroed aggregate and renders a page of zeros that
           looks exactly like a real validator holding nothing. Say so up front. */}
-      {isUnrecognizedValidator(detail) ? (
-        <div
-          role="status"
-          className="mb-8 flex items-start gap-3 rounded-2xl border border-health-warn/40 bg-health-warn/5 px-4 py-3"
-        >
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-health-warn" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-ink-strong">
-              This hotkey isn&apos;t a registered validator
-            </p>
-            <p className="mt-1 max-w-2xl mg-type-caption-lg text-ink-muted">
-              The address is a valid ss58, but it has never been seen validating on any subnet —
-              every figure below reads zero for that reason, not because the validator is idle. It
-              may be mistyped, or a coldkey rather than a hotkey.
-            </p>
-          </div>
-        </div>
-      ) : null}
+          {isUnrecognizedValidator(detail) ? (
+            <div
+              role="status"
+              className="mb-8 flex items-start gap-3 rounded-2xl border border-health-warn/40 bg-health-warn/5 px-4 py-3"
+            >
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-health-warn" aria-hidden />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-ink-strong">
+                  This hotkey isn&apos;t a registered validator
+                </p>
+                <p className="mt-1 max-w-2xl mg-type-caption-lg text-ink-muted">
+                  The address is a valid ss58, but it has never been seen validating on any subnet —
+                  every figure below reads zero for that reason, not because the validator is idle.
+                  It may be mistyped, or a coldkey rather than a hotkey.
+                </p>
+              </div>
+            </div>
+          ) : null}
 
-      {/* #8251: KPI band of exactly six — Total stake · Est. APY (one tile
+          {/* #8251: KPI band of exactly six — Total stake · Est. APY (one tile
           with a 7/30/90 toggle) · Take · Active subnets · Nominators · Avg
           val-trust. Total emission and Max trust left the band (emission is a
           per-subnet story now told in the performance tab; max-trust
           duplicated avg-trust's signal); the old separate three-card APY
           section is gone — this tile IS the one APY block on the page.
           Mobile is the required 2×3 grid. */}
-      <div className="mb-12 grid grid-cols-2 gap-4 xl:grid-cols-3 2xl:grid-cols-6">
-        <StatTile
-          icon={Coins}
-          eyebrow="Total stake"
-          value={taoCompact(detail.total_stake_tao)}
-          // Root (netuid 0) is TAO-denominated with no price exposure; alpha
-          // is the sum across every other subnet's own alpha token (#2550).
-          hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
-          truncate={false}
-          tone="accent"
-          className="rounded-2xl border-accent/25 mg-glass-opaque p-4 mg-card-glow-accent"
-        />
-        <ApyKpiTile hotkey={hotkey} take={detail.take} snapshotApy={snapshotApy} />
-        <StatTile
-          icon={Percent}
-          eyebrow="Take rate"
-          value={formatTakePct(detail.take)}
-          hint="commission kept from delegators"
-          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-        />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Active subnets"
-          value={formatNumber(detail.subnet_count)}
-          hint="validator memberships"
-          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-        />
-        <StatTile
-          icon={Users}
-          eyebrow="Nominators"
-          value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
-          hint="distinct coldkeys delegated"
-          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-        />
-        <StatTile
-          icon={Gauge}
-          eyebrow="Avg validator trust"
-          value={scoreStr(detail.avg_validator_trust)}
-          hint="mean across subnets"
-          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
-        />
-      </div>
+          <div className="mb-12 grid grid-cols-2 gap-4 xl:grid-cols-3 2xl:grid-cols-6">
+            <StatTile
+              icon={Coins}
+              eyebrow="Total stake"
+              value={taoCompact(detail.total_stake_tao)}
+              // Root (netuid 0) is TAO-denominated with no price exposure; alpha
+              // is the sum across every other subnet's own alpha token (#2550).
+              hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
+              truncate={false}
+              tone="accent"
+              className="rounded-2xl border-accent/25 mg-glass-opaque p-4 mg-card-glow-accent"
+            />
+            <ApyKpiTile hotkey={hotkey} take={detail.take} snapshotApy={snapshotApy} />
+            <StatTile
+              icon={Percent}
+              eyebrow="Take rate"
+              value={formatTakePct(detail.take)}
+              hint="commission kept from delegators"
+              className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+            />
+            <StatTile
+              icon={Boxes}
+              eyebrow="Active subnets"
+              value={formatNumber(detail.subnet_count)}
+              hint="validator memberships"
+              className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+            />
+            <StatTile
+              icon={Users}
+              eyebrow="Nominators"
+              value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
+              hint="distinct coldkeys delegated"
+              className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+            />
+            <StatTile
+              icon={Gauge}
+              eyebrow="Avg validator trust"
+              value={scoreStr(detail.avg_validator_trust)}
+              hint="mean across subnets"
+              className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
+            />
+          </div>
 
-      <ProfileTabs tabs={[...TABS]} defaultTab="subnets" />
+          <ProfileTabs tabs={[...TABS]} defaultTab="subnets" />
 
-      <div className="mt-6 min-w-0 space-y-8">
-        {tab === "subnets" ? (
-          <SectionAnchor id="subnets" title="Per-subnet performance" tone="accent">
-            <SubnetPerformanceTab subnets={detail.subnets} />
-          </SectionAnchor>
-        ) : null}
-        {tab === "nominators" ? (
-          <SectionAnchor
-            id="nominators"
-            title="Nominators"
-            subtitle="Derived from stake-delegation events"
-            tone="muted"
-          >
-            <AsyncPanel
-              context="nominators"
-              fallback={<Skeleton className="h-64 w-full" />}
-              retryQueryKeys={[metagraphedQueryKey("validator-nominators", hotkey)]}
+          <div className="mt-6 min-w-0 space-y-8">
+            {tab === "subnets" ? (
+              <SectionAnchor id="subnets" title="Per-subnet performance" tone="accent">
+                <SubnetPerformanceTab subnets={detail.subnets} />
+              </SectionAnchor>
+            ) : null}
+            {tab === "nominators" ? (
+              <SectionAnchor
+                id="nominators"
+                title="Nominators"
+                subtitle="Derived from stake-delegation events"
+                tone="muted"
+              >
+                <AsyncPanel
+                  context="nominators"
+                  fallback={<Skeleton className="h-64 w-full" />}
+                  retryQueryKeys={[metagraphedQueryKey("validator-nominators", hotkey)]}
+                >
+                  <NominatorsSection hotkey={hotkey} />
+                </AsyncPanel>
+              </SectionAnchor>
+            ) : null}
+            {tab === "history" ? (
+              <SectionAnchor
+                id="history"
+                title="Stake & rewards over time"
+                subtitle="Daily snapshots"
+                tone="ink"
+              >
+                <ValidatorHistoryChart hotkey={hotkey} />
+              </SectionAnchor>
+            ) : null}
+          </div>
+
+          <div className="mt-8">
+            <SectionAnchor
+              id="watch"
+              title="Watch this validator"
+              subtitle="Alert on new delegations or stake, via the existing chain alert-triggers API."
+              tone="accent"
             >
-              <NominatorsSection hotkey={hotkey} />
-            </AsyncPanel>
-          </SectionAnchor>
-        ) : null}
-        {tab === "history" ? (
+              <WatchValidatorAlert hotkey={hotkey} />
+            </SectionAnchor>
+          </div>
+
+          {/* #6432: same placement blocks.$ref.tsx and extrinsics.$hash.tsx use. */}
+          <div className="mt-6">
+            <Link
+              to="/validators"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
+            >
+              ← All validators
+            </Link>
+          </div>
+
           <SectionAnchor
-            id="history"
-            title="Stake & rewards over time"
-            subtitle="Daily snapshots"
-            tone="ink"
+            id="call"
+            title="Call this endpoint"
+            subtitle="Copy a ready-to-run request for this validator."
           >
-            <ValidatorHistoryChart hotkey={hotkey} />
+            <EndpointSnippet
+              rows={[
+                { label: "summary", path: `/api/v1/validators/${sourceRef}` },
+                { label: "nominators", path: `/api/v1/validators/${sourceRef}/nominators` },
+                { label: "history", path: `/api/v1/validators/${sourceRef}/history` },
+              ]}
+            />
           </SectionAnchor>
-        ) : null}
-      </div>
 
-      <div className="mt-8">
-        <SectionAnchor
-          id="watch"
-          title="Watch this validator"
-          subtitle="Alert on new delegations or stake, via the existing chain alert-triggers API."
-          tone="accent"
-        >
-          <WatchValidatorAlert hotkey={hotkey} />
-        </SectionAnchor>
-      </div>
-
-      {/* #6432: same placement blocks.$ref.tsx and extrinsics.$hash.tsx use. */}
-      <div className="mt-6">
-        <Link
-          to="/validators"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
-        >
-          ← All validators
-        </Link>
-      </div>
-
-      <SectionAnchor
-        id="call"
-        title="Call this endpoint"
-        subtitle="Copy a ready-to-run request for this validator."
-      >
-        <EndpointSnippet
-          rows={[
-            { label: "summary", path: `/api/v1/validators/${sourceRef}` },
-            { label: "nominators", path: `/api/v1/validators/${sourceRef}/nominators` },
-            { label: "history", path: `/api/v1/validators/${sourceRef}/history` },
-          ]}
-        />
-      </SectionAnchor>
-
-      <ApiSourceFooter
-        paths={[
-          `/api/v1/validators/${sourceRef}`,
-          `/api/v1/validators/${sourceRef}/nominators`,
-          `/api/v1/validators/${sourceRef}/history`,
-        ]}
-      />
-    </>
+          <ApiSourceFooter
+            paths={[
+              `/api/v1/validators/${sourceRef}`,
+              `/api/v1/validators/${sourceRef}/nominators`,
+              `/api/v1/validators/${sourceRef}/history`,
+            ]}
+          />
+        </DataPageModule>
+      </DataPageCanvas>
+    </DataPageStage>
   );
 }
 

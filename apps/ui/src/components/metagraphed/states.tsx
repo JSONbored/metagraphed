@@ -449,7 +449,7 @@ export function PageHeading({
   right?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
+    <div className="mg-page-heading flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
       <div>
         {eyebrow ? <div className="mg-label mb-1">{eyebrow}</div> : null}
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-strong">

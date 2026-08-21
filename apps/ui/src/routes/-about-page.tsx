@@ -11,7 +11,13 @@ import {
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode, ExternalLink } from "@jsonbored/ui-kit";
-import { PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import {
+  DataPageCanvas,
+  DataPageModule,
+  DataPageStage,
+  PageMasthead,
+  Panel,
+} from "@/components/metagraphed/primitives";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -21,139 +27,163 @@ import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 export function AboutPage() {
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="About"
-        title="Methodology & scope"
-        description="An unofficial, public explorer and integration registry for Bittensor — blocks, subnets, validators, and accounts alongside the public interfaces each subnet exposes, all machine-readable for developers and AI agents."
-        actions={
-          <ExternalLink
-            href={GITHUB_REPO}
-            bare
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2 text-sm font-medium text-paper hover:opacity-90 transition-opacity"
+      <DataPageStage>
+        <PageMasthead
+          eyebrow="About"
+          title="Methodology & scope"
+          description="An unofficial, public explorer and integration registry for Bittensor — blocks, subnets, validators, and accounts alongside the public interfaces each subnet exposes, all machine-readable for developers and AI agents."
+          actions={
+            <ExternalLink
+              href={GITHUB_REPO}
+              bare
+              className="inline-flex min-h-11 items-center gap-1.5 bg-ink-strong px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-90"
+            >
+              <Github className="size-3.5" /> View on GitHub
+              <ArrowUpRight className="size-3.5" />
+            </ExternalLink>
+          }
+        />
+        <DataPageCanvas>
+          <DataPageModule
+            title="How to read the registry."
+            caption="What we measure, how curation is labeled, and where the same public data can be read by people, scripts, and agents."
           >
-            <Github className="size-3.5" /> View on GitHub
-            <ArrowUpRight className="size-3.5" />
-          </ExternalLink>
-        }
-      />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-8 min-w-0">
-          <Section title="What this is">
-            <p>
-              An unofficial, public explorer and integration registry for Bittensor. The explorer
-              reads chain-direct data — blocks, subnets, validators, and accounts — with endpoint
-              health, schema drift, and freshness. The registry maps every public interface a subnet
-              exposes — APIs, OpenAPI schemas, docs, repos, SSE streams, data artifacts, and
-              providers — with source evidence and the curation gaps still to fill. Everything is
-              machine-readable, served over REST, GraphQL, and MCP for developers and AI agents
-              alike.
-            </p>
-          </Section>
-          <Section title="What this is not">
-            <ul className="list-disc pl-6 space-y-1.5">
-              <li>
-                Not an OpenTensor or Bittensor Foundation product — an independent, unofficial
-                project.
-              </li>
-              <li>
-                Not a custodial wallet or exchange — non-custodial by design: your keys and funds
-                never leave your own wallet, and any signing stays local, never on our servers.
-              </li>
-              <li>No private keys, PATs, or token-gated data are ever requested or displayed.</li>
-              <li>Endpoint pool eligibility is metadata only — proxy routing is future-scoped.</li>
-            </ul>
-          </Section>
-          <Section title="Curation levels">
-            <dl className="grid gap-2.5">
-              <Term name="Native" desc="Sourced directly from the Bittensor chain." />
-              <Term
-                name="Candidate-discovered"
-                desc="Leads from public sources, not yet verified."
-              />
-              <Term
-                name="Machine-verified"
-                desc="Reachable and shape-checked by automated probes."
-              />
-              <Term name="Maintainer-reviewed" desc="A human reviewer accepted the overlay." />
-              <Term
-                name="Adapter-backed"
-                desc="A typed adapter publishes live metrics (e.g. SN7, SN74)."
-              />
-            </dl>
-          </Section>
-          <Section title="Coverage levels">
-            <dl className="grid gap-2.5">
-              <Term name="Native-only" desc="Chain identity present, no curated overlay yet." />
-              <Term name="Manifested" desc="Curated overlay with at least one public surface." />
-              <Term
-                name="Probed"
-                desc="Surfaces or endpoints actively probed for health and freshness."
-              />
-            </dl>
-          </Section>
-          <Section title="Contributing">
-            <p>
-              Corrections, new candidate leads, and maintainer review happen through the public
-              repository. There is no in-app submission flow — registry truth lives in version
-              control, reviewed in the open.
-            </p>
-            <div className="mt-3">
-              <ExternalLink href={GITHUB_REPO}>{GITHUB_REPO}</ExternalLink>
-            </div>
-          </Section>
-          <Section title="API & artifacts">
-            <p className="mb-3">
-              JSON Schema is canonical; OpenAPI and the typed clients are projections of it. Every
-              public list and detail view is reachable over REST, GraphQL, and MCP — or as a static
-              JSON artifact — so a human, a script, or an agent all read the same data.
-            </p>
-            <div className="space-y-2">
-              <CopyableCode
-                label="REST"
-                value={`${API_BASE}/api/v1`}
-                truncate={false}
-                className="w-full"
-              />
-              <CopyableCode
-                label="GraphQL"
-                value={`${API_BASE}/api/v1/graphql`}
-                truncate={false}
-                className="w-full"
-              />
-              <CopyableCode
-                label="MCP"
-                value={`${API_BASE}/mcp`}
-                truncate={false}
-                className="w-full"
-              />
-              <CopyableCode
-                label="OpenAPI"
-                value={`${API_BASE}/api/v1/openapi.json`}
-                truncate={false}
-                className="w-full"
-              />
-              <CopyableCode
-                label="Artifacts"
-                value={`${API_BASE}/metagraph/`}
-                truncate={false}
-                className="w-full"
-              />
-            </div>
-          </Section>
-        </div>
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="space-y-0 min-w-0">
+                <Section title="What this is">
+                  <p>
+                    An unofficial, public explorer and integration registry for Bittensor. The
+                    explorer reads chain-direct data — blocks, subnets, validators, and accounts —
+                    with endpoint health, schema drift, and freshness. The registry maps every
+                    public interface a subnet exposes — APIs, OpenAPI schemas, docs, repos, SSE
+                    streams, data artifacts, and providers — with source evidence and the curation
+                    gaps still to fill. Everything is machine-readable, served over REST, GraphQL,
+                    and MCP for developers and AI agents alike.
+                  </p>
+                </Section>
+                <Section title="What this is not">
+                  <ul className="list-disc pl-6 space-y-1.5">
+                    <li>
+                      Not an OpenTensor or Bittensor Foundation product — an independent, unofficial
+                      project.
+                    </li>
+                    <li>
+                      Not a custodial wallet or exchange — non-custodial by design: your keys and
+                      funds never leave your own wallet, and any signing stays local, never on our
+                      servers.
+                    </li>
+                    <li>
+                      No private keys, PATs, or token-gated data are ever requested or displayed.
+                    </li>
+                    <li>
+                      Endpoint pool eligibility is metadata only — proxy routing is future-scoped.
+                    </li>
+                  </ul>
+                </Section>
+                <Section title="Curation levels">
+                  <dl className="grid gap-2.5">
+                    <Term name="Native" desc="Sourced directly from the Bittensor chain." />
+                    <Term
+                      name="Candidate-discovered"
+                      desc="Leads from public sources, not yet verified."
+                    />
+                    <Term
+                      name="Machine-verified"
+                      desc="Reachable and shape-checked by automated probes."
+                    />
+                    <Term
+                      name="Maintainer-reviewed"
+                      desc="A human reviewer accepted the overlay."
+                    />
+                    <Term
+                      name="Adapter-backed"
+                      desc="A typed adapter publishes live metrics (e.g. SN7, SN74)."
+                    />
+                  </dl>
+                </Section>
+                <Section title="Coverage levels">
+                  <dl className="grid gap-2.5">
+                    <Term
+                      name="Native-only"
+                      desc="Chain identity present, no curated overlay yet."
+                    />
+                    <Term
+                      name="Manifested"
+                      desc="Curated overlay with at least one public surface."
+                    />
+                    <Term
+                      name="Probed"
+                      desc="Surfaces or endpoints actively probed for health and freshness."
+                    />
+                  </dl>
+                </Section>
+                <Section title="Contributing">
+                  <p>
+                    Corrections, new candidate leads, and maintainer review happen through the
+                    public repository. There is no in-app submission flow — registry truth lives in
+                    version control, reviewed in the open.
+                  </p>
+                  <div className="mt-3">
+                    <ExternalLink href={GITHUB_REPO}>{GITHUB_REPO}</ExternalLink>
+                  </div>
+                </Section>
+                <Section title="API & artifacts">
+                  <p className="mb-3">
+                    JSON Schema is canonical; OpenAPI and the typed clients are projections of it.
+                    Every public list and detail view is reachable over REST, GraphQL, and MCP — or
+                    as a static JSON artifact — so a human, a script, or an agent all read the same
+                    data.
+                  </p>
+                  <div className="space-y-2">
+                    <CopyableCode
+                      label="REST"
+                      value={`${API_BASE}/api/v1`}
+                      truncate={false}
+                      className="w-full"
+                    />
+                    <CopyableCode
+                      label="GraphQL"
+                      value={`${API_BASE}/api/v1/graphql`}
+                      truncate={false}
+                      className="w-full"
+                    />
+                    <CopyableCode
+                      label="MCP"
+                      value={`${API_BASE}/mcp`}
+                      truncate={false}
+                      className="w-full"
+                    />
+                    <CopyableCode
+                      label="OpenAPI"
+                      value={`${API_BASE}/api/v1/openapi.json`}
+                      truncate={false}
+                      className="w-full"
+                    />
+                    <CopyableCode
+                      label="Artifacts"
+                      value={`${API_BASE}/metagraph/`}
+                      truncate={false}
+                      className="w-full"
+                    />
+                  </div>
+                </Section>
+              </div>
 
-        <aside className="lg:sticky lg:top-24 h-fit">
-          <AtAGlance />
-        </aside>
-      </div>
-      <ApiSourceFooter paths={["/api/v1", "/api/v1/openapi.json", "/api/v1/build"]} />
+              <aside className="border-t border-border pt-4 lg:sticky lg:top-24 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 h-fit">
+                <AtAGlance />
+              </aside>
+            </div>
+          </DataPageModule>
+        </DataPageCanvas>
+        <ApiSourceFooter paths={["/api/v1", "/api/v1/openapi.json", "/api/v1/build"]} />
+      </DataPageStage>
     </AppShell>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section>
+    <section className="mg-static-section">
       <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
         {title}
       </h2>

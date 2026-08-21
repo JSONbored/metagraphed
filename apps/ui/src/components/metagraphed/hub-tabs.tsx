@@ -39,7 +39,15 @@ export function activeHubTab<T extends HubTab>(tabs: readonly T[], pathname: str
  * beside it (#8254/#8281) — per-tab actions render inside the tab content via
  * HubTabActions instead, so the tabs always own the full width.
  */
-export function HubTabs({ tabs, ariaLabel }: { tabs: readonly HubTab[]; ariaLabel: string }) {
+export function HubTabs({
+  tabs,
+  ariaLabel,
+  className,
+}: {
+  tabs: readonly HubTab[];
+  ariaLabel: string;
+  className?: string;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const active = activeHubTab(tabs, pathname);
   const ref = useRef<HTMLElement>(null);
@@ -50,7 +58,10 @@ export function HubTabs({ tabs, ariaLabel }: { tabs: readonly HubTab[]; ariaLabe
     <nav
       ref={ref}
       aria-label={ariaLabel}
-      className="sticky z-[var(--mg-z-sticky)] -mx-4 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 md:mx-0"
+      className={classNames(
+        "sticky z-[var(--mg-z-sticky)] -mx-4 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 md:mx-0",
+        className,
+      )}
       style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
     >
       <ScrollShadow className="min-w-0" innerClassName="scroll-smooth">

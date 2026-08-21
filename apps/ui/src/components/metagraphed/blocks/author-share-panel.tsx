@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Panel } from "@/components/metagraphed/primitives";
+import { DataPageModule } from "@/components/metagraphed/primitives";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { InfoTooltip } from "@jsonbored/ui-kit";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
@@ -32,15 +32,15 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
   const max = top[0]?.count ?? 1;
 
   return (
-    <Panel
-      className="mb-6"
+    <DataPageModule
+      kind="question"
       title={
         <span className="inline-flex items-center gap-1.5">
-          Top authors this page
+          Authors
           <InfoTooltip label="Validators that produced the most blocks in this page window. Click a row to filter the feed to only their blocks." />
         </span>
       }
-      caption={`${distinct} distinct authors across ${formatNumber(total)} blocks`}
+      caption={`${distinct} distinct authors across ${formatNumber(total)} blocks.`}
     >
       <ol className="divide-y divide-border/60">
         {top.map(({ author, count }) => {
@@ -107,6 +107,6 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
           );
         })}
       </ol>
-    </Panel>
+    </DataPageModule>
   );
 }

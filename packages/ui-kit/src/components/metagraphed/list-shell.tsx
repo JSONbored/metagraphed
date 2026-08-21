@@ -3,14 +3,32 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import { classNames } from "@/lib/format";
 import { Skeleton } from "./skeleton";
 
+const RESPONSIVE_CLASSES = {
+  md: {
+    filter:
+      "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5",
+    cards: "md:hidden space-y-2",
+    table: "hidden md:block",
+    footer: "md:hidden mt-3",
+  },
+  lg: {
+    filter:
+      "sticky lg:static z-[var(--mg-z-raised)] -mx-4 lg:mx-0 mb-3 border-b border-border lg:border lg:rounded lg:bg-card px-3 py-2 lg:p-2.5",
+    cards: "lg:hidden space-y-2",
+    table: "hidden lg:block",
+    footer: "lg:hidden mt-3",
+  },
+} as const;
+
 /**
  * Shared responsive shell for list/table routes.
  *
  * - `filters` renders inside a sticky filter bar that hugs the app header on
  *   mobile and remains visible while the user scrolls a long list.
- * - `cards` renders on viewports < md and provides a tap-friendly card
- *   fallback for tabular data.
- * - `table` renders on viewports >= md with horizontal scroll for overflow.
+ * - `cards` renders below the configured responsive breakpoint and provides a
+ *   tap-friendly fallback for tabular data.
+ * - `table` renders at and above that breakpoint with horizontal scroll for
+ *   overflow.
  *
  * The table's <thead> sticks against the bounded viewport this shell puts
  * around it, so consumers pin their header with `sticky top-0` and nothing
@@ -34,6 +52,8 @@ export function ListShell({
   isStale,
   viewportRef,
   stickyHeader = true,
+  presentation = "panel",
+  responsiveAt = "md",
 }: {
   filters: ReactNode;
   cards?: ReactNode;
@@ -65,8 +85,22 @@ export function ListShell({
    * passes `false` -- the exact behaviour it opted out of.
    */
   stickyHeader?: boolean;
+  /**
+   * `canvas` lets a directory become part of a continuous data document.
+   * The shell owns its flush table edges and toolbar bleed so routes do not
+   * repair them with negative-margin selectors.
+   */
+  presentation?: "panel" | "canvas";
+  /** Keep touch-first cards through tablet when a table has many columns. */
+  responsiveAt?: "md" | "lg";
 }) {
-  const tableCard = "rounded border border-border bg-card overflow-hidden";
+  const responsive = RESPONSIVE_CLASSES[responsiveAt];
+  const tableCard = classNames(
+    "mg-list-table-card overflow-hidden",
+    presentation === "canvas"
+      ? "mg-list-table-card--canvas"
+      : "rounded border border-border bg-card",
+  );
   // .mg-table-scroll brings the edge-fade + thin scrollbar; .mg-list-viewport
   // brings the height cap, both overflow axes and overscroll containment. They
   // belong on the SAME element (see the note below).
@@ -74,10 +108,11 @@ export function ListShell({
     ? "mg-table-scroll mg-list-viewport"
     : "mg-table-scroll overflow-x-auto";
   return (
-    <div>
+    <div data-mg-list-shell data-presentation={presentation}>
       <div
         className={classNames(
-          // Sticky below `md`, in normal flow at and above it. Offset reads
+          // Sticky below the responsive breakpoint, in normal flow at and
+          // above it. Offset reads
           // --mg-sticky-offset (published by AppShell to match real header +
           // ticker height) with a fallback.
           //
@@ -96,10 +131,9 @@ export function ListShell({
           // (`#subnets-list > div > div:first-child { position: static }`,
           // at >=1024px only, which is why tablet still showed the overlap).
           // That override is deleted; this is the general rule.
-          "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
+          responsive.filter,
           "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
-          "border-b border-border md:border md:rounded md:bg-card",
-          "px-3 py-2 md:p-2.5",
+          presentation === "canvas" ? "mg-list-filter-bar--canvas" : undefined,
         )}
         // --mg-sticky-offset is the app header (published by AppShell);
         // --mg-tabs-h is the page's sticky tab strip, 0 when there isn't one.
@@ -122,8 +156,8 @@ export function ListShell({
         <div data-mg-list-empty="">{empty}</div>
       ) : (
         <div className={isStale ? "opacity-70 transition-opacity" : undefined}>
-          {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
-          <div className={cards ? "hidden md:block" : undefined}>
+          {cards ? <div className={responsive.cards}>{cards}</div> : null}
+          <div className={cards ? responsive.table : undefined}>
             <div className={tableCard}>
               {/* ONE scroll container, both axes. These used to be two
                   nested divs -- .mg-table-scroll for x, an inner bounded div
@@ -141,7 +175,7 @@ export function ListShell({
             </div>
           </div>
           {cards && footer ? (
-            <div className="md:hidden mt-3">{footer}</div>
+            <div className={responsive.footer}>{footer}</div>
           ) : null}
         </div>
       )}

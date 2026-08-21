@@ -89,7 +89,7 @@ export function Panel({
     <Cmp
       {...rest}
       className={classNames(
-        "rounded-sm border",
+        "mg-panel rounded-sm border",
         toneStyle.border,
         tintBorderOnly ? "bg-card" : toneStyle.bg,
         interactive ? "mg-hover-lift" : null,

@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
 import { Sparkline } from "@jsonbored/ui-kit";
 import {
   chainBurnQuery,
@@ -9,6 +8,7 @@ import {
   chainConcentrationHistoryQuery,
 } from "@/lib/metagraphed/queries";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { DataPageModule } from "@/components/metagraphed/primitives";
 import { formatNumber, formatTao, formatRelative } from "@/lib/metagraphed/format";
 import {
   coverageNote,
@@ -30,6 +30,8 @@ const RANK_COLORS = [
   "var(--chart-4)",
   "var(--chart-5)",
   "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
 ];
 
 /**
@@ -54,9 +56,10 @@ function BurnSpread() {
   const b = data?.data;
 
   return (
-    <DataModule
+    <DataPageModule
       title="Registration cost"
       caption="The current price of entry across the subnets that were read. The rank rail makes the expensive end easy to compare."
+      kind="question"
     >
       {isLoading ? <Skeleton className="h-[15rem] w-full" /> : null}
       {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
@@ -64,7 +67,7 @@ function BurnSpread() {
         <EmptyState title="No registration costs" description="Nothing has been read yet." />
       ) : null}
       {b ? <BurnSpreadData data={b} /> : null}
-    </DataModule>
+    </DataPageModule>
   );
 }
 
@@ -117,9 +120,10 @@ function HolderConcentration() {
   const h = data?.data;
 
   return (
-    <DataModule
+    <DataPageModule
       title="Alpha holders"
       caption="How concentrated alpha ownership is across measured subnets — including the cases where a single account holds it all."
+      kind="question"
     >
       {isLoading ? <Skeleton className="h-[13rem] w-full" /> : null}
       {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
@@ -127,7 +131,7 @@ function HolderConcentration() {
         <EmptyState title="No holder data" description="Nothing has been read yet." />
       ) : null}
       {h ? <HolderConcentrationData data={h} /> : null}
-    </DataModule>
+    </DataPageModule>
   );
 }
 
@@ -171,9 +175,10 @@ function ConcentrationRanking() {
   const c = data?.data;
 
   return (
-    <DataModule
+    <DataPageModule
       title="Most concentrated subnets"
       caption="A ranked view of stake inequality. Unmeasured subnets are excluded rather than presented as perfectly even."
+      kind="question"
     >
       {isLoading ? <Skeleton className="h-[18rem] w-full" /> : null}
       {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
@@ -181,7 +186,7 @@ function ConcentrationRanking() {
         <EmptyState title="No concentration data" description="Nothing has been read yet." />
       ) : null}
       {c ? <ConcentrationRankingData data={c} /> : null}
-    </DataModule>
+    </DataPageModule>
   );
 }
 
@@ -234,9 +239,10 @@ function ConcentrationDrift() {
   const hist = data?.data;
 
   return (
-    <DataModule
+    <DataPageModule
       title="Concentration drift"
       caption="The network-wide stake Gini over time. The definition seam is surfaced rather than smoothed into a false trend."
+      kind="question"
     >
       {isLoading ? <Skeleton className="h-[20rem] w-full" /> : null}
       {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
@@ -247,7 +253,7 @@ function ConcentrationDrift() {
         />
       ) : null}
       {hist && hist.points.length > 0 ? <ConcentrationDriftData data={hist} /> : null}
-    </DataModule>
+    </DataPageModule>
   );
 }
 
@@ -298,28 +304,6 @@ function ConcentrationDriftData({ data: hist }: { data: NetworkConcentrationHist
         </p>
       ) : null}
     </>
-  );
-}
-
-function DataModule({
-  title,
-  caption,
-  children,
-}: {
-  title: string;
-  caption: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="mg-data-module">
-      <header className="mg-data-module-heading">
-        <h2 className="mg-data-module-title">
-          <strong>{title}.</strong>
-          <span>{caption}</span>
-        </h2>
-      </header>
-      <div className="mg-data-module-body">{children}</div>
-    </section>
   );
 }
 

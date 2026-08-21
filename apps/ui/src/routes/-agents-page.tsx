@@ -2,7 +2,13 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ActionBar, ShareButton, SectionHeading } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import {
+  AsyncPanel,
+  DataPageCanvas,
+  DataPageModule,
+  DataPageStage,
+  PageMasthead,
+} from "@/components/metagraphed/primitives";
 import { AgentContextCard } from "@/components/metagraphed/agent-context-card";
 import { AgentConnectCard } from "@/components/metagraphed/agent-connect-card";
 import { AgentLiveCard } from "@/components/metagraphed/agent-live-card";
@@ -16,24 +22,33 @@ import type { AgentResource, AgentResources } from "@/lib/metagraphed/types";
 export function AgentsPage() {
   return (
     <AppShell>
-      <PageMasthead
-        eyebrow="For AI agents"
-        title="Use AI to explore Bittensor"
-        description="Point any agent at metagraphed — over MCP, a typed SDK, or plain HTTP — and it can find, explain, and call the right Bittensor subnet for a task. No key, no account."
-        actions={
-          <ActionBar>
-            <ShareButton bare />
-          </ActionBar>
-        }
-      />
-      <AsyncPanel
-        context="agent resources"
-        fallback={<Skeleton className="h-[40rem] w-full" />}
-        retryQueryKeys={[agentResourcesQuery().queryKey]}
-      >
-        <AgentsBody />
-      </AsyncPanel>
-      <ApiSourceFooter paths={["/api/v1/agent-resources"]} />
+      <DataPageStage>
+        <PageMasthead
+          eyebrow="For AI agents"
+          title="Use AI to explore Bittensor"
+          description="Point any agent at metagraphed — over MCP, a typed SDK, or plain HTTP — and it can find, explain, and call the right Bittensor subnet for a task. No key, no account."
+          actions={
+            <ActionBar>
+              <ShareButton bare />
+            </ActionBar>
+          }
+        />
+        <DataPageCanvas>
+          <DataPageModule
+            title="Give an agent a working map."
+            caption="A short, sequential handoff: context first, connection second, then real tasks and deeper interfaces."
+          >
+            <AsyncPanel
+              context="agent resources"
+              fallback={<Skeleton className="h-[40rem] w-full" />}
+              retryQueryKeys={[agentResourcesQuery().queryKey]}
+            >
+              <AgentsBody />
+            </AsyncPanel>
+          </DataPageModule>
+        </DataPageCanvas>
+        <ApiSourceFooter paths={["/api/v1/agent-resources"]} />
+      </DataPageStage>
     </AppShell>
   );
 }
