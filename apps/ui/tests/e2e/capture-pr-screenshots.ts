@@ -128,7 +128,11 @@ function run(cmd, args, opts = {}) {
       `${cmd} ${args.join(" ")} failed (${result.status}):\n${result.stderr || result.stdout}`,
     );
   }
-  return result.stdout.trim();
+  // `stdio: "inherit"` deliberately streams long-lived install output to the
+  // caller, which means Node leaves `stdout` as `null`. The helper is also
+  // used for commands whose output is meaningful, so normalize just this
+  // no-capture case rather than forcing every caller through a second runner.
+  return (result.stdout ?? "").trim();
 }
 
 /** Prefers `origin/main` over local `main` -- a long-lived local checkout's
