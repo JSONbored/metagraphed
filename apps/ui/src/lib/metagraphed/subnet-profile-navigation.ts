@@ -236,7 +236,8 @@ export function canonicalSubnetProfileDestination(
   const requestedHash = incomingHash || legacyDefaultHash;
   // A neuron can only be selected with a valid UID. Bare historic links still
   // reveal the stable metagraph record rather than focusing an absent node.
-  const resolvedHash = requestedHash === "neuron" && search.uid == null ? "metagraph" : requestedHash;
+  const resolvedHash =
+    requestedHash === "neuron" && search.uid == null ? "metagraph" : requestedHash;
   const hashDestination = resolvedHash ? SUBNET_PROFILE_SECTIONS[resolvedHash] : undefined;
   const tab = hashDestination?.tab ?? legacyTab?.tab;
   if (!tab) return undefined;
@@ -251,9 +252,7 @@ export function canonicalSubnetProfileDestination(
   const clearResource = tab !== "build" && search.resource != null;
   const canonicalHash = hashDestination?.target ?? resolvedHash;
   const searchNeedsCanonicalization =
-    search.tab !== tab ||
-    (resource != null && search.resource !== resource) ||
-    clearResource;
+    search.tab !== tab || (resource != null && search.resource !== resource) || clearResource;
   const hashNeedsCanonicalization = (canonicalHash ?? "") !== incomingHash;
   if (!searchNeedsCanonicalization && !hashNeedsCanonicalization) return undefined;
 

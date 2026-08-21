@@ -512,10 +512,7 @@ function BuildView({ netuid, profile }: { netuid: number; profile?: SubnetProfil
         title="Integration artifacts"
         caption="Callable services, an optional playground, badge embed, and raw API routes remain available without crowding the default build path."
       >
-        <DataPageDisclosure
-          id="build-artifacts-detail"
-          label="Open integration artifacts"
-        >
+        <DataPageDisclosure id="build-artifacts-detail" label="Open integration artifacts">
           <CallableServicesPanel netuid={netuid} />
           <SurfacePlayground netuid={netuid} />
           <UptimeBadgeEmbed entity="subnets" id={netuid} />
@@ -567,10 +564,7 @@ function ResearchView({ netuid }: { netuid: number }) {
         title="Revenue and emission context"
         caption="External revenue, emissions, ownership capture, and participation costs are evidence-rich research records—not headline profile furniture."
       >
-        <DataPageDisclosure
-          id="emission-detail"
-          label="Open revenue, emission & treasury research"
-        >
+        <DataPageDisclosure id="emission-detail" label="Open revenue, emission & treasury research">
           <>
             <div id="revenue-coverage">
               <QueryErrorBoundary>
@@ -624,11 +618,7 @@ function ParticipateView({ netuid }: { netuid: number }) {
         >
           <ValidatorGuide />
           <AsyncPanel height="xl">
-            <ValidatorsTableLoader
-              netuid={netuid}
-              selectedUid={uid}
-              onSelect={inspectNeuron}
-            />
+            <ValidatorsTableLoader netuid={netuid} selectedUid={uid} onSelect={inspectNeuron} />
           </AsyncPanel>
           <AsyncPanel height="sm">
             <WeightsSummaryLoader netuid={netuid} />
@@ -644,7 +634,10 @@ function ParticipateView({ netuid }: { netuid: number }) {
         title="Participation distribution"
         caption="Concentration and return context are useful only after the validator path is clear."
       >
-        <DataPageDisclosure id="participation-detail" label="Open distribution, yield & turnover analysis">
+        <DataPageDisclosure
+          id="participation-detail"
+          label="Open distribution, yield & turnover analysis"
+        >
           <>
             <div id="concentration">
               <QueryErrorBoundary>

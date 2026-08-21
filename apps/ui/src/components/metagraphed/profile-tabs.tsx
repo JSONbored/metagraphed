@@ -86,10 +86,7 @@ export function ProfileTabs({
       */}
       <div className="flex flex-col gap-1 px-4 md:flex-row md:items-stretch md:gap-3 md:px-0">
         <ScrollShadow className="min-w-0 md:flex-1" innerClassName="scroll-smooth">
-          <ul
-            ref={listRef}
-            className="flex items-center gap-6"
-          >
+          <ul ref={listRef} className="flex items-center gap-6">
             {tabs.map((t) => {
               const isActive = active === t.id;
               return (

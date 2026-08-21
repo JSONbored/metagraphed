@@ -91,10 +91,7 @@ describe("subnet profile navigation", () => {
       clearResource: false,
     });
     expect(
-      canonicalSubnetProfileDestination(
-        { tab: "surfaces", resource: "surfaces" },
-        "#evidence",
-      ),
+      canonicalSubnetProfileDestination({ tab: "surfaces", resource: "surfaces" }, "#evidence"),
     ).toEqual({
       tab: "records",
       hash: "evidence",

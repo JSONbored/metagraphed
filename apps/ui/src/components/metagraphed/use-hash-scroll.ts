@@ -12,8 +12,7 @@ export interface FocusableEl {
 }
 
 export type HashDestination =
-  | string
-  | { tab: string; target?: string; search?: Readonly<Record<string, unknown>> };
+  string | { tab: string; target?: string; search?: Readonly<Record<string, unknown>> };
 
 /**
  * Move DOM focus — and with it the screen-reader cursor — to a hash-nav target

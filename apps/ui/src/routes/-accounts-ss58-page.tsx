@@ -2996,49 +2996,49 @@ function AccountFootprintSection({
             {rows.slice(0, visibleCount).map((r) => {
               const destination = subnetPositionDestination(r.uid);
               return (
-              <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface/30">
-                <td className="px-4 py-4 font-mono mg-type-caption">
-                  {r.netuid != null ? (
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: r.netuid }}
-                      // Same deep-link as SubnetPerformanceTable: this row already
-                      // knows its uid, so land on the neuron card, not the overview.
-                      search={destination?.search}
-                      hash={destination?.hash}
-                      className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
-                    >
-                      SN{r.netuid}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-4 text-right font-mono mg-type-caption tabular-nums text-ink">
-                  {r.uid != null ? formatNumber(r.uid) : "—"}
-                </td>
-                <td className="px-4 py-4 text-right font-mono mg-type-caption tabular-nums text-ink">
-                  {fmtStake(r.stake_tao)}
-                </td>
-                <td className="px-4 py-4 mg-type-data">
-                  {r.validator_permit ? (
-                    <ValidatorPermitBadge ss58={ss58} />
-                  ) : (
-                    <span className="text-ink-muted">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-4 mg-type-data">
-                  {r.active ? (
-                    <span className="inline-flex rounded-full bg-health-ok/10 px-2 py-0.5 text-health-ok">
-                      active
-                    </span>
-                  ) : (
-                    <span className="inline-flex rounded-full bg-surface px-2 py-0.5 text-ink-muted">
-                      idle
-                    </span>
-                  )}
-                </td>
-              </tr>
+                <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface/30">
+                  <td className="px-4 py-4 font-mono mg-type-caption">
+                    {r.netuid != null ? (
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: r.netuid }}
+                        // Same deep-link as SubnetPerformanceTable: this row already
+                        // knows its uid, so land on the neuron card, not the overview.
+                        search={destination?.search}
+                        hash={destination?.hash}
+                        className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                      >
+                        SN{r.netuid}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-4 text-right font-mono mg-type-caption tabular-nums text-ink">
+                    {r.uid != null ? formatNumber(r.uid) : "—"}
+                  </td>
+                  <td className="px-4 py-4 text-right font-mono mg-type-caption tabular-nums text-ink">
+                    {fmtStake(r.stake_tao)}
+                  </td>
+                  <td className="px-4 py-4 mg-type-data">
+                    {r.validator_permit ? (
+                      <ValidatorPermitBadge ss58={ss58} />
+                    ) : (
+                      <span className="text-ink-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 mg-type-data">
+                    {r.active ? (
+                      <span className="inline-flex rounded-full bg-health-ok/10 px-2 py-0.5 text-health-ok">
+                        active
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-surface px-2 py-0.5 text-ink-muted">
+                        idle
+                      </span>
+                    )}
+                  </td>
+                </tr>
               );
             })}
           </tbody>
@@ -3049,45 +3049,48 @@ function AccountFootprintSection({
         {rows.slice(0, visibleCount).map((r) => {
           const destination = subnetPositionDestination(r.uid);
           return (
-          <li key={`${r.netuid}-${r.uid}`} className="rounded-md border border-border bg-card p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
-                {r.netuid != null ? (
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: r.netuid }}
-                    search={destination?.search}
-                    hash={destination?.hash}
-                    className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-mono mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
-                  >
-                    SN{r.netuid}
-                  </Link>
+            <li
+              key={`${r.netuid}-${r.uid}`}
+              className="rounded-md border border-border bg-card p-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  {r.netuid != null ? (
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: r.netuid }}
+                      search={destination?.search}
+                      hash={destination?.hash}
+                      className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-mono mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                    >
+                      SN{r.netuid}
+                    </Link>
+                  ) : (
+                    <span className="font-mono mg-type-caption text-ink-muted">—</span>
+                  )}
+                  {r.validator_permit ? <ValidatorPermitBadge ss58={ss58} /> : null}
+                </div>
+                {r.active ? (
+                  <span className="inline-flex shrink-0 rounded-full bg-health-ok/10 px-2 py-0.5 mg-type-data text-health-ok">
+                    active
+                  </span>
                 ) : (
-                  <span className="font-mono mg-type-caption text-ink-muted">—</span>
+                  <span className="inline-flex shrink-0 rounded-full bg-surface px-2 py-0.5 mg-type-data text-ink-muted">
+                    idle
+                  </span>
                 )}
-                {r.validator_permit ? <ValidatorPermitBadge ss58={ss58} /> : null}
               </div>
-              {r.active ? (
-                <span className="inline-flex shrink-0 rounded-full bg-health-ok/10 px-2 py-0.5 mg-type-data text-health-ok">
-                  active
-                </span>
-              ) : (
-                <span className="inline-flex shrink-0 rounded-full bg-surface px-2 py-0.5 mg-type-data text-ink-muted">
-                  idle
-                </span>
-              )}
-            </div>
-            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 mg-type-data">
-              <dt className="mg-type-caption text-ink-muted">UID</dt>
-              <dd className="text-right font-mono tabular-nums text-ink">
-                {r.uid != null ? formatNumber(r.uid) : "—"}
-              </dd>
-              <dt className="mg-type-caption text-ink-muted">Stake</dt>
-              <dd className="text-right font-mono tabular-nums text-ink">
-                {fmtStake(r.stake_tao)}
-              </dd>
-            </dl>
-          </li>
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 mg-type-data">
+                <dt className="mg-type-caption text-ink-muted">UID</dt>
+                <dd className="text-right font-mono tabular-nums text-ink">
+                  {r.uid != null ? formatNumber(r.uid) : "—"}
+                </dd>
+                <dt className="mg-type-caption text-ink-muted">Stake</dt>
+                <dd className="text-right font-mono tabular-nums text-ink">
+                  {fmtStake(r.stake_tao)}
+                </dd>
+              </dl>
+            </li>
           );
         })}
       </ul>
