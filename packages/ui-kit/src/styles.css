@@ -99,7 +99,8 @@
  *
  * The application is a public evidence terminal, not a trading dashboard:
  * carbon and graphite carry the data plane, ash carries the reading plane,
- * blue means "you can act here", and health/trust keep their own semantics.
+ * and Metagraphed's own mint mark (#30FFC0) means "you can act here".
+ * Health/trust keep their own semantics.
  * Light is a practical reading inverse of the dark terminal, not a second
  * visual language. Surfaces stay flat, bounded by one-pixel rules.
  */
@@ -198,7 +199,12 @@
      for legacy components during the route-by-route migration. */
   --radius: 0.25rem;
 
-  --paper: #f7f7f4;
+  /* `--brand-green` is the exact fill from the shipped Metagraphed M mark
+     (wordmark.tsx / favicon.svg). Keep it literal: it is the visual anchor
+     for filled actions, active states, focus, and key data highlights. */
+  --brand-green: #30ffc0;
+
+  --paper: #f8f8f5;
   --surface: #ffffff;
   --surface-2: #eeeeeb;
   --ink: #383838;
@@ -215,18 +221,18 @@
   --popover: var(--surface);
   --popover-foreground: var(--ink-strong);
 
-  --primary: #1f6feb;
-  --primary-foreground: #ffffff;
+  --primary: var(--brand-green);
+  --primary-foreground: #08110e;
   --primary-soft: color-mix(in oklab, var(--primary) 10%, var(--paper));
   --secondary: var(--surface-2);
   --secondary-foreground: var(--ink-strong);
   --muted: var(--surface-2);
   --muted-foreground: var(--ink-muted);
-  --accent: #1f6feb;
+  /* A deep counterpart is required only when brand-green is rendered as small
+     text on a light surface. Filled primary controls still use #30FFC0. */
+  --accent: #087b5d;
   --accent-foreground: #ffffff;
-  /* Text-only action token. The filled accent stays blue; this one clears AA
-     on paper for compact links, labels, and table controls. */
-  --accent-text: #1857b7;
+  --accent-text: #087b5d;
 
   --destructive: #c93f3c;
   --destructive-foreground: #ffffff;
@@ -243,15 +249,15 @@
   --health-unknown: #737373;
 
   --curation-native: var(--ink-strong);
-  --curation-verified: #1f6feb;
-  --curation-pilot: #4f77c8;
+  --curation-verified: #087b5d;
+  --curation-pilot: #2d806c;
   --curation-candidate: var(--ink-muted);
   --curation-seeded: #b46b00;
   --curation-machine: #7562c6;
   --curation-adapter: #b24f8c;
 
   /* Arbitrary chart series, intentionally distinct from health and trust. */
-  --chart-1: #3679e8;
+  --chart-1: #119b76;
   --chart-2: #8562d7;
   --chart-3: #d56b25;
   --chart-4: #bd4e92;
@@ -259,7 +265,7 @@
   --chart-6: #6f7b87;
 
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
-  --mg-cadence-color: color-mix(in oklab, var(--accent) 20%, transparent);
+  --mg-cadence-color: color-mix(in oklab, var(--ink-strong) 13%, transparent);
 
   /* Third-party brand mark (ClaudeIcon) -- fixed regardless of theme, unlike
      the semantic tokens above. Converted from Claude's official simple-icons
@@ -545,16 +551,16 @@
   --popover: var(--surface-2);
   --popover-foreground: var(--ink-strong);
 
-  --primary: #72a6ff;
-  --primary-foreground: #0d0d0d;
+  --primary: var(--brand-green);
+  --primary-foreground: #08110e;
   --primary-soft: color-mix(in oklab, var(--primary) 12%, var(--paper));
   --secondary: var(--surface-2);
   --secondary-foreground: var(--ink-strong);
   --muted: var(--surface);
   --muted-foreground: var(--ink-muted);
-  --accent: #72a6ff;
+  --accent: var(--brand-green);
   --accent-foreground: #0d0d0d;
-  --accent-text: #9bbdff;
+  --accent-text: var(--brand-green);
 
   --destructive: #fb7974;
   --destructive-foreground: #161616;
@@ -571,14 +577,14 @@
   --health-unknown: #8b8b8b;
 
   --curation-native: var(--ink-strong);
-  --curation-verified: #72a6ff;
-  --curation-pilot: #91b4ef;
+  --curation-verified: var(--brand-green);
+  --curation-pilot: #78d7bb;
   --curation-candidate: var(--ink-muted);
   --curation-seeded: #e8bb63;
   --curation-machine: #b49aff;
   --curation-adapter: #e79ac9;
 
-  --chart-1: #75a9ff;
+  --chart-1: var(--brand-green);
   --chart-2: #b69bff;
   --chart-3: #ffad72;
   --chart-4: #ec9bcf;
@@ -586,7 +592,7 @@
   --chart-6: #a6adb7;
 
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 8%, transparent);
-  --mg-cadence-color: color-mix(in oklab, var(--accent) 28%, transparent);
+  --mg-cadence-color: color-mix(in oklab, var(--ink-strong) 15%, transparent);
 }
 
 @layer base {
@@ -604,19 +610,18 @@
     -moz-osx-font-smoothing: grayscale;
     overflow-x: clip;
   }
-  /* A quiet terminal lattice gives long explorer pages orientation without
-     competing with evidence, tables, or data visualisations. */
+  /* Pages stay quiet. The one dotted reference field lives in the hero where
+     it explains the landing-page hierarchy instead of competing with tables. */
   body {
-    background-image:
-      linear-gradient(to right, var(--mg-grid-color) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--mg-grid-color) 1px, transparent 1px);
-    background-size:
-      32px 32px,
-      32px 32px;
-    background-position:
-      0 0,
-      0 0;
-    background-attachment: fixed;
+    background-image: none;
+  }
+  /* A few compact controls intentionally don't carry an explicit focus utility.
+     Their fallback must still be the Metagraphed mint ring, never the browser's
+     platform-colored outline. More specific component focus treatments remain
+     free to replace this baseline. */
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
   html.theme-transition,
   html.theme-transition * {
@@ -838,21 +843,53 @@ html[data-density="compact"] .bg-card > table td {
   animation-delay: 240ms;
 }
 
-/* Hero — a calm evidence field. The cadence lattice is the visual signature:
-   it evokes block intervals without pretending to be a data chart. */
+/* Hero — a single, quiet reference field. The dot matrix borrows the useful
+   spatial rhythm of a data display without impersonating a chart or becoming
+   a background treatment for every route. */
 .mg-hero-slab {
   position: relative;
-  background-color: color-mix(in oklab, var(--surface) 52%, transparent);
-  background-image:
-    linear-gradient(to right, var(--mg-cadence-color) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--mg-cadence-color) 1px, transparent 1px);
-  background-size: 16px 16px;
+  background: transparent;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
-  border-top: 1px solid color-mix(in oklab, var(--accent) 68%, transparent);
 }
 .mg-hero-slab::before {
   content: none;
+}
+.mg-hero-dot-field {
+  position: absolute;
+  z-index: 0;
+  top: clamp(7.5rem, 11vw, 10.5rem);
+  right: 0;
+  left: clamp(1rem, 13vw, 10rem);
+  height: clamp(5rem, 10vw, 8rem);
+  pointer-events: none;
+  background-image: radial-gradient(
+    var(--mg-cadence-color) 0.7px,
+    transparent 0.85px
+  );
+  background-size: 7px 7px;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 8%,
+    #000 92%,
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 8%,
+    #000 92%,
+    transparent
+  );
+}
+@media (max-width: 767px) {
+  .mg-hero-dot-field {
+    top: 8.5rem;
+    right: 0;
+    left: 0;
+    height: 4rem;
+  }
 }
 
 /* Restrained action band — a structural inverse surface, not a marketing
@@ -861,16 +898,16 @@ html[data-density="compact"] .bg-card > table td {
   background: var(--surface-2);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  box-shadow: inset 2px 0 0 var(--accent);
+  box-shadow: inset 0 2px 0 var(--primary);
 }
 
-/* Cadence pattern — used inside the one deliberate action band. */
+/* Cadence pattern — reserved for the one deliberate action band. */
 .mg-dot-grid {
   background-image: radial-gradient(
-    color-mix(in oklab, var(--accent) 36%, transparent) 1px,
+    var(--mg-cadence-color) 1px,
     transparent 1px
   );
-  background-size: 14px 14px;
+  background-size: 8px 8px;
 }
 
 /* Hairline KPI strip used in heroes (Blockmachine signature). */

@@ -219,13 +219,9 @@ export function AppShell({
   return (
     <TooltipProvider delayDuration={150}>
       <ApiSourceProvider>
-        {/* Deliberately NO background here. `body` already paints --color-paper
-            AND the brand background pattern on top of it (ui-kit's base layer:
-            hairline grid + dot field + soft accent vignette). An opaque
-            `bg-paper` on this full-height wrapper covered that pattern
-            completely — the app rendered as a flat fill on every route, which
-            is not what the design system draws. The colour is unchanged; only
-            the occlusion is removed. */}
+        {/* Deliberately no background here. The page plane is intentionally
+            quiet; routes add the one structural cue they need instead of a
+            decorative texture being forced behind every explorer table. */}
         <div className="min-h-dvh text-ink flex flex-col">
           {/* Skip link: first focusable element, visible only on keyboard focus. */}
           <a
@@ -242,7 +238,7 @@ export function AppShell({
             <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
               <button
                 ref={hamburgerRef}
-                className="lg:hidden rounded p-2 text-ink hover:bg-surface-2 min-h-11 min-w-11 inline-flex items-center justify-center"
+                className="lg:hidden p-2 text-ink hover:bg-surface-2 min-h-11 min-w-11 inline-flex items-center justify-center transition-colors"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open menu"
               >
@@ -270,7 +266,7 @@ export function AppShell({
                   onClick={(e) => openPaletteFrom(e.currentTarget)}
                   aria-label="Open search"
                   title="Search"
-                  className="md:hidden inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-accent/60 transition-colors"
+                  className="md:hidden inline-flex items-center justify-center p-1.5 min-h-11 min-w-11 text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors"
                 >
                   <Search className="size-4" aria-hidden="true" />
                 </button>
@@ -288,7 +284,7 @@ export function AppShell({
                     <Link
                       to="/settings"
                       aria-label="Developer settings"
-                      className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-accent/60 transition-colors"
+                      className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center p-1.5 min-h-11 min-w-11 text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors"
                     >
                       <Webhook className="size-3.5" aria-hidden="true" />
                     </Link>

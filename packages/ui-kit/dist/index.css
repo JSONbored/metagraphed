@@ -70,7 +70,8 @@
 @theme inline { --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px); --color-background: var(--background); --color-foreground: var(--foreground); --color-paper: var(--paper); --color-surface: var(--surface); --color-surface-2: var(--surface-2); --color-ink: var(--ink); --color-ink-strong: var(--ink-strong); --color-ink-muted: var(--ink-muted); --color-ink-subtle: var(--ink-subtle); --color-ink-subtle-text: var(--ink-subtle-text); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-primary-soft: var(--primary-soft); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-accent-text: var(--accent-text); --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-health-ok: var(--health-ok); --color-health-warn: var(--health-warn); --color-health-warn-text: var(--health-warn-text); --color-health-bad: var(--health-bad); --color-health-down: var(--health-down); --color-health-unknown: var(--health-unknown); --color-curation-native: var(--curation-native); --color-curation-verified: var(--curation-verified); --color-curation-pilot: var(--curation-pilot); --color-curation-candidate: var(--curation-candidate); --color-curation-seeded: var(--curation-seeded); --color-curation-machine: var(--curation-machine); --color-curation-adapter: var(--curation-adapter); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-chart-6: var(--chart-6); --font-display: "IBM Plex Mono", "Space Grotesk", ui-monospace, monospace; --font-sans: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace; --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace; --font-prose: "DM Sans", ui-sans-serif, system-ui, sans-serif; --spacing-section: 3rem; --color-accent-surface: color-mix(in oklab, var(--accent) 6%, transparent); --spacing-nav: 3.25rem; --spacing-section-gap: 4rem; --spacing-shell-max: 1400px; }
 :root {
   --radius: 0.25rem;
-  --paper: #f7f7f4;
+  --brand-green: #30ffc0;
+  --paper: #f8f8f5;
   --surface: #ffffff;
   --surface-2: #eeeeeb;
   --ink: #383838;
@@ -84,16 +85,16 @@
   --card-foreground: var(--ink-strong);
   --popover: var(--surface);
   --popover-foreground: var(--ink-strong);
-  --primary: #1f6feb;
-  --primary-foreground: #ffffff;
+  --primary: var(--brand-green);
+  --primary-foreground: #08110e;
   --primary-soft: color-mix(in oklab, var(--primary) 10%, var(--paper));
   --secondary: var(--surface-2);
   --secondary-foreground: var(--ink-strong);
   --muted: var(--surface-2);
   --muted-foreground: var(--ink-muted);
-  --accent: #1f6feb;
+  --accent: #087b5d;
   --accent-foreground: #ffffff;
-  --accent-text: #1857b7;
+  --accent-text: #087b5d;
   --destructive: #c93f3c;
   --destructive-foreground: #ffffff;
   --border: color-mix(in oklab, var(--ink-strong) 8%, transparent);
@@ -106,20 +107,20 @@
   --health-down: #c93f3c;
   --health-unknown: #737373;
   --curation-native: var(--ink-strong);
-  --curation-verified: #1f6feb;
-  --curation-pilot: #4f77c8;
+  --curation-verified: #087b5d;
+  --curation-pilot: #2d806c;
   --curation-candidate: var(--ink-muted);
   --curation-seeded: #b46b00;
   --curation-machine: #7562c6;
   --curation-adapter: #b24f8c;
-  --chart-1: #3679e8;
+  --chart-1: #119b76;
   --chart-2: #8562d7;
   --chart-3: #d56b25;
   --chart-4: #bd4e92;
   --chart-5: #9c7b11;
   --chart-6: #6f7b87;
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
-  --mg-cadence-color: color-mix(in oklab, var(--accent) 20%, transparent);
+  --mg-cadence-color: color-mix(in oklab, var(--ink-strong) 13%, transparent);
   --claude-brand: oklch(0.67 0.13 39);
 }
 :root {
@@ -262,16 +263,16 @@
   --card-foreground: var(--ink-strong);
   --popover: var(--surface-2);
   --popover-foreground: var(--ink-strong);
-  --primary: #72a6ff;
-  --primary-foreground: #0d0d0d;
+  --primary: var(--brand-green);
+  --primary-foreground: #08110e;
   --primary-soft: color-mix(in oklab, var(--primary) 12%, var(--paper));
   --secondary: var(--surface-2);
   --secondary-foreground: var(--ink-strong);
   --muted: var(--surface);
   --muted-foreground: var(--ink-muted);
-  --accent: #72a6ff;
+  --accent: var(--brand-green);
   --accent-foreground: #0d0d0d;
-  --accent-text: #9bbdff;
+  --accent-text: var(--brand-green);
   --destructive: #fb7974;
   --destructive-foreground: #161616;
   --border: color-mix(in oklab, var(--ink-strong) 11%, transparent);
@@ -284,20 +285,20 @@
   --health-down: #fb7974;
   --health-unknown: #8b8b8b;
   --curation-native: var(--ink-strong);
-  --curation-verified: #72a6ff;
-  --curation-pilot: #91b4ef;
+  --curation-verified: var(--brand-green);
+  --curation-pilot: #78d7bb;
   --curation-candidate: var(--ink-muted);
   --curation-seeded: #e8bb63;
   --curation-machine: #b49aff;
   --curation-adapter: #e79ac9;
-  --chart-1: #75a9ff;
+  --chart-1: var(--brand-green);
   --chart-2: #b69bff;
   --chart-3: #ffad72;
   --chart-4: #ec9bcf;
   --chart-5: #e9ca68;
   --chart-6: #a6adb7;
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 8%, transparent);
-  --mg-cadence-color: color-mix(in oklab, var(--accent) 28%, transparent);
+  --mg-cadence-color: color-mix(in oklab, var(--ink-strong) 15%, transparent);
 }
 @layer base {
   * {
@@ -315,18 +316,11 @@
     overflow-x: clip;
   }
   body {
-    background-image:
-      linear-gradient(
-        to right,
-        var(--mg-grid-color) 1px,
-        transparent 1px),
-      linear-gradient(
-        to bottom,
-        var(--mg-grid-color) 1px,
-        transparent 1px);
-    background-size: 32px 32px, 32px 32px;
-    background-position: 0 0, 0 0;
-    background-attachment: fixed;
+    background-image: none;
+  }
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
   html.theme-transition,
   html.theme-transition * {
@@ -517,33 +511,55 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-hero-slab {
   position: relative;
-  background-color: color-mix(in oklab, var(--surface) 52%, transparent);
-  background-image:
-    linear-gradient(
-      to right,
-      var(--mg-cadence-color) 1px,
-      transparent 1px),
-    linear-gradient(
-      to bottom,
-      var(--mg-cadence-color) 1px,
-      transparent 1px);
-  background-size: 16px 16px;
+  background: transparent;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
-  border-top: 1px solid color-mix(in oklab, var(--accent) 68%, transparent);
 }
 .mg-hero-slab::before {
   content: none;
+}
+.mg-hero-dot-field {
+  position: absolute;
+  z-index: 0;
+  top: clamp(7.5rem, 11vw, 10.5rem);
+  right: 0;
+  left: clamp(1rem, 13vw, 10rem);
+  height: clamp(5rem, 10vw, 8rem);
+  pointer-events: none;
+  background-image: radial-gradient(var(--mg-cadence-color) 0.7px, transparent 0.85px);
+  background-size: 7px 7px;
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      #000 8%,
+      #000 92%,
+      transparent);
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      #000 8%,
+      #000 92%,
+      transparent);
+}
+@media (max-width: 767px) {
+  .mg-hero-dot-field {
+    top: 8.5rem;
+    right: 0;
+    left: 0;
+    height: 4rem;
+  }
 }
 .mg-accent-band {
   background: var(--surface-2);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  box-shadow: inset 2px 0 0 var(--accent);
+  box-shadow: inset 0 2px 0 var(--primary);
 }
 .mg-dot-grid {
-  background-image: radial-gradient(color-mix(in oklab, var(--accent) 36%, transparent) 1px, transparent 1px);
-  background-size: 14px 14px;
+  background-image: radial-gradient(var(--mg-cadence-color) 1px, transparent 1px);
+  background-size: 8px 8px;
 }
 .mg-kpi-strip {
   display: grid;

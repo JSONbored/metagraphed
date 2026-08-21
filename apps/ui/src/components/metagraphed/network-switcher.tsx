@@ -75,7 +75,7 @@ export function NetworkSwitcher() {
         <button
           type="button"
           aria-label={`Network: ${network.label}`}
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink hover:border-ink/30 transition-colors min-h-11"
+          className="inline-flex min-h-11 items-center gap-1.5 border border-transparent bg-transparent px-2 py-1 mg-type-caption text-ink transition-colors hover:border-border hover:bg-surface"
           title={`Network: ${network.label} · ${base}`}
         >
           <Globe2 className="size-3 text-ink-muted" />

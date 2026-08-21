@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
-import { ArrowUpRight, ChevronDown, Terminal } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Search, Terminal } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { HomeWatchedModule } from "@/components/metagraphed/home-watched-module";
 import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
@@ -39,7 +39,6 @@ import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-sc
 import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
 import { RecentIdentityChanges } from "@/components/metagraphed/recent-identity-changes";
 import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
-import { HeroFeatureRow } from "@/components/metagraphed/hero-feature-row";
 import { useHydrated } from "@/hooks/use-hydrated";
 
 import {
@@ -382,7 +381,7 @@ export function ChainHeadTip() {
     <Link
       to="/blocks/$ref"
       params={{ ref: String(head.block_number) }}
-      className="mg-fade-in mg-fade-in-delay-3 mt-4 inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-accent transition-colors"
+      className="mg-fade-in mg-fade-in-delay-3 inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-accent transition-colors"
     >
       <span className="mg-live-dot" />
       head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
@@ -399,14 +398,6 @@ function openCommandPalette() {
   );
 }
 
-// The hero's MCP connect one-liner. Static rather than agentResourcesQuery()'s
-// `mcp.install` (which HomeForAgentsModule below renders) on purpose: the hero
-// renders pre-hydration with no query dependency, and this recommends
-// /mcp/core — the 23-tool context-diet profile (#11164) — where `mcp.install`
-// teaches the full 240-tool /mcp catalog. Per-client setup lives at /docs/mcp.
-const MCP_CORE_INSTALL =
-  "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core";
-
 function HomeHero() {
   const hydrated = useHydrated();
   const { data: subnetsData } = useQuery({
@@ -419,113 +410,72 @@ function HomeHero() {
       : 128;
 
   return (
-    <section className="mg-hero-slab relative overflow-hidden px-4 py-10 sm:px-6 md:py-16">
-      <div className="relative z-[var(--mg-z-sticky)] mx-auto grid max-w-6xl gap-8 md:gap-12 lg:grid-cols-[minmax(0,1.25fr)_minmax(16rem,0.75fr)] lg:items-end">
-        <div className="min-w-0 text-left">
-          <div className="mg-hero-caption mg-fade-in">Metagraph Terminal · Finney</div>
-          {/* eslint-disable-next-line no-restricted-syntax -- display-size hero heading (30/40/48px responsive); the mg-type-* scale tops out at caption-lg (13px) with no display tier, so there is no matching token (#8717 req 2 exception) */}
-          <h1 className="mg-fade-in mt-4 font-display text-[30px] sm:text-[40px] md:text-[48px] font-medium leading-[1.08] tracking-[-0.04em] text-ink-strong">
-            <span className="block">Find the signal.</span>
-            <span className="block text-accent">Verify the surface.</span>
+    <section className="mg-hero-slab relative overflow-hidden px-4 sm:px-6">
+      <div className="relative z-[var(--mg-z-sticky)] mx-auto max-w-6xl py-12 md:py-24">
+        <div className="relative max-w-4xl">
+          <div className="mg-hero-caption mg-fade-in">Finney · public registry</div>
+          {/* eslint-disable-next-line no-restricted-syntax -- display-size hero heading (38/52/64px responsive); the mg-type-* scale deliberately tops out at caption-lg, so there is no matching token (#8717 req 2 exception) */}
+          <h1 className="mg-fade-in mt-5 font-display text-[38px] sm:text-[52px] md:text-[64px] font-medium leading-[1.02] tracking-[-0.055em] text-ink-strong">
+            Find the signal.
+            <br />
+            Verify the surface.
           </h1>
-          <p className="mg-fade-in mg-fade-in-delay-1 mt-4 max-w-2xl text-sm md:text-base text-ink-muted leading-relaxed">
-            A public map of Bittensor subnets, chain activity, and interfaces — built to show what
-            is live, credible, and ready to use.
-          </p>
 
-          {/* Unified search shell: one plain-language primary task, no decorative chrome. */}
-          <div className="mg-fade-in mg-fade-in-delay-2 mt-8 w-full max-w-2xl">
-            {/* eslint-disable-next-line no-restricted-syntax -- not a card shell: this is the search field's flush query-trigger + Search-button row (items-stretch, overflow-hidden, focus-within/hover border states); <Panel> hardcodes its own content padding and can't express this composite input geometry (#8717 req 2 exception) */}
-            <div className="mg-focus-ring flex items-stretch overflow-hidden rounded-sm border border-border bg-card transition-colors focus-within:border-accent/80 hover:border-accent/60">
-              <button
-                type="button"
-                onClick={openCommandPalette}
-                aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
-                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left text-sm text-ink-muted transition-colors hover:text-ink"
+          {/* One reference field establishes the page's data character. It is
+              deliberately structural rather than another card, metric, or CTA. */}
+          <div aria-hidden className="mg-hero-dot-field" />
+
+          <div className="mg-fade-in mg-fade-in-delay-1 mt-16 max-w-xl md:mt-20">
+            <p className="text-sm leading-relaxed text-ink-muted md:text-base">
+              A public map of Bittensor subnets, chain activity, and interfaces — built to show what
+              is live, credible, and ready to use.
+            </p>
+
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
+              className="mg-focus-ring mt-8 flex min-h-12 w-full items-center gap-3 border-b border-ink-strong/30 pb-3 text-left text-sm text-ink-muted transition-colors hover:border-primary hover:text-ink-strong"
+            >
+              <Search className="size-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">
+                Search subnets, validators, endpoints, accounts…
+              </span>
+              <kbd className="hidden shrink-0 border border-border px-1.5 py-0.5 mg-type-caption text-ink-muted sm:inline-flex">
+                ⌘K
+              </kbd>
+              <span className="inline-flex size-8 shrink-0 items-center justify-center bg-primary text-primary-foreground">
+                <ArrowUpRight className="size-4" aria-hidden="true" />
+              </span>
+            </button>
+
+            <div className="mg-fade-in mg-fade-in-delay-2 mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 mg-type-caption-lg">
+              <Link
+                to="/subnets"
+                className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 bg-primary px-4 py-2 font-medium text-primary-foreground transition-opacity hover:opacity-85"
               >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  className="size-4 shrink-0 text-ink-muted"
-                >
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-                </svg>
-                <span className="min-w-0 flex-1 truncate">
-                  Search subnets, validators, endpoints, accounts…
-                </span>
-                <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted">
-                  ⌘K
-                </kbd>
-              </button>
-              <button
-                type="button"
-                onClick={openCommandPalette}
-                aria-label="Open search"
-                className="flex size-12 shrink-0 items-center justify-center border-l border-border bg-primary-soft text-accent-text transition-colors hover:bg-accent hover:text-accent-foreground sm:h-auto sm:w-auto sm:px-4"
+                Explore {subnetCount} subnets
+                <ArrowUpRight className="size-3.5" />
+              </Link>
+              <Link
+                to="/apis/schemas"
+                className="mg-focus-ring inline-flex min-h-11 items-center text-accent-text underline decoration-current/40 underline-offset-4 transition-colors hover:text-ink-strong"
               >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  className="size-4 sm:hidden"
-                >
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-                </svg>
-                <span className="hidden text-sm font-medium sm:inline">Search</span>
-              </button>
+                Read the API
+              </Link>
             </div>
           </div>
 
-          <div className="mg-fade-in mg-fade-in-delay-3 mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4 mg-type-caption-lg">
-            <Link
-              to="/subnets"
-              className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded bg-accent px-4 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
-            >
-              Explore all {subnetCount} subnets
-              <ArrowUpRight className="size-3.5" />
-            </Link>
-            <Link
-              to="/apis/schemas"
-              className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-4 py-2 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
-            >
-              Read the API
-            </Link>
-          </div>
-          {/* inline-flex, not flex: this is a control shell (a copyable command
-            row), not a content panel — same distinction the card-shell lint
-            rule draws for segmented controls. */}
-          <div className="mg-fade-in mg-fade-in-delay-3 mt-4 inline-flex w-full max-w-xl items-center gap-2 rounded border border-border bg-card px-3 py-2">
-            <Terminal className="size-3.5 shrink-0 text-accent" aria-hidden />
-            <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left font-mono mg-type-caption-lg text-ink-muted">
-              {MCP_CORE_INSTALL}
-            </code>
-            <CopyButton value={MCP_CORE_INSTALL} label="MCP install command" />
-          </div>
-        </div>
-        <aside className="mg-fade-in mg-fade-in-delay-2 border-l-2 border-accent bg-card p-4 md:p-6">
-          <div className="mg-type-label text-ink-muted">Registry pulse</div>
-          <div className="mt-4 font-display text-4xl font-medium tracking-[-0.05em] text-ink-strong tabular-nums">
-            {formatNumber(subnetCount)}
-          </div>
-          <p className="mt-1 mg-type-caption-lg text-ink-muted">
-            active subnets mapped across chain data and public interfaces
-          </p>
-          <div className="mt-4 border-t border-border pt-4">
-            <div className="mg-type-label text-ink-muted">Chain head</div>
+          <div className="mg-fade-in mg-fade-in-delay-3 mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 mg-type-data text-ink-muted">
+            <span>
+              <strong className="font-medium text-ink-strong tabular-nums">
+                {formatNumber(subnetCount)}
+              </strong>{" "}
+              active subnets
+            </span>
             <ChainHeadTip />
           </div>
-        </aside>
-      </div>
-
-      <div className="relative z-[var(--mg-z-sticky)] mx-auto mt-10 max-w-6xl px-0 sm:px-2">
-        <HeroFeatureRow />
+        </div>
       </div>
     </section>
   );

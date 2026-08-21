@@ -411,7 +411,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         as="div"
         flush
         className={classNames(
-          "w-full !rounded-full text-left text-sm transition-all",
+          "w-full !rounded-none text-left text-sm transition-all",
           open ? "!border-accent/60 ring-2 ring-accent/20" : "hover:border-accent/40",
         )}
         bodyClassName="inline-flex w-full items-center gap-2 !pl-3 !pr-2 !py-2 min-h-10"
