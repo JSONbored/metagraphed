@@ -261,36 +261,20 @@ function removeWorktree(worktreeDir) {
   }
 }
 
-async function setTheme(page, baseUrl, theme) {
-  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
-  await page.evaluate(({ key, value }) => localStorage.setItem(key, value), {
-    key: THEME_STORAGE_KEY,
-    value: theme,
-  });
-}
-
-/** `networkidle` is the right wait condition (it's what lets a late-mounting
- * chart or a client-side non-suspense query settle before capture -- see
- * capture-operational-status-screenshots.ts), but a just-spawned dev
- * server's first hit on a route pays Vite's cold transform/optimize cost on
- * top of the app's own data fetches, occasionally blowing past a single
- * timeout. Retry once, then fall back to the cheaper `load` condition plus a
- * fixed settle wait rather than failing the whole capture run outright. */
+/** Dev-mode Vite keeps a hot-module websocket open. Waiting for
+ * `networkidle` therefore turns a visual capture into a multi-minute timeout
+ * on some machines even though the document is completely usable. Wait for
+ * the actual document instead; the fixed settle waits in `captureVariant`
+ * deliberately cover late client-side charts and queries. */
 async function gotoRoute(page, url) {
   try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
+    await page.goto(url, { waitUntil: "load", timeout: 30_000 });
     return;
   } catch (err) {
-    console.warn(`networkidle wait failed for ${url}, retrying once: ${err.message}`);
+    console.warn(`load wait failed for ${url}, falling back to DOMContentLoaded: ${err.message}`);
   }
-  try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
-    return;
-  } catch (err) {
-    console.warn(`networkidle retry failed for ${url}, falling back to "load": ${err.message}`);
-  }
-  await page.goto(url, { waitUntil: "load", timeout: 60_000 });
-  await page.waitForTimeout(2000);
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.waitForTimeout(500);
 }
 
 /** Scrolls `sectionId` into view, accounting for the sticky masthead's live
@@ -328,13 +312,19 @@ async function captureVariant({
   prefix,
 }) {
   for (const viewport of VIEWPORTS) {
-    const context = await browser.newContext({
-      viewport: { width: viewport.width, height: viewport.height },
-    });
-    const page = await context.newPage();
-
     for (const theme of THEMES) {
-      await setTheme(page, baseUrl, theme);
+      // Seed the preference before the document executes. Apart from avoiding
+      // a visible light-to-dark flash, this deliberately avoids a second
+      // root-page navigation between screenshots -- a costly and occasionally
+      // flaky request while two cold Vite servers are compiling in parallel.
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      await context.addInitScript(({ key, value }) => window.localStorage.setItem(key, value), {
+        key: THEME_STORAGE_KEY,
+        value: theme,
+      });
+      const page = await context.newPage();
       await gotoRoute(page, `${baseUrl}${route}`);
       // Let async, non-suspense queries (identity/balance/etc. -- anything
       // fetched client-side post-hydration) resolve before scrolling and
@@ -350,7 +340,12 @@ async function captureVariant({
       // every glyph shifts, which is exactly the noise a before/after
       // comparison must not have (responsive-overflow.spec.ts blocks on this
       // for the same reason -- see #4876). Block until the swap has happened.
-      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() =>
+        Promise.race([
+          document.fonts.ready,
+          new Promise((resolve) => window.setTimeout(resolve, 5_000)),
+        ]),
+      );
 
       if (section) {
         const found = await scrollToSection(page, section);
@@ -364,8 +359,8 @@ async function captureVariant({
       const file = path.join(outDir, `${name}.png`);
       await page.screenshot({ path: file, fullPage: false });
       console.log(`wrote ${file}`);
+      await context.close();
     }
-    await context.close();
   }
 }
 
